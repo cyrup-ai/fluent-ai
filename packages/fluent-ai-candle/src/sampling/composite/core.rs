@@ -23,8 +23,7 @@ pub struct CompositeProcessor {
     is_identity_cached: bool,
     /// Name for debugging and metrics
     #[allow(dead_code)] // Reserved for future processor debugging and telemetry
-    name: String,
-}
+    name: String}
 
 impl CompositeProcessor {
     /// Create a new composite processor
@@ -74,8 +73,7 @@ impl CompositeProcessor {
         Ok(Self {
             processors,
             is_identity_cached,
-            name,
-        })
+            name})
     }
 
     /// Create composite processor from builder pattern
@@ -211,8 +209,7 @@ impl CompositeProcessor {
         // Check for numerical issues (simplified check)
         match logits.to_dtype(candle_core::DType::F32) {
             Ok(_) => Ok(()),
-            Err(e) => Err(format!("Tensor type conversion failed: {}", e)),
-        }
+            Err(e) => Err(format!("Tensor type conversion failed: {}", e))}
     }
 
     /// Detect repetition patterns in token sequence for context-aware sampling

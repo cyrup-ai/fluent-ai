@@ -30,8 +30,7 @@ pub struct ConversationTag {
     /// Tag usage count
     pub usage_count: u64,
     /// Tag author/creator
-    pub author: Option<Arc<str>>,
-}
+    pub author: Option<Arc<str>>}
 
 impl Default for ConversationTag {
     fn default() -> Self {
@@ -48,8 +47,7 @@ impl Default for ConversationTag {
             created_at: now,
             updated_at: now,
             usage_count: 0,
-            author: None,
-        }
+            author: None}
     }
 }
 
@@ -69,8 +67,7 @@ impl ConversationTag {
             created_at: now,
             updated_at: now,
             usage_count: 0,
-            author: None,
-        }
+            author: None}
     }
 
     /// Create a tag with category
@@ -138,8 +135,7 @@ pub enum TagCategory {
     /// Status tags
     Status,
     /// User-defined category
-    Custom(Arc<str>),
-}
+    Custom(Arc<str>)}
 
 impl Default for TagCategory {
     fn default() -> Self {
@@ -155,8 +151,7 @@ impl From<&str> for TagCategory {
             "topic" => Self::Topic,
             "priority" => Self::Priority,
             "status" => Self::Status,
-            _ => Self::Custom(Arc::from(s)),
-        }
+            _ => Self::Custom(Arc::from(s))}
     }
 }
 
@@ -168,8 +163,7 @@ impl ToString for TagCategory {
             Self::Topic => "topic".to_string(),
             Self::Priority => "priority".to_string(),
             Self::Status => "status".to_string(),
-            Self::Custom(name) => name.to_string(),
-        }
+            Self::Custom(name) => name.to_string()}
     }
 }
 
@@ -187,8 +181,7 @@ pub struct TagFilter {
     /// Filter by author
     pub author: Option<Arc<str>>,
     /// Filter by date range
-    pub date_range: Option<crate::types::candle_chat::chat::search::export::types::DateRange>,
-}
+    pub date_range: Option<crate::types::candle_chat::chat::search::export::types::DateRange>}
 
 impl Default for TagFilter {
     fn default() -> Self {
@@ -198,8 +191,7 @@ impl Default for TagFilter {
             min_priority: None,
             max_priority: None,
             author: None,
-            date_range: None,
-        }
+            date_range: None}
     }
 }
 
@@ -265,8 +257,7 @@ impl TagFilter {
                         return false;
                     }
                 }
-                None => return false,
-            }
+                None => return false}
         }
 
         true

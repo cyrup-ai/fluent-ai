@@ -6,8 +6,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::Arc,
-};
+    sync::Arc};
 
 use candle_core::{DType, Tensor};
 use candle_nn::VarBuilder;
@@ -18,8 +17,7 @@ use safetensors::SafeTensors;
 use super::{
     config::VarBuilderConfig,
     metadata::ModelMetadata,
-    types::LoadingStats,
-};
+    types::LoadingStats};
 use crate::error::{CandleError, CandleResult as Result};
 
 /// Tensor loading strategy for memory optimization
@@ -31,8 +29,7 @@ enum TensorLoadStrategy {
     MemoryMapped,
     /// Lazy loading with on-demand creation
     #[allow(dead_code)] // Reserved for future lazy loading implementation
-    Lazy,
-}
+    Lazy}
 
 /// Metadata for a tensor in the safetensors file
 #[derive(Debug, Clone)]
@@ -54,8 +51,7 @@ struct TensorMetadata {
     length: usize,
     /// Loading strategy
     #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
-    strategy: TensorLoadStrategy,
-}
+    strategy: TensorLoadStrategy}
 
 /// Ultra-high-performance VarBuilder with zero-allocation patterns
 ///
@@ -92,8 +88,7 @@ pub struct CandleVarBuilder<'a> {
     tensor_cache: SkipMap<String, Arc<Tensor>>,
 
     /// File path for reloading
-    file_path: Option<PathBuf>,
-}
+    file_path: Option<PathBuf>}
 
 impl<'a> CandleVarBuilder<'a> {
     /// Internal constructor with common initialization logic
@@ -108,8 +103,7 @@ impl<'a> CandleVarBuilder<'a> {
             tensor_metadata: HashMap::new(),
             tensor_cache: SkipMap::new(),
             file_path: None,
-            config,
-        }
+            config}
     }
 
     /// Create tensor metadata from a tensor map
@@ -131,8 +125,7 @@ impl<'a> CandleVarBuilder<'a> {
                     dtype,
                     offset: 0, // Not applicable for in-memory tensors
                     length: num_bytes,
-                    strategy: TensorLoadStrategy::Immediate,
-                },
+                    strategy: TensorLoadStrategy::Immediate},
             );
         }
 

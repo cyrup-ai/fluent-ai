@@ -15,8 +15,7 @@ pub struct TokenizerConfig {
     /// Padding configuration
     pub padding: PaddingConfig,
     /// Truncation configuration
-    pub truncation: TruncationConfig,
-}
+    pub truncation: TruncationConfig}
 
 impl Default for TokenizerConfig {
     fn default() -> Self {
@@ -25,8 +24,7 @@ impl Default for TokenizerConfig {
             add_eos_token: false,
             max_length: Some(2048),
             padding: PaddingConfig::default(),
-            truncation: TruncationConfig::default(),
-        }
+            truncation: TruncationConfig::default()}
     }
 }
 
@@ -38,16 +36,14 @@ pub struct PaddingConfig {
     /// Padding token
     pub token: String,
     /// Padding length
-    pub length: Option<usize>,
-}
+    pub length: Option<usize>}
 
 impl Default for PaddingConfig {
     fn default() -> Self {
         Self {
             enabled: false,
             token: "<pad>".to_string(),
-            length: None,
-        }
+            length: None}
     }
 }
 
@@ -59,16 +55,14 @@ pub struct TruncationConfig {
     /// Maximum length for truncation
     pub max_length: usize,
     /// Truncation strategy
-    pub strategy: TruncationStrategy,
-}
+    pub strategy: TruncationStrategy}
 
 impl Default for TruncationConfig {
     fn default() -> Self {
         Self {
             enabled: true,
             max_length: 2048,
-            strategy: TruncationStrategy::LongestFirst,
-        }
+            strategy: TruncationStrategy::LongestFirst}
     }
 }
 
@@ -82,21 +76,18 @@ pub enum TruncationStrategy {
     /// Truncate the longest sequence first
     LongestFirst,
     /// Do not truncate
-    DoNotTruncate,
-}
+    DoNotTruncate}
 
 /// Builder for tokenizer configuration
 pub struct TokenizerConfigBuilder {
-    config: TokenizerConfig,
-}
+    config: TokenizerConfig}
 
 impl TokenizerConfigBuilder {
     /// Create new configuration builder
     #[inline(always)]
     pub fn new() -> Self {
         Self {
-            config: TokenizerConfig::default(),
-        }
+            config: TokenizerConfig::default()}
     }
 
     /// Enable/disable BOS token addition

@@ -24,8 +24,7 @@ pub struct DocumentChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 /// Image format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -35,8 +34,7 @@ pub enum ImageFormat {
     GIF,
     WebP,
     BMP,
-    TIFF,
-}
+    TIFF}
 
 /// Chunk of image data for streaming image operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,8 +50,7 @@ pub struct ImageChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 /// Audio format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -63,8 +60,7 @@ pub enum AudioFormat {
     FLAC,
     OGG,
     M4A,
-    OPUS,
-}
+    OPUS}
 
 /// Chunk of audio/voice data for streaming audio operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,8 +79,7 @@ pub struct VoiceChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 /// Chunk of chat message for streaming responses
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,8 +95,7 @@ pub struct ChatMessageChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 /// Reason why a completion finished
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -110,8 +104,7 @@ pub enum FinishReason {
     Length,
     ContentFilter,
     ToolCalls,
-    Error,
-}
+    Error}
 
 /// Comprehensive completion chunk supporting all streaming features
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,26 +120,22 @@ pub enum CompletionChunk {
     ToolCall {
         id: String,
         name: String,
-        partial_input: String,
-    },
+        partial_input: String},
 
     /// Tool call completed
     ToolCallComplete {
         id: String,
         name: String,
-        input: String,
-    },
+        input: String},
 
     /// Completion finished with final information
     Complete {
         text: String,
         finish_reason: Option<FinishReason>,
-        usage: Option<crate::types::CandleUsage>,
-    },
+        usage: Option<crate::types::CandleUsage>},
 
     /// Error occurred during streaming
-    Error(String),
-}
+    Error(String)}
 
 /// Chunk of embedding data for streaming embeddings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,8 +148,7 @@ pub struct EmbeddingChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 /// Chunk of transcribed text from speech-to-text
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -182,8 +170,7 @@ pub struct TranscriptionChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 /// Chunk of synthesized speech for text-to-speech
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,8 +192,7 @@ pub struct SpeechChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 // Convenience constructors
 impl DocumentChunk {
@@ -215,8 +201,7 @@ impl DocumentChunk {
             path: None,
             content: content.into(),
             byte_range: None,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 }
 
@@ -229,8 +214,7 @@ impl ChatMessageChunk {
             content: content.into(),
             role,
             is_final: false,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 }
 
@@ -244,8 +228,7 @@ impl CompletionChunk {
     pub fn tool_start(id: impl Into<String>, name: impl Into<String>) -> Self {
         Self::ToolCallStart {
             id: id.into(),
-            name: name.into(),
-        }
+            name: name.into()}
     }
 
     /// Create a partial tool call chunk
@@ -257,8 +240,7 @@ impl CompletionChunk {
         Self::ToolCall {
             id: id.into(),
             name: name.into(),
-            partial_input: partial_input.into(),
-        }
+            partial_input: partial_input.into()}
     }
 
     /// Create a completed tool call chunk
@@ -270,8 +252,7 @@ impl CompletionChunk {
         Self::ToolCallComplete {
             id: id.into(),
             name: name.into(),
-            input: input.into(),
-        }
+            input: input.into()}
     }
 
     /// Create a completion finished chunk
@@ -283,8 +264,7 @@ impl CompletionChunk {
         Self::Complete {
             text: text.into(),
             finish_reason,
-            usage,
-        }
+            usage}
     }
 
     /// Create an error chunk
@@ -302,8 +282,7 @@ impl CompletionChunk {
         match self {
             Self::Text(text) => Some(text),
             Self::Complete { text, .. } => Some(text),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Check if this is a completion chunk

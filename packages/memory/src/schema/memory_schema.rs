@@ -16,8 +16,7 @@ pub struct MemoryNodeSchema {
     /// Type of memory
     pub memory_type: MemoryTypeEnum,
     /// Metadata associated with the memory
-    pub metadata: MemoryMetadataSchema,
-}
+    pub metadata: MemoryMetadataSchema}
 
 /// Database schema for memory metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,8 +30,7 @@ pub struct MemoryMetadataSchema {
     /// Vector embedding
     pub embedding: Option<Vec<f32>>,
     /// Custom metadata
-    pub custom: serde_json::Value,
-}
+    pub custom: serde_json::Value}
 
 /// Public memory type for API access
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,5 +50,4 @@ pub struct Memory {
     /// Tags
     pub tags: Vec<String>,
     /// Additional metadata
-    pub metadata: Option<serde_json::Value>,
-}
+    pub metadata: Option<serde_json::Value>}

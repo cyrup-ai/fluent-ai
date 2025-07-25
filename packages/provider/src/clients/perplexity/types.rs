@@ -37,8 +37,7 @@ pub use crate::openai::{
     OpenAIStreamingChoice as PerplexityStreamingChoice,
     OpenAIStreamingDelta as PerplexityStreamingDelta,
     OpenAIStreamingToolCall as PerplexityStreamingToolCall,
-    OpenAIStreamingFunction as PerplexityStreamingFunction,
-};
+    OpenAIStreamingFunction as PerplexityStreamingFunction};
 
 // ============================================================================
 // Chat Completions API (OpenAI-compatible with Perplexity extensions)
@@ -88,16 +87,14 @@ pub struct PerplexityChatResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub images: Option<ArrayVec<PerplexityImage, 16>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub related_questions: Option<ArrayVec<String, 8>>,
-}
+    pub related_questions: Option<ArrayVec<String, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityChoice {
     pub index: u32,
     pub message: PerplexityResponseMessage,
     pub finish_reason: String,
-    pub delta: Option<PerplexityStreamingDelta>,
-}
+    pub delta: Option<PerplexityStreamingDelta>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityCitation {
@@ -108,8 +105,7 @@ pub struct PerplexityCitation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub published_date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub author: Option<String>,
-}
+    pub author: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityImage {
@@ -118,15 +114,13 @@ pub struct PerplexityImage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub height: Option<u32>,
-}
+    pub height: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // ============================================================================
 // Models API
@@ -135,8 +129,7 @@ pub struct PerplexityUsage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityModelsResponse {
     pub object: String,
-    pub data: ArrayVec<PerplexityModel, 32>,
-}
+    pub data: ArrayVec<PerplexityModel, 32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityModel {
@@ -148,8 +141,7 @@ pub struct PerplexityModel {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_length: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pricing: Option<PerplexityPricing>,
-}
+    pub pricing: Option<PerplexityPricing>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityPricing {
@@ -158,8 +150,7 @@ pub struct PerplexityPricing {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub request: Option<String>,
-}
+    pub request: Option<String>}
 
 // ============================================================================
 // Streaming Support with Perplexity Extensions
@@ -176,15 +167,13 @@ pub struct PerplexityStreamingChunkExtended {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub citations: Option<ArrayVec<PerplexityCitation, 64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub related_questions: Option<ArrayVec<String, 8>>,
-}
+    pub related_questions: Option<ArrayVec<String, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityStreamingChoiceExtended {
     pub index: u32,
     pub delta: PerplexityStreamingDeltaExtended,
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerplexityStreamingDeltaExtended {
@@ -196,8 +185,7 @@ pub struct PerplexityStreamingDeltaExtended {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub citations: Option<ArrayVec<PerplexityCitation, 64>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub images: Option<ArrayVec<PerplexityImage, 16>>,
-}
+    pub images: Option<ArrayVec<PerplexityImage, 16>>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -219,8 +207,7 @@ impl<'a> PerplexityChatRequest<'a> {
             return_images: None,
             return_related_questions: None,
             search_domain_filter: None,
-            search_recency_filter: None,
-        }
+            search_recency_filter: None}
     }
 
     #[inline(always)]
@@ -231,8 +218,7 @@ impl<'a> PerplexityChatRequest<'a> {
                 content: Some(content),
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }

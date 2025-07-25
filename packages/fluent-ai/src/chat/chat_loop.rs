@@ -10,8 +10,7 @@ pub enum ChatLoop {
     UserPrompt(Option<String>),
 
     /// Terminate the chat loop
-    Break,
-}
+    Break}
 
 impl ChatLoop {
     /// Helper method to check if the loop should continue
@@ -23,16 +22,14 @@ impl ChatLoop {
     pub fn message(&self) -> Option<&str> {
         match self {
             ChatLoop::Reprompt(msg) => Some(msg),
-            ChatLoop::UserPrompt(_) | ChatLoop::Break => None,
-        }
+            ChatLoop::UserPrompt(_) | ChatLoop::Break => None}
     }
 
     /// Extract the user prompt message if this is a UserPrompt
     pub fn user_prompt(&self) -> Option<&str> {
         match self {
             ChatLoop::UserPrompt(Some(prompt)) => Some(prompt),
-            ChatLoop::UserPrompt(None) | ChatLoop::Reprompt(_) | ChatLoop::Break => None,
-        }
+            ChatLoop::UserPrompt(None) | ChatLoop::Reprompt(_) | ChatLoop::Break => None}
     }
 
     /// Check if this requests user input

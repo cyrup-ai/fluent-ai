@@ -11,15 +11,13 @@ use serde::{Deserialize, Serialize};
 /// High-performance lock-free counter for monitoring operations
 #[derive(Debug, Default)]
 pub struct RelaxedCounter {
-    value: AtomicU64,
-}
+    value: AtomicU64}
 
 impl RelaxedCounter {
     #[inline]
     pub fn new(initial: u64) -> Self {
         Self {
-            value: AtomicU64::new(initial),
-        }
+            value: AtomicU64::new(initial)}
     }
 
     #[inline]
@@ -56,8 +54,7 @@ pub enum OperationType {
     /// Batch operation
     BatchOperation,
     /// Custom operation
-    Custom(String),
-}
+    Custom(String)}
 
 /// Operation status
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,8 +69,7 @@ pub enum OperationStatus {
     /// Operation failed
     Failed,
     /// Operation was cancelled
-    Cancelled,
-}
+    Cancelled}
 
 /// Operation record
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,8 +99,7 @@ pub struct Operation {
     pub error: Option<String>,
 
     /// Additional metadata
-    pub metadata: serde_json::Value,
-}
+    pub metadata: serde_json::Value}
 
 impl Operation {
     /// Create a new operation with zero allocation where possible
@@ -119,8 +114,7 @@ impl Operation {
             duration: None,
             user_id,
             error: None,
-            metadata: serde_json::Value::Object(serde_json::Map::new()),
-        }
+            metadata: serde_json::Value::Object(serde_json::Map::new())}
     }
 
     /// Start the operation
@@ -173,8 +167,7 @@ pub struct OperationTrackerMetrics {
     /// Active operations count (atomic)
     pub active_count: AtomicUsize,
     /// History operations count (atomic)
-    pub history_count: AtomicUsize,
-}
+    pub history_count: AtomicUsize}
 
 impl OperationTrackerMetrics {
     /// Create new metrics with zero allocation
@@ -187,8 +180,7 @@ impl OperationTrackerMetrics {
             operations_cancelled: RelaxedCounter::new(0),
             avg_duration_us: AtomicU64::new(0),
             active_count: AtomicUsize::new(0),
-            history_count: AtomicUsize::new(0),
-        }
+            history_count: AtomicUsize::new(0)}
     }
 
     /// Record operation completion with atomic operations
@@ -241,8 +233,7 @@ pub struct OperationTracker {
     metrics: OperationTrackerMetrics,
 
     /// Maximum completed operations to keep (user-configurable)
-    max_history: usize,
-}
+    max_history: usize}
 
 impl OperationTracker {
     /// Create a new tracker with zero allocation
@@ -252,8 +243,7 @@ impl OperationTracker {
             active: SkipMap::new(),
             completed: SkipMap::new(),
             metrics: OperationTrackerMetrics::new(),
-            max_history,
-        }
+            max_history}
     }
 
     /// Start tracking an operation with blazing-fast lock-free insertion

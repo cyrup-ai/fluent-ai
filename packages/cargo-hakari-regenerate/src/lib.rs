@@ -13,8 +13,7 @@ pub use error::{HakariRegenerateError, Result};
 
 /// Main regenerator for workspace-hack operations
 pub struct HakariRegenerator {
-    workspace_root: std::path::PathBuf,
-}
+    workspace_root: std::path::PathBuf}
 
 impl HakariRegenerator {
     /// Create new regenerator
@@ -35,15 +34,13 @@ impl HakariRegenerator {
             .map_err(|e| {
                 error::HakariRegenerateError::Io(error::IoError::FileOperation {
                     path: self.workspace_root.clone(),
-                    source: e,
-                })
+                    source: e})
             })?;
 
         if !output.status.success() {
             return Err(error::HakariRegenerateError::Hakari(
                 error::HakariError::GenerationFailed {
-                    reason: String::from_utf8_lossy(&output.stderr).to_string(),
-                },
+                    reason: String::from_utf8_lossy(&output.stderr).to_string()},
             ));
         }
 
@@ -70,8 +67,7 @@ impl HakariRegenerator {
             std::fs::rename(&config_path, &backup_path).map_err(|e| {
                 error::HakariRegenerateError::Io(error::IoError::FileOperation {
                     path: config_path.clone(),
-                    source: e,
-                })
+                    source: e})
             })?;
         }
 
@@ -85,8 +81,7 @@ impl HakariRegenerator {
             .map_err(|e| {
                 error::HakariRegenerateError::Io(error::IoError::FileOperation {
                     path: self.workspace_root.clone(),
-                    source: e,
-                })
+                    source: e})
             })?;
 
         // Always restore our custom config, regardless of init success/failure
@@ -94,16 +89,14 @@ impl HakariRegenerator {
             std::fs::rename(&backup_path, &config_path).map_err(|e| {
                 error::HakariRegenerateError::Io(error::IoError::FileOperation {
                     path: backup_path.clone(),
-                    source: e,
-                })
+                    source: e})
             })?;
         }
 
         if !output.status.success() {
             return Err(error::HakariRegenerateError::Hakari(
                 error::HakariError::InitializationFailed {
-                    reason: String::from_utf8_lossy(&output.stderr).to_string(),
-                },
+                    reason: String::from_utf8_lossy(&output.stderr).to_string()},
             ));
         }
 
@@ -121,15 +114,13 @@ impl HakariRegenerator {
             .map_err(|e| {
                 error::HakariRegenerateError::Io(error::IoError::FileOperation {
                     path: self.workspace_root.clone(),
-                    source: e,
-                })
+                    source: e})
             })?;
 
         if !output.status.success() {
             return Err(error::HakariRegenerateError::Hakari(
                 error::HakariError::VerificationFailed {
-                    reason: String::from_utf8_lossy(&output.stderr).to_string(),
-                },
+                    reason: String::from_utf8_lossy(&output.stderr).to_string()},
             ));
         }
 

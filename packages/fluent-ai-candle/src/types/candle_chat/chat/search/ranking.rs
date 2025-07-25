@@ -4,20 +4,19 @@
 //! relevance scoring, result filtering, and performance optimization.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 
-use super::types::{SearchResult, MatchPosition, MatchType};
+use crate::types::CandleMessageRole;
+use super::types::{SearchResult, MatchType};
 
 /// Result ranker for scoring and sorting search results
 pub struct ResultRanker {
     /// Ranking algorithm configuration
     pub config: RankingConfig,
     /// Performance statistics
-    pub stats: HashMap<String, f64>,
-}
+    pub stats: HashMap<String, f64>}
 
 /// Configuration for ranking algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,16 +34,14 @@ pub struct RankingConfig {
     /// Maximum results to return
     pub max_results: usize,
     /// Minimum score threshold
-    pub min_score_threshold: f32,
-}
+    pub min_score_threshold: f32}
 
 impl ResultRanker {
     /// Create a new result ranker
     pub fn new(config: RankingConfig) -> Self {
         Self {
             config,
-            stats: HashMap::new(),
-        }
+            stats: HashMap::new()}
     }
 
     /// Rank and score search results (streaming)
@@ -83,9 +80,11 @@ impl ResultRanker {
         score += Self::calculate_content_relevance(&result.message.content) * config.tf_weight;
         
         // Recency bonus
-        let age_hours = chrono::Utc::now()
-            .signed_duration_since(result.message.timestamp)
-            .num_hours() as f32;
+        let age_hours = if let Some(timestamp) = result.message.timestamp {
+            (chrono::Utc::now().timestamp_millis() - timestamp as i64) / (1000 * 60 * 60)
+        } else {
+            24 // Default to 24 hours if no timestamp
+        } as f32;
         let recency_score = (1.0 / (1.0 + age_hours / 24.0)).max(0.1);
         score += recency_score * config.recency_weight;
         
@@ -97,8 +96,7 @@ impl ResultRanker {
                 MatchType::Regex => score += config.exact_match_bonus * 0.9,
                 MatchType::Stemmed => score += config.exact_match_bonus * 0.7,
                 MatchType::Synonym => score += config.exact_match_bonus * 0.6,
-                MatchType::Phonetic => score += config.exact_match_bonus * 0.5,
-            }
+                MatchType::Phonetic => score += config.exact_match_bonus * 0.5}
         }
         
         score.max(0.0).min(10.0) // Clamp between 0 and 10
@@ -150,8 +148,10 @@ impl ResultRanker {
         
         // Date range filter
         if let Some(date_range) = &filters.date_range {
-            if result.message.timestamp < date_range.start || result.message.timestamp > date_range.end {
-                return false;
+            if let Some(timestamp) = result.message.timestamp {
+                if timestamp < date_range.start.timestamp() as u64 || timestamp > date_range.end.timestamp() as u64 {
+                    return false;
+                }
             }
         }
         
@@ -192,14 +192,13 @@ pub struct ResultFilters {
     /// Date range filter
     pub date_range: Option<DateRange>,
     /// Role filter
-    pub role_filter: Option<crate::chat::message::MessageRole>,
+    pub role_filter: Option<CandleMessageRole>,
     /// Minimum content length
     pub min_content_length: Option<usize>,
     /// Maximum content length
     pub max_content_length: Option<usize>,
     /// Custom filters
-    pub custom_filters: HashMap<String, String>,
-}
+    pub custom_filters: HashMap<String, String>}
 
 /// Date range for filtering
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -207,8 +206,7 @@ pub struct DateRange {
     /// Start date (inclusive)
     pub start: chrono::DateTime<chrono::Utc>,
     /// End date (inclusive)
-    pub end: chrono::DateTime<chrono::Utc>,
-}
+    pub end: chrono::DateTime<chrono::Utc>}
 
 impl Default for RankingConfig {
     fn default() -> Self {
@@ -219,8 +217,7 @@ impl Default for RankingConfig {
             exact_match_bonus: 0.5,
             phrase_match_bonus: 0.7,
             max_results: 100,
-            min_score_threshold: 0.1,
-        }
+            min_score_threshold: 0.1}
     }
 }
 
@@ -238,7 +235,6 @@ impl Default for ResultFilters {
             role_filter: None,
             min_content_length: None,
             max_content_length: None,
-            custom_filters: HashMap::new(),
-        }
+            custom_filters: HashMap::new()}
     }
 }

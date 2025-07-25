@@ -12,7 +12,6 @@
 //!     .prompt("Hello world")
 //! ```
 
-use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::spawn_async;
@@ -25,9 +24,7 @@ use serde_json::Value;
 use crate::{
     AsyncStream,
     completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo,
-    },
-};
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo}};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -61,8 +58,7 @@ pub struct DeepSeekCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>,
-}
+    chunk_handler: Option<ChunkHandler>}
 
 /// DeepSeek API message (zero-allocation serialization)
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,8 +66,7 @@ pub struct DeepSeekMessage<'a> {
     pub role: &'a str,
     pub content: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<DeepSeekToolCall<'a>, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<DeepSeekToolCall<'a>, MAX_TOOLS>>}
 
 /// DeepSeek tool call (zero-allocation)
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,15 +74,13 @@ pub struct DeepSeekToolCall<'a> {
     pub id: &'a str,
     #[serde(rename = "type")]
     pub tool_type: &'a str,
-    pub function: DeepSeekFunction<'a>,
-}
+    pub function: DeepSeekFunction<'a>}
 
 /// DeepSeek function definition (zero-allocation)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeepSeekFunction<'a> {
     pub name: &'a str,
-    pub arguments: &'a str,
-}
+    pub arguments: &'a str}
 
 /// DeepSeek completion request (zero-allocation where possible)
 #[derive(Debug, Serialize)]
@@ -106,8 +99,7 @@ pub struct DeepSeekCompletionRequest<'a> {
     pub presence_penalty: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ArrayVec<Value, MAX_TOOLS>>,
-    pub stream: bool,
-}
+    pub stream: bool}
 
 /// DeepSeek streaming response chunk (optimized deserialization)
 #[derive(Debug, Deserialize)]
@@ -115,47 +107,41 @@ pub struct DeepSeekStreamChunk {
     pub id: String,
     pub choices: ZeroOneOrMany<DeepSeekChoice>,
     #[serde(default)]
-    pub usage: Option<DeepSeekUsage>,
-}
+    pub usage: Option<DeepSeekUsage>}
 
 #[derive(Debug, Deserialize)]
 pub struct DeepSeekChoice {
     pub index: u32,
     pub delta: DeepSeekDelta,
     #[serde(default)]
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 #[derive(Debug, Deserialize)]
 pub struct DeepSeekDelta {
     #[serde(default)]
     pub content: Option<String>,
     #[serde(default)]
-    pub tool_calls: Option<ZeroOneOrMany<DeepSeekToolCallDelta>>,
-}
+    pub tool_calls: Option<ZeroOneOrMany<DeepSeekToolCallDelta>>}
 
 #[derive(Debug, Deserialize)]
 pub struct DeepSeekToolCallDelta {
     #[serde(default)]
     pub id: Option<String>,
     #[serde(default)]
-    pub function: Option<DeepSeekFunctionDelta>,
-}
+    pub function: Option<DeepSeekFunctionDelta>}
 
 #[derive(Debug, Deserialize)]
 pub struct DeepSeekFunctionDelta {
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
-    pub arguments: Option<String>,
-}
+    pub arguments: Option<String>}
 
 #[derive(Debug, Deserialize)]
 pub struct DeepSeekUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 impl CompletionProvider for DeepSeekCompletionBuilder {
     /// Create new DeepSeek completion builder with ModelInfo defaults
@@ -183,8 +169,7 @@ impl CompletionProvider for DeepSeekCompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None,
-        })
+            chunk_handler: None})
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -344,8 +329,7 @@ impl CompletionProvider for DeepSeekCompletionBuilder {
                             // Default env_logger behavior (zero allocation)
                             match &chunk_result {
                                 Ok(chunk) => log::debug!("Chunk: {:?}", chunk),
-                                Err(e) => log::error!("Chunk error: {}", e),
-                            }
+                                Err(e) => log::error!("Chunk error: {}", e)}
                         }
 
                         match chunk_result {
@@ -403,8 +387,7 @@ impl DeepSeekCompletionBuilder {
                 401 => CompletionError::AuthError,
                 413 => CompletionError::RequestTooLarge,
                 429 => CompletionError::RateLimited,
-                _ => CompletionError::HttpError,
-            });
+                _ => CompletionError::HttpError});
         }
 
         let sse_stream = response.sse();
@@ -461,8 +444,7 @@ impl DeepSeekCompletionBuilder {
                 .try_push(DeepSeekMessage {
                     role: "system",
                     content: Some(&self.system_prompt),
-                    tool_calls: None,
-                })
+                    tool_calls: None})
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -473,8 +455,7 @@ impl DeepSeekCompletionBuilder {
                 .try_push(DeepSeekMessage {
                     role: "user",
                     content: Some(Box::leak(content.into_boxed_str())),
-                    tool_calls: None,
-                })
+                    tool_calls: None})
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -491,8 +472,7 @@ impl DeepSeekCompletionBuilder {
             .try_push(DeepSeekMessage {
                 role: "user",
                 content: Some(prompt),
-                tool_calls: None,
-            })
+                tool_calls: None})
             .map_err(|_| CompletionError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
@@ -510,8 +490,7 @@ impl DeepSeekCompletionBuilder {
             frequency_penalty: Some(self.frequency_penalty),
             presence_penalty: Some(self.presence_penalty),
             tools,
-            stream: true,
-        })
+            stream: true})
     }
 
     /// Convert domain Message to DeepSeek format (zero allocation)
@@ -527,8 +506,7 @@ impl DeepSeekCompletionBuilder {
                 Ok(DeepSeekMessage {
                     role: "user",
                     content: Some(content),
-                    tool_calls: None,
-                })
+                    tool_calls: None})
             }
             fluent_ai_domain::message::MessageRole::Assistant => {
                 let content = msg.content().text();
@@ -540,16 +518,14 @@ impl DeepSeekCompletionBuilder {
                 Ok(DeepSeekMessage {
                     role: "assistant",
                     content,
-                    tool_calls,
-                })
+                    tool_calls})
             }
             fluent_ai_domain::message::MessageRole::System => {
                 let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(DeepSeekMessage {
                     role: "system",
                     content: Some(content),
-                    tool_calls: None,
-                })
+                    tool_calls: None})
             }
         }
     }
@@ -570,9 +546,7 @@ impl DeepSeekCompletionBuilder {
                     function: DeepSeekFunction {
                         name: tool_call.function().name(),
                         arguments: &serde_json::to_string(&tool_call.function().arguments())
-                            .map_err(|_| CompletionError::ParseError)?,
-                    },
-                })
+                            .map_err(|_| CompletionError::ParseError)?}})
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -634,20 +608,17 @@ impl DeepSeekCompletionBuilder {
                 "length" => FinishReason::Length,
                 "content_filter" => FinishReason::ContentFilter,
                 "tool_calls" => FinishReason::ToolCalls,
-                _ => FinishReason::Stop,
-            };
+                _ => FinishReason::Stop};
 
             let usage_info = usage.map(|u| Usage {
                 prompt_tokens: u.prompt_tokens,
                 completion_tokens: u.completion_tokens,
-                total_tokens: u.total_tokens,
-            });
+                total_tokens: u.total_tokens});
 
             return Ok(CompletionChunk::Complete {
                 text: choice.delta.content.clone().unwrap_or_default(),
                 finish_reason: Some(reason),
-                usage: usage_info,
-            });
+                usage: usage_info});
         }
 
         // Handle tool calls

@@ -49,8 +49,7 @@ impl CommandParser {
             "load" => Self::parse_load(args),
             "import" => Self::parse_import(args),
             "settings" | "set" => Self::parse_settings(args),
-            _ => Self::parse_custom(&command_name, args),
-        }
+            _ => Self::parse_custom(&command_name, args)}
     }
 
     fn parse_help(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
@@ -115,7 +114,7 @@ impl CommandParser {
         let content = args.iter()
             .skip_while(|&&arg| arg.starts_with("--") || Some(arg) == name.as_deref())
             .next().map(|s| s.to_string());
-        Ok(ImmutableChatCommand::Template { action, name, content, variables: HashMap::new() })
+        Ok(ImmutableChatCommand::Template { action, name, content, variables: std::collections::HashMap::new() })
     }
 
     fn parse_macro(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
@@ -195,7 +194,7 @@ impl CommandParser {
         else if args.contains(&"--edit") { ThemeAction::Edit }
         else { ThemeAction::Set };
         let name = args.iter().find(|&&arg| !arg.starts_with("--")).map(|s| s.to_string());
-        Ok(ImmutableChatCommand::Theme { action, name, properties: HashMap::new() })
+        Ok(ImmutableChatCommand::Theme { action, name, properties: std::collections::HashMap::new() })
     }
 
     fn parse_debug(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
@@ -257,7 +256,7 @@ impl CommandParser {
         let source = args.iter().find(|&&arg| !arg.starts_with("--"))
             .map(|s| s.to_string())
             .unwrap_or_else(|| "stdin".to_string());
-        Ok(ImmutableChatCommand::Import { import_type, source, options: HashMap::new() })
+        Ok(ImmutableChatCommand::Import { import_type, source, options: std::collections::HashMap::new() })
     }
 
     fn parse_settings(args: &[&str]) -> CommandResult<ImmutableChatCommand> {

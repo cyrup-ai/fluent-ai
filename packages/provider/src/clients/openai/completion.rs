@@ -12,23 +12,16 @@
 //!     .prompt("Hello world")
 //! ```
 
-use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message};
-// Import centralized HTTP structs - no more local definitions!
-use fluent_ai_http_structs::{
-    builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
-    common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
-    errors::{HttpStructError, HttpStructResult},
-    openai::{
-        OpenAIChatRequest, OpenAIContent, OpenAIFunction, OpenAIMessage, OpenAIResponseFormat,
-        OpenAIStreamingChoice, OpenAIStreamingChunk, OpenAIStreamingDelta, OpenAITool,
-        OpenAIToolCall, OpenAIToolChoice, OpenAIToolChoiceFunction, OpenAIUsage,
-    },
-    validation::{ValidateRequest, ValidationResult},
+// Use local OpenAI request/response types
+use super::types::{
+    OpenAIChatRequest, OpenAIContent, OpenAIFunction, OpenAIMessage, OpenAIResponseFormat,
+    OpenAIStreamingChoice, OpenAIStreamingChunk, OpenAIStreamingDelta, OpenAITool,
+    OpenAIToolCall, OpenAIToolChoice, OpenAIToolChoiceFunction, OpenAIUsage
 };
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::Value;
@@ -37,9 +30,7 @@ use crate::clients::openai::model_info::get_model_config;
 use crate::{
     AsyncStream,
     completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo,
-    },
-};
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo}};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -67,8 +58,7 @@ pub struct OpenAICompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>,
-}
+    chunk_handler: Option<ChunkHandler>}
 
 impl CompletionProvider for OpenAICompletionBuilder {
     /// Create new OpenAI completion builder with ModelInfo defaults
@@ -97,8 +87,7 @@ impl CompletionProvider for OpenAICompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None,
-        })
+            chunk_handler: None})
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -376,8 +365,7 @@ impl OpenAICompletionBuilder {
                 401 => CompletionError::ProviderUnavailable("Authentication failed".to_string()),
                 413 => CompletionError::InvalidRequest("Request too large".to_string()),
                 429 => CompletionError::RateLimitExceeded,
-                _ => CompletionError::ProviderUnavailable("HTTP error".to_string()),
-            });
+                _ => CompletionError::ProviderUnavailable("HTTP error".to_string())});
         }
 
         let sse_stream = response.sse();
@@ -448,8 +436,7 @@ impl OpenAICompletionBuilder {
                 Ok((role, content)) => {
                     chat_builder = chat_builder.add_message(role, content);
                 }
-                Err(e) => return Err(e),
-            }
+                Err(e) => return Err(e)}
         }
 
         // Add user prompt
@@ -488,8 +475,7 @@ impl OpenAICompletionBuilder {
             Err(e) => Err(CompletionError::InvalidRequest(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
 
     /// Convert domain Message to OpenAI content (zero allocation)
@@ -532,9 +518,7 @@ impl OpenAICompletionBuilder {
                 function: OpenAIFunction {
                     name: tool.name(),
                     description: tool.description(),
-                    parameters: tool.parameters().clone(),
-                },
-            };
+                    parameters: tool.parameters().clone()}};
 
             if tools.try_push(openai_tool).is_err() {
                 return Err(CompletionError::InvalidRequest(
@@ -552,8 +536,7 @@ impl OpenAICompletionBuilder {
         // Use centralized deserialization
         let openai_chunk: OpenAIStreamingChunk = match serde_json::from_slice(data) {
             Ok(chunk) => chunk,
-            Err(e) => return Err(CompletionError::ParseError),
-        };
+            Err(e) => return Err(CompletionError::ParseError)};
 
         // Convert to domain CompletionChunk
         if let Some(choice) = openai_chunk.choices.get(0) {
@@ -563,8 +546,7 @@ impl OpenAICompletionBuilder {
                 "length" => FinishReason::Length,
                 "function_call" => FinishReason::ToolCalls,
                 "tool_calls" => FinishReason::ToolCalls,
-                _ => FinishReason::Other,
-            });
+                _ => FinishReason::Other});
 
             let usage = openai_chunk
                 .usage

@@ -3,7 +3,6 @@
 //! Provides blazing-fast caching with zero-allocation patterns and production-ready
 //! cache management with LRU eviction and TTL support.
 
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -25,8 +24,7 @@ struct CacheEntry {
     /// Time-to-live duration
     ttl: Duration,
     /// Access count for LRU
-    access_count: u64,
-}
+    access_count: u64}
 
 impl CacheEntry {
     /// Create new cache entry
@@ -35,8 +33,7 @@ impl CacheEntry {
             output,
             created_at: Instant::now(),
             ttl,
-            access_count: 1,
-        }
+            access_count: 1}
     }
 
     /// Check if entry is expired
@@ -58,8 +55,7 @@ struct CacheKey {
     /// Command type identifier
     command_type: String,
     /// Command parameters hash
-    params_hash: u64,
-}
+    params_hash: u64}
 
 impl CacheKey {
     /// Create cache key from command
@@ -78,16 +74,14 @@ impl CacheKey {
             ChatCommand::History {
                 action,
                 limit,
-                filter,
-            } => (
+                filter} => (
                 "history",
                 format!("action:{:?},limit:{:?},filter:{:?}", action, limit, filter),
             ),
             ChatCommand::Save {
                 name,
                 include_config,
-                location,
-            } => (
+                location} => (
                 "save",
                 format!(
                     "name:{:?},config:{},location:{:?}",
@@ -97,16 +91,14 @@ impl CacheKey {
             ChatCommand::Load {
                 name,
                 merge,
-                location,
-            } => (
+                location} => (
                 "load",
                 format!("name:{},merge:{},location:{:?}", name, merge, location),
             ),
             ChatCommand::Export {
                 format,
                 output,
-                include_metadata,
-            } => (
+                include_metadata} => (
                 "export",
                 format!(
                     "format:{},output:{:?},metadata:{}",
@@ -116,8 +108,7 @@ impl CacheKey {
             ChatCommand::Import {
                 import_type,
                 source,
-                options,
-            } => (
+                options} => (
                 "import",
                 format!(
                     "type:{:?},source:{},options:{:?}",
@@ -128,8 +119,7 @@ impl CacheKey {
                 category,
                 key,
                 value,
-                show,
-            } => (
+                show} => (
                 "settings",
                 format!(
                     "category:{:?},key:{:?},value:{:?},show:{}",
@@ -139,8 +129,7 @@ impl CacheKey {
             ChatCommand::Debug {
                 action,
                 level,
-                system_info,
-            } => (
+                system_info} => (
                 "debug",
                 format!(
                     "action:{:?},level:{:?},system:{}",
@@ -150,8 +139,7 @@ impl CacheKey {
             ChatCommand::Custom {
                 name,
                 args,
-                metadata,
-            } => (
+                metadata} => (
                 "custom",
                 format!("name:{},args:{:?},metadata:{:?}", name, args, metadata),
             ),
@@ -159,8 +147,7 @@ impl CacheKey {
                 key,
                 value,
                 show,
-                reset,
-            } => (
+                reset} => (
                 "config",
                 format!(
                     "key:{:?},value:{:?},show:{},reset:{}",
@@ -171,8 +158,7 @@ impl CacheKey {
                 action,
                 name,
                 content,
-                variables,
-            } => (
+                variables} => (
                 "template",
                 format!(
                     "action:{:?},name:{:?},content:{:?},vars:{:?}",
@@ -182,8 +168,7 @@ impl CacheKey {
             ChatCommand::Macro {
                 action,
                 name,
-                auto_execute,
-            } => (
+                auto_execute} => (
                 "macro",
                 format!("action:{:?},name:{:?},auto:{}", action, name, auto_execute),
             ),
@@ -191,8 +176,7 @@ impl CacheKey {
                 query,
                 scope,
                 limit,
-                include_context,
-            } => (
+                include_context} => (
                 "search",
                 format!(
                     "query:{},scope:{:?},limit:{:?},context:{}",
@@ -202,16 +186,14 @@ impl CacheKey {
             ChatCommand::Branch {
                 action,
                 name,
-                source,
-            } => (
+                source} => (
                 "branch",
                 format!("action:{:?},name:{:?},source:{:?}", action, name, source),
             ),
             ChatCommand::Session {
                 action,
                 name,
-                include_config,
-            } => (
+                include_config} => (
                 "session",
                 format!(
                     "action:{:?},name:{:?},config:{}",
@@ -225,8 +207,7 @@ impl CacheKey {
             ChatCommand::Stats {
                 stat_type,
                 period,
-                detailed,
-            } => (
+                detailed} => (
                 "stats",
                 format!(
                     "type:{:?},period:{:?},detailed:{}",
@@ -236,19 +217,16 @@ impl CacheKey {
             ChatCommand::Theme {
                 action,
                 name,
-                properties,
-            } => (
+                properties} => (
                 "theme",
                 format!("action:{:?},name:{:?},props:{:?}", action, name, properties),
-            ),
-        };
+            )};
 
         params.hash(&mut hasher);
 
         Self {
             command_type: command_type.to_string(),
-            params_hash: hasher.finish(),
-        }
+            params_hash: hasher.finish()}
     }
 }
 
@@ -264,8 +242,7 @@ pub struct CommandCache {
     /// Cache hit counter
     hits: CachePadded<AtomicU64>,
     /// Cache miss counter
-    misses: CachePadded<AtomicU64>,
-}
+    misses: CachePadded<AtomicU64>}
 
 impl CommandCache {
     /// Create new command cache
@@ -275,8 +252,7 @@ impl CommandCache {
             max_size,
             default_ttl,
             hits: CachePadded::new(AtomicU64::new(0)),
-            misses: CachePadded::new(AtomicU64::new(0)),
-        }
+            misses: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Get cached result for command
@@ -350,16 +326,14 @@ pub struct CachingMiddleware {
     /// Command cache
     cache: Arc<CommandCache>,
     /// Middleware name
-    name: String,
-}
+    name: String}
 
 impl CachingMiddleware {
     /// Create new caching middleware
     pub fn new(max_size: usize, default_ttl: Duration) -> Self {
         Self {
             cache: Arc::new(CommandCache::new(max_size, default_ttl)),
-            name: "caching".to_string(),
-        }
+            name: "caching".to_string()}
     }
 
     /// Create caching middleware with defaults

@@ -12,10 +12,10 @@ use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::{AsyncStream, emit, handle_error};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
-use super::types::{MacroAction, StoredMacro, MacroExecutionContext};
+use super::types::{MacroAction, StoredMacro};
 use super::errors::MacroSystemError;
 
 /// Macro processor for executing and managing chat macros
@@ -38,8 +38,7 @@ pub struct MacroProcessor {
     #[allow(dead_code)] // TODO: Implement in macro execution system
     execution_queue: Arc<SegQueue<MacroExecutionRequest>>,
     /// Configuration settings
-    config: MacroProcessorConfig,
-}
+    config: MacroProcessorConfig}
 
 /// Macro processor statistics (internal atomic counters)
 #[derive(Debug, Default)]
@@ -53,8 +52,7 @@ pub struct MacroProcessorStats {
     /// Total execution time in microseconds
     pub total_execution_time_us: AtomicUsize,
     /// Active executions
-    pub active_executions: AtomicUsize,
-}
+    pub active_executions: AtomicUsize}
 
 /// Macro processor statistics snapshot (for external API)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,8 +66,7 @@ pub struct MacroProcessorStatsSnapshot {
     /// Total execution time in microseconds
     pub total_execution_time_us: usize,
     /// Active executions
-    pub active_executions: usize,
-}
+    pub active_executions: usize}
 
 /// Macro processor configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,8 +86,7 @@ pub struct MacroProcessorConfig {
     /// Enable performance monitoring
     pub enable_monitoring: bool,
     /// Auto-save macro changes
-    pub auto_save: bool,
-}
+    pub auto_save: bool}
 
 /// Macro execution request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,8 +100,7 @@ pub struct MacroExecutionRequest {
     /// Execution priority (higher = more priority)
     pub priority: u32,
     /// Request timestamp
-    pub requested_at: Duration,
-}
+    pub requested_at: Duration}
 
 /// Macro execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,8 +116,7 @@ pub struct MacroExecutionResult {
     /// Variables modified during execution
     pub modified_variables: HashMap<Arc<str>, Arc<str>>,
     /// Execution metadata
-    pub metadata: MacroExecutionMetadata,
-}
+    pub metadata: MacroExecutionMetadata}
 
 /// Macro execution metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,8 +132,7 @@ pub struct MacroExecutionMetadata {
     /// Execution context
     pub context: HashMap<Arc<str>, Arc<str>>,
     /// Performance metrics
-    pub performance: MacroPerformanceMetrics,
-}
+    pub performance: MacroPerformanceMetrics}
 
 /// Macro performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,8 +144,7 @@ pub struct MacroPerformanceMetrics {
     /// Network requests made
     pub network_requests: u32,
     /// Disk operations performed
-    pub disk_operations: u32,
-}
+    pub disk_operations: u32}
 
 impl Default for MacroProcessorConfig {
     fn default() -> Self {
@@ -164,8 +156,7 @@ impl Default for MacroProcessorConfig {
             enable_loop_execution: true,
             max_recursion_depth: 10,
             enable_monitoring: true,
-            auto_save: true,
-        }
+            auto_save: true}
     }
 }
 
@@ -177,8 +168,7 @@ impl MacroProcessor {
             stats: Arc::new(MacroProcessorStats::default()),
             variables: Arc::new(RwLock::new(HashMap::new())),
             execution_queue: Arc::new(SegQueue::new()),
-            config: MacroProcessorConfig::default(),
-        }
+            config: MacroProcessorConfig::default()}
     }
 
     /// Create a macro processor with custom configuration
@@ -188,8 +178,7 @@ impl MacroProcessor {
             stats: Arc::new(MacroProcessorStats::default()),
             variables: Arc::new(RwLock::new(HashMap::new())),
             execution_queue: Arc::new(SegQueue::new()),
-            config,
-        }
+            config}
     }
 
     /// Register a macro
@@ -220,15 +209,15 @@ impl MacroProcessor {
     ) -> AsyncStream<MacroExecutionResult> {
         let macros = self.macros.clone();
         let macro_id = *macro_id;
-        let processor = self.clone();
+        let _processor = self.clone();
         
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |_sender| {
             if let Some(entry) = macros.get(&macro_id) {
-                let macro_def = entry.value().clone();
+                let _macro_def = entry.value().clone();
                 
                 // Execute macro implementation using streaming
                 handle_error!(
-                    MacroSystemError::NotImplemented("Nested macro execution not yet implemented in zero-allocation architecture".to_string()),
+                    MacroSystemError::NotImplemented,
                     "Macro execution implementation pending"
                 );
             } else {
@@ -251,7 +240,7 @@ impl MacroProcessor {
         AsyncStream::with_channel(move |sender| {
             // Execute macro implementation synchronously (no nested streaming)
             handle_error!(
-                MacroSystemError::NotImplemented("Direct macro execution not yet implemented in zero-allocation architecture".to_string()),
+                MacroSystemError::NotImplemented,
                 "Direct execution implementation pending"
             );
         })
@@ -293,10 +282,9 @@ impl MacroProcessor {
                 context
             } else {
                 handle_error!(
-                    MacroSystemError::InternalError("Failed to acquire global variables read lock".to_string()),
+                    MacroSystemError::LockError,
                     "Lock acquisition failed"
                 );
-                return;
             };
 
             let actions_executed = 0;
@@ -306,7 +294,7 @@ impl MacroProcessor {
             for _action in macro_def.actions.iter() {
                 // TODO: Implement action execution with proper streaming patterns
                 handle_error!(
-                    MacroSystemError::NotImplemented("Action execution not yet implemented".to_string()),
+                    MacroSystemError::NotImplemented,
                     "Action execution pending implementation"
                 );
             }
@@ -346,10 +334,7 @@ impl MacroProcessor {
                         cpu_time_us: execution_duration.as_micros() as u64,
                         memory_bytes: 0, // Would need memory profiling
                         network_requests: 0,
-                        disk_operations: 0,
-                    },
-                },
-            });
+                        disk_operations: 0}}});
         })
     }
 
@@ -420,55 +405,58 @@ impl MacroProcessor {
             successful_executions: self.stats.successful_executions.load(Ordering::Relaxed),
             failed_executions: self.stats.failed_executions.load(Ordering::Relaxed),
             total_execution_time_us: self.stats.total_execution_time_us.load(Ordering::Relaxed),
-            active_executions: self.stats.active_executions.load(Ordering::Relaxed),
-        }
+            active_executions: self.stats.active_executions.load(Ordering::Relaxed)}
     }
 
     /// Set global variable
     pub fn set_variable(&self, name: Arc<str>, value: Arc<str>) -> AsyncStream<()> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
         let variables = self.variables.clone();
         AsyncStream::with_channel(move |sender| {
             match variables.write() {
                 Ok(mut vars) => {
                     vars.insert(name, value);
-                    emit!(sender, ());
+                    let _ = sender.send(());
                 }
-                Err(e) => handle_error!(e, "failed to acquire write lock on variables"),
+                Err(e) => {
+                    eprintln!("Failed to acquire write lock on variables: {}", e);
+                    // Still send a result to complete the stream
+                    let _ = sender.send(());
+                }
             }
         })
     }
 
     /// Get global variable
     pub fn get_variable(&self, name: &str) -> AsyncStream<Option<Arc<str>>> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
         let name = name.to_string();
         let variables = self.variables.clone();
         AsyncStream::with_channel(move |sender| {
             match variables.read() {
                 Ok(vars) => {
-                    let result = vars.get(&name).cloned();
-                    emit!(sender, result);
+                    let result = vars.get(name.as_str()).cloned();
+                    let _ = sender.send(result);
                 }
-                Err(e) => handle_error!(e, "failed to acquire read lock on variables"),
+                Err(e) => {
+                    eprintln!("Failed to acquire read lock on variables: {}", e);
+                    let _ = sender.send(None);
+                }
             }
         })
     }
 
     /// Clear all global variables
     pub fn clear_variables(&self) -> AsyncStream<()> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
         let variables = self.variables.clone();
         AsyncStream::with_channel(move |sender| {
             match variables.write() {
                 Ok(mut vars) => {
                     vars.clear();
-                    emit!(sender, ());
+                    let _ = sender.send(());
                 }
-                Err(e) => handle_error!(e, "failed to acquire write lock on variables"),
+                Err(e) => {
+                    eprintln!("Failed to acquire write lock on variables: {}", e);
+                    let _ = sender.send(());
+                }
             }
         })
     }

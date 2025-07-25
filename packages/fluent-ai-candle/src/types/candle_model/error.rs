@@ -10,8 +10,7 @@ pub enum ModelError {
     /// Model not found in registry
     ModelNotFound {
         provider: Cow<'static, str>,
-        name: Cow<'static, str>,
-    },
+        name: Cow<'static, str>},
 
     /// Provider not found in registry
     ProviderNotFound(Cow<'static, str>),
@@ -19,8 +18,7 @@ pub enum ModelError {
     /// Model already exists in registry
     ModelAlreadyExists {
         provider: Cow<'static, str>,
-        name: Cow<'static, str>,
-    },
+        name: Cow<'static, str>},
 
     /// Invalid model configuration
     InvalidConfiguration(Cow<'static, str>),
@@ -32,8 +30,7 @@ pub enum ModelError {
     InvalidInput(Cow<'static, str>),
 
     /// Internal error (should be used sparingly)
-    Internal(Cow<'static, str>),
-}
+    Internal(Cow<'static, str>)}
 
 impl fmt::Display for ModelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -50,8 +47,7 @@ impl fmt::Display for ModelError {
                 write!(f, "Operation not supported by model: {}", msg)
             }
             Self::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
-            Self::Internal(msg) => write!(f, "Internal error: {}", msg),
-        }
+            Self::Internal(msg) => write!(f, "Internal error: {}", msg)}
     }
 }
 
@@ -77,8 +73,7 @@ impl<T> OptionExt<T> for Option<T> {
     {
         self.ok_or_else(|| ModelError::ModelNotFound {
             provider: provider.into(),
-            name: name.into(),
-        })
+            name: name.into()})
     }
 }
 
@@ -117,8 +112,7 @@ macro_rules! model_err {
     (not_found: $provider:expr, $name:expr) => {
         $crate::model::error::ModelError::ModelNotFound {
             provider: $provider.into(),
-            name: $name.into(),
-        }
+            name: $name.into()}
     };
     (provider_not_found: $provider:expr) => {
         $crate::model::error::ModelError::ProviderNotFound($provider.into())
@@ -126,8 +120,7 @@ macro_rules! model_err {
     (already_exists: $provider:expr, $name:expr) => {
         $crate::model::error::ModelError::ModelAlreadyExists {
             provider: $provider.into(),
-            name: $name.into(),
-        }
+            name: $name.into()}
     };
     (invalid_config: $msg:expr) => {
         $crate::model::error::ModelError::InvalidConfiguration($msg.into())

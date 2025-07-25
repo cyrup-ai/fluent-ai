@@ -32,8 +32,7 @@ pub enum FileLoaderError {
     Glob(#[from] glob::GlobError),
 
     #[error("io: {0}")]
-    Io(#[from] std::io::Error),
-}
+    Io(#[from] std::io::Error)}
 
 // ---------------------------------------------------------------------------
 // 1. Helper trait – path-ish → String
@@ -69,8 +68,7 @@ impl<T: Readable> Readable for Result<T, FileLoaderError> {
 // 2. Public façade (iterator + async flavours)
 // ---------------------------------------------------------------------------
 pub struct FileLoader<'a, T> {
-    iterator: Box<dyn Iterator<Item = T> + 'a>,
-}
+    iterator: Box<dyn Iterator<Item = T> + 'a>}
 
 // -------------------------------------------------------------------------
 // Constructors
@@ -79,8 +77,7 @@ impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
     pub fn with_glob(pattern: &str) -> Result<Self, FileLoaderError> {
         let paths = glob(pattern)?;
         Ok(Self {
-            iterator: Box::new(paths.map(|p| p.map_err(Into::into))),
-        })
+            iterator: Box::new(paths.map(|p| p.map_err(Into::into)))})
     }
 
     pub fn with_dir(dir: &str) -> Result<Self, FileLoaderError> {
@@ -89,8 +86,7 @@ impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
                 fs::read_dir(dir)?
                     .filter_map(|e| e.ok())
                     .map(|e| Ok(e.path())),
-            ),
-        })
+            )})
     }
 }
 
@@ -101,15 +97,13 @@ impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     #[inline(always)]
     pub fn read(self) -> FileLoader<'a, Result<String, FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(Readable::read)),
-        }
+            iterator: Box::new(self.iterator.map(Readable::read))}
     }
 
     #[inline(always)]
     pub fn read_with_path(self) -> FileLoader<'a, Result<(PathBuf, String), FileLoaderError>> {
         FileLoader {
-            iterator: Box::new(self.iterator.map(Readable::read_with_path)),
-        }
+            iterator: Box::new(self.iterator.map(Readable::read_with_path))}
     }
 }
 
@@ -168,8 +162,7 @@ impl<'a, T> FileLoader<'a, Result<T, FileLoaderError>> {
     #[inline(always)]
     pub fn ignore_errors(self) -> FileLoader<'a, T> {
         FileLoader {
-            iterator: Box::new(self.iterator.filter_map(Result::ok)),
-        }
+            iterator: Box::new(self.iterator.filter_map(Result::ok))}
     }
 }
 
@@ -177,8 +170,7 @@ impl<'a, T> FileLoader<'a, Result<T, FileLoaderError>> {
 // Thin iterator wrapper
 // ----------------------------------------------------------------------
 pub struct LoaderIter<'a, T> {
-    inner: Box<dyn Iterator<Item = T> + 'a>,
-}
+    inner: Box<dyn Iterator<Item = T> + 'a>}
 
 impl<'a, T> IntoIterator for FileLoader<'a, T> {
     type Item = T;
@@ -186,8 +178,7 @@ impl<'a, T> IntoIterator for FileLoader<'a, T> {
     #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         LoaderIter {
-            inner: self.iterator,
-        }
+            inner: self.iterator}
     }
 }
 

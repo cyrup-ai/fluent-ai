@@ -13,35 +13,29 @@ pub enum CommandEvent {
     Started {
         command: ImmutableChatCommand,
         execution_id: u64,
-        timestamp_nanos: u64,
-    },
+        timestamp_nanos: u64},
     /// Command execution progress
     Progress {
         execution_id: u64,
         progress_percent: f32,
-        message: Option<String>,
-    },
+        message: Option<String>},
     /// Command produced output
     Output {
         execution_id: u64,
         output: String,
-        output_type: OutputType,
-    },
+        output_type: OutputType},
     /// Command completed successfully
     Completed {
         execution_id: u64,
         result: CommandExecutionResult,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     /// Command failed
     Failed {
         execution_id: u64,
         error: CommandError,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     /// Command was cancelled
-    Cancelled { execution_id: u64, reason: String },
-}
+    Cancelled { execution_id: u64, reason: String }}
 
 /// Command output type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,8 +44,7 @@ pub enum OutputType {
     Json,
     Html,
     Markdown,
-    Binary,
-}
+    Binary}
 
 /// Command execution result
 #[derive(Debug, Clone)]
@@ -64,8 +57,6 @@ pub enum CommandExecutionResult {
     File {
         path: String,
         size_bytes: u64,
-        mime_type: String,
-    },
+        mime_type: String},
     /// Multiple results
-    Multiple(Vec<CommandExecutionResult>),
-}
+    Multiple(Vec<CommandExecutionResult>)}

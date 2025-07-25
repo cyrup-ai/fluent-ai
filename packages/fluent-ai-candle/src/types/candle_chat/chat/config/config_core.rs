@@ -74,8 +74,7 @@ pub struct ModelConfig {
     /// Retry configuration
     pub retry_config: ModelRetryConfig,
     /// Performance settings
-    pub performance: ModelPerformanceConfig,
-}
+    pub performance: ModelPerformanceConfig}
 
 /// Model retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,8 +88,7 @@ pub struct ModelRetryConfig {
     /// Exponential backoff multiplier
     pub backoff_multiplier: f32,
     /// Enable jitter to avoid thundering herd
-    pub enable_jitter: bool,
-}
+    pub enable_jitter: bool}
 
 /// Model performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,8 +108,7 @@ pub struct ModelPerformanceConfig {
     /// Connection pool size
     pub connection_pool_size: u32,
     /// Keep-alive timeout in seconds
-    pub keep_alive_timeout_seconds: u64,
-}
+    pub keep_alive_timeout_seconds: u64}
 
 impl Default for ModelConfig {
     fn default() -> Self {
@@ -132,8 +129,7 @@ impl Default for ModelConfig {
             custom_parameters: HashMap::new(),
             timeout_ms: 30000, // 30 seconds
             retry_config: ModelRetryConfig::default(),
-            performance: ModelPerformanceConfig::default(),
-        }
+            performance: ModelPerformanceConfig::default()}
     }
 }
 
@@ -144,8 +140,7 @@ impl Default for ModelRetryConfig {
             base_delay_ms: 1000, // 1 second
             max_delay_ms: 30000, // 30 seconds
             backoff_multiplier: 2.0,
-            enable_jitter: true,
-        }
+            enable_jitter: true}
     }
 }
 
@@ -159,8 +154,7 @@ impl Default for ModelPerformanceConfig {
             batch_timeout_ms: 100,
             enable_streaming: true,
             connection_pool_size: 10,
-            keep_alive_timeout_seconds: 60,
-        }
+            keep_alive_timeout_seconds: 60}
     }
 }
 
@@ -239,7 +233,7 @@ impl ModelConfig {
     feature = "rkyv-serialization",
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
-pub struct ChatConfig {
+pub struct ChatRuntimeConfig {
     /// Maximum message length
     pub max_message_length: usize,
     /// Enable message history
@@ -256,8 +250,7 @@ pub struct ChatConfig {
     /// UI configuration
     pub ui: UIConfig,
     /// Integration configuration
-    pub integration: IntegrationConfig,
-}
+    pub integration: IntegrationConfig}
 
 /// Personality configuration for AI behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -291,8 +284,7 @@ pub struct PersonalityConfig {
     /// Verbosity level
     pub verbosity: Arc<str>,
     /// Personality traits
-    pub traits: Vec<Arc<str>>,
-}
+    pub traits: Vec<Arc<str>>}
 
 /// Behavior configuration for interaction patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,6 +297,12 @@ pub struct PersonalityConfig {
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
 pub struct BehaviorConfig {
+    /// Maximum conversation length
+    pub max_conversation_length: u32,
+    /// Enable conversation memory
+    pub enable_memory: bool,
+    /// Memory retention duration
+    pub memory_duration: std::time::Duration,
     /// Response delay in milliseconds
     pub response_delay_ms: u64,
     /// Enable typing indicators
@@ -335,7 +333,14 @@ pub struct BehaviorConfig {
     pub conversation_flow: Arc<str>,
     /// Error handling approach
     pub error_handling: Arc<str>,
-}
+    /// Auto-save conversations
+    pub auto_save_conversations: bool,
+    /// Typing speed in characters per second
+    pub typing_speed_cps: f32,
+    /// Enable reactions
+    pub enable_reactions: bool,
+    /// Content filtering level
+    pub content_filtering: Arc<str>}
 
 /// UI configuration for interface behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -377,8 +382,7 @@ pub struct UIConfig {
     /// Display density
     pub display_density: Arc<str>,
     /// Animation settings
-    pub animations: Arc<str>,
-}
+    pub animations: Arc<str>}
 
 /// Integration configuration for external services
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -416,8 +420,7 @@ pub struct IntegrationConfig {
     /// API configurations
     pub api_configurations: Vec<Arc<str>>,
     /// Authentication methods
-    pub authentication: Vec<Arc<str>>,
-}
+    pub authentication: Vec<Arc<str>>}
 
 impl Default for PersonalityConfig {
     fn default() -> Self {
@@ -432,14 +435,16 @@ impl Default for PersonalityConfig {
             empathy: 0.8,
             expertise_level: Arc::from("intermediate"),
             verbosity: Arc::from("moderate"),
-            traits: vec![Arc::from("helpful"), Arc::from("accurate")],
-        }
+            traits: vec![Arc::from("helpful"), Arc::from("accurate")]}
     }
 }
 
 impl Default for BehaviorConfig {
     fn default() -> Self {
         Self {
+            max_conversation_length: 100,
+            enable_memory: true,
+            memory_duration: std::time::Duration::from_secs(3600), // 1 hour
             response_delay_ms: 500,
             enable_typing_indicators: true,
             enable_read_receipts: true,
@@ -455,7 +460,10 @@ impl Default for BehaviorConfig {
             question_frequency: 0.3,
             conversation_flow: Arc::from("natural"),
             error_handling: Arc::from("graceful"),
-        }
+            auto_save_conversations: true,
+            typing_speed_cps: 30.0,
+            enable_reactions: true,
+            content_filtering: Arc::from("moderate")}
     }
 }
 
@@ -476,8 +484,7 @@ impl Default for UIConfig {
             layout: Arc::from("standard"),
             color_scheme: Arc::from("adaptive"),
             display_density: Arc::from("comfortable"),
-            animations: Arc::from("smooth"),
-        }
+            animations: Arc::from("smooth")}
     }
 }
 
@@ -496,7 +503,6 @@ impl Default for IntegrationConfig {
             custom_integrations: HashMap::new(),
             external_services: Vec::new(),
             api_configurations: Vec::new(),
-            authentication: Vec::new(),
-        }
+            authentication: Vec::new()}
     }
 }

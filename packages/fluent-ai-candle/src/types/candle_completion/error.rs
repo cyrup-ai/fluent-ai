@@ -62,7 +62,10 @@ pub enum CandleCompletionError {
     /// Model loading failed
     #[error("Model loading failed: {message}")]
     ModelLoadingFailed { message: String },
-}
+
+    /// Rate limiting error
+    #[error("Rate limited: {message}, retry after {retry_after} seconds")]
+    RateLimited { message: String, retry_after: u64 }}
 
 /// Extraction-specific error types
 #[derive(Debug, Error, Clone)]
@@ -81,8 +84,7 @@ pub enum CandleExtractionError {
 
     /// Schema validation failed
     #[error("Schema validation failed: {message}")]
-    SchemaValidation { message: String },
-}
+    SchemaValidation { message: String }}
 
 /// Result type for completion operations
 pub type CandleCompletionResult<T> = Result<T, CandleCompletionError>;
@@ -94,50 +96,50 @@ impl CandleCompletionError {
     /// Create a new invalid request error
     pub fn invalid_request(message: impl Into<String>) -> Self {
         Self::InvalidRequest {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new generation failed error
     pub fn generation_failed(reason: impl Into<String>) -> Self {
         Self::GenerationFailed {
-            reason: reason.into(),
-        }
+            reason: reason.into()}
     }
 
     /// Create a new inference error
     pub fn inference_error(message: impl Into<String>) -> Self {
         Self::InferenceError {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new invalid parameter error
     pub fn invalid_parameter(message: impl Into<String>) -> Self {
         Self::InvalidParameter {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new validation error
     pub fn validation_error(message: impl Into<String>) -> Self {
         Self::Validation {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new internal error
     pub fn internal_error(message: impl Into<String>) -> Self {
         Self::Internal {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new model loading failed error
     pub fn model_loading_failed(message: impl Into<String>) -> Self {
         Self::ModelLoadingFailed {
+            message: message.into()}
+    }
+
+    /// Create a new rate limited error
+    pub fn rate_limited(message: impl Into<String>, retry_after: u64) -> Self {
+        Self::RateLimited {
             message: message.into(),
-        }
+            retry_after}
     }
 }
 
@@ -145,15 +147,13 @@ impl CandleExtractionError {
     /// Create a new parse error
     pub fn parse_error(message: impl Into<String>) -> Self {
         Self::ParseError {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new missing field error
     pub fn missing_field(field: impl Into<String>) -> Self {
         Self::MissingField {
-            field: field.into(),
-        }
+            field: field.into()}
     }
 }
 
@@ -163,14 +163,11 @@ impl From<crate::model::error::ModelError> for CandleCompletionError {
     fn from(err: crate::model::error::ModelError) -> Self {
         match err {
             crate::model::error::ModelError::Validation(validation_err) => Self::Validation {
-                message: validation_err.to_string(),
-            },
+                message: validation_err.to_string()},
             crate::model::error::ModelError::Io(io_err) => Self::Internal {
-                message: format!("IO error: {}", io_err),
-            },
+                message: format!("IO error: {}", io_err)},
             crate::model::error::ModelError::Serialization(serde_err) => Self::Internal {
-                message: format!("Serialization error: {}", serde_err),
-            },
+                message: format!("Serialization error: {}", serde_err)},
             crate::model::error::ModelError::Candle { message } => Self::InferenceError { message },
             crate::model::error::ModelError::InitializationFailed { reason } => {
                 Self::ModelLoadingFailed { message: reason }
@@ -181,22 +178,17 @@ impl From<crate::model::error::ModelError> for CandleCompletionError {
             crate::model::error::ModelError::Memory { message } => Self::MemoryError { message },
             crate::model::error::ModelError::Device { message } => Self::DeviceError { message },
             crate::model::error::ModelError::InvalidConfiguration(msg) => Self::InvalidRequest {
-                message: msg.to_string(),
-            },
+                message: msg.to_string()},
             crate::model::error::ModelError::OperationNotSupported(msg) => {
                 Self::UnsupportedOperation {
-                    operation: msg.to_string(),
-                }
+                    operation: msg.to_string()}
             }
             crate::model::error::ModelError::ModelNotFound { provider, name } => {
                 Self::ModelLoadingFailed {
-                    message: format!("Model not found: {}::{}", provider, name),
-                }
+                    message: format!("Model not found: {}::{}", provider, name)}
             }
             crate::model::error::ModelError::ModelAlreadyExists { name } => Self::InvalidRequest {
-                message: format!("Model already exists: {}", name),
-            },
-        }
+                message: format!("Model already exists: {}", name)}}
     }
 }
 
@@ -207,38 +199,29 @@ impl From<crate::types::candle_model::error::ModelError> for CandleCompletionErr
         match error {
             crate::types::candle_model::error::ModelError::ModelNotFound { provider, name } => {
                 Self::InvalidRequest {
-                    message: format!("Model not found: {}:{}", provider, name),
-                }
+                    message: format!("Model not found: {}:{}", provider, name)}
             }
             crate::types::candle_model::error::ModelError::ModelAlreadyExists {
                 provider,
-                name,
-            } => Self::InvalidRequest {
-                message: format!("Model already exists: {}:{}", provider, name),
-            },
+                name} => Self::InvalidRequest {
+                message: format!("Model already exists: {}:{}", provider, name)},
             crate::types::candle_model::error::ModelError::ProviderNotFound(provider) => {
                 Self::InvalidRequest {
-                    message: format!("Provider not found: {}", provider),
-                }
+                    message: format!("Provider not found: {}", provider)}
             }
             crate::types::candle_model::error::ModelError::InvalidConfiguration(msg) => {
                 Self::InvalidParameter {
-                    message: msg.to_string(),
-                }
+                    message: msg.to_string()}
             }
             crate::types::candle_model::error::ModelError::OperationNotSupported(msg) => {
                 Self::UnsupportedOperation {
-                    operation: msg.to_string(),
-                }
+                    operation: msg.to_string()}
             }
             crate::types::candle_model::error::ModelError::InvalidInput(msg) => {
                 Self::InvalidParameter {
-                    message: msg.to_string(),
-                }
+                    message: msg.to_string()}
             }
             crate::types::candle_model::error::ModelError::Internal(msg) => Self::Internal {
-                message: msg.to_string(),
-            },
-        }
+                message: msg.to_string()}}
     }
 }

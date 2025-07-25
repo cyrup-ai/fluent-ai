@@ -7,9 +7,8 @@ use fluent_ai_domain::model::{
     capabilities::Capability,
     error::ModelError,
     info::{ModelInfo, ModelInfoBuilder},
-    registry::{ModelRegistry, RegisteredModel},
-    traits::Model,
-};
+    registry::ModelRegistry,
+    traits::Model};
 use tracing::{debug, error, info, instrument, warn};
 
 use super::client::AnthropicClient;
@@ -19,8 +18,7 @@ use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 #[derive(Debug, Clone)]
 pub struct AnthropicDiscovery {
     client: Arc<AnthropicClient>,
-    supported_models: &'static [&'static str],
-}
+    supported_models: &'static [&'static str]}
 
 impl AnthropicDiscovery {
     /// Create a new Anthropic model discovery instance
@@ -48,8 +46,7 @@ impl AnthropicDiscovery {
 
         Ok(Self {
             client: Arc::new(client),
-            supported_models: SUPPORTED_MODELS,
-        })
+            supported_models: SUPPORTED_MODELS})
     }
 
     /// Get model information for a specific model
@@ -109,8 +106,7 @@ impl ProviderModelDiscovery for AnthropicDiscovery {
                 // Create a new model instance for each model
                 let model = AnthropicModel {
                     info: model_info,
-                    client: self.client.clone(),
-                };
+                    client: self.client.clone()};
 
                 // Register the model
                 if let Err(e) = registry.register("anthropic", model) {
@@ -137,8 +133,7 @@ impl ProviderModelDiscovery for AnthropicDiscovery {
 #[derive(Debug, Clone)]
 struct AnthropicModel {
     info: ModelInfo,
-    client: Arc<AnthropicClient>,
-}
+    client: Arc<AnthropicClient>}
 
 impl Model for AnthropicModel {
     fn info(&self) -> &'static ModelInfo {

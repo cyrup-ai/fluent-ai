@@ -3,6 +3,14 @@
 //! This crate provides provider and model implementations for AI services.
 //! The core domain types are now defined in the domain package.
 
+// Constants for bounded arrays in API structures
+pub const MAX_MESSAGES: usize = 128;
+pub const MAX_TOOLS: usize = 64;
+pub const MAX_DOCUMENTS: usize = 32;
+pub const MAX_CHOICES: usize = 16;
+pub const MAX_EMBEDDINGS: usize = 2048;
+pub const MAX_IMAGES: usize = 16;
+
 // TEMPORARY: Include generated code from build script to break chicken-and-egg problem
 include!(concat!(env!("OUT_DIR"), "/providers.rs"));
 include!(concat!(env!("OUT_DIR"), "/models.rs"));
@@ -13,11 +21,17 @@ pub use fluent_ai_domain::model::ModelInfo;
 // Provider client implementations
 pub mod clients;
 
+// Re-export commonly used client modules for type compatibility
+pub use clients::openai;
+
 // Image processing implementations
 pub mod image_processing;
 
 // Model discovery and registration
 pub mod discovery;
+
+// HTTP utilities and validation
+pub mod utils;
 
 // Re-export Candle client for convenience
 #[cfg(feature = "candle")]

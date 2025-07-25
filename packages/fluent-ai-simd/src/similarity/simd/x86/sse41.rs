@@ -10,8 +10,7 @@ use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics
 
 /// SSE4.1-optimized similarity implementation for x86/x64
 pub struct Sse41Similarity {
-    metrics: Arc<SimilarityMetrics>,
-}
+    metrics: Arc<SimilarityMetrics>}
 
 impl Default for Sse41Similarity {
     fn default() -> Self {
@@ -24,8 +23,7 @@ impl Sse41Similarity {
     #[inline]
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(SimilarityMetrics::default()),
-        }
+            metrics: Arc::new(SimilarityMetrics::default())}
     }
 
     /// Process vectors using real SSE4.1 SIMD instructions

@@ -3,10 +3,10 @@
 //! Provides enhanced error context information for detailed debugging and monitoring.
 //! Zero-allocation context management with comprehensive metadata support.
 
-use super::error_types::ProcessingError;
-use super::classification::{ErrorCategory, ErrorSeverity};
 use std::collections::HashMap;
 
+use super::error_types::ProcessingError;
+use super::classification::{ErrorCategory, ErrorSeverity};
 /// Error context information for detailed reporting
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
@@ -19,8 +19,7 @@ pub struct ErrorContext {
     /// Token position if applicable
     pub position: Option<usize>,
     /// Additional context data
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 impl ErrorContext {
     /// Create new error context
@@ -31,8 +30,7 @@ impl ErrorContext {
             processor: None,
             array_size: None,
             position: None,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Set processor name
@@ -98,8 +96,7 @@ pub struct ContextualError {
     /// Timestamp when error occurred
     pub timestamp: std::time::SystemTime,
     /// Stack trace if available
-    pub backtrace: Option<String>,
-}
+    pub backtrace: Option<String>}
 
 impl ContextualError {
     /// Create contextual error
@@ -114,8 +111,7 @@ impl ContextualError {
                 } else {
                     None
                 }
-            }),
-        }
+            })}
     }
 
     /// Get error category

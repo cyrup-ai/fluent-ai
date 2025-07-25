@@ -26,8 +26,7 @@ pub struct ChatSearcher {
     /// Statistics tracker for performance monitoring
     stats_tracker: Arc<SearchStatsTracker>,
     /// Search options
-    options: SearchOptions,
-}
+    options: SearchOptions}
 
 impl ChatSearcher {
     /// Create a new chat searcher
@@ -37,8 +36,7 @@ impl ChatSearcher {
             query_processor: QueryProcessor::new(),
             result_ranker: ResultRanker::new(),
             stats_tracker: Arc::new(SearchStatsTracker::new()),
-            options: SearchOptions::default(),
-        }
+            options: SearchOptions::default()}
     }
 
     /// Create chat searcher with custom options
@@ -48,8 +46,7 @@ impl ChatSearcher {
             query_processor: QueryProcessor::with_options(&options),
             result_ranker: ResultRanker::new(),
             stats_tracker: Arc::new(SearchStatsTracker::new()),
-            options,
-        }
+            options}
     }
 
     /// Search messages using fluent-ai-async streaming architecture
@@ -80,9 +77,7 @@ impl ChatSearcher {
                         .as_secs(),
                     processing_time_us: 0,
                     expansion_applied: false,
-                    normalization_applied: true,
-                },
-            };
+                    normalization_applied: true}};
 
             // Search the index
             let search_results = Self::execute_search(&index, &query);
@@ -142,8 +137,7 @@ impl ChatSearcher {
                 search_operations: total_queries,
                 index_operations: total_index_ops,
                 cache_hits,
-                cache_misses,
-            };
+                cache_misses};
             
             emit!(sender, stats);
         })

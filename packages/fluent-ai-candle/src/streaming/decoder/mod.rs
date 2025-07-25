@@ -63,8 +63,7 @@ pub use self::state::DecoderState;
 pub use self::stats::DecoderStats;
 pub use self::validation::{
     decode_codepoint, expected_sequence_length, is_ascii, is_continuation_byte, is_valid_start_byte,
-    validate_ascii, validate_utf8_sequence,
-};
+    validate_ascii, validate_utf8_sequence};
 
 /// A specialized `Result` type for decoder operations
 pub type Result<T> = std::result::Result<T, DecoderError>;

@@ -5,9 +5,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-use atomic_counter::ConsistentCounter;
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -17,26 +16,24 @@ use super::types::{ChatMacro, ExecutionStats, MacroSystemError, MacroResult};
 /// High-performance macro storage with lock-free operations
 pub struct MacroStorage {
     /// Lock-free macro storage using skip list
-    macros: SkipMap<Uuid, ChatMacro>,
+    macros: Arc<SkipMap<Uuid, ChatMacro>>,
     /// Macro execution statistics
     execution_stats: SkipMap<Uuid, Arc<ExecutionStats>>,
     /// Global macro counter
-    macro_counter: ConsistentCounter,
-}
+    macro_counter: ConsistentCounter}
 
 impl MacroStorage {
     /// Create new macro storage
     pub fn new() -> Self {
         Self {
-            macros: SkipMap::new(),
+            macros: Arc::new(SkipMap::new()),
             execution_stats: SkipMap::new(),
-            macro_counter: ConsistentCounter::new(0),
-        }
+            macro_counter: ConsistentCounter::new(0)}
     }
 
     /// Get shared reference to macros storage
-    pub fn macros(&self) -> &SkipMap<Uuid, ChatMacro> {
-        &self.macros
+    pub fn macros(&self) -> Arc<SkipMap<Uuid, ChatMacro>> {
+        self.macros.clone()
     }
 
     /// Store a macro
@@ -100,7 +97,7 @@ impl MacroStorage {
     pub fn get_macros_by_category(&self, category: &str) -> Vec<ChatMacro> {
         self.macros
             .iter()
-            .filter(|entry| entry.value().metadata.category == category)
+            .filter(|entry| entry.value().metadata.category.as_ref() == category)
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -109,7 +106,7 @@ impl MacroStorage {
     pub fn get_macros_by_author(&self, author: &str) -> Vec<ChatMacro> {
         self.macros
             .iter()
-            .filter(|entry| entry.value().metadata.author == author)
+            .filter(|entry| entry.value().metadata.author.as_ref() == author)
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -182,8 +179,7 @@ impl MacroStorage {
         StorageStats {
             total_macros: self.macro_count(),
             memory_usage_bytes: self.estimate_memory_usage(),
-            categories: self.get_category_counts(),
-        }
+            categories: self.get_category_counts()}
     }
 
     /// Estimate memory usage (rough calculation)
@@ -196,8 +192,8 @@ impl MacroStorage {
     fn get_category_counts(&self) -> HashMap<String, usize> {
         let mut counts = HashMap::new();
         for entry in self.macros.iter() {
-            let category = &entry.value().metadata.category;
-            *counts.entry(category.clone()).or_insert(0) += 1;
+            let category = entry.value().metadata.category.as_ref();
+            *counts.entry(category.to_string()).or_insert(0) += 1;
         }
         counts
     }
@@ -245,16 +241,14 @@ impl Default for MacroStorage {
 pub struct StorageStats {
     pub total_macros: usize,
     pub memory_usage_bytes: usize,
-    pub categories: HashMap<String, usize>,
-}
+    pub categories: HashMap<String, usize>}
 
 /// Macro export format
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MacroExport {
     pub version: String,
     pub exported_at: String,
-    pub macros: Vec<ChatMacro>,
-}
+    pub macros: Vec<ChatMacro>}
 
 impl MacroExport {
     /// Create new export
@@ -262,7 +256,6 @@ impl MacroExport {
         Self {
             version: "1.0".to_string(),
             exported_at: chrono::Utc::now().to_rfc3339(),
-            macros,
-        }
+            macros}
     }
 }

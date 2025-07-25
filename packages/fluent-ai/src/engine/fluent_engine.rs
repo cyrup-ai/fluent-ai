@@ -18,8 +18,7 @@ pub struct FluentEngine {
     /// Default temperature for requests
     default_temperature: Option<f64>,
     /// Default max tokens for requests
-    default_max_tokens: Option<u64>,
-}
+    default_max_tokens: Option<u64>}
 
 impl FluentEngine {
     /// Create a new FluentEngine with a completion backend
@@ -28,8 +27,7 @@ impl FluentEngine {
             backend,
             model,
             default_temperature: None,
-            default_max_tokens: None,
-        }
+            default_max_tokens: None}
     }
 
     /// Set the default temperature for this engine
@@ -66,15 +64,13 @@ impl FluentEngine {
             temperature: config.temperature.or(self.default_temperature),
             max_tokens: self.default_max_tokens,
             chunk_size: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 }
 
 /// A simple agent implementation for identification and configuration storage
 pub struct FluentAgent {
-    role: Arc<dyn AgentRole>,
-}
+    role: Arc<dyn AgentRole>}
 
 impl FluentAgent {
     pub fn new(role: Arc<dyn AgentRole>) -> Self {
@@ -114,7 +110,6 @@ impl Clone for FluentEngine {
             backend: self.backend.clone(),
             model: self.model.clone(),
             default_temperature: self.default_temperature,
-            default_max_tokens: self.default_max_tokens,
-        }
+            default_max_tokens: self.default_max_tokens}
     }
 }

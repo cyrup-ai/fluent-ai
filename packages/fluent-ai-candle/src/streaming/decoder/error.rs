@@ -10,37 +10,31 @@ pub enum DecoderError {
         /// The position where the error occurred
         position: usize,
         /// The invalid bytes that caused the error
-        bytes: Vec<u8>,
-    },
+        bytes: Vec<u8>},
     /// Unexpected end of input in the middle of a sequence
     UnexpectedEof {
         /// The expected number of bytes
         expected: usize,
         /// The actual number of bytes available
-        actual: usize,
-    },
+        actual: usize},
     /// Invalid continuation byte
     InvalidContinuationByte {
         /// The position of the invalid byte
         position: usize,
         /// The invalid byte value
-        byte: u8,
-    },
+        byte: u8},
     /// Overlong encoding detected
     OverlongEncoding {
         /// The position where the overlong sequence starts
         position: usize,
         /// The overlong encoded codepoint
-        codepoint: u32,
-    },
+        codepoint: u32},
     /// Invalid codepoint
     InvalidCodepoint {
         /// The position where the invalid codepoint was found
         position: usize,
         /// The invalid codepoint value
-        codepoint: u32,
-    },
-}
+        codepoint: u32}}
 
 impl fmt::Display for DecoderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -102,7 +96,6 @@ where
     fn into_decoder_error(self, context: &'static str) -> std::result::Result<T, DecoderError> {
         self.map_err(|e| DecoderError::InvalidUtf8Sequence {
             position: 0,
-            bytes: format!("{}: {}", context, e).into_bytes(),
-        })
+            bytes: format!("{}: {}", context, e).into_bytes()})
     }
 }

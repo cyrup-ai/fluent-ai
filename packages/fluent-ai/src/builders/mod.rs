@@ -31,8 +31,7 @@ pub mod workflow;
 pub use agent::*;
 pub use agent_role::{
     AgentRoleBuilder, AgentRoleBuilderWithChunkHandler, AgentRoleBuilderWithHandler,
-    McpServerBuilder, Stdio,
-};
+    McpServerBuilder, Stdio};
 pub use audio::{AudioBuilder, AudioBuilderWithHandler};
 pub use chunk::*;
 pub use completion::*;

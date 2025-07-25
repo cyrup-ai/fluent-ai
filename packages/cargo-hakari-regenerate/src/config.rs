@@ -29,8 +29,7 @@ pub struct HakariConfig {
     pub omitted_deps: Vec<OmittedDependency>,
 
     #[serde(default)]
-    pub workspace_members: Vec<String>,
-}
+    pub workspace_members: Vec<String>}
 
 /// Omitted dependency configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,8 +40,7 @@ pub struct OmittedDependency {
     pub version: Option<String>,
 
     #[serde(default)]
-    pub features: Vec<String>,
-}
+    pub features: Vec<String>}
 
 /// Workspace configuration for package management
 #[derive(Debug, Clone)]
@@ -50,8 +48,7 @@ pub struct WorkspaceConfig {
     pub root_path: PathBuf,
     pub hakari_config_path: PathBuf,
     pub workspace_hack_path: PathBuf,
-    pub packages: Vec<PackageInfo>,
-}
+    pub packages: Vec<PackageInfo>}
 
 /// Package information for workspace operations
 #[derive(Debug, Clone)]
@@ -59,8 +56,7 @@ pub struct PackageInfo {
     pub name: String,
     pub path: PathBuf,
     pub cargo_toml_path: PathBuf,
-    pub has_workspace_hack_dep: bool,
-}
+    pub has_workspace_hack_dep: bool}
 
 impl Default for HakariConfig {
     fn default() -> Self {
@@ -71,8 +67,7 @@ impl Default for HakariConfig {
             platforms: Vec::new(),
             exact_versions: false,
             omitted_deps: Self::default_omitted_deps(),
-            workspace_members: Vec::new(),
-        }
+            workspace_members: Vec::new()}
     }
 }
 
@@ -95,58 +90,47 @@ impl HakariConfig {
             OmittedDependency {
                 name: "candle-core".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "candle-nn".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "candle-transformers".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "candle-flash-attn".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "candle-onnx".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "candle-datasets".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "cudarc".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "half".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "bindgen_cuda".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "intel-mkl-src".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
             OmittedDependency {
                 name: "accelerate-src".to_string(),
                 version: None,
-                features: vec![],
-            },
+                features: vec![]},
         ]
     }
 
@@ -155,24 +139,21 @@ impl HakariConfig {
         if self.hakari_package.is_empty() {
             return Err(ConfigError::ValidationError {
                 field: "hakari-package".to_string(),
-                reason: "cannot be empty".to_string(),
-            }
+                reason: "cannot be empty".to_string()}
             .into());
         }
 
         if self.dep_format_version == 0 {
             return Err(ConfigError::ValidationError {
                 field: "dep-format-version".to_string(),
-                reason: "must be greater than 0".to_string(),
-            }
+                reason: "must be greater than 0".to_string()}
             .into());
         }
 
         if self.resolver.is_empty() {
             return Err(ConfigError::ValidationError {
                 field: "resolver".to_string(),
-                reason: "cannot be empty".to_string(),
-            }
+                reason: "cannot be empty".to_string()}
             .into());
         }
 
@@ -180,8 +161,7 @@ impl HakariConfig {
             if dep.name.is_empty() {
                 return Err(ConfigError::ValidationError {
                     field: format!("omitted-deps[{}].name", i),
-                    reason: "cannot be empty".to_string(),
-                }
+                    reason: "cannot be empty".to_string()}
                 .into());
             }
         }
@@ -192,17 +172,15 @@ impl HakariConfig {
     /// Save configuration to file
     pub async fn save(&self, path: &Path) -> Result<()> {
         let toml_content =
-            toml_edit::ser::to_string_pretty(self).map_err(|e| ConfigError::ValidationError {
+            toml::to_string_pretty(self).map_err(|e| ConfigError::ValidationError {
                 field: "serialization".to_string(),
-                reason: e.to_string(),
-            })?;
+                reason: e.to_string()})?;
 
         tokio::fs::write(path, toml_content)
             .await
             .map_err(|e| ConfigError::ValidationError {
                 field: "file_write".to_string(),
-                reason: e.to_string(),
-            })?;
+                reason: e.to_string()})?;
 
         Ok(())
     }
@@ -213,14 +191,12 @@ impl HakariConfig {
             tokio::fs::read_to_string(path)
                 .await
                 .map_err(|_| ConfigError::FileNotFound {
-                    path: path.to_path_buf(),
-                })?;
+                    path: path.to_path_buf()})?;
 
         let config: HakariConfig =
-            toml_edit::de::from_str(&content).map_err(|e| ConfigError::ValidationError {
+            toml::from_str(&content).map_err(|e| ConfigError::ValidationError {
                 field: "deserialization".to_string(),
-                reason: e.to_string(),
-            })?;
+                reason: e.to_string()})?;
 
         config.validate()?;
         Ok(config)
@@ -233,8 +209,7 @@ impl WorkspaceConfig {
             hakari_config_path: root_path.join(".hakari.toml"),
             workspace_hack_path: root_path.join("workspace-hack"),
             root_path,
-            packages: Vec::new(),
-        }
+            packages: Vec::new()}
     }
 
     pub async fn discover_packages(&mut self) -> Result<()> {
@@ -242,15 +217,13 @@ impl WorkspaceConfig {
         let cargo_toml = self.root_path.join("Cargo.toml");
         let content = tokio::fs::read_to_string(&cargo_toml).await.map_err(|_| {
             ConfigError::FileNotFound {
-                path: cargo_toml.clone(),
-            }
+                path: cargo_toml.clone()}
         })?;
 
         let doc = content.parse::<toml_edit::DocumentMut>().map_err(|e| {
             ConfigError::ValidationError {
                 field: "cargo_toml_parse".to_string(),
-                reason: e.to_string(),
-            }
+                reason: e.to_string()}
         })?;
 
         if let Some(workspace) = doc.get("workspace") {
@@ -270,8 +243,7 @@ impl WorkspaceConfig {
                                         name: member_str.to_string(),
                                         path: package_path,
                                         cargo_toml_path,
-                                        has_workspace_hack_dep,
-                                    });
+                                        has_workspace_hack_dep});
                                 }
                             }
                         }
@@ -287,8 +259,7 @@ impl WorkspaceConfig {
         let content = tokio::fs::read_to_string(cargo_toml_path)
             .await
             .map_err(|_| ConfigError::FileNotFound {
-                path: cargo_toml_path.to_path_buf(),
-            })?;
+                path: cargo_toml_path.to_path_buf()})?;
 
         Ok(content.contains("fluent-ai-workspace-hack"))
     }
@@ -297,8 +268,7 @@ impl WorkspaceConfig {
         if !self.root_path.exists() {
             return Err(ConfigError::ValidationError {
                 field: "root_path".to_string(),
-                reason: "does not exist".to_string(),
-            }
+                reason: "does not exist".to_string()}
             .into());
         }
 
@@ -306,8 +276,7 @@ impl WorkspaceConfig {
         if !cargo_toml.exists() {
             return Err(ConfigError::ValidationError {
                 field: "cargo_toml".to_string(),
-                reason: "Cargo.toml not found in root".to_string(),
-            }
+                reason: "Cargo.toml not found in root".to_string()}
             .into());
         }
 

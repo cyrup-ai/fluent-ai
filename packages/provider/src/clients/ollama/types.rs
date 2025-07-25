@@ -35,8 +35,7 @@ pub struct OllamaGenerateRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub keep_alive: Option<&'a str>,
-}
+    pub keep_alive: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaChatRequest<'a> {
@@ -53,8 +52,7 @@ pub struct OllamaChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub keep_alive: Option<&'a str>,
-}
+    pub keep_alive: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaMessage<'a> {
@@ -65,29 +63,25 @@ pub struct OllamaMessage<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub images: Option<ArrayVec<&'a str, MAX_IMAGES>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<OllamaToolCall<'a>, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<OllamaToolCall<'a>, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaToolCall<'a> {
     #[serde(borrow)]
-    pub function: OllamaFunction<'a>,
-}
+    pub function: OllamaFunction<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaFunction<'a> {
     #[serde(borrow)]
     pub name: &'a str,
-    pub arguments: serde_json::Value,
-}
+    pub arguments: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaTool<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub tool_type: &'a str,
-    pub function: OllamaToolFunction<'a>,
-}
+    pub function: OllamaToolFunction<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaToolFunction<'a> {
@@ -95,8 +89,7 @@ pub struct OllamaToolFunction<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaOptions {
@@ -155,8 +148,7 @@ pub struct OllamaOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tfs_z: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub typical_p: Option<f32>,
-}
+    pub typical_p: Option<f32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaGenerateResponse {
@@ -177,8 +169,7 @@ pub struct OllamaGenerateResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eval_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub eval_duration: Option<u64>,
-}
+    pub eval_duration: Option<u64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaChatResponse {
@@ -197,27 +188,23 @@ pub struct OllamaChatResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eval_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub eval_duration: Option<u64>,
-}
+    pub eval_duration: Option<u64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaResponseMessage {
     pub role: String,
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<OllamaResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<OllamaResponseToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaResponseToolCall {
-    pub function: OllamaResponseFunction,
-}
+    pub function: OllamaResponseFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaResponseFunction {
     pub name: String,
-    pub arguments: serde_json::Value,
-}
+    pub arguments: serde_json::Value}
 
 // ============================================================================
 // Embeddings API
@@ -232,13 +219,11 @@ pub struct OllamaEmbeddingRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<OllamaOptions>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub keep_alive: Option<&'a str>,
-}
+    pub keep_alive: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaEmbeddingResponse {
-    pub embedding: ArrayVec<f32, 4096>,
-}
+    pub embedding: ArrayVec<f32, 4096>}
 
 // ============================================================================
 // Model Management API
@@ -253,13 +238,11 @@ pub struct OllamaCreateRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub path: Option<&'a str>,
-}
+    pub path: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaCreateResponse {
-    pub status: String,
-}
+    pub status: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaPullRequest<'a> {
@@ -268,8 +251,7 @@ pub struct OllamaPullRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub insecure: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub stream: Option<bool>,
-}
+    pub stream: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaPullResponse {
@@ -279,8 +261,7 @@ pub struct OllamaPullResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub completed: Option<u64>,
-}
+    pub completed: Option<u64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaPushRequest<'a> {
@@ -289,8 +270,7 @@ pub struct OllamaPushRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub insecure: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub stream: Option<bool>,
-}
+    pub stream: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaPushResponse {
@@ -300,13 +280,11 @@ pub struct OllamaPushResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub completed: Option<u64>,
-}
+    pub completed: Option<u64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaListResponse {
-    pub models: ArrayVec<OllamaModelInfo, 256>,
-}
+    pub models: ArrayVec<OllamaModelInfo, 256>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaModelInfo {
@@ -315,8 +293,7 @@ pub struct OllamaModelInfo {
     pub modified_at: String,
     pub size: u64,
     pub digest: String,
-    pub details: OllamaModelDetails,
-}
+    pub details: OllamaModelDetails}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaModelDetails {
@@ -325,16 +302,14 @@ pub struct OllamaModelDetails {
     pub family: String,
     pub families: ArrayVec<String, 8>,
     pub parameter_size: String,
-    pub quantization_level: String,
-}
+    pub quantization_level: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaShowRequest<'a> {
     #[serde(borrow)]
     pub name: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub verbose: Option<bool>,
-}
+    pub verbose: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaShowResponse {
@@ -343,22 +318,19 @@ pub struct OllamaShowResponse {
     pub template: String,
     pub details: OllamaModelDetails,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_info: Option<serde_json::Value>,
-}
+    pub model_info: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaCopyRequest<'a> {
     #[serde(borrow)]
     pub source: &'a str,
     #[serde(borrow)]
-    pub destination: &'a str,
-}
+    pub destination: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaDeleteRequest<'a> {
     #[serde(borrow)]
-    pub name: &'a str,
-}
+    pub name: &'a str}
 
 // ============================================================================
 // Streaming Support
@@ -385,8 +357,7 @@ pub struct OllamaStreamingChunk {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub eval_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub eval_duration: Option<u64>,
-}
+    pub eval_duration: Option<u64>}
 
 // ============================================================================
 // Error Handling
@@ -394,8 +365,7 @@ pub struct OllamaStreamingChunk {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaErrorResponse {
-    pub error: String,
-}
+    pub error: String}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -414,8 +384,7 @@ impl<'a> OllamaGenerateRequest<'a> {
             context: None,
             stream: None,
             raw: None,
-            keep_alive: None,
-        }
+            keep_alive: None}
     }
 
     pub fn with_system(mut self, system: &'a str) -> Self {
@@ -458,8 +427,7 @@ impl<'a> OllamaChatRequest<'a> {
             format: None,
             options: None,
             stream: None,
-            keep_alive: None,
-        }
+            keep_alive: None}
     }
 
     pub fn add_message(mut self, role: &'a str, content: &'a str) -> Self {
@@ -468,8 +436,7 @@ impl<'a> OllamaChatRequest<'a> {
                 role,
                 content,
                 images: None,
-                tool_calls: None,
-            });
+                tool_calls: None});
         }
         self
     }
@@ -480,8 +447,7 @@ impl<'a> OllamaChatRequest<'a> {
                 role,
                 content,
                 images: Some(images),
-                tool_calls: None,
-            });
+                tool_calls: None});
         }
         self
     }
@@ -537,8 +503,7 @@ impl OllamaOptions {
             numa: None,
             seed: None,
             tfs_z: None,
-            typical_p: None,
-        }
+            typical_p: None}
     }
 
     pub fn temperature(mut self, temp: f32) -> Self {
@@ -583,8 +548,7 @@ impl<'a> OllamaEmbeddingRequest<'a> {
             model,
             prompt,
             options: None,
-            keep_alive: None,
-        }
+            keep_alive: None}
     }
 
     pub fn with_options(mut self, options: OllamaOptions) -> Self {
@@ -604,8 +568,7 @@ impl<'a> OllamaCreateRequest<'a> {
             name,
             modelfile,
             stream: None,
-            path: None,
-        }
+            path: None}
     }
 
     pub fn stream(mut self, streaming: bool) -> Self {
@@ -624,8 +587,7 @@ impl<'a> OllamaPullRequest<'a> {
         Self {
             name,
             insecure: None,
-            stream: None,
-        }
+            stream: None}
     }
 
     pub fn insecure(mut self, insecure: bool) -> Self {
@@ -643,8 +605,7 @@ impl<'a> OllamaShowRequest<'a> {
     pub fn new(name: &'a str) -> Self {
         Self {
             name,
-            verbose: None,
-        }
+            verbose: None}
     }
 
     pub fn verbose(mut self, verbose: bool) -> Self {

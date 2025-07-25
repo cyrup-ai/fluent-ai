@@ -16,8 +16,7 @@ use tokio::fs;
 
 use super::{
     core::{AnthropicError, AnthropicResult},
-    function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput},
-};
+    function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput}};
 
 /// Built-in file operations tool for Anthropic Files API
 pub struct FileOperationsTool;
@@ -30,8 +29,7 @@ struct FileUploadResponse {
     file_type: String,
     filename: String,
     size: u64,
-    created_at: String,
-}
+    created_at: String}
 
 /// File list response from Anthropic Files API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,8 +37,7 @@ struct FileListResponse {
     data: Vec<FileMetadata>,
     has_more: bool,
     first_id: Option<String>,
-    last_id: Option<String>,
-}
+    last_id: Option<String>}
 
 /// File metadata from Anthropic Files API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,8 +47,7 @@ struct FileMetadata {
     file_type: String,
     filename: String,
     size: u64,
-    created_at: String,
-}
+    created_at: String}
 
 /// Supported file types for Anthropic Files API
 const SUPPORTED_FILE_TYPES: &[&str] = &[
@@ -109,24 +105,21 @@ impl ToolExecutor for FileOperationsTool {
                         if !path.exists() {
                             return Ok(ToolOutput::Error {
                                 message: "File not found".to_string(),
-                                code: Some("FILE_NOT_FOUND".to_string()),
-                            });
+                                code: Some("FILE_NOT_FOUND".to_string())});
                         }
 
                         let metadata = fs::metadata(path).await.unwrap();
                         if metadata.len() > MAX_FILE_SIZE {
                             return Ok(ToolOutput::Error {
                                 message: "File size exceeds 500MB limit".to_string(),
-                                code: Some("FILE_TOO_LARGE".to_string()),
-                            });
+                                code: Some("FILE_TOO_LARGE".to_string())});
                         }
 
                         let mime_type = mime_guess::from_path(path).first_or_octet_stream();
                         if !SUPPORTED_FILE_TYPES.contains(&mime_type.as_ref()) {
                             return Ok(ToolOutput::Error {
                                 message: "Unsupported file type".to_string(),
-                                code: Some("UNSUPPORTED_FILE_TYPE".to_string()),
-                            });
+                                code: Some("UNSUPPORTED_FILE_TYPE".to_string())});
                         }
 
                         let file_contents = fs::read(path).await.unwrap();
@@ -142,9 +135,7 @@ impl ToolExecutor for FileOperationsTool {
                             }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
-                                code: Some("UPLOAD_ERROR".to_string()),
-                            }),
-                        }
+                                code: Some("UPLOAD_ERROR".to_string())})}
                     }
 
                     "list" => {
@@ -157,9 +148,7 @@ impl ToolExecutor for FileOperationsTool {
                             }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
-                                code: Some("LIST_ERROR".to_string()),
-                            }),
-                        }
+                                code: Some("LIST_ERROR".to_string())})}
                     }
 
                     "retrieve" => {
@@ -173,9 +162,7 @@ impl ToolExecutor for FileOperationsTool {
                             }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
-                                code: Some("RETRIEVE_ERROR".to_string()),
-                            }),
-                        }
+                                code: Some("RETRIEVE_ERROR".to_string())})}
                     }
 
                     "delete" => {
@@ -186,9 +173,7 @@ impl ToolExecutor for FileOperationsTool {
                             Ok(_) => Ok(ToolOutput::Text("File deleted successfully".to_string())),
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
-                                code: Some("DELETE_ERROR".to_string()),
-                            }),
-                        }
+                                code: Some("DELETE_ERROR".to_string())})}
                     }
 
                     "download" => {
@@ -202,9 +187,7 @@ impl ToolExecutor for FileOperationsTool {
                             }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
-                                code: Some("DOWNLOAD_ERROR".to_string()),
-                            }),
-                        }
+                                code: Some("DOWNLOAD_ERROR".to_string())})}
                     }
 
                     _ => Ok(ToolOutput::Error {
@@ -212,9 +195,7 @@ impl ToolExecutor for FileOperationsTool {
                             "Unsupported operation: {}. Supported operations: upload, list, retrieve, delete, download",
                             operation
                         ),
-                        code: Some("INVALID_OPERATION".to_string()),
-                    }),
-                }
+                        code: Some("INVALID_OPERATION".to_string())})}
             }
             .await;
             let _ = tx.send(result);

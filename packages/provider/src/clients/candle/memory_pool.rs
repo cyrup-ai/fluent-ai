@@ -41,8 +41,7 @@ pub struct PoolConfig {
     /// Maximum allocation size in bytes
     pub max_alloc_size: usize,
     /// Enable pool statistics collection
-    pub enable_statistics: bool,
-}
+    pub enable_statistics: bool}
 
 impl Default for PoolConfig {
     fn default() -> Self {
@@ -54,8 +53,7 @@ impl Default for PoolConfig {
             enable_alignment: true,
             min_alloc_size: 64,
             max_alloc_size: 256 * 1024 * 1024, // 256MB max
-            enable_statistics: true,
-        }
+            enable_statistics: true}
     }
 }
 
@@ -70,8 +68,7 @@ impl PoolConfig {
             enable_alignment: true,
             min_alloc_size: 256, // Larger minimum for tensor operations
             max_alloc_size: 512 * 1024 * 1024, // 512MB for large models
-            enable_statistics: true,
-        }
+            enable_statistics: true}
     }
 
     /// Validate configuration parameters
@@ -130,8 +127,7 @@ pub struct PooledEntry {
     /// Memory layout for deallocation
     layout: Layout,
     /// Data accessor (provides safe Vec-like interface)
-    data: Vec<f32>,
-}
+    data: Vec<f32>}
 
 impl PooledEntry {
     /// Create new pooled entry with specified size
@@ -170,8 +166,7 @@ impl PooledEntry {
             ptr,
             size,
             layout,
-            data,
-        })
+            data})
     }
 
     /// Get mutable access to the underlying data
@@ -239,8 +234,7 @@ struct MemoryPool {
     /// Pool statistics
     stats: PoolStatistics,
     /// Pool configuration
-    config: PoolConfig,
-}
+    config: PoolConfig}
 
 impl MemoryPool {
     /// Create new memory pool for size class
@@ -254,8 +248,7 @@ impl MemoryPool {
             available,
             receiver,
             stats: PoolStatistics::new(size_class),
-            config,
-        };
+            config};
 
         // Pre-allocate initial entries
         pool.expand_pool(config.initial_capacity)?;
@@ -295,8 +288,7 @@ impl MemoryPool {
                 "Memory pool disconnected",
                 "acquire",
                 "connected pool",
-            )),
-        }
+            ))}
     }
 
     /// Return an entry to the pool
@@ -333,8 +325,7 @@ impl MemoryPool {
                 "Memory pool disconnected",
                 "release",
                 "connected pool",
-            )),
-        }
+            ))}
     }
 
     /// Expand pool capacity
@@ -377,8 +368,7 @@ pub struct PoolStatistics {
     /// Current available entries
     pub available_entries: usize,
     /// Pool capacity
-    pub pool_capacity: usize,
-}
+    pub pool_capacity: usize}
 
 impl PoolStatistics {
     fn new(size_class: usize) -> Self {
@@ -390,8 +380,7 @@ impl PoolStatistics {
             entries_in_use: AtomicCell::new(0),
             entries_dropped: AtomicCell::new(0),
             available_entries: 0,
-            pool_capacity: 0,
-        }
+            pool_capacity: 0}
     }
 
     /// Calculate hit rate
@@ -432,8 +421,7 @@ pub struct MemoryPoolManager {
     /// Pool configuration
     config: PoolConfig,
     /// Global statistics
-    global_stats: GlobalPoolStatistics,
-}
+    global_stats: GlobalPoolStatistics}
 
 /// Global statistics across all pools
 #[derive(Debug)]
@@ -445,8 +433,7 @@ struct GlobalPoolStatistics {
     /// Total release operations
     total_releases: AtomicCell<u64>,
     /// Peak memory usage
-    peak_memory_bytes: AtomicCell<u64>,
-}
+    peak_memory_bytes: AtomicCell<u64>}
 
 impl Default for GlobalPoolStatistics {
     fn default() -> Self {
@@ -454,8 +441,7 @@ impl Default for GlobalPoolStatistics {
             total_memory_bytes: AtomicCell::new(0),
             total_acquires: AtomicCell::new(0),
             total_releases: AtomicCell::new(0),
-            peak_memory_bytes: AtomicCell::new(0),
-        }
+            peak_memory_bytes: AtomicCell::new(0)}
     }
 }
 
@@ -484,8 +470,7 @@ impl MemoryPoolManager {
             pools: ArcSwap::from_pointee(pools),
             size_classes,
             config,
-            global_stats: GlobalPoolStatistics::default(),
-        })
+            global_stats: GlobalPoolStatistics::default()})
     }
 
     /// Create optimized manager for Candle operations
@@ -566,8 +551,7 @@ impl MemoryPoolManager {
             total_memory_bytes: total_memory as u64,
             total_acquires: self.global_stats.total_acquires.load(),
             total_releases: self.global_stats.total_releases.load(),
-            peak_memory_bytes: self.global_stats.peak_memory_bytes.load(),
-        }
+            peak_memory_bytes: self.global_stats.peak_memory_bytes.load()}
     }
 
     /// Get pool configuration
@@ -590,8 +574,7 @@ pub struct MemoryPoolManagerStatistics {
     /// Total release operations
     pub total_releases: u64,
     /// Peak memory usage in bytes
-    pub peak_memory_bytes: u64,
-}
+    pub peak_memory_bytes: u64}
 
 impl MemoryPoolManagerStatistics {
     /// Calculate overall hit rate

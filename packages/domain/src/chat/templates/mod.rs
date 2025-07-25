@@ -3,6 +3,8 @@
 //! This module provides a comprehensive template system for chat applications with
 //! zero-allocation, lock-free architecture optimized for high-throughput scenarios.
 
+use std::collections::HashMap;
+
 pub mod cache;
 pub mod compiler;
 pub mod core;
@@ -18,7 +20,7 @@ pub use core::{
     TemplateValue,
 };
 // Global template functions for convenience
-use std::collections::HashMap;
+// Duplicate HashMap import removed
 use std::sync::Arc;
 
 pub use compiler::TemplateCompiler;

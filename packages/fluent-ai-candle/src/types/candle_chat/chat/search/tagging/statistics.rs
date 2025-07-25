@@ -1,6 +1,5 @@
 //! Tagging statistics and metrics
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use serde::{Deserialize, Serialize};
 
 /// Statistics for tagging operations
@@ -21,8 +20,7 @@ pub struct TaggingStatistics {
     /// Tag categories and their counts
     pub category_distribution: std::collections::HashMap<String, usize>,
     /// Tagging performance metrics
-    pub performance_metrics: TaggingPerformanceMetrics,
-}
+    pub performance_metrics: TaggingPerformanceMetrics}
 
 impl Default for TaggingStatistics {
     fn default() -> Self {
@@ -34,8 +32,7 @@ impl Default for TaggingStatistics {
             avg_tags_per_conversation: 0.0,
             popular_tags: Vec::new(),
             category_distribution: std::collections::HashMap::new(),
-            performance_metrics: TaggingPerformanceMetrics::default(),
-        }
+            performance_metrics: TaggingPerformanceMetrics::default()}
     }
 }
 
@@ -53,8 +50,7 @@ pub struct TaggingPerformanceMetrics {
     /// Total tagging operations performed
     pub total_operations: usize,
     /// Number of failed operations
-    pub failed_operations: usize,
-}
+    pub failed_operations: usize}
 
 impl Default for TaggingPerformanceMetrics {
     fn default() -> Self {
@@ -64,8 +60,7 @@ impl Default for TaggingPerformanceMetrics {
             avg_search_time_us: 0,
             cache_hit_rate: 0.0,
             total_operations: 0,
-            failed_operations: 0,
-        }
+            failed_operations: 0}
     }
 }
 

@@ -5,14 +5,12 @@ use serde::Deserialize;
 use super::completion::{CompletionModel, create_request_body, gemini_api_types::ContentCandidate};
 use crate::{
     completion::{CompletionError, CompletionRequest},
-    streaming::{self},
-};
+    streaming::{self}};
 
 #[derive(Debug, Deserialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PartialUsage {
-    pub total_token_count: i32,
-}
+    pub total_token_count: i32}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,13 +18,11 @@ pub struct StreamGenerateContentResponse {
     /// Candidate responses from the model.
     pub candidates: Vec<ContentCandidate>,
     pub model_version: Option<String>,
-    pub usage_metadata: Option<PartialUsage>,
-}
+    pub usage_metadata: Option<PartialUsage>}
 
 #[derive(Clone, Debug)]
 pub struct StreamingCompletionResponse {
-    pub usage_metadata: PartialUsage,
-}
+    pub usage_metadata: PartialUsage}
 
 impl CompletionModel {
     pub(crate) async fn stream_internal(
@@ -121,8 +117,7 @@ impl CompletionModel {
                             usage_metadata: PartialUsage {
                                 total_token_count: data.usage_metadata.as_ref()
                                     .ok_or_else(|| CompletionError::ServerError("Missing usage metadata in streaming response".to_string()))?
-                                    .total_token_count,
-                            }
+                                    .total_token_count}
                         }))
                     }
                 }

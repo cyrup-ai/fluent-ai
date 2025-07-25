@@ -1,5 +1,4 @@
 use float_eq::assert_float_eq;
-use fluent_ai_simd::error::SimdResult;
 use fluent_ai_simd::ops::{argmax, scale_temperature, softmax};
 
 #[test]

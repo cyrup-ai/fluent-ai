@@ -17,8 +17,7 @@ pub struct CacheStats {
     /// Number of cache validations
     pub validations: AtomicU64,
     /// Number of cache errors
-    pub errors: AtomicU64,
-}
+    pub errors: AtomicU64}
 
 impl Default for CacheStats {
     fn default() -> Self {
@@ -27,8 +26,7 @@ impl Default for CacheStats {
             misses: AtomicU64::new(0),
             evictions: AtomicU64::new(0),
             validations: AtomicU64::new(0),
-            errors: AtomicU64::new(0),
-        }
+            errors: AtomicU64::new(0)}
     }
 }
 

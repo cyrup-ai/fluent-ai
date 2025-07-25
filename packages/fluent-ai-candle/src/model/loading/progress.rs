@@ -18,8 +18,7 @@ pub enum LoadingStage {
     /// Validating loaded model structure
     Validating,
     /// Model loading completed successfully
-    Completed,
-}
+    Completed}
 
 impl LoadingStage {
     /// Get human-readable description of the loading stage
@@ -29,8 +28,7 @@ impl LoadingStage {
             Self::LoadingWeights => "Loading model weights",
             Self::Processing => "Processing weights",
             Self::Validating => "Validating model",
-            Self::Completed => "Loading completed",
-        }
+            Self::Completed => "Loading completed"}
     }
 
     /// Get estimated progress percentage for this stage
@@ -40,8 +38,7 @@ impl LoadingStage {
             Self::LoadingWeights => 0.70,
             Self::Processing => 0.20,
             Self::Validating => 0.04,
-            Self::Completed => 0.01,
-        }
+            Self::Completed => 0.01}
     }
 }
 
@@ -49,12 +46,22 @@ impl LoadingStage {
 pub type ProgressCallback = Arc<dyn Fn(LoadingStage, f32) + Send + Sync>;
 
 /// Progress tracker for model loading operations
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ProgressTracker {
     /// Current loading stage
     current_stage: LoadingStage,
     /// Progress callback function
-    callback: Option<ProgressCallback>,
+    callback: Option<ProgressCallback>}
+
+/// Custom Debug implementation with zero-allocation formatting
+impl std::fmt::Debug for ProgressTracker {
+    #[inline(always)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProgressTracker")
+            .field("current_stage", &self.current_stage)
+            .field("callback", &self.callback.as_ref().map(|_| "<closure>"))
+            .finish()
+    }
 }
 
 impl ProgressTracker {
@@ -62,16 +69,14 @@ impl ProgressTracker {
     pub fn new() -> Self {
         Self {
             current_stage: LoadingStage::Initializing,
-            callback: None,
-        }
+            callback: None}
     }
 
     /// Create a new progress tracker with callback
     pub fn with_callback(callback: ProgressCallback) -> Self {
         Self {
             current_stage: LoadingStage::Initializing,
-            callback: Some(callback),
-        }
+            callback: Some(callback)}
     }
 
     /// Set the current loading stage
@@ -109,12 +114,22 @@ impl Default for ProgressTracker {
 }
 
 /// Sub-progress tracker for tracking progress within a specific loading stage
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SubProgressTracker {
     /// The loading stage this sub-tracker is for
     stage: LoadingStage,
     /// Progress callback function
-    callback: Option<ProgressCallback>,
+    callback: Option<ProgressCallback>}
+
+/// Custom Debug implementation with zero-allocation formatting
+impl std::fmt::Debug for SubProgressTracker {
+    #[inline(always)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SubProgressTracker")
+            .field("stage", &self.stage)
+            .field("callback", &self.callback.as_ref().map(|_| "<closure>"))
+            .finish()
+    }
 }
 
 impl SubProgressTracker {

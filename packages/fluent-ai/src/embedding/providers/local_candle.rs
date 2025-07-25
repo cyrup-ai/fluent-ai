@@ -6,7 +6,6 @@
 
 use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicU64, AtomicU32, AtomicBool, Ordering};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use arrayvec::ArrayString;
 use smallvec::SmallVec;
@@ -54,32 +53,28 @@ impl SentenceTransformerModel {
         match self {
             Self::AllMiniLML6V2 => "sentence-transformers/all-MiniLM-L6-v2",
             Self::AllMpnetBaseV2 => "sentence-transformers/all-mpnet-base-v2", 
-            Self::MultiQAMpnetBaseDotV1 => "sentence-transformers/multi-qa-mpnet-base-dot-v1",
-        }
+            Self::MultiQAMpnetBaseDotV1 => "sentence-transformers/multi-qa-mpnet-base-dot-v1"}
     }
 
     pub fn dimensions(&self) -> usize {
         match self {
             Self::AllMiniLML6V2 => 384,
             Self::AllMpnetBaseV2 => 768,
-            Self::MultiQAMpnetBaseDotV1 => 768,
-        }
+            Self::MultiQAMpnetBaseDotV1 => 768}
     }
 
     pub fn max_sequence_length(&self) -> usize {
         match self {
             Self::AllMiniLML6V2 => 256,
             Self::AllMpnetBaseV2 => 384,
-            Self::MultiQAMpnetBaseDotV1 => 512,
-        }
+            Self::MultiQAMpnetBaseDotV1 => 512}
     }
 
     pub fn pooling_strategy(&self) -> PoolingStrategy {
         match self {
             Self::AllMiniLML6V2 => PoolingStrategy::Mean,
             Self::AllMpnetBaseV2 => PoolingStrategy::Mean,
-            Self::MultiQAMpnetBaseDotV1 => PoolingStrategy::Mean,
-        }
+            Self::MultiQAMpnetBaseDotV1 => PoolingStrategy::Mean}
     }
 }
 
@@ -89,8 +84,7 @@ pub struct DeviceCapability {
     pub device_type: DeviceType,
     pub memory_gb: f32,
     pub compute_capability: Option<(u32, u32)>,
-    pub is_available: bool,
-}
+    pub is_available: bool}
 
 /// Supported device types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,8 +92,7 @@ pub struct DeviceCapability {
 pub enum DeviceType {
     Cpu = 0,
     Cuda = 1,
-    Metal = 2,
-}
+    Metal = 2}
 
 /// Cached model with metadata
 #[derive(Debug)]
@@ -110,8 +103,7 @@ pub struct CachedModel {
     pub last_used: AtomicU64,
     pub usage_count: CachePadded<AtomicU64>,
     pub memory_size_bytes: usize,
-    pub quantized: bool,
-}
+    pub quantized: bool}
 
 impl CachedModel {
     pub fn touch(&self) {
@@ -144,8 +136,7 @@ pub struct ModelCache {
     cache_misses: CachePadded<AtomicU64>,
     evictions: CachePadded<AtomicU64>,
     max_memory_bytes: u64,
-    max_idle_seconds: u64,
-}
+    max_idle_seconds: u64}
 
 impl ModelCache {
     pub fn new(max_memory_gb: f32, max_idle_seconds: u64) -> Self {
@@ -156,8 +147,7 @@ impl ModelCache {
             cache_misses: CachePadded::new(AtomicU64::new(0)),
             evictions: CachePadded::new(AtomicU64::new(0)),
             max_memory_bytes: (max_memory_gb * 1024.0 * 1024.0 * 1024.0) as u64,
-            max_idle_seconds,
-        }
+            max_idle_seconds}
     }
 
     pub fn get(&self, model_type: SentenceTransformerModel) -> Option<Arc<CachedModel>> {
@@ -287,8 +277,7 @@ impl ModelCache {
 pub struct DeviceManager {
     available_devices: Vec<DeviceCapability>,
     current_device: AtomicU32,
-    device_memory_usage: DashMap<DeviceType, AtomicU64>,
-}
+    device_memory_usage: DashMap<DeviceType, AtomicU64>}
 
 impl DeviceManager {
     pub fn new() -> Result<Self, CandleEmbeddingError> {
@@ -299,8 +288,7 @@ impl DeviceManager {
             device_type: DeviceType::Cpu,
             memory_gb: Self::get_system_memory_gb(),
             compute_capability: None,
-            is_available: true,
-        });
+            is_available: true});
 
         // Detect CUDA
         #[cfg(feature = "cuda")]
@@ -312,8 +300,7 @@ impl DeviceManager {
                         device_type: DeviceType::Cuda,
                         memory_gb,
                         compute_capability: Self::get_cuda_compute_capability(&device),
-                        is_available: true,
-                    });
+                        is_available: true});
                 }
             }
         }
@@ -325,8 +312,7 @@ impl DeviceManager {
                 device_type: DeviceType::Metal,
                 memory_gb: Self::get_metal_memory_gb(),
                 compute_capability: None,
-                is_available: true,
-            });
+                is_available: true});
         }
 
         let device_memory_usage = DashMap::new();
@@ -337,8 +323,7 @@ impl DeviceManager {
         Ok(Self {
             available_devices,
             current_device: AtomicU32::new(DeviceType::Cpu as u32),
-            device_memory_usage,
-        })
+            device_memory_usage})
     }
 
     pub fn get_best_device(&self) -> Result<Device, CandleEmbeddingError> {
@@ -371,8 +356,7 @@ impl DeviceManager {
                 #[cfg(not(feature = "metal"))]
                 DeviceType::Metal => continue,
                 #[cfg(not(feature = "cuda"))]
-                DeviceType::Cuda => continue,
-            }
+                DeviceType::Cuda => continue}
         }
 
         // Fallback to CPU
@@ -407,8 +391,7 @@ impl DeviceManager {
         match device_value {
             1 => DeviceType::Cuda,
             2 => DeviceType::Metal,
-            _ => DeviceType::Cpu,
-        }
+            _ => DeviceType::Cpu}
     }
 
     pub fn get_capabilities(&self) -> &[DeviceCapability] {
@@ -426,8 +409,7 @@ pub struct CandleMetrics {
     pub tokens_processed: CachePadded<AtomicU64>,
     pub inference_latency_sum_ms: CachePadded<AtomicU64>,
     pub inference_count: CachePadded<AtomicU64>,
-    pub memory_usage_bytes: CachePadded<AtomicU64>,
-}
+    pub memory_usage_bytes: CachePadded<AtomicU64>}
 
 impl CandleMetrics {
     pub fn new() -> Self {
@@ -439,8 +421,7 @@ impl CandleMetrics {
             tokens_processed: CachePadded::new(AtomicU64::new(0)),
             inference_latency_sum_ms: CachePadded::new(AtomicU64::new(0)),
             inference_count: CachePadded::new(AtomicU64::new(0)),
-            memory_usage_bytes: CachePadded::new(AtomicU64::new(0)),
-        }
+            memory_usage_bytes: CachePadded::new(AtomicU64::new(0))}
     }
 
     pub fn record_inference(&self, latency_ms: u64, tokens: u32) {
@@ -509,8 +490,7 @@ pub enum CandleEmbeddingError {
     HttpError(String),
     
     #[error("Input too large: {0} tokens, max {1}")]
-    InputTooLarge(usize, usize),
-}
+    InputTooLarge(usize, usize)}
 
 /// Local Candle embedding provider
 #[derive(Debug, Clone)]
@@ -520,8 +500,7 @@ pub struct LocalCandleProvider {
     metrics: Arc<CandleMetrics>,
     default_model: SentenceTransformerModel,
     quantization_enabled: bool,
-    cache_dir: PathBuf,
-}
+    cache_dir: PathBuf}
 
 impl LocalCandleProvider {
     /// Create a new local Candle provider
@@ -549,8 +528,7 @@ impl LocalCandleProvider {
             metrics,
             default_model,
             quantization_enabled,
-            cache_dir,
-        })
+            cache_dir})
     }
 
     /// Load model if not in cache - streaming-first architecture
@@ -600,8 +578,7 @@ impl LocalCandleProvider {
                         ),
                         usage_count: CachePadded::new(AtomicU64::new(0)),
                         memory_size_bytes: memory_size,
-                        quantized: quantization_enabled,
-                    });
+                        quantized: quantization_enabled});
 
                     // Insert into cache
                     if model_cache.insert(model_type, cached_model.clone()).is_ok() {

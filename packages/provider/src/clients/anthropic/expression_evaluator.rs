@@ -3,7 +3,6 @@
 //! Production-ready expression evaluation supporting arithmetic operations,
 //! mathematical functions, constants, and variables with comprehensive error handling.
 
-use std::collections::HashMap;
 use std::f64::consts;
 
 use pest::Parser;
@@ -36,8 +35,7 @@ pub enum ExpressionError {
     Overflow { operation: String },
 
     #[error("Invalid expression: {message}")]
-    InvalidExpression { message: String },
-}
+    InvalidExpression { message: String }}
 
 /// Expression evaluation result
 pub type ExpressionResult<T> = Result<T, ExpressionError>;
@@ -45,15 +43,13 @@ pub type ExpressionResult<T> = Result<T, ExpressionError>;
 /// Variable context for expression evaluation
 #[derive(Debug, Clone, Default)]
 pub struct VariableContext {
-    variables: HashMap<String, f64>,
-}
+    variables: HashMap<String, f64>}
 
 impl VariableContext {
     /// Create new empty variable context
     pub fn new() -> Self {
         Self {
-            variables: HashMap::new(),
-        }
+            variables: HashMap::new()}
     }
 
     /// Set variable value
@@ -79,15 +75,13 @@ impl VariableContext {
 
 /// High-performance expression evaluator with zero-allocation parsing
 pub struct ExpressionEvaluator {
-    context: VariableContext,
-}
+    context: VariableContext}
 
 impl ExpressionEvaluator {
     /// Create new expression evaluator
     pub fn new() -> Self {
         Self {
-            context: VariableContext::new(),
-        }
+            context: VariableContext::new()}
     }
 
     /// Create evaluator with variable context
@@ -101,8 +95,7 @@ impl ExpressionEvaluator {
         let pairs = ExpressionParser::parse(Rule::calculator, expression).map_err(|e| {
             ExpressionError::ParseError {
                 message: format!("Parsing failed: {}", e),
-                position: 0,
-            }
+                position: 0}
         })?;
 
         // Get the main pair
@@ -111,8 +104,7 @@ impl ExpressionEvaluator {
                 .into_iter()
                 .next()
                 .ok_or_else(|| ExpressionError::InvalidExpression {
-                    message: "Empty expression".to_string(),
-                })?;
+                    message: "Empty expression".to_string()})?;
 
         // Check if it's an assignment or just evaluation
         let inner_pair =
@@ -120,8 +112,7 @@ impl ExpressionEvaluator {
                 .into_inner()
                 .next()
                 .ok_or_else(|| ExpressionError::InvalidExpression {
-                    message: "Invalid expression structure".to_string(),
-                })?;
+                    message: "Invalid expression structure".to_string()})?;
 
         if inner_pair.as_rule() == Rule::expression {
             // Simple evaluation
@@ -132,8 +123,7 @@ impl ExpressionEvaluator {
             let var_name = inner_pairs
                 .next()
                 .ok_or_else(|| ExpressionError::InvalidExpression {
-                    message: "Missing variable name in assignment".to_string(),
-                })?
+                    message: "Missing variable name in assignment".to_string()})?
                 .as_str()
                 .to_string();
 
@@ -141,8 +131,7 @@ impl ExpressionEvaluator {
                 inner_pairs
                     .next()
                     .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Missing expression in assignment".to_string(),
-                    })?;
+                        message: "Missing expression in assignment".to_string()})?;
 
             let value = self.evaluate_expression(expr_pair)?;
             self.context.set(var_name, value);
@@ -194,8 +183,7 @@ impl ExpressionEvaluator {
                     pair.into_inner()
                         .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Empty expression".to_string(),
-                        })?;
+                            message: "Empty expression".to_string()})?;
                 self.evaluate_expression(inner)
             }
 
@@ -203,8 +191,7 @@ impl ExpressionEvaluator {
                 let mut inner = pair.into_inner();
                 let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
                     ExpressionError::InvalidExpression {
-                        message: "Missing operand in logical OR".to_string(),
-                    }
+                        message: "Missing operand in logical OR".to_string()}
                 })?)?;
 
                 for expr in inner {
@@ -222,8 +209,7 @@ impl ExpressionEvaluator {
                 let mut inner = pair.into_inner();
                 let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
                     ExpressionError::InvalidExpression {
-                        message: "Missing operand in logical AND".to_string(),
-                    }
+                        message: "Missing operand in logical AND".to_string()}
                 })?)?;
 
                 for expr in inner {
@@ -241,8 +227,7 @@ impl ExpressionEvaluator {
                 let mut inner = pair.into_inner();
                 let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
                     ExpressionError::InvalidExpression {
-                        message: "Missing operand in comparison".to_string(),
-                    }
+                        message: "Missing operand in comparison".to_string()}
                 })?)?;
 
                 let mut inner_iter = inner.peekable();
@@ -250,14 +235,12 @@ impl ExpressionEvaluator {
                     let op = inner_iter
                         .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing operator in comparison expression".to_string(),
-                        })?
+                            message: "Missing operator in comparison expression".to_string()})?
                         .as_str();
                     let right =
                         self.evaluate_expression(inner_iter.next().ok_or_else(|| {
                             ExpressionError::InvalidExpression {
-                                message: "Missing right operand in comparison".to_string(),
-                            }
+                                message: "Missing right operand in comparison".to_string()}
                         })?)?;
 
                     result = match op {
@@ -305,8 +288,7 @@ impl ExpressionEvaluator {
                         }
                         _ => {
                             return Err(ExpressionError::InvalidExpression {
-                                message: format!("Unknown comparison operator: {}", op),
-                            });
+                                message: format!("Unknown comparison operator: {}", op)});
                         }
                     };
                 }
@@ -317,8 +299,7 @@ impl ExpressionEvaluator {
                 let mut inner = pair.into_inner();
                 let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
                     ExpressionError::InvalidExpression {
-                        message: "Missing operand in addition".to_string(),
-                    }
+                        message: "Missing operand in addition".to_string()}
                 })?)?;
 
                 let mut inner_iter = inner.peekable();
@@ -326,14 +307,12 @@ impl ExpressionEvaluator {
                     let op = inner_iter
                         .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing operator in addition expression".to_string(),
-                        })?
+                            message: "Missing operator in addition expression".to_string()})?
                         .as_str();
                     let right =
                         self.evaluate_expression(inner_iter.next().ok_or_else(|| {
                             ExpressionError::InvalidExpression {
-                                message: "Missing right operand in addition".to_string(),
-                            }
+                                message: "Missing right operand in addition".to_string()}
                         })?)?;
 
                     match op {
@@ -341,22 +320,19 @@ impl ExpressionEvaluator {
                             result = result + right;
                             if result.is_infinite() {
                                 return Err(ExpressionError::Overflow {
-                                    operation: "addition".to_string(),
-                                });
+                                    operation: "addition".to_string()});
                             }
                         }
                         "-" => {
                             result = result - right;
                             if result.is_infinite() {
                                 return Err(ExpressionError::Overflow {
-                                    operation: "subtraction".to_string(),
-                                });
+                                    operation: "subtraction".to_string()});
                             }
                         }
                         _ => {
                             return Err(ExpressionError::InvalidExpression {
-                                message: format!("Unknown additive operator: {}", op),
-                            });
+                                message: format!("Unknown additive operator: {}", op)});
                         }
                     }
                 }
@@ -367,8 +343,7 @@ impl ExpressionEvaluator {
                 let mut inner = pair.into_inner();
                 let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
                     ExpressionError::InvalidExpression {
-                        message: "Missing operand in multiplication".to_string(),
-                    }
+                        message: "Missing operand in multiplication".to_string()}
                 })?)?;
 
                 let mut inner_iter = inner.peekable();
@@ -376,14 +351,12 @@ impl ExpressionEvaluator {
                     let op = inner_iter
                         .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing operator in multiplication expression".to_string(),
-                        })?
+                            message: "Missing operator in multiplication expression".to_string()})?
                         .as_str();
                     let right =
                         self.evaluate_expression(inner_iter.next().ok_or_else(|| {
                             ExpressionError::InvalidExpression {
-                                message: "Missing right operand in multiplication".to_string(),
-                            }
+                                message: "Missing right operand in multiplication".to_string()}
                         })?)?;
 
                     match op {
@@ -391,8 +364,7 @@ impl ExpressionEvaluator {
                             result = result * right;
                             if result.is_infinite() {
                                 return Err(ExpressionError::Overflow {
-                                    operation: "multiplication".to_string(),
-                                });
+                                    operation: "multiplication".to_string()});
                             }
                         }
                         "/" => {
@@ -402,8 +374,7 @@ impl ExpressionEvaluator {
                             result = result / right;
                             if result.is_infinite() {
                                 return Err(ExpressionError::Overflow {
-                                    operation: "division".to_string(),
-                                });
+                                    operation: "division".to_string()});
                             }
                         }
                         "%" => {
@@ -414,8 +385,7 @@ impl ExpressionEvaluator {
                         }
                         _ => {
                             return Err(ExpressionError::InvalidExpression {
-                                message: format!("Unknown multiplicative operator: {}", op),
-                            });
+                                message: format!("Unknown multiplicative operator: {}", op)});
                         }
                     }
                 }
@@ -426,8 +396,7 @@ impl ExpressionEvaluator {
                 let mut inner = pair.into_inner();
                 let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
                     ExpressionError::InvalidExpression {
-                        message: "Missing base in power operation".to_string(),
-                    }
+                        message: "Missing base in power operation".to_string()}
                 })?)?;
 
                 // Power is right-associative
@@ -437,8 +406,7 @@ impl ExpressionEvaluator {
                     result = result.powf(exponent);
                     if result.is_infinite() || result.is_nan() {
                         return Err(ExpressionError::Overflow {
-                            operation: "exponentiation".to_string(),
-                        });
+                            operation: "exponentiation".to_string()});
                     }
                 }
                 Ok(result)
@@ -449,21 +417,18 @@ impl ExpressionEvaluator {
                 let first = inner
                     .next()
                     .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Missing operand in unary operation".to_string(),
-                    })?;
+                        message: "Missing operand in unary operation".to_string()})?;
 
                 if first.as_str() == "-" {
                     let operand = self.evaluate_expression(inner.next().ok_or_else(|| {
                         ExpressionError::InvalidExpression {
-                            message: "Missing operand after unary minus".to_string(),
-                        }
+                            message: "Missing operand after unary minus".to_string()}
                     })?)?;
                     Ok(-operand)
                 } else if first.as_str() == "+" {
                     let operand = self.evaluate_expression(inner.next().ok_or_else(|| {
                         ExpressionError::InvalidExpression {
-                            message: "Missing operand after unary plus".to_string(),
-                        }
+                            message: "Missing operand after unary plus".to_string()}
                     })?)?;
                     Ok(operand)
                 } else {
@@ -477,8 +442,7 @@ impl ExpressionEvaluator {
                     pair.into_inner()
                         .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Empty primary expression".to_string(),
-                        })?;
+                            message: "Empty primary expression".to_string()})?;
                 self.evaluate_expression(inner)
             }
 
@@ -487,8 +451,7 @@ impl ExpressionEvaluator {
                 num_str
                     .parse::<f64>()
                     .map_err(|_| ExpressionError::InvalidExpression {
-                        message: format!("Invalid number: {}", num_str),
-                    })
+                        message: format!("Invalid number: {}", num_str)})
             }
 
             Rule::constant => match pair.as_str() {
@@ -496,17 +459,14 @@ impl ExpressionEvaluator {
                 "e" => Ok(consts::E),
                 "tau" => Ok(consts::TAU),
                 name => Err(ExpressionError::InvalidExpression {
-                    message: format!("Unknown constant: {}", name),
-                }),
-            },
+                    message: format!("Unknown constant: {}", name)})},
 
             Rule::variable => {
                 let var_name = pair.as_str();
                 self.context
                     .get(var_name)
                     .ok_or_else(|| ExpressionError::UndefinedVariable {
-                        variable: var_name.to_string(),
-                    })
+                        variable: var_name.to_string()})
             }
 
             Rule::function => {
@@ -514,8 +474,7 @@ impl ExpressionEvaluator {
                 let func_name = inner
                     .next()
                     .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Missing function name".to_string(),
-                    })?
+                        message: "Missing function name".to_string()})?
                     .as_str();
 
                 let args: Result<Vec<f64>, ExpressionError> =
@@ -526,9 +485,7 @@ impl ExpressionEvaluator {
             }
 
             _ => Err(ExpressionError::InvalidExpression {
-                message: format!("Unsupported rule: {:?}", pair.as_rule()),
-            }),
-        }
+                message: format!("Unsupported rule: {:?}", pair.as_rule())})}
     }
 
     /// Evaluate mathematical function
@@ -538,8 +495,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].sin())
             }
@@ -547,8 +503,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].cos())
             }
@@ -556,8 +511,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].tan())
             }
@@ -565,15 +519,13 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 if value < -1.0 || value > 1.0 {
                     return Err(ExpressionError::DomainError {
                         operation: "asin".to_string(),
-                        value,
-                    });
+                        value});
                 }
                 Ok(value.asin())
             }
@@ -581,15 +533,13 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 if value < -1.0 || value > 1.0 {
                     return Err(ExpressionError::DomainError {
                         operation: "acos".to_string(),
-                        value,
-                    });
+                        value});
                 }
                 Ok(value.acos())
             }
@@ -597,8 +547,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].atan())
             }
@@ -606,8 +555,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].sinh())
             }
@@ -615,8 +563,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].cosh())
             }
@@ -624,8 +571,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].tanh())
             }
@@ -633,15 +579,13 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 if value < 0.0 {
                     return Err(ExpressionError::DomainError {
                         operation: "sqrt".to_string(),
-                        value,
-                    });
+                        value});
                 }
                 Ok(value.sqrt())
             }
@@ -649,15 +593,13 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 if value <= 0.0 {
                     return Err(ExpressionError::DomainError {
                         operation: "ln".to_string(),
-                        value,
-                    });
+                        value});
                 }
                 Ok(value.ln())
             }
@@ -665,15 +607,13 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 if value <= 0.0 {
                     return Err(ExpressionError::DomainError {
                         operation: "log10".to_string(),
-                        value,
-                    });
+                        value});
                 }
                 Ok(value.log10())
             }
@@ -681,15 +621,13 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 if value <= 0.0 {
                     return Err(ExpressionError::DomainError {
                         operation: "log2".to_string(),
-                        value,
-                    });
+                        value});
                 }
                 Ok(value.log2())
             }
@@ -697,14 +635,12 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let result = args[0].exp();
                 if result.is_infinite() {
                     return Err(ExpressionError::Overflow {
-                        operation: "exp".to_string(),
-                    });
+                        operation: "exp".to_string()});
                 }
                 Ok(result)
             }
@@ -712,8 +648,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].abs())
             }
@@ -721,8 +656,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].ceil())
             }
@@ -730,8 +664,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].floor())
             }
@@ -739,8 +672,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].round())
             }
@@ -748,8 +680,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 let value = args[0];
                 Ok(if value > 0.0 {
@@ -764,8 +695,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].to_degrees())
             }
@@ -773,8 +703,7 @@ impl ExpressionEvaluator {
                 if args.len() != 1 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].to_radians())
             }
@@ -782,8 +711,7 @@ impl ExpressionEvaluator {
                 if args.len() != 2 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].min(args[1]))
             }
@@ -791,15 +719,12 @@ impl ExpressionEvaluator {
                 if args.len() != 2 {
                     return Err(ExpressionError::InvalidFunctionCall {
                         function: name.to_string(),
-                        arg_count: args.len(),
-                    });
+                        arg_count: args.len()});
                 }
                 Ok(args[0].max(args[1]))
             }
             _ => Err(ExpressionError::InvalidExpression {
-                message: format!("Unknown function: {}", name),
-            }),
-        }
+                message: format!("Unknown function: {}", name)})}
     }
 }
 
@@ -826,9 +751,7 @@ pub fn evaluate_expression_with_vars(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use super::*;
+        use super::*;
 
     #[test]
     fn test_basic_arithmetic() {

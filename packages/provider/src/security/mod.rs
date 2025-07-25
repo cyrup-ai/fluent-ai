@@ -41,8 +41,7 @@ pub enum SecurityError {
     ValidationError { message: String },
 
     #[error("Access denied: {reason}")]
-    AccessDenied { reason: String },
-}
+    AccessDenied { reason: String }}
 
 /// Result type for security operations
 pub type SecurityResult<T> = Result<T, SecurityError>;

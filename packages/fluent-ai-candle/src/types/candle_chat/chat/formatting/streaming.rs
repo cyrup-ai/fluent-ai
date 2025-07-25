@@ -14,36 +14,31 @@ use super::options::ImmutableFormatOptions;
 /// Formatting event for streaming operations
 #[derive(Debug, Clone)]
 pub enum FormattingEvent {
+
     /// Formatting started
     Started {
         content_id: u64,
         content_type: String,
-        timestamp_nanos: u64,
-    },
+        timestamp_nanos: u64},
     /// Formatting progress
     Progress {
         content_id: u64,
         progress_percent: f32,
-        stage: String,
-    },
+        stage: String},
     /// Formatting completed
     Completed {
         content_id: u64,
         result: ImmutableMessageContent,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     /// Formatting failed
     Failed {
         content_id: u64,
         error: FormatError,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     /// Partial result available
     PartialResult {
         content_id: u64,
-        partial_content: String,
-    },
-}
+        partial_content: String}}
 
 /// Streaming message formatter with atomic state tracking
 pub struct StreamingMessageFormatter {
@@ -60,8 +55,7 @@ pub struct StreamingMessageFormatter {
     /// Event stream sender
     event_sender: Option<AsyncStreamSender<FormattingEvent>>,
     /// Formatter configuration
-    options: ImmutableFormatOptions,
-}
+    options: ImmutableFormatOptions}
 
 impl std::fmt::Debug for StreamingMessageFormatter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -114,8 +108,7 @@ impl StreamingMessageFormatter {
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
             event_sender: None,
-            options,
-        })
+            options})
     }
 
     /// Create formatter with event streaming
@@ -134,8 +127,7 @@ impl StreamingMessageFormatter {
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
             event_sender: None, // Will be set up separately if needed
-            options,
-        };
+            options};
         Ok((formatter, stream))
     }
 
@@ -157,8 +149,7 @@ impl StreamingMessageFormatter {
             let _ = sender.send(FormattingEvent::Started {
                 content_id,
                 content_type: content.content_type().to_string(),
-                timestamp_nanos: Self::current_timestamp_nanos(),
-            });
+                timestamp_nanos: Self::current_timestamp_nanos()});
         }
 
         // TODO: Implement actual formatting logic here
@@ -183,8 +174,7 @@ impl StreamingMessageFormatter {
             active_operations: self.active_operations.load(Ordering::Relaxed) as u64,
             total_operations: self.total_operations.load(Ordering::Relaxed),
             successful_operations: self.successful_operations.load(Ordering::Relaxed),
-            failed_operations: self.failed_operations.load(Ordering::Relaxed),
-        }
+            failed_operations: self.failed_operations.load(Ordering::Relaxed)}
     }
 
     /// Get formatter options (borrowed reference)
@@ -200,6 +190,30 @@ impl StreamingMessageFormatter {
         self.options = options;
         Ok(())
     }
+    
+    /// Get color scheme from options
+    #[inline]
+    pub fn color_scheme(&self) -> &super::themes::ImmutableColorScheme {
+        self.options.color_scheme()
+    }
+    
+    /// Get format rules from options
+    #[inline]
+    pub fn format_rules(&self) -> &[super::styles::ImmutableCustomFormatRule] {
+        self.options.format_rules()
+    }
+    
+    /// Get syntax theme
+    #[inline]
+    pub fn syntax_theme(&self) -> super::themes::SyntaxTheme {
+        self.options.syntax_theme()
+    }
+    
+    /// Get output format
+    #[inline]
+    pub fn output_format(&self) -> super::themes::OutputFormat {
+        self.options.output_format()
+    }
 }
 
 /// Formatter statistics
@@ -208,8 +222,7 @@ pub struct FormatterStats {
     pub active_operations: u64,
     pub total_operations: u64,
     pub successful_operations: u64,
-    pub failed_operations: u64,
-}
+    pub failed_operations: u64}
 
 impl FormatterStats {
     /// Calculate success rate as percentage
@@ -233,3 +246,16 @@ impl FormatterStats {
 /// Legacy compatibility alias for StreamingMessageFormatter
 #[deprecated(note = "Use StreamingMessageFormatter instead for zero-allocation streaming")]
 pub type MessageFormatter = StreamingMessageFormatter;
+
+// Explicit Send + Sync implementations for thread safety
+// Send + Sync are automatically derived since all fields implement Send + Sync
+
+// FormattingEvent is Send + Sync safe because:
+// - All fields are either primitives, strings, or error types
+// - ImmutableMessageContent is designed to be thread-safe
+// - FormatError is Send + Sync
+
+// StreamingMessageFormatter is Send + Sync safe because:
+// - Uses atomic operations for all counters
+// - AsyncStreamSender is designed to be thread-safe
+// - ImmutableFormatOptions uses only owned data

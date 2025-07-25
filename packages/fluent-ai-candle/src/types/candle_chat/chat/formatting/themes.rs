@@ -25,8 +25,7 @@ pub enum SyntaxTheme {
     /// VS Code theme
     VSCode,
     /// Custom theme
-    Custom,
-}
+    Custom}
 
 impl SyntaxTheme {
     /// Get theme name as static string (zero allocation)
@@ -40,14 +39,19 @@ impl SyntaxTheme {
             Self::SolarizedDark => "solarized-dark",
             Self::GitHub => "github",
             Self::VSCode => "vscode",
-            Self::Custom => "custom",
-        }
+            Self::Custom => "custom"}
     }
 
     /// Check if theme is dark
     #[inline]
     pub fn is_dark(&self) -> bool {
         matches!(self, Self::Dark | Self::SolarizedDark)
+    }
+}
+
+impl Default for SyntaxTheme {
+    fn default() -> Self {
+        Self::Light
     }
 }
 
@@ -69,8 +73,7 @@ pub struct ImmutableColorScheme {
     /// Success color
     pub success: String,
     /// Link color
-    pub link: String,
-}
+    pub link: String}
 
 impl ImmutableColorScheme {
     /// Create new color scheme with validation
@@ -93,8 +96,7 @@ impl ImmutableColorScheme {
             error,
             warning,
             success,
-            link,
-        };
+            link};
         scheme.validate()?;
         Ok(scheme)
     }
@@ -116,8 +118,7 @@ impl ImmutableColorScheme {
         for color in &colors {
             if !Self::is_valid_color(color) {
                 return Err(FormatError::ConfigurationError {
-                    detail: format!("Invalid color format: {}", color),
-                });
+                    detail: format!("Invalid color format: {}", color)});
             }
         }
         Ok(())
@@ -144,8 +145,7 @@ impl Default for ImmutableColorScheme {
             error: "#cc0000".to_string(),
             warning: "#ff9900".to_string(),
             success: "#00cc00".to_string(),
-            link: "#0066cc".to_string(),
-        }
+            link: "#0066cc".to_string()}
     }
 }
 
@@ -163,8 +163,7 @@ pub enum OutputFormat {
     /// Rich text format
     RichText,
     /// LaTeX output
-    LaTeX,
-}
+    LaTeX}
 
 impl OutputFormat {
     /// Get format name as static string (zero allocation)
@@ -176,8 +175,7 @@ impl OutputFormat {
             Self::Markdown => "markdown",
             Self::AnsiTerminal => "ansi-terminal",
             Self::RichText => "rich-text",
-            Self::LaTeX => "latex",
-        }
+            Self::LaTeX => "latex"}
     }
 
     /// Check if format supports styling

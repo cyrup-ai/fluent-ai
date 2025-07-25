@@ -26,7 +26,7 @@ use fluent_ai_domain::tool::Tool;
 use fluent_ai_domain::usage::Usage;
 
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use serde_json::{Map, Value};
 use std::sync::Arc;
@@ -93,8 +93,7 @@ pub struct CohereCompletionBuilder {
     search_queries: Vec<String>,
     
     /// Documents for grounded generation (Cohere-specific)
-    documents: Vec<CohereDocument>,
-}
+    documents: Vec<CohereDocument>}
 
 /// Cohere document structure for grounded generation
 #[derive(Debug, Clone)]
@@ -102,8 +101,7 @@ pub struct CohereDocument {
     pub id: String,
     pub title: Option<String>,
     pub snippet: String,
-    pub url: Option<String>,
-}
+    pub url: Option<String>}
 
 impl CohereCompletionBuilder {
     /// Create new Cohere completion builder with model validation
@@ -144,8 +142,7 @@ impl CohereCompletionBuilder {
             timeout: Duration::from_secs(30),
             citations: false,
             search_queries: Vec::new(),
-            documents: Vec::new(),
-        })
+            documents: Vec::new()})
     }
     
     /// Set system prompt/message
@@ -468,8 +465,7 @@ impl CohereCompletionBuilder {
                 setting: ArrayString::from("http_request").unwrap_or_default(),
                 reason: ArrayString::from(&e.to_string()).unwrap_or_default(),
                 current_value: ArrayString::new(),
-                valid_range: None,
-            })?
+                valid_range: None})?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(self.timeout);
         
@@ -525,16 +521,14 @@ impl CohereCompletionBuilder {
             Some(Usage {
                 prompt_tokens: input_tokens,
                 completion_tokens: output_tokens,
-                total_tokens: input_tokens + output_tokens,
-            })
+                total_tokens: input_tokens + output_tokens})
         });
         
         Ok(CompletionResponse {
             content: text.to_string(),
             finish_reason,
             usage,
-            model: Some(self.model.to_string()),
-        })
+            model: Some(self.model.to_string())})
     }
     
     /// Execute streaming completion request
@@ -554,8 +548,7 @@ impl CohereCompletionBuilder {
                     setting: ArrayString::from("http_request").unwrap_or_default(),
                     reason: ArrayString::from(&e.to_string()).unwrap_or_default(),
                     current_value: ArrayString::new(),
-                    valid_range: None,
-                }
+                    valid_range: None}
             })?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(self.timeout);
@@ -589,8 +582,7 @@ impl CompletionProvider for CohereCompletionBuilder {
             content: prompt.to_string(),
             name: None,
             tool_calls: None,
-            tool_call_id: None,
-        }];
+            tool_call_id: None}];
         
         let builder = self.clone();
         
@@ -603,8 +595,7 @@ impl CompletionProvider for CohereCompletionBuilder {
                         finish_reason: Some("error".to_string()),
                         usage: None,
                         model: Some(builder.model.to_string()),
-                        delta: None,
-                    };
+                        delta: None};
                     AsyncStream::from_single(error_chunk)
                 }
             }

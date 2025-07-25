@@ -42,8 +42,7 @@ pub mod priorities {
 pub mod presets {
     use super::{
         CompositeProcessor, RepetitionPenaltyProcessor, TemperatureProcessor, TopKProcessor,
-        TopPProcessor,
-    };
+        TopPProcessor};
     use crate::processing::{ProcessingResult, traits::LogitsProcessor};
 
     /// Create standard text generation processor chain

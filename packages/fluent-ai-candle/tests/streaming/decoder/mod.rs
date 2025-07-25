@@ -3,8 +3,7 @@
 use fluent_ai_candle::streaming::decoder::{
     decode_codepoint, expected_sequence_length, is_ascii, is_continuation_byte, is_valid_start_byte,
     validate_ascii, validate_utf8_sequence, DecoderConfig, DecoderError, DecoderState, DecoderStats,
-    StreamingDecoder,
-};
+    StreamingDecoder};
 
 #[test]
 fn test_decoder_stats() {

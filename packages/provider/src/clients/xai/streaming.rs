@@ -1,7 +1,5 @@
 use fluent_ai_domain::completion::CompletionRequest;
 use serde_json::json;
-use std::collections::HashMap;
-
 use super::completion::CompletionModel;
 use crate::clients::openai;
 use crate::completion_provider::CompletionError;

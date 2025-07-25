@@ -6,8 +6,7 @@ use crate::clients::openai::send_compatible_streaming_request;
 use crate::streaming::StreamingCompletionResponse;
 use crate::{
     completion::{CompletionError, CompletionRequest},
-    json_util::merge,
-};
+    json_util::merge};
 
 impl CompletionModel {
     pub(crate) async fn stream(

@@ -195,12 +195,12 @@ unsafe fn neon_softmax(logits: &[f32]) -> SimdResult<Vec<f32>> {
     let mut maxv = vdupq_n_f32(f32::NEG_INFINITY);
     let mut i = 0;
     while i + 4 <= len {
-        let v = vld1q_f32(logits.as_ptr().add(i));
+        let v = unsafe { vld1q_f32(logits.as_ptr().add(i)) };
         maxv = vmaxq_f32(maxv, v);
         i += 4;
     }
     let mut max_arr = [f32::NEG_INFINITY; 4];
-    vst1q_f32(max_arr.as_mut_ptr(), maxv);
+    unsafe { vst1q_f32(max_arr.as_mut_ptr(), maxv) };
     let mut max_scalar = max_arr.iter().fold(f32::NEG_INFINITY, |acc, &x| acc.max(x));
     for &v in &logits[i..] {
         max_scalar = max_scalar.max(v);
@@ -211,7 +211,7 @@ unsafe fn neon_softmax(logits: &[f32]) -> SimdResult<Vec<f32>> {
     let mut result = vec![0.0f32; len];
     i = 0;
     while i + 4 <= len {
-        let v = vld1q_f32(logits.as_ptr().add(i));
+        let v = unsafe { vld1q_f32(logits.as_ptr().add(i)) };
         let shifted = vsubq_f32(v, max_b);
 
         // Fast exp approximation for NEON
@@ -223,10 +223,10 @@ unsafe fn neon_softmax(logits: &[f32]) -> SimdResult<Vec<f32>> {
         let exp_shift = vshlq_n_s32(exp_i, 23);
         let exp_f = vcvtq_f32_s32(exp_shift);
 
-        vst1q_f32(result.as_mut_ptr().add(i), exp_f);
+        unsafe { vst1q_f32(result.as_mut_ptr().add(i), exp_f) };
         let chunk_sum = {
             let mut arr = [0.0; 4];
-            vst1q_f32(arr.as_mut_ptr(), exp_f);
+            unsafe { vst1q_f32(arr.as_mut_ptr(), exp_f) };
             arr.iter().sum::<f32>()
         };
         sum += chunk_sum;
@@ -243,9 +243,9 @@ unsafe fn neon_softmax(logits: &[f32]) -> SimdResult<Vec<f32>> {
     let inv_sum_b = vdupq_n_f32(inv_sum);
     i = 0;
     while i + 4 <= len {
-        let v = vld1q_f32(result.as_ptr().add(i));
+        let v = unsafe { vld1q_f32(result.as_ptr().add(i)) };
         let norm = vmulq_f32(v, inv_sum_b);
-        vst1q_f32(result.as_mut_ptr().add(i), norm);
+        unsafe { vst1q_f32(result.as_mut_ptr().add(i), norm) };
         i += 4;
     }
     for j in i..len {
@@ -280,8 +280,7 @@ fn create_softmax_dispatch() -> SoftmaxDispatch {
         #[cfg(not(target_arch = "aarch64"))]
         neon: None,
 
-        scalar: scalar_softmax,
-    }
+        scalar: scalar_softmax}
 }
 
 /// Compute softmax over logits using the best available SIMD implementation

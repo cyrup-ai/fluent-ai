@@ -29,8 +29,7 @@ pub struct BedrockClient {
     /// AWS SigV4 request signer with hot-swappable credentials
     signer: Arc<SigV4Signer>,
     /// AWS region for API endpoints
-    region: String,
-}
+    region: String}
 
 impl BedrockClient {
     /// Create new Bedrock client with AWS credentials
@@ -48,8 +47,7 @@ impl BedrockClient {
         Ok(Self {
             http_client,
             signer,
-            region,
-        })
+            region})
     }
 
     /// Create Bedrock client with session token (for temporary credentials)
@@ -77,8 +75,7 @@ impl BedrockClient {
         Ok(Self {
             http_client,
             signer,
-            region,
-        })
+            region})
     }
 
     /// Update AWS credentials with zero downtime
@@ -252,8 +249,7 @@ impl ProviderClient for BedrockClient {
                     // Signature generation successful - credentials are valid format
                     Ok(())
                 }
-                Err(e) => Err(format!("Bedrock connection test failed: {}", e).into()),
-            }
+                Err(e) => Err(format!("Bedrock connection test failed: {}", e).into())}
         })
     }
 }

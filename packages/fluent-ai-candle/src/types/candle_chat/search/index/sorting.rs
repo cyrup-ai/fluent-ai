@@ -3,7 +3,6 @@
 //! Contains algorithms for sorting search results by different criteria
 //! including relevance, date, and user.
 
-use std::sync::Arc;
 
 use super::core::ChatSearchIndex;
 use super::super::types::{SearchResult, SortOrder};
@@ -22,29 +21,27 @@ impl ChatSearchIndex {
             SortOrder::DateDescending => {
                 results.sort_by(|a, b| {
                     b.message
-                        .message
                         .timestamp
-                        .cmp(&a.message.message.timestamp)
+                        .cmp(&a.message.timestamp)
                 });
             }
             SortOrder::DateAscending => {
                 results.sort_by(|a, b| {
                     a.message
-                        .message
                         .timestamp
-                        .cmp(&b.message.message.timestamp)
+                        .cmp(&b.message.timestamp)
                 });
             }
             SortOrder::UserAscending => {
                 results.sort_by(|a, b| {
-                    format!("{:?}", a.message.message.role)
-                        .cmp(&format!("{:?}", b.message.message.role))
+                    format!("{:?}", a.message.role)
+                        .cmp(&format!("{:?}", b.message.role))
                 });
             }
             SortOrder::UserDescending => {
                 results.sort_by(|a, b| {
-                    format!("{:?}", b.message.message.role)
-                        .cmp(&format!("{:?}", a.message.message.role))
+                    format!("{:?}", b.message.role)
+                        .cmp(&format!("{:?}", a.message.role))
                 });
             }
         }

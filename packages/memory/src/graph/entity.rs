@@ -4,7 +4,6 @@
 //! to graph nodes, with support for attributes, validation, and serialization.
 //! All operations are synchronous and thread-safe for maximum performance.
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::thread;
@@ -52,8 +51,7 @@ pub trait Entity: Send + Sync + Debug {
 pub struct BaseEntity {
     id: String,
     entity_type: String,
-    attributes: HashMap<String, Value>,
-}
+    attributes: HashMap<String, Value>}
 
 impl BaseEntity {
     /// Create a new base entity
@@ -61,8 +59,7 @@ impl BaseEntity {
         Self {
             id,
             entity_type,
-            attributes: HashMap::new(),
-        }
+            attributes: HashMap::new()}
     }
 
     /// Create with pre-allocated capacity for attributes
@@ -70,8 +67,7 @@ impl BaseEntity {
         Self {
             id,
             entity_type,
-            attributes: HashMap::with_capacity(capacity),
-        }
+            attributes: HashMap::with_capacity(capacity)}
     }
 
     /// Get memory usage in bytes (approximate)
@@ -167,8 +163,7 @@ impl Entity for BaseEntity {
         Node {
             id: Some(self.id.clone()),
             properties,
-            labels: vec![self.entity_type.clone()],
-        }
+            labels: vec![self.entity_type.clone()]}
     }
 
     fn from_node(node: Node) -> Result<Self> {
@@ -177,8 +172,7 @@ impl Entity for BaseEntity {
             .get("id")
             .and_then(|v| match v {
                 Value::Strand(s) => Some(s.as_str().to_string()),
-                _ => None,
-            })
+                _ => None})
             .ok_or_else(|| GraphError::ValidationError("Node missing ID".to_string()))?;
 
         let entity_type = node
@@ -186,8 +180,7 @@ impl Entity for BaseEntity {
             .get("entity_type")
             .and_then(|v| match v {
                 Value::Strand(s) => Some(s.as_str().to_string()),
-                _ => None,
-            })
+                _ => None})
             .ok_or_else(|| GraphError::ValidationError("Node missing entity_type".to_string()))?;
 
         let mut attributes = node.properties;
@@ -197,8 +190,7 @@ impl Entity for BaseEntity {
         Ok(Self {
             id,
             entity_type,
-            attributes,
-        })
+            attributes})
     }
 }
 
@@ -347,8 +339,7 @@ pub struct SurrealEntityRepository<E: Entity + Clone + 'static> {
     db: Arc<dyn GraphDatabase>,
     table_name: String,
     validator: Option<EntityValidatorFn>,
-    _phantom: std::marker::PhantomData<E>,
-}
+    _phantom: std::marker::PhantomData<E>}
 
 impl<E: Entity + Clone + 'static> SurrealEntityRepository<E> {
     /// Create a new SurrealDB entity repository
@@ -364,8 +355,7 @@ impl<E: Entity + Clone + 'static> SurrealEntityRepository<E> {
             db,
             table_name,
             validator: None,
-            _phantom: std::marker::PhantomData,
-        }
+            _phantom: std::marker::PhantomData}
     }
 
     /// Create with custom validation
@@ -386,8 +376,7 @@ impl<E: Entity + Clone + 'static> SurrealEntityRepository<E> {
             db,
             table_name,
             validator: Some(validator),
-            _phantom: std::marker::PhantomData,
-        }
+            _phantom: std::marker::PhantomData}
     }
 
     /// Set or update the validator function

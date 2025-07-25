@@ -80,19 +80,23 @@ pub use model::{
 };
 
 pub use core::{
-    ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig,
+    ChatConfig, PersonalityConfig, IntegrationConfig,
     LanguageHandlingConfig, DisplayConfig, ApiIntegrationConfig, PluginConfig
 };
 
+pub use config_core::{
+    BehaviorConfig, UIConfig
+};
+
 pub use events::{
-    ConfigurationChangeEvent, ConfigurationChangeType, ConfigurationValidationError,
-    ConfigurationValidationResult, ConfigurationPersistence, BackupConfig, EncryptionConfig,
+    ConfigurationChangeEvent, ConfigurationChangeType,
+    ConfigurationPersistence, BackupConfig, EncryptionConfig,
     ErrorSeverity
 };
 
 pub use validation::{
-    ConfigurationValidator, PersonalityValidator, BehaviorValidator, 
-    UIValidator, IntegrationValidator
+    ConfigurationValidationError, ConfigurationValidationResult, ConfigurationValidator,
+    PersonalityValidator, BehaviorValidator, UIValidator, IntegrationValidator
 };
 
 pub use manager::{
@@ -117,39 +121,43 @@ pub fn create_manager_with_config(config: ChatConfig) -> ConfigurationManager {
 }
 
 /// Validate a configuration using all available validators
-pub fn validate_configuration(config: &ChatConfig) -> ConfigurationValidationResult {
-    let mut all_errors = Vec::new();
+pub fn validate_configuration(config: &ChatConfig) -> ConfigurationValidationResult<()> {
+    use std::sync::Arc;
+    let mut all_errors: Vec<ConfigurationValidationError> = Vec::new();
 
     // Use individual validators
     let model_validator = ModelValidator;
-    if let Err(errors) = model_validator.validate(&config.model) {
-        all_errors.extend(errors);
+    if let Err(error) = model_validator.validate(&config.model) {
+        all_errors.push(ConfigurationValidationError::SchemaValidation { 
+            detail: Arc::from(error) 
+        });
     }
 
     let personality_validator = PersonalityValidator;
-    if let Err(errors) = personality_validator.validate(&config.personality) {
-        all_errors.extend(errors);
+    if let Err(error) = personality_validator.validate(config) {
+        all_errors.push(error);
     }
 
     let behavior_validator = BehaviorValidator;
-    if let Err(errors) = behavior_validator.validate(&config.behavior) {
-        all_errors.extend(errors);
+    if let Err(error) = behavior_validator.validate(config) {
+        all_errors.push(error);
     }
 
     let ui_validator = UIValidator;
-    if let Err(errors) = ui_validator.validate(&config.ui) {
-        all_errors.extend(errors);
+    if let Err(error) = ui_validator.validate(config) {
+        all_errors.push(error);
     }
 
     let integration_validator = IntegrationValidator;
-    if let Err(errors) = integration_validator.validate(&config.integrations) {
-        all_errors.extend(errors);
+    if let Err(error) = integration_validator.validate(config) {
+        all_errors.push(error);
     }
 
     if all_errors.is_empty() {
         Ok(())
     } else {
-        Err(all_errors)
+        // Return the first error to match ConfigurationValidationResult<()>
+        Err(all_errors.into_iter().next().unwrap())
     }
 }
 

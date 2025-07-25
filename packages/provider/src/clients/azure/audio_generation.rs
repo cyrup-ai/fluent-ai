@@ -13,11 +13,9 @@ use serde_json::json;
 use super::client::Client;
 use crate::{
     audio_generation::{
-        self, AudioGenerationError, AudioGenerationRequest, AudioGenerationResponse,
-    },
+        self, AudioGenerationError, AudioGenerationRequest, AudioGenerationResponse},
     client::AudioGenerationClient,
-    runtime::{self, AsyncTask},
-};
+    runtime::{self, AsyncTask}};
 
 // ───────────────────────────── provider model ────────────────────────────
 // AudioGenerationModel is now imported from fluent_ai_domain::model
@@ -27,8 +25,7 @@ impl AudioGenerationModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -57,8 +54,7 @@ impl AudioGenerationModel {
             "model": self.model,
             "input": request.text,
             "voice": request.voice,
-            "speed": request.speed,
-        });
+            "speed": request.speed});
 
         let response = self
             .client
@@ -79,8 +75,7 @@ impl AudioGenerationModel {
 
         Ok(AudioGenerationResponse {
             audio: bytes.to_vec(),
-            response: bytes,
-        })
+            response: bytes})
     }
 }
 

@@ -62,26 +62,22 @@ pub use types::{
     MacroAction, MacroRecordingState, MacroPlaybackState, MacroExecutionContext,
     LoopContext, MacroRecordingSession, MacroPlaybackSession, StoredMacro,
     MacroMetadata, MacroExecutionResult, MacroPlaybackResult, ActionExecutionResult,
-    ConditionType, TriggerCondition, MacroSystemConfig, MacroSystemError,
-};
+    ConditionType, TriggerCondition, MacroSystemConfig, MacroSystemError};
 
 // Re-export parser types and functionality
 pub use parser::{
     MacroParser, MacroParserConfig, ParseResult, ParseError, ParseErrorType,
-    ParseWarning, ParseWarningType, ParsedExpression, BinaryOperator, UnaryOperator,
-};
+    ParseWarning, ParseWarningType, ParsedExpression, BinaryOperator, UnaryOperator};
 
 // Re-export context management functionality
 pub use context::{
     MacroContextManager, ContextConfig, VariableChangeListener,
-    VariableResolutionResult, ContextEvaluator,
-};
+    VariableResolutionResult, ContextEvaluator};
 
 // Re-export execution engine functionality
 pub use execution::{
     MacroExecutionEngine, ExecutionConfig, ExecutionSession, ExecutionState,
-    ExecutionTask, TaskPriority, ExecutionTraceEntry, ExecutionStatistics,
-};
+    ExecutionTask, TaskPriority, ExecutionTraceEntry, ExecutionStatistics};
 
 // Re-export action processing functionality
 pub use actions::{
@@ -90,8 +86,10 @@ pub use actions::{
     QueuedMessage, MessagePriority, CommandActionProcessor, CommandProcessorConfig,
     CommandProcessorStats, CommandExecution, CommandExecutionResult,
     VariableActionProcessor, VariableProcessorConfig, VariableProcessorStats,
-    VariableChange,
-};
+    VariableChange};
+
+// Re-export system functionality
+pub use system::MacroSystem;
 
 // Convenience type aliases for common usage patterns
 pub type MacroHandler = Box<dyn Fn(&MacroAction, &mut MacroExecutionContext) -> Result<ActionExecutionResult, MacroSystemError> + Send + Sync>;
@@ -112,8 +110,7 @@ pub fn create_configured_environment(
     parser_config: MacroParserConfig,
 ) -> (MacroExecutionEngine, ActionHandlerRegistry, MacroParser) {
     let engine = MacroExecutionEngine::with_config(execution_config);
-    let mut handlers = ActionHandlerRegistry::new();
-    handlers.config = handler_config;
+    let handlers = ActionHandlerRegistry::with_config(handler_config);
     let parser = MacroParser::with_config(parser_config);
     
     (engine, handlers, parser)
@@ -181,8 +178,7 @@ fn validate_action_timestamps(actions: &[MacroAction]) -> Result<(), MacroSystem
             MacroAction::Wait { timestamp, .. } => *timestamp,
             MacroAction::SetVariable { timestamp, .. } => *timestamp,
             MacroAction::Conditional { timestamp, .. } => *timestamp,
-            MacroAction::Loop { timestamp, .. } => *timestamp,
-        };
+            MacroAction::Loop { timestamp, .. } => *timestamp};
 
         if timestamp < last_timestamp {
             return Err(MacroSystemError::InvalidMacro(
@@ -208,8 +204,7 @@ pub fn version_info() -> MacroVersionInfo {
             "variable-substitution".to_string(),
             "condition-evaluation".to_string(),
             "action-handlers".to_string(),
-        ],
-    }
+        ]}
 }
 
 /// Version information for the macro system
@@ -220,14 +215,12 @@ pub struct MacroVersionInfo {
     /// Build date
     pub build_date: String,
     /// Available features
-    pub features: Vec<String>,
-}
+    pub features: Vec<String>}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::sync::Arc;
+        use std::sync::Arc;
     use std::time::{Duration, Instant};
 
     #[test]
@@ -238,20 +231,23 @@ mod tests {
                 name: Arc::from("Test Macro"),
                 description: None,
                 tags: vec![],
-                created_at: Instant::now(),
-                modified_at: Instant::now(),
+                created_at: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                modified_at: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
                 author: None,
-                version: 1,
-            },
+                version: 1},
             actions: Arc::from([
                 MacroAction::SendMessage {
                     content: Arc::from("Hello"),
                     message_type: Arc::from("text"),
-                    timestamp: Duration::from_millis(0),
-                }
+                    timestamp: Duration::from_millis(0)}
             ]),
-            variables: HashMap::new(),
-        };
+            variables: HashMap::new()};
 
         assert!(validate_macro(&valid_macro).is_ok());
     }

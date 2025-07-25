@@ -7,10 +7,10 @@
 //! - SIMD-optimized batch operations for maximum throughput
 
 use std::sync::atomic::{AtomicU64, Ordering};
-
 use arrayvec::ArrayVec;
+
 use candle_core::Tensor;
-use smallvec::SmallVec;
+// Removed unused import: SmallVec
 
 use crate::error::{CandleError, CandleResult as Result};
 use super::config::KVCacheConfig;
@@ -78,8 +78,7 @@ pub struct KVCache {
     created_at_nanos: u64,
 
     /// Generation counter for ordering
-    generation: AtomicU64,
-}
+    generation: AtomicU64}
 
 impl KVCache {
     /// Create new KV cache with configuration
@@ -115,8 +114,7 @@ impl KVCache {
             stats: CacheStats::new(),
             eviction: EvictionManager::new(eviction_strategy),
             created_at_nanos: Self::current_time_nanos(),
-            generation: AtomicU64::new(0),
-        })
+            generation: AtomicU64::new(0)})
     }
 
     /// Store key-value pair for specific head and position
@@ -428,8 +426,7 @@ pub struct KVCacheEntry {
     /// Entry metadata (bit-packed)
     /// Bits 0-31: Access count
     /// Bits 32-63: Generation/timestamp
-    metadata: u64,
-}
+    metadata: u64}
 
 impl KVCacheEntry {
     /// Create new cache entry
@@ -503,16 +500,14 @@ impl KVCacheEntry {
 #[repr(C, align(32))]
 pub struct HeadTable {
     /// Sequence position to entry index mapping
-    entries: ArrayVec<(u32, usize), MAX_CACHE_ENTRIES_PER_HEAD>,
-}
+    entries: ArrayVec<(u32, usize), MAX_CACHE_ENTRIES_PER_HEAD>}
 
 impl HeadTable {
     /// Create new head table
     #[inline(always)]
     pub fn new() -> Self {
         Self {
-            entries: ArrayVec::new(),
-        }
+            entries: ArrayVec::new()}
     }
 
     /// Add entry mapping

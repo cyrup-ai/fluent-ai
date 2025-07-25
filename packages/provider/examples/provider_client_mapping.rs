@@ -31,11 +31,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Test connection (will fail with fake key but demonstrates the pattern)
             match client.test_connection().await {
                 Ok(()) => println!("✅ Connection test passed"),
-                Err(e) => println!("❌ Connection test failed (expected with fake key): {}", e),
-            }
+                Err(e) => println!("❌ Connection test failed (expected with fake key): {}", e)}
         }
-        Err(e) => println!("❌ Failed to create OpenAI client: {}", e),
-    }
+        Err(e) => println!("❌ Failed to create OpenAI client: {}", e)}
 
     // Create Anthropic client
     let anthropic_config = ClientConfig {
@@ -52,11 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Test connection (will fail with fake key but demonstrates the pattern)
             match client.test_connection().await {
                 Ok(()) => println!("✅ Connection test passed"),
-                Err(e) => println!("❌ Connection test failed (expected with fake key): {}", e),
-            }
+                Err(e) => println!("❌ Connection test failed (expected with fake key): {}", e)}
         }
-        Err(e) => println!("❌ Failed to create Anthropic client: {}", e),
-    }
+        Err(e) => println!("❌ Failed to create Anthropic client: {}", e)}
 
     println!("\n📋 Example 2: Environment Variable Configuration");
     println!("-----------------------------------------------");
@@ -121,8 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 client.get_models().await.unwrap_or_default()
             );
         }
-        Err(e) => println!("❌ OpenAI client creation failed: {}", e),
-    }
+        Err(e) => println!("❌ OpenAI client creation failed: {}", e)}
 
     // Direct Anthropic client creation
     match Providers::anthropic_client("sk-ant-test-key".to_string()).await {
@@ -134,8 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 client.get_models().await.unwrap_or_default()
             );
         }
-        Err(e) => println!("❌ Anthropic client creation failed: {}", e),
-    }
+        Err(e) => println!("❌ Anthropic client creation failed: {}", e)}
 
     // Client creation from name with config
     let config = ClientConfig {
@@ -148,8 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("✅ Client created from name 'openai'");
             println!("   Provider: {}", client.provider_name());
         }
-        Err(e) => println!("❌ Client creation from name failed: {}", e),
-    }
+        Err(e) => println!("❌ Client creation from name failed: {}", e)}
 
     println!("\n📋 Example 5: Unified Client Interface");
     println!("-------------------------------------");

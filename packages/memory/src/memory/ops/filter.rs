@@ -1,7 +1,5 @@
 //! Memory filtering functionality
 
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -41,8 +39,7 @@ pub struct MemoryFilter {
     pub sort_by: Option<String>,
 
     /// Sort in descending order
-    pub sort_descending: bool,
-}
+    pub sort_descending: bool}
 
 /// Time range for filtering
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,8 +48,7 @@ pub struct TimeRange {
     pub start: Option<DateTime<Utc>>,
 
     /// End time (exclusive)
-    pub end: Option<DateTime<Utc>>,
-}
+    pub end: Option<DateTime<Utc>>}
 
 impl MemoryFilter {
     /// Create a new empty filter
@@ -190,15 +186,13 @@ impl MemoryFilter {
 
 /// Builder for complex memory filters
 pub struct MemoryFilterBuilder {
-    filter: MemoryFilter,
-}
+    filter: MemoryFilter}
 
 impl MemoryFilterBuilder {
     /// Create a new filter builder
     pub fn new() -> Self {
         Self {
-            filter: MemoryFilter::new(),
-        }
+            filter: MemoryFilter::new()}
     }
 
     /// Build the filter

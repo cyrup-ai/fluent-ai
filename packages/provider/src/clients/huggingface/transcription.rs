@@ -3,8 +3,6 @@ use base64::prelude::BASE64_STANDARD;
 // TranscriptionModel does not exist in domain - removed
 use serde::Deserialize;
 use serde_json::json;
-use std::collections::HashMap;
-
 use super::client::HuggingFaceClient as Client;
 use super::completion::ApiResponse;
 use crate::transcription;
@@ -17,8 +15,7 @@ pub const WHISPER_SMALL: &str = "openai/whisper-small";
 
 #[derive(Debug, Deserialize)]
 pub struct TranscriptionResponse {
-    pub text: String,
-}
+    pub text: String}
 
 impl TryFrom<TranscriptionResponse>
     for transcription::TranscriptionResponse<TranscriptionResponse>
@@ -28,8 +25,7 @@ impl TryFrom<TranscriptionResponse>
     fn try_from(value: TranscriptionResponse) -> Result<Self, Self::Error> {
         Ok(transcription::TranscriptionResponse {
             text: value.text.clone(),
-            response: value,
-        })
+            response: value})
     }
 }
 
@@ -40,15 +36,13 @@ impl TryFrom<TranscriptionResponse>
 #[derive(Debug, Clone)]
 pub struct HuggingFaceTranscriptionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl TranscriptionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 impl transcription::TranscriptionModel for TranscriptionModel {

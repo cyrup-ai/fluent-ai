@@ -10,15 +10,13 @@ use crate::core::ChannelError;
 /// A multi-producer, single-consumer channel for sending values between tasks
 pub struct Channel<T> {
     sender: mpsc::Sender<T>,
-    receiver: Arc<Mutex<mpsc::Receiver<T>>>,
-}
+    receiver: Arc<Mutex<mpsc::Receiver<T>>>}
 
 impl<T> Clone for Channel<T> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
-            receiver: self.receiver.clone(),
-        }
+            receiver: self.receiver.clone()}
     }
 }
 
@@ -28,8 +26,7 @@ impl<T: Send + 'static> Channel<T> {
         let (sender, receiver) = mpsc::channel(buffer);
         Self {
             sender,
-            receiver: Arc::new(Mutex::new(receiver)),
-        }
+            receiver: Arc::new(Mutex::new(receiver))}
     }
 
     /// Send a value into the channel
@@ -68,8 +65,7 @@ impl<T: Send + 'static> Channel<T> {
 /// A oneshot channel for sending a single value between tasks
 pub struct OneshotChannel<T> {
     sender: oneshot::Sender<T>,
-    receiver: oneshot::Receiver<T>,
-}
+    receiver: oneshot::Receiver<T>}
 
 impl<T> OneshotChannel<T> {
     /// Create a new oneshot channel

@@ -64,8 +64,7 @@ pub struct QualityDataPoint {
     /// Processing latency in milliseconds
     pub latency_ms: u64,
     /// Quality assessment score (0.0 - 1.0)
-    pub quality_score: f32,
-}
+    pub quality_score: f32}
 
 /// Ring buffer for efficient rolling window statistics
 #[derive(Debug)]
@@ -74,8 +73,7 @@ pub struct RingBuffer<T> {
     head: AtomicUsize,
     tail: AtomicUsize,
     size: AtomicUsize,
-    capacity: usize,
-}
+    capacity: usize}
 
 impl<T: Clone> RingBuffer<T> {
     pub fn new(capacity: usize) -> Self {
@@ -84,8 +82,7 @@ impl<T: Clone> RingBuffer<T> {
             head: AtomicUsize::new(0),
             tail: AtomicUsize::new(0),
             size: AtomicUsize::new(0),
-            capacity,
-        }
+            capacity}
     }
 
     /// Push new item, potentially overwriting oldest
@@ -153,8 +150,7 @@ pub struct StatisticalSummary {
     pub max: f64,
     pub median: f64,
     pub p95: f64,
-    pub p99: f64,
-}
+    pub p99: f64}
 
 impl StatisticalSummary {
     pub fn from_values(values: &[f64]) -> Self {
@@ -185,8 +181,7 @@ impl StatisticalSummary {
             max,
             median,
             p95,
-            p99,
-        }
+            p99}
     }
 
     fn percentile(sorted_values: &[f64], p: f64) -> f64 {
@@ -205,8 +200,7 @@ impl Default for StatisticalSummary {
             max: 0.0,
             median: 0.0,
             p95: 0.0,
-            p99: 0.0,
-        }
+            p99: 0.0}
     }
 }
 
@@ -219,8 +213,7 @@ pub struct ProviderPerformanceMetrics {
     pub consistency_score: f64,
     pub reliability_score: f64,
     pub last_updated: u64,
-    pub sample_count: u64,
-}
+    pub sample_count: u64}
 
 /// Outlier detection using z-score analysis
 #[derive(Debug)]
@@ -230,16 +223,14 @@ pub struct OutlierDetector {
     /// Rolling statistics for z-score calculation
     rolling_stats: Arc<RwLock<VecDeque<f64>>>,
     /// Window size for statistics
-    window_size: usize,
-}
+    window_size: usize}
 
 impl OutlierDetector {
     pub fn new(z_threshold: f64, window_size: usize) -> Self {
         Self {
             z_threshold,
             rolling_stats: Arc::new(RwLock::new(VecDeque::with_capacity(window_size))),
-            window_size,
-        }
+            window_size}
     }
 
     /// Check if value is an outlier and update statistics
@@ -304,8 +295,7 @@ pub struct QualityAnalyzer {
     quality_watch: watch::Sender<f64>,
     quality_receiver: watch::Receiver<f64>,
     /// Analysis metrics
-    analysis_metrics: Arc<QualityAnalysisMetrics>,
-}
+    analysis_metrics: Arc<QualityAnalysisMetrics>}
 
 #[derive(Debug)]
 pub struct QualityAnalysisMetrics {
@@ -315,8 +305,7 @@ pub struct QualityAnalysisMetrics {
     pub consistency_failures: CachePadded<AtomicU64>,
     pub coherence_calculations: CachePadded<AtomicU64>,
     pub simd_operations: CachePadded<AtomicU64>,
-    pub analysis_time_total_ms: CachePadded<AtomicU64>,
-}
+    pub analysis_time_total_ms: CachePadded<AtomicU64>}
 
 impl QualityAnalysisMetrics {
     pub fn new() -> Self {
@@ -327,8 +316,7 @@ impl QualityAnalysisMetrics {
             consistency_failures: CachePadded::new(AtomicU64::new(0)),
             coherence_calculations: CachePadded::new(AtomicU64::new(0)),
             simd_operations: CachePadded::new(AtomicU64::new(0)),
-            analysis_time_total_ms: CachePadded::new(AtomicU64::new(0)),
-        }
+            analysis_time_total_ms: CachePadded::new(AtomicU64::new(0))}
     }
 }
 
@@ -351,8 +339,7 @@ pub enum QualityAnalysisError {
     StatisticalAnalysisFailed { error: String },
 
     #[error("Provider not found: {provider}")]
-    ProviderNotFound { provider: String },
-}
+    ProviderNotFound { provider: String }}
 
 impl QualityAnalyzer {
     /// Create new quality analyzer
@@ -370,8 +357,7 @@ impl QualityAnalyzer {
             consistency_outlier_detector: OutlierDetector::new(3.0, 50), // 3 sigma threshold
             quality_watch,
             quality_receiver,
-            analysis_metrics: Arc::new(QualityAnalysisMetrics::new()),
-        })
+            analysis_metrics: Arc::new(QualityAnalysisMetrics::new())})
     }
 
     /// Perform comprehensive quality assessment of an embedding
@@ -431,8 +417,7 @@ impl QualityAnalyzer {
             std_deviation,
             coherence_score,
             latency_ms: processing_latency_ms,
-            quality_score,
-        };
+            quality_score};
 
         // Check for outliers
         self.detect_outliers(&data_point).await;
@@ -479,8 +464,7 @@ impl QualityAnalyzer {
                 .fetch_add(1, Ordering::Relaxed);
             return Err(QualityAnalysisError::InvalidDimension {
                 expected: expected_dims,
-                actual: embedding.len(),
-            });
+                actual: embedding.len()});
         }
 
         Ok(())
@@ -534,8 +518,7 @@ impl QualityAnalyzer {
     ) -> Result<f32, QualityAnalysisError> {
         if embedding1.len() != embedding2.len() {
             return Err(QualityAnalysisError::InvalidValues {
-                reason: "Embedding dimension mismatch for similarity calculation".to_string(),
-            });
+                reason: "Embedding dimension mismatch for similarity calculation".to_string()});
         }
 
         self.analysis_metrics
@@ -598,9 +581,7 @@ impl QualityAnalyzer {
                 Ok(coherence_score.min(1.0).max(0.0))
             }
             Err(e) => Err(QualityAnalysisError::CoherenceCalculationFailed {
-                error: e.to_string(),
-            }),
-        }
+                error: e.to_string()})}
     }
 
     /// Convert embedding to quantum state representation
@@ -711,8 +692,7 @@ impl QualityAnalyzer {
                     consistency_score: data_point.quality_score as f64,
                     reliability_score: 0.95, // Default
                     last_updated: data_point.timestamp,
-                    sample_count: 1,
-                }
+                    sample_count: 1}
             });
     }
 

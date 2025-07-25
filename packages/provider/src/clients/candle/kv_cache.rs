@@ -3,11 +3,9 @@
 //! This module provides memory-efficient key-value caching for transformer models
 //! with zero-allocation patterns, cache-aligned data structures, and atomic operations.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use arrayvec::ArrayVec;
 use crossbeam::atomic::AtomicCell;
 use smallvec::SmallVec;
 
@@ -34,8 +32,7 @@ pub struct AlignedKvData {
     /// Sequence length this data represents
     sequence_length: u32,
     /// Attention head dimension
-    head_dim: u32,
-}
+    head_dim: u32}
 
 impl AlignedKvData {
     /// Create new aligned KV data
@@ -46,8 +43,7 @@ impl AlignedKvData {
             keys: SmallVec::with_capacity(capacity),
             values: SmallVec::with_capacity(capacity),
             sequence_length,
-            head_dim,
-        }
+            head_dim}
     }
 
     /// Create with pre-allocated data
@@ -61,8 +57,7 @@ impl AlignedKvData {
             keys,
             values,
             sequence_length,
-            head_dim,
-        }
+            head_dim}
     }
 
     /// Get key data
@@ -154,8 +149,7 @@ pub struct LayerCache {
     /// Cached KV data per batch element
     batch_cache: ArcSwap<ArrayVec<AlignedKvData, MAX_BATCH_SIZE>>,
     /// Cache statistics for this layer
-    stats: LayerCacheStats,
-}
+    stats: LayerCacheStats}
 
 /// Statistics for monitoring layer cache performance
 #[derive(Debug)]
@@ -169,8 +163,7 @@ struct LayerCacheStats {
     /// Number of cache evictions
     evictions: AtomicCell<u64>,
     /// Peak memory usage
-    peak_memory_bytes: AtomicCell<u64>,
-}
+    peak_memory_bytes: AtomicCell<u64>}
 
 impl Default for LayerCacheStats {
     fn default() -> Self {
@@ -179,8 +172,7 @@ impl Default for LayerCacheStats {
             cache_misses: AtomicCell::new(0),
             total_memory_bytes: AtomicCell::new(0),
             evictions: AtomicCell::new(0),
-            peak_memory_bytes: AtomicCell::new(0),
-        }
+            peak_memory_bytes: AtomicCell::new(0)}
     }
 }
 
@@ -192,8 +184,7 @@ impl LayerCache {
             num_heads,
             head_dim,
             batch_cache: ArcSwap::from_pointee(ArrayVec::new()),
-            stats: LayerCacheStats::default(),
-        }
+            stats: LayerCacheStats::default()}
     }
 
     /// Get cached KV data for a batch element
@@ -343,8 +334,7 @@ impl LayerCache {
             },
             total_memory_bytes: self.stats.total_memory_bytes.load(),
             peak_memory_bytes: self.stats.peak_memory_bytes.load(),
-            evictions: self.stats.evictions.load(),
-        }
+            evictions: self.stats.evictions.load()}
     }
 }
 
@@ -368,8 +358,7 @@ pub struct ModelCacheConfig {
     /// Enable automatic cache eviction
     pub enable_eviction: bool,
     /// Cache eviction threshold (fraction of memory limit)
-    pub eviction_threshold: f32,
-}
+    pub eviction_threshold: f32}
 
 impl ModelCacheConfig {
     /// Create cache configuration for a specific model
@@ -399,8 +388,7 @@ impl ModelCacheConfig {
             CandleModel::Devstral_22B => 32768,
             CandleModel::CodeLlama_7B => 16384,
             CandleModel::Mistral_7B | CandleModel::Gemma_2B | CandleModel::Gemma_7B => 8192,
-            _ => 4096,
-        };
+            _ => 4096};
 
         Self {
             model,
@@ -500,8 +488,7 @@ pub struct ModelKvCache {
     /// Global cache statistics
     global_stats: GlobalCacheStats,
     /// Memory pressure monitoring
-    memory_pressure: AtomicCell<MemoryPressure>,
-}
+    memory_pressure: AtomicCell<MemoryPressure>}
 
 /// Memory pressure levels for adaptive cache management
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -513,8 +500,7 @@ pub enum MemoryPressure {
     /// Near memory limit, aggressive eviction needed
     High,
     /// Memory limit exceeded, emergency eviction
-    Critical,
-}
+    Critical}
 
 impl Default for MemoryPressure {
     fn default() -> Self {
@@ -534,8 +520,7 @@ struct GlobalCacheStats {
     /// Total cache misses across all layers
     total_misses: AtomicCell<u64>,
     /// Number of automatic evictions
-    automatic_evictions: AtomicCell<u64>,
-}
+    automatic_evictions: AtomicCell<u64>}
 
 impl Default for GlobalCacheStats {
     fn default() -> Self {
@@ -544,8 +529,7 @@ impl Default for GlobalCacheStats {
             total_operations: AtomicCell::new(0),
             total_hits: AtomicCell::new(0),
             total_misses: AtomicCell::new(0),
-            automatic_evictions: AtomicCell::new(0),
-        }
+            automatic_evictions: AtomicCell::new(0)}
     }
 }
 
@@ -573,8 +557,7 @@ impl ModelKvCache {
             config,
             layer_caches,
             global_stats: GlobalCacheStats::default(),
-            memory_pressure: AtomicCell::new(MemoryPressure::Low),
-        })
+            memory_pressure: AtomicCell::new(MemoryPressure::Low)})
     }
 
     /// Get KV data for a specific layer and batch element
@@ -797,8 +780,7 @@ impl ModelKvCache {
             },
             total_operations: self.global_stats.total_operations.load(),
             automatic_evictions: self.global_stats.automatic_evictions.load(),
-            memory_pressure: self.memory_pressure.load(),
-        }
+            memory_pressure: self.memory_pressure.load()}
     }
 }
 
@@ -818,8 +800,7 @@ pub struct LayerCacheStatistics {
     /// Peak memory usage in bytes
     pub peak_memory_bytes: u64,
     /// Number of evictions
-    pub evictions: u64,
-}
+    pub evictions: u64}
 
 /// Comprehensive KV cache statistics
 #[derive(Debug, Clone)]
@@ -839,8 +820,7 @@ pub struct KvCacheStatistics {
     /// Number of automatic evictions
     pub automatic_evictions: u64,
     /// Current memory pressure level
-    pub memory_pressure: MemoryPressure,
-}
+    pub memory_pressure: MemoryPressure}
 
 impl KvCacheStatistics {
     /// Calculate average hit rate across all layers

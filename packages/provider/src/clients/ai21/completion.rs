@@ -14,17 +14,11 @@
 //! - Parameter validation with model-specific optimizations
 //! - Circuit breaker integration and performance monitoring
 
-// Import centralized HTTP structs - no more local JSON building!
-use fluent_ai_http_structs::{
-    ai21::{
-        AI21ChatRequest, AI21Message, AI21Content, 
-        AI21StreamingChunk, AI21ResponseMessage, AI21Choice,
-        AI21ChatResponse, AI21Usage, AI21Tool, AI21Function
-    },
-    common::{HttpUtils, AuthMethod, Provider, HttpHeaders, ContentTypes},
-    errors::{HttpStructError, HttpStructResult},
-    builders::{HttpRequestBuilder, ChatBuilder, Http3Builders},
-    validation::{ValidateRequest, ValidationResult},
+// Use local AI21 request/response types
+use super::types::{
+    AI21ChatRequest, AI21Message, AI21Content, 
+    AI21StreamingChunk, AI21ResponseMessage, AI21Choice,
+    AI21ChatResponse, AI21Usage, AI21Tool, AI21Function
 };
 
 use crate::completion_provider::{CompletionProvider, CompletionError, CompletionResponse, StreamingResponse};
@@ -42,7 +36,7 @@ use fluent_ai_domain::tool::Tool;
 use fluent_ai_domain::usage::Usage;
 
 use arc_swap::Guard;
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use serde_json::{Map, Value};
 use std::sync::Arc;
@@ -106,8 +100,7 @@ pub struct AI21CompletionBuilder {
     logit_bias: Option<Map<String, Value>>,
     
     /// User identifier for tracking
-    user: Option<String>,
-}
+    user: Option<String>}
 
 impl AI21CompletionBuilder {
     /// Create new AI21 completion builder with model validation
@@ -147,8 +140,7 @@ impl AI21CompletionBuilder {
             timeout: Duration::from_secs(30),
             n: None,
             logit_bias: None,
-            user: None,
-        })
+            user: None})
     }
     
     /// Set system prompt/message
@@ -300,8 +292,7 @@ impl AI21CompletionBuilder {
                 Role::User => "user",
                 Role::Assistant => "assistant", 
                 Role::System => "system",
-                Role::Tool => "tool",
-            };
+                Role::Tool => "tool"};
             chat_builder = chat_builder.add_text_message(role_str, &message.content);
         }
 
@@ -311,8 +302,7 @@ impl AI21CompletionBuilder {
                 Role::User => "user",
                 Role::Assistant => "assistant",
                 Role::System => "system", 
-                Role::Tool => "tool",
-            };
+                Role::Tool => "tool"};
             chat_builder = chat_builder.add_text_message(role_str, &message.content);
         }
 
@@ -373,15 +363,13 @@ impl AI21CompletionBuilder {
         if !self.tools.is_empty() && models::supports_tools(self.model) {
             let mut ai21_tools = arrayvec::ArrayVec::new();
             for tool in self.tools.iter() {
-                if ai21_tools.len() < fluent_ai_http_structs::MAX_TOOLS {
+                if ai21_tools.len() < crate::MAX_TOOLS {
                     let ai21_tool = AI21Tool {
                         tool_type: "function",
                         function: AI21Function {
                             name: &tool.name,
                             description: tool.description.as_deref().unwrap_or(""),
-                            parameters: &tool.parameters,
-                        },
-                    };
+                            parameters: &tool.parameters}};
                     let _ = ai21_tools.push(ai21_tool);
                 }
             }
@@ -512,15 +500,13 @@ impl AI21CompletionBuilder {
         let usage = ai21_response.usage.map(|u| Usage {
             prompt_tokens: u.prompt_tokens,
             completion_tokens: u.completion_tokens,
-            total_tokens: u.total_tokens,
-        });
+            total_tokens: u.total_tokens});
         
         Ok(CompletionResponse {
             content: content.to_string(),
             finish_reason,
             usage,
-            model: Some(self.model.to_string()),
-        })
+            model: Some(self.model.to_string())})
     }
     
     /// Execute streaming completion request
@@ -575,8 +561,7 @@ impl CompletionProvider for AI21CompletionBuilder {
             content: prompt.to_string(),
             name: None,
             tool_calls: None,
-            tool_call_id: None,
-        }];
+            tool_call_id: None}];
         
         let builder = self.clone();
         
@@ -589,8 +574,7 @@ impl CompletionProvider for AI21CompletionBuilder {
                         finish_reason: Some("error".to_string()),
                         usage: None,
                         model: Some(builder.model.to_string()),
-                        delta: None,
-                    };
+                        delta: None};
                     AsyncStream::from_single(error_chunk)
                 }
             }

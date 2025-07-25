@@ -4,8 +4,7 @@ use super::AsyncStream;
 
 /// Builder that emits AsyncStream after handling Result
 pub struct EmitterBuilder<T> {
-    inner: Box<dyn EmitterImpl<T>>,
-}
+    inner: Box<dyn EmitterImpl<T>>}
 
 /// Hidden trait for implementation - NO async/Future usage!
 pub trait EmitterImpl<T>: Send {
@@ -35,8 +34,7 @@ impl<T: Send + 'static> EmitterBuilder<T> {
                     }
                 }
             }
-            Err(e) => on_err(e),
-        });
+            Err(e) => on_err(e)});
 
         stream
     }

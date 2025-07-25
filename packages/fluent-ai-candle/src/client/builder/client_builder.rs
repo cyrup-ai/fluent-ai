@@ -9,16 +9,14 @@ use crate::generator::GenerationConfig;
 
 /// Builder for CandleCompletionClient
 pub struct CandleClientBuilder {
-    config: CandleClientConfig,
-}
+    config: CandleClientConfig}
 
 impl CandleClientBuilder {
     /// Create a new client builder
     #[inline(always)]
     pub fn new() -> Self {
         Self {
-            config: CandleClientConfig::default(),
-        }
+            config: CandleClientConfig::default()}
     }
 
     /// Set model path

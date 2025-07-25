@@ -17,7 +17,7 @@ use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use fluent_ai_domain::AsyncTask;
 use fluent_ai_domain::model::ModelInfo;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
@@ -67,8 +67,7 @@ pub struct OpenAIMetrics {
     /// Audio requests
     pub audio_requests: AtomicU64,
     /// Vision requests
-    pub vision_requests: AtomicU64,
-}
+    pub vision_requests: AtomicU64}
 
 /// Global metrics instance
 static METRICS: LazyLock<OpenAIMetrics> = LazyLock::new(|| OpenAIMetrics {
@@ -81,8 +80,7 @@ static METRICS: LazyLock<OpenAIMetrics> = LazyLock::new(|| OpenAIMetrics {
     chat_completion_requests: AtomicU64::new(0),
     embedding_requests: AtomicU64::new(0),
     audio_requests: AtomicU64::new(0),
-    vision_requests: AtomicU64::new(0),
-});
+    vision_requests: AtomicU64::new(0)});
 
 /// Circuit breaker for fault tolerance
 #[derive(Debug)]
@@ -100,15 +98,13 @@ pub struct CircuitBreaker {
 pub enum CircuitBreakerState {
     Closed = 0,
     Open = 1,
-    HalfOpen = 2,
-}
+    HalfOpen = 2}
 
 /// Request timer for performance monitoring
 pub struct RequestTimer {
     start_time: Instant,
     metrics: &'static OpenAIMetrics,
-    endpoint: EndpointType,
-}
+    endpoint: EndpointType}
 
 /// OpenAI client with zero allocation multi-endpoint architecture
 #[derive(Clone)]
@@ -129,8 +125,7 @@ pub struct OpenAIClient {
     timeout: Duration,
 
     /// Maximum retry attempts
-    max_retries: u32,
-}
+    max_retries: u32}
 
 impl CircuitBreaker {
     /// Create new circuit breaker
@@ -141,8 +136,7 @@ impl CircuitBreaker {
             failure_threshold,
             timeout,
             last_failure_time: ArcSwap::from_pointee(None),
-            state: AtomicU32::new(CircuitBreakerState::Closed as u32),
-        }
+            state: AtomicU32::new(CircuitBreakerState::Closed as u32)}
     }
 
     /// Check if request is allowed
@@ -171,8 +165,7 @@ impl CircuitBreaker {
                     true
                 }
             }
-            CircuitBreakerState::HalfOpen => true,
-        }
+            CircuitBreakerState::HalfOpen => true}
     }
 
     /// Record successful request
@@ -212,8 +205,7 @@ impl CircuitBreaker {
             0 => CircuitBreakerState::Closed,
             1 => CircuitBreakerState::Open,
             2 => CircuitBreakerState::HalfOpen,
-            _ => CircuitBreakerState::Closed,
-        }
+            _ => CircuitBreakerState::Closed}
     }
 }
 
@@ -248,8 +240,7 @@ impl RequestTimer {
         Self {
             start_time: Instant::now(),
             metrics,
-            endpoint,
-        }
+            endpoint}
     }
 
     /// Finish timing with success
@@ -334,8 +325,7 @@ impl OpenAIClient {
             http_client: &HTTP_CLIENT,
             circuit_breaker: &CIRCUIT_BREAKER,
             timeout: Duration::from_secs(config::DEFAULT_TIMEOUT_SECS),
-            max_retries: config::MAX_RETRIES,
-        })
+            max_retries: config::MAX_RETRIES})
     }
 
     /// Update API key with zero downtime using hot-swapping
@@ -509,8 +499,7 @@ impl OpenAIClient {
             supports_vision: models::supports_vision(model),
             supports_audio: models::supports_audio(model),
             temperature_range: models::temperature_range(model),
-            pricing_tier: utils::pricing_tier(model),
-        })
+            pricing_tier: utils::pricing_tier(model)})
     }
 
     /// Build authentication headers with zero allocation
@@ -555,8 +544,7 @@ impl OpenAIClient {
             EndpointType::Models => endpoints::MODELS,
             EndpointType::Files => endpoints::FILES,
             EndpointType::FineTuning => endpoints::FINE_TUNING,
-            EndpointType::Moderations => endpoints::MODERATIONS,
-        }
+            EndpointType::Moderations => endpoints::MODERATIONS}
     }
 
     /// Test connection to OpenAI API
@@ -637,8 +625,7 @@ impl OpenAIClient {
             chat_completion_requests: METRICS.chat_completion_requests.load(Ordering::Relaxed),
             embedding_requests: METRICS.embedding_requests.load(Ordering::Relaxed),
             audio_requests: METRICS.audio_requests.load(Ordering::Relaxed),
-            vision_requests: METRICS.vision_requests.load(Ordering::Relaxed),
-        }
+            vision_requests: METRICS.vision_requests.load(Ordering::Relaxed)}
     }
 
     /// Reset performance metrics
@@ -674,8 +661,7 @@ pub struct PerformanceMetrics {
     pub chat_completion_requests: u64,
     pub embedding_requests: u64,
     pub audio_requests: u64,
-    pub vision_requests: u64,
-}
+    pub vision_requests: u64}
 
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for OpenAIClient {
@@ -868,8 +854,7 @@ impl OpenAIClient {
                 "openai",
                 new_api_key.clone(),
                 crate::security::CredentialSource::Runtime {
-                    origin: "manual_update".to_string(),
-                },
+                    origin: "manual_update".to_string()},
             )
             .await
             .map_err(|e| {

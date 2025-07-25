@@ -27,15 +27,13 @@ use crossbeam_utils::CachePadded;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemoryConfig {
     pub database_url: String,
-    pub embedding_dimension: usize,
-}
+    pub embedding_dimension: usize}
 
 impl Default for MemoryConfig {
     fn default() -> Self {
         Self {
             database_url: "memory://localhost:8000".to_string(),
-            embedding_dimension: 768,
-        }
+            embedding_dimension: 768}
     }
 }
 
@@ -44,8 +42,7 @@ pub trait MemoryManagerTrait: Send + Sync {
 }
 
 pub struct SurrealDBMemoryManager {
-    _stub: (),
-}
+    _stub: ()}
 
 // Removed unused import: parking_lot::Mutex
 // Removed unused import: smallvec::SmallVec
@@ -59,7 +56,6 @@ use crate::memory::primitives::MemoryNode;
 use crate::memory::primitives::node::MemoryNodeMetadata;
 use crate::memory::primitives::types::MemoryContent;
 // Removed unused import: super::types_legacy::MemoryType
-use crate::memory::primitives::types::MemoryError;
 
 /// Memory stub that provides safe fallback for synchronous contexts
 ///
@@ -78,8 +74,7 @@ pub struct MemoryStub {
     /// Creation timestamp
     pub timestamp: std::time::SystemTime,
     /// Configuration
-    pub config: MemoryConfig,
-}
+    pub config: MemoryConfig}
 
 impl MemoryStub {
     /// Create new memory stub with minimal configuration
@@ -105,8 +100,7 @@ impl MemoryStub {
             embedding: None,
             metadata: std::collections::HashMap::new(),
             timestamp: now,
-            config,
-        }
+            config}
     }
 
     /// Convert to Memory instance asynchronously
@@ -328,8 +322,7 @@ pub struct Memory {
     /// Access count tracker
     pub access_count: AtomicU64,
     /// Last accessed timestamp
-    pub last_accessed: std::time::SystemTime,
-}
+    pub last_accessed: std::time::SystemTime}
 
 impl Clone for Memory {
     fn clone(&self) -> Self {
@@ -343,8 +336,7 @@ impl Clone for Memory {
             tags: self.tags.clone(),
             importance: self.importance,
             access_count: AtomicU64::new(self.access_count.load(Ordering::Relaxed)),
-            last_accessed: self.last_accessed,
-        }
+            last_accessed: self.last_accessed}
     }
 }
 
@@ -404,8 +396,7 @@ impl Memory {
                 tags: Vec::new(),
                 importance: 0.5,
                 access_count: AtomicU64::new(0),
-                last_accessed: current_time,
-            };
+                last_accessed: current_time};
             let _ = sender.send(memory_instance);
         })
     }

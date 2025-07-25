@@ -1,7 +1,6 @@
 pub mod builder;
 pub mod fluent_engine;
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use builder::*;
@@ -28,24 +27,21 @@ pub trait Engine: Send + Sync {
 pub struct CompletionResponse {
     pub text: String,
     pub usage: Option<Usage>,
-    pub model: String,
-}
+    pub model: String}
 
 /// Usage statistics for completion
 #[derive(Debug, Clone)]
 pub struct Usage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 /// Extraction configuration for structured data
 #[derive(Debug, Clone)]
 pub struct ExtractionConfig {
     pub schema: serde_json::Value,
     pub model: String,
-    pub temperature: f64,
-}
+    pub temperature: f64}
 
 /// Agent trait for engine operations
 pub trait Agent: Send + Sync {
@@ -59,14 +55,12 @@ static mut DEFAULT_ENGINE: Option<String> = None;
 
 /// Engine registry for managing multiple engines
 pub struct EngineRegistry {
-    engines: HashMap<String, Arc<dyn Engine>>,
-}
+    engines: HashMap<String, Arc<dyn Engine>>}
 
 impl EngineRegistry {
     pub fn new() -> Self {
         Self {
-            engines: HashMap::new(),
-        }
+            engines: HashMap::new()}
     }
 
     pub fn register<E: Engine + 'static>(&mut self, name: String, engine: E) {

@@ -30,34 +30,27 @@ pub use batch::{BatchConfig, BatchProcessor, BatchResult, EmbeddingBatch};
 pub use builder::*;
 pub use cognitive_embedder::{
     CognitiveEmbedder, CognitiveEmbedderConfig, CognitiveEmbedderPerformanceMetrics,
-    CoherenceTracker, Complex64, QuantumMemory, QuantumRouterTrait, SuperpositionState,
-};
+    CoherenceTracker, Complex64, QuantumMemory, QuantumRouterTrait, SuperpositionState};
 pub use distance::*;
 pub use embed::*;
 pub use embedding::*;
 pub use image::{
     CLIPEmbeddingModel, ImageData, ImageEmbeddingConfig, ImageEmbeddingModel, ImageEmbeddingResult,
-    ImageFormat,
-};
+    ImageFormat};
 pub use metrics::{
     AlertConfig, AlertSeverity, GlobalMetrics, LatencyHistogram, PerformanceAlert,
     PerformanceMetric, PerformanceMonitor, QualityAnalysisError, QualityAnalysisMetrics,
-    QualityAnalyzer, QualityDataPoint,
-};
+    QualityAnalyzer, QualityDataPoint};
 pub use normalization::{
-    NormalizationMethod, apply_normalization, l1_norm, l2_norm, max_norm, normalize_vector,
-};
+    NormalizationMethod, apply_normalization, l1_norm, l2_norm, max_norm, normalize_vector};
 pub use providers::{
     CognitiveEmbeddingProvider, CognitivePerformanceMetrics, CohereEmbeddingProvider,
     EmbeddingConfig, EmbeddingError, EnhancedEmbeddingModel, OpenAIEmbeddingProvider, QueryIntent,
-    cohere_from_env, openai_from_env,
-};
+    cohere_from_env, openai_from_env};
 pub use resilience::{
     CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitBreakerRegistry,
-    CircuitState, CircuitStateChange, ErrorCategory, FailureType,
-};
+    CircuitState, CircuitStateChange, ErrorCategory, FailureType};
 pub use similarity::{
     BatchSimilarityComputer, SimilarityConfig, SimilarityMetric, SimilarityResult,
-    cosine_similarity, euclidean_distance, manhattan_distance,
-};
+    cosine_similarity, euclidean_distance, manhattan_distance};
 pub use tool::*;

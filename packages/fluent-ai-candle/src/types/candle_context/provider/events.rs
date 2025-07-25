@@ -12,62 +12,52 @@ pub enum ContextEvent {
     ProviderStarted {
         provider_type: String,
         provider_id: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     ProviderStopped {
         provider_type: String,
         provider_id: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Operation events
     ContextLoadStarted {
         context_type: String,
         source: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     ContextLoadCompleted {
         context_type: String,
         source: String,
         documents_loaded: usize,
         duration_nanos: u64,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     ContextLoadFailed {
         context_type: String,
         source: String,
         error: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Memory integration events
     MemoryCreated {
         memory_id: String,
         content_hash: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     MemorySearchCompleted {
         query: String,
         results_count: usize,
         duration_nanos: u64,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Performance events
     PerformanceThresholdBreached {
         metric: String,
         threshold: f64,
         actual: f64,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Validation events
     ValidationFailed {
         validation_type: String,
         error: String,
-        timestamp: SystemTime,
-    },
-}
+        timestamp: SystemTime}}
 
 impl ContextEvent {
     /// Get event timestamp
@@ -81,8 +71,7 @@ impl ContextEvent {
             ContextEvent::MemoryCreated { timestamp, .. } => *timestamp,
             ContextEvent::MemorySearchCompleted { timestamp, .. } => *timestamp,
             ContextEvent::PerformanceThresholdBreached { timestamp, .. } => *timestamp,
-            ContextEvent::ValidationFailed { timestamp, .. } => *timestamp,
-        }
+            ContextEvent::ValidationFailed { timestamp, .. } => *timestamp}
     }
 
     /// Get event type as string
@@ -96,7 +85,6 @@ impl ContextEvent {
             ContextEvent::MemoryCreated { .. } => "memory_created",
             ContextEvent::MemorySearchCompleted { .. } => "memory_search_completed",
             ContextEvent::PerformanceThresholdBreached { .. } => "performance_threshold_breached",
-            ContextEvent::ValidationFailed { .. } => "validation_failed",
-        }
+            ContextEvent::ValidationFailed { .. } => "validation_failed"}
     }
 }

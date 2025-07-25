@@ -4,8 +4,7 @@ use crate::{
     config::{FileSystem, RamdiskConfig},
     error::StorageError,
     platform::RamdiskPlatform,
-    sandbox::safe_path_to_string,
-};
+    sandbox::safe_path_to_string};
 
 /// Implements ramdisk functionality for macOS systems using hdiutil and diskutil
 pub struct MacosRamdisk;
@@ -46,8 +45,7 @@ impl MacosRamdisk {
     fn format_disk(&self, device: &str, config: &RamdiskConfig) -> Result<(), StorageError> {
         let fs_type = match config.filesystem {
             FileSystem::APFS => "APFS",
-            FileSystem::HFSPlus => "HFS+",
-        };
+            FileSystem::HFSPlus => "HFS+"};
 
         let output = Command::new("diskutil")
             .args(["erasevolume", fs_type, &config.volume_name, device])

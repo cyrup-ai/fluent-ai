@@ -8,8 +8,7 @@ use fluent_ai_domain::model::{ModelInfo, ModelPricing, TokenLimits};
 
 /// Optimized model information builder with zero-allocation patterns
 pub struct ModelInfoBuilder {
-    info: ModelInfo,
-}
+    info: ModelInfo}
 
 impl ModelInfoBuilder {
     /// Create new builder with default values
@@ -33,9 +32,7 @@ impl ModelInfoBuilder {
                 supports_batch_processing: None,
                 require_max_tokens: None,
                 token_limits: TokenLimits::unlimited(),
-                pricing: ModelPricing::free(),
-            },
-        }
+                pricing: ModelPricing::free()}}
     }
 
     /// Set provider name using static string for zero allocation

@@ -116,8 +116,7 @@ pub enum VertexAIError {
 
     /// Unsupported operation errors
     #[error("Unsupported operation: {operation} for model {model}")]
-    UnsupportedOperation { operation: String, model: String },
-}
+    UnsupportedOperation { operation: String, model: String }}
 
 impl VertexAIError {
     /// Check if error is retryable with exponential backoff
@@ -130,8 +129,7 @@ impl VertexAIError {
             VertexAIError::Timeout { .. } => true,
             VertexAIError::Network { .. } => true,
             VertexAIError::ServerError { status_code, .. } => *status_code >= 500,
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Get suggested retry delay in milliseconds
@@ -143,8 +141,7 @@ impl VertexAIError {
             VertexAIError::Timeout { .. } => Some(2000),
             VertexAIError::Network { .. } => Some(1000),
             VertexAIError::ServerError { .. } => Some(5000),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Check if error requires authentication refresh
@@ -187,8 +184,7 @@ impl VertexAIError {
             VertexAIError::ServerError { .. } => "server",
             VertexAIError::Internal { .. } => "internal",
             VertexAIError::Network { .. } => "network",
-            VertexAIError::UnsupportedOperation { .. } => "unsupported",
-        }
+            VertexAIError::UnsupportedOperation { .. } => "unsupported"}
     }
 }
 
@@ -196,15 +192,13 @@ impl From<serde_json::Error> for VertexAIError {
     fn from(err: serde_json::Error) -> Self {
         VertexAIError::Json {
             operation: "serde_json".to_string(),
-            details: err.to_string(),
-        }
+            details: err.to_string()}
     }
 }
 
 impl From<std::io::Error> for VertexAIError {
     fn from(err: std::io::Error) -> Self {
         VertexAIError::Network {
-            details: err.to_string(),
-        }
+            details: err.to_string()}
     }
 }

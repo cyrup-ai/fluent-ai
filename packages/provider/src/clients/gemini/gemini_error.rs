@@ -47,24 +47,21 @@ pub enum GeminiError {
     ToolCallError { tool_name: String, reason: String },
 
     #[error("Schema validation failed: {field} - {reason}")]
-    SchemaError { field: String, reason: String },
-}
+    SchemaError { field: String, reason: String }}
 
 impl GeminiError {
     /// Create HTTP error with context
     #[inline(always)]
     pub fn http_error(context: impl Into<String>) -> Self {
         Self::HttpError {
-            context: context.into(),
-        }
+            context: context.into()}
     }
 
     /// Create authentication error with reason
     #[inline(always)]
     pub fn auth_error(reason: impl Into<String>) -> Self {
         Self::AuthError {
-            reason: reason.into(),
-        }
+            reason: reason.into()}
     }
 
     /// Create request too large error
@@ -77,32 +74,28 @@ impl GeminiError {
     #[inline(always)]
     pub fn rate_limited(retry_after_seconds: u64) -> Self {
         Self::RateLimited {
-            retry_after_seconds,
-        }
+            retry_after_seconds}
     }
 
     /// Create parsing error with context
     #[inline(always)]
     pub fn parse_error(context: impl Into<String>) -> Self {
         Self::ParseError {
-            context: context.into(),
-        }
+            context: context.into()}
     }
 
     /// Create stream error with context
     #[inline(always)]
     pub fn stream_error(context: impl Into<String>) -> Self {
         Self::StreamError {
-            context: context.into(),
-        }
+            context: context.into()}
     }
 
     /// Create invalid response error
     #[inline(always)]
     pub fn invalid_response(context: impl Into<String>) -> Self {
         Self::InvalidResponse {
-            context: context.into(),
-        }
+            context: context.into()}
     }
 
     /// Create model configuration error
@@ -110,16 +103,14 @@ impl GeminiError {
     pub fn model_config_error(model_name: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::ModelConfigError {
             model_name: model_name.into(),
-            reason: reason.into(),
-        }
+            reason: reason.into()}
     }
 
     /// Create content filtered error
     #[inline(always)]
     pub fn content_filtered(category: impl Into<String>) -> Self {
         Self::ContentFiltered {
-            category: category.into(),
-        }
+            category: category.into()}
     }
 
     /// Create timeout error
@@ -133,8 +124,7 @@ impl GeminiError {
     pub fn internal_error(code: u16, message: impl Into<String>) -> Self {
         Self::InternalError {
             code,
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create tool call error
@@ -142,8 +132,7 @@ impl GeminiError {
     pub fn tool_call_error(tool_name: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::ToolCallError {
             tool_name: tool_name.into(),
-            reason: reason.into(),
-        }
+            reason: reason.into()}
     }
 
     /// Create schema error
@@ -151,8 +140,7 @@ impl GeminiError {
     pub fn schema_error(field: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::SchemaError {
             field: field.into(),
-            reason: reason.into(),
-        }
+            reason: reason.into()}
     }
 
     /// Check if error is retriable
@@ -182,8 +170,7 @@ impl GeminiError {
             Self::Timeout { .. } => "Request timeout",
             Self::InternalError { .. } => "Internal API error",
             Self::ToolCallError { .. } => "Tool call parsing failed",
-            Self::SchemaError { .. } => "Schema validation failed",
-        }
+            Self::SchemaError { .. } => "Schema validation failed"}
     }
 }
 
@@ -219,8 +206,7 @@ impl From<GeminiError> for ProviderError {
             GeminiError::Timeout { .. } => ProviderError::Timeout,
             GeminiError::InternalError { message, .. } => ProviderError::ProviderError(message),
             GeminiError::ToolCallError { reason, .. } => ProviderError::ToolCallError(reason),
-            GeminiError::SchemaError { reason, .. } => ProviderError::ValidationError(reason),
-        }
+            GeminiError::SchemaError { reason, .. } => ProviderError::ValidationError(reason)}
     }
 }
 
@@ -247,8 +233,7 @@ pub fn parse_http_status_error(status_code: u16, response_body: Option<&str>) ->
             GeminiError::rate_limited(retry_after)
         }
         500..=599 => GeminiError::internal_error(status_code, body_context.to_string()),
-        _ => GeminiError::http_error(format!("HTTP {}: {}", status_code, body_context)),
-    }
+        _ => GeminiError::http_error(format!("HTTP {}: {}", status_code, body_context))}
 }
 
 /// Extract error details from Gemini API response
@@ -275,8 +260,7 @@ pub fn parse_api_error_response(response: &str) -> GeminiError {
                 "PERMISSION_DENIED" => GeminiError::auth_error(message.to_string()),
                 "RESOURCE_EXHAUSTED" => GeminiError::rate_limited(60),
                 "CONTENT_FILTERED" => GeminiError::content_filtered(message.to_string()),
-                _ => GeminiError::internal_error(code, message.to_string()),
-            };
+                _ => GeminiError::internal_error(code, message.to_string())};
         }
     }
 

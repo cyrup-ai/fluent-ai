@@ -1,6 +1,5 @@
 //! Query monitoring and performance tracking
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
@@ -18,8 +17,7 @@ pub struct QueryMonitor {
     active: Arc<RwLock<HashMap<String, ActiveQuery>>>,
 
     /// Configuration
-    config: QueryMonitorConfig,
-}
+    config: QueryMonitorConfig}
 
 /// Query monitor configuration
 #[derive(Debug, Clone)]
@@ -31,16 +29,14 @@ pub struct QueryMonitorConfig {
     pub enable_logging: bool,
 
     /// Slow query threshold in milliseconds
-    pub slow_query_threshold_ms: u64,
-}
+    pub slow_query_threshold_ms: u64}
 
 impl Default for QueryMonitorConfig {
     fn default() -> Self {
         Self {
             max_history: 10000,
             enable_logging: true,
-            slow_query_threshold_ms: 1000,
-        }
+            slow_query_threshold_ms: 1000}
     }
 }
 
@@ -72,8 +68,7 @@ pub struct QueryRecord {
     pub is_slow: bool,
 
     /// Error if query failed
-    pub error: Option<String>,
-}
+    pub error: Option<String>}
 
 /// Active query tracking
 #[derive(Debug, Clone)]
@@ -88,8 +83,7 @@ pub struct ActiveQuery {
     pub query: String,
 
     /// Start time
-    pub started_at: DateTime<Utc>,
-}
+    pub started_at: DateTime<Utc>}
 
 impl QueryMonitor {
     /// Create a new query monitor
@@ -97,8 +91,7 @@ impl QueryMonitor {
         Self {
             history: Arc::new(RwLock::new(Vec::new())),
             active: Arc::new(RwLock::new(HashMap::new())),
-            config,
-        }
+            config}
     }
 
     /// Start monitoring a query
@@ -112,16 +105,14 @@ impl QueryMonitor {
             id: id.clone(),
             query_type,
             query: query.clone(),
-            started_at: Utc::now(),
-        };
+            started_at: Utc::now()};
 
         self.active.write().await.insert(id.clone(), active_query);
 
         QueryHandle {
             monitor: self,
             id,
-            started_at: Utc::now(),
-        }
+            started_at: Utc::now()}
     }
 
     /// Complete a query
@@ -148,8 +139,7 @@ impl QueryMonitor {
                 execution_time_ms,
                 stats,
                 is_slow,
-                error,
-            };
+                error};
 
             // Log slow queries
             if is_slow && self.config.enable_logging {
@@ -219,8 +209,7 @@ impl QueryMonitor {
             failed_queries,
             slow_queries,
             avg_execution_time_ms: avg_execution_time,
-            queries_by_type,
-        }
+            queries_by_type}
     }
 }
 
@@ -228,8 +217,7 @@ impl QueryMonitor {
 pub struct QueryHandle<'a> {
     monitor: &'a QueryMonitor,
     id: String,
-    started_at: DateTime<Utc>,
-}
+    started_at: DateTime<Utc>}
 
 impl<'a> QueryHandle<'a> {
     /// Complete the query successfully
@@ -255,8 +243,7 @@ impl<'a> QueryHandle<'a> {
             documents_scanned: 0,
             documents_returned: 0,
             index_used: false,
-            cache_hit_rate: 0.0,
-        };
+            cache_hit_rate: 0.0};
 
         self.monitor
             .complete_query(self.id, stats, Some(error))
@@ -281,5 +268,4 @@ pub struct QuerySummary {
     pub avg_execution_time_ms: u64,
 
     /// Queries by type
-    pub queries_by_type: HashMap<QueryType, usize>,
-}
+    pub queries_by_type: HashMap<QueryType, usize>}

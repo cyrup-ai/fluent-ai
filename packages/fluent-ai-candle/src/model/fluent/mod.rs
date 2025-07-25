@@ -11,5 +11,4 @@ pub use kimi_k2::{
     KimiK2Config as Config, QuantFormat, kimi_k2_fp8, kimi_k2_fp16,
     loader::{LoaderEvent, ModelShard, load_model},
     model::{KimiK2Config, KimiK2Model},
-    tokenizer::KimiK2Tokenizer,
-};
+    tokenizer::KimiK2Tokenizer};

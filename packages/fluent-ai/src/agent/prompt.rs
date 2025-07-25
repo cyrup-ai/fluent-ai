@@ -69,8 +69,7 @@ pub struct PromptRequest<'a, M: CompletionModel> {
     agent: &'a Agent<M>,
     prompt: Message,
     chat_hist: Option<&'a mut Vec<Message>>,
-    max_depth: usize,
-}
+    max_depth: usize}
 
 /// **Owned prompt builder** for trait implementations.
 ///
@@ -79,8 +78,7 @@ pub struct PromptRequest<'a, M: CompletionModel> {
 pub struct OwnedPromptRequest<M: CompletionModel> {
     agent: Agent<M>,
     prompt: Message,
-    max_depth: usize,
-}
+    max_depth: usize}
 
 impl<'a, M: CompletionModel> PromptRequest<'a, M> {
     /// **Constructor** – never public, only called from `Agent::prompt`.
@@ -90,8 +88,7 @@ impl<'a, M: CompletionModel> PromptRequest<'a, M> {
             agent,
             prompt: prompt.into_message(),
             chat_hist: None,
-            max_depth: 0,
-        }
+            max_depth: 0}
     }
 
     // ---------------------------------------------------------------------
@@ -157,8 +154,7 @@ impl<'a, M: CompletionModel> PromptRequest<'a, M> {
                 return Err(PromptError::MaxDepthError {
                     max_depth: self.max_depth,
                     chat_history: hist.clone(),
-                    prompt,
-                });
+                    prompt});
             }
         }
     }

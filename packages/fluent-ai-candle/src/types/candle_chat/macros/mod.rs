@@ -4,6 +4,8 @@
 //! and playing back chat interactions using zero-allocation patterns and
 //! lock-free data structures for blazing-fast performance.
 
+use std::collections::HashMap;
+
 pub mod types;
 pub mod recording;
 pub mod playback;
@@ -15,22 +17,18 @@ pub use types::{
     MacroAction, MacroRecordingState, MacroPlaybackState, MacroExecutionContext,
     LoopContext, MacroMetadata, ChatMacro, MacroExecutionConfig, ResourceLimits,
     MacroRecordingSession, MacroPlaybackSession, ExecutionStats, MacroSystemError,
-    MacroResult, ActionExecutionResult, MacroPlaybackResult,
-};
+    MacroResult, ActionExecutionResult, MacroPlaybackResult};
 
 pub use recording::{MacroRecorder, RecordingInfo};
 pub use playback::{MacroPlayer, PlaybackInfo};
 pub use variables::{
     VariableManager, resolve_variables, resolve_variables_static,
-    evaluate_condition, evaluate_condition_static,
-};
+    evaluate_condition, evaluate_condition_static};
 pub use storage::{MacroStorage, StorageStats, MacroExport};
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use atomic_counter::ConsistentCounter;
-use crossbeam_skiplist::SkipMap;
+use atomic_counter::{AtomicCounter, ConsistentCounter};
 use std::sync::RwLock;
 use uuid::Uuid;
 
@@ -45,14 +43,13 @@ pub struct MacroSystem {
     /// Variable manager
     variables: RwLock<VariableManager>,
     /// Execution counter
-    execution_counter: ConsistentCounter,
-}
+    execution_counter: ConsistentCounter}
 
 impl MacroSystem {
     /// Create new macro system
     pub fn new() -> Self {
         let storage = MacroStorage::new();
-        let macros = storage.macros().clone();
+        let macros = storage.macros();
         
         let recorder = MacroRecorder::new(macros.clone());
         let player = MacroPlayer::new(macros);
@@ -62,8 +59,7 @@ impl MacroSystem {
             recorder,
             player,
             variables: RwLock::new(VariableManager::new()),
-            execution_counter: ConsistentCounter::new(0),
-        }
+            execution_counter: ConsistentCounter::new(0)}
     }
 
     /// Get storage reference
@@ -83,41 +79,17 @@ impl MacroSystem {
 
     /// Start recording a new macro
     pub fn start_recording(&self, name: String, description: String) -> fluent_ai_async::AsyncStream<Uuid> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
-        let recorder = self.recorder.clone();
-        AsyncStream::with_channel(move |sender| {
-            match recorder.start_recording_sync(name, description) {
-                Ok(uuid) => emit!(sender, uuid),
-                Err(e) => handle_error!(e, "Failed to start macro recording"),
-            }
-        })
+        self.recorder.start_recording(name, description)
     }
 
     /// Record a macro action
     pub fn record_action(&self, session_id: Uuid, action: MacroAction) -> fluent_ai_async::AsyncStream<()> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
-        let recorder = self.recorder.clone();
-        AsyncStream::with_channel(move |sender| {
-            match recorder.record_action_sync(session_id, action) {
-                Ok(()) => emit!(sender, ()),
-                Err(e) => handle_error!(e, "Failed to record macro action"),
-            }
-        })
+        self.recorder.record_action(session_id, action)
     }
 
     /// Stop recording and save the macro
     pub fn stop_recording(&self, session_id: Uuid) -> fluent_ai_async::AsyncStream<Uuid> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
-        let recorder = self.recorder.clone();
-        AsyncStream::with_channel(move |sender| {
-            match recorder.stop_recording_sync(session_id) {
-                Ok(uuid) => emit!(sender, uuid),
-                Err(e) => handle_error!(e, "Failed to stop macro recording"),
-            }
-        })
+        self.recorder.stop_recording(session_id)
     }
 
     /// Start macro playback
@@ -126,12 +98,8 @@ impl MacroSystem {
         
         self.execution_counter.inc();
         let player = self.player.clone();
-        AsyncStream::with_channel(move |sender| {
-            match player.start_playback_sync(macro_id, variables) {
-                Ok(uuid) => emit!(sender, uuid),
-                Err(e) => handle_error!(e, "Failed to start macro playback"),
-            }
-        })
+        // Use the async start_playback method directly
+        player.start_playback(macro_id, variables)
     }
 
     /// Execute the next action in a playback session
@@ -139,12 +107,8 @@ impl MacroSystem {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
         
         let player = self.player.clone();
-        AsyncStream::with_channel(move |sender| {
-            match player.execute_next_action_sync(session_id) {
-                Ok(result) => emit!(sender, result),
-                Err(e) => handle_error!(e, "Failed to execute next macro action"),
-            }
-        })
+        // Use the async execute_next_action method directly  
+        player.execute_next_action(session_id)
     }
 
     /// Get a macro by ID
@@ -176,18 +140,21 @@ impl MacroSystem {
     pub fn set_variable(&self, name: String, value: String) -> fluent_ai_async::AsyncStream<()> {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
         
-        let variables = self.variables.clone();
+        let result = match self.variables.write() {
+            Ok(mut vars) => {
+                vars.set_variable(name, value);
+                Ok(())
+            }
+            Err(e) => Err(MacroSystemError::StorageError(format!("Failed to acquire variable lock: {}", e))),
+        };
+        
         AsyncStream::with_channel(move |sender| {
-            match variables.write() {
-                Ok(mut vars) => {
-                    vars.set_variable(name, value);
-                    emit!(sender, ());
-                }
+            match result {
+                Ok(()) => emit!(sender, ()),
                 Err(e) => handle_error!(
                     MacroSystemError::StorageError(format!("Failed to acquire variable lock: {}", e)),
                     "Failed to set variable"
-                ),
-            }
+                )}
         })
     }
 
@@ -195,19 +162,13 @@ impl MacroSystem {
     pub fn get_variable(&self, name: &str) -> fluent_ai_async::AsyncStream<Option<String>> {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
         
-        let name = name.to_string();
-        let variables = self.variables.clone();
+        let result = match self.variables.read() {
+            Ok(vars) => vars.get_variable(name).cloned(),
+            Err(_) => None,
+        };
+        
         AsyncStream::with_channel(move |sender| {
-            match variables.read() {
-                Ok(vars) => {
-                    let result = vars.get_variable(&name).cloned();
-                    emit!(sender, result);
-                }
-                Err(e) => handle_error!(
-                    MacroSystemError::StorageError(format!("Failed to acquire variable lock: {}", e)),
-                    "Failed to get variable"
-                ),
-            }
+            emit!(sender, result);
         })
     }
 
@@ -215,18 +176,19 @@ impl MacroSystem {
     pub fn clear_variables(&self) -> fluent_ai_async::AsyncStream<()> {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
         
-        let variables = self.variables.clone();
-        AsyncStream::with_channel(move |sender| {
-            match variables.write() {
-                Ok(mut vars) => {
-                    vars.clear_variables();
-                    emit!(sender, ());
-                }
-                Err(e) => handle_error!(
-                    MacroSystemError::StorageError(format!("Failed to acquire variable lock: {}", e)),
-                    "Failed to clear variables"
-                ),
+        let result = match self.variables.write() {
+            Ok(mut vars) => {
+                vars.clear_variables();
+                Ok(())
             }
+            Err(e) => Err(MacroSystemError::StorageError(format!("Failed to acquire variable lock: {}", e))),
+        };
+        
+        AsyncStream::with_channel(move |sender| {
+            match result {
+                Ok(()) => emit!(sender, ()),
+                Err(e) => handle_error!(e, "Failed to clear variables"
+                )}
         })
     }
 
@@ -239,8 +201,7 @@ impl MacroSystem {
     pub fn get_system_stats(&self) -> SystemStats {
         SystemStats {
             total_executions: self.execution_counter.get(),
-            storage_stats: self.storage.get_storage_stats(),
-        }
+            storage_stats: self.storage.get_storage_stats()}
     }
 }
 
@@ -254,5 +215,4 @@ impl Default for MacroSystem {
 #[derive(Debug, Clone)]
 pub struct SystemStats {
     pub total_executions: usize,
-    pub storage_stats: StorageStats,
-}
+    pub storage_stats: StorageStats}

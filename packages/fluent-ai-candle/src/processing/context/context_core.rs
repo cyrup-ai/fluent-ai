@@ -3,14 +3,15 @@
 //! Provides the main ProcessingContext struct with token history tracking,
 //! frequency analysis, and zero-allocation patterns for sophisticated sampling.
 
-use arrayvec::ArrayVec;
 // Re-export the base ProcessingContext from fluent-ai-simd
 pub use fluent_ai_simd::context::ProcessingContext as BaseProcessingContext;
+
+use arrayvec::ArrayVec;
 
 use crate::processing::error::ProcessingError;
 use crate::processing::traits::ProcessingResult;
 
-use super::context_stats::{RepetitionPenaltyType, SequenceStats};
+use super::context_stats::SequenceStats;
 
 /// Maximum supported vocabulary size for bounded allocation
 pub const MAX_VOCAB_SIZE: usize = 128_000;
@@ -46,8 +47,7 @@ pub struct ProcessingContext {
     context_size: usize,
 
     /// Sequence statistics for advanced processing
-    stats: SequenceStats,
-}
+    stats: SequenceStats}
 
 impl ProcessingContext {
     /// Create new processing context
@@ -108,8 +108,7 @@ impl ProcessingContext {
             token_history: ArrayVec::new(),
             position: 0,
             context_size,
-            stats: SequenceStats::new(),
-        })
+            stats: SequenceStats::new()})
     }
 
     /// Create context with default context size

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::RwLock;
 
-use atomic_counter::{AtomicCounter, ConsistentCounter};
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use crossbeam_queue::SegQueue;
 use fluent_ai_async::{AsyncStream, emit, handle_error};
 use tokio::sync::broadcast;
@@ -16,7 +16,7 @@ use tokio::sync::broadcast;
 use crate::types::CandleMessage;
 use super::events::RealTimeEvent;
 use super::errors::RealTimeError;
-use super::live_updates::{LiveUpdateMessage, MessagePriority};
+use super::live_updates::LiveUpdateMessage;
 
 /// Live message streaming statistics with atomic counters
 #[derive(Debug)]
@@ -26,8 +26,7 @@ pub struct StreamingStatistics {
     pub queue_size: usize,
     pub backpressure_events: usize,
     pub processing_rate: f64,
-    pub last_update: u64,
-}
+    pub last_update: u64}
 
 /// High-performance message streamer with lock-free operations
 pub struct LiveMessageStreamer {
@@ -48,8 +47,7 @@ pub struct LiveMessageStreamer {
     /// Event broadcaster for real-time events
     event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// Processing rate limiter
-    processing_rate: AtomicU64,
-}
+    processing_rate: AtomicU64}
 
 impl LiveMessageStreamer {
     /// Create new message streamer with optimal configuration
@@ -73,11 +71,9 @@ impl LiveMessageStreamer {
                 queue_size: 0,
                 backpressure_events: 0,
                 processing_rate: processing_rate as f64,
-                last_update: 0,
-            })),
+                last_update: 0})),
             event_broadcaster,
-            processing_rate: AtomicU64::new(processing_rate),
-        }
+            processing_rate: AtomicU64::new(processing_rate)}
     }
 
     /// Stream message with backpressure handling
@@ -99,10 +95,8 @@ impl LiveMessageStreamer {
 
                 let error = RealTimeError::BackpressureExceeded {
                     current_size: current_queue_size,
-                    limit: queue_size_limit,
-                };
+                    limit: queue_size_limit};
                 handle_error!(error, "Backpressure exceeded in stream_message");
-                return;
             }
 
             // Zero-allocation queue push
@@ -112,13 +106,11 @@ impl LiveMessageStreamer {
             // Broadcast real-time event
             let event = RealTimeEvent::MessageReceived {
                 message: CandleMessage::new(
-                    message.user_id.len() as u64,
                     crate::types::CandleMessageRole::Assistant,
-                    message.content.as_bytes(),
+                    message.content.clone(),
                 ),
                 session_id: message.session_id.clone(),
-                timestamp: message.timestamp,
-            };
+                timestamp: message.timestamp};
 
             let _ = event_broadcaster.send(event);
 
@@ -240,8 +232,7 @@ impl LiveMessageStreamer {
                     queue_size: stats_guard.queue_size,
                     backpressure_events: stats_guard.backpressure_events,
                     processing_rate: stats_guard.processing_rate,
-                    last_update: stats_guard.last_update,
-                };
+                    last_update: stats_guard.last_update};
                 emit!(sender, stats_snapshot);
             }
         })
@@ -254,19 +245,16 @@ impl LiveMessageStreamer {
         AsyncStream::with_channel(move |sender| {
             match event_broadcaster.send(event) {
                 Ok(subscriber_count) => emit!(sender, subscriber_count),
-                Err(_) => emit!(sender, 0),
-            }
+                Err(_) => emit!(sender, 0)}
         })
     }
 
     /// Update processing rate dynamically
     pub fn set_processing_rate(&self, rate: u64) -> AsyncStream<()> {
-        let processing_rate = self.processing_rate.clone();
-        let stats = self.stats.clone();
+        self.processing_rate.store(rate, Ordering::AcqRel);
 
+        let stats = Arc::clone(&self.stats);
         AsyncStream::with_channel(move |sender| {
-            processing_rate.store(rate, Ordering::AcqRel);
-
             if let Ok(mut stats_guard) = stats.write() {
                 stats_guard.processing_rate = rate as f64;
             }

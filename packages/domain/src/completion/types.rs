@@ -28,8 +28,7 @@ pub struct CompletionParams {
     /// Number of completions to generate
     pub n: std::num::NonZeroU8,
     /// Whether to stream the response
-    pub stream: bool,
-}
+    pub stream: bool}
 
 impl Default for CompletionParams {
     fn default() -> Self {
@@ -37,8 +36,7 @@ impl Default for CompletionParams {
             temperature: 1.0,
             max_tokens: None,
             n: std::num::NonZeroU8::new(1).unwrap(), // Safe to unwrap since 1 is non-zero
-            stream: false,
-        }
+            stream: false}
     }
 }
 
@@ -58,8 +56,7 @@ impl CompletionParams {
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
                     TEMPERATURE_RANGE.end()
-                ),
-            });
+                )});
         }
         self.temperature = temperature;
         Ok(self)
@@ -77,8 +74,7 @@ impl CompletionParams {
 pub struct ToolDefinition {
     pub name: String,
     pub description: String,
-    pub parameters: Value,
-}
+    pub parameters: Value}
 
 impl ToolDefinition {
     /// Create a new tool definition
@@ -86,8 +82,7 @@ impl ToolDefinition {
         Self {
             name: name.into(),
             description: description.into(),
-            parameters,
-        }
+            parameters}
     }
 }
 
@@ -102,8 +97,7 @@ pub struct ModelParams {
     /// Context window size
     pub context_length: u32,
     /// Vocabulary size
-    pub vocab_size: u32,
-}
+    pub vocab_size: u32}
 
 impl Default for ModelParams {
     #[inline(always)]
@@ -112,7 +106,6 @@ impl Default for ModelParams {
             rope_theta: 10000.0,
             rope_freq_base: 1.0,
             context_length: 2048,
-            vocab_size: 32000,
-        }
+            vocab_size: 32000}
     }
 }

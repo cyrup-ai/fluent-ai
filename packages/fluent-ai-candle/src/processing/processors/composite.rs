@@ -25,8 +25,7 @@ pub struct CompositeProcessor {
     is_identity: bool,
 
     /// Processing chain name for debugging
-    name: String,
-}
+    name: String}
 
 impl CompositeProcessor {
     /// Create new composite processor with no processors
@@ -34,8 +33,7 @@ impl CompositeProcessor {
         Self {
             processors: Vec::new(),
             is_identity: true,
-            name: "CompositeProcessor".to_string(),
-        }
+            name: "CompositeProcessor".to_string()}
     }
 
     /// Create composite processor with initial processors
@@ -272,15 +270,13 @@ impl LogitsProcessor for CompositeProcessor {
 /// Builder pattern for creating composite processors fluently
 #[derive(Debug, Default)]
 pub struct CompositeProcessorBuilder {
-    processors: Vec<Box<dyn LogitsProcessor>>,
-}
+    processors: Vec<Box<dyn LogitsProcessor>>}
 
 impl CompositeProcessorBuilder {
     /// Create new builder
     pub fn new() -> Self {
         Self {
-            processors: Vec::new(),
-        }
+            processors: Vec::new()}
     }
 
     /// Add processor to the chain
@@ -325,8 +321,7 @@ mod tests {
     use super::*;
     use crate::processing::processors::{
         repetition_penalty::RepetitionPenaltyProcessor, temperature::TemperatureProcessor,
-        top_k::TopKProcessor, top_p::TopPProcessor,
-    };
+        top_k::TopKProcessor, top_p::TopPProcessor};
 
     /// Mock identity processor for testing
     #[derive(Debug)]

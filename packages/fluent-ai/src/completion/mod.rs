@@ -16,39 +16,34 @@ pub struct CompletionRequest {
     pub prompt: String,
     pub model: String,
     pub temperature: f64,
-    pub max_tokens: Option<u32>,
-}
+    pub max_tokens: Option<u32>}
 
 /// Completion response type
 #[derive(Debug, Clone)]
 pub struct CompletionResponse {
     pub text: String,
     pub model: String,
-    pub usage: Option<Usage>,
-}
+    pub usage: Option<Usage>}
 
 /// Usage statistics
 #[derive(Debug, Clone)]
 pub struct Usage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 /// Document type for completion
 #[derive(Debug, Clone)]
 pub struct Document {
     pub content: String,
-    pub metadata: std::collections::HashMap<String, String>,
-}
+    pub metadata: std::collections::HashMap<String, String>}
 
 /// Tool definition for completion
 #[derive(Debug, Clone)]
 pub struct ToolDefinition {
     pub name: String,
     pub description: String,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 /// Prompt trait for completion
 pub trait Prompt {
@@ -63,8 +58,7 @@ pub trait Chat {
 
 /// Completion request builder
 pub struct CompletionRequestBuilder {
-    request: CompletionRequest,
-}
+    request: CompletionRequest}
 
 impl CompletionRequestBuilder {
     pub fn new(prompt: String) -> Self {
@@ -73,9 +67,7 @@ impl CompletionRequestBuilder {
                 prompt,
                 model: "default".to_string(),
                 temperature: 0.7,
-                max_tokens: None,
-            },
-        }
+                max_tokens: None}}
     }
 
     pub fn model(mut self, model: String) -> Self {
@@ -114,8 +106,7 @@ pub enum CompletionError {
     #[error("Request failed: {0}")]
     RequestFailed(String),
     #[error("Model error: {0}")]
-    ModelError(String),
-}
+    ModelError(String)}
 
 #[derive(Debug, Error)]
 pub enum PromptError {
@@ -124,9 +115,7 @@ pub enum PromptError {
     #[error("Max depth error - max_depth: {max_depth}")]
     MaxDepthError {
         max_depth: usize,
-        chat_history: Vec<crate::domain::message::Message>,
-    },
-}
+        chat_history: Vec<crate::domain::message::Message>}}
 
 /// Trait for completion models with full functionality
 pub trait CompletionModelTrait: Send + Sync {
@@ -181,8 +170,7 @@ pub trait StreamingChat<T> {
 // Generic completion response for provider implementations
 #[derive(Debug, Clone)]
 pub struct CompletionResponseGeneric<T> {
-    pub choice: T,
-}
+    pub choice: T}
 
 // Type alias to maintain backward compatibility
 pub type CompletionResponseWithRaw<T> = CompletionResponseGeneric<T>;

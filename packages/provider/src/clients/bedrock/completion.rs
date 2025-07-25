@@ -9,7 +9,7 @@
 
 use std::sync::Arc;
 
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::completion::CompletionRequest;
 use fluent_ai_domain::message::{Message, MessageRole as Role};
@@ -23,8 +23,7 @@ use super::models::validate_model_capability;
 use super::sigv4::SigV4Signer;
 use super::streaming::BedrockStream;
 use crate::completion_provider::{
-    CompletionError, CompletionProvider, CompletionResponse, StreamingResponse,
-};
+    CompletionError, CompletionProvider, CompletionResponse, StreamingResponse};
 
 /// Bedrock completion builder implementing CompletionProvider
 #[derive(Clone)]
@@ -52,8 +51,7 @@ pub struct BedrockCompletionBuilder {
     /// Tools/functions available to the model
     tools: Vec<Tool>,
     /// Whether to stream the response
-    stream: bool,
-}
+    stream: bool}
 
 impl BedrockCompletionBuilder {
     /// Create new Bedrock completion builder
@@ -75,8 +73,7 @@ impl BedrockCompletionBuilder {
             top_k: None,
             stop_sequences: Vec::new(),
             tools: Vec::new(),
-            stream: false,
-        })
+            stream: false})
     }
 
     /// Set system prompt
@@ -219,8 +216,7 @@ impl BedrockCompletionBuilder {
                 Role::User => "user",
                 Role::Assistant => "assistant",
                 Role::System => continue, // System messages handled separately
-                Role::Tool => "tool",
-            };
+                Role::Tool => "tool"};
             bedrock_msg.insert(
                 "role".to_string(),
                 serde_json::Value::String(role_str.to_string()),
@@ -374,10 +370,8 @@ impl BedrockCompletionBuilder {
             usage: Some(fluent_ai_domain::usage::Usage {
                 prompt_tokens: input_tokens,
                 completion_tokens: output_tokens,
-                total_tokens: input_tokens + output_tokens,
-            }),
-            model: Some(self.model.to_string()),
-        })
+                total_tokens: input_tokens + output_tokens}),
+            model: Some(self.model.to_string())})
     }
 }
 
@@ -392,8 +386,7 @@ impl CompletionProvider for BedrockCompletionBuilder {
             content: prompt.to_string(),
             name: None,
             tool_calls: None,
-            tool_call_id: None,
-        }];
+            tool_call_id: None}];
 
         let mut builder = self.clone();
         builder.stream = true;
@@ -407,8 +400,7 @@ impl CompletionProvider for BedrockCompletionBuilder {
                         finish_reason: Some("error".to_string()),
                         usage: None,
                         model: Some(builder.model.to_string()),
-                        delta: None,
-                    };
+                        delta: None};
                     AsyncStream::from_single(error_chunk)
                 }
             }

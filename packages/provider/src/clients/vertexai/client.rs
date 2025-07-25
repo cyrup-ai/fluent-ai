@@ -19,8 +19,7 @@ use fluent_ai_domain::AsyncTask;
 pub struct VertexAIClient {
     service_account_json: String,
     project_id: String,
-    region: String,
-}
+    region: String}
 
 impl VertexAIClient {
     /// Create new VertexAI client with service account JSON
@@ -36,8 +35,7 @@ impl VertexAIClient {
         Ok(Self { 
             service_account_json,
             project_id,
-            region,
-        })
+            region})
     }
     
     /// Create completion builder for specific model with ModelInfo defaults loaded

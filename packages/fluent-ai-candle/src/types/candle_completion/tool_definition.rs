@@ -11,8 +11,7 @@ pub struct ToolDefinition {
     /// Tool description
     pub description: String,
     /// Tool parameters as JSON schema
-    pub parameters: Value,
-}
+    pub parameters: Value}
 
 impl ToolDefinition {
     /// Create a new tool definition with elegant ergonomic API
@@ -21,8 +20,7 @@ impl ToolDefinition {
         Self {
             name: name.into(),
             description: description.into(),
-            parameters,
-        }
+            parameters}
     }
 
     /// Builder pattern for name with blazing-fast inline optimization

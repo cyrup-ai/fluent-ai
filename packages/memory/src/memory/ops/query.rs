@@ -23,8 +23,7 @@ pub struct MemoryQuery {
     pub include_embeddings: bool,
 
     /// Minimum similarity score for results
-    pub min_similarity: Option<f32>,
-}
+    pub min_similarity: Option<f32>}
 
 /// Sort order for query results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,8 +39,7 @@ pub enum SortOrder {
     /// Sort by importance score (highest first)
     ImportanceDesc,
     /// Sort by similarity score (highest first)
-    SimilarityDesc,
-}
+    SimilarityDesc}
 
 impl MemoryQuery {
     /// Create a new query builder
@@ -102,14 +100,12 @@ pub struct MemoryQueryResult {
     pub highlights: Option<Vec<String>>,
 
     /// Related memory IDs
-    pub related: Option<Vec<String>>,
-}
+    pub related: Option<Vec<String>>}
 
 /// Query executor for complex memory queries
 pub struct MemoryQueryExecutor {
     /// Query configuration
-    config: QueryConfig,
-}
+    config: QueryConfig}
 
 /// Configuration for query execution
 #[derive(Debug, Clone)]
@@ -124,8 +120,7 @@ pub struct QueryConfig {
     pub timeout_ms: u64,
 
     /// Maximum number of parallel operations
-    pub max_parallel: usize,
-}
+    pub max_parallel: usize}
 
 impl Default for QueryConfig {
     fn default() -> Self {
@@ -133,8 +128,7 @@ impl Default for QueryConfig {
             optimize: true,
             cache: true,
             timeout_ms: 5000,
-            max_parallel: 10,
-        }
+            max_parallel: 10}
     }
 }
 
@@ -180,8 +174,7 @@ impl MemoryQueryExecutor {
                 while let Some(result) = stream.next().await {
                     match result {
                         Ok(memory) => results.push(memory),
-                        Err(_) => break,
-                    }
+                        Err(_) => break}
                 }
             }
         }
@@ -192,8 +185,7 @@ impl MemoryQueryExecutor {
             while let Some(result) = stream.next().await {
                 match result {
                     Ok(memory) => results.push(memory),
-                    Err(_) => break,
-                }
+                    Err(_) => break}
             }
         }
 
@@ -209,8 +201,7 @@ impl MemoryQueryExecutor {
 /// Builder for complex queries with multiple conditions
 pub struct ComplexQueryBuilder {
     conditions: Vec<QueryCondition>,
-    operator: LogicalOperator,
-}
+    operator: LogicalOperator}
 
 /// Query condition
 #[derive(Debug, Clone)]
@@ -222,26 +213,21 @@ pub enum QueryCondition {
     /// Time range condition
     TimeRange {
         start: chrono::DateTime<chrono::Utc>,
-        end: chrono::DateTime<chrono::Utc>,
-    },
+        end: chrono::DateTime<chrono::Utc>},
     /// Metadata condition
     Metadata {
         key: String,
-        value: serde_json::Value,
-    },
+        value: serde_json::Value},
     /// Relationship condition
     HasRelationship {
         relationship_type: String,
-        target_id: Option<String>,
-    },
-}
+        target_id: Option<String>}}
 
 /// Logical operator for combining conditions
 #[derive(Debug, Clone, Copy)]
 pub enum LogicalOperator {
     And,
-    Or,
-}
+    Or}
 
 impl Default for ComplexQueryBuilder {
     fn default() -> Self {
@@ -254,8 +240,7 @@ impl ComplexQueryBuilder {
     pub fn new() -> Self {
         Self {
             conditions: Vec::new(),
-            operator: LogicalOperator::And,
-        }
+            operator: LogicalOperator::And}
     }
 
     /// Set the logical operator

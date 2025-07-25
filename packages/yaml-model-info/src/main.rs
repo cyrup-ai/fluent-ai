@@ -30,8 +30,7 @@ struct Cli {
     
     /// Subcommand to execute
     #[command(subcommand)]
-    command: Option<Commands>,
-}
+    command: Option<Commands>}
 
 /// Available CLI commands
 #[derive(Subcommand, Clone)]
@@ -41,26 +40,22 @@ enum Commands {
     /// Get detailed information about a specific provider
     Provider {
         /// Provider name (e.g., openai, anthropic, google)
-        name: String,
-    },
+        name: String},
     /// Get detailed information about a specific model
     Model {
         /// Provider name
         provider: String,
         /// Model name
-        model: String,
-    },
+        model: String},
     /// Download fresh YAML data (ignores cache)
-    Refresh,
-}
+    Refresh}
 
 /// Output format options
 #[derive(Clone)]
 enum OutputFormat {
     Table,
     Json,
-    Yaml,
-}
+    Yaml}
 
 impl std::str::FromStr for OutputFormat {
     type Err = String;
@@ -71,8 +66,7 @@ impl std::str::FromStr for OutputFormat {
             "table" => Ok(OutputFormat::Table),
             "json" => Ok(OutputFormat::Json),
             "yaml" => Ok(OutputFormat::Yaml),
-            _ => Err(format!("Invalid format: {}. Valid options: table, json, yaml", s)),
-        }
+            _ => Err(format!("Invalid format: {}. Valid options: table, json, yaml", s))}
     }
 }
 
@@ -86,8 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::List => list_providers(&cli).await,
         Commands::Provider { name } => show_provider(&cli, &name).await,
         Commands::Model { provider, model } => show_model(&cli, &provider, &model).await,
-        Commands::Refresh => refresh_cache(&cli).await,
-    }
+        Commands::Refresh => refresh_cache(&cli).await}
 }
 
 /// Lists all providers with blazing-fast performance

@@ -13,15 +13,13 @@ pub use types::*;
 // SIMD-optimized tokenizer
 pub mod tokenizer;
 pub use tokenizer::{
-    SIMDTokenizer, get_global_tokenizer, get_tokenizer_stats, reset_tokenizer_stats, tokenize,
-};
+    SIMDTokenizer, get_global_tokenizer, get_tokenizer_stats, reset_tokenizer_stats, tokenize};
 
 // Pattern matching engine
 pub mod pattern_matching;
 pub use pattern_matching::{
     PatternMatcher, add_pattern, find_matches, get_global_pattern_matcher,
-    get_pattern_matcher_stats,
-};
+    get_pattern_matcher_stats};
 
 // Text analysis and statistics
 pub mod analysis;
@@ -30,9 +28,7 @@ use std::time::Instant;
 
 pub use analysis::{
     TextAnalyzer, analyze_text, analyze_word_frequency, calculate_similarity, extract_key_phrases,
-    get_analyzer_stats, get_global_text_analyzer, get_most_common_words,
-};
-use arrayvec::ArrayVec;
+    get_analyzer_stats, get_global_text_analyzer, get_most_common_words};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 
 /// High-level text processor with integrated functionality
@@ -40,8 +36,7 @@ pub struct TextProcessor {
     tokenizer: Arc<SIMDTokenizer>,
     pattern_matcher: Arc<PatternMatcher>,
     analyzer: Arc<TextAnalyzer>,
-    operations_count: RelaxedCounter,
-}
+    operations_count: RelaxedCounter}
 
 impl Default for TextProcessor {
     fn default() -> Self {
@@ -57,8 +52,7 @@ impl TextProcessor {
             tokenizer: Arc::new(SIMDTokenizer::new()),
             pattern_matcher: Arc::new(PatternMatcher::new()),
             analyzer: Arc::new(TextAnalyzer::new()),
-            operations_count: RelaxedCounter::new(0),
-        }
+            operations_count: RelaxedCounter::new(0)}
     }
 
     /// Tokenize text using SIMD optimization
@@ -115,8 +109,7 @@ impl TextProcessor {
                 + analyzer_stats.cache_hits,
             cache_misses: tokenizer_stats.cache_misses
                 + matcher_stats.cache_misses
-                + analyzer_stats.cache_misses,
-        }
+                + analyzer_stats.cache_misses}
     }
 
     /// Reset all performance counters

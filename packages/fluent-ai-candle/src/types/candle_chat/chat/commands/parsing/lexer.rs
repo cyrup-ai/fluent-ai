@@ -3,12 +3,12 @@
 //! Provides zero-allocation command tokenization and basic command recognition
 //! with blazing-fast string processing and ergonomic APIs.
 
-use super::error_handling::{ParseError, ParseResult};
+// Removed unused imports: ParseError, ParseResult
 use crate::types::candle_chat::chat::commands::types::{
-    CommandError, ImmutableChatCommand, SearchScope,
-};
+    CommandError, ImmutableChatCommand, SearchScope};
 
 /// Command lexer for tokenizing and basic parsing
+#[derive(Debug, Clone)]
 pub struct CommandLexer;
 
 impl CommandLexer {
@@ -22,8 +22,7 @@ impl CommandLexer {
         let input = input.trim();
         if input.is_empty() {
             return Err(CommandError::InvalidSyntax {
-                detail: "Empty command".to_string(),
-            });
+                detail: "Empty command".to_string()});
         }
 
         // Remove leading slash if present
@@ -37,8 +36,7 @@ impl CommandLexer {
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
             return Err(CommandError::InvalidSyntax {
-                detail: "No command specified".to_string(),
-            });
+                detail: "No command specified".to_string()});
         }
 
         let command_name = parts[0].to_lowercase();
@@ -80,8 +78,7 @@ impl CommandLexer {
                 Ok(ImmutableChatCommand::Export {
                     format,
                     output,
-                    include_metadata,
-                })
+                    include_metadata})
             }
             "config" => {
                 let show = args.contains(&"--show");
@@ -108,8 +105,7 @@ impl CommandLexer {
                     key,
                     value,
                     show,
-                    reset,
-                })
+                    reset})
             }
             "search" => {
                 let query = args
@@ -136,13 +132,10 @@ impl CommandLexer {
                     query,
                     scope,
                     limit,
-                    include_context,
-                })
+                    include_context})
             }
             _ => Err(CommandError::UnknownCommand {
-                command: command_name,
-            }),
-        }
+                command: command_name})}
     }
 
     /// Extract command name from input

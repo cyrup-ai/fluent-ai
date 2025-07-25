@@ -49,8 +49,7 @@ pub trait EmbeddingModel: Send + Sync + Clone {
 #[derive(Debug)]
 pub struct EmbeddingBuilder<M, D> {
     model: M,
-    documents: Vec<D>,
-}
+    documents: Vec<D>}
 
 impl<M, D> EmbeddingBuilder<M, D>
 where
@@ -60,8 +59,7 @@ where
     pub fn new(model: M) -> Self {
         Self {
             model,
-            documents: Vec::new(),
-        }
+            documents: Vec::new()}
     }
 
     pub fn documents(mut self, docs: Vec<D>) -> Self {
@@ -120,8 +118,7 @@ pub enum EmbeddingError {
 
     /// Configuration error
     #[error("Configuration error: {field}: {message}")]
-    ConfigurationError { field: String, message: String },
-}
+    ConfigurationError { field: String, message: String }}
 
 /// Result type for embedding operations
 pub type Result<T> = std::result::Result<T, EmbeddingError>;
@@ -189,8 +186,7 @@ pub struct EmbeddingResponse<T> {
     /// Token usage information (if available)
     pub token_usage: Option<TokenUsage>,
     /// Response metadata
-    pub metadata: EmbeddingMetadata,
-}
+    pub metadata: EmbeddingMetadata}
 
 impl<T> EmbeddingResponse<T> {
     /// Create a new embedding response
@@ -200,8 +196,7 @@ impl<T> EmbeddingResponse<T> {
             raw_response,
             embedding,
             token_usage: None,
-            metadata: EmbeddingMetadata::default(),
-        }
+            metadata: EmbeddingMetadata::default()}
     }
 
     /// Add token usage information
@@ -286,8 +281,7 @@ pub struct BatchEmbeddingResponse<T> {
     /// Token usage information (if available)
     pub token_usage: Option<TokenUsage>,
     /// Response metadata
-    pub metadata: EmbeddingMetadata,
-}
+    pub metadata: EmbeddingMetadata}
 
 impl<T> BatchEmbeddingResponse<T> {
     /// Create a new batch embedding response
@@ -297,8 +291,7 @@ impl<T> BatchEmbeddingResponse<T> {
             raw_response,
             embeddings,
             token_usage: None,
-            metadata: EmbeddingMetadata::default(),
-        }
+            metadata: EmbeddingMetadata::default()}
     }
 
     /// Add token usage information
@@ -381,8 +374,7 @@ impl<T> BatchEmbeddingResponse<T> {
                     dot_product / (norm_a.sqrt() * norm_b.sqrt())
                 }
             }
-            _ => 0.0,
-        }
+            _ => 0.0}
     }
 }
 
@@ -393,8 +385,7 @@ pub struct StreamingEmbeddingResponse<T> {
     /// Stream of embedding chunks
     pub stream: AsyncStream<EmbeddingChunk>,
     /// Response metadata (filled as chunks arrive)
-    pub metadata: EmbeddingMetadata,
-}
+    pub metadata: EmbeddingMetadata}
 
 impl<T> StreamingEmbeddingResponse<T> {
     /// Create a new streaming embedding response
@@ -406,8 +397,7 @@ impl<T> StreamingEmbeddingResponse<T> {
         Self {
             raw_response,
             stream,
-            metadata: EmbeddingMetadata::default(),
-        }
+            metadata: EmbeddingMetadata::default()}
     }
 
     /// Add metadata
@@ -437,8 +427,7 @@ pub struct EmbeddingChunk {
     /// Chunk index in the sequence
     pub index: usize,
     /// Whether this is the final chunk
-    pub is_final: bool,
-}
+    pub is_final: bool}
 
 /// Token usage information for embedding requests
 #[derive(Debug, Clone, Default)]
@@ -446,8 +435,7 @@ pub struct TokenUsage {
     /// Number of tokens in the input
     pub prompt_tokens: u32,
     /// Total tokens processed
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 impl TokenUsage {
     /// Create new token usage info
@@ -455,8 +443,7 @@ impl TokenUsage {
     pub fn new(prompt_tokens: u32) -> Self {
         Self {
             prompt_tokens,
-            total_tokens: prompt_tokens,
-        }
+            total_tokens: prompt_tokens}
     }
 }
 
@@ -472,8 +459,7 @@ pub struct EmbeddingMetadata {
     /// Embedding dimensions
     pub dimensions: Option<usize>,
     /// Additional provider-specific metadata
-    pub provider_metadata: Option<Value>,
-}
+    pub provider_metadata: Option<Value>}
 
 impl EmbeddingMetadata {
     /// Create new embedding metadata

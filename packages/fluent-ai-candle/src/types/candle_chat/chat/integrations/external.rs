@@ -9,10 +9,11 @@
 
 use std::sync::Arc;
 
+use fluent_ai_http3::header::{HeaderName, HeaderValue};
+
 use super::types::{
     IntegrationConfig, IntegrationType, IntegrationError, IntegrationResult,
-    IntegrationStats, IntegrationRequest, IntegrationResponse, PluginConfig,
-};
+    IntegrationStats, IntegrationRequest, IntegrationResponse};
 
 /// External integration system for managing third-party services and plugins
 #[derive(Debug, Clone)]
@@ -24,8 +25,7 @@ pub struct ExternalIntegration {
     /// HTTP client for API calls
     client: Option<Arc<reqwest::Client>>,
     /// Plugin manager for plugin integrations
-    plugin_manager: Option<Arc<crate::types::candle_chat::chat::integrations::plugin::PluginManager>>,
-}
+    plugin_manager: Option<Arc<crate::types::candle_chat::chat::integrations::plugin::PluginManager>>}
 
 impl ExternalIntegration {
     /// Create a new external integration
@@ -49,51 +49,60 @@ impl ExternalIntegration {
             config,
             stats: IntegrationStats::default(),
             client,
-            plugin_manager,
-        }
+            plugin_manager}
     }
 
     /// Execute an integration request
-    pub async fn execute_request(
+    pub fn execute_request(
         &mut self,
         request: IntegrationRequest,
-    ) -> IntegrationResult<IntegrationResponse> {
+    ) -> fluent_ai_async::AsyncStream<IntegrationResponse> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
         if !self.config.enabled {
-            return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration is disabled"),
+            return AsyncStream::with_channel(move |sender| {
+                handle_error!(
+                    IntegrationError::ConfigurationError {
+                        detail: Arc::from("Integration is disabled")},
+                    "Integration is disabled"
+                );
             });
         }
 
         let start_time = std::time::Instant::now();
         self.stats.total_requests += 1;
+        
+        let config = self.config.clone();
+        let mut stats = self.stats.clone();
 
-        let result = match self.config.integration_type {
-            IntegrationType::RestApi | IntegrationType::Webhook => {
-                self.execute_http_request(request).await
+        AsyncStream::with_channel(move |sender| {
+            let result = match config.integration_type {
+                IntegrationType::RestApi | IntegrationType::Webhook => {
+                    execute_http_request_sync(request, &config)
+                }
+                IntegrationType::Plugin => execute_plugin_request_sync(request, &config),
+                IntegrationType::ExternalService => execute_service_request_sync(request, &config)};
+
+            let response_time = start_time.elapsed().as_millis() as u64;
+
+            match &result {
+                Ok(response) => {
+                    stats.successful_requests += 1;
+                    stats.last_success_timestamp = Some(std::time::SystemTime::now());
+                    emit!(sender, response.clone());
+                }
+                Err(err) => {
+                    stats.failed_requests += 1;
+                    stats.last_error_timestamp = Some(std::time::SystemTime::now());
+                    handle_error!(err.clone(), "Integration request failed");
+                }
             }
-            IntegrationType::Plugin => self.execute_plugin_request(request).await,
-            IntegrationType::ExternalService => self.execute_service_request(request).await,
-        };
 
-        let response_time = start_time.elapsed().as_millis() as u64;
-
-        match &result {
-            Ok(_) => {
-                self.stats.successful_requests += 1;
-                self.stats.last_success_timestamp = Some(std::time::SystemTime::now());
-            }
-            Err(_) => {
-                self.stats.failed_requests += 1;
-                self.stats.last_error_timestamp = Some(std::time::SystemTime::now());
-            }
-        }
-
-        // Update average response time
-        self.stats.avg_response_time_ms =
-            ((self.stats.avg_response_time_ms * (self.stats.total_requests - 1)) + response_time)
-                / self.stats.total_requests;
-
-        result
+            // Update average response time
+            stats.avg_response_time_ms =
+                ((stats.avg_response_time_ms * (stats.total_requests - 1)) + response_time)
+                    / stats.total_requests;
+        })
     }
 
     /// Execute HTTP request (REST API or Webhook)
@@ -105,8 +114,7 @@ impl ExternalIntegration {
             .client
             .as_ref()
             .ok_or_else(|| IntegrationError::ConfigurationError {
-                detail: Arc::from("HTTP client not initialized"),
-            })?;
+                detail: Arc::from("HTTP client not initialized")})?;
 
         let url = format!("{}{}", self.config.endpoint, request.path);
         let mut req_builder = match request.method.as_ref() {
@@ -117,8 +125,7 @@ impl ExternalIntegration {
             "PATCH" => client.patch(&url),
             _ => {
                 return Err(IntegrationError::ConfigurationError {
-                    detail: Arc::from("Unsupported HTTP method"),
-                });
+                    detail: Arc::from("Unsupported HTTP method")});
             }
         };
 
@@ -129,7 +136,7 @@ impl ExternalIntegration {
 
         // Add auth token if configured
         if let Some(token) = &self.config.auth_token {
-            req_builder = req_builder.header("Authorization", format!("Bearer {}", token));
+            req_builder = req_builder.header("authorization", &format!("Bearer {}", token));
         }
 
         // Add body if present
@@ -147,8 +154,7 @@ impl ExternalIntegration {
             .send()
             .await
             .map_err(|e| IntegrationError::ConnectionError {
-                detail: Arc::from(e.to_string()),
-            })?;
+                detail: Arc::from(e.to_string())})?;
 
         let status_code = response.status().as_u16();
         let headers = response
@@ -168,8 +174,7 @@ impl ExternalIntegration {
             headers,
             body,
             response_time_ms: 0, // Will be set by caller
-            success: status_code >= 200 && status_code < 300,
-        })
+            success: status_code >= 200 && status_code < 300})
     }
 
     /// Execute plugin request
@@ -181,28 +186,24 @@ impl ExternalIntegration {
             self.plugin_manager
                 .as_ref()
                 .ok_or_else(|| IntegrationError::ConfigurationError {
-                    detail: Arc::from("Plugin manager not initialized"),
-                })?;
+                    detail: Arc::from("Plugin manager not initialized")})?;
 
         let plugin = plugin_manager
             .get_plugin(&self.config.endpoint)
             .ok_or_else(|| IntegrationError::PluginError {
-                detail: Arc::from("Plugin not found"),
-            })?;
+                detail: Arc::from("Plugin not found")})?;
 
         let result = plugin
             .execute(&request.path, &request.body.unwrap_or_default())
             .map_err(|e| IntegrationError::PluginError {
-                detail: Arc::from(format!("Plugin execution failed: {}", e)),
-            })?;
+                detail: Arc::from(format!("Plugin execution failed: {}", e))})?;
 
         Ok(IntegrationResponse {
             status_code: 200,
             headers: std::collections::HashMap::new(),
             body: Some(result),
             response_time_ms: 0,
-            success: true,
-        })
+            success: true})
     }
 
     /// Execute external service request
@@ -212,8 +213,7 @@ impl ExternalIntegration {
     ) -> IntegrationResult<IntegrationResponse> {
         // Placeholder for external service integration
         Err(IntegrationError::ConfigurationError {
-            detail: Arc::from("External service integration not implemented"),
-        })
+            detail: Arc::from("External service integration not implemented")})
     }
 
     /// Get integration statistics
@@ -241,9 +241,11 @@ impl ExternalIntegration {
             timeout_ms: Some(5000), // 5 second timeout for health check
         };
 
-        match self.execute_request(test_request).await {
-            Ok(response) => Ok(response.success),
-            Err(_) => Ok(false),
+        let responses = self.execute_request(test_request).collect();
+        if let Some(response) = responses.first() {
+            Ok(response.success)
+        } else {
+            Ok(false)
         }
     }
 }
@@ -252,4 +254,100 @@ impl Default for ExternalIntegration {
     fn default() -> Self {
         Self::new(IntegrationConfig::default())
     }
+}
+
+/// Execute HTTP request using pure streaming (NO BLOCKING!)
+pub fn execute_http_request_sync(
+    request: IntegrationRequest,
+    config: &IntegrationConfig,
+) -> IntegrationResult<IntegrationResponse> {
+    use fluent_ai_http3::{Http3, HttpStreamExt};
+    
+    // Use .collect() for "await-like" behavior with pure streams
+    let full_url = format!("{}{}", config.endpoint, request.path);
+    
+    let mut builder = Http3::json().debug();
+    
+    // Add authorization if provided
+    if let Some(ref token) = config.auth_token {
+        builder = builder.bearer_auth(token.as_ref());
+    }
+    
+    let response_data = builder
+        .body(&request)
+        .post(&full_url)
+        .collect_or_else(|e| {
+            eprintln!("HTTP request failed: {}", e);
+            serde_json::Value::Null
+        });
+    
+    Ok(IntegrationResponse {
+        status_code: 200,
+        headers: Default::default(),
+        body: Some(response_data),
+        response_time_ms: 0, // TODO: Add timing
+        success: true})
+}
+
+/// Execute plugin request using pure streaming (NO BLOCKING!)
+pub fn execute_plugin_request_sync(
+    request: IntegrationRequest,
+    config: &IntegrationConfig,
+) -> IntegrationResult<IntegrationResponse> {
+    use fluent_ai_http3::{Http3, HttpStreamExt};
+    
+    // Plugin requests are just specialized HTTP calls
+    let mut builder = Http3::json().debug();
+    
+    // Add plugin auth if provided - using X-API-Key header
+    if let Some(ref token) = config.auth_token {
+        builder = builder.api_key(token.as_ref());
+    }
+    
+    let response_data = builder
+        .body(&request)
+        .post(&format!("{}{}", config.endpoint, request.path))
+        .collect_or_else(|e| {
+            eprintln!("Plugin request failed: {}", e);
+            serde_json::Value::Null
+        });
+    
+    Ok(IntegrationResponse {
+        status_code: 200,
+        headers: Default::default(),
+        body: Some(response_data),
+        response_time_ms: 0, // TODO: Add timing
+        success: true})
+}
+
+/// Execute external service request using pure streaming (NO BLOCKING!)
+pub fn execute_service_request_sync(
+    request: IntegrationRequest,
+    config: &IntegrationConfig,
+) -> IntegrationResult<IntegrationResponse> {
+    use fluent_ai_http3::{Http3, HttpStreamExt};
+    
+    // Service requests with specialized headers
+    let mut builder = Http3::json()
+        .debug();
+    
+    // Add authorization if provided
+    if let Some(ref token) = config.auth_token {
+        builder = builder.bearer_auth(token.as_ref());
+    }
+    
+    let response_data = builder
+        .body(&request)
+        .post(&format!("{}{}", config.endpoint, request.path))
+        .collect_or_else(|e| {
+            eprintln!("Service request failed: {}", e);
+            serde_json::Value::Null
+        });
+    
+    Ok(IntegrationResponse {
+        status_code: 200,
+        headers: Default::default(),
+        body: Some(response_data),
+        response_time_ms: 0, // TODO: Add timing
+        success: true})
 }

@@ -9,7 +9,7 @@ use super::core::CandleTokenizer;
 impl CandleTokenizer {
     /// Decode token IDs to text
     pub fn decode(&self, token_ids: &[u32], skip_special_tokens: bool) -> CandleResult<String> {
-        self.tokenizer
+        self.inner()
             .decode(token_ids, skip_special_tokens)
             .map_err(|e| CandleError::tokenization(format!("Decoding failed: {}", e)))
     }

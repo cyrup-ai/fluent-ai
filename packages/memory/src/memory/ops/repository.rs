@@ -1,6 +1,6 @@
 //! Memory repository for managing in-memory cache and indexing
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
@@ -29,8 +29,7 @@ pub struct MemoryRepository {
     time_index: BTreeMap<DateTime<Utc>, HashSet<String>>,
 
     /// Relationships storage
-    relationships: HashMap<String, Vec<MemoryRelationship>>,
-}
+    relationships: HashMap<String, Vec<MemoryRelationship>>}
 
 impl MemoryRepository {
     /// Create a new memory repository
@@ -38,12 +37,10 @@ impl MemoryRepository {
         Self {
             memories: HashMap::new(),
             type_index: HashMap::new(),
-            user_index: HashMap::new(),
             agent_index: HashMap::new(),
             tag_index: HashMap::new(),
             time_index: BTreeMap::new(),
-            relationships: HashMap::new(),
-        }
+            relationships: HashMap::new()}
     }
 
     /// Create and add a memory to the repository
@@ -157,8 +154,7 @@ impl MemoryRepository {
                     .importance
                     .partial_cmp(&b.metadata.importance)
                     .unwrap_or(std::cmp::Ordering::Equal), // Handle NaN cases gracefully
-                _ => std::cmp::Ordering::Equal,
-            });
+                _ => std::cmp::Ordering::Equal});
         }
 
         if filter.sort_descending {
@@ -199,8 +195,7 @@ impl MemoryRepository {
             total_relationships: self.relationships.values().map(|v| v.len()).sum(),
             unique_users: self.user_index.len(),
             unique_agents: self.agent_index.len(),
-            unique_tags: self.tag_index.len(),
-        }
+            unique_tags: self.tag_index.len()}
     }
 
     /// Remove a memory from all indexes
@@ -263,5 +258,4 @@ pub struct RepositoryStats {
     pub unique_agents: usize,
 
     /// Number of unique tags
-    pub unique_tags: usize,
-}
+    pub unique_tags: usize}

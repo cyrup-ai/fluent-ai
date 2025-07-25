@@ -37,8 +37,7 @@ pub enum PricingTier {
     /// Premium cost models (>= $20.00 input or >= $60.00 output per 1M tokens)
     ///
     /// Top-tier models with the highest capabilities and costs.
-    Premium,
-}
+    Premium}
 
 impl Default for PricingTier {
     fn default() -> Self {
@@ -53,8 +52,7 @@ impl std::fmt::Display for PricingTier {
             Self::Low => write!(f, "Low"),
             Self::Medium => write!(f, "Medium"),
             Self::High => write!(f, "High"),
-            Self::Premium => write!(f, "Premium"),
-        }
+            Self::Premium => write!(f, "Premium")}
     }
 }
 
@@ -90,8 +88,7 @@ impl PricingTier {
             Self::Low => (0.5, 1.0, 1.5, 3.0),
             Self::Medium => (1.0, 5.0, 3.0, 15.0),
             Self::High => (5.0, 20.0, 15.0, 60.0),
-            Self::Premium => (20.0, f64::MAX, 60.0, f64::MAX),
-        }
+            Self::Premium => (20.0, f64::MAX, 60.0, f64::MAX)}
     }
 
     /// Check if this tier is considered cost-effective for the given requirements
@@ -106,7 +103,6 @@ impl PricingTier {
         match (requires_high_quality, budget_constrained) {
             (true, _) => matches!(self, Self::High | Self::Premium),
             (false, true) => matches!(self, Self::UltraLow | Self::Low),
-            (false, false) => matches!(self, Self::Low | Self::Medium),
-        }
+            (false, false) => matches!(self, Self::Low | Self::Medium)}
     }
 }

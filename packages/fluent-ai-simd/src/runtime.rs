@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicU8, Ordering};
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use once_cell::sync::Lazy;
 
 /// CPU capability flags for runtime dispatch
@@ -15,8 +16,7 @@ pub enum CpuFeatures {
     /// x86 AVX2 support (high performance)
     Avx2 = 3,
     /// x86 AVX512 support (highest performance)
-    Avx512 = 4,
-}
+    Avx512 = 4}
 
 impl CpuFeatures {
     /// Check if this feature level supports SIMD operations
@@ -32,8 +32,7 @@ impl CpuFeatures {
             Self::Scalar => 1,
             Self::Neon | Self::Sse41 => 4,
             Self::Avx2 => 8,
-            Self::Avx512 => 16,
-        }
+            Self::Avx512 => 16}
     }
 
     /// Get optimal chunk size for processing
@@ -53,7 +52,6 @@ static CPU_FEATURES: AtomicU8 = AtomicU8::new(0xFF); // 0xFF = uninitialized
 
 /// Static lazy initialization for CPU features with AVX512 check
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[allow(dead_code)] // Reserved for future AVX512 optimizations
 static HAS_AVX512: Lazy<bool> = Lazy::new(|| {
     is_x86_feature_detected!("avx512f")
 });
@@ -120,8 +118,7 @@ pub struct TemperatureDispatch {
     /// ARM NEON optimized temperature scaling function
     pub neon: Option<TemperatureScaleFn>,
     /// Scalar fallback temperature scaling function
-    pub scalar: TemperatureScaleFn,
-}
+    pub scalar: TemperatureScaleFn}
 
 /// Runtime dispatch table for softmax operations
 pub struct SoftmaxDispatch {
@@ -134,8 +131,7 @@ pub struct SoftmaxDispatch {
     /// ARM NEON optimized softmax function
     pub neon: Option<SoftmaxFn>,
     /// Scalar fallback softmax function
-    pub scalar: SoftmaxFn,
-}
+    pub scalar: SoftmaxFn}
 
 /// Runtime dispatch table for argmax operations
 pub struct ArgmaxDispatch {
@@ -148,8 +144,7 @@ pub struct ArgmaxDispatch {
     /// ARM NEON optimized argmax function
     pub neon: Option<ArgmaxFn>,
     /// Scalar fallback argmax function
-    pub scalar: ArgmaxFn,
-}
+    pub scalar: ArgmaxFn}
 
 impl TemperatureDispatch {
     /// Get optimal function for current CPU
@@ -160,8 +155,7 @@ impl TemperatureDispatch {
             CpuFeatures::Avx2 => self.avx2.unwrap_or(self.scalar),
             CpuFeatures::Sse41 => self.sse41.unwrap_or(self.scalar),
             CpuFeatures::Neon => self.neon.unwrap_or(self.scalar),
-            CpuFeatures::Scalar => self.scalar,
-        }
+            CpuFeatures::Scalar => self.scalar}
     }
 
     /// Safe wrapper to call the temperature scaling function
@@ -180,8 +174,7 @@ impl SoftmaxDispatch {
             CpuFeatures::Avx2 => self.avx2.unwrap_or(self.scalar),
             CpuFeatures::Sse41 => self.sse41.unwrap_or(self.scalar),
             CpuFeatures::Neon => self.neon.unwrap_or(self.scalar),
-            CpuFeatures::Scalar => self.scalar,
-        }
+            CpuFeatures::Scalar => self.scalar}
     }
 
     /// Safe wrapper to call the softmax function
@@ -200,8 +193,7 @@ impl ArgmaxDispatch {
             CpuFeatures::Avx2 => self.avx2.unwrap_or(self.scalar),
             CpuFeatures::Sse41 => self.sse41.unwrap_or(self.scalar),
             CpuFeatures::Neon => self.neon.unwrap_or(self.scalar),
-            CpuFeatures::Scalar => self.scalar,
-        }
+            CpuFeatures::Scalar => self.scalar}
     }
 
     /// Safe wrapper to call the argmax function
@@ -236,8 +228,7 @@ pub struct CpuInfo {
     /// Whether SIMD operations are available
     pub has_simd: bool,
     /// Target architecture string
-    pub arch: &'static str,
-}
+    pub arch: &'static str}
 
 /// Get comprehensive CPU information
 pub fn get_cpu_info() -> CpuInfo {
@@ -258,8 +249,7 @@ pub fn get_cpu_info() -> CpuInfo {
         vector_width: features.vector_width(),
         chunk_size: features.chunk_size(),
         has_simd: features.has_simd(),
-        arch,
-    }
+        arch}
 }
 
 /// Force CPU feature detection (for testing)

@@ -13,8 +13,7 @@ pub struct ErrorContext {
     /// Device information
     pub device: Option<String>,
     /// Additional context
-    pub context: Option<String>,
-}
+    pub context: Option<String>}
 
 impl ErrorContext {
     /// Create new error context
@@ -24,8 +23,7 @@ impl ErrorContext {
             operation,
             model_name: None,
             device: None,
-            context: None,
-        }
+            context: None}
     }
 
     /// Add model name to context
@@ -56,8 +54,7 @@ pub struct CandleErrorWithContext {
     /// The underlying error
     pub error: CandleError,
     /// Error context
-    pub context: ErrorContext,
-}
+    pub context: ErrorContext}
 
 impl fmt::Display for CandleErrorWithContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -13,8 +13,7 @@ pub struct ModelParams {
     /// Context window size
     pub context_length: u32,
     /// Vocabulary size
-    pub vocab_size: u32,
-}
+    pub vocab_size: u32}
 
 impl Default for ModelParams {
     /// Default model parameters optimized for common use cases
@@ -24,8 +23,7 @@ impl Default for ModelParams {
             rope_theta: 10000.0,
             rope_freq_base: 1.0,
             context_length: 2048,
-            vocab_size: 32000,
-        }
+            vocab_size: 32000}
     }
 }
 
@@ -37,8 +35,7 @@ impl ModelParams {
             rope_theta: 10000.0,
             rope_freq_base: 1.0,
             context_length: 2048,
-            vocab_size: 32000,
-        }
+            vocab_size: 32000}
     }
 
     /// Create with custom rope theta for advanced positional encoding

@@ -9,8 +9,7 @@
 use crate::{
     audio_generation::{AudioGenerationChunk, AudioGenerationError, AudioGenerationRequest},
     client::{AsAudioGeneration, ProviderClient},
-    runtime::{AsyncStream, AsyncTask},
-};
+    runtime::{AsyncStream, AsyncTask}};
 
 // ---------------------------------------------------------------------------
 // Stream ring capacity – amend at build-time if benchmarking dictates.
@@ -22,8 +21,7 @@ const STREAM_CAPACITY: usize = 256;
 // ---------------------------------------------------------------------------
 pub struct AudioGenerationFlow {
     pub chunks: AsyncStream<AudioGenerationChunk, STREAM_CAPACITY>,
-    pub done: AsyncTask<Result<(), AudioGenerationError>>,
-}
+    pub done: AsyncTask<Result<(), AudioGenerationError>>}
 
 // ---------------------------------------------------------------------------
 // Provider-side model trait (implemented by concrete SDK wrappers).
@@ -97,8 +95,7 @@ where
 // Handy dyn-erased handle
 #[derive(Clone)]
 pub struct AudioGenerationModelHandle<'a> {
-    inner: &'a dyn AudioGenerationModelDyn,
-}
+    inner: &'a dyn AudioGenerationModelDyn}
 
 impl<'a> AudioGenerationModel for AudioGenerationModelHandle<'a> {
     #[inline(always)]

@@ -3,9 +3,6 @@
 //! Provides blazing-fast text analysis including readability metrics, complexity scoring,
 //! and statistical analysis with production-ready performance and ergonomic APIs.
 
-use std::collections::HashMap;
-
-use arrayvec::ArrayVec;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use smallvec::SmallVec;
 
@@ -18,8 +15,7 @@ pub struct TextAnalyzer {
     analyses_performed: RelaxedCounter,
     analysis_time_nanos: RelaxedCounter,
     /// Cached word frequency data
-    word_frequency_cache: std::sync::RwLock<HashMap<String, u32>>,
-}
+    word_frequency_cache: std::sync::RwLock<HashMap<String, u32>>}
 
 impl Default for TextAnalyzer {
     fn default() -> Self {
@@ -34,8 +30,7 @@ impl TextAnalyzer {
         Self {
             analyses_performed: RelaxedCounter::new(0),
             analysis_time_nanos: RelaxedCounter::new(0),
-            word_frequency_cache: std::sync::RwLock::new(HashMap::new()),
-        }
+            word_frequency_cache: std::sync::RwLock::new(HashMap::new())}
     }
 
     /// Analyze text and return comprehensive statistics
@@ -77,8 +72,7 @@ impl TextAnalyzer {
             paragraph_count,
             average_word_length,
             reading_level,
-            complexity_score,
-        };
+            complexity_score};
 
         // Update performance counters
         let elapsed_nanos = start_time.elapsed().as_nanos() as usize;
@@ -357,8 +351,7 @@ impl TextAnalyzer {
             average_analysis_time_nanos: (self.analysis_time_nanos.get() / total_ops) as u64,
             simd_operations_count: 0,
             cache_hits: 0,
-            cache_misses: 0,
-        }
+            cache_misses: 0}
     }
 
     /// Reset performance counters

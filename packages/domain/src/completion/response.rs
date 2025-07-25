@@ -28,13 +28,11 @@ pub struct CompletionResponse<'a> {
     /// Generation time in milliseconds for performance tracking (optional)
     pub generation_time_ms: Option<u32>,
     /// Tokens per second throughput for performance tracking (optional)
-    pub tokens_per_second: Option<f64>,
-}
+    pub tokens_per_second: Option<f64>}
 
 /// Builder for `CompletionResponse`
 pub struct CompletionResponseBuilder<'a> {
-    inner: CompletionResponse<'a>,
-}
+    inner: CompletionResponse<'a>}
 
 impl<'a> CompletionResponse<'a> {
     /// Create a new builder for a completion response
@@ -110,9 +108,7 @@ impl<'a> CompletionResponseBuilder<'a> {
                 finish_reason: None,
                 response_time_ms: None,
                 generation_time_ms: None,
-                tokens_per_second: None,
-            },
-        }
+                tokens_per_second: None}}
     }
 
     /// Set the completion text
@@ -179,8 +175,7 @@ pub struct CompactCompletionResponse {
     /// The reason the completion finished
     pub finish_reason: Arc<str>,
     /// Response time in milliseconds
-    pub response_time_ms: u64,
-}
+    pub response_time_ms: u64}
 
 /// Builder for `CompactCompletionResponse`
 pub struct CompactCompletionResponseBuilder {
@@ -189,8 +184,7 @@ pub struct CompactCompletionResponseBuilder {
     provider: Option<Arc<str>>,
     tokens_used: u32,
     finish_reason: Option<Arc<str>>,
-    response_time_ms: u64,
-}
+    response_time_ms: u64}
 
 impl CompactCompletionResponse {
     /// Create a new builder for a compact completion response
@@ -230,8 +224,7 @@ impl CompactCompletionResponseBuilder {
             provider: None,
             tokens_used: 0,
             finish_reason: None,
-            response_time_ms: 0,
-        }
+            response_time_ms: 0}
     }
 
     /// Set the content
@@ -279,8 +272,7 @@ impl CompactCompletionResponseBuilder {
                 provider: self.provider.unwrap_or_else(|| Arc::from("unknown")),
                 tokens_used: self.tokens_used,
                 finish_reason: self.finish_reason.unwrap_or_else(|| Arc::from("stop")),
-                response_time_ms: self.response_time_ms,
-            };
+                response_time_ms: self.response_time_ms};
 
             let _ = sender.send(response);
         })

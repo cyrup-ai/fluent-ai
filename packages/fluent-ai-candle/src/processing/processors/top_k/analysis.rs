@@ -5,7 +5,7 @@
 
 use super::core::MAX_TOP_K;
 use crate::processing::traits::ProcessingResult;
-use crate::processing::{ProcessingContext, ProcessingError};
+use crate::processing::ProcessingError;
 
 /// Find optimal k for target vocabulary coverage
 ///
@@ -214,8 +214,7 @@ pub fn distribution_quality_metrics(logits: &[f32]) -> ProcessingResult<Distribu
         entropy,
         max_prob,
         effective_vocab,
-        concentration_ratio: max_prob / (1.0 / logits.len() as f32),
-    })
+        concentration_ratio: max_prob / (1.0 / logits.len() as f32)})
 }
 
 /// Distribution quality metrics for k selection
@@ -228,8 +227,7 @@ pub struct DistributionMetrics {
     pub entropy: f32,
     pub max_prob: f32,
     pub effective_vocab: usize,
-    pub concentration_ratio: f32,
-}
+    pub concentration_ratio: f32}
 
 impl DistributionMetrics {
     /// Suggest optimal k based on distribution metrics

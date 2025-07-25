@@ -46,16 +46,14 @@ pub enum CommandError {
     NotFound,
     
     #[error("Internal error: {0}")]
-    InternalError(String),
-}
+    InternalError(String)}
 
 impl CommandError {
     /// Create a new UnknownCommand error
     #[inline(always)]
     pub fn unknown_command(command: impl Into<String>) -> Self {
         Self::UnknownCommand {
-            command: command.into(),
-        }
+            command: command.into()}
     }
 
     /// Create a new InvalidArguments error
@@ -68,8 +66,7 @@ impl CommandError {
     #[inline(always)]
     pub fn invalid_syntax(detail: impl Into<String>) -> Self {
         Self::InvalidSyntax {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create a new ExecutionFailed error
@@ -88,8 +85,7 @@ impl CommandError {
     #[inline(always)]
     pub fn configuration_error(detail: impl Into<String>) -> Self {
         Self::ConfigurationError {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create a new IoError
@@ -160,8 +156,7 @@ impl CommandError {
             Self::NetworkError(_) => "network_error",
             Self::Timeout => "timeout",
             Self::NotFound => "not_found",
-            Self::InternalError(_) => "internal_error",
-        }
+            Self::InternalError(_) => "internal_error"}
     }
 }
 

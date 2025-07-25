@@ -10,11 +10,9 @@ use super::{
     builtin_commands::BuiltinCommands,
     error_handling::{ParseError, ParseResult},
     lexer::CommandLexer,
-    validation::CommandValidator,
-};
+    validation::CommandValidator};
 use crate::types::candle_chat::chat::commands::types::{
-    CommandError, CommandInfo, ImmutableChatCommand,
-};
+    CommandError, CommandInfo, ImmutableChatCommand};
 
 /// Zero-allocation command parser with owned strings
 #[derive(Debug, Clone)]
@@ -28,8 +26,7 @@ pub struct CommandParser {
     /// Command aliases
     aliases: HashMap<String, String>,
     /// Command history for auto-completion
-    history: Vec<String>,
-}
+    history: Vec<String>}
 
 impl Default for CommandParser {
     fn default() -> Self {
@@ -45,8 +42,7 @@ impl CommandParser {
             validator: CommandValidator::new(),
             commands: HashMap::new(),
             aliases: HashMap::new(),
-            history: Vec::new(),
-        };
+            history: Vec::new()};
         parser.register_builtin_commands();
         parser
     }
@@ -81,8 +77,7 @@ impl CommandParser {
         // Check if it's a command (starts with /)
         if !input.starts_with('/') {
             return Err(ParseError::InvalidSyntax {
-                detail: "Commands must start with '/'".to_string(),
-            });
+                detail: "Commands must start with '/'".to_string()});
         }
 
         // Use lexer for parsing

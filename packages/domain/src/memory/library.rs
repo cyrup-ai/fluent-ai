@@ -22,8 +22,7 @@
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Library {
-    name: String,
-}
+    name: String}
 
 impl Library {
     /// Create a named library - EXACT syntax: Library::named("obsidian_vault")

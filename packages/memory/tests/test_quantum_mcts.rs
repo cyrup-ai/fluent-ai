@@ -14,9 +14,7 @@ use fluent_ai_memory::cognitive::{
     quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator},
     types::{
         ContentCategory, ContentType, EvolutionRules, OptimizationSpec, OptimizationType,
-        Restrictions, SecurityLevel,
-    },
-};
+        Restrictions, SecurityLevel}};
 use tokio::sync::mpsc;
 
 #[tokio::test]
@@ -40,8 +38,7 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
         code_content: "process_data function for data processing".to_string(),
         latency: 100.0,
         memory: 50.0,
-        relevance: 80.0,
-    };
+        relevance: 80.0};
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
@@ -58,9 +55,7 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
                 compiler: "rustc".to_string(),
                 max_latency_increase: 10.0,
                 max_memory_increase: 20.0,
-                min_relevance_improvement: 5.0,
-            },
-        },
+                min_relevance_improvement: 5.0}},
         baseline_metrics: initial_state.clone(),
         objective: "Optimize for performance while maintaining accuracy".to_string(),
         improvement_threshold: 0.1,
@@ -70,8 +65,7 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
         timeout_ms: Some(5000),
         max_iterations: Some(100),
         target_quality: 0.8,
-        evolution_rules: EvolutionRules::default(),
-    });
+        evolution_rules: EvolutionRules::default()});
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
     let config = QuantumConfig::default();
@@ -112,8 +106,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
     for url in urls {
         match fetch(url).await {
             Ok(data) => results.push(Ok(data)),
-            Err(e) => results.push(Err(e)),
-        }
+            Err(e) => results.push(Err(e))}
     }
     results
 }
@@ -122,8 +115,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
         code_content: "async fetch_data function for parallel data fetching".to_string(),
         latency: 200.0,
         memory: 100.0,
-        relevance: 75.0,
-    };
+        relevance: 75.0};
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
@@ -140,9 +132,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
                 compiler: "rustc".to_string(),
                 max_latency_increase: 5.0,
                 max_memory_increase: 10.0,
-                min_relevance_improvement: 10.0,
-            },
-        },
+                min_relevance_improvement: 10.0}},
         baseline_metrics: initial_state.clone(),
         objective: "Parallelize async operations for better performance".to_string(),
         improvement_threshold: 0.15,
@@ -152,8 +142,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
         timeout_ms: Some(7000),
         max_iterations: Some(150),
         target_quality: 0.85,
-        evolution_rules: EvolutionRules::default(),
-    });
+        evolution_rules: EvolutionRules::default()});
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
     let orchestration_config = QuantumOrchestrationConfig {
@@ -162,8 +151,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
         coherence_time_ms: 100,
         parallel_circuits: 2,
         convergence_epsilon: 0.01,
-        max_iterations_per_depth: 30,
-    };
+        max_iterations_per_depth: 30};
     let mcts_config = QuantumConfig::default();
 
     // Create orchestrator
@@ -210,8 +198,7 @@ async fn test_quantum_convergence() {
         code_content: "simple function returning constant value".to_string(),
         latency: 10.0,
         memory: 5.0,
-        relevance: 100.0,
-    };
+        relevance: 100.0};
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
@@ -228,9 +215,7 @@ async fn test_quantum_convergence() {
                 compiler: "rustc".to_string(),
                 max_latency_increase: 1.0,
                 max_memory_increase: 1.0,
-                min_relevance_improvement: 0.0,
-            },
-        },
+                min_relevance_improvement: 0.0}},
         baseline_metrics: initial_state.clone(),
         objective: "Already optimal code".to_string(),
         improvement_threshold: 0.05,
@@ -240,8 +225,7 @@ async fn test_quantum_convergence() {
         timeout_ms: Some(3000),
         max_iterations: Some(50),
         target_quality: 0.95,
-        evolution_rules: EvolutionRules::default(),
-    });
+        evolution_rules: EvolutionRules::default()});
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
     let config = QuantumConfig {
@@ -289,8 +273,7 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
             .to_string(),
         latency: 500.0,
         memory: 200.0,
-        relevance: 90.0,
-    };
+        relevance: 90.0};
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
@@ -310,9 +293,7 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
                 compiler: "rustc".to_string(),
                 max_latency_increase: 0.0,
                 max_memory_increase: 50.0,
-                min_relevance_improvement: 0.0,
-            },
-        },
+                min_relevance_improvement: 0.0}},
         baseline_metrics: initial_state.clone(),
         objective: "Optimize matrix multiplication with cache efficiency".to_string(),
         improvement_threshold: 0.2,
@@ -325,8 +306,7 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
         timeout_ms: Some(10000),
         max_iterations: Some(200),
         target_quality: 0.9,
-        evolution_rules: EvolutionRules::default(),
-    });
+        evolution_rules: EvolutionRules::default()});
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
     let config = QuantumConfig {

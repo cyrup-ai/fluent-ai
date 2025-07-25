@@ -41,13 +41,14 @@
 #![allow(clippy::module_name_repetitions)]
 
 use std::fmt;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use arrayvec::{ArrayString, ArrayVec};
 use arc_swap::ArcSwap;
-use serde::{Deserialize, Serialize};
+use arrayvec::ArrayString;
+use arrayvec::ArrayVec;
+
 
 /// Maximum length for authentication tokens and keys
 pub const MAX_TOKEN_LEN: usize = 2048;
@@ -62,7 +63,7 @@ pub const MAX_REGION_LEN: usize = 32;
 pub const MAX_AUTH_HEADERS: usize = 8;
 
 /// Secure string wrapper that prevents accidental secret exposure
-/// 
+///
 /// This type never exposes the contained secret in Debug output,
 /// logs, or error messages to prevent credential leakage.
 #[derive(Clone, PartialEq, Eq)]
@@ -80,15 +81,15 @@ impl SecureString {
         if value.is_empty() {
             return Err(AuthError::EmptySecret);
         }
-        
-        let secure_value = ArrayString::from(value)
-            .map_err(|_| AuthError::SecretTooLong(value.len()))?;
-        
+
+        let secure_value =
+            ArrayString::from(value).map_err(|_| AuthError::SecretTooLong(value.len()))?;
+
         // Create a simple hash for comparison purposes
-        let hash = value.chars().fold(0u64, |acc, c| {
-            acc.wrapping_mul(31).wrapping_add(c as u64)
-        });
-        
+        let hash = value
+            .chars()
+            .fold(0u64, |acc, c| acc.wrapping_mul(31).wrapping_add(c as u64));
+
         Ok(Self {
             value: secure_value,
             hash,
@@ -130,8 +131,12 @@ impl SecureString {
 
 impl fmt::Debug for SecureString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecureString([REDACTED] {} chars, hash: {})", 
-               self.value.len(), self.hash)
+        write!(
+            f,
+            "SecureString([REDACTED] {} chars, hash: {})",
+            self.value.len(),
+            self.hash
+        )
     }
 }
 
@@ -142,7 +147,7 @@ impl fmt::Display for SecureString {
 }
 
 /// Bearer token authentication for most AI providers
-/// 
+///
 /// Used by OpenAI, Cohere, Groq, Mistral, and other providers that use
 /// "Authorization: Bearer <token>" header format.
 #[derive(Clone)]
@@ -164,7 +169,7 @@ impl BearerAuth {
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AuthError::SystemTimeError)?
             .as_secs();
-        
+
         Ok(Self {
             token: secure_token,
             prefix: None,
@@ -181,10 +186,12 @@ impl BearerAuth {
                 actual: token.chars().take(expected_prefix.len()).collect(),
             });
         }
-        
+
         let mut auth = Self::new(token)?;
-        auth.prefix = Some(ArrayString::from(expected_prefix)
-            .map_err(|_| AuthError::PrefixTooLong(expected_prefix.len()))?);
+        auth.prefix = Some(
+            ArrayString::from(expected_prefix)
+                .map_err(|_| AuthError::PrefixTooLong(expected_prefix.len()))?,
+        );
         Ok(auth)
     }
 
@@ -196,7 +203,7 @@ impl BearerAuth {
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AuthError::SystemTimeError)?
             .as_secs();
-        
+
         Ok(Self {
             token,
             prefix: None,
@@ -206,16 +213,24 @@ impl BearerAuth {
 
     /// Add authentication headers to a request
     #[inline]
-    pub fn apply_headers(&self, headers: &mut ArrayVec<(ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>), MAX_AUTH_HEADERS>) -> Result<(), AuthError> {
+    pub fn apply_headers(
+        &self,
+        headers: &mut ArrayVec<
+            (ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>),
+            MAX_AUTH_HEADERS,
+        >,
+    ) -> Result<(), AuthError> {
         let header_value = format!("Bearer {}", self.token.expose_secret());
         let value = ArrayString::from(&header_value)
             .map_err(|_| AuthError::HeaderValueTooLong(header_value.len()))?;
-        
-        headers.try_push((
-            ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?,
-            value,
-        )).map_err(|_| AuthError::TooManyHeaders)?;
-        
+
+        headers
+            .try_push((
+                ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?,
+                value,
+            ))
+            .map_err(|_| AuthError::TooManyHeaders)?;
+
         Ok(())
     }
 
@@ -233,17 +248,19 @@ impl BearerAuth {
     #[inline]
     pub fn validate(&self) -> Result<(), AuthError> {
         let token = self.token.expose_secret();
-        
+
         // Check minimum length
         if token.len() < 8 {
             return Err(AuthError::TokenTooShort);
         }
-        
+
         // Check for obvious test/placeholder tokens
         if token.contains("test") || token.contains("placeholder") || token.contains("example") {
-            return Err(AuthError::InvalidTokenFormat("Token appears to be a placeholder"));
+            return Err(AuthError::InvalidTokenFormat(
+                "Token appears to be a placeholder",
+            ));
         }
-        
+
         // Validate prefix if specified
         if let Some(ref prefix) = self.prefix {
             if !token.starts_with(prefix.as_str()) {
@@ -253,7 +270,7 @@ impl BearerAuth {
                 });
             }
         }
-        
+
         Ok(())
     }
 }
@@ -269,7 +286,7 @@ impl fmt::Debug for BearerAuth {
 }
 
 /// Custom header API key authentication
-/// 
+///
 /// Used by providers that require API keys in custom headers,
 /// such as Anthropic's "x-api-key" header.
 #[derive(Clone)]
@@ -293,7 +310,7 @@ impl ApiKeyAuth {
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AuthError::SystemTimeError)?
             .as_secs();
-        
+
         Ok(Self {
             header_name: header,
             api_key: key,
@@ -317,7 +334,7 @@ impl ApiKeyAuth {
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AuthError::SystemTimeError)?
             .as_secs();
-        
+
         Ok(Self {
             header_name: header,
             api_key,
@@ -327,15 +344,20 @@ impl ApiKeyAuth {
 
     /// Add authentication headers to a request
     #[inline]
-    pub fn apply_headers(&self, headers: &mut ArrayVec<(ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>), MAX_AUTH_HEADERS>) -> Result<(), AuthError> {
+    pub fn apply_headers(
+        &self,
+        headers: &mut ArrayVec<
+            (ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>),
+            MAX_AUTH_HEADERS,
+        >,
+    ) -> Result<(), AuthError> {
         let header_value = ArrayString::from(self.api_key.expose_secret())
             .map_err(|_| AuthError::HeaderValueTooLong(self.api_key.len()))?;
-        
-        headers.try_push((
-            self.header_name.clone(),
-            header_value,
-        )).map_err(|_| AuthError::TooManyHeaders)?;
-        
+
+        headers
+            .try_push((self.header_name.clone(), header_value))
+            .map_err(|_| AuthError::TooManyHeaders)?;
+
         Ok(())
     }
 
@@ -349,17 +371,17 @@ impl ApiKeyAuth {
     #[inline]
     pub fn validate(&self) -> Result<(), AuthError> {
         let key = self.api_key.expose_secret();
-        
+
         // Check minimum length
         if key.len() < 8 {
             return Err(AuthError::TokenTooShort);
         }
-        
+
         // Validate header name
         if self.header_name.is_empty() {
             return Err(AuthError::EmptyHeaderName);
         }
-        
+
         Ok(())
     }
 }
@@ -375,7 +397,7 @@ impl fmt::Debug for ApiKeyAuth {
 }
 
 /// OAuth2 access token with automatic refresh capabilities
-/// 
+///
 /// Used by Google Vertex AI and other providers that support OAuth2.
 /// Provides automatic token refresh when tokens are near expiration.
 #[derive(Clone)]
@@ -385,7 +407,7 @@ pub struct OAuth2Token {
     /// Token type (usually "Bearer")
     token_type: ArrayString<32>,
     /// Expiration timestamp (Unix seconds)
-    expires_at: AtomicU64,
+    expires_at: Arc<AtomicU64>,
     /// Scope granted
     scope: Option<ArrayString<256>>,
     /// Refresh token for automatic renewal
@@ -405,29 +427,28 @@ impl OAuth2Token {
         let token = SecureString::new(access_token)?;
         let type_str = ArrayString::from(token_type)
             .map_err(|_| AuthError::TokenTypeTooLong(token_type.len()))?;
-        
+
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AuthError::SystemTimeError)?
             .as_secs();
-        
+
         let scope_str = if let Some(s) = scope {
-            Some(ArrayString::from(s)
-                .map_err(|_| AuthError::ScopeTooLong(s.len()))?)
+            Some(ArrayString::from(s).map_err(|_| AuthError::ScopeTooLong(s.len()))?)
         } else {
             None
         };
-        
+
         let refresh = if let Some(rt) = refresh_token {
             Some(SecureString::new(rt)?)
         } else {
             None
         };
-        
+
         Ok(Self {
             access_token: token,
             token_type: type_str,
-            expires_at: AtomicU64::new(now + expires_in_seconds),
+            expires_at: Arc::new(AtomicU64::new(now + expires_in_seconds)),
             scope: scope_str,
             refresh_token: refresh,
         })
@@ -457,20 +478,24 @@ impl OAuth2Token {
 
     /// Update token with new values (for refresh)
     #[inline]
-    pub fn update(&self, new_token: &str, expires_in_seconds: u64) -> Result<OAuth2Token, AuthError> {
+    pub fn update(
+        &self,
+        new_token: &str,
+        expires_in_seconds: u64,
+    ) -> Result<OAuth2Token, AuthError> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AuthError::SystemTimeError)?
             .as_secs();
-        
+
         let new_oauth_token = OAuth2Token {
             access_token: SecureString::new(new_token)?,
             token_type: self.token_type.clone(),
-            expires_at: AtomicU64::new(now + expires_in_seconds),
+            expires_at: Arc::new(AtomicU64::new(now + expires_in_seconds)),
             scope: self.scope.clone(),
             refresh_token: self.refresh_token.clone(),
         };
-        
+
         Ok(new_oauth_token)
     }
 
@@ -488,13 +513,16 @@ impl fmt::Debug for OAuth2Token {
             .field("token_type", &self.token_type)
             .field("expires_at", &self.expires_at.load(Ordering::Relaxed))
             .field("scope", &self.scope)
-            .field("refresh_token", &self.refresh_token.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "refresh_token",
+                &self.refresh_token.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }
 
 /// OAuth2 authentication manager with automatic refresh
-/// 
+///
 /// Manages OAuth2 tokens with automatic refresh capabilities,
 /// used primarily for Google Vertex AI authentication.
 #[derive(Clone)]
@@ -539,14 +567,14 @@ impl OAuth2Auth {
     #[inline]
     pub async fn get_valid_token(&self) -> Result<OAuth2Token, AuthError> {
         let current = self.current_token.load();
-        
+
         // Check if we have a valid token
         if let Some(ref token) = **current {
             if !token.is_expired(self.refresh_margin_seconds) {
                 return Ok(token.clone());
             }
         }
-        
+
         // Need to refresh or get initial token
         if let Some(ref service_account) = self.service_account {
             let new_token = service_account.get_access_token().await?;
@@ -559,17 +587,25 @@ impl OAuth2Auth {
 
     /// Add authentication headers to a request
     #[inline]
-    pub async fn apply_headers(&self, headers: &mut ArrayVec<(ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>), MAX_AUTH_HEADERS>) -> Result<(), AuthError> {
+    pub async fn apply_headers(
+        &self,
+        headers: &mut ArrayVec<
+            (ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>),
+            MAX_AUTH_HEADERS,
+        >,
+    ) -> Result<(), AuthError> {
         let token = self.get_valid_token().await?;
         let header_value = token.authorization_header();
         let value = ArrayString::from(&header_value)
             .map_err(|_| AuthError::HeaderValueTooLong(header_value.len()))?;
-        
-        headers.try_push((
-            ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?,
-            value,
-        )).map_err(|_| AuthError::TooManyHeaders)?;
-        
+
+        headers
+            .try_push((
+                ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?,
+                value,
+            ))
+            .map_err(|_| AuthError::TooManyHeaders)?;
+
         Ok(())
     }
 }
@@ -590,7 +626,7 @@ pub struct ServiceAccountConfig {
     /// Client email from service account
     client_email: ArrayString<256>,
     /// Private key for JWT signing
-    private_key: SecureString,
+    _private_key: SecureString,
     /// OAuth2 token endpoint URL
     token_uri: ArrayString<512>,
     /// Required scopes
@@ -611,18 +647,19 @@ impl ServiceAccountConfig {
         let key = SecureString::new(private_key)?;
         let uri = ArrayString::from(token_uri)
             .map_err(|_| AuthError::TokenUriTooLong(token_uri.len()))?;
-        
+
         let mut scope_list = ArrayVec::new();
         for scope in scopes {
-            let scope_str = ArrayString::from(*scope)
-                .map_err(|_| AuthError::ScopeTooLong(scope.len()))?;
-            scope_list.try_push(scope_str)
+            let scope_str =
+                ArrayString::from(*scope).map_err(|_| AuthError::ScopeTooLong(scope.len()))?;
+            scope_list
+                .try_push(scope_str)
                 .map_err(|_| AuthError::TooManyScopes)?;
         }
-        
+
         Ok(Self {
             client_email: email,
-            private_key: key,
+            _private_key: key,
             token_uri: uri,
             scopes: scope_list,
         })
@@ -636,7 +673,9 @@ impl ServiceAccountConfig {
         // 1. Create a JWT assertion using the private key
         // 2. Send it to the token endpoint
         // 3. Parse the response and create an OAuth2Token
-        Err(AuthError::NotImplemented("Service account token generation not implemented"))
+        Err(AuthError::NotImplemented(
+            "Service account token generation not implemented",
+        ))
     }
 }
 
@@ -652,7 +691,7 @@ impl fmt::Debug for ServiceAccountConfig {
 }
 
 /// AWS Signature Version 4 authentication
-/// 
+///
 /// Provides AWS request signing for Bedrock and other AWS services.
 /// Implements the complete AWS SigV4 signing process with zero allocation
 /// optimizations where possible.
@@ -661,7 +700,7 @@ pub struct AwsSignatureAuth {
     /// AWS access key ID
     access_key_id: ArrayString<128>,
     /// AWS secret access key
-    secret_access_key: SecureString,
+    _secret_access_key: SecureString,
     /// Optional session token for temporary credentials
     session_token: Option<SecureString>,
     /// AWS region
@@ -682,27 +721,26 @@ impl AwsSignatureAuth {
         let key_id = ArrayString::from(access_key_id)
             .map_err(|_| AuthError::AccessKeyIdTooLong(access_key_id.len()))?;
         let secret_key = SecureString::new(secret_access_key)?;
-        let reg = ArrayString::from(region)
-            .map_err(|_| AuthError::RegionTooLong(region.len()))?;
-        let svc = ArrayString::from(service)
-            .map_err(|_| AuthError::ServiceNameTooLong(service.len()))?;
-        
+        let reg = ArrayString::from(region).map_err(|_| AuthError::RegionTooLong(region.len()))?;
+        let svc =
+            ArrayString::from(service).map_err(|_| AuthError::ServiceNameTooLong(service.len()))?;
+
         // Basic validation
         if access_key_id.is_empty() {
             return Err(AuthError::EmptyAccessKeyId);
         }
-        
+
         if region.is_empty() {
             return Err(AuthError::EmptyRegion);
         }
-        
+
         if service.is_empty() {
             return Err(AuthError::EmptyServiceName);
         }
-        
+
         Ok(Self {
             access_key_id: key_id,
-            secret_access_key: secret_key,
+            _secret_access_key: secret_key,
             session_token: None,
             region: reg,
             service: svc,
@@ -721,64 +759,73 @@ impl AwsSignatureAuth {
     pub fn from_env(region: &str, service: &str) -> Result<Self, AuthError> {
         let access_key_id = std::env::var("AWS_ACCESS_KEY_ID")
             .map_err(|_| AuthError::EnvironmentVariableNotFound("AWS_ACCESS_KEY_ID".to_string()))?;
-        let secret_access_key = std::env::var("AWS_SECRET_ACCESS_KEY")
-            .map_err(|_| AuthError::EnvironmentVariableNotFound("AWS_SECRET_ACCESS_KEY".to_string()))?;
-        
+        let secret_access_key = std::env::var("AWS_SECRET_ACCESS_KEY").map_err(|_| {
+            AuthError::EnvironmentVariableNotFound("AWS_SECRET_ACCESS_KEY".to_string())
+        })?;
+
         let mut auth = Self::new(&access_key_id, &secret_access_key, region, service)?;
-        
+
         // Optional session token
         if let Ok(session_token) = std::env::var("AWS_SESSION_TOKEN") {
             auth = auth.with_session_token(&session_token)?;
         }
-        
+
         Ok(auth)
     }
 
     /// Generate AWS SigV4 signature for a request
-    /// 
+    ///
     /// This is a simplified signature generation. In a real implementation,
     /// this would implement the complete AWS SigV4 signing algorithm.
     #[inline]
     pub fn sign_request(
         &self,
-        method: &str,
-        uri: &str,
-        query_string: &str,
-        headers: &[(String, String)],
-        payload: &[u8],
-    ) -> Result<ArrayVec<(ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>), MAX_AUTH_HEADERS>, AuthError> {
+        _method: &str,
+        _uri: &str,
+        _query_string: &str,
+        _headers: &[(String, String)],
+        _payload: &[u8],
+    ) -> Result<
+        ArrayVec<(ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>), MAX_AUTH_HEADERS>,
+        AuthError,
+    > {
         // Simplified signature generation
         // Real implementation would follow AWS SigV4 specification
         let mut auth_headers = ArrayVec::new();
-        
+
         // Add authorization header
         let auth_value = format!(
-            "AWS4-HMAC-SHA256 Credential={}/{}//{}/aws4_request, SignedHeaders=host;x-amz-date, Signature=placeholder",
+            "AWS4-HMAC-SHA256 Credential={}/{}/{}/{}/aws4_request, SignedHeaders=host;x-amz-date, Signature=placeholder",
             self.access_key_id,
             "20240101", // Date would be real date
             self.region,
             self.service
         );
-        
+
         let auth_header = ArrayString::from(&auth_value)
             .map_err(|_| AuthError::HeaderValueTooLong(auth_value.len()))?;
-        
-        auth_headers.try_push((
-            ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?,
-            auth_header,
-        )).map_err(|_| AuthError::TooManyHeaders)?;
-        
+
+        auth_headers
+            .try_push((
+                ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?,
+                auth_header,
+            ))
+            .map_err(|_| AuthError::TooManyHeaders)?;
+
         // Add session token if present
         if let Some(ref token) = self.session_token {
             let token_header = ArrayString::from(token.expose_secret())
                 .map_err(|_| AuthError::HeaderValueTooLong(token.len()))?;
-            
-            auth_headers.try_push((
-                ArrayString::from("X-Amz-Security-Token").map_err(|_| AuthError::InternalError)?,
-                token_header,
-            )).map_err(|_| AuthError::TooManyHeaders)?;
+
+            auth_headers
+                .try_push((
+                    ArrayString::from("X-Amz-Security-Token")
+                        .map_err(|_| AuthError::InternalError)?,
+                    token_header,
+                ))
+                .map_err(|_| AuthError::TooManyHeaders)?;
         }
-        
+
         Ok(auth_headers)
     }
 
@@ -806,7 +853,10 @@ impl fmt::Debug for AwsSignatureAuth {
         f.debug_struct("AwsSignatureAuth")
             .field("access_key_id", &self.access_key_id)
             .field("secret_access_key", &"[REDACTED]")
-            .field("session_token", &self.session_token.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "session_token",
+                &self.session_token.as_ref().map(|_| "[REDACTED]"),
+            )
             .field("region", &self.region)
             .field("service", &self.service)
             .finish()
@@ -874,25 +924,57 @@ impl fmt::Display for AuthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthError::EmptySecret => write!(f, "Secret value cannot be empty"),
-            AuthError::SecretTooLong(len) => write!(f, "Secret too long: {len} characters (max {MAX_TOKEN_LEN})"),
-            AuthError::EnvironmentVariableNotFound(var) => write!(f, "Environment variable not found: {var}"),
+            AuthError::SecretTooLong(len) => {
+                write!(f, "Secret too long: {len} characters (max {MAX_TOKEN_LEN})")
+            }
+            AuthError::EnvironmentVariableNotFound(var) => {
+                write!(f, "Environment variable not found: {var}")
+            }
             AuthError::TokenTooShort => write!(f, "Token too short (minimum 8 characters)"),
-            AuthError::InvalidTokenPrefix { expected, actual } => write!(f, "Invalid token prefix: expected '{expected}', got '{actual}'"),
-            AuthError::PrefixTooLong(len) => write!(f, "Token prefix too long: {len} characters (max 16)"),
+            AuthError::InvalidTokenPrefix { expected, actual } => write!(
+                f,
+                "Invalid token prefix: expected '{expected}', got '{actual}'"
+            ),
+            AuthError::PrefixTooLong(len) => {
+                write!(f, "Token prefix too long: {len} characters (max 16)")
+            }
             AuthError::InvalidTokenFormat(msg) => write!(f, "Invalid token format: {msg}"),
-            AuthError::HeaderNameTooLong(len) => write!(f, "Header name too long: {len} characters (max {MAX_HEADER_LEN})"),
-            AuthError::HeaderValueTooLong(len) => write!(f, "Header value too long: {len} characters (max {MAX_TOKEN_LEN})"),
+            AuthError::HeaderNameTooLong(len) => write!(
+                f,
+                "Header name too long: {len} characters (max {MAX_HEADER_LEN})"
+            ),
+            AuthError::HeaderValueTooLong(len) => write!(
+                f,
+                "Header value too long: {len} characters (max {MAX_TOKEN_LEN})"
+            ),
             AuthError::EmptyHeaderName => write!(f, "Header name cannot be empty"),
-            AuthError::TooManyHeaders => write!(f, "Too many authentication headers (max {MAX_AUTH_HEADERS})"),
-            AuthError::TokenTypeTooLong(len) => write!(f, "Token type too long: {len} characters (max 32)"),
+            AuthError::TooManyHeaders => write!(
+                f,
+                "Too many authentication headers (max {MAX_AUTH_HEADERS})"
+            ),
+            AuthError::TokenTypeTooLong(len) => {
+                write!(f, "Token type too long: {len} characters (max 32)")
+            }
             AuthError::ScopeTooLong(len) => write!(f, "Scope too long: {len} characters (max 256)"),
             AuthError::TooManyScopes => write!(f, "Too many scopes (max 8)"),
-            AuthError::ClientEmailTooLong(len) => write!(f, "Client email too long: {len} characters (max 256)"),
-            AuthError::TokenUriTooLong(len) => write!(f, "Token URI too long: {len} characters (max 512)"),
+            AuthError::ClientEmailTooLong(len) => {
+                write!(f, "Client email too long: {len} characters (max 256)")
+            }
+            AuthError::TokenUriTooLong(len) => {
+                write!(f, "Token URI too long: {len} characters (max 512)")
+            }
             AuthError::NoRefreshCapability => write!(f, "No token refresh capability configured"),
-            AuthError::AccessKeyIdTooLong(len) => write!(f, "Access key ID too long: {len} characters (max 128)"),
-            AuthError::RegionTooLong(len) => write!(f, "Region name too long: {len} characters (max {MAX_REGION_LEN})"),
-            AuthError::ServiceNameTooLong(len) => write!(f, "Service name too long: {len} characters (max {MAX_REGION_LEN})"),
+            AuthError::AccessKeyIdTooLong(len) => {
+                write!(f, "Access key ID too long: {len} characters (max 128)")
+            }
+            AuthError::RegionTooLong(len) => write!(
+                f,
+                "Region name too long: {len} characters (max {MAX_REGION_LEN})"
+            ),
+            AuthError::ServiceNameTooLong(len) => write!(
+                f,
+                "Service name too long: {len} characters (max {MAX_REGION_LEN})"
+            ),
             AuthError::EmptyAccessKeyId => write!(f, "Access key ID cannot be empty"),
             AuthError::EmptyRegion => write!(f, "Region cannot be empty"),
             AuthError::EmptyServiceName => write!(f, "Service name cannot be empty"),
@@ -916,7 +998,7 @@ mod tests {
         assert!(!secret.is_empty());
         assert!(secret.matches("test-secret-123"));
         assert!(!secret.matches("wrong-secret"));
-        
+
         // Debug output should not expose secret
         let debug_output = format!("{:?}", secret);
         assert!(!debug_output.contains("test-secret-123"));
@@ -926,14 +1008,14 @@ mod tests {
     #[test]
     fn test_bearer_auth() {
         let auth = BearerAuth::new("sk-test123456789").expect("Valid token");
-        
+
         let mut headers = ArrayVec::new();
         auth.apply_headers(&mut headers).expect("Headers applied");
-        
+
         assert_eq!(headers.len(), 1);
         assert_eq!(headers[0].0.as_str(), "Authorization");
         assert!(headers[0].1.as_str().starts_with("Bearer "));
-        
+
         // Validation should pass
         auth.validate().expect("Token is valid");
     }
@@ -941,16 +1023,17 @@ mod tests {
     #[test]
     fn test_api_key_auth() {
         let auth = ApiKeyAuth::new("x-api-key", "ant-test123456789").expect("Valid API key");
-        
+
         let mut headers = ArrayVec::new();
         auth.apply_headers(&mut headers).expect("Headers applied");
-        
+
         assert_eq!(headers.len(), 1);
         assert_eq!(headers[0].0.as_str(), "x-api-key");
         assert_eq!(headers[0].1.as_str(), "ant-test123456789");
-        
+
         // Test Anthropic helper
-        let anthropic_auth = ApiKeyAuth::anthropic("ant-test123456789").expect("Valid Anthropic key");
+        let anthropic_auth =
+            ApiKeyAuth::anthropic("ant-test123456789").expect("Valid Anthropic key");
         assert_eq!(anthropic_auth.header_name(), "x-api-key");
     }
 
@@ -962,11 +1045,12 @@ mod tests {
             3600,
             Some("scope1 scope2"),
             Some("refresh-token-456"),
-        ).expect("Valid OAuth2 token");
-        
+        )
+        .expect("Valid OAuth2 token");
+
         assert!(!token.is_expired(0));
         assert!(token.expires_in_seconds() > 3500);
-        
+
         let header = token.authorization_header();
         assert_eq!(header, "Bearer access-token-123");
     }
@@ -978,18 +1062,23 @@ mod tests {
             "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
             "us-east-1",
             "bedrock",
-        ).expect("Valid AWS credentials");
-        
+        )
+        .expect("Valid AWS credentials");
+
         assert_eq!(auth.access_key_id(), "AKIAEXAMPLE");
         assert_eq!(auth.region(), "us-east-1");
         assert_eq!(auth.service(), "bedrock");
-        
+
         // Test signature generation (simplified)
-        let headers = auth.sign_request("POST", "/", "", &[], b"").expect("Signature generated");
+        let headers = auth
+            .sign_request("POST", "/", "", &[], b"")
+            .expect("Signature generated");
         assert!(!headers.is_empty());
-        
+
         // Should have authorization header
-        let auth_header = headers.iter().find(|(name, _)| name.as_str() == "Authorization");
+        let auth_header = headers
+            .iter()
+            .find(|(name, _)| name.as_str() == "Authorization");
         assert!(auth_header.is_some());
     }
 
@@ -997,16 +1086,16 @@ mod tests {
     fn test_auth_errors() {
         // Empty secret
         assert!(SecureString::new("").is_err());
-        
+
         // Token too short
         let short_auth = BearerAuth::new("short");
         assert!(short_auth.is_ok()); // Creation succeeds
         assert!(short_auth.unwrap().validate().is_err()); // Validation fails
-        
+
         // Invalid prefix
         let prefix_auth = BearerAuth::with_prefix("wrong-prefix-token", "sk-");
         assert!(prefix_auth.is_err());
-        
+
         // Empty header name
         let empty_header = ApiKeyAuth::new("", "some-key");
         assert!(empty_header.is_ok()); // Creation succeeds

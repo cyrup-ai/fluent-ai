@@ -5,14 +5,11 @@
 //!
 //! Zero-allocation design with lock-free concurrent access and SIMD optimization.
 
-use std::collections::HashMap;
 use std::sync::{
     Arc,
-    atomic::{AtomicU32, AtomicU64, Ordering},
-};
+    atomic::{AtomicU32, AtomicU64, Ordering}};
 use std::time::{Duration, Instant, SystemTime};
 
-use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
 use dashmap::DashMap;
 use smallvec::{SmallVec, smallvec};
@@ -30,8 +27,7 @@ pub struct CognitiveEmbedder {
     /// Performance metrics with cache-padded atomics
     metrics: Arc<CachePadded<CognitiveEmbedderMetrics>>,
     /// Configuration settings
-    config: CognitiveEmbedderConfig,
-}
+    config: CognitiveEmbedderConfig}
 
 /// Trait for quantum router integration - NO FUTURES!
 pub trait QuantumRouterTrait: Send + Sync {
@@ -48,8 +44,7 @@ pub trait QuantumRouterTrait: Send + Sync {
                 coherence_time: std::time::Duration::from_secs(1),
                 created_at: std::time::Instant::now(),
                 quality_score: 0.8,
-                entanglements: smallvec![],
-            }));
+                entanglements: smallvec![]}));
         });
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
@@ -105,15 +100,13 @@ pub struct SuperpositionState {
     /// Quality score
     pub quality_score: f64,
     /// Entanglement connections
-    pub entanglements: SmallVec<[QuantumEntanglement; 4]>,
-}
+    pub entanglements: SmallVec<[QuantumEntanglement; 4]>}
 
 /// Complex number representation for quantum states
 #[derive(Debug, Clone, Copy)]
 pub struct Complex64 {
     pub real: f64,
-    pub imag: f64,
-}
+    pub imag: f64}
 
 impl Complex64 {
     /// Create new complex number
@@ -160,8 +153,7 @@ pub struct QuantumEntanglement {
     /// Entanglement strength (0.0 to 1.0)
     pub strength: f64,
     /// Entanglement type
-    pub entanglement_type: EntanglementType,
-}
+    pub entanglement_type: EntanglementType}
 
 /// Types of quantum entanglement
 #[derive(Debug, Clone, PartialEq)]
@@ -173,8 +165,7 @@ pub enum EntanglementType {
     /// Cluster state entanglement
     Cluster,
     /// Custom entanglement pattern
-    Custom(String),
-}
+    Custom(String)}
 
 /// Coherence tracking system with decoherence models
 pub struct CoherenceTracker {
@@ -187,8 +178,7 @@ pub struct CoherenceTracker {
     /// Environmental factors affecting coherence
     pub environmental_factors: Arc<CachePadded<EnvironmentalFactors>>,
     /// Error correction system
-    pub error_correction: Option<Arc<QuantumErrorCorrection>>,
-}
+    pub error_correction: Option<Arc<QuantumErrorCorrection>>}
 
 /// Decoherence models for quantum state evolution
 #[derive(Debug, Clone)]
@@ -204,8 +194,7 @@ pub enum DecoherenceModel {
     /// Amplitude damping model
     AmplitudeDamping { damping_rate: f64 },
     /// Depolarizing channel model
-    DepolarizingChannel { error_rate: f64 },
-}
+    DepolarizingChannel { error_rate: f64 }}
 
 /// Environmental factors affecting quantum coherence
 #[derive(Debug)]
@@ -221,8 +210,7 @@ pub struct EnvironmentalFactors {
     /// System computational load
     pub system_load: AtomicU32, // percentage * 100
     /// Network latency affecting distributed coherence
-    pub network_latency_us: AtomicU64,
-}
+    pub network_latency_us: AtomicU64}
 
 /// Coherence measurement event
 #[derive(Debug, Clone)]
@@ -236,8 +224,7 @@ pub struct CoherenceEvent {
     /// State after measurement
     pub post_measurement_state: CoherenceState,
     /// Measurement type
-    pub measurement_type: MeasurementType,
-}
+    pub measurement_type: MeasurementType}
 
 /// Coherence state representation
 #[derive(Debug, Clone)]
@@ -247,8 +234,7 @@ pub enum CoherenceState {
     /// Mixed quantum state
     Mixed { entropy: f64, purity: f64 },
     /// Decoherent classical state
-    Classical { classical_correlation: f64 },
-}
+    Classical { classical_correlation: f64 }}
 
 /// Types of quantum measurements
 #[derive(Debug, Clone, PartialEq)]
@@ -262,8 +248,7 @@ pub enum MeasurementType {
     /// Process tomography
     ProcessTomography,
     /// State tomography
-    StateTomography,
-}
+    StateTomography}
 
 /// Quantum error correction system
 pub struct QuantumErrorCorrection {
@@ -274,8 +259,7 @@ pub struct QuantumErrorCorrection {
     /// Error correction history
     pub correction_history: Arc<DashMap<String, ArrayVec<CorrectionEvent, 100>>>,
     /// Performance metrics
-    pub metrics: Arc<CachePadded<ErrorCorrectionMetrics>>,
-}
+    pub metrics: Arc<CachePadded<ErrorCorrectionMetrics>>}
 
 /// Types of quantum error correction codes
 #[derive(Debug, Clone)]
@@ -289,8 +273,7 @@ pub enum ErrorCorrectionCode {
     /// Color code
     Color { distance: usize },
     /// Custom code
-    Custom { parameters: HashMap<String, f64> },
-}
+    Custom { parameters: HashMap<String, f64> }}
 
 /// Error correction event
 #[derive(Debug, Clone)]
@@ -304,8 +287,7 @@ pub struct CorrectionEvent {
     /// Success of correction
     pub correction_success: bool,
     /// Remaining error after correction
-    pub residual_error: f64,
-}
+    pub residual_error: f64}
 
 /// Error correction performance metrics
 #[derive(Debug)]
@@ -335,8 +317,7 @@ pub struct QuantumMemory {
     /// Garbage collection system
     pub garbage_collector: Arc<QuantumGarbageCollector>,
     /// Memory allocation metrics
-    pub allocation_metrics: Arc<CachePadded<QuantumMemoryMetrics>>,
-}
+    pub allocation_metrics: Arc<CachePadded<QuantumMemoryMetrics>>}
 
 /// Individual quantum register
 #[derive(Debug, Clone)]
@@ -352,8 +333,7 @@ pub struct QuantumRegister {
     /// Last access timestamp
     pub last_access: Instant,
     /// Register state
-    pub state: QuantumRegisterState,
-}
+    pub state: QuantumRegisterState}
 
 /// Individual qubit representation
 #[derive(Debug, Clone)]
@@ -367,8 +347,7 @@ pub struct Qubit {
     /// Last operation timestamp
     pub last_operation: Instant,
     /// Qubit quality metrics
-    pub quality_metrics: QubitQuality,
-}
+    pub quality_metrics: QubitQuality}
 
 /// Qubit quality assessment
 #[derive(Debug, Clone)]
@@ -380,8 +359,7 @@ pub struct QubitQuality {
     /// Coherence time stability
     pub coherence_stability: f64,
     /// Cross-talk with neighboring qubits
-    pub crosstalk_level: f64,
-}
+    pub crosstalk_level: f64}
 
 /// Entanglement patterns within quantum registers
 #[derive(Debug, Clone)]
@@ -395,8 +373,7 @@ pub enum EntanglementPattern {
     /// Fully connected entanglement
     FullyConnected,
     /// Custom pattern
-    Custom { adjacency_matrix: Vec<Vec<f64>> },
-}
+    Custom { adjacency_matrix: Vec<Vec<f64>> }}
 
 /// Quantum register state
 #[derive(Debug, Clone, PartialEq)]
@@ -410,8 +387,7 @@ pub enum QuantumRegisterState {
     /// Error state requiring correction
     Error,
     /// Garbage collection candidate
-    Stale,
-}
+    Stale}
 
 /// Quantum garbage collection system
 pub struct QuantumGarbageCollector {
@@ -435,8 +411,7 @@ pub enum GarbageCollectionStrategy {
     /// Generational collection
     Generational { generations: usize },
     /// Adaptive collection based on system load
-    Adaptive,
-}
+    Adaptive}
 
 /// Garbage collection thresholds
 #[derive(Debug, Clone)]
@@ -448,8 +423,7 @@ pub struct GarbageCollectionThresholds {
     /// Idle time threshold
     pub idle_threshold: Duration,
     /// Error rate threshold
-    pub error_rate_threshold: f64,
-}
+    pub error_rate_threshold: f64}
 
 /// Garbage collection performance metrics
 #[derive(Debug)]
@@ -476,8 +450,7 @@ pub struct QuantumMemoryMetrics {
     /// Current fragmentation ratio
     pub fragmentation_ratio: AtomicU64, // scaled by 1000
     /// Average allocation size (qubits)
-    pub avg_allocation_size: AtomicU64,
-}
+    pub avg_allocation_size: AtomicU64}
 
 /// Cognitive embedder performance metrics
 #[derive(Debug)]
@@ -518,8 +491,7 @@ pub struct CognitiveEmbedderConfig {
     /// Garbage collection enable
     pub enable_garbage_collection: bool,
     /// Cache configuration
-    pub cache_config: QuantumCacheConfig,
-}
+    pub cache_config: QuantumCacheConfig}
 
 /// Quantum cache configuration
 #[derive(Debug, Clone)]
@@ -531,8 +503,7 @@ pub struct QuantumCacheConfig {
     /// Enable coherence-based eviction
     pub coherence_based_eviction: bool,
     /// Cache warming strategy
-    pub warming_strategy: CacheWarmingStrategy,
-}
+    pub warming_strategy: CacheWarmingStrategy}
 
 /// Cache warming strategies
 #[derive(Debug, Clone)]
@@ -544,8 +515,7 @@ pub enum CacheWarmingStrategy {
     /// Adaptive based on usage patterns
     Adaptive,
     /// Machine learning guided
-    MLGuided,
-}
+    MLGuided}
 
 impl Default for CognitiveEmbedderConfig {
     fn default() -> Self {
@@ -557,8 +527,7 @@ impl Default for CognitiveEmbedderConfig {
             max_entanglements: 4,
             enable_error_correction: true,
             enable_garbage_collection: true,
-            cache_config: QuantumCacheConfig::default(),
-        }
+            cache_config: QuantumCacheConfig::default()}
     }
 }
 
@@ -568,8 +537,7 @@ impl Default for QuantumCacheConfig {
             max_cached_states: 10000,
             cache_ttl: Duration::from_secs(3600),
             coherence_based_eviction: true,
-            warming_strategy: CacheWarmingStrategy::Adaptive,
-        }
+            warming_strategy: CacheWarmingStrategy::Adaptive}
     }
 }
 
@@ -598,8 +566,7 @@ impl CognitiveEmbedder {
                 Some(Arc::new(Self::create_error_correction_system()))
             } else {
                 None
-            },
-        });
+            }});
 
         // Initialize quantum memory
         let quantum_memory = Arc::new(QuantumMemory {
@@ -614,9 +581,7 @@ impl CognitiveEmbedder {
                 total_deallocations: AtomicU64::new(0),
                 peak_memory_usage: AtomicUsize::new(0),
                 fragmentation_ratio: AtomicU64::new(0),
-                avg_allocation_size: AtomicU64::new(0),
-            })),
-        });
+                avg_allocation_size: AtomicU64::new(0)}))});
 
         // Initialize metrics
         let metrics = Arc::new(CachePadded::new(CognitiveEmbedderMetrics {
@@ -627,8 +592,7 @@ impl CognitiveEmbedder {
             error_corrections: AtomicU64::new(0),
             avg_processing_time_us: AtomicU64::new(0),
             avg_coherence_score: AtomicU64::new(0),
-            cache_hit_rate: AtomicU64::new(0),
-        }));
+            cache_hit_rate: AtomicU64::new(0)}));
 
         Ok(Self {
             quantum_router,
@@ -636,8 +600,7 @@ impl CognitiveEmbedder {
             coherence_tracker,
             quantum_memory,
             metrics,
-            config,
-        })
+            config})
     }
 
     /// Generate quantum-enhanced embedding for text
@@ -880,14 +843,11 @@ impl CognitiveEmbedder {
     fn default_decoherence_models() -> Vec<DecoherenceModel> {
         vec![
             DecoherenceModel::Exponential {
-                decay_constant: 0.01,
-            },
+                decay_constant: 0.01},
             DecoherenceModel::PhaseNoise {
-                noise_strength: 0.001,
-            },
+                noise_strength: 0.001},
             DecoherenceModel::AmplitudeDamping {
-                damping_rate: 0.005,
-            },
+                damping_rate: 0.005},
         ]
     }
 
@@ -907,9 +867,7 @@ impl CognitiveEmbedder {
                 failed_corrections: AtomicU64::new(0),
                 avg_correction_time_us: AtomicU64::new(0),
                 error_rate_before: AtomicU64::new(0),
-                error_rate_after: AtomicU64::new(0),
-            })),
-        }
+                error_rate_after: AtomicU64::new(0)}))}
     }
 
     /// Create garbage collector
@@ -924,16 +882,13 @@ impl CognitiveEmbedder {
                 memory_threshold: 0.8,
                 coherence_threshold: Duration::from_millis(10),
                 idle_threshold: Duration::from_secs(300),
-                error_rate_threshold: 0.1,
-            },
+                error_rate_threshold: 0.1},
             metrics: Arc::new(CachePadded::new(GarbageCollectionMetrics {
                 total_collections: AtomicU64::new(0),
                 memory_reclaimed: AtomicU64::new(0),
                 avg_collection_time_us: AtomicU64::new(0),
-                collection_efficiency: AtomicU64::new(0),
-            })),
-            last_collection: AtomicU64::new(0),
-        }
+                collection_efficiency: AtomicU64::new(0)})),
+            last_collection: AtomicU64::new(0)}
     }
 
     /// Evolve superposition state with decoherence
@@ -1024,8 +979,7 @@ impl CognitiveEmbedder {
                     source_dim,
                     target_dim,
                     strength,
-                    entanglement_type: EntanglementType::Bell,
-                };
+                    entanglement_type: EntanglementType::Bell};
 
                 // Apply entanglement to state
                 self.apply_entanglement_to_state(state, &entanglement)?;
@@ -1123,8 +1077,7 @@ impl CognitiveEmbedder {
                 as f64
                 / 1000.0,
             cache_hit_rate: cache_hits as f64 / total_embeddings.max(1) as f64,
-            current_cached_states: self.superposition_cache.len(),
-        }
+            current_cached_states: self.superposition_cache.len()}
     }
 }
 
@@ -1140,5 +1093,4 @@ pub struct CognitiveEmbedderPerformanceMetrics {
     pub average_processing_time_us: u64,
     pub average_coherence_score: f64,
     pub cache_hit_rate: f64,
-    pub current_cached_states: usize,
-}
+    pub current_cached_states: usize}

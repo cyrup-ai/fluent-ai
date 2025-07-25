@@ -16,22 +16,18 @@ pub enum ImmutableMessageContent {
     /// Markdown formatted content
     Markdown {
         content: String,
-        rendered_html: Option<String>,
-    },
+        rendered_html: Option<String>},
     /// Code block with syntax highlighting
     Code {
         content: String,
         language: String,
-        highlighted: Option<String>,
-    },
+        highlighted: Option<String>},
     /// Formatted content with inline styling
     Formatted {
         content: String,
-        styles: Vec<FormatStyle>,
-    },
+        styles: Vec<FormatStyle>},
     /// Composite content with multiple parts
-    Composite { parts: Vec<ImmutableMessageContent> },
-}
+    Composite { parts: Vec<ImmutableMessageContent> }}
 
 impl ImmutableMessageContent {
     /// Get content as borrowed string (zero allocation)
@@ -54,8 +50,7 @@ impl ImmutableMessageContent {
             Self::Markdown { .. } => "markdown",
             Self::Code { .. } => "code",
             Self::Formatted { .. } => "formatted",
-            Self::Composite { .. } => "composite",
-        }
+            Self::Composite { .. } => "composite"}
     }
 
     /// Check if content is empty
@@ -66,8 +61,7 @@ impl ImmutableMessageContent {
             Self::Markdown { content, .. } => content.is_empty(),
             Self::Code { content, .. } => content.is_empty(),
             Self::Formatted { content, .. } => content.is_empty(),
-            Self::Composite { parts } => parts.is_empty(),
-        }
+            Self::Composite { parts } => parts.is_empty()}
     }
 
     /// Get estimated character count
@@ -78,8 +72,7 @@ impl ImmutableMessageContent {
             Self::Markdown { content, .. } => content.chars().count(),
             Self::Code { content, .. } => content.chars().count(),
             Self::Formatted { content, .. } => content.chars().count(),
-            Self::Composite { parts } => parts.iter().map(|p| p.char_count()).sum(),
-        }
+            Self::Composite { parts } => parts.iter().map(|p| p.char_count()).sum()}
     }
 
     /// Validate content structure
@@ -89,21 +82,18 @@ impl ImmutableMessageContent {
             Self::Code { language, .. } => {
                 if language.is_empty() {
                     return Err(FormatError::InvalidContent {
-                        detail: "Code language cannot be empty".to_string(),
-                    });
+                        detail: "Code language cannot be empty".to_string()});
                 }
             }
             Self::Formatted { content, styles } => {
                 for style in styles {
                     if style.end > content.len() {
                         return Err(FormatError::InvalidContent {
-                            detail: "Style range exceeds content length".to_string(),
-                        });
+                            detail: "Style range exceeds content length".to_string()});
                     }
                     if style.start >= style.end {
                         return Err(FormatError::InvalidContent {
-                            detail: "Invalid style range".to_string(),
-                        });
+                            detail: "Invalid style range".to_string()});
                     }
                 }
             }

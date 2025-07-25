@@ -3,7 +3,6 @@
 //! This module provides a comprehensive transaction system that ensures
 //! workspace operations can be rolled back safely in case of failures.
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use scopeguard::defer;
 use smallvec::SmallVec;
@@ -36,16 +35,14 @@ pub enum Operation {
     WorkspaceHackInit { path: PathBuf },
     
     /// Package was renamed
-    PackageRenamed { path: PathBuf, old_name: String, new_name: String },
-}
+    PackageRenamed { path: PathBuf, old_name: String, new_name: String }}
 
 /// Transaction checkpoint for nested operations
 #[derive(Debug, Clone)]
 pub struct Checkpoint {
     name: String,
     operation_count: usize,
-    created_at: std::time::Instant,
-}
+    created_at: std::time::Instant}
 
 /// High-performance transaction system with rollback capability
 pub struct Transaction {
@@ -65,8 +62,7 @@ pub struct Transaction {
     started_at: std::time::Instant,
     
     /// Whether to automatically rollback on drop
-    auto_rollback: bool,
-}
+    auto_rollback: bool}
 
 /// Transaction state
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -75,8 +71,7 @@ enum TransactionState {
     Active,
     Committed,
     RolledBack,
-    Failed,
-}
+    Failed}
 
 impl Transaction {
     /// Create new transaction
@@ -87,8 +82,7 @@ impl Transaction {
             temp_files: SmallVec::new(),
             state: TransactionState::NotStarted,
             started_at: std::time::Instant::now(),
-            auto_rollback: true,
-        }
+            auto_rollback: true}
     }
     
     /// Start transaction
@@ -113,8 +107,7 @@ impl Transaction {
         let checkpoint = Checkpoint {
             name: name.clone(),
             operation_count: self.operations.len(),
-            created_at: std::time::Instant::now(),
-        };
+            created_at: std::time::Instant::now()};
         
         self.checkpoints.insert(name, checkpoint);
         
@@ -218,8 +211,7 @@ impl Transaction {
         
         let temp_file = NamedTempFile::new()
             .map_err(|e| TransactionError::CheckpointFailed {
-                name: "temp_file_creation".to_string(),
-            })?;
+                name: "temp_file_creation".to_string()})?;
         
         self.temp_files.push(temp_file);
         
@@ -288,8 +280,7 @@ impl Transaction {
         
         if !rollback_errors.is_empty() {
             return Err(TransactionError::RollbackFailed {
-                reason: format!("Multiple rollback errors: {:?}", rollback_errors),
-            }.into());
+                reason: format!("Multiple rollback errors: {:?}", rollback_errors)}.into());
         }
         
         Ok(())
@@ -303,8 +294,7 @@ impl Transaction {
         
         let checkpoint = self.checkpoints.get(checkpoint_name)
             .ok_or_else(|| TransactionError::CheckpointFailed {
-                name: checkpoint_name.to_string(),
-            })?;
+                name: checkpoint_name.to_string()})?;
         
         let target_count = checkpoint.operation_count;
         
@@ -430,15 +420,13 @@ impl Drop for Transaction {
 
 /// Transaction builder for fluent interface
 pub struct TransactionBuilder {
-    auto_rollback: bool,
-}
+    auto_rollback: bool}
 
 impl TransactionBuilder {
     /// Create new transaction builder
     pub fn new() -> Self {
         Self {
-            auto_rollback: true,
-        }
+            auto_rollback: true}
     }
     
     /// Enable automatic rollback on drop
@@ -469,15 +457,13 @@ macro_rules! transaction {
 
 /// Async transaction guard that ensures rollback on panic
 pub struct AsyncTransactionGuard {
-    transaction: Option<Transaction>,
-}
+    transaction: Option<Transaction>}
 
 impl AsyncTransactionGuard {
     /// Create new transaction guard
     pub fn new(transaction: Transaction) -> Self {
         Self {
-            transaction: Some(transaction),
-        }
+            transaction: Some(transaction)}
     }
     
     /// Get mutable reference to transaction

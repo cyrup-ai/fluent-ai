@@ -10,15 +10,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 /// High-performance lock-free counter for vector operations
 #[derive(Debug, Default)]
 pub struct RelaxedCounter {
-    value: AtomicU64,
-}
+    value: AtomicU64}
 
 impl RelaxedCounter {
     #[inline]
     pub fn new(initial: u64) -> Self {
         Self {
-            value: AtomicU64::new(initial),
-        }
+            value: AtomicU64::new(initial)}
     }
 
     #[inline]
@@ -38,8 +36,7 @@ use smallvec::SmallVec;
 use tokio::sync::oneshot;
 
 use super::{
-    PendingEmbedding, PendingVectorOp, PendingVectorSearch, VectorSearchResult, VectorStore,
-};
+    PendingEmbedding, PendingVectorOp, PendingVectorSearch, VectorSearchResult, VectorStore};
 use crate::memory::filter::MemoryFilter;
 use crate::utils::error::Error;
 
@@ -57,8 +54,7 @@ pub struct VectorStoreMetrics {
     /// Vector storage size (atomic)
     pub storage_size_bytes: AtomicU64,
     /// Cache hit ratio for similarity calculations (atomic)
-    pub cache_hit_ratio: AtomicU64,
-}
+    pub cache_hit_ratio: AtomicU64}
 
 impl VectorStoreMetrics {
     /// Create new metrics with zero allocation
@@ -70,8 +66,7 @@ impl VectorStoreMetrics {
             embeddings_generated: RelaxedCounter::new(0),
             avg_search_time_us: AtomicU64::new(0),
             storage_size_bytes: AtomicU64::new(0),
-            cache_hit_ratio: AtomicU64::new(0),
-        }
+            cache_hit_ratio: AtomicU64::new(0)}
     }
 
     /// Record search operation with atomic operations
@@ -120,8 +115,7 @@ impl Default for VectorStoreMetrics {
 #[derive(Debug, Clone, Copy)]
 pub enum StorageOperation {
     Add,
-    Remove,
-}
+    Remove}
 
 /// Lock-free in-memory vector store with blazing-fast atomic operations
 #[derive(Debug)]
@@ -131,8 +125,7 @@ pub struct InMemoryVectorStore {
     /// Lock-free metadata storage (SkipMap for concurrent access)
     metadata: Arc<SkipMap<String, serde_json::Value>>,
     /// Atomic performance metrics
-    metrics: Arc<VectorStoreMetrics>,
-}
+    metrics: Arc<VectorStoreMetrics>}
 
 impl Default for InMemoryVectorStore {
     #[inline(always)]
@@ -148,8 +141,7 @@ impl InMemoryVectorStore {
         Self {
             vectors: Arc::new(SkipMap::new()),
             metadata: Arc::new(SkipMap::new()),
-            metrics: Arc::new(VectorStoreMetrics::new()),
-        }
+            metrics: Arc::new(VectorStoreMetrics::new())}
     }
 
     /// Get current metrics with atomic operations
@@ -349,8 +341,7 @@ impl VectorStore for InMemoryVectorStore {
                 .map(|(id, score, metadata)| VectorSearchResult {
                     id,
                     score,
-                    metadata,
-                })
+                    metadata})
                 .collect();
 
             // Record search metrics

@@ -8,7 +8,7 @@
 #[macro_export]
 macro_rules! emit {
     ($sender:expr, $value:expr) => {
-        if $sender.send($value).is_err() {
+        if let Err(_) = $sender.send($value) {
             // The receiver has been dropped, so we can gracefully stop.
             // This is not an error condition, but a natural end to the stream.
             return;

@@ -12,8 +12,7 @@ use std::time::SystemTime;
 
 use chacha20poly1305::{
     ChaCha20Poly1305, Key, Nonce,
-    aead::{Aead, AeadCore, KeyInit, OsRng},
-};
+    aead::{Aead, AeadCore, KeyInit, OsRng}};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -42,8 +41,7 @@ pub struct EncryptedData {
     pub created_at: SystemTime,
 
     /// Version for format compatibility
-    pub version: u32,
-}
+    pub version: u32}
 
 /// Encryption engine with secure key management
 #[derive(ZeroizeOnDrop)]
@@ -56,8 +54,7 @@ pub struct EncryptionEngine {
     key_path: String,
 
     /// Key creation timestamp for rotation
-    key_created_at: SystemTime,
-}
+    key_created_at: SystemTime}
 
 impl EncryptionEngine {
     /// Initialize encryption engine with key from file or generate new one
@@ -71,20 +68,17 @@ impl EncryptionEngine {
         Ok(Self {
             cipher,
             key_path: key_path.to_string(),
-            key_created_at,
-        })
+            key_created_at})
     }
 
     /// Load encryption key from secure file
     fn load_key_from_file(key_path: &str) -> SecurityResult<(ChaCha20Poly1305, SystemTime)> {
         let key_data = fs::read(key_path).map_err(|e| SecurityError::EncryptionError {
-            message: format!("Failed to read key file {}: {}", key_path, e),
-        })?;
+            message: format!("Failed to read key file {}: {}", key_path, e)})?;
 
         if key_data.len() != 32 {
             return Err(SecurityError::EncryptionError {
-                message: format!("Invalid key size: {} bytes (expected 32)", key_data.len()),
-            });
+                message: format!("Invalid key size: {} bytes (expected 32)", key_data.len())});
         }
 
         let key = Key::from_slice(&key_data);
@@ -92,8 +86,7 @@ impl EncryptionEngine {
 
         // Get file creation time for key rotation tracking
         let metadata = fs::metadata(key_path).map_err(|e| SecurityError::EncryptionError {
-            message: format!("Failed to read key metadata: {}", e),
-        })?;
+            message: format!("Failed to read key metadata: {}", e)})?;
 
         let key_created_at = metadata
             .created()
@@ -115,14 +108,12 @@ impl EncryptionEngine {
         // Create parent directory if needed
         if let Some(parent) = Path::new(key_path).parent() {
             fs::create_dir_all(parent).map_err(|e| SecurityError::EncryptionError {
-                message: format!("Failed to create key directory: {}", e),
-            })?;
+                message: format!("Failed to create key directory: {}", e)})?;
         }
 
         // Save key with secure permissions
         fs::write(key_path, &key_bytes).map_err(|e| SecurityError::EncryptionError {
-            message: format!("Failed to save key file: {}", e),
-        })?;
+            message: format!("Failed to save key file: {}", e)})?;
 
         // Set restrictive permissions (Unix only)
         #[cfg(unix)]
@@ -130,13 +121,11 @@ impl EncryptionEngine {
             use std::os::unix::fs::PermissionsExt;
             let mut perms = fs::metadata(key_path)
                 .map_err(|e| SecurityError::EncryptionError {
-                    message: format!("Failed to read key file metadata: {}", e),
-                })?
+                    message: format!("Failed to read key file metadata: {}", e)})?
                 .permissions();
             perms.set_mode(0o600); // Owner read/write only
             fs::set_permissions(key_path, perms).map_err(|e| SecurityError::EncryptionError {
-                message: format!("Failed to set key file permissions: {}", e),
-            })?;
+                message: format!("Failed to set key file permissions: {}", e)})?;
         }
 
         // Zeroize the key bytes in memory
@@ -155,8 +144,7 @@ impl EncryptionEngine {
                     "Data too large for encryption: {} bytes (max {})",
                     plaintext.len(),
                     MAX_ENCRYPTED_SIZE - 16
-                ),
-            });
+                )});
         }
 
         // Generate random nonce
@@ -171,24 +159,21 @@ impl EncryptionEngine {
             self.cipher
                 .encrypt(&nonce, plaintext)
                 .map_err(|e| SecurityError::EncryptionError {
-                    message: format!("Encryption failed: {}", e),
-                })?;
+                    message: format!("Encryption failed: {}", e)})?;
 
         Ok(EncryptedData {
             ciphertext,
             nonce: nonce.into(),
             salt,
             created_at: SystemTime::now(),
-            version: 1,
-        })
+            version: 1})
     }
 
     /// Decrypt data with zero-allocation AEAD
     pub fn decrypt(&self, encrypted_data: &EncryptedData) -> SecurityResult<Vec<u8>> {
         if encrypted_data.version != 1 {
             return Err(SecurityError::EncryptionError {
-                message: format!("Unsupported encryption version: {}", encrypted_data.version),
-            });
+                message: format!("Unsupported encryption version: {}", encrypted_data.version)});
         }
 
         let nonce = Nonce::from_slice(&encrypted_data.nonce);
@@ -197,8 +182,7 @@ impl EncryptionEngine {
             .cipher
             .decrypt(nonce, encrypted_data.ciphertext.as_ref())
             .map_err(|e| SecurityError::EncryptionError {
-                message: format!("Decryption failed: {}", e),
-            })?;
+                message: format!("Decryption failed: {}", e)})?;
 
         Ok(plaintext)
     }
@@ -210,8 +194,7 @@ impl EncryptionEngine {
         // Serialize to base64 for storage
         let serialized =
             bincode::serialize(&encrypted_data).map_err(|e| SecurityError::EncryptionError {
-                message: format!("Failed to serialize encrypted data: {}", e),
-            })?;
+                message: format!("Failed to serialize encrypted data: {}", e)})?;
 
         use base64::Engine;
         Ok(base64::engine::general_purpose::STANDARD.encode(&serialized))
@@ -225,22 +208,19 @@ impl EncryptionEngine {
             base64::engine::general_purpose::STANDARD.decode(encrypted_string)
         }
         .map_err(|e| SecurityError::EncryptionError {
-            message: format!("Failed to decode base64: {}", e),
-        })?;
+            message: format!("Failed to decode base64: {}", e)})?;
 
         // Deserialize encrypted data
         let encrypted_data: EncryptedData =
             bincode::deserialize(&serialized).map_err(|e| SecurityError::EncryptionError {
-                message: format!("Failed to deserialize encrypted data: {}", e),
-            })?;
+                message: format!("Failed to deserialize encrypted data: {}", e)})?;
 
         // Decrypt to bytes
         let plaintext_bytes = self.decrypt(&encrypted_data)?;
 
         // Convert to string
         String::from_utf8(plaintext_bytes).map_err(|e| SecurityError::EncryptionError {
-            message: format!("Invalid UTF-8 in decrypted data: {}", e),
-        })
+            message: format!("Invalid UTF-8 in decrypted data: {}", e)})
     }
 
     /// Check if the encryption key needs rotation

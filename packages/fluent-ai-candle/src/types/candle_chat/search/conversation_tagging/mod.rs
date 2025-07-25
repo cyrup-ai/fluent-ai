@@ -7,7 +7,6 @@
 //! - types.rs: Tag types, categories, and sentiment analysis
 //! - rules.rs: Tagging rules, patterns, and configuration
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use fluent_ai_async::AsyncStream;
@@ -42,8 +41,7 @@ pub struct ConversationTagger {
     /// Statistics
     pub statistics: TaggingStatistics,
     /// Configuration
-    pub config: TaggerConfig,
-}
+    pub config: TaggerConfig}
 
 impl ConversationTagger {
     /// Create a new conversation tagger
@@ -53,8 +51,7 @@ impl ConversationTagger {
             patterns: HashMap::new(),
             rules: Vec::new(),
             statistics: TaggingStatistics::default(),
-            config: TaggerConfig::default(),
-        }
+            config: TaggerConfig::default()}
     }
 
     /// Create with custom configuration
@@ -64,8 +61,7 @@ impl ConversationTagger {
             patterns: HashMap::new(),
             rules: Vec::new(),
             statistics: TaggingStatistics::default(),
-            config,
-        }
+            config}
     }
 
     /// Add a tag to the system
@@ -196,7 +192,6 @@ impl Clone for ConversationTagger {
             patterns: self.patterns.clone(),
             rules: self.rules.clone(),
             statistics: self.statistics.clone(),
-            config: self.config.clone(),
-        }
+            config: self.config.clone()}
     }
 }

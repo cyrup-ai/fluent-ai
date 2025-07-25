@@ -6,7 +6,8 @@
 
 use std::sync::Arc;
 
-use super::core::{ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig};
+use super::config_core::ChatRuntimeConfig;
+use super::core::ChatConfig;
 
 /// Configuration validation error
 #[derive(Debug, Clone, thiserror::Error)]
@@ -26,8 +27,7 @@ pub enum ConfigurationValidationError {
     #[error("Range validation failed: {field} must be between {min} and {max}")]
     RangeValidation { field: Arc<str>, min: f32, max: f32 },
     #[error("Required field missing: {field}")]
-    RequiredField { field: Arc<str> },
-}
+    RequiredField { field: Arc<str> }}
 
 /// Configuration validation result
 pub type ConfigurationValidationResult<T> = Result<T, ConfigurationValidationError>;
@@ -50,63 +50,56 @@ impl ConfigurationValidator for PersonalityValidator {
         let personality = &config.personality;
 
         // Validate creativity range
-        if !(0.0..=1.0).contains(&personality.creativity) {
+        if !(0.0..=1.0).contains(&personality.creativity_level) {
             return Err(ConfigurationValidationError::RangeValidation {
-                field: Arc::from("creativity"),
+                field: Arc::from("creativity_level"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate formality range
-        if !(0.0..=1.0).contains(&personality.formality) {
+        if !(0.0..=1.0).contains(&personality.formality_level) {
             return Err(ConfigurationValidationError::RangeValidation {
-                field: Arc::from("formality"),
+                field: Arc::from("formality_level"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate humor range
-        if !(0.0..=1.0).contains(&personality.humor) {
+        if !(0.0..=1.0).contains(&personality.humor_level) {
             return Err(ConfigurationValidationError::RangeValidation {
-                field: Arc::from("humor"),
+                field: Arc::from("humor_level"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate empathy range
-        if !(0.0..=1.0).contains(&personality.empathy) {
+        if !(0.0..=1.0).contains(&personality.empathy_level) {
             return Err(ConfigurationValidationError::RangeValidation {
-                field: Arc::from("empathy"),
+                field: Arc::from("empathy_level"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate expertise level
         let valid_expertise = ["beginner", "intermediate", "advanced", "expert"];
         if !valid_expertise.contains(&personality.expertise_level.as_ref()) {
             return Err(ConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid expertise level"),
-            });
+                detail: Arc::from("Invalid expertise level")});
         }
 
         // Validate tone
         let valid_tones = ["formal", "casual", "friendly", "professional", "neutral"];
         if !valid_tones.contains(&personality.tone.as_ref()) {
             return Err(ConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid tone"),
-            });
+                detail: Arc::from("Invalid tone")});
         }
 
         // Validate verbosity
         let valid_verbosity = ["concise", "balanced", "detailed"];
         if !valid_verbosity.contains(&personality.verbosity.as_ref()) {
             return Err(ConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid verbosity level"),
-            });
+                detail: Arc::from("Invalid verbosity level")});
         }
 
         Ok(())
@@ -133,8 +126,7 @@ impl ConfigurationValidator for BehaviorValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("proactivity"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate question frequency range
@@ -142,8 +134,7 @@ impl ConfigurationValidator for BehaviorValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("question_frequency"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate context awareness range
@@ -151,8 +142,7 @@ impl ConfigurationValidator for BehaviorValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("context_awareness"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate memory retention range
@@ -160,32 +150,28 @@ impl ConfigurationValidator for BehaviorValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("memory_retention"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate conversation flow
         let valid_flows = ["natural", "structured", "adaptive", "guided"];
         if !valid_flows.contains(&behavior.conversation_flow.as_ref()) {
             return Err(ConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid conversation flow"),
-            });
+                detail: Arc::from("Invalid conversation flow")});
         }
 
         // Validate follow-up behavior
         let valid_followups = ["contextual", "consistent", "adaptive", "minimal"];
         if !valid_followups.contains(&behavior.follow_up_behavior.as_ref()) {
             return Err(ConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid follow-up behavior"),
-            });
+                detail: Arc::from("Invalid follow-up behavior")});
         }
 
         // Validate error handling
         let valid_error_handling = ["graceful", "verbose", "silent", "strict"];
         if !valid_error_handling.contains(&behavior.error_handling.as_ref()) {
             return Err(ConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid error handling approach"),
-            });
+                detail: Arc::from("Invalid error handling approach")});
         }
 
         Ok(())
@@ -211,40 +197,35 @@ impl ConfigurationValidator for UIValidator {
         let valid_themes = ["light", "dark", "auto", "system", "custom"];
         if !valid_themes.contains(&ui.theme.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid theme"),
-            });
+                detail: Arc::from("Invalid theme")});
         }
 
         // Validate layout
         let valid_layouts = ["standard", "compact", "wide", "mobile", "adaptive"];
         if !valid_layouts.contains(&ui.layout.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid layout"),
-            });
+                detail: Arc::from("Invalid layout")});
         }
 
         // Validate color scheme
         let valid_color_schemes = ["adaptive", "high_contrast", "colorblind", "custom"];
         if !valid_color_schemes.contains(&ui.color_scheme.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid color scheme"),
-            });
+                detail: Arc::from("Invalid color scheme")});
         }
 
         // Validate display density
         let valid_densities = ["compact", "comfortable", "spacious"];
         if !valid_densities.contains(&ui.display_density.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid display density"),
-            });
+                detail: Arc::from("Invalid display density")});
         }
 
         // Validate animations
         let valid_animations = ["none", "minimal", "smooth", "rich"];
         if !valid_animations.contains(&ui.animations.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid animation setting"),
-            });
+                detail: Arc::from("Invalid animation setting")});
         }
 
         // Validate animation speed range
@@ -252,8 +233,7 @@ impl ConfigurationValidator for UIValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("animation_speed"),
                 min: 0.0,
-                max: 2.0,
-            });
+                max: 2.0});
         }
 
         // Validate sound volume range
@@ -261,8 +241,7 @@ impl ConfigurationValidator for UIValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("sound_volume"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate font size
@@ -270,8 +249,7 @@ impl ConfigurationValidator for UIValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("font_size"),
                 min: 8.0,
-                max: 72.0,
-            });
+                max: 72.0});
         }
 
         Ok(())
@@ -286,50 +264,91 @@ impl ConfigurationValidator for UIValidator {
     }
 }
 
+/// Runtime configuration validator
+pub struct RuntimeConfigValidator;
+
+impl RuntimeConfigValidator {
+    /// Validate ChatRuntimeConfig specifically
+    pub fn validate_runtime(&self, config: &ChatRuntimeConfig) -> ConfigurationValidationResult<()> {
+        // Validate max message length
+        if config.max_message_length == 0 || config.max_message_length > 100_000 {
+            return Err(ConfigurationValidationError::RangeValidation {
+                field: Arc::from("max_message_length"),
+                min: 1.0,
+                max: 100_000.0});
+        }
+
+        // Validate history retention period
+        if config.history_retention.as_secs() == 0 || config.history_retention.as_secs() > 31_536_000 {
+            return Err(ConfigurationValidationError::RangeValidation {
+                field: Arc::from("history_retention"),
+                min: 1.0,
+                max: 31_536_000.0, // 1 year in seconds
+            });
+        }
+
+        // ChatRuntimeConfig contains nested config structs
+        // For now, just validate the runtime-specific aspects
+        // TODO: Add comprehensive validation of nested configs when needed
+        
+        Ok(())
+    }
+}
+
 /// Integration configuration validator
 pub struct IntegrationValidator;
 
 impl ConfigurationValidator for IntegrationValidator {
     fn validate(&self, config: &ChatConfig) -> ConfigurationValidationResult<()> {
-        let integration = &config.integration;
+        let integration = &config.integrations;
 
-        // Validate external services
-        let valid_services = ["mcp", "tools", "plugins", "apis", "webhooks"];
-        for service in &integration.external_services {
-            if !valid_services.contains(&service.as_ref()) {
+        // Validate webhook URLs
+        for webhook_url in &integration.webhook_urls {
+            if webhook_url.is_empty() {
                 return Err(ConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid external service: {}", service)),
-                });
+                    detail: Arc::from("Empty webhook URL")});
             }
         }
 
-        // Validate API configurations
-        let valid_apis = ["rest", "graphql", "websocket", "grpc"];
-        for api in &integration.api_configurations {
-            if !valid_apis.contains(&api.as_ref()) {
+        // Validate API integrations
+        for api_integration in &integration.api_integrations {
+            if api_integration.name.is_empty() {
                 return Err(ConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid API configuration: {}", api)),
-                });
+                    detail: Arc::from("API integration name cannot be empty")});
+            }
+            
+            if api_integration.endpoint.is_empty() {
+                return Err(ConfigurationValidationError::InvalidIntegration {
+                    detail: Arc::from("API integration endpoint cannot be empty")});
+            }
+
+            // Validate authentication method
+            let valid_auth = ["token", "oauth", "apikey", "basic", "jwt", "none"];
+            if !valid_auth.contains(&api_integration.auth_method.as_ref()) {
+                return Err(ConfigurationValidationError::InvalidIntegration {
+                    detail: Arc::from(format!("Invalid authentication method: {}", api_integration.auth_method))});
+            }
+
+            // Validate timeout
+            if api_integration.timeout_ms == 0 || api_integration.timeout_ms > 300_000 {
+                return Err(ConfigurationValidationError::RangeValidation {
+                    field: Arc::from("api_integration_timeout_ms"),
+                    min: 1.0,
+                    max: 300_000.0});
             }
         }
 
-        // Validate authentication methods
-        let valid_auth = ["token", "oauth", "apikey", "basic", "jwt"];
-        for auth in &integration.authentication {
-            if !valid_auth.contains(&auth.as_ref()) {
+        // Validate plugins
+        for plugin in &integration.plugins {
+            if plugin.name.is_empty() {
                 return Err(ConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid authentication method: {}", auth)),
-                });
+                    detail: Arc::from("Plugin name cannot be empty")});
             }
-        }
-
-        // Validate API rate limit
-        if integration.api_rate_limit == 0 || integration.api_rate_limit > 10000 {
-            return Err(ConfigurationValidationError::RangeValidation {
-                field: Arc::from("api_rate_limit"),
-                min: 1.0,
-                max: 10000.0,
-            });
+            
+            if plugin.version.is_empty() {
+                return Err(ConfigurationValidationError::InvalidIntegration {
+                    detail: Arc::from("Plugin version cannot be empty")});
+            }
         }
 
         Ok(())
@@ -346,8 +365,7 @@ impl ConfigurationValidator for IntegrationValidator {
 
 /// Composite validator that runs all validation rules
 pub struct CompositeValidator {
-    validators: Vec<Box<dyn ConfigurationValidator + Send + Sync>>,
-}
+    validators: Vec<Box<dyn ConfigurationValidator + Send + Sync>>}
 
 impl CompositeValidator {
     /// Create a new composite validator with all standard validators
@@ -358,8 +376,7 @@ impl CompositeValidator {
                 Box::new(BehaviorValidator),
                 Box::new(UIValidator),
                 Box::new(IntegrationValidator),
-            ],
-        }
+            ]}
     }
 
     /// Add a custom validator

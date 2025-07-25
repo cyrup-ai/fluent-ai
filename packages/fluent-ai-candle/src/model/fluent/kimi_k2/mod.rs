@@ -18,8 +18,7 @@ pub enum QuantFormat {
     /// Full-precision FP16 weights (≈ 40 GB VRAM).
     Fp16,
     /// NVIDIA FP8 quantised weights (≈ 13 GB VRAM).
-    Fp8,
-}
+    Fp8}
 
 /// Static configuration describing a concrete Kimi-K2 variant.
 #[derive(Debug, Clone)]
@@ -31,8 +30,7 @@ pub struct KimiK2Config {
     /// Selected quantisation format.
     pub quant: QuantFormat,
     /// Maximum sequence length supported.
-    pub max_seq_len: u32,
-}
+    pub max_seq_len: u32}
 
 impl KimiK2Config {
     /// Construct a new configuration.
@@ -46,8 +44,7 @@ impl KimiK2Config {
             repo: repo_buf,
             index_file: index_buf,
             quant,
-            max_seq_len: 32_768,
-        }
+            max_seq_len: 32_768}
     }
 }
 
@@ -80,8 +77,7 @@ pub fn kimi_k2_fp16() -> KimiK2Config {
         repo: ArrayVec::from(KIMI_K2_REPO_BYTES),
         index_file: ArrayVec::from(KIMI_K2_INDEX_BYTES),
         quant: QuantFormat::Fp16,
-        max_seq_len: 32_768,
-    }
+        max_seq_len: 32_768}
 }
 
 /// Get pre-defined FP8 configuration.
@@ -90,6 +86,5 @@ pub fn kimi_k2_fp8() -> KimiK2Config {
         repo: ArrayVec::from(KIMI_K2_REPO_BYTES),
         index_file: ArrayVec::from(KIMI_K2_INDEX_BYTES),
         quant: QuantFormat::Fp8,
-        max_seq_len: 32_768,
-    }
+        max_seq_len: 32_768}
 }

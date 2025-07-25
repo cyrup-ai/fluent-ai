@@ -5,4 +5,4 @@ pub mod impl_traits;
 
 // Re-export main types
 pub use core::ProgressHubReporter;
-pub use impl_traits::*;
+// Removed unused import: impl_traits::*

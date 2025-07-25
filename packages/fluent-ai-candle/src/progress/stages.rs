@@ -14,8 +14,7 @@ pub enum DownloadStage {
     /// Loading model into memory
     Loading,
     /// Download and loading completed
-    Completed,
-}
+    Completed}
 
 impl DownloadStage {
     /// Get human-readable description of the stage
@@ -26,8 +25,7 @@ impl DownloadStage {
             Self::Verifying => "Verifying data integrity",
             Self::Extracting => "Extracting model files",
             Self::Loading => "Loading model into memory",
-            Self::Completed => "Download completed",
-        }
+            Self::Completed => "Download completed"}
     }
 
     /// Get typical progress range for this stage (start, end)
@@ -38,8 +36,7 @@ impl DownloadStage {
             Self::Verifying => (0.80, 0.85),
             Self::Extracting => (0.85, 0.95),
             Self::Loading => (0.95, 0.99),
-            Self::Completed => (1.0, 1.0),
-        }
+            Self::Completed => (1.0, 1.0)}
     }
 
     /// Get estimated duration percentage for this stage
@@ -50,8 +47,7 @@ impl DownloadStage {
             Self::Verifying => 0.08,
             Self::Extracting => 0.15,
             Self::Loading => 0.04,
-            Self::Completed => 0.01,
-        }
+            Self::Completed => 0.01}
     }
 }
 
@@ -65,8 +61,7 @@ pub enum WeightLoadingStage {
     /// Optimizing loaded weights for inference
     Optimizing,
     /// Weight loading completed
-    Completed,
-}
+    Completed}
 
 impl WeightLoadingStage {
     /// Get human-readable description of the stage
@@ -75,8 +70,7 @@ impl WeightLoadingStage {
             Self::Preparing => "Preparing weight loading infrastructure",
             Self::LoadingLayers => "Loading model layers",
             Self::Optimizing => "Optimizing weights for inference",
-            Self::Completed => "Weight loading completed",
-        }
+            Self::Completed => "Weight loading completed"}
     }
 
     /// Get typical progress range for this stage (start, end)
@@ -85,8 +79,7 @@ impl WeightLoadingStage {
             Self::Preparing => (0.0, 0.10),
             Self::LoadingLayers => (0.10, 0.85),
             Self::Optimizing => (0.85, 0.98),
-            Self::Completed => (1.0, 1.0),
-        }
+            Self::Completed => (1.0, 1.0)}
     }
 
     /// Get estimated duration percentage for this stage
@@ -95,8 +88,7 @@ impl WeightLoadingStage {
             Self::Preparing => 0.05,
             Self::LoadingLayers => 0.80,
             Self::Optimizing => 0.14,
-            Self::Completed => 0.01,
-        }
+            Self::Completed => 0.01}
     }
 }
 
@@ -110,8 +102,7 @@ pub enum QuantizationStage {
     /// Validating quantized model accuracy
     Validating,
     /// Quantization process completed
-    Completed,
-}
+    Completed}
 
 impl QuantizationStage {
     /// Get human-readable description of the stage
@@ -120,8 +111,7 @@ impl QuantizationStage {
             Self::Analyzing => "Analyzing model for quantization",
             Self::Quantizing => "Quantizing model weights",
             Self::Validating => "Validating quantized model",
-            Self::Completed => "Quantization completed",
-        }
+            Self::Completed => "Quantization completed"}
     }
 
     /// Get typical progress range for this stage (start, end)
@@ -130,8 +120,7 @@ impl QuantizationStage {
             Self::Analyzing => (0.0, 0.15),
             Self::Quantizing => (0.15, 0.85),
             Self::Validating => (0.85, 0.98),
-            Self::Completed => (1.0, 1.0),
-        }
+            Self::Completed => (1.0, 1.0)}
     }
 
     /// Get estimated duration percentage for this stage
@@ -140,8 +129,7 @@ impl QuantizationStage {
             Self::Analyzing => 0.10,
             Self::Quantizing => 0.75,
             Self::Validating => 0.14,
-            Self::Completed => 0.01,
-        }
+            Self::Completed => 0.01}
     }
 
     /// Get memory usage multiplier for this stage
@@ -169,8 +157,7 @@ pub enum InferenceStage {
     /// Post-processing output
     PostProcessing,
     /// Inference step completed
-    Completed,
-}
+    Completed}
 
 impl InferenceStage {
     /// Get human-readable description of the stage
@@ -181,8 +168,7 @@ impl InferenceStage {
             Self::Sampling => "Applying sampling strategies",
             Self::CacheUpdate => "Updating KV cache",
             Self::PostProcessing => "Post-processing output",
-            Self::Completed => "Inference completed",
-        }
+            Self::Completed => "Inference completed"}
     }
 
     /// Get typical duration percentage for this stage
@@ -193,8 +179,7 @@ impl InferenceStage {
             Self::Sampling => 0.15,
             Self::CacheUpdate => 0.08,
             Self::PostProcessing => 0.01,
-            Self::Completed => 0.01,
-        }
+            Self::Completed => 0.01}
     }
 
     /// Check if this stage is compute-intensive

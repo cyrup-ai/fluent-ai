@@ -3,11 +3,12 @@
 //! Provides blazing-fast response formatting with streaming support and zero-allocation patterns
 //! for production-ready performance and ergonomic APIs.
 
-use std::collections::HashMap;
+// Duplicate import removed
 use std::sync::Arc;
+use std::sync::mpsc;
 
+use fluent_ai_async::AsyncStream;
 use serde_json::{Map, Value};
-use tokio::sync::mpsc;
 
 use super::types::*;
 
@@ -288,7 +289,8 @@ impl ResponseFormatter {
         result.push_str("Available Commands:\n\n");
 
         // Group commands by category
-        let mut categories: HashMap<Arc<str>, Vec<&CommandInfo>> = HashMap::new();
+        let mut categories: std::collections::HashMap<Arc<str>, Vec<&CommandInfo>> =
+            std::collections::HashMap::new();
         for command in commands {
             categories
                 .entry(Arc::from(command.category.as_str()))
@@ -372,7 +374,7 @@ impl ResponseFormatter {
 
     /// Create streaming response channel
     pub fn create_streaming_channel(&self) -> (StreamingSender, StreamingReceiver) {
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, rx) = mpsc::channel();
         (StreamingSender::new(tx), StreamingReceiver::new(rx))
     }
 }
@@ -380,11 +382,11 @@ impl ResponseFormatter {
 /// Streaming response sender
 #[derive(Debug)]
 pub struct StreamingSender {
-    sender: mpsc::UnboundedSender<StreamingMessage>,
+    sender: mpsc::Sender<StreamingMessage>,
 }
 
 impl StreamingSender {
-    fn new(sender: mpsc::UnboundedSender<StreamingMessage>) -> Self {
+    fn new(sender: mpsc::Sender<StreamingMessage>) -> Self {
         Self { sender }
     }
 
@@ -423,29 +425,36 @@ impl StreamingSender {
 }
 
 /// Streaming response receiver
+/// Note: Clone is not implemented because Receiver cannot be cloned.
+/// Use Arc<Mutex<StreamingReceiver>> for shared access if needed.
 #[derive(Debug)]
 pub struct StreamingReceiver {
-    receiver: mpsc::UnboundedReceiver<StreamingMessage>,
+    receiver: mpsc::Receiver<StreamingMessage>,
 }
 
 impl StreamingReceiver {
-    fn new(receiver: mpsc::UnboundedReceiver<StreamingMessage>) -> Self {
+    fn new(receiver: mpsc::Receiver<StreamingMessage>) -> Self {
         Self { receiver }
     }
 
-    /// Receive next streaming message
-    pub fn recv(&mut self) -> AsyncStream<StreamingMessage> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
-        let receiver = self.receiver.clone();
-        AsyncStream::with_channel(move |sender| {
-            loop {
-                match receiver.recv() {
-                    Ok(msg) => emit!(sender, msg),
-                    Err(e) => handle_error!(e, "failed to receive streaming message"),
-                }
-            }
-        })
+    /// Receive next streaming message (blocking)
+    pub fn recv(&mut self) -> Result<StreamingMessage, mpsc::RecvError> {
+        self.receiver.recv()
+    }
+
+    /// Try to receive next streaming message (non-blocking)
+    pub fn try_recv(&mut self) -> Result<StreamingMessage, mpsc::TryRecvError> {
+        self.receiver.try_recv()
+    }
+
+    /// Convert receiver into AsyncStream
+    pub fn into_stream(self) -> AsyncStream<StreamingMessage> {
+        AsyncStream::new(self.receiver)
+    }
+
+    /// Create a shared receiver wrapped in Arc<Mutex<>> for multi-threaded access
+    pub fn into_shared(self) -> std::sync::Arc<std::sync::Mutex<Self>> {
+        std::sync::Arc::new(std::sync::Mutex::new(self))
     }
 }
 

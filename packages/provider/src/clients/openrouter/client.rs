@@ -8,10 +8,11 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-use fluent_ai_domain::{AsyncTask, channel, spawn_async};
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_async::channel;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
@@ -20,11 +21,9 @@ use super::completion::{CompletionModel, GPT_4_1};
 use crate::{
     client::{CompletionClient, ProviderClient},
     completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
+        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError},
     json_util,
-    message::Message,
-};
+    message::Message};
 
 // ============================================================================
 // OpenRouter API Client with HTTP3 and zero-allocation patterns
@@ -45,8 +44,7 @@ pub struct OpenRouterMetrics {
     pub total_requests: RelaxedCounter,
     pub successful_requests: RelaxedCounter,
     pub failed_requests: RelaxedCounter,
-    pub concurrent_requests: RelaxedCounter,
-}
+    pub concurrent_requests: RelaxedCounter}
 
 impl OpenRouterMetrics {
     #[inline]
@@ -55,8 +53,7 @@ impl OpenRouterMetrics {
             total_requests: RelaxedCounter::new(0),
             successful_requests: RelaxedCounter::new(0),
             failed_requests: RelaxedCounter::new(0),
-            concurrent_requests: RelaxedCounter::new(0),
-        }
+            concurrent_requests: RelaxedCounter::new(0)}
     }
 }
 
@@ -69,19 +66,15 @@ pub enum OpenRouterError {
     Configuration {
         field: String,
         message: String,
-        suggestion: String,
-    },
+        suggestion: String},
     #[error("Authentication failed: {message}")]
     Authentication {
         message: String,
-        retry_after: Option<Duration>,
-    },
+        retry_after: Option<Duration>},
     #[error("Model not supported: {model}")]
     ModelNotSupported {
         model: String,
-        supported_models: Vec<String>,
-    },
-}
+        supported_models: Vec<String>}}
 
 pub type Result<T> = std::result::Result<T, OpenRouterError>;
 
@@ -97,8 +90,7 @@ pub struct Client {
     /// Performance metrics
     metrics: &'static OpenRouterMetrics,
     /// Request timeout
-    timeout: Duration,
-}
+    timeout: Duration}
 
 impl Client {
     /// Create a new OpenRouter client with zero-allocation API key validation
@@ -112,31 +104,27 @@ impl Client {
             return Err(OpenRouterError::Configuration {
                 field: "api_key".to_string(),
                 message: "API key cannot be empty".to_string(),
-                suggestion: "Provide a valid OpenRouter API key".to_string(),
-            });
+                suggestion: "Provide a valid OpenRouter API key".to_string()});
         }
 
         let api_key_array =
             ArrayString::from(api_key).map_err(|_| OpenRouterError::Configuration {
                 field: "api_key".to_string(),
                 message: format!("API key too long: {} characters (max 128)", api_key.len()),
-                suggestion: "Use a valid OpenRouter API key".to_string(),
-            })?;
+                suggestion: "Use a valid OpenRouter API key".to_string()})?;
 
         let base_url_array =
             ArrayString::from(base_url).map_err(|_| OpenRouterError::Configuration {
                 field: "base_url".to_string(),
                 message: format!("Base URL too long: {} characters (max 256)", base_url.len()),
-                suggestion: "Use a valid OpenRouter API base URL".to_string(),
-            })?;
+                suggestion: "Use a valid OpenRouter API base URL".to_string()})?;
 
         Ok(Self {
             api_key: ArcSwap::from_pointee(api_key_array),
             base_url: base_url_array,
             http_client: &HTTP_CLIENT,
             metrics: &OPENROUTER_METRICS,
-            timeout: Duration::from_secs(30),
-        })
+            timeout: Duration::from_secs(30)})
     }
 
     /// Create from environment (OPENROUTER_API_KEY)
@@ -147,8 +135,7 @@ impl Client {
                 message: "OPENROUTER_API_KEY environment variable not set".to_string(),
                 suggestion:
                     "Set OPENROUTER_API_KEY environment variable with your OpenRouter API key"
-                        .to_string(),
-            })?;
+                        .to_string()})?;
         Self::new(&api_key)
     }
 
@@ -170,15 +157,13 @@ impl Client {
             .map_err(|_| OpenRouterError::Configuration {
                 field: "auth_header".to_string(),
                 message: "Failed to build auth header".to_string(),
-                suggestion: "Check API key length".to_string(),
-            })?;
+                suggestion: "Check API key length".to_string()})?;
         auth_header
             .try_push_str(&self.api_key.load())
             .map_err(|_| OpenRouterError::Configuration {
                 field: "auth_header".to_string(),
                 message: "Failed to build auth header".to_string(),
-                suggestion: "Check API key length".to_string(),
-            })?;
+                suggestion: "Check API key length".to_string()})?;
 
         headers.push(("Authorization", auth_header));
         headers.push((
@@ -204,8 +189,7 @@ impl Client {
 
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
-            Err(_) => self.metrics.failed_requests.inc(),
-        }
+            Err(_) => self.metrics.failed_requests.inc()}
 
         response.map_err(OpenRouterError::Http)
     }
@@ -230,8 +214,7 @@ impl Client {
         } else {
             Err(OpenRouterError::Authentication {
                 message: format!("Connection test failed with status: {}", response.status()),
-                retry_after: None,
-            })
+                retry_after: None})
         }
     }
 
@@ -276,8 +259,7 @@ pub struct OpenRouterCompletionBuilder<'a, S> {
     tools: Vec<completion::ToolDefinition>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ============================================================================
 // Constructors
@@ -300,8 +282,7 @@ impl<'a> OpenRouterCompletionBuilder<'a, NeedsPrompt> {
             tools: Vec::new(),
             additional_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 
     /// Convenience helper: sensible defaults for chat
@@ -407,8 +388,7 @@ impl<'a> OpenRouterCompletionBuilder<'a, NeedsPrompt> {
             tools: self.tools,
             additional_params: self.additional_params,
             prompt: self.prompt,
-            _state: std::marker::PhantomData::<HasPrompt>,
-        }
+            _state: std::marker::PhantomData::<HasPrompt>}
     }
 }
 
@@ -548,22 +528,19 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct ApiErrorResponse {
-    pub message: String,
-}
+    pub message: String}
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub(crate) enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Usage {
     pub prompt_tokens: usize,
     pub completion_tokens: usize,
-    pub total_tokens: usize,
-}
+    pub total_tokens: usize}
 
 impl std::fmt::Display for Usage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

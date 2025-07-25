@@ -30,8 +30,7 @@ pub struct CacheStats {
     created_at_nanos: u64,
 
     /// Last activity timestamp
-    last_activity_nanos: AtomicU64,
-}
+    last_activity_nanos: AtomicU64}
 
 impl CacheStats {
     /// Create new statistics
@@ -45,8 +44,7 @@ impl CacheStats {
             evictions: AtomicU64::new(0),
             errors: AtomicU64::new(0),
             created_at_nanos: now,
-            last_activity_nanos: AtomicU64::new(now),
-        }
+            last_activity_nanos: AtomicU64::new(now)}
     }
 
     /// Record cache hit
@@ -255,8 +253,7 @@ impl CacheStats {
             eviction_rate: self.eviction_rate(),
             error_rate: self.error_rate(),
             performance_grade: self.performance_grade(),
-            time_since_last_activity_seconds: self.time_since_last_activity_nanos() as f64 / 1_000_000_000.0,
-        }
+            time_since_last_activity_seconds: self.time_since_last_activity_nanos() as f64 / 1_000_000_000.0}
     }
 
     /// Get current high-precision timestamp
@@ -341,8 +338,7 @@ pub struct StatsSummary {
     /// Performance grade (A-F)
     pub performance_grade: char,
     /// Time since last activity in seconds
-    pub time_since_last_activity_seconds: f64,
-}
+    pub time_since_last_activity_seconds: f64}
 
 impl StatsSummary {
     /// Check if cache is idle (no recent activity)
@@ -435,16 +431,14 @@ impl std::fmt::Display for StatsSummary {
 /// Performance benchmarking utilities
 pub struct StatsBenchmark {
     start_time: u64,
-    start_operations: u64,
-}
+    start_operations: u64}
 
 impl StatsBenchmark {
     /// Start benchmarking period
     pub fn start(stats: &CacheStats) -> Self {
         Self {
             start_time: CacheStats::current_time_nanos(),
-            start_operations: stats.total_operations(),
-        }
+            start_operations: stats.total_operations()}
     }
 
     /// End benchmarking and get results
@@ -464,8 +458,7 @@ impl StatsBenchmark {
         BenchmarkResult {
             duration_nanos,
             operations_completed,
-            throughput_ops_per_second: throughput,
-        }
+            throughput_ops_per_second: throughput}
     }
 }
 
@@ -477,8 +470,7 @@ pub struct BenchmarkResult {
     /// Number of operations completed
     pub operations_completed: u64,
     /// Throughput in operations per second
-    pub throughput_ops_per_second: f64,
-}
+    pub throughput_ops_per_second: f64}
 
 impl BenchmarkResult {
     /// Get duration in seconds

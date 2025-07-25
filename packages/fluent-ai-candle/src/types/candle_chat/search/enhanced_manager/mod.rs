@@ -8,8 +8,6 @@
 //! - statistics.rs: Statistics tracking and performance monitoring  
 //! - operations.rs: Core operational functionality
 
-use std::collections::HashMap;
-
 use fluent_ai_async::AsyncStream;
 use super::core_types::{SearchQuery, SearchResult};
 use super::search_index::ChatSearchIndex;
@@ -34,8 +32,7 @@ pub struct EnhancedHistoryManager {
     /// Manager statistics
     pub statistics: HistoryManagerStatistics,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 impl EnhancedHistoryManager {
     /// Create a new enhanced history manager
@@ -54,8 +51,7 @@ impl EnhancedHistoryManager {
         Self {
             operations,
             statistics: HistoryManagerStatistics::default(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 
     /// Create with builder pattern

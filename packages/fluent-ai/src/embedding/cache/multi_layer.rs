@@ -67,8 +67,7 @@ pub struct CachedEmbedding {
     /// Access count for LRU tracking
     pub access_count: u32,
     /// Checksum for integrity validation
-    pub checksum: u64,
-}
+    pub checksum: u64}
 
 impl CachedEmbedding {
     /// Create new cached embedding
@@ -96,8 +95,7 @@ impl CachedEmbedding {
             model: ArrayString::from(model).unwrap_or_default(),
             quality_score,
             access_count: 0,
-            checksum,
-        }
+            checksum}
     }
 
     /// Check if entry is expired
@@ -150,8 +148,7 @@ pub struct L1CacheStats {
     pub misses: CachePadded<AtomicU64>,
     pub evictions: CachePadded<AtomicU64>,
     pub entries: CachePadded<AtomicU64>,
-    pub memory_bytes: CachePadded<AtomicU64>,
-}
+    pub memory_bytes: CachePadded<AtomicU64>}
 
 impl L1CacheStats {
     pub fn new() -> Self {
@@ -160,8 +157,7 @@ impl L1CacheStats {
             misses: CachePadded::new(AtomicU64::new(0)),
             evictions: CachePadded::new(AtomicU64::new(0)),
             entries: CachePadded::new(AtomicU64::new(0)),
-            memory_bytes: CachePadded::new(AtomicU64::new(0)),
-        }
+            memory_bytes: CachePadded::new(AtomicU64::new(0))}
     }
 
     pub fn hit_ratio(&self) -> f64 {
@@ -182,8 +178,7 @@ pub struct L1Cache {
     /// Maximum capacity
     max_capacity: usize,
     /// LRU tracking for eviction
-    access_tracker: Arc<DashMap<CacheKey, AtomicU64>>,
-}
+    access_tracker: Arc<DashMap<CacheKey, AtomicU64>>}
 
 impl L1Cache {
     pub fn new(max_capacity: usize) -> Self {
@@ -191,8 +186,7 @@ impl L1Cache {
             data: Arc::new(SkipMap::new()),
             stats: Arc::new(L1CacheStats::new()),
             max_capacity,
-            access_tracker: Arc::new(DashMap::new()),
-        }
+            access_tracker: Arc::new(DashMap::new())}
     }
 
     /// Get cached embedding
@@ -339,8 +333,7 @@ impl L2Cache {
     pub fn new(surreal_manager: Arc<SurrealDBManager>) -> Self {
         Self {
             surreal_manager,
-            stats: Arc::new(L1CacheStats::new()),
-        }
+            stats: Arc::new(L1CacheStats::new())}
     }
 
     /// Get embedding from persistent storage
@@ -431,8 +424,7 @@ impl L2Cache {
 pub struct L3Cache {
     hnsw_index: Arc<RwLock<HNSWIndex>>,
     embedding_map: Arc<DashMap<String, CachedEmbedding>>,
-    stats: Arc<L1CacheStats>,
-}
+    stats: Arc<L1CacheStats>}
 
 impl L3Cache {
     pub fn new(dimensions: usize, distance_metric: DistanceMetric) -> Result<Self, MultiLayerCacheError> {
@@ -440,16 +432,14 @@ impl L3Cache {
             metric: distance_metric,
             dimensions,
             index_type: IndexType::HNSW,
-            parameters: std::collections::HashMap::new(),
-        };
+            parameters: std::collections::HashMap::new()};
 
         let hnsw_index = HNSWIndex::new(config);
 
         Ok(Self {
             hnsw_index: Arc::new(RwLock::new(hnsw_index)),
             embedding_map: Arc::new(DashMap::new()),
-            stats: Arc::new(L1CacheStats::new()),
-        })
+            stats: Arc::new(L1CacheStats::new())})
     }
 
     /// Find similar embeddings
@@ -546,8 +536,7 @@ pub enum MultiLayerCacheError {
     TTLError(String),
     
     #[error("Validation error: {0}")]
-    ValidationError(String),
-}
+    ValidationError(String)}
 
 /// Multi-layer cache coordinator
 #[derive(Debug)]
@@ -557,8 +546,7 @@ pub struct MultiLayerCache {
     l3_cache: Arc<L3Cache>,
     ttl_manager: TTLManager,
     cache_warmer: CacheWarmer,
-    coherence_enabled: AtomicBool,
-}
+    coherence_enabled: AtomicBool}
 
 impl MultiLayerCache {
     /// Create new multi-layer cache
@@ -589,8 +577,7 @@ impl MultiLayerCache {
             l3_cache,
             ttl_manager,
             cache_warmer,
-            coherence_enabled: AtomicBool::new(true),
-        })
+            coherence_enabled: AtomicBool::new(true)})
     }
 
     /// Get embedding with cache hierarchy fallback
@@ -683,8 +670,7 @@ impl MultiLayerCache {
         MultiLayerCacheStats {
             l1_stats: CacheLayerStats::from_l1_stats(self.l1_cache.stats()),
             l2_stats: CacheLayerStats::from_l1_stats(self.l2_cache.stats()),
-            l3_stats: CacheLayerStats::from_l1_stats(self.l3_cache.stats()),
-        }
+            l3_stats: CacheLayerStats::from_l1_stats(self.l3_cache.stats())}
     }
 
     /// Normalize cache key for consistent access
@@ -714,8 +700,7 @@ impl MultiLayerCache {
 pub struct TTLManager {
     l1_cache: Arc<L1Cache>,
     l2_cache: Arc<L2Cache>,
-    l3_cache: Arc<L3Cache>,
-}
+    l3_cache: Arc<L3Cache>}
 
 impl TTLManager {
     pub fn new(
@@ -726,8 +711,7 @@ impl TTLManager {
         Self {
             l1_cache,
             l2_cache,
-            l3_cache,
-        }
+            l3_cache}
     }
 
     /// Start background cleanup task
@@ -752,15 +736,13 @@ impl TTLManager {
 #[derive(Debug, Clone)]
 pub struct CacheWarmer {
     l1_cache: Arc<L1Cache>,
-    l2_cache: Arc<L2Cache>,
-}
+    l2_cache: Arc<L2Cache>}
 
 impl CacheWarmer {
     pub fn new(l1_cache: Arc<L1Cache>, l2_cache: Arc<L2Cache>) -> Self {
         Self {
             l1_cache,
-            l2_cache,
-        }
+            l2_cache}
     }
 
     /// Start background warming task
@@ -784,8 +766,7 @@ pub struct CacheLayerStats {
     pub hit_ratio: f64,
     pub entries: u64,
     pub memory_bytes: u64,
-    pub evictions: u64,
-}
+    pub evictions: u64}
 
 impl CacheLayerStats {
     fn from_l1_stats(stats: &L1CacheStats) -> Self {
@@ -798,8 +779,7 @@ impl CacheLayerStats {
             hit_ratio: if hits + misses > 0 { hits as f64 / (hits + misses) as f64 } else { 0.0 },
             entries: stats.entries.load(Ordering::Relaxed),
             memory_bytes: stats.memory_bytes.load(Ordering::Relaxed),
-            evictions: stats.evictions.load(Ordering::Relaxed),
-        }
+            evictions: stats.evictions.load(Ordering::Relaxed)}
     }
 }
 
@@ -808,8 +788,7 @@ impl CacheLayerStats {
 pub struct MultiLayerCacheStats {
     pub l1_stats: CacheLayerStats,
     pub l2_stats: CacheLayerStats,
-    pub l3_stats: CacheLayerStats,
-}
+    pub l3_stats: CacheLayerStats}
 
 impl MultiLayerCacheStats {
     /// Get overall hit ratio across all layers

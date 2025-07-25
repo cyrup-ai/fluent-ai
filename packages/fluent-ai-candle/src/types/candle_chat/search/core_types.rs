@@ -3,7 +3,6 @@
 //! This module provides the fundamental data structures used throughout
 //! the candle_chat search system with zero-allocation patterns.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use fluent_ai_async::{AsyncStream, handle_error};
@@ -54,8 +53,7 @@ pub struct SearchQuery {
     /// Minimum message length
     pub min_length: Option<usize>,
     /// Maximum message length
-    pub max_length: Option<usize>,
-}
+    pub max_length: Option<usize>}
 
 /// Date range for filtering
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,8 +69,7 @@ pub struct DateRange {
     /// Include time in matching
     pub include_time: bool,
     /// Custom date format
-    pub date_format: Option<String>,
-}
+    pub date_format: Option<String>}
 
 /// Sort order options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,8 +89,7 @@ pub enum SortOrder {
     /// Sort by role
     Role,
     /// Custom sort field
-    Custom(String),
-}
+    Custom(String)}
 
 /// Search result structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,8 +115,7 @@ pub struct SearchResult {
     /// Result timestamp
     pub result_timestamp: chrono::DateTime<chrono::Utc>,
     /// Extra data
-    pub extra_data: HashMap<String, serde_json::Value>,
-}
+    pub extra_data: HashMap<String, serde_json::Value>}
 
 /// Position of a match within content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,8 +129,7 @@ pub struct MatchPosition {
     /// Match type
     pub match_type: MatchType,
     /// Confidence score
-    pub confidence: f32,
-}
+    pub confidence: f32}
 
 /// Type of match
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,8 +145,7 @@ pub enum MatchType {
     /// Synonym match
     Synonym,
     /// Phonetic match
-    Phonetic,
-}
+    Phonetic}
 
 /// Search statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,8 +167,7 @@ pub struct SearchStatistics {
     /// Last update timestamp
     pub last_update: chrono::DateTime<chrono::Utc>,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 /// Term frequency information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,8 +181,7 @@ pub struct TermFrequency {
     /// IDF score
     pub idf_score: f64,
     /// Term weight
-    pub weight: f32,
-}
+    pub weight: f32}
 
 impl TermFrequency {
     /// Create new term frequency
@@ -206,8 +197,7 @@ impl TermFrequency {
             frequency,
             document_frequency,
             idf_score,
-            weight: 1.0,
-        }
+            weight: 1.0}
     }
 }
 
@@ -233,8 +223,7 @@ impl Default for SearchQuery {
             include_deleted: false,
             language_filter: None,
             min_length: None,
-            max_length: None,
-        }
+            max_length: None}
     }
 }
 
@@ -255,7 +244,6 @@ impl Default for SearchStatistics {
             index_size_bytes: 0,
             memory_usage_bytes: 0,
             last_update: chrono::Utc::now(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 }

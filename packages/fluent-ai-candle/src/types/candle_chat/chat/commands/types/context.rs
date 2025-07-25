@@ -20,8 +20,7 @@ pub struct CommandContext {
     /// Execution timestamp in nanoseconds
     pub timestamp_nanos: u64,
     /// Environment variables
-    pub environment: HashMap<String, String>,
-}
+    pub environment: HashMap<String, String>}
 
 impl CommandContext {
     /// Create new command context
@@ -35,8 +34,7 @@ impl CommandContext {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos() as u64)
                 .unwrap_or(0),
-            environment: HashMap::new(),
-        }
+            environment: HashMap::new()}
     }
 
     /// Add environment variable
@@ -69,8 +67,7 @@ pub struct CommandOutput {
     /// Command execution data payload
     pub data: Option<String>,
     /// Resource usage statistics
-    pub resource_usage: Option<ResourceUsage>,
-}
+    pub resource_usage: Option<ResourceUsage>}
 
 impl CommandOutput {
     /// Create new command output
@@ -89,8 +86,7 @@ impl CommandOutput {
             success: true,
             message: String::new(),
             data: None,
-            resource_usage: None,
-        }
+            resource_usage: None}
     }
 
     /// Create successful command output

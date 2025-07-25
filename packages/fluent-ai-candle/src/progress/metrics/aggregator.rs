@@ -1,10 +1,9 @@
 //! Thread-safe metrics aggregator
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Instant;
-use std::collections::HashMap;
-
 use super::session::SessionInfo;
 
 /// Thread-safe metrics aggregator with atomic operations
@@ -20,8 +19,7 @@ pub struct MetricsAggregator {
     /// Session information storage
     sessions: Arc<parking_lot::RwLock<HashMap<String, SessionInfo>>>,
     /// Start time for overall metrics
-    start_time: Instant,
-}
+    start_time: Instant}
 
 impl MetricsAggregator {
     /// Create new metrics aggregator
@@ -32,8 +30,7 @@ impl MetricsAggregator {
             failed_operations: AtomicU64::new(0),
             active_sessions: AtomicUsize::new(0),
             sessions: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-            start_time: Instant::now(),
-        }
+            start_time: Instant::now()}
     }
 
     /// Record token generation
@@ -108,8 +105,7 @@ impl MetricsAggregator {
             active_sessions,
             uptime_seconds: uptime.as_secs(),
             avg_tokens_per_sec,
-            success_rate,
-        }
+            success_rate}
     }
 
     /// Get session count
@@ -159,8 +155,7 @@ impl MetricsAggregator {
             success_rate: stats.success_rate,
             active_sessions: stats.active_sessions,
             high_performance_sessions: high_perf_sessions,
-            uptime_hours: stats.uptime_seconds as f64 / 3600.0,
-        }
+            uptime_hours: stats.uptime_seconds as f64 / 3600.0}
     }
 }
 
@@ -186,8 +181,7 @@ pub struct AggregatorStats {
     /// Average tokens per second
     pub avg_tokens_per_sec: f64,
     /// Success rate (0.0 to 1.0)
-    pub success_rate: f64,
-}
+    pub success_rate: f64}
 
 impl AggregatorStats {
     /// Get failure rate
@@ -208,5 +202,4 @@ pub struct PerformanceSummary {
     pub success_rate: f64,
     pub active_sessions: usize,
     pub high_performance_sessions: usize,
-    pub uptime_hours: f64,
-}
+    pub uptime_hours: f64}

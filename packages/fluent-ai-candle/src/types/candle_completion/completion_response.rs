@@ -31,8 +31,7 @@ pub struct CompletionResponse<'a> {
     /// Generation time in milliseconds for performance tracking (optional)
     pub generation_time_ms: Option<u32>,
     /// Tokens per second throughput for performance tracking (optional)
-    pub tokens_per_second: Option<f64>,
-}
+    pub tokens_per_second: Option<f64>}
 
 impl<'a> Default for CompletionResponse<'a> {
     fn default() -> Self {
@@ -52,15 +51,13 @@ impl<'a> Default for CompletionResponse<'a> {
             finish_reason: None,
             response_time_ms: None,
             generation_time_ms: None,
-            tokens_per_second: None,
-        }
+            tokens_per_second: None}
     }
 }
 
 /// Builder for `CompletionResponse` with blazing-fast inline optimization
 pub struct CompletionResponseBuilder<'a> {
-    inner: CompletionResponse<'a>,
-}
+    inner: CompletionResponse<'a>}
 
 impl<'a> CompletionResponse<'a> {
     /// Create a new builder for a completion response
@@ -157,9 +154,7 @@ impl<'a> CompletionResponseBuilder<'a> {
                 finish_reason: None,
                 response_time_ms: None,
                 generation_time_ms: None,
-                tokens_per_second: None,
-            },
-        }
+                tokens_per_second: None}}
     }
 
     /// Set the completion text with zero-allocation when possible
@@ -230,8 +225,7 @@ impl<'a> CompletionResponseBuilder<'a> {
                 self.inner.usage = Some(crate::types::CandleUsage {
                     prompt_tokens: 0,
                     completion_tokens: tokens,
-                    total_tokens: tokens,
-                });
+                    total_tokens: tokens});
             }
         }
         self

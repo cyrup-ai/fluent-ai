@@ -47,7 +47,6 @@ impl CommandParser {
                 AdvancedCommandParser::parse_command(&command_name, args)
             }
             // Unknown commands
-            _ => AdvancedCommandParser::parse_custom_command(&command_name, args),
-        }
+            _ => AdvancedCommandParser::parse_custom_command(&command_name, args)}
     }
 }

@@ -175,11 +175,11 @@ unsafe fn simd_top_k_large_neon(logits: &mut [f32], k: usize) -> SimdResult<()> 
     let mut i = 0;
 
     while i + chunk_size <= logits.len() {
-        let ptr = logits.as_mut_ptr().add(i) as *mut f32;
-        let x = vld1q_f32(ptr);
+        let ptr = unsafe { logits.as_mut_ptr().add(i) } as *mut f32;
+        let x = unsafe { vld1q_f32(ptr) };
         let mask = vcltq_f32(x, threshold_vec);
         let masked = vbslq_f32(mask, inf_vec, x);
-        vst1q_f32(ptr, masked);
+        unsafe { vst1q_f32(ptr, masked) };
         i += chunk_size;
     }
 

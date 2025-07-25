@@ -63,8 +63,7 @@ pub struct CrossReviewConfig {
     /// Temperature for creative tasks (0.0-1.0)
     pub temperature: f32,
     /// Number of refinement cycles
-    pub refinement_cycles: u32,
-}
+    pub refinement_cycles: u32}
 
 impl Default for CrossReviewConfig {
     #[inline]
@@ -77,8 +76,7 @@ impl Default for CrossReviewConfig {
             ],
             timeout_ms: 5000,
             temperature: 0.7,
-            refinement_cycles: 1,
-        }
+            refinement_cycles: 1}
     }
 }
 
@@ -90,8 +88,7 @@ impl CrossReviewConfig {
             models: &[Models::Claude3Haiku, Models::GeminiFlash1_5],
             timeout_ms: 3000,
             temperature: 0.5,
-            refinement_cycles: 1,
-        }
+            refinement_cycles: 1}
     }
 
     /// High-quality config (strongest models, longer timeout)
@@ -105,8 +102,7 @@ impl CrossReviewConfig {
             ],
             timeout_ms: 15000,
             temperature: 0.3,
-            refinement_cycles: 2,
-        }
+            refinement_cycles: 2}
     }
 }
 
@@ -118,16 +114,14 @@ pub enum CrossReviewError {
     /// Timeout during generation or review
     Timeout(String),
     /// Invalid configuration
-    ConfigError(String),
-}
+    ConfigError(String)}
 
 impl fmt::Display for CrossReviewError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ModelError(s) => write!(f, "Model Error: {}", s),
             Self::Timeout(s) => write!(f, "Timeout: {}", s),
-            Self::ConfigError(s) => write!(f, "Config Error: {}", s),
-        }
+            Self::ConfigError(s) => write!(f, "Config Error: {}", s)}
     }
 }
 
@@ -156,8 +150,7 @@ pub struct EnhancedPrompt {
     /// Improvement suggestions
     pub improvement_suggestions: Arc<[Arc<str>]>,
     /// Total processing time in microseconds
-    pub processing_time_us: u64,
-}
+    pub processing_time_us: u64}
 
 /// Represents a single review from one model about another's generation
 #[derive(Debug, Clone)]
@@ -171,8 +164,7 @@ pub struct IndividualReview {
     /// The score given (0-1000)
     pub score: u32,
     /// Time taken for review in microseconds
-    pub review_time_us: u64,
-}
+    pub review_time_us: u64}
 
 /// A lock-free, zero-allocation matrix for storing and analyzing cross-review results
 #[derive(Debug, Clone)]
@@ -180,8 +172,7 @@ pub struct CrossReviewMatrix {
     /// Stores (reviewer, target, score) tuples
     review_pairs: Arc<[(Models, Models, u32)]>,
     /// Number of unique models involved
-    dimensions: u32,
-}
+    dimensions: u32}
 
 impl CrossReviewMatrix {
     /// Create a new matrix from a slice of reviews
@@ -200,8 +191,7 @@ impl CrossReviewMatrix {
 
         Self {
             review_pairs: Arc::from(review_pairs.into_boxed_slice()),
-            dimensions: unique_models.len() as u32,
-        }
+            dimensions: unique_models.len() as u32}
     }
 
     /// Get the average score for a specific target model
@@ -358,8 +348,7 @@ struct GenerationResult {
     /// Model used
     model: Models,
     /// Generation time in microseconds
-    generation_time_us: u64,
-}
+    generation_time_us: u64}
 
 /// Cross-review synthesis result (zero allocation)
 #[derive(Debug, Clone)]
@@ -369,16 +358,14 @@ struct SynthesisResult {
     /// Synthesized feedback
     synthesis: Arc<str>,
     /// Consensus score (0-1000)
-    consensus_score: u32,
-}
+    consensus_score: u32}
 
 /// High-performance Cross-Provider prompt enhancer (zero allocation)
 pub struct CrossProviderEnhancer {
     /// Configuration
     config: CrossReviewConfig,
     /// Request counter (atomic)
-    request_counter: Arc<AtomicU64>,
-}
+    request_counter: Arc<AtomicU64>}
 
 impl CrossProviderEnhancer {
     /// Create new Cross-LLM enhancer
@@ -386,8 +373,7 @@ impl CrossProviderEnhancer {
     pub fn new() -> Self {
         Self {
             config: CrossReviewConfig::default(),
-            request_counter: Arc::new(AtomicU64::new(0)),
-        }
+            request_counter: Arc::new(AtomicU64::new(0))}
     }
 
     /// Create with custom configuration
@@ -429,8 +415,7 @@ impl CrossProviderEnhancer {
             confidence_score: Arc::new(AtomicU32::new(800)), // Placeholder
             review_scores: Arc::from(reviews.into_boxed_slice()),
             improvement_suggestions: Arc::new([]), // Placeholder
-            processing_time_us,
-        };
+            processing_time_us};
 
         Ok(enhanced_prompt)
     }
@@ -471,8 +456,7 @@ impl CrossProviderEnhancer {
         Ok(GenerationResult {
             model,
             content: Arc::from(content.as_str()),
-            generation_time_us: start_time.elapsed().as_micros() as u64,
-        })
+            generation_time_us: start_time.elapsed().as_micros() as u64})
     }
 
     /// Execute cross-reviews for all generated content
@@ -530,8 +514,7 @@ impl CrossProviderEnhancer {
             target,
             review_text: Arc::from(review_text.as_str()),
             score,
-            review_time_us: start_time.elapsed().as_micros() as u64,
-        })
+            review_time_us: start_time.elapsed().as_micros() as u64})
     }
 
     /// Synthesize and refine the final prompt from reviews

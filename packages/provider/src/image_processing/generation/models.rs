@@ -3,7 +3,6 @@
 //! This module handles model loading, caching, and management for different SD3 variants
 //! with efficient memory usage and HuggingFace Hub integration.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -12,8 +11,7 @@ use candle_nn::{VarBuilder, VarMap};
 use candle_transformers::models::{
     mmdit::model::{Config as MMDiTConfig, MMDiT},
     stable_diffusion::clip::Config as ClipConfig,
-    t5::Config as T5Config,
-};
+    t5::Config as T5Config};
 use hf_hub::api::sync::Api;
 use thiserror::Error;
 
@@ -44,8 +42,7 @@ pub enum ModelError {
     CandleError(#[from] candle_core::Error),
 
     #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-}
+    IoError(#[from] std::io::Error)}
 
 /// Result type for model operations
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -59,8 +56,7 @@ struct CachedModel {
     variant: SD3ModelVariant,
     device: Device,
     memory_usage: usize,
-    last_accessed: std::time::Instant,
-}
+    last_accessed: std::time::Instant}
 
 /// Model manager for SD3 variants with caching and memory optimization
 pub struct ModelManager {
@@ -68,8 +64,7 @@ pub struct ModelManager {
     model_cache: Arc<Mutex<HashMap<String, CachedModel>>>,
     max_cache_size: usize,
     cache_dir: Option<PathBuf>,
-    current_model: Option<String>,
-}
+    current_model: Option<String>}
 
 impl ModelManager {
     /// Create new model manager
@@ -79,8 +74,7 @@ impl ModelManager {
             model_cache: Arc::new(Mutex::new(HashMap::new())),
             max_cache_size: 2, // Maximum 2 models in cache
             cache_dir: None,
-            current_model: None,
-        }
+            current_model: None}
     }
 
     /// Create model manager with custom cache settings
@@ -94,8 +88,7 @@ impl ModelManager {
             model_cache: Arc::new(Mutex::new(HashMap::new())),
             max_cache_size,
             cache_dir,
-            current_model: None,
-        }
+            current_model: None}
     }
 
     /// Load MMDiT model from HuggingFace Hub
@@ -154,8 +147,7 @@ impl ModelManager {
             text_encoder,
             vae,
             variant,
-            device: self.device.clone(),
-        })
+            device: self.device.clone()})
     }
 
     /// Load text encoder components
@@ -222,8 +214,7 @@ impl ModelManager {
                 context_embedder_config: super::text_encoder::get_context_embedder_config(),
                 pos_embed_scaling_factor: None,
                 pos_embed_offset: None,
-                pos_embed_max_size: None,
-            },
+                pos_embed_max_size: None},
             SD3ModelVariant::ThreeFiveLarge => MMDiTConfig {
                 patch_size: 2,
                 in_channels: 16,
@@ -239,8 +230,7 @@ impl ModelManager {
                 context_embedder_config: super::text_encoder::get_context_embedder_config(),
                 pos_embed_scaling_factor: None,
                 pos_embed_offset: None,
-                pos_embed_max_size: None,
-            },
+                pos_embed_max_size: None},
             SD3ModelVariant::ThreeFiveLargeTurbo => MMDiTConfig {
                 patch_size: 2,
                 in_channels: 16,
@@ -256,8 +246,7 @@ impl ModelManager {
                 context_embedder_config: super::text_encoder::get_context_embedder_config(),
                 pos_embed_scaling_factor: None,
                 pos_embed_offset: None,
-                pos_embed_max_size: None,
-            },
+                pos_embed_max_size: None},
             SD3ModelVariant::ThreeFiveMedium => MMDiTConfig {
                 patch_size: 2,
                 in_channels: 16,
@@ -273,9 +262,7 @@ impl ModelManager {
                 context_embedder_config: super::text_encoder::get_context_embedder_config(),
                 pos_embed_scaling_factor: None,
                 pos_embed_offset: None,
-                pos_embed_max_size: None,
-            },
-        };
+                pos_embed_max_size: None}};
 
         Ok(config)
     }
@@ -383,8 +370,7 @@ impl ModelManager {
             variant,
             device: self.device.clone(),
             memory_usage,
-            last_accessed: std::time::Instant::now(),
-        };
+            last_accessed: std::time::Instant::now()};
 
         cache.insert(model_id.to_string(), cached_model);
         Ok(())
@@ -438,8 +424,7 @@ impl ModelManager {
         Ok(CacheStats {
             model_count,
             total_memory_usage: total_memory,
-            max_cache_size: self.max_cache_size,
-        })
+            max_cache_size: self.max_cache_size})
     }
 }
 
@@ -449,8 +434,7 @@ pub struct CompleteModel {
     pub text_encoder: Arc<super::text_encoder::StableDiffusion3TripleClipWithTokenizer>,
     pub vae: Arc<super::vae::SD3VAEDecoder>,
     pub variant: SD3ModelVariant,
-    pub device: Device,
-}
+    pub device: Device}
 
 impl CompleteModel {
     /// Get model variant
@@ -477,8 +461,7 @@ impl CompleteModel {
 pub struct CacheStats {
     pub model_count: usize,
     pub total_memory_usage: usize,
-    pub max_cache_size: usize,
-}
+    pub max_cache_size: usize}
 
 /// Model loading utilities
 pub mod utils {
@@ -509,8 +492,7 @@ pub mod utils {
             use_safetensors: true,
             cache_dir: None,
             cache_enabled: true,
-            timeout_seconds: 300,
-        }
+            timeout_seconds: 300}
     }
 
     /// Check if model is available locally

@@ -9,14 +9,12 @@ use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics
 
 /// Portable SIMD implementation using the `wide` crate
 pub struct PortableSimdSimilarity {
-    metrics: Arc<SimilarityMetrics>,
-}
+    metrics: Arc<SimilarityMetrics>}
 
 impl Default for PortableSimdSimilarity {
     fn default() -> Self {
         Self {
-            metrics: Arc::new(SimilarityMetrics::default()),
-        }
+            metrics: Arc::new(SimilarityMetrics::default())}
     }
 }
 

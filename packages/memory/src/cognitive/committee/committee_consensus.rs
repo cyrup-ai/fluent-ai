@@ -3,7 +3,6 @@
 //! This module provides comprehensive consensus building capabilities for committee evaluations
 //! using zero-allocation patterns and production-ready error handling.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -11,8 +10,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::committee_types::{
-    CommitteeError, CommitteeEvaluation, EvaluationMetrics, ModelType, QualityTier,
-};
+    CommitteeError, CommitteeEvaluation, EvaluationMetrics, ModelType, QualityTier};
 
 /// Convert ConsensusError to CommitteeError
 impl From<ConsensusError> for CommitteeError {
@@ -20,20 +18,16 @@ impl From<ConsensusError> for CommitteeError {
         match error {
             ConsensusError::InsufficientEvaluations {
                 available,
-                required,
-            } => CommitteeError::InsufficientMembers {
+                required} => CommitteeError::InsufficientMembers {
                 available,
-                required,
-            },
+                required},
             ConsensusError::ConsensusThresholdNotMet { achieved, required } => {
                 CommitteeError::ConsensusNotReached {
                     agreement: achieved * 100.0,
-                    threshold: required * 100.0,
-                }
+                    threshold: required * 100.0}
             }
             ConsensusError::EvaluationTimeout { duration } => CommitteeError::EvaluationTimeout {
-                timeout_ms: duration.as_millis() as u64,
-            },
+                timeout_ms: duration.as_millis() as u64},
             ConsensusError::ConflictingEvaluations { detail } => {
                 CommitteeError::ConfigurationError { message: detail }
             }
@@ -60,8 +54,7 @@ pub enum ConsensusError {
     EvaluationTimeout { duration: Duration },
 
     #[error("Invalid consensus configuration: {detail}")]
-    InvalidConfiguration { detail: Arc<str> },
-}
+    InvalidConfiguration { detail: Arc<str> }}
 
 /// Consensus algorithm type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,8 +66,7 @@ pub enum ConsensusAlgorithm {
     /// Byzantine fault tolerant consensus
     ByzantineFaultTolerant,
     /// Confidence-weighted consensus
-    ConfidenceWeighted,
-}
+    ConfidenceWeighted}
 
 /// Consensus configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,8 +80,7 @@ pub struct ConsensusConfig {
     /// Maximum time to wait for consensus
     pub timeout: Duration,
     /// Quality tier weights
-    pub quality_weights: HashMap<QualityTier, f64>,
-}
+    pub quality_weights: HashMap<QualityTier, f64>}
 
 impl Default for ConsensusConfig {
     fn default() -> Self {
@@ -104,8 +95,7 @@ impl Default for ConsensusConfig {
             threshold: 0.7,
             algorithm: ConsensusAlgorithm::WeightedByQuality,
             timeout: Duration::from_secs(30),
-            quality_weights,
-        }
+            quality_weights}
     }
 }
 
@@ -129,8 +119,7 @@ pub struct ConsensusDecision {
     /// Time taken to reach consensus
     pub consensus_duration: Duration,
     /// Additional metadata
-    pub metadata: HashMap<Arc<str>, Arc<str>>,
-}
+    pub metadata: HashMap<Arc<str>, Arc<str>>}
 
 impl ConsensusDecision {
     /// Create a new consensus decision
@@ -145,8 +134,7 @@ impl ConsensusDecision {
             dissenting_opinions: Vec::new(),
             algorithm_used: ConsensusAlgorithm::Majority,
             consensus_duration: Duration::from_millis(0),
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Check if the decision is positive (score > 0.5)
@@ -188,8 +176,7 @@ pub struct CommitteeConsensusEngine {
     /// Evaluation metrics for performance tracking
     metrics: EvaluationMetrics,
     /// Start time for timeout tracking
-    start_time: Instant,
-}
+    start_time: Instant}
 
 impl CommitteeConsensusEngine {
     /// Create a new consensus engine
@@ -198,8 +185,7 @@ impl CommitteeConsensusEngine {
         Self {
             config,
             metrics: EvaluationMetrics::default(),
-            start_time: Instant::now(),
-        }
+            start_time: Instant::now()}
     }
 
     /// Create with default configuration
@@ -219,15 +205,13 @@ impl CommitteeConsensusEngine {
         if evaluations.len() < self.config.min_evaluations {
             return Err(ConsensusError::InsufficientEvaluations {
                 available: evaluations.len(),
-                required: self.config.min_evaluations,
-            });
+                required: self.config.min_evaluations});
         }
 
         // Check timeout
         if start_time.duration_since(self.start_time) > self.config.timeout {
             return Err(ConsensusError::EvaluationTimeout {
-                duration: self.config.timeout,
-            });
+                duration: self.config.timeout});
         }
 
         // Calculate consensus based on algorithm
@@ -248,8 +232,7 @@ impl CommitteeConsensusEngine {
         if decision.consensus_strength < self.config.threshold {
             return Err(ConsensusError::ConsensusThresholdNotMet {
                 achieved: decision.consensus_strength,
-                required: self.config.threshold,
-            });
+                required: self.config.threshold});
         }
 
         Ok(decision)
@@ -283,8 +266,7 @@ impl CommitteeConsensusEngine {
             dissenting_opinions: self.identify_dissenting_opinions(evaluations, average_score),
             algorithm_used: ConsensusAlgorithm::Majority,
             consensus_duration: Instant::now().duration_since(self.start_time),
-            metadata: HashMap::new(),
-        })
+            metadata: HashMap::new()})
     }
 
     /// Calculate weighted consensus by quality tier
@@ -316,8 +298,7 @@ impl CommitteeConsensusEngine {
             dissenting_opinions: self.identify_dissenting_opinions(evaluations, weighted_average),
             algorithm_used: ConsensusAlgorithm::WeightedByQuality,
             consensus_duration: Instant::now().duration_since(self.start_time),
-            metadata: HashMap::new(),
-        })
+            metadata: HashMap::new()})
     }
 
     /// Calculate Byzantine fault tolerant consensus
@@ -330,8 +311,7 @@ impl CommitteeConsensusEngine {
         if evaluations.len() < 3 * f + 1 {
             return Err(ConsensusError::InsufficientEvaluations {
                 available: evaluations.len(),
-                required: 3 * f + 1,
-            });
+                required: 3 * f + 1});
         }
 
         // Sort scores and use median for fault tolerance
@@ -358,8 +338,7 @@ impl CommitteeConsensusEngine {
             dissenting_opinions: self.identify_dissenting_opinions(evaluations, median_score),
             algorithm_used: ConsensusAlgorithm::ByzantineFaultTolerant,
             consensus_duration: Instant::now().duration_since(self.start_time),
-            metadata: HashMap::new(),
-        })
+            metadata: HashMap::new()})
     }
 
     /// Calculate confidence-weighted consensus
@@ -391,8 +370,7 @@ impl CommitteeConsensusEngine {
             dissenting_opinions: self.identify_dissenting_opinions(evaluations, weighted_average),
             algorithm_used: ConsensusAlgorithm::ConfidenceWeighted,
             consensus_duration: Instant::now().duration_since(self.start_time),
-            metadata: HashMap::new(),
-        })
+            metadata: HashMap::new()})
     }
 
     /// Get quality weight for a model type
@@ -414,8 +392,7 @@ impl CommitteeConsensusEngine {
             ModelType::GeminiPro
             | ModelType::Llama3
             | ModelType::Mixtral8x7B
-            | ModelType::Llama270B => QualityTier::Experimental,
-        }
+            | ModelType::Llama270B => QualityTier::Experimental}
     }
 
     /// Calculate consensus strength for weighted consensus
@@ -505,8 +482,7 @@ pub struct ConsensusResultSummary {
     /// Time taken
     pub duration: Duration,
     /// Success indicator
-    pub success: bool,
-}
+    pub success: bool}
 
 impl ConsensusResultSummary {
     /// Create from consensus decision
@@ -517,7 +493,6 @@ impl ConsensusResultSummary {
             duration: decision.consensus_duration,
             success: decision.is_positive() && decision.is_high_confidence(),
             decision,
-            evaluation_count,
-        }
+            evaluation_count}
     }
 }

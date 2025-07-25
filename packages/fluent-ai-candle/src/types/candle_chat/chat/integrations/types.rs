@@ -17,8 +17,7 @@ pub enum IntegrationType {
     /// Plugin integration
     Plugin,
     /// External service integration
-    ExternalService,
-}
+    ExternalService}
 
 /// Integration configuration with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,8 +37,7 @@ pub struct IntegrationConfig {
     /// Retry attempts
     pub retry_attempts: u32,
     /// Enable integration
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 impl Default for IntegrationConfig {
     fn default() -> Self {
@@ -51,8 +49,7 @@ impl Default for IntegrationConfig {
             headers: Vec::new(),
             timeout_seconds: 30,
             retry_attempts: 3,
-            enabled: true,
-        }
+            enabled: true}
     }
 }
 
@@ -72,8 +69,7 @@ pub enum IntegrationError {
     ConfigurationError { detail: Arc<str> },
 
     #[error("Plugin error: {detail}")]
-    PluginError { detail: Arc<str> },
-}
+    PluginError { detail: Arc<str> }}
 
 /// Result type for integration operations
 pub type IntegrationResult<T> = Result<T, IntegrationError>;
@@ -96,8 +92,7 @@ pub struct IntegrationStats {
     /// Last successful request timestamp
     pub last_success_timestamp: Option<std::time::SystemTime>,
     /// Last error timestamp
-    pub last_error_timestamp: Option<std::time::SystemTime>,
-}
+    pub last_error_timestamp: Option<std::time::SystemTime>}
 
 /// Plugin trait for external plugins
 pub trait Plugin: Send + Sync + std::fmt::Debug {
@@ -133,8 +128,7 @@ pub struct PluginConfig {
     /// Plugin settings
     pub settings: std::collections::HashMap<Arc<str>, serde_json::Value>,
     /// Enable plugin
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 /// Integration request data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,8 +142,7 @@ pub struct IntegrationRequest {
     /// Request body
     pub body: Option<serde_json::Value>,
     /// Request timeout override
-    pub timeout_ms: Option<u64>,
-}
+    pub timeout_ms: Option<u64>}
 
 /// Integration response data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,8 +156,7 @@ pub struct IntegrationResponse {
     /// Response time in milliseconds
     pub response_time_ms: u64,
     /// Success indicator
-    pub success: bool,
-}
+    pub success: bool}
 
 /// Create a webhook integration configuration
 pub fn create_webhook_integration(

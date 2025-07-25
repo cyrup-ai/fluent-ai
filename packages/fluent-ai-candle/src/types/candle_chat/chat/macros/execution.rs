@@ -9,8 +9,7 @@ use std::time::{Duration, Instant};
 
 use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_async::{AsyncStream, emit, handle_error};
-use tokio::sync::RwLock;
+use fluent_ai_async::{AsyncStream, emit};
 use uuid::Uuid;
 
 use super::types::*;
@@ -28,8 +27,7 @@ pub struct MacroExecutionEngine {
     /// Execution queue for processing
     execution_queue: Arc<SegQueue<ExecutionTask>>,
     /// Engine configuration
-    config: ExecutionConfig,
-}
+    config: ExecutionConfig}
 
 /// Configuration for macro execution engine
 #[derive(Debug, Clone)]
@@ -41,8 +39,7 @@ pub struct ExecutionConfig {
     /// Enable execution tracing
     pub enable_tracing: bool,
     /// Maximum action queue depth
-    pub max_queue_depth: usize,
-}
+    pub max_queue_depth: usize}
 
 /// Active execution session state
 #[derive(Debug)]
@@ -55,13 +52,12 @@ pub struct ExecutionSession {
     pub context: MacroExecutionContext,
     /// Current execution state
     pub state: ExecutionState,
-    /// Start time
-    pub start_time: Instant,
+    /// Start time as Unix timestamp
+    pub start_time: u64,
     /// Actions executed so far
     pub actions_executed: usize,
     /// Execution trace (if enabled)
-    pub trace: Vec<ExecutionTraceEntry>,
-}
+    pub trace: Vec<ExecutionTraceEntry>}
 
 /// Execution state tracking
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,8 +73,7 @@ pub enum ExecutionState {
     /// Session failed with error
     Failed(String),
     /// Session was cancelled
-    Cancelled,
-}
+    Cancelled}
 
 /// Execution task for the queue
 #[derive(Debug)]
@@ -92,8 +87,7 @@ pub struct ExecutionTask {
     /// Task priority
     pub priority: TaskPriority,
     /// Creation time
-    pub created_at: Instant,
-}
+    pub created_at: Instant}
 
 /// Task execution priority
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -105,8 +99,7 @@ pub enum TaskPriority {
     /// High priority task
     High,
     /// Critical priority task
-    Critical,
-}
+    Critical}
 
 /// Execution trace entry for debugging
 #[derive(Debug, Clone)]
@@ -118,8 +111,7 @@ pub struct ExecutionTraceEntry {
     /// Execution result
     pub result: ActionExecutionResult,
     /// Variable state snapshot
-    pub variables: HashMap<String, String>,
-}
+    pub variables: HashMap<String, String>}
 
 /// Statistics for macro execution
 #[derive(Debug, Clone)]
@@ -135,8 +127,7 @@ pub struct ExecutionStatistics {
     /// Average execution time
     pub average_execution_time: Duration,
     /// Currently active sessions
-    pub active_sessions: usize,
-}
+    pub active_sessions: usize}
 
 impl MacroExecutionEngine {
     /// Create a new execution engine
@@ -146,8 +137,7 @@ impl MacroExecutionEngine {
             evaluator: ContextEvaluator::new(),
             active_sessions: Arc::new(SkipMap::new()),
             execution_queue: Arc::new(SegQueue::new()),
-            config: ExecutionConfig::default(),
-        }
+            config: ExecutionConfig::default()}
     }
 
     /// Create an execution engine with custom configuration
@@ -157,8 +147,7 @@ impl MacroExecutionEngine {
             evaluator: ContextEvaluator::new(),
             active_sessions: Arc::new(SkipMap::new()),
             execution_queue: Arc::new(SegQueue::new()),
-            config,
-        }
+            config}
     }
 
     /// Execute a macro with AsyncStream architecture
@@ -169,7 +158,7 @@ impl MacroExecutionEngine {
     ) -> AsyncStream<MacroExecutionResult> {
         let session_id = Uuid::new_v4();
         let sessions = self.active_sessions.clone();
-        let queue = self.execution_queue.clone();
+        let _queue = self.execution_queue.clone();
         let config = self.config.clone();
         
         AsyncStream::with_channel(move |sender| {
@@ -179,10 +168,12 @@ impl MacroExecutionEngine {
                     .map(|(k, v)| (Arc::from(k), Arc::from(v)))
                     .collect(),
                 execution_id: session_id,
-                start_time: Instant::now(),
+                start_time: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
                 current_action: 0,
-                loop_stack: Vec::new(),
-            };
+                loop_stack: Vec::new()};
 
             // Create execution session
             let session = ExecutionSession {
@@ -190,10 +181,12 @@ impl MacroExecutionEngine {
                 macro_def: macro_def.clone(),
                 context: context.clone(),
                 state: ExecutionState::Starting,
-                start_time: Instant::now(),
+                start_time: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
                 actions_executed: 0,
-                trace: if config.enable_tracing { Vec::new() } else { Vec::new() },
-            };
+                trace: if config.enable_tracing { Vec::new() } else { Vec::new() }};
 
             sessions.insert(session_id, session);
 
@@ -203,20 +196,19 @@ impl MacroExecutionEngine {
                 context.current_action = index;
                 
                 // Create execution task
-                let task = ExecutionTask {
+                let _task = ExecutionTask {
                     id: Uuid::new_v4(),
                     session_id,
                     action: action.clone(),
                     priority: TaskPriority::Normal,
-                    created_at: Instant::now(),
-                };
+                    created_at: Instant::now()};
 
                 // Execute action synchronously
                 match execute_action_sync(&action, &mut context) {
                     Ok(ActionExecutionResult::Success) => {
                         actions_executed += 1;
                     }
-                    Ok(ActionExecutionResult::Wait(duration)) => {
+                    Ok(ActionExecutionResult::Wait(_duration)) => {
                         // In a real implementation, this would handle waiting
                         actions_executed += 1;
                     }
@@ -232,8 +224,7 @@ impl MacroExecutionEngine {
                         emit!(sender, MacroExecutionResult::Failed {
                             execution_id: session_id,
                             error,
-                            actions_executed,
-                        });
+                            actions_executed});
                         return;
                     }
                     Err(error) => {
@@ -241,8 +232,7 @@ impl MacroExecutionEngine {
                         emit!(sender, MacroExecutionResult::Failed {
                             execution_id: session_id,
                             error,
-                            actions_executed,
-                        });
+                            actions_executed});
                         return;
                     }
                 }
@@ -252,15 +242,20 @@ impl MacroExecutionEngine {
             sessions.remove(&session_id);
             emit!(sender, MacroExecutionResult::Success {
                 execution_id: session_id,
-                duration: Instant::now() - context.start_time,
-                actions_executed,
-            });
+                duration: std::time::Duration::from_secs(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs()
+                        .saturating_sub(context.start_time)
+                ),
+                actions_executed});
         })
     }
 
     /// Cancel a running macro execution
     pub fn cancel_execution(&self, session_id: Uuid) -> Result<(), MacroSystemError> {
-        if let Some(mut session_entry) = self.active_sessions.get(&session_id) {
+        if let Some(session_entry) = self.active_sessions.get(&session_id) {
             let mut session = session_entry.value().clone();
             session.state = ExecutionState::Cancelled;
             self.active_sessions.insert(session_id, session);
@@ -272,7 +267,7 @@ impl MacroExecutionEngine {
 
     /// Pause a running macro execution
     pub fn pause_execution(&self, session_id: Uuid) -> Result<(), MacroSystemError> {
-        if let Some(mut session_entry) = self.active_sessions.get(&session_id) {
+        if let Some(session_entry) = self.active_sessions.get(&session_id) {
             let mut session = session_entry.value().clone();
             if session.state == ExecutionState::Running {
                 session.state = ExecutionState::Paused;
@@ -288,7 +283,7 @@ impl MacroExecutionEngine {
 
     /// Resume a paused macro execution
     pub fn resume_execution(&self, session_id: Uuid) -> Result<(), MacroSystemError> {
-        if let Some(mut session_entry) = self.active_sessions.get(&session_id) {
+        if let Some(session_entry) = self.active_sessions.get(&session_id) {
             let mut session = session_entry.value().clone();
             if session.state == ExecutionState::Paused {
                 session.state = ExecutionState::Running;
@@ -313,8 +308,7 @@ impl MacroExecutionEngine {
             failed_executions: 0,
             cancelled_executions: 0,
             average_execution_time: Duration::from_millis(0),
-            active_sessions: active_count,
-        }
+            active_sessions: active_count}
     }
 
     /// Get session information
@@ -371,7 +365,7 @@ fn execute_action_sync(
 
             let actions_to_execute = if condition_result {
                 then_actions
-            } else if let Some(ref else_actions) = else_actions {
+            } else if let Some(else_actions) = else_actions {
                 else_actions
             } else {
                 return Ok(ActionExecutionResult::Success);
@@ -438,8 +432,7 @@ impl Default for ExecutionConfig {
             max_concurrent_executions: 10,
             default_timeout: Duration::from_secs(300), // 5 minutes
             enable_tracing: false,
-            max_queue_depth: 1000,
-        }
+            max_queue_depth: 1000}
     }
 }
 
@@ -458,7 +451,6 @@ impl Clone for ExecutionSession {
             state: self.state.clone(),
             start_time: self.start_time,
             actions_executed: self.actions_executed,
-            trace: self.trace.clone(),
-        }
+            trace: self.trace.clone()}
     }
 }

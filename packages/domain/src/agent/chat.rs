@@ -2,14 +2,13 @@
 
 use std::sync::{
     Arc,
-    atomic::{AtomicUsize, Ordering},
-};
+    atomic::{AtomicUsize, Ordering}};
 
 use arrayvec::ArrayVec;
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
-use tokio_stream::StreamExt;
+// Removed unused import: use tokio_stream::StreamExt;
 
 use crate::agent::role::AgentRoleImpl;
 use crate::memory::primitives::node::MemoryNodeBuilder;
@@ -43,24 +42,27 @@ pub enum ChatError {
     Message(String),
     /// System error
     #[error("System error: {0}")]
-    System(String),
-}
+    System(String)}
 
 /// Context injection result with relevance scoring
 #[derive(Debug, Clone)]
 pub struct ContextInjectionResult {
+    /// The context that was injected into the conversation
     pub injected_context: String,
+    /// Score indicating how relevant the injected context is (0.0 to 1.0)
     pub relevance_score: f64,
-    pub memory_nodes_used: usize,
-}
+    /// Number of memory nodes that were used in the injection
+    pub memory_nodes_used: usize}
 
 /// Memory-enhanced chat response with zero-allocation collections
 #[derive(Debug, Clone)]
 pub struct MemoryEnhancedChatResponse {
+    /// The generated response text
     pub response: String,
+    /// Details about the context that was injected
     pub context_injection: ContextInjectionResult,
-    pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>,
-}
+    /// Memory nodes that were considered and stored, using fixed-size allocation
+    pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>}
 
 impl AgentRoleImpl {
     /// Context-aware chat with automatic memory injection and memorization
@@ -99,8 +101,7 @@ impl AgentRoleImpl {
         Ok(MemoryEnhancedChatResponse {
             response,
             context_injection,
-            memorized_nodes,
-        })
+            memorized_nodes})
     }
 
     /// Inject memory context with zero-allocation processing
@@ -131,8 +132,7 @@ impl AgentRoleImpl {
         Ok(ContextInjectionResult {
             injected_context,
             relevance_score,
-            memory_nodes_used,
-        })
+            memory_nodes_used})
     }
 
     /// Calculate relevance score using attention mechanism
@@ -217,7 +217,7 @@ impl AgentRoleImpl {
 
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
-        if let Some(_store_result) = stream.next().await {
+        if let Some(_store_result) = stream.try_next() {
             // AsyncStream now returns unwrapped values, no error handling needed
         }
 
@@ -236,9 +236,9 @@ impl AgentRoleImpl {
         // Store assistant memory with zero-allocation error handling - PURE STREAMING
         let store_stream = memory_tool.memory().store_memory(&assistant_memory);
 
-        // Use StreamExt to properly consume AsyncStream
+        // Use AsyncStream try_next method (NO FUTURES architecture)
         let mut stream = store_stream;
-        if let Some(_store_result) = stream.next().await {
+        if let Some(_store_result) = stream.try_next() {
             // AsyncStream now returns unwrapped values, no error handling needed
         }
 
@@ -260,9 +260,9 @@ impl AgentRoleImpl {
         // Store context memory with zero-allocation error handling - PURE STREAMING
         let store_stream = memory_tool.memory().store_memory(&context_memory);
 
-        // Use StreamExt to properly consume AsyncStream
+        // Use AsyncStream try_next method (NO FUTURES architecture)
         let mut stream = store_stream;
-        if let Some(_store_result) = stream.next().await {
+        if let Some(_store_result) = stream.try_next() {
             // AsyncStream now returns unwrapped values, no error handling needed
         }
 

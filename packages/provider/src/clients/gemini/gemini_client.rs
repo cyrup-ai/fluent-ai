@@ -6,16 +6,15 @@
 use std::convert::TryFrom;
 use std::sync::Arc;
 
-use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest,
-};
+    self, CompletionCoreError as CompletionError, CompletionRequest};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, Document, Message, spawn_async};
 // Import centralized HTTP structs - no more local definitions!
-use fluent_ai_http_structs::{
+// TODO: Replace with local Gemini types - removed unauthorized fluent_ai_http_structs import
+// use fluent_ai_http_structs::{
     builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
     common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
     errors::{HttpStructError, HttpStructResult},
@@ -23,10 +22,8 @@ use fluent_ai_http_structs::{
         GeminiCandidate, GeminiContent, GeminiFunctionCall, GeminiFunctionDeclaration,
         GeminiFunctionResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse,
         GeminiGenerationConfig, GeminiInlineData, GeminiPart, GeminiSafetySetting,
-        GeminiStreamGenerateContentResponse, GeminiTool, GeminiUsageMetadata,
-    },
-    validation::{ValidateRequest, ValidationResult},
-};
+        GeminiStreamGenerateContentResponse, GeminiTool, GeminiUsageMetadata},
+    validation::{ValidateRequest, ValidationResult}};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::{Map, Value};
 use tracing::{debug, error, info, warn};
@@ -37,8 +34,7 @@ use super::gemini_streaming::{GeminiStreamProcessor, StreamingResponse};
 use crate::{
     AsyncStream, OneOrMany,
     completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
-    streaming::StreamingCompletionResponse,
-};
+    streaming::StreamingCompletionResponse};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -58,8 +54,7 @@ impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -167,8 +162,7 @@ pub struct GeminiCompletionBuilder {
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
     chunk_handler: Option<ChunkHandler>,
-    streaming_processor: Arc<GeminiStreamProcessor>,
-}
+    streaming_processor: Arc<GeminiStreamProcessor>}
 
 impl CompletionProvider for GeminiCompletionBuilder {
     /// Create new Gemini completion builder with ModelInfo defaults
@@ -202,8 +196,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
             tools: ArrayVec::new(),
             additional_params: None,
             chunk_handler: None,
-            streaming_processor,
-        })
+            streaming_processor})
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -378,8 +371,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
                             // Default env_logger behavior (zero allocation)
                             match &chunk_result {
                                 Ok(chunk) => debug!("Chunk: {:?}", chunk),
-                                Err(e) => error!("Chunk error: {}", e),
-                            }
+                                Err(e) => error!("Chunk error: {}", e)}
                         }
 
                         match chunk_result {
@@ -461,8 +453,7 @@ impl GeminiCompletionBuilder {
                         _ => {} // Skip unknown roles
                     }
                 }
-                Err(e) => return Err(e),
-            }
+                Err(e) => return Err(e)}
         }
 
         // Add user prompt
@@ -503,8 +494,7 @@ impl GeminiCompletionBuilder {
             Err(e) => Err(GeminiError::parse_error(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
 
     /// Convert domain Message to Gemini content (zero allocation)
@@ -625,8 +615,7 @@ impl GeminiCompletionBuilder {
                 401 => GeminiError::parse_error("Authentication failed"),
                 403 => GeminiError::parse_error("Permission denied"),
                 429 => GeminiError::parse_error("Rate limit exceeded"),
-                _ => GeminiError::parse_error("HTTP error"),
-            });
+                _ => GeminiError::parse_error("HTTP error")});
         }
 
         let sse_stream = response.sse();
@@ -678,8 +667,7 @@ fn parse_gemini_sse_chunk(data: &[u8]) -> GeminiResult<CompletionChunk> {
     // Use centralized deserialization
     let gemini_chunk: GeminiStreamGenerateContentResponse = match serde_json::from_slice(data) {
         Ok(chunk) => chunk,
-        Err(_) => return Err(GeminiError::parse_error("Invalid JSON in SSE chunk")),
-    };
+        Err(_) => return Err(GeminiError::parse_error("Invalid JSON in SSE chunk"))};
 
     // Convert to domain CompletionChunk based on Gemini's streaming format
     if let Some(candidate) = gemini_chunk.candidates.first() {
@@ -705,8 +693,7 @@ fn parse_gemini_sse_chunk(data: &[u8]) -> GeminiResult<CompletionChunk> {
                 "stop" => FinishReason::Stop,
                 "max_tokens" => FinishReason::Length,
                 "safety" => FinishReason::ContentFilter,
-                _ => FinishReason::Stop,
-            };
+                _ => FinishReason::Stop};
 
             let usage_info = gemini_chunk.usage_metadata.map(|u| {
                 Usage::new(
@@ -856,8 +843,7 @@ mod tests {
                 assert!(keys.contains(&"GEMINI_API_KEY".to_string()));
                 assert!(keys.contains(&"GOOGLE_AI_API_KEY".to_string()));
             }
-            _ => panic!("Expected many env keys"),
-        }
+            _ => panic!("Expected many env keys")}
     }
 
     #[tokio::test]

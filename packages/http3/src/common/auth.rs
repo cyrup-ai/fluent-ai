@@ -16,8 +16,7 @@ pub trait AuthProvider {
 
 /// Bearer token authentication
 pub struct BearerToken {
-    token: String,
-}
+    token: String}
 
 impl BearerToken {
     /// Create new bearer token auth
@@ -48,16 +47,14 @@ impl AuthProvider for BearerToken {
 /// API key authentication (header or query parameter)
 pub struct ApiKey {
     key: String,
-    placement: ApiKeyPlacement,
-}
+    placement: ApiKeyPlacement}
 
 /// Where to place the API key
 pub enum ApiKeyPlacement {
     /// Place API key in HTTP header with specified name
     Header(String),
     /// Place API key in URL query parameter with specified name
-    Query(String),
-}
+    Query(String)}
 
 impl ApiKey {
     /// Create new API key auth
@@ -87,8 +84,7 @@ impl AuthProvider for ApiKey {
 /// Basic authentication
 pub struct BasicAuth {
     username: String,
-    password: Option<String>,
-}
+    password: Option<String>}
 
 impl BasicAuth {
     /// Create new basic auth
@@ -139,5 +135,4 @@ pub enum AuthError {
     EncodingError,
     /// Request requires authentication but none was provided
     #[error("Authentication required")]
-    AuthRequired,
-}
+    AuthRequired}

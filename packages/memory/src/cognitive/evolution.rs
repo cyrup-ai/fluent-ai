@@ -1,7 +1,7 @@
 // src/cognitive/evolution.rs
 //! Self-optimizing component using MCTS with committee evaluation
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{VecDeque};
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -18,8 +18,7 @@ use crate::cognitive::state::CognitiveStateManager;
 pub use crate::cognitive::types::EvolutionMetadata;
 use crate::cognitive::types::{
     CognitiveError, MutationEvent, MutationType, OptimizationOutcome, OptimizationSpec,
-    PendingOptimizationResult,
-};
+    PendingOptimizationResult};
 
 /// Innovation discovered during the cognitive evolution process
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,8 +34,7 @@ pub struct Innovation {
     /// Timestamp when the innovation was discovered
     pub discovered_at: chrono::DateTime<chrono::Utc>,
     /// Metrics associated with the innovation
-    pub metrics: HashMap<String, f64>,
-}
+    pub metrics: HashMap<String, f64>}
 
 /// Types of innovations that can be discovered
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,8 +50,7 @@ pub enum InnovationType {
     /// Behavioral pattern innovation
     BehavioralPattern,
     /// Emergent capability innovation
-    EmergentCapability,
-}
+    EmergentCapability}
 
 impl Innovation {
     /// Create a new innovation
@@ -69,8 +66,7 @@ impl Innovation {
             description,
             innovation_type,
             discovered_at: chrono::Utc::now(),
-            metrics: HashMap::new(),
-        }
+            metrics: HashMap::new()}
     }
 
     /// Add a metric to the innovation
@@ -97,8 +93,7 @@ pub trait CodeEvolution {
 pub struct CognitiveCodeEvolution {
     initial_state: CodeState,
     spec: Arc<OptimizationSpec>,
-    user_objective: String,
-}
+    user_objective: String}
 
 impl CognitiveCodeEvolution {
     pub fn new(
@@ -114,14 +109,12 @@ impl CognitiveCodeEvolution {
             code_content: String::new(),
             latency: initial_latency,
             memory: initial_memory,
-            relevance: initial_relevance,
-        };
+            relevance: initial_relevance};
 
         Ok(Self {
             initial_state,
             spec,
-            user_objective,
-        })
+            user_objective})
     }
 
     /// Evolve code using cognitive evolution process with quantum-guided parameters
@@ -146,8 +139,7 @@ impl CognitiveCodeEvolution {
             code_content: code.to_string(),
             latency: self.initial_state.latency,
             memory: self.initial_state.memory,
-            relevance: self.initial_state.relevance,
-        };
+            relevance: self.initial_state.relevance};
 
         // Apply quantum-guided evolution transformations
         let mut evolved_code = code.to_string();
@@ -283,8 +275,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                             action,
                             decision: _,
                             factors,
-                            rounds_taken,
-                        } => {
+                            rounds_taken} => {
                             info!(
                                 "Committee consensus on '{}' after {} rounds: latency={:.2}, memory={:.2}, relevance={:.2}, confidence={:.2}",
                                 action,
@@ -376,8 +367,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                         performance_gain: ((latency_improvement + memory_improvement) / 2.0) as f32,
                         applied: true,
                         quality_score: (relevance_improvement / 10.0) as f32,
-                        metadata: HashMap::new(),
-                    };
+                        metadata: HashMap::new()};
 
                     info!(
                         "Applied optimization: latency improved {:.1}%, memory improved {:.1}%, relevance improved {:.1}%",
@@ -401,8 +391,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                             "Consider adjusting improvement thresholds".to_string(),
                             "Try different optimization strategies".to_string(),
                         ],
-                        applied: false,
-                    }));
+                        applied: false}));
                 }
             } else {
                 info!("No modifications found");
@@ -413,8 +402,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                         "Check evaluation committee configuration".to_string(),
                         "Verify agent evaluation is working correctly".to_string(),
                     ],
-                    applied: false,
-                }));
+                    applied: false}));
             }
         });
 
@@ -428,8 +416,7 @@ pub struct EvolutionResult {
     pub generation: u32,
     pub predicted_improvement: f64,
     pub fitness_score: f64,
-    pub mutations_applied: Vec<MutationEvent>,
-}
+    pub mutations_applied: Vec<MutationEvent>}
 
 /// Summary of evolution generation results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,8 +427,7 @@ pub struct EvolutionSummary {
     pub convergence_score: f64,
     pub adaptation_insights: Vec<String>,
     pub average_fitness: f64,
-    pub innovations: Vec<Innovation>,
-}
+    pub innovations: Vec<Innovation>}
 
 /// Performance metrics for cognitive operations
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -461,8 +447,7 @@ pub struct PerformanceMetrics {
     /// Memory efficiency ratio (higher is better)
     pub memory_efficiency: f64,
     /// Rate of adaptation (0.0 to 1.0)
-    pub adaptation_rate: f64,
-}
+    pub adaptation_rate: f64}
 
 /// High-performance evolution engine with zero-allocation design
 pub struct EvolutionEngine {
@@ -475,8 +460,7 @@ pub struct EvolutionEngine {
     mutation_queue: ArrayQueue<MutationEvent>,
     evolution_threshold: f64,
     min_generations_between_evolution: u32,
-    last_evolution_generation: u32,
-}
+    last_evolution_generation: u32}
 
 impl EvolutionEngine {
     /// Create new evolution engine with just evolution rate
@@ -495,13 +479,11 @@ impl EvolutionEngine {
                 retrieval_accuracy: 0.0,
                 response_latency: 0.0,
                 memory_efficiency: 0.0,
-                adaptation_rate: 0.0,
-            })),
+                adaptation_rate: 0.0})),
             mutation_queue: ArrayQueue::new(1000),
             evolution_threshold: 0.1,
             min_generations_between_evolution: 10,
-            last_evolution_generation: 0,
-        }
+            last_evolution_generation: 0}
     }
 
     /// Create new evolution engine with state manager and capacity
@@ -520,13 +502,11 @@ impl EvolutionEngine {
                 retrieval_accuracy: 0.0,
                 response_latency: 0.0,
                 memory_efficiency: 0.0,
-                adaptation_rate: 0.0,
-            })),
+                adaptation_rate: 0.0})),
             mutation_queue: ArrayQueue::new(capacity),
             evolution_threshold: 0.1,
             min_generations_between_evolution: 10,
-            last_evolution_generation: 0,
-        }
+            last_evolution_generation: 0}
     }
 
     /// Record fitness metrics for evolution tracking
@@ -581,8 +561,7 @@ impl EvolutionEngine {
             generation: self.generation,
             predicted_improvement,
             fitness_score,
-            mutations_applied: mutations,
-        })
+            mutations_applied: mutations})
     }
 
     /// Calculate fitness score from performance metrics
@@ -639,8 +618,7 @@ impl EvolutionEngine {
                 timestamp: chrono::Utc::now(),
                 mutation_type: MutationType::RoutingStrategyModification,
                 impact_score: 0.8,
-                description: "Optimize routing for lower latency".to_string(),
-            });
+                description: "Optimize routing for lower latency".to_string()});
         }
 
         if current_metrics.accuracy < 0.9 {
@@ -648,8 +626,7 @@ impl EvolutionEngine {
                 timestamp: chrono::Utc::now(),
                 mutation_type: MutationType::ContextualUnderstandingEvolution,
                 impact_score: 0.9,
-                description: "Enhance contextual understanding".to_string(),
-            });
+                description: "Enhance contextual understanding".to_string()});
         }
 
         if current_metrics.memory_usage > 0.8 {
@@ -657,8 +634,7 @@ impl EvolutionEngine {
                 timestamp: chrono::Utc::now(),
                 mutation_type: MutationType::QuantumCoherenceOptimization,
                 impact_score: 0.7,
-                description: "Optimize quantum coherence for memory efficiency".to_string(),
-            });
+                description: "Optimize quantum coherence for memory efficiency".to_string()});
         }
 
         // Always include attention weight adjustment
@@ -666,8 +642,7 @@ impl EvolutionEngine {
             timestamp: chrono::Utc::now(),
             mutation_type: MutationType::AttentionWeightAdjustment,
             impact_score: 0.6,
-            description: "Adjust attention weights based on performance".to_string(),
-        });
+            description: "Adjust attention weights based on performance".to_string()});
 
         mutations
     }
@@ -751,8 +726,7 @@ impl EvolutionEngine {
             convergence_score: 0.8,
             adaptation_insights: vec!["Generation evolved successfully".to_string()],
             average_fitness: 0.75,
-            innovations: Vec::new(),
-        };
+            innovations: Vec::new()};
 
         Ok(summary)
     }

@@ -36,8 +36,7 @@ pub enum RealTimeError {
     InternalError(String),
     
     #[error("Subscriber not found: {0}")]
-    SubscriberNotFound(String),
-}
+    SubscriberNotFound(String)}
 
 impl RealTimeError {
     /// Check if error is recoverable
@@ -71,8 +70,7 @@ impl RealTimeError {
             | Self::InvalidMessageFormat { .. } => ErrorSeverity::Medium,
             Self::BackpressureExceeded { .. } 
             | Self::SystemTimeout { .. } 
-            | Self::RateLimitExceeded { .. } => ErrorSeverity::Low,
-        }
+            | Self::RateLimitExceeded { .. } => ErrorSeverity::Low}
     }
 }
 
@@ -82,8 +80,7 @@ pub enum ErrorSeverity {
     Low = 0,
     Medium = 1,
     High = 2,
-    Critical = 3,
-}
+    Critical = 3}
 
 impl ErrorSeverity {
     /// Check if error requires immediate attention

@@ -32,5 +32,4 @@ pub use completion::{
     CompletionRequest, CompletionRequestError, ProviderExtensions,
     ToolDefinition, ToolChoice, FunctionDefinition, ToolType,
     OpenAIExtensions, AnthropicExtensions, GoogleExtensions,
-    BedrockExtensions, CohereExtensions,
-};
+    BedrockExtensions, CohereExtensions};

@@ -13,8 +13,7 @@ pub use builder::{CandleClientBuilder, HasPrompt, NeedsPrompt};
 pub use completion::{CandleCompletionClient, CandleMetrics, CANDLE_METRICS};
 pub use config::{
     CandleClientConfig, DeviceType, ModelArchitecture, ModelConfig, QuantizationType,
-    MAX_DOCUMENTS, MAX_MESSAGES, MAX_TOOLS,
-};
+    MAX_DOCUMENTS, MAX_MESSAGES, MAX_TOOLS};
 
 // Type aliases for backward compatibility
 pub type Message = crate::types::CandleMessage;

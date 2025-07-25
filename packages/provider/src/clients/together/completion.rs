@@ -15,8 +15,7 @@ use super::types::{
     TogetherChatRequest, TogetherChatResponse, TogetherChoice, TogetherContent,
     TogetherFunction, TogetherMessage, TogetherResponseMessage, TogetherStreamingChunk,
     TogetherTool, TogetherUsage,
-    validation::{ValidateRequest, ValidationResult},
-};
+    validation::{ValidateRequest, ValidationResult}};
 use serde_json::json;
 
 use super::client::{Client, together_ai_api_types::ApiResponse};
@@ -137,15 +136,13 @@ pub const WIZARDLM_13B_V1_2: &str = "WizardLM/WizardLM-13B-V1.2";
 #[derive(Clone)]
 pub struct TogetherCompletionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl TogetherCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 
     pub(crate) fn create_completion_request(
@@ -217,9 +214,7 @@ impl TogetherCompletionModel {
                         function: TogetherFunction {
                             name: tool.name(),
                             description: tool.description(),
-                            parameters: tool.parameters().clone(),
-                        },
-                    };
+                            parameters: tool.parameters().clone()}};
                     let _ = together_tools.push(together_tool);
                 }
             }
@@ -232,8 +227,7 @@ impl TogetherCompletionModel {
             Err(e) => Err(CompletionError::InvalidRequest(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
 }
 
@@ -285,8 +279,7 @@ impl completion::CompletionModel for TogetherCompletionModel {
                     );
                     response.try_into()
                 }
-                ApiResponse::Error(err) => Err(CompletionError::ProviderError(err.error)),
-            }
+                ApiResponse::Error(err) => Err(CompletionError::ProviderError(err.error))}
         } else {
             let error_body = String::from_utf8_lossy(response.body());
             Err(CompletionError::ProviderError(error_body.to_string()))

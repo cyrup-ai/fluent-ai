@@ -18,8 +18,7 @@ pub struct OpenAIEmbeddingRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dimensions: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user: Option<String>,
-}
+    pub user: Option<String>}
 
 /// Input for embedding generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,8 +29,7 @@ pub enum EmbeddingInput {
     /// Array of text strings for batch processing
     Array(Vec<String>),
     /// Array of token arrays (advanced usage)
-    TokenArrays(Vec<Vec<u32>>),
-}
+    TokenArrays(Vec<Vec<u32>>)}
 
 /// OpenAI embedding response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,23 +37,20 @@ pub struct OpenAIEmbeddingResponse {
     pub object: String,
     pub data: Vec<EmbeddingData>,
     pub model: String,
-    pub usage: EmbeddingUsage,
-}
+    pub usage: EmbeddingUsage}
 
 /// Individual embedding data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingData {
     pub object: String,
     pub embedding: Vec<f32>,
-    pub index: u32,
-}
+    pub index: u32}
 
 /// Usage statistics for embedding generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingUsage {
     pub prompt_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 /// Embedding model configuration
 #[derive(Debug, Clone)]
@@ -65,8 +60,7 @@ pub struct EmbeddingConfig {
     pub encoding_format: Option<String>,
     pub user: Option<String>,
     pub batch_size: Option<usize>,
-    pub normalize: bool,
-}
+    pub normalize: bool}
 
 /// Batch embedding request for high-throughput processing
 #[derive(Debug, Clone)]
@@ -74,8 +68,7 @@ pub struct BatchEmbeddingRequest {
     pub inputs: Vec<String>,
     pub config: EmbeddingConfig,
     pub chunk_size: usize,
-    pub parallel_requests: usize,
-}
+    pub parallel_requests: usize}
 
 /// Batch embedding response
 #[derive(Debug, Clone)]
@@ -83,8 +76,7 @@ pub struct BatchEmbeddingResponse {
     pub embeddings: Vec<Vec<f32>>,
     pub total_tokens: u32,
     pub processing_time_ms: u64,
-    pub model: String,
-}
+    pub model: String}
 
 /// Embedding similarity metrics
 #[derive(Debug, Clone)]
@@ -92,8 +84,7 @@ pub struct SimilarityMetrics {
     pub cosine_similarity: f32,
     pub euclidean_distance: f32,
     pub dot_product: f32,
-    pub manhattan_distance: f32,
-}
+    pub manhattan_distance: f32}
 
 /// Text chunking strategy for long documents
 #[derive(Debug, Clone, Copy)]
@@ -105,8 +96,7 @@ pub enum ChunkingStrategy {
     /// Paragraph-based chunking
     Paragraphs,
     /// Token-based chunking (approximate)
-    Tokens(usize),
-}
+    Tokens(usize)}
 
 impl EmbeddingInput {
     /// Create single text input
@@ -127,8 +117,7 @@ impl EmbeddingInput {
         match texts {
             ZeroOneOrMany::None => Self::Array(Vec::new()),
             ZeroOneOrMany::One(text) => Self::Single(text),
-            ZeroOneOrMany::Many(texts) => Self::Array(texts),
-        }
+            ZeroOneOrMany::Many(texts) => Self::Array(texts)}
     }
 
     /// Get estimated token count
@@ -149,8 +138,7 @@ impl EmbeddingInput {
         match self {
             Self::Single(_) => 1,
             Self::Array(texts) => texts.len(),
-            Self::TokenArrays(arrays) => arrays.len(),
-        }
+            Self::TokenArrays(arrays) => arrays.len()}
     }
 
     /// Validate input for API limits
@@ -223,8 +211,7 @@ impl EmbeddingConfig {
             encoding_format: Some("float".to_string()),
             user: None,
             batch_size: Some(100),
-            normalize: true,
-        }
+            normalize: true}
     }
 
     /// Create config for text-embedding-3-small
@@ -236,8 +223,7 @@ impl EmbeddingConfig {
             encoding_format: Some("float".to_string()),
             user: None,
             batch_size: Some(100),
-            normalize: true,
-        }
+            normalize: true}
     }
 
     /// Create config for ada-002 (legacy)
@@ -249,8 +235,7 @@ impl EmbeddingConfig {
             encoding_format: Some("float".to_string()),
             user: None,
             batch_size: Some(100),
-            normalize: true,
-        }
+            normalize: true}
     }
 
     /// Set custom dimensions (only for v3 models)
@@ -420,8 +405,7 @@ impl SimilarityMetrics {
             cosine_similarity,
             euclidean_distance,
             dot_product,
-            manhattan_distance,
-        })
+            manhattan_distance})
     }
 
     /// Get primary similarity score (cosine similarity)
@@ -582,6 +566,5 @@ pub fn get_model_info(model: &str) -> Option<(u32, u32, bool)> {
         "text-embedding-3-large" => Some((3072, 8191, true)),
         "text-embedding-3-small" => Some((1536, 8191, true)),
         "text-embedding-ada-002" => Some((1536, 8191, false)),
-        _ => None,
-    }
+        _ => None}
 }

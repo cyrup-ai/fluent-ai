@@ -14,14 +14,12 @@ use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 use super::completion::DeepSeekCompletionBuilder;
 use crate::{
     client::{CompletionClient, ProviderClient},
-    completion_provider::{CompletionError, CompletionProvider},
-};
+    completion_provider::{CompletionError, CompletionProvider}};
 
 /// DeepSeek client providing clean completion builder factory methods
 #[derive(Clone)]
 pub struct DeepSeekClient {
-    api_key: String,
-}
+    api_key: String}
 
 impl DeepSeekClient {
     /// Create new DeepSeek client with API key

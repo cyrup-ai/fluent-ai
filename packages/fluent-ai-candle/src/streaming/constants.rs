@@ -51,8 +51,7 @@ pub enum StreamingError {
 
     /// Format conversion error
     #[error("Format error: {0}")]
-    FormatError(String),
-}
+    FormatError(String)}
 
 /// Response for streaming token operations
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -64,5 +63,4 @@ pub struct StreamingTokenResponse {
     /// Timestamp
     pub timestamp: u64,
     /// Is final token
-    pub is_final: bool,
-}
+    pub is_final: bool}

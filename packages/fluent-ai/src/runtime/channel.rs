@@ -4,8 +4,7 @@ use std::time::Duration;
 
 use crossbeam_channel::{
     Receiver, RecvError, Sender, TryIter, TryRecvError, TrySendError, bounded as cb_bounded,
-    unbounded as cb_unbounded,
-};
+    unbounded as cb_unbounded};
 
 #[derive(Clone)]
 pub struct Tx<T>(Sender<T>);

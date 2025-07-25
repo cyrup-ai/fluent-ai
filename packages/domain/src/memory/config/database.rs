@@ -35,8 +35,7 @@ pub struct DatabaseConfig {
     /// Health check configuration
     pub health_check_config: HealthCheckConfig,
     /// Additional database-specific options
-    pub options: Option<Arc<serde_json::Value>>,
-}
+    pub options: Option<Arc<serde_json::Value>>}
 
 /// Database types with optimized enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -49,8 +48,7 @@ pub enum DatabaseType {
     /// SQLite - Embedded database
     SQLite = 2,
     /// In-memory database for testing
-    Memory = 3,
-}
+    Memory = 3}
 
 impl DatabaseType {
     /// Get default port for database type
@@ -69,8 +67,7 @@ impl DatabaseType {
     pub const fn supports_pooling(&self) -> bool {
         match self {
             Self::SurrealDB | Self::PostgreSQL => true,
-            Self::SQLite | Self::Memory => false,
-        }
+            Self::SQLite | Self::Memory => false}
     }
 
     /// Get recommended pool size for database type
@@ -91,8 +88,7 @@ impl std::fmt::Display for DatabaseType {
             Self::SurrealDB => write!(f, "surrealdb"),
             Self::PostgreSQL => write!(f, "postgresql"),
             Self::SQLite => write!(f, "sqlite"),
-            Self::Memory => write!(f, "memory"),
-        }
+            Self::Memory => write!(f, "memory")}
     }
 }
 
@@ -110,8 +106,7 @@ pub struct PoolConfig {
     /// Pool health check interval
     pub health_check_interval: Duration,
     /// Enable connection validation
-    pub validate_connections: bool,
-}
+    pub validate_connections: bool}
 
 impl PoolConfig {
     /// Create optimized pool configuration
@@ -126,8 +121,7 @@ impl PoolConfig {
             idle_timeout: Duration::from_secs(300), // 5 minutes
             max_lifetime: Duration::from_secs(1800), // 30 minutes
             health_check_interval: Duration::from_secs(60), // 1 minute
-            validate_connections: true,
-        }
+            validate_connections: true}
     }
 
     /// Create minimal pool configuration for testing
@@ -139,8 +133,7 @@ impl PoolConfig {
             idle_timeout: Duration::from_secs(30),
             max_lifetime: Duration::from_secs(300),
             health_check_interval: Duration::from_secs(10),
-            validate_connections: false,
-        }
+            validate_connections: false}
     }
 }
 
@@ -161,8 +154,7 @@ pub struct TimeoutConfig {
     /// Transaction timeout
     pub transaction_timeout: Duration,
     /// Retry configuration
-    pub retry_config: RetryConfig,
-}
+    pub retry_config: RetryConfig}
 
 impl TimeoutConfig {
     /// Create optimized timeout configuration
@@ -172,8 +164,7 @@ impl TimeoutConfig {
             connect_timeout: Duration::from_secs(10),
             query_timeout: Duration::from_secs(30),
             transaction_timeout: Duration::from_secs(60),
-            retry_config: RetryConfig::default(),
-        }
+            retry_config: RetryConfig::default()}
     }
 
     /// Create fast timeout configuration for testing
@@ -183,8 +174,7 @@ impl TimeoutConfig {
             connect_timeout: Duration::from_millis(500),
             query_timeout: Duration::from_secs(5),
             transaction_timeout: Duration::from_secs(10),
-            retry_config: RetryConfig::minimal(),
-        }
+            retry_config: RetryConfig::minimal()}
     }
 }
 
@@ -212,8 +202,7 @@ pub struct HealthCheckConfig {
     /// Failure threshold before marking unhealthy
     pub failure_threshold: usize,
     /// Recovery threshold before marking healthy
-    pub recovery_threshold: usize,
-}
+    pub recovery_threshold: usize}
 
 impl HealthCheckConfig {
     /// Create default health check configuration
@@ -225,8 +214,7 @@ impl HealthCheckConfig {
             timeout: Duration::from_secs(5),
             query: Arc::from("SELECT 1"),
             failure_threshold: 3,
-            recovery_threshold: 2,
-        }
+            recovery_threshold: 2}
     }
 
     /// Create disabled health check configuration
@@ -238,8 +226,7 @@ impl HealthCheckConfig {
             timeout: Duration::from_secs(1),
             query: Arc::from("SELECT 1"),
             failure_threshold: 1,
-            recovery_threshold: 1,
-        }
+            recovery_threshold: 1}
     }
 }
 
@@ -255,8 +242,7 @@ pub struct DatabaseHealthStatus {
     /// Last health check timestamp
     last_check_nanos: CachePadded<AtomicU64>,
     /// Total health checks performed
-    total_checks: CachePadded<AtomicUsize>,
-}
+    total_checks: CachePadded<AtomicUsize>}
 
 impl DatabaseHealthStatus {
     /// Create new health status tracker
@@ -267,8 +253,7 @@ impl DatabaseHealthStatus {
             failure_count: CachePadded::new(AtomicUsize::new(0)),
             success_count: CachePadded::new(AtomicUsize::new(0)),
             last_check_nanos: CachePadded::new(AtomicU64::new(0)),
-            total_checks: CachePadded::new(AtomicUsize::new(0)),
-        }
+            total_checks: CachePadded::new(AtomicUsize::new(0))}
     }
 
     /// Record successful health check
@@ -373,8 +358,7 @@ impl DatabaseConfig {
             pool_config: PoolConfig::optimized(db_type),
             timeout_config: TimeoutConfig::optimized(),
             health_check_config: HealthCheckConfig::default(),
-            options: None,
-        })
+            options: None})
     }
 
     /// Create configuration with credentials
@@ -476,8 +460,7 @@ impl DatabaseConfig {
                     &self.connection_string[self.db_type.to_string().len() + 3..]
                 )
             }
-            _ => self.connection_string.to_string(),
-        }
+            _ => self.connection_string.to_string()}
     }
 
     /// Check if configuration supports connection pooling
@@ -505,8 +488,7 @@ impl Default for DatabaseConfig {
             pool_config: PoolConfig::default(),
             timeout_config: TimeoutConfig::default(),
             health_check_config: HealthCheckConfig::default(),
-            options: None,
-        }
+            options: None}
     }
 }
 

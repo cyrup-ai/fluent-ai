@@ -30,8 +30,7 @@ const MAX_SHARDS: usize = 64;
 pub struct ModelShard {
     /// Raw bytes of the shard mapped into memory.
     #[allow(dead_code)] // Used in model loading logic but flagged incorrectly by compiler
-    bytes: memmap2::Mmap,
-}
+    bytes: memmap2::Mmap}
 
 /// Events emitted by the [`load_model`] stream.
 #[derive(Debug)]
@@ -39,19 +38,16 @@ pub enum LoaderEvent {
     /// Metadata about the overall download (file count, total bytes).
     Start {
         total_shards: usize,
-        total_bytes: u64,
-    },
+        total_bytes: u64},
     /// Progress information for a single shard (owns bytes for 'static lifetime compliance).
     Progress { shard_idx: usize, bytes: Vec<u8> },
     /// Emitted when a shard has been fully memory-mapped.
     ShardReady { shard_idx: usize, shard: ModelShard },
     /// Emitted once all shards have been processed.
     Complete {
-        shards: ArrayVec<ModelShard, MAX_SHARDS>,
-    },
+        shards: ArrayVec<ModelShard, MAX_SHARDS>},
     /// Error during loading process.
-    Error { message: String },
-}
+    Error { message: String }}
 
 /// Streams [`LoaderEvent`]s while downloading and memory-mapping the Kimi-K2
 /// weights defined by `config` using ProgressHub directly.
@@ -67,8 +63,7 @@ pub fn load_model(config: &KimiK2Config) -> AsyncStream<LoaderEvent> {
             Ok(client) => client,
             Err(e) => {
                 let _ = y.send(LoaderEvent::Error {
-                    message: e.to_string(),
-                });
+                    message: e.to_string()});
                 return;
             }
         };
@@ -84,8 +79,7 @@ pub fn load_model(config: &KimiK2Config) -> AsyncStream<LoaderEvent> {
             Ok(s) => s,
             Err(e) => {
                 let _ = y.send(LoaderEvent::Error {
-                    message: e.to_string(),
-                });
+                    message: e.to_string()});
                 return;
             }
         };
@@ -105,8 +99,7 @@ pub fn load_model(config: &KimiK2Config) -> AsyncStream<LoaderEvent> {
                     model_result.path.parent().unwrap_or(&model_result.path)
                 } else {
                     let _ = y.send(LoaderEvent::Error {
-                        message: "No models in download result".to_string(),
-                    });
+                        message: "No models in download result".to_string()});
                     return;
                 };
                 if let Ok(entries) = std::fs::read_dir(&model_dir) {
@@ -128,15 +121,13 @@ pub fn load_model(config: &KimiK2Config) -> AsyncStream<LoaderEvent> {
                                         // Send progress event with owned bytes data (fixes lifetime issue)
                                         let _ = y.send(LoaderEvent::Progress {
                                             shard_idx: current_idx,
-                                            bytes: progress_bytes,
-                                        });
+                                            bytes: progress_bytes});
                                         shard_idx += 1;
                                     }
                                 }
                                 Err(e) => {
                                     let _ = y.send(LoaderEvent::Error {
-                                        message: e.to_string(),
-                                    });
+                                        message: e.to_string()});
                                     return;
                                 }
                             }
@@ -148,8 +139,7 @@ pub fn load_model(config: &KimiK2Config) -> AsyncStream<LoaderEvent> {
             }
             Err(e) => {
                 let _ = y.send(LoaderEvent::Error {
-                    message: e.to_string(),
-                });
+                    message: e.to_string()});
                 return;
             }
         }

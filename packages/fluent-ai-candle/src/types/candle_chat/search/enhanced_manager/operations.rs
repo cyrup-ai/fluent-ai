@@ -3,7 +3,6 @@
 //! This module implements the main operational functionality including
 //! search, indexing, cleanup, and optimization operations.
 
-use std::collections::HashMap;
 use std::time::Instant;
 
 use fluent_ai_async::AsyncStream;
@@ -36,8 +35,7 @@ pub struct ManagerOperations {
     /// Configuration
     pub config: ManagerConfig,
     /// Cache for frequent queries
-    pub query_cache: HashMap<String, Vec<SearchResult>>,
-}
+    pub query_cache: HashMap<String, Vec<SearchResult>>}
 
 impl ManagerOperations {
     /// Create new operations handler
@@ -52,8 +50,7 @@ impl ManagerOperations {
             tagger,
             exporter,
             config,
-            query_cache: HashMap::new(),
-        }
+            query_cache: HashMap::new()}
     }
 
     /// Add messages to the manager (streaming)
@@ -112,12 +109,9 @@ impl ManagerOperations {
                         content: "Mock search result".to_string(),
                         timestamp: Some(chrono::Utc::now()),
                         user: Some("test_user".to_string()),
-                        metadata: Some(HashMap::new()),
-                    },
-                },
+                        metadata: Some(HashMap::new())}},
                 relevance_score: 0.9,
-                highlights: Vec::new(),
-            };
+                highlights: Vec::new()};
 
             let _ = sender.send(mock_result);
         })
@@ -161,8 +155,7 @@ impl ManagerOperations {
                 messages_cleaned: cleaned_items,
                 cache_entries_removed,
                 memory_freed: cache_entries_removed * 1024, // Estimated
-                cleanup_time_ms: cleanup_time,
-            };
+                cleanup_time_ms: cleanup_time};
 
             let _ = sender.send(result);
         })
@@ -183,8 +176,7 @@ impl ManagerOperations {
                 index_entries_optimized,
                 memory_before,
                 memory_after,
-                optimization_time_ms: optimization_time,
-            };
+                optimization_time_ms: optimization_time};
 
             let _ = sender.send(result);
         })

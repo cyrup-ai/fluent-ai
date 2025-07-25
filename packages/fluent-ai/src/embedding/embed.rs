@@ -44,8 +44,7 @@ pub trait Embed {
 /// Internally just a `Vec<String>` – no extra indirections, no locking.
 #[derive(Default)]
 pub struct TextEmbedder {
-    pub(crate) texts: Vec<String>,
-}
+    pub(crate) texts: Vec<String>}
 
 impl TextEmbedder {
     #[inline(always)]

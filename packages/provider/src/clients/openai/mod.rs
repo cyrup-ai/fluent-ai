@@ -32,16 +32,18 @@ pub use audio::{OpenAIAudioClient, TranscriptionResponse};
 // Re-export all public types with zero allocation
 pub use client::{OpenAIClient, OpenAIProvider};
 pub use completion::{
-    CompletionResponse, OpenAICompletionBuilder, OpenAICompletionRequest, OpenAICompletionResponse,
-};
+    CompletionResponse, OpenAICompletionBuilder, OpenAICompletionRequest, OpenAICompletionResponse};
 pub use discovery::OpenAIDiscovery;
 pub use embeddings::OpenAIEmbeddingClient;
 pub use error::{OpenAIError, Result as OpenAIResult};
 pub use messages::{AssistantContent, Message, OpenAIMessage};
+// Re-export all types needed by other provider types files
+pub use types::*;
+// Re-export completion module for type compatibility
+pub use completion::*;
 pub use streaming::{
     OpenAIStream, StreamingChoice, StreamingCompletionResponse, StreamingMessage,
-    send_compatible_streaming_request,
-};
+    send_compatible_streaming_request};
 pub use vision::OpenAIVisionClient;
 
 use crate::client::{CompletionClient, ProviderClient};
@@ -59,6 +61,7 @@ mod model_info;
 mod moderation;
 mod streaming;
 mod tools;
+mod types;
 mod vision;
 
 /// OpenAI model constants using &'static str for zero allocation
@@ -405,8 +408,7 @@ impl models {
             | models::O3_MINI
             | models::O3_MINI_HIGH => config::O1_MAX_CONTEXT,
             models::GPT_3_5_TURBO => config::GPT3_MAX_CONTEXT,
-            _ => 0,
-        }
+            _ => 0}
     }
 
     /// Get model family (gpt4, gpt3, o1, embedding)
@@ -442,8 +444,7 @@ impl models {
             | models::O3_MINI_HIGH
             | models::GPT_3_5_TURBO
             | models::TEXT_EMBEDDING_3_SMALL => Some("efficient"),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Check if model supports streaming
@@ -459,8 +460,7 @@ impl models {
         match model {
             models::TEXT_EMBEDDING_3_LARGE => config::EMBEDDING_3_LARGE_DIMENSIONS,
             models::TEXT_EMBEDDING_3_SMALL => config::EMBEDDING_3_SMALL_DIMENSIONS,
-            _ => 0,
-        }
+            _ => 0}
     }
 
     /// Get recommended temperature range for model
@@ -490,8 +490,7 @@ impl models {
             models::GPT_4_1_NANO | models::GPT_3_5_TURBO | models::TEXT_EMBEDDING_3_SMALL => {
                 "budget"
             }
-            _ => "standard",
-        }
+            _ => "standard"}
     }
 }
 
@@ -614,8 +613,7 @@ pub mod utils {
                 45_000
             }
             models::GPT_4_1_NANO | models::GPT_3_5_TURBO => 30_000, // Efficient models are faster
-            _ => 45_000,
-        }
+            _ => 45_000}
     }
 
     /// Get model pricing tier for cost optimization
@@ -649,8 +647,7 @@ pub mod utils {
             "function_calling" => models::supports_function_calling(model),
             "streaming" => models::supports_streaming(model),
             "embedding" => models::is_embedding_model(model),
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Get optimal batch size for model and operation
@@ -660,11 +657,9 @@ pub mod utils {
             "embedding" => match model {
                 models::TEXT_EMBEDDING_3_LARGE => 512,
                 models::TEXT_EMBEDDING_3_SMALL => 1024,
-                _ => 100,
-            },
+                _ => 100},
             "completion" => 1, // Chat completions are typically single requests
-            _ => 1,
-        }
+            _ => 1}
     }
 }
 

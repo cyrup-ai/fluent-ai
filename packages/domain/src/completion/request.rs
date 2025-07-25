@@ -33,8 +33,7 @@ pub struct CompletionRequest {
     /// Size of chunks for streaming
     pub chunk_size: Option<usize>,
     /// Additional provider-specific parameters
-    pub additional_params: Option<Value>,
-}
+    pub additional_params: Option<Value>}
 
 /// Builder for `CompletionRequest`
 #[derive(Clone)]
@@ -46,8 +45,7 @@ pub struct CompletionRequestBuilder {
     temperature: f64,
     max_tokens: Option<NonZeroU64>,
     chunk_size: Option<usize>,
-    additional_params: Option<Value>,
-}
+    additional_params: Option<Value>}
 
 /// Error type for completion request validation
 #[derive(Debug, Error)]
@@ -58,8 +56,7 @@ pub enum CompletionRequestError {
 
     /// Validation error
     #[error(transparent)]
-    Validation(#[from] ValidationError),
-}
+    Validation(#[from] ValidationError)}
 
 impl CompletionRequest {
     /// Create a new builder with required fields
@@ -78,8 +75,7 @@ impl CompletionRequest {
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
                     TEMPERATURE_RANGE.end()
-                ),
-            });
+                )});
         }
 
         // Validate max_tokens
@@ -88,8 +84,7 @@ impl CompletionRequest {
                 return Err(ValidationError::InvalidRange {
                     field: "max_tokens".into(),
                     value: max_tokens.to_string(),
-                    expected: format!("less than or equal to {}", MAX_TOKENS),
-                });
+                    expected: format!("less than or equal to {}", MAX_TOKENS)});
             }
         }
 
@@ -99,8 +94,7 @@ impl CompletionRequest {
                 return Err(ValidationError::InvalidRange {
                     field: "chunk_size".into(),
                     value: chunk_size.to_string(),
-                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE),
-                });
+                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE)});
             }
         }
 
@@ -118,8 +112,7 @@ impl CompletionRequest {
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 }
 
@@ -134,8 +127,7 @@ impl CompletionRequestBuilder {
             temperature: 1.0,
             max_tokens: None,
             chunk_size: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 
     /// Set the system prompt
@@ -199,8 +191,7 @@ impl CompletionRequestBuilder {
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,
-            additional_params: self.additional_params,
-        };
+            additional_params: self.additional_params};
 
         // Validate the request before returning
         request

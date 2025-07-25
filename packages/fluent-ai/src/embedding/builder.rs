@@ -16,23 +16,18 @@
 #![allow(clippy::type_complexity)]
 
 use core::cmp::max;
-use std::collections::HashMap;
-
 use crate::{
     OneOrMany,
     embedding::{
         Embed, Embedding, EmbeddingError, EmbeddingModel,
-        embed::{EmbedError, TextEmbedder},
-    },
-    runtime::{self, AsyncTask},
-};
+        embed::{EmbedError, TextEmbedder}},
+    runtime::{self, AsyncTask}};
 
 /// Fluent builder that accumulates documents then generates embeddings in
 /// batched, parallel requests.
 pub struct EmbeddingsBuilder<M: EmbeddingModel, T: Embed> {
     model: M,
-    documents: Vec<(T, Vec<String>)>,
-}
+    documents: Vec<(T, Vec<String>)>}
 
 impl<M: EmbeddingModel, T: Embed> EmbeddingsBuilder<M, T> {
     /// Start a new builder for `model`.
@@ -40,8 +35,7 @@ impl<M: EmbeddingModel, T: Embed> EmbeddingsBuilder<M, T> {
     pub fn new(model: M) -> Self {
         Self {
             model,
-            documents: Vec::new(),
-        }
+            documents: Vec::new()}
     }
 
     /// Push a single document.

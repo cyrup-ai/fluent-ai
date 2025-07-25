@@ -15,8 +15,7 @@ mod tests {
         let value = counter.value();
         match value {
             MetricValue::Counter(val) => assert!(val >= 0.0),
-            _ => panic!("Expected Counter value"),
-        }
+            _ => panic!("Expected Counter value")}
     }
     
     #[test]
@@ -32,8 +31,7 @@ mod tests {
         let value = gauge.value();
         match value {
             MetricValue::Gauge(_) => {}, // Value can be any float
-            _ => panic!("Expected Gauge value"),
-        }
+            _ => panic!("Expected Gauge value")}
     }
     
     #[test]
@@ -50,8 +48,7 @@ mod tests {
         let value = histogram.value();
         match value {
             MetricValue::Histogram(val) => assert!(val >= 0.0),
-            _ => panic!("Expected Histogram value"),
-        }
+            _ => panic!("Expected Histogram value")}
     }
     
     #[test]

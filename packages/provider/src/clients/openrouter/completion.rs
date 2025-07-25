@@ -1,8 +1,7 @@
 // Import centralized HTTP structs - no more local definitions!
 use super::types::{
     OpenRouterChatRequest, OpenRouterContent, OpenRouterError, OpenRouterErrorResponse,
-    OpenRouterMessage, OpenRouterResponseMessage, OpenRouterStreamingChunk, OpenRouterToolCall,
-};
+    OpenRouterMessage, OpenRouterResponseMessage, OpenRouterStreamingChunk, OpenRouterToolCall};
 use fluent_ai_http3::{Http3, HttpResult};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -14,8 +13,7 @@ use crate::{
     OneOrMany,
     clients::openai::Message,
     completion::{self, CompletionError, CompletionModel, CompletionRequest},
-    json_util,
-};
+    json_util};
 
 // ================================================================
 // OpenRouter Completion API
@@ -31,8 +29,7 @@ pub const PERPLEXITY_SONAR_PRO: &str = "perplexity/sonar-pro";
 /// The `google/gemini-2.0-flash-001` model. Find more models at <https://openrouter.ai/models>.
 pub const GEMINI_FLASH_2_0: &str = "google/gemini-2.0-flash-001";
 
-/// Legacy alias for centralized OpenRouter response type
-pub type CompletionResponse = fluent_ai_http_structs::openrouter::OpenRouterChatResponse;
+// TODO: Implement local OpenRouter types to replace unauthorized fluent_ai_http_structs
 
 impl From<ApiErrorResponse> for CompletionError {
     fn from(err: ApiErrorResponse) -> Self {
@@ -80,8 +77,7 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
             }
             _ => Err(CompletionError::ResponseError(
                 "Response did not contain a valid message or tool call".into(),
-            )),
-        }?;
+            ))}?;
 
         let choice = OneOrMany::many(content).map_err(|_| {
             CompletionError::ResponseError(
@@ -91,13 +87,11 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
 
         Ok(completion::CompletionResponse {
             choice,
-            raw_response: response,
-        })
+            raw_response: response})
     }
 }
 
-/// Legacy alias for centralized choice type
-pub type Choice = fluent_ai_http_structs::openrouter::OpenRouterChoice;
+// TODO: Implement local OpenRouter Choice type
 
 // CompletionModel is now imported from fluent_ai_domain::model
 // Removed duplicated CompletionModel struct - use canonical domain type
@@ -106,15 +100,13 @@ pub type Choice = fluent_ai_http_structs::openrouter::OpenRouterChoice;
 #[derive(Debug, Clone)]
 pub struct OpenRouterCompletionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl OpenRouterCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 
     pub(crate) fn create_completion_request(
@@ -186,9 +178,7 @@ impl OpenRouterCompletionModel {
                         function: super::types::OpenRouterFunction {
                             name: tool.name(),
                             description: tool.description(),
-                            parameters: tool.parameters().clone(),
-                        },
-                    };
+                            parameters: tool.parameters().clone()}};
                     let _ = openrouter_tools.push(openrouter_tool);
                 }
             }
@@ -201,8 +191,7 @@ impl OpenRouterCompletionModel {
             Err(e) => Err(CompletionError::InvalidRequest(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
 
     pub async fn stream(
@@ -272,8 +261,7 @@ impl completion::CompletionModel for OpenRouterCompletionModel {
 
                     response.try_into()
                 }
-                ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message)),
-            }
+                ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message))}
         } else {
             Err(CompletionError::ProviderError(response.text().await?))
         }

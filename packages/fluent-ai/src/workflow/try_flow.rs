@@ -68,14 +68,12 @@ pub trait TryOp: Send + Sync {
                         has_error = Some(error);
                         break;
                     }
-                    _ => continue,
-                }
+                    _ => continue}
             }
 
             let result = match has_error {
                 Some(error) => Err(error),
-                None => Ok(final_results),
-            };
+                None => Ok(final_results)};
             let _ = tx.send(result);
         });
 
@@ -162,8 +160,7 @@ macro_rules! ok_err_wrapper {
     ($name:ident, $ok:block, $err:block) => {
         pub struct $name<A, B> {
             prev: A,
-            op: B,
-        }
+            op: B}
         impl<A, B> $name<A, B> {
             #[inline]
             fn new(prev: A, op: B) -> Self {
@@ -183,8 +180,7 @@ macro_rules! ok_err_wrapper {
             async fn call(&self, input: Self::Input) -> Self::Output {
                 match self.prev.try_call(input).await {
                     Ok(v) => $ok,
-                    Err(e) => $err,
-                }
+                    Err(e) => $err}
             }
         }
     };
@@ -194,8 +190,7 @@ macro_rules! ok_err_wrapper {
 
 pub struct MapOk<A, B> {
     prev: A,
-    op: B,
-}
+    op: B}
 
 impl<A, B> MapOk<A, B> {
     #[inline]
@@ -216,15 +211,13 @@ where
     async fn call(&self, input: Self::Input) -> Self::Output {
         match self.prev.try_call(input).await {
             Ok(v) => Ok(self.op.call(v).await),
-            Err(e) => Err(e),
-        }
+            Err(e) => Err(e)}
     }
 }
 
 pub struct MapErr<A, B> {
     prev: A,
-    op: B,
-}
+    op: B}
 impl<A, B> MapErr<A, B> {
     #[inline]
     fn new(prev: A, op: B) -> Self {
@@ -243,15 +236,13 @@ where
     async fn call(&self, input: Self::Input) -> Self::Output {
         match self.prev.try_call(input).await {
             Ok(v) => Ok(v),
-            Err(e) => Err(self.op.call(e).await),
-        }
+            Err(e) => Err(self.op.call(e).await)}
     }
 }
 
 pub struct AndThen<A, B> {
     prev: A,
-    op: B,
-}
+    op: B}
 impl<A, B> AndThen<A, B> {
     #[inline]
     fn new(prev: A, op: B) -> Self {
@@ -275,8 +266,7 @@ where
 
 pub struct OrElse<A, B> {
     prev: A,
-    op: B,
-}
+    op: B}
 impl<A, B> OrElse<A, B> {
     #[inline]
     fn new(prev: A, op: B) -> Self {
@@ -295,15 +285,13 @@ where
     async fn call(&self, input: Self::Input) -> Self::Output {
         match self.prev.try_call(input).await {
             Ok(v) => Ok(v),
-            Err(e) => self.op.try_call(e).await,
-        }
+            Err(e) => self.op.try_call(e).await}
     }
 }
 
 pub struct TrySequential<A, B> {
     prev: A,
-    op: B,
-}
+    op: B}
 impl<A, B> TrySequential<A, B> {
     #[inline]
     fn new(prev: A, op: B) -> Self {
@@ -322,8 +310,7 @@ where
     async fn call(&self, input: Self::Input) -> Self::Output {
         match self.prev.try_call(input).await {
             Ok(v) => Ok(self.op.call(v).await),
-            Err(e) => Err(e),
-        }
+            Err(e) => Err(e)}
     }
 }
 
@@ -332,8 +319,7 @@ where
 // ================================================================
 pub struct TryParallel<A, B> {
     left: A,
-    right: B,
-}
+    right: B}
 impl<A, B> TryParallel<A, B> {
     #[inline]
     pub fn new(left: A, right: B) -> Self {

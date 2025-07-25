@@ -23,5 +23,4 @@ pub use completion::{
     DEEPSEEK_CHAT, DEEPSEEK_R1, DEEPSEEK_REASONER, DEEPSEEK_V3, DeepSeekChoice,
     DeepSeekCompletionBuilder, DeepSeekCompletionRequest, DeepSeekDelta, DeepSeekFunction,
     DeepSeekFunctionDelta, DeepSeekMessage, DeepSeekStreamChunk, DeepSeekToolCall,
-    DeepSeekToolCallDelta, DeepSeekUsage, available_models, completion_builder, get_model_config,
-};
+    DeepSeekToolCallDelta, DeepSeekUsage, available_models, completion_builder, get_model_config};

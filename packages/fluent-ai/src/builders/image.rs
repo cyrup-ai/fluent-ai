@@ -10,8 +10,7 @@ pub struct ImageBuilder {
     data: String,
     format: Option<ContentFormat>,
     media_type: Option<ImageMediaType>,
-    detail: Option<ImageDetail>,
-}
+    detail: Option<ImageDetail>}
 
 pub struct ImageBuilderWithHandler {
     #[allow(dead_code)] // TODO: Use for image data content (base64, URL, file path)
@@ -25,8 +24,7 @@ pub struct ImageBuilderWithHandler {
     #[allow(dead_code)] // TODO: Use for polymorphic error handling during image operations
     error_handler: Box<dyn Fn(String) + Send + Sync>,
     #[allow(dead_code)] // TODO: Use for image streaming chunk processing
-    chunk_handler: Option<Box<dyn FnMut(ImageChunk) -> ImageChunk + Send + 'static>>,
-}
+    chunk_handler: Option<Box<dyn FnMut(ImageChunk) -> ImageChunk + Send + 'static>>}
 
 impl Image {
     // Semantic entry points
@@ -35,8 +33,7 @@ impl Image {
             data: data.into(),
             format: Some(ContentFormat::Base64),
             media_type: None,
-            detail: None,
-        }
+            detail: None}
     }
 
     pub fn from_url(url: impl Into<String>) -> ImageBuilder {
@@ -44,8 +41,7 @@ impl Image {
             data: url.into(),
             format: Some(ContentFormat::Url),
             media_type: None,
-            detail: None,
-        }
+            detail: None}
     }
 
     pub fn from_path(path: impl Into<String>) -> ImageBuilder {
@@ -53,8 +49,7 @@ impl Image {
             data: path.into(),
             format: Some(ContentFormat::Url),
             media_type: None,
-            detail: None,
-        }
+            detail: None}
     }
 }
 
@@ -105,8 +100,7 @@ impl ImageBuilder {
             media_type: self.media_type,
             detail: self.detail,
             error_handler: Box::new(handler),
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_chunk<F>(self, handler: F) -> ImageBuilderWithHandler
@@ -119,8 +113,7 @@ impl ImageBuilder {
             media_type: self.media_type,
             detail: self.detail,
             error_handler: Box::new(|e| eprintln!("Image chunk error: {}", e)),
-            chunk_handler: Some(Box::new(handler)),
-        }
+            chunk_handler: Some(Box::new(handler))}
     }
 }
 
@@ -131,8 +124,7 @@ impl ImageBuilderWithHandler {
             data: self.data,
             format: self.format,
             media_type: self.media_type,
-            detail: self.detail,
-        };
+            detail: self.detail};
 
         // Convert image data to bytes and create proper ImageChunk
         let data = image.data.as_bytes().to_vec();
@@ -148,8 +140,7 @@ impl ImageBuilderWithHandler {
             data,
             format,
             dimensions: None,
-            metadata: std::collections::HashMap::new(),
-        };
+            metadata: std::collections::HashMap::new()};
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
         fluent_ai_domain::async_task::AsyncStream::new(rx)

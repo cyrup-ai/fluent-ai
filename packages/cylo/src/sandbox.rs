@@ -3,16 +3,14 @@ use std::{
     fs,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::Command,
-};
+    process::Command};
 
 use tracing::{debug, error, info, warn};
 
 use crate::{
     config::RamdiskConfig,
     error::{ExecError, Result, SandboxError, SandboxResult},
-    exec::find_command,
-};
+    exec::find_command};
 
 /// Safe path to string conversion with zero-allocation optimization
 ///
@@ -24,8 +22,7 @@ fn safe_path_to_str(path: &Path) -> SandboxResult<&str> {
         detail: Arc::from(format!(
             "Path contains invalid UTF-8 characters: {}",
             path.to_string_lossy()
-        )),
-    })
+        ))})
 }
 
 /// Safe path to owned string conversion with minimal allocation
@@ -36,8 +33,7 @@ fn safe_path_to_str(path: &Path) -> SandboxResult<&str> {
 pub fn safe_path_to_string(path: &Path) -> SandboxResult<String> {
     match path.to_str() {
         Some(s) => Ok(s.to_string()),
-        None => Ok(path.to_string_lossy().into_owned()),
-    }
+        None => Ok(path.to_string_lossy().into_owned())}
 }
 
 /// Represents a sandboxed environment for a specific language runtime
@@ -61,8 +57,7 @@ pub struct SandboxedEnvironment {
     /// Environment variables to set when using this environment
     pub env_vars: Vec<(String, String)>,
     /// Whether the environment was successfully created
-    pub is_valid: bool,
-}
+    pub is_valid: bool}
 
 impl SandboxedEnvironment {
     /// Create a new sandboxed environment with the specified type and path
@@ -71,8 +66,7 @@ impl SandboxedEnvironment {
             env_type: env_type.to_string(),
             path,
             env_vars: Vec::new(),
-            is_valid: false,
-        }
+            is_valid: false}
     }
 
     /// Add an environment variable to be set when using this environment
@@ -91,8 +85,7 @@ impl SandboxedEnvironment {
             "node" => self.path.join("bin").join(binary_name),
             "rust" => self.path.join("bin").join(binary_name),
             "go" => self.path.join("bin").join(binary_name),
-            _ => PathBuf::from(binary_name),
-        }
+            _ => PathBuf::from(binary_name)}
     }
 
     /// Execute a command with this environment's configuration
@@ -110,8 +103,7 @@ impl SandboxedEnvironment {
     pub fn execute_command(&self, command: &str, args: &[&str]) -> SandboxResult<String> {
         if !self.is_valid {
             return Err(SandboxError::EnvironmentInvalid {
-                detail: Arc::from("Cannot execute command in invalid sandbox environment"),
-            });
+                detail: Arc::from("Cannot execute command in invalid sandbox environment")});
         }
 
         let binary_path = self.get_binary_path(command);
@@ -124,16 +116,14 @@ impl SandboxedEnvironment {
         }
 
         let output = cmd.output().map_err(|e| SandboxError::ProcessLaunch {
-            detail: Arc::from(format!("Failed to launch command '{command}': {e}")),
-        })?;
+            detail: Arc::from(format!("Failed to launch command '{command}': {e}"))})?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             Err(SandboxError::ProcessLaunch {
                 detail: Arc::from(format!(
                     "Failed to execute {command} command in sandbox: {stderr}"
-                )),
-            })
+                ))})
         } else {
             let stdout = String::from_utf8_lossy(&output.stdout);
             Ok(stdout.to_string())
@@ -146,8 +136,7 @@ pub struct SandboxManager {
     /// Base directory for all sandboxed environments
     base_dir: PathBuf,
     /// Map of created environments
-    environments: Vec<SandboxedEnvironment>,
-}
+    environments: Vec<SandboxedEnvironment>}
 
 impl SandboxManager {
     /// Create a new SandboxManager with the specified base directory
@@ -163,8 +152,7 @@ impl SandboxManager {
 
         Self {
             base_dir,
-            environments: Vec::new(),
-        }
+            environments: Vec::new()}
     }
 
     /// Add an environment to the manager
@@ -833,8 +821,7 @@ pub fn create_python_venv(config: &RamdiskConfig) -> Result<SandboxedEnvironment
             env_copy.env_vars = env.env_vars.clone();
             Ok(env_copy)
         }
-        Err(e) => Err(e),
-    }
+        Err(e) => Err(e)}
 }
 
 /// Helper function to create a Node.js environment
@@ -865,8 +852,7 @@ pub fn create_node_environment(config: &RamdiskConfig) -> Result<SandboxedEnviro
             env_copy.env_vars = env.env_vars.clone();
             Ok(env_copy)
         }
-        Err(e) => Err(e),
-    }
+        Err(e) => Err(e)}
 }
 
 /// Helper function to create a Rust environment
@@ -897,8 +883,7 @@ pub fn create_rust_environment(config: &RamdiskConfig) -> Result<SandboxedEnviro
             env_copy.env_vars = env.env_vars.clone();
             Ok(env_copy)
         }
-        Err(e) => Err(e),
-    }
+        Err(e) => Err(e)}
 }
 
 /// Helper function to create a Go environment
@@ -929,6 +914,5 @@ pub fn create_go_environment(config: &RamdiskConfig) -> Result<SandboxedEnvironm
             env_copy.env_vars = env.env_vars.clone();
             Ok(env_copy)
         }
-        Err(e) => Err(e),
-    }
+        Err(e) => Err(e)}
 }

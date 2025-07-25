@@ -26,8 +26,7 @@ pub struct CommandExecutor {
     /// Successful executions count
     successful_executions: CachePadded<AtomicU64>,
     /// Failed executions count
-    failed_executions: CachePadded<AtomicU64>,
-}
+    failed_executions: CachePadded<AtomicU64>}
 
 impl Clone for CommandExecutor {
     fn clone(&self) -> Self {
@@ -45,8 +44,7 @@ impl CommandExecutor {
             active_executions: CachePadded::new(AtomicUsize::new(0)),
             total_executions: CachePadded::new(AtomicU64::new(0)),
             successful_executions: CachePadded::new(AtomicU64::new(0)),
-            failed_executions: CachePadded::new(AtomicU64::new(0)),
-        }
+            failed_executions: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Execute a command with streaming output (zero-allocation, lock-free)
@@ -83,16 +81,14 @@ impl CommandExecutor {
                 }
                 ImmutableChatCommand::Clear {
                     confirm: _,
-                    keep_last: _,
-                } => Ok(CommandOutput::success_with_id(
+                    keep_last: _} => Ok(CommandOutput::success_with_id(
                     execution_id,
                     "Chat cleared successfully".to_string(),
                 )),
                 ImmutableChatCommand::Export {
                     format: _,
                     output: _,
-                    include_metadata: _,
-                } => Ok(CommandOutput::success_with_id(
+                    include_metadata: _} => Ok(CommandOutput::success_with_id(
                     execution_id,
                     "Export completed".to_string(),
                 )),
@@ -100,8 +96,7 @@ impl CommandExecutor {
                     key: _,
                     value: _,
                     show: _,
-                    reset: _,
-                } => Ok(CommandOutput::success_with_id(
+                    reset: _} => Ok(CommandOutput::success_with_id(
                     execution_id,
                     "Configuration updated".to_string(),
                 )),
@@ -109,8 +104,7 @@ impl CommandExecutor {
                     query: _,
                     scope: _,
                     limit: _,
-                    include_context: _,
-                } => Ok(CommandOutput::success_with_id(
+                    include_context: _} => Ok(CommandOutput::success_with_id(
                     execution_id,
                     "Search completed".to_string(),
                 )),
@@ -259,8 +253,7 @@ impl CommandExecutor {
             SearchScope::All => "all conversations",
             SearchScope::Current => "current conversation",
             SearchScope::Recent => "recent conversations",
-            SearchScope::Bookmarked => "bookmarked conversations",
-        };
+            SearchScope::Bookmarked => "bookmarked conversations"};
 
         let limit_str = limit
             .map(|n| format!(" (limit: {})", n))

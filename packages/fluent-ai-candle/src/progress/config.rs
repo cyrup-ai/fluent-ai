@@ -20,8 +20,7 @@ pub struct ProgressHubConfig {
     /// Enable compression for progress data
     pub enable_compression: bool,
     /// Maximum memory usage for progress tracking (MB)
-    pub max_memory_usage_mb: f64,
-}
+    pub max_memory_usage_mb: f64}
 
 impl ProgressHubConfig {
     /// Create new configuration with sensible defaults
@@ -39,8 +38,7 @@ impl ProgressHubConfig {
             enable_detailed_metrics: false,
             operation_timeout: Duration::from_millis(100),
             enable_compression: false,
-            max_memory_usage_mb: 50.0,
-        }
+            max_memory_usage_mb: 50.0}
     }
 
     /// Create configuration optimized for high throughput
@@ -53,8 +51,7 @@ impl ProgressHubConfig {
             enable_detailed_metrics: true,
             operation_timeout: Duration::from_secs(5),
             enable_compression: true,
-            max_memory_usage_mb: 200.0,
-        }
+            max_memory_usage_mb: 200.0}
     }
 
     /// Create configuration for minimal resource usage
@@ -67,8 +64,7 @@ impl ProgressHubConfig {
             enable_detailed_metrics: false,
             operation_timeout: Duration::from_secs(30),
             enable_compression: true,
-            max_memory_usage_mb: 10.0,
-        }
+            max_memory_usage_mb: 10.0}
     }
 
     /// Set update interval
@@ -171,7 +167,6 @@ impl Default for ProgressHubConfig {
             enable_detailed_metrics: true,
             operation_timeout: Duration::from_secs(10),
             enable_compression: false,
-            max_memory_usage_mb: 100.0,
-        }
+            max_memory_usage_mb: 100.0}
     }
 }

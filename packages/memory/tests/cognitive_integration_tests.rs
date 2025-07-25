@@ -124,8 +124,7 @@ async fn test_quantum_routing_performance() {
     use std::sync::Arc;
 
     use fluent_ai_memory::cognitive::quantum::{
-        EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent,
-    };
+        EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent};
     use fluent_ai_memory::cognitive::state::CognitiveStateManager;
 
     let state_manager = Arc::new(CognitiveStateManager::new());
@@ -143,8 +142,7 @@ async fn test_quantum_routing_performance() {
         temporal_context: None,
         cognitive_hints: vec!["hint1".to_string(), "hint2".to_string()],
         expected_complexity: 0.5,
-        priority: 1,
-    };
+        priority: 1};
 
     let start = std::time::Instant::now();
     let decision = router.route_query(&query).await.expect("Routing failed");
@@ -181,8 +179,7 @@ async fn test_memory_usage() {
                 primary_concepts: vec!["test".to_string()],
                 secondary_concepts: vec![],
                 domain_tags: vec![],
-                abstraction_level: fluent_ai_memory::cognitive::state::AbstractionLevel::Concrete,
-            },
+                abstraction_level: fluent_ai_memory::cognitive::state::AbstractionLevel::Concrete},
         );
     }
 
@@ -213,8 +210,7 @@ async fn test_evolution_engine() {
             retrieval_accuracy: 0.6 + (generation as f64 * 0.005), // Gradual improvement
             response_latency: Duration::from_millis(100 - generation),
             memory_efficiency: 0.7 + (generation as f64 * 0.003),
-            adaptation_rate: 0.5 + (generation as f64 * 0.004),
-        };
+            adaptation_rate: 0.5 + (generation as f64 * 0.004)};
 
         engine.record_fitness(metrics);
     }
@@ -233,8 +229,7 @@ async fn test_evolution_engine() {
 #[tokio::test]
 async fn test_attention_mechanism() {
     use fluent_ai_memory::cognitive::attention::{
-        AttentionConfig, AttentionMechanism, CognitiveAttentionWeights,
-    };
+        AttentionConfig, AttentionMechanism, CognitiveAttentionWeights};
 
     let config = AttentionConfig {
         num_heads: 4,
@@ -245,9 +240,7 @@ async fn test_attention_mechanism() {
             semantic_weight: 0.4,
             lexical_weight: 0.3,
             structural_weight: 0.2,
-            contextual_weight: 0.1,
-        },
-    };
+            contextual_weight: 0.1}};
 
     let mut attention = AttentionMechanism::new(config);
 

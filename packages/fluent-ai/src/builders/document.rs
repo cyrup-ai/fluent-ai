@@ -8,9 +8,8 @@ use std::sync::Arc;
 
 use fluent_ai_domain::chunk::DocumentChunk;
 use fluent_ai_domain::{
-    AsyncTask, ContentFormat, Document, DocumentMediaType, HashMap, ZeroOneOrMany,
-    async_task::AsyncStream, spawn_async,
-};
+    AsyncTask, ContentFormat, Document, DocumentMediaType, ZeroOneOrMany,
+    async_task::AsyncStream, spawn_async};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpMethod, HttpRequest};
 use serde_json::Value;
 use tokio::fs;
@@ -23,11 +22,9 @@ pub enum DocumentBuilderData {
     Github {
         repo: String,
         path: String,
-        branch: Option<String>,
-    },
+        branch: Option<String>},
     Glob(String),
-    Text(String),
-}
+    Text(String)}
 
 /// Core document builder with zero-allocation design
 pub struct DocumentBuilder {
@@ -39,15 +36,13 @@ pub struct DocumentBuilder {
     max_size: Option<usize>,
     timeout_ms: Option<u64>,
     retry_attempts: u8,
-    cache_enabled: bool,
-}
+    cache_enabled: bool}
 
 /// Document builder with error handler - enables terminal methods
 pub struct DocumentBuilderWithHandler {
     inner: DocumentBuilder,
     error_handler: Arc<dyn Fn(String) + Send + Sync>,
-    chunk_handler: Option<Arc<dyn Fn(DocumentChunk) -> DocumentChunk + Send + Sync>>,
-}
+    chunk_handler: Option<Arc<dyn Fn(DocumentChunk) -> DocumentChunk + Send + Sync>>}
 
 impl Document {
     /// Create document from file path - EXACT syntax: Document::from_file("path/to/file.txt")
@@ -62,8 +57,7 @@ impl Document {
             max_size: None,
             timeout_ms: None,
             retry_attempts: 3,
-            cache_enabled: true,
-        }
+            cache_enabled: true}
     }
 
     /// Create document from URL - EXACT syntax: Document::from_url("https://example.com/doc.pdf")
@@ -78,8 +72,7 @@ impl Document {
             max_size: Some(10 * 1024 * 1024), // 10MB default
             timeout_ms: Some(30000),          // 30s default
             retry_attempts: 3,
-            cache_enabled: true,
-        }
+            cache_enabled: true}
     }
 
     /// Create document from GitHub - EXACT syntax: Document::from_github("owner/repo", "path/to/file.md")
@@ -89,8 +82,7 @@ impl Document {
             data: DocumentBuilderData::Github {
                 repo: repo.into(),
                 path: path.into(),
-                branch: None,
-            },
+                branch: None},
             format: None,
             media_type: None,
             additional_props: BTreeMap::new(),
@@ -98,8 +90,7 @@ impl Document {
             max_size: Some(1024 * 1024), // 1MB default for GitHub files
             timeout_ms: Some(15000),     // 15s default
             retry_attempts: 3,
-            cache_enabled: true,
-        }
+            cache_enabled: true}
     }
 
     /// Create document from glob pattern - EXACT syntax: Document::from_glob("**/*.md")
@@ -114,8 +105,7 @@ impl Document {
             max_size: None,
             timeout_ms: None,
             retry_attempts: 1,
-            cache_enabled: false,
-        }
+            cache_enabled: false}
     }
 
     /// Create document from text - EXACT syntax: Document::from_text("content")
@@ -130,8 +120,7 @@ impl Document {
             max_size: None,
             timeout_ms: None,
             retry_attempts: 0,
-            cache_enabled: false,
-        }
+            cache_enabled: false}
     }
 
     /// Create document from base64 data - EXACT syntax: Document::from_base64("base64data")
@@ -146,8 +135,7 @@ impl Document {
             max_size: None,
             timeout_ms: None,
             retry_attempts: 0,
-            cache_enabled: false,
-        }
+            cache_enabled: false}
     }
 
     /// Create document from data - EXACT syntax: Document::from_data("content")
@@ -213,8 +201,7 @@ impl DocumentBuilder {
         if let DocumentBuilderData::Github {
             repo: _,
             path: _,
-            ref mut branch_ref,
-        } = &mut self.data
+            ref mut branch_ref} = &mut self.data
         {
             *branch_ref = Some(branch.into());
         }
@@ -250,8 +237,7 @@ impl DocumentBuilder {
         DocumentBuilderWithHandler {
             inner: self,
             error_handler: Arc::new(handler),
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     /// Add chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
@@ -263,8 +249,7 @@ impl DocumentBuilder {
         DocumentBuilderWithHandler {
             inner: self,
             error_handler: Arc::new(|e| eprintln!("Document error: {}", e)),
-            chunk_handler: Some(Arc::new(handler)),
-        }
+            chunk_handler: Some(Arc::new(handler))}
     }
 
     /// Synchronous load for immediate data only - EXACT syntax: .load()
@@ -274,16 +259,14 @@ impl DocumentBuilder {
                 data,
                 format: self.format,
                 media_type: self.media_type,
-                metadata: self.additional_props.into_iter().collect(),
-            },
+                metadata: self.additional_props.into_iter().collect()},
             _ => {
                 // Return error document instead of panicking
                 Document {
                     data: "Error: load() can only be used with immediate data. Use on_error().load_async() for file/url/glob operations.".to_string(),
                     format: Some(ContentFormat::Text),
                     media_type: Some(DocumentMediaType::PlainText),
-                    metadata: HashMap::new(),
-                }
+                    metadata: HashMap::new()}
             }
         }
     }
@@ -345,8 +328,7 @@ impl DocumentBuilderWithHandler {
         if let DocumentBuilderData::Github {
             repo: _,
             path: _,
-            ref mut branch_ref,
-        } = &mut self.inner.data
+            ref mut branch_ref} = &mut self.inner.data
         {
             *branch_ref = Some(branch.into());
         }
@@ -375,8 +357,7 @@ impl DocumentBuilderWithHandler {
                         data: String::new(),
                         format: Some(ContentFormat::Text),
                         media_type: Some(DocumentMediaType::PlainText),
-                        metadata: HashMap::new(),
-                    }
+                        metadata: HashMap::new()}
                 }
             }
         })
@@ -427,8 +408,7 @@ impl DocumentBuilderWithHandler {
                                 max_size: inner.max_size,
                                 timeout_ms: inner.timeout_ms,
                                 retry_attempts: inner.retry_attempts,
-                                cache_enabled: inner.cache_enabled,
-                            };
+                                cache_enabled: inner.cache_enabled};
 
                             match Self::load_document_data(doc_builder, error_handler.clone()).await
                             {
@@ -437,8 +417,7 @@ impl DocumentBuilderWithHandler {
                                         break;
                                     }
                                 }
-                                Err(error) => error_handler(error),
-                            }
+                                Err(error) => error_handler(error)}
                         }
                     }
                 }
@@ -446,9 +425,7 @@ impl DocumentBuilderWithHandler {
                     Ok(doc) => {
                         let _ = tx.send(doc);
                     }
-                    Err(error) => error_handler(error),
-                },
-            }
+                    Err(error) => error_handler(error)}}
         });
 
         AsyncStream::new(rx)
@@ -571,8 +548,7 @@ impl DocumentBuilderWithHandler {
             data: content,
             format: Some(format),
             media_type: Some(media_type),
-            metadata,
-        })
+            metadata})
     }
 
     async fn load_file_content(path: &Path, builder: &DocumentBuilder) -> Result<String, String> {
@@ -716,13 +692,11 @@ impl DocumentBuilderWithHandler {
                 max_size: builder.max_size,
                 timeout_ms: builder.timeout_ms,
                 retry_attempts: builder.retry_attempts,
-                cache_enabled: builder.cache_enabled,
-            };
+                cache_enabled: builder.cache_enabled};
 
             match Self::load_document_data(doc_builder, error_handler.clone()).await {
                 Ok(doc) => documents.push(doc),
-                Err(error) => error_handler(error),
-            }
+                Err(error) => error_handler(error)}
         }
 
         match documents.len() {
@@ -731,11 +705,9 @@ impl DocumentBuilderWithHandler {
                 let mut iter = documents.into_iter();
                 match iter.next() {
                     Some(doc) => ZeroOneOrMany::One(doc),
-                    None => ZeroOneOrMany::None,
-                }
+                    None => ZeroOneOrMany::None}
             }
-            _ => ZeroOneOrMany::Many(documents),
-        }
+            _ => ZeroOneOrMany::Many(documents)}
     }
 
     #[inline]
@@ -774,8 +746,7 @@ impl DocumentBuilderWithHandler {
                     ContentFormat::Text
                 }
             }
-            _ => ContentFormat::Text,
-        }
+            _ => ContentFormat::Text}
     }
 
     #[inline]
@@ -795,13 +766,10 @@ impl DocumentBuilderWithHandler {
                         Some("jpg") | Some("jpeg") | Some("png") | Some("gif") => {
                             DocumentMediaType::Image
                         }
-                        _ => DocumentMediaType::Binary,
-                    }
+                        _ => DocumentMediaType::Binary}
                 }
-                _ => DocumentMediaType::Binary,
-            },
-            _ => DocumentMediaType::PlainText,
-        }
+                _ => DocumentMediaType::Binary},
+            _ => DocumentMediaType::PlainText}
     }
 }
 

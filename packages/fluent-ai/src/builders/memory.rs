@@ -5,16 +5,14 @@
 use fluent_ai_domain::{
     AsyncTask,
     memory::{VectorStoreIndex, VectorStoreIndexDyn, ZeroOneOrMany},
-    spawn_async,
-};
+    spawn_async};
 use serde_json::Value;
 
 /// Zero-allocation vector query builder with blazing-fast terminal methods
 pub struct VectorQueryBuilder<'a> {
     index: &'a VectorStoreIndex,
     query: String,
-    n: usize,
-}
+    n: usize}
 
 impl<'a> VectorQueryBuilder<'a> {
     /// Create new query builder - EXACT syntax: VectorQueryBuilder::new(index, query)
@@ -38,8 +36,7 @@ impl<'a> VectorQueryBuilder<'a> {
         spawn_async(async move {
             match future.await {
                 Ok(results) => results,
-                Err(_) => ZeroOneOrMany::None,
-            }
+                Err(_) => ZeroOneOrMany::None}
         })
     }
 
@@ -49,8 +46,7 @@ impl<'a> VectorQueryBuilder<'a> {
         spawn_async(async move {
             match future.await {
                 Ok(results) => results,
-                Err(_) => ZeroOneOrMany::None,
-            }
+                Err(_) => ZeroOneOrMany::None}
         })
     }
 
@@ -64,8 +60,7 @@ impl<'a> VectorQueryBuilder<'a> {
         spawn_async(async move {
             let result = match future.await {
                 Ok(results) => results,
-                Err(_) => ZeroOneOrMany::None,
-            };
+                Err(_) => ZeroOneOrMany::None};
             handler(result)
         })
     }
@@ -75,8 +70,7 @@ impl VectorStoreIndex {
     /// Direct creation from backend - EXACT syntax: VectorStoreIndex::with_backend(backend)
     pub fn with_backend<B: VectorStoreIndexDyn + 'static>(backend: B) -> Self {
         VectorStoreIndex {
-            backend: Box::new(backend),
-        }
+            backend: Box::new(backend)}
     }
 
     /// Semantic query entry point - EXACT syntax: .search(query)

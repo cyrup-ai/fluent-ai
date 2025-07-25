@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     error::CommandError,
-    command::ImmutableChatCommand,
-};
+    command::ImmutableChatCommand};
 
 /// Command execution event for streaming
 ///
@@ -20,43 +19,37 @@ pub enum CommandEvent {
     Started {
         command: ImmutableChatCommand,
         execution_id: u64,
-        timestamp_nanos: u64,
-    },
+        timestamp_nanos: u64},
     
     /// Command execution progress
     Progress {
         execution_id: u64,
         progress_percent: f32,
-        message: Option<String>,
-    },
+        message: Option<String>},
     
     /// Command produced output
     Output {
         execution_id: u64,
         output: String,
-        output_type: OutputType,
-    },
+        output_type: OutputType},
     
     /// Command completed successfully
     Completed {
         execution_id: u64,
         result: CommandExecutionResult,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     
     /// Command failed
     Failed {
         execution_id: u64,
         error: CommandError,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     
     /// Command was cancelled
     Cancelled { 
         execution_id: u64, 
         reason: String 
-    },
-}
+    }}
 
 impl CommandEvent {
     /// Get the execution ID for this event
@@ -68,8 +61,7 @@ impl CommandEvent {
             | Self::Output { execution_id, .. }
             | Self::Completed { execution_id, .. }
             | Self::Failed { execution_id, .. }
-            | Self::Cancelled { execution_id, .. } => *execution_id,
-        }
+            | Self::Cancelled { execution_id, .. } => *execution_id}
     }
 
     /// Check if this is a terminal event (completion, failure, or cancellation)
@@ -83,8 +75,7 @@ impl CommandEvent {
     pub fn timestamp_nanos(&self) -> Option<u64> {
         match self {
             Self::Started { timestamp_nanos, .. } => Some(*timestamp_nanos),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Get duration if this is a terminal event
@@ -92,8 +83,7 @@ impl CommandEvent {
     pub fn duration_nanos(&self) -> Option<u64> {
         match self {
             Self::Completed { duration_nanos, .. } | Self::Failed { duration_nanos, .. } => Some(*duration_nanos),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -112,8 +102,7 @@ pub enum OutputType {
     /// Markdown formatted text
     Markdown,
     /// Binary data
-    Binary,
-}
+    Binary}
 
 impl OutputType {
     /// Get MIME type for this output type
@@ -124,8 +113,7 @@ impl OutputType {
             Self::Json => "application/json",
             Self::Html => "text/html",
             Self::Markdown => "text/markdown",
-            Self::Binary => "application/octet-stream",
-        }
+            Self::Binary => "application/octet-stream"}
     }
 
     /// Get file extension for this output type
@@ -136,8 +124,7 @@ impl OutputType {
             Self::Json => "json",
             Self::Html => "html",
             Self::Markdown => "md",
-            Self::Binary => "bin",
-        }
+            Self::Binary => "bin"}
     }
 
     /// Check if output type is structured data
@@ -160,8 +147,7 @@ impl std::fmt::Display for OutputType {
             Self::Json => "json",
             Self::Html => "html",
             Self::Markdown => "markdown",
-            Self::Binary => "binary",
-        };
+            Self::Binary => "binary"};
         write!(f, "{}", name)
     }
 }
@@ -180,11 +166,9 @@ pub enum CommandExecutionResult {
     File {
         path: String,
         size_bytes: u64,
-        mime_type: String,
-    },
+        mime_type: String},
     /// Multiple results
-    Multiple(Vec<CommandExecutionResult>),
-}
+    Multiple(Vec<CommandExecutionResult>)}
 
 impl CommandExecutionResult {
     /// Create a success result
@@ -205,8 +189,7 @@ impl CommandExecutionResult {
         Self::File {
             path: path.into(),
             size_bytes,
-            mime_type: mime_type.into(),
-        }
+            mime_type: mime_type.into()}
     }
 
     /// Create a multiple result
@@ -227,8 +210,7 @@ impl CommandExecutionResult {
             Self::Success(msg) => msg.clone(),
             Self::Data(value) => format!("Data result: {} bytes", value.to_string().len()),
             Self::File { path, size_bytes, .. } => format!("File: {} ({} bytes)", path, size_bytes),
-            Self::Multiple(results) => format!("Multiple results: {} items", results.len()),
-        }
+            Self::Multiple(results) => format!("Multiple results: {} items", results.len())}
     }
 }
 
@@ -242,8 +224,7 @@ pub enum SearchScope {
     /// Search recent items only
     Recent,
     /// Search bookmarked items only
-    Bookmarked,
-}
+    Bookmarked}
 
 impl Default for SearchScope {
     fn default() -> Self {
@@ -263,8 +244,7 @@ pub enum TemplateAction {
     /// Edit an existing template
     Edit,
     /// Use/apply a template
-    Use,
-}
+    Use}
 
 /// Macro action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -278,8 +258,7 @@ pub enum MacroAction {
     /// Edit an existing macro
     Edit,
     /// Execute a macro
-    Execute,
-}
+    Execute}
 
 /// Branch action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -293,8 +272,7 @@ pub enum BranchAction {
     /// Merge branches
     Merge,
     /// Delete a branch
-    Delete,
-}
+    Delete}
 
 /// Session action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -310,8 +288,7 @@ pub enum SessionAction {
     /// Export session data
     Export,
     /// Import session data
-    Import,
-}
+    Import}
 
 /// Tool action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -327,8 +304,7 @@ pub enum ToolAction {
     /// Update tool to latest version
     Update,
     /// Execute a tool
-    Execute,
-}
+    Execute}
 
 /// Statistics type enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -344,8 +320,7 @@ pub enum StatsType {
     /// Cost analysis
     Costs,
     /// Error statistics
-    Errors,
-}
+    Errors}
 
 /// Theme action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -361,8 +336,7 @@ pub enum ThemeAction {
     /// Import theme configuration
     Import,
     /// Edit existing theme
-    Edit,
-}
+    Edit}
 
 /// Debug action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -378,8 +352,7 @@ pub enum DebugAction {
     /// Show network activity
     Network,
     /// Display cache information
-    Cache,
-}
+    Cache}
 
 /// History action enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -395,8 +368,7 @@ pub enum HistoryAction {
     /// Import history
     Import,
     /// Backup history
-    Backup,
-}
+    Backup}
 
 /// Import type enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -408,8 +380,7 @@ pub enum ImportType {
     /// Import template definitions
     Templates,
     /// Import macro definitions
-    Macros,
-}
+    Macros}
 
 /// Settings category enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -425,8 +396,7 @@ pub enum SettingsCategory {
     /// Integration and plugin settings
     Integration,
     /// Advanced and developer settings
-    Advanced,
-}
+    Advanced}
 
 impl Default for SettingsCategory {
     fn default() -> Self {
@@ -441,8 +411,7 @@ impl std::fmt::Display for SearchScope {
             Self::All => "all",
             Self::Current => "current",
             Self::Recent => "recent",
-            Self::Bookmarked => "bookmarked",
-        };
+            Self::Bookmarked => "bookmarked"};
         write!(f, "{}", name)
     }
 }
@@ -454,8 +423,7 @@ impl std::fmt::Display for TemplateAction {
             Self::Create => "create",
             Self::Delete => "delete",
             Self::Edit => "edit",
-            Self::Use => "use",
-        };
+            Self::Use => "use"};
         write!(f, "{}", name)
     }
 }

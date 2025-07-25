@@ -32,15 +32,13 @@ pub mod utils;
 pub use types::{
     OutputFormat,
     StreamingFormatter,
-    format_constants,
-};
+    format_constants};
 
 // Re-export utility modules for advanced usage
 pub use utils::{
     format_utils,
     buffer_utils,
-    perf_utils,
-};
+    perf_utils};
 
 pub use text::text_utils;
 
@@ -61,8 +59,7 @@ mod integration_tests {
             probability: Some(0.95),
             alternatives: None,
             timing: TokenTiming::default(),
-            metadata: TokenMetadata::default(),
-        }
+            metadata: TokenMetadata::default()}
     }
 
     #[test]

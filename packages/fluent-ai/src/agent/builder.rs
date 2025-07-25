@@ -25,8 +25,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 use core::marker::PhantomData;
-use std::collections::HashMap;
-
 use fluent_ai_domain::completion::CompletionModel;
 use fluent_ai_provider::Model;
 
@@ -37,8 +35,7 @@ use crate::{
     domain::mcp_tool::Tool,
     domain::tool::ToolSet,
     runtime::{AsyncStream, AsyncTask},
-    vector_store::VectorStoreIndexDyn,
-};
+    vector_store::VectorStoreIndexDyn};
 
 // ============================================================================
 // Error types for builder operations
@@ -56,8 +53,7 @@ pub enum AgentBuilderError {
     #[error("Streaming error: {0}")]
     StreamingError(String),
     #[error("Completion error: {0}")]
-    CompletionError(String),
-}
+    CompletionError(String)}
 
 // ============================================================================
 // Model adapter for provider compatibility
@@ -65,16 +61,14 @@ pub enum AgentBuilderError {
 #[derive(Debug, Clone)]
 pub struct ModelAdapter {
     model_variant: fluent_ai_provider::Models,
-    model_info: fluent_ai_provider::ModelInfoData,
-}
+    model_info: fluent_ai_provider::ModelInfoData}
 
 impl ModelAdapter {
     pub fn new(model_variant: fluent_ai_provider::Models) -> Self {
         let model_info = model_variant.info();
         Self {
             model_variant,
-            model_info,
-        }
+            model_info}
     }
 
     pub fn stream_completion(
@@ -148,14 +142,12 @@ impl CompletionProvider {
 // Model selector with compile-time provider binding
 // ============================================================================
 pub struct ModelSelector<M: Model> {
-    _phantom: PhantomData<M>,
-}
+    _phantom: PhantomData<M>}
 
 impl<M: Model> ModelSelector<M> {
     fn new() -> Self {
         Self {
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 
     /// Select model and transition to AgentBuilder
@@ -174,8 +166,7 @@ impl<M: Model> ModelSelector<M> {
             "claude-3.7-sonnet" => Models::AnthropicClaude37Sonnet,
             "gemini-2.0-flash" => Models::Gemini20Flash,
             "gemini-2.5-flash" => Models::Gemini25Flash,
-            _ => return Err(AgentBuilderError::UnsupportedModel(model_name.to_string())),
-        };
+            _ => return Err(AgentBuilderError::UnsupportedModel(model_name.to_string()))};
 
         Ok(AgentBuilder::new_with_model(model_name, model_variant))
     }
@@ -206,8 +197,7 @@ pub struct AgentBuilder<M: Model, S, C> {
 
     // Typestate markers
     _sys_state: PhantomData<S>,
-    _ctx_state: PhantomData<C>,
-}
+    _ctx_state: PhantomData<C>}
 
 // ============================================================================
 // AgentBuilder implementations for each typestate
@@ -235,8 +225,7 @@ impl<M: Model> AgentBuilder<M, MissingSys, MissingCtx> {
             prompt_cache: false,
             additional_params: None,
             _sys_state: PhantomData,
-            _ctx_state: PhantomData,
-        }
+            _ctx_state: PhantomData}
     }
 
     /// Set system prompt - transitions to MissingCtx state
@@ -258,8 +247,7 @@ impl<M: Model> AgentBuilder<M, MissingSys, MissingCtx> {
             prompt_cache: self.prompt_cache,
             additional_params: self.additional_params,
             _sys_state: PhantomData,
-            _ctx_state: PhantomData,
-        }
+            _ctx_state: PhantomData}
     }
 }
 
@@ -269,8 +257,7 @@ impl<M: Model> AgentBuilder<M, (), MissingCtx> {
     #[inline(always)]
     pub fn context(mut self, doc: impl Into<String>) -> AgentBuilder<M, (), Ready> {
         self.static_context.push(Document {
-            content: doc.into(),
-        });
+            content: doc.into()});
         AgentBuilder {
             model: self.model,
             model_name: self.model_name,
@@ -286,8 +273,7 @@ impl<M: Model> AgentBuilder<M, (), MissingCtx> {
             prompt_cache: self.prompt_cache,
             additional_params: self.additional_params,
             _sys_state: PhantomData,
-            _ctx_state: PhantomData,
-        }
+            _ctx_state: PhantomData}
     }
 
     /// Add dynamic context from vector store
@@ -313,8 +299,7 @@ impl<M: Model> AgentBuilder<M, (), MissingCtx> {
             prompt_cache: self.prompt_cache,
             additional_params: self.additional_params,
             _sys_state: PhantomData,
-            _ctx_state: PhantomData,
-        }
+            _ctx_state: PhantomData}
     }
 }
 
@@ -390,15 +375,13 @@ impl<M: Model> AgentBuilder<M, (), Ready> {
 pub struct CompletionBuilder<M: Model> {
     agent_builder: AgentBuilder<M, (), Ready>,
     chunk_handler:
-        Option<Box<dyn Fn(Result<String, String>) -> Result<String, String> + Send + Sync>>,
-}
+        Option<Box<dyn Fn(Result<String, String>) -> Result<String, String> + Send + Sync>>}
 
 impl<M: Model> CompletionBuilder<M> {
     fn new(agent_builder: AgentBuilder<M, (), Ready>) -> Self {
         Self {
             agent_builder,
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     /// Set chunk handler for processing streaming responses
@@ -421,8 +404,7 @@ impl<M: Model> CompletionBuilder<M> {
         crate::domain::spawn_async(async move {
             let agent = match self.agent_builder.build() {
                 Ok(agent) => agent,
-                Err(e) => return Err(e),
-            };
+                Err(e) => return Err(e)};
 
             // Create completion request using the built agent
             let request = crate::domain::completion::CompletionRequest::new(&message_text)
@@ -440,8 +422,7 @@ impl<M: Model> CompletionBuilder<M> {
                     if let Some(handler) = chunk_handler {
                         let processed_stream = stream.map(move |chunk| match chunk {
                             Ok(content) => handler(Ok(content)),
-                            Err(e) => handler(Err(format!("Stream error: {:?}", e))),
-                        });
+                            Err(e) => handler(Err(format!("Stream error: {:?}", e)))});
                         Ok(processed_stream)
                     } else {
                         Ok(stream.map(|chunk| chunk.unwrap_or_default()))
@@ -450,8 +431,7 @@ impl<M: Model> CompletionBuilder<M> {
                 Err(e) => Err(AgentBuilderError::StreamingError(format!(
                     "Failed to create stream: {:?}",
                     e
-                ))),
-            }
+                )))}
         })
     }
 }
@@ -483,8 +463,7 @@ impl<M: Model> ModelSelector<M> {
             "claude-3.7-sonnet" => Models::AnthropicClaude37Sonnet,
             "gemini-2.0-flash" => Models::Gemini20Flash,
             "gemini-2.5-flash" => Models::Gemini25Flash,
-            _ => return Err(AgentBuilderError::UnsupportedModel(model_name.to_string())),
-        };
+            _ => return Err(AgentBuilderError::UnsupportedModel(model_name.to_string()))};
 
         Ok(AgentBuilder::new_with_model(model_name, model_variant))
     }

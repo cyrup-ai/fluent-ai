@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::fmt::{self, Debug, Display};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -8,8 +8,7 @@ use bytes::Bytes;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{MapAccess, Visitor},
-    ser::SerializeStruct,
-};
+    ser::SerializeStruct};
 use uuid::Uuid;
 
 // Import for error conversion
@@ -51,8 +50,7 @@ pub enum MemoryTypeEnum {
     /// Working memory (temporary storage)
     Working = 13,
     /// Long-term memory (persistent storage)
-    LongTerm = 14,
-}
+    LongTerm = 14}
 
 /// Type alias for backward compatibility
 pub type MemoryType = MemoryTypeEnum;
@@ -78,8 +76,7 @@ impl MemoryTypeEnum {
             b"episodic" => Some(Self::Episodic),
             b"working" => Some(Self::Working),
             b"long_term" => Some(Self::LongTerm),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Get static string representation with zero allocation
@@ -100,8 +97,7 @@ impl MemoryTypeEnum {
             Self::Emotional => "emotional",
             Self::Episodic => "episodic",
             Self::Working => "working",
-            Self::LongTerm => "long_term",
-        }
+            Self::LongTerm => "long_term"}
     }
 
     /// Get base importance score for memory type with zero allocation
@@ -156,8 +152,7 @@ pub enum RelationshipType {
     /// Association relationship
     AssociatedWith = 11,
     /// Custom relationship type with Arc<str> for zero-copy sharing
-    Custom(Arc<str>) = 255,
-}
+    Custom(Arc<str>) = 255}
 
 impl RelationshipType {
     /// Check if relationship is bidirectional with zero allocation
@@ -184,8 +179,7 @@ impl RelationshipType {
             Self::GeneralizationOf => Some(Self::SpecializationOf),
             Self::SpecializationOf => Some(Self::GeneralizationOf),
             Self::Supports => Some(Self::Custom(Arc::from("supported_by"))),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Create custom relationship type with zero-copy string sharing
@@ -210,8 +204,7 @@ impl Display for RelationshipType {
             Self::GeneralizationOf => f.write_str("generalization_of"),
             Self::SpecializationOf => f.write_str("specialization_of"),
             Self::AssociatedWith => f.write_str("associated_with"),
-            Self::Custom(name) => f.write_str(name),
-        }
+            Self::Custom(name) => f.write_str(name)}
     }
 }
 
@@ -234,7 +227,12 @@ pub enum MemoryContent {
     /// JSON structured data with Arc<serde_json::Value> sharing
     Json(Arc<serde_json::Value>),
     /// Custom binary data with zero-copy Bytes and content type
-    Binary { data: Bytes, content_type: Arc<str> },
+    Binary { 
+        /// Raw binary data stored with zero-copy semantics
+        data: Bytes, 
+        /// MIME content type for the binary data
+        content_type: Arc<str> 
+    }
 }
 
 impl MemoryContent {
@@ -273,8 +271,7 @@ impl MemoryContent {
     pub fn binary(data: impl Into<Bytes>, content_type: impl Into<Arc<str>>) -> Self {
         Self::Binary {
             data: data.into(),
-            content_type: content_type.into(),
-        }
+            content_type: content_type.into()}
     }
 
     /// Get content size in bytes with zero allocation
@@ -288,8 +285,7 @@ impl MemoryContent {
                 // Estimate JSON size without serialization
                 std::mem::size_of_val(value.as_ref())
             }
-            Self::Binary { data, .. } => data.len(),
-        }
+            Self::Binary { data, .. } => data.len()}
     }
 
     /// Check if content is empty with zero allocation
@@ -323,8 +319,7 @@ pub struct BaseMemory {
     /// Last update timestamp with atomic operations  
     pub updated_at: SystemTime,
     /// Concurrent metadata with crossbeam access optimization
-    pub metadata: Arc<parking_lot::RwLock<HashMap<Arc<str>, Arc<serde_json::Value>>>>,
-}
+    pub metadata: Arc<parking_lot::RwLock<HashMap<Arc<str>, Arc<serde_json::Value>>>>}
 
 impl BaseMemory {
     /// Create new base memory with inline UUID generation
@@ -337,8 +332,7 @@ impl BaseMemory {
             content,
             created_at: now,
             updated_at: now,
-            metadata: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        }
+            metadata: Arc::new(parking_lot::RwLock::new(HashMap::new()))}
     }
 
     /// Create with generated UUID for convenience
@@ -421,8 +415,7 @@ impl<'de> Deserialize<'de> for BaseMemory {
             MemoryType,
             Content,
             CreatedAt,
-            UpdatedAt,
-        }
+            UpdatedAt}
 
         struct BaseMemoryVisitor;
 
@@ -493,8 +486,7 @@ impl<'de> Deserialize<'de> for BaseMemory {
                     content,
                     created_at,
                     updated_at,
-                    metadata: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-                })
+                    metadata: Arc::new(parking_lot::RwLock::new(HashMap::new()))})
             }
         }
 
@@ -518,8 +510,7 @@ pub struct MemoryRelationship {
     /// Relationship strength (0.0 to 1.0)
     pub strength: f32,
     /// Creation timestamp
-    pub created_at: SystemTime,
-}
+    pub created_at: SystemTime}
 
 impl MemoryRelationship {
     /// Create new memory relationship with generated ID
@@ -536,8 +527,7 @@ impl MemoryRelationship {
             to_id,
             relationship_type,
             strength: strength.clamp(0.0, 1.0),
-            created_at: SystemTime::now(),
-        }
+            created_at: SystemTime::now()}
     }
 
     /// Check if relationship is bidirectional
@@ -555,8 +545,7 @@ impl MemoryRelationship {
             to_id: self.from_id,
             relationship_type: inverse_type,
             strength: self.strength,
-            created_at: self.created_at,
-        })
+            created_at: self.created_at})
     }
 }
 
@@ -566,18 +555,25 @@ pub type MemoryResult<T> = Result<T, MemoryError>;
 /// Memory operation error types
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum MemoryError {
+    /// Memory item could not be found
     #[error("Memory not found: {0}")]
     NotFound(String),
+    /// Invalid memory type encountered
     #[error("Invalid memory type: {0}")]
     InvalidType(String),
+    /// Invalid content format or structure
     #[error("Invalid content: {0}")]
     InvalidContent(String),
+    /// Error during serialization or deserialization
     #[error("Serialization error: {0}")]
     Serialization(String),
+    /// Input validation failed
     #[error("Validation error: {0}")]
     Validation(String),
+    /// General operation failure
     #[error("Operation failed: {0}")]
     OperationFailed(String),
+    /// Storage backend error
     #[error("Storage error: {0}")]
     StorageError(String),
 }

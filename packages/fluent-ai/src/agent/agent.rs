@@ -4,18 +4,14 @@
 // Core Agent struct - only buildable through AgentBuilder
 // ============================================================================
 
-use std::collections::HashMap;
-
 use super::{
     builder::{AgentBuilder, MissingCtx, MissingSys},
-    prompt::{Prompt, PromptRequest},
-};
+    prompt::{Prompt, PromptRequest}};
 use crate::{
     completion::{CompletionModel, CompletionRequest, CompletionRequestBuilder, Document, Message},
     domain::tool::ToolSet,
     runtime::{AsyncStream, AsyncTask},
-    vector_store::VectorStoreIndexDyn,
-};
+    vector_store::VectorStoreIndexDyn};
 
 // ============================================================================
 // Configuration constants
@@ -47,8 +43,7 @@ pub struct Agent<M: CompletionModel> {
     max_tokens: Option<u64>,
     additional_params: Option<serde_json::Value>,
     extended_thinking: bool,
-    prompt_cache: bool,
-}
+    prompt_cache: bool}
 
 impl<M: CompletionModel> Agent<M> {
     /// Create a new AgentBuilder for the given provider model
@@ -83,8 +78,7 @@ impl<M: CompletionModel> Agent<M> {
             max_tokens,
             additional_params,
             extended_thinking,
-            prompt_cache,
-        }
+            prompt_cache}
     }
 
     /// Start a prompt request - returns async stream

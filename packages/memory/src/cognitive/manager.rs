@@ -8,7 +8,6 @@
 //! - Production-ready reliability patterns
 //! - SIMD-optimized vector operations
 
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -29,15 +28,12 @@ use crate::cognitive::{
     attention::AttentionMechanism,
     evolution::{EvolutionEngine, EvolutionMetadata},
     quantum::{QuantumConfig, QuantumRouter},
-    state::CognitiveStateManager,
-};
+    state::CognitiveStateManager};
 use crate::memory::{
     manager::{
         MemoryManager, MemoryQuery, MemoryStream, PendingDeletion, PendingMemory,
-        PendingRelationship, RelationshipStream,
-    },
-    primitives::{MemoryNode, MemoryRelationship, types::MemoryTypeEnum},
-};
+        PendingRelationship, RelationshipStream},
+    primitives::{MemoryNode, MemoryRelationship, types::MemoryTypeEnum}};
 use crate::{Error, memory::manager::SurrealDBMemoryManager};
 
 /// Production-quality cognitive memory manager with thread-safe operations
@@ -61,8 +57,7 @@ pub struct CognitiveMemoryManager {
     /// Configuration settings
     settings: CognitiveSettings,
     /// Worker thread pool for cognitive processing
-    worker_pool: Arc<WorkerPool>,
-}
+    worker_pool: Arc<WorkerPool>}
 
 /// High-performance cognitive mesh for advanced processing
 pub struct CognitiveMesh {
@@ -73,33 +68,27 @@ pub struct CognitiveMesh {
     /// Production completion provider integration
     completion_provider: Arc<dyn CompletionProvider>,
     /// Memory embedding cache for performance
-    embedding_cache: Arc<RwLock<HashMap<String, Vec<f32>>>>,
-}
+    embedding_cache: Arc<RwLock<HashMap<String, Vec<f32>>>>}
 
 /// Thread pool for cognitive processing operations
 pub struct WorkerPool {
     /// Request sender channel
     request_sender: Sender<WorkRequest>,
     /// Worker thread handles
-    _worker_handles: Vec<thread::JoinHandle<()>>,
-}
+    _worker_handles: Vec<thread::JoinHandle<()>>}
 
 /// Work request for cognitive processing
 pub enum WorkRequest {
     EnhanceMemory {
         memory: MemoryNode,
-        response_sender: Sender<Result<CognitiveMemoryNode>>,
-    },
+        response_sender: Sender<Result<CognitiveMemoryNode>>},
     CognitiveSearch {
         query: EnhancedQuery,
         limit: usize,
-        response_sender: Sender<Result<Vec<MemoryNode>>>,
-    },
+        response_sender: Sender<Result<Vec<MemoryNode>>>},
     GenerateEmbedding {
         text: String,
-        response_sender: Sender<Result<Vec<f32>>>,
-    },
-}
+        response_sender: Sender<Result<Vec<f32>>>}}
 
 impl CognitiveMemoryManager {
     /// Create a new production-quality cognitive memory manager
@@ -148,17 +137,14 @@ impl CognitiveMemoryManager {
                     semantic_weight: 0.4,
                     lexical_weight: 0.3,
                     structural_weight: 0.2,
-                    contextual_weight: 0.1,
-                },
-            },
+                    contextual_weight: 0.1}},
         )));
 
         let cognitive_mesh = Arc::new(CognitiveMesh {
             state_manager: state_manager.clone(),
             attention_mechanism,
             completion_provider,
-            embedding_cache: Arc::new(RwLock::new(HashMap::new())),
-        });
+            embedding_cache: Arc::new(RwLock::new(HashMap::new()))});
 
         let quantum_config = QuantumConfig {
             default_coherence_time: Duration::from_secs_f64(settings.quantum_coherence_time),
@@ -183,8 +169,7 @@ impl CognitiveMemoryManager {
             quantum_router,
             evolution_engine,
             settings,
-            worker_pool,
-        })
+            worker_pool})
     }
 
     /// Create production completion provider with synchronous configuration
@@ -281,8 +266,7 @@ impl CognitiveMemoryManager {
             temporal_context: None,
             cognitive_hints: Vec::new(),
             expected_complexity: 0.5,
-            priority: 1,
-        };
+            priority: 1};
 
         // Generate quantum signature using synchronous router
         let quantum_result =
@@ -296,8 +280,7 @@ impl CognitiveMemoryManager {
             collapse_probability: quantum_result.confidence as f32,
             entanglement_links: Vec::new(),
             quantum_entropy: (1.0 - quantum_result.confidence),
-            creation_time: chrono::Utc::now(),
-        })
+            creation_time: chrono::Utc::now()})
     }
 
     /// Store cognitive metadata with production-grade thread-safe persistence
@@ -313,8 +296,7 @@ impl CognitiveMemoryManager {
         memory_id: &str,
         cognitive_memory: &CognitiveMemoryNode,
     ) -> Result<(), Error> {
-        use arrayvec::ArrayVec;
-        use crossbeam::atomic::AtomicCell;
+                use crossbeam::atomic::AtomicCell;
         use surrealdb::sql::{Thing, Value};
 
         // Pre-allocate structures for zero-allocation operation
@@ -473,8 +455,7 @@ impl CognitiveMemoryManager {
             crate::cognitive::quantum::types::RoutingStrategy::Attention => confidence,
             crate::cognitive::quantum::types::RoutingStrategy::Causal => 1.2 * confidence,
             crate::cognitive::quantum::types::RoutingStrategy::Emergent => 1.0,
-            crate::cognitive::quantum::types::RoutingStrategy::Hybrid(_) => 1.1 * confidence,
-        };
+            crate::cognitive::quantum::types::RoutingStrategy::Hybrid(_) => 1.1 * confidence};
 
         ((base_limit as f64) * multiplier)
             .max(1.0)
@@ -554,8 +535,7 @@ impl CognitiveMemoryManager {
             retrieval_accuracy: Self::estimate_accuracy(results),
             response_latency: 100.0,
             memory_efficiency: 0.8,
-            adaptation_rate: 0.7,
-        };
+            adaptation_rate: 0.7};
 
         evolution.record_fitness(metrics);
 
@@ -680,16 +660,14 @@ impl CognitiveMesh {
             temporal_context: crate::cognitive::types::TemporalContext::default(),
             uncertainty: 0.3,
             confidence: 0.8,
-            meta_awareness: 0.6,
-        };
+            meta_awareness: 0.6};
 
         // Create state for tracking
         let semantic_context = crate::cognitive::state::SemanticContext {
             primary_concepts: vec![format!("{:?}", memory.memory_type)],
             secondary_concepts: vec![],
             domain_tags: vec![format!("{:?}", memory.memory_type)],
-            abstraction_level: crate::cognitive::state::AbstractionLevel::Intermediate,
-        };
+            abstraction_level: crate::cognitive::state::AbstractionLevel::Intermediate};
 
         let tracking_state = crate::cognitive::state::CognitiveState::new(semantic_context);
         let state_id =
@@ -802,9 +780,7 @@ impl CognitiveMesh {
     /// # Returns
     /// Optimized embedding vector using SIMD operations where possible
     fn generate_content_based_embedding(&self, content: &str) -> Vec<f32> {
-        use std::collections::HashMap;
-
-        let mut embedding = vec![0.0f32; 512];
+                let mut embedding = vec![0.0f32; 512];
 
         if content.is_empty() {
             return embedding;
@@ -1014,8 +990,7 @@ impl WorkerPool {
 
         Ok(Self {
             request_sender,
-            _worker_handles: worker_handles,
-        })
+            _worker_handles: worker_handles})
     }
 
     /// Worker thread main loop for processing cognitive requests
@@ -1030,8 +1005,7 @@ impl WorkerPool {
             match request {
                 WorkRequest::EnhanceMemory {
                     memory,
-                    response_sender,
-                } => {
+                    response_sender} => {
                     // Process memory enhancement request
                     let result = Self::process_memory_enhancement(memory);
                     let _ = response_sender.send(result);
@@ -1039,16 +1013,14 @@ impl WorkerPool {
                 WorkRequest::CognitiveSearch {
                     query,
                     limit,
-                    response_sender,
-                } => {
+                    response_sender} => {
                     // Process cognitive search request
                     let result = Self::process_cognitive_search(query, limit);
                     let _ = response_sender.send(result);
                 }
                 WorkRequest::GenerateEmbedding {
                     text,
-                    response_sender,
-                } => {
+                    response_sender} => {
                     // Process embedding generation request
                     let result = Self::process_embedding_generation(text);
                     let _ = response_sender.send(result);
@@ -1077,8 +1049,7 @@ impl WorkerPool {
             temporal_context: crate::cognitive::types::TemporalContext::default(),
             uncertainty: 0.3,
             confidence: 0.8,
-            meta_awareness: 0.6,
-        };
+            meta_awareness: 0.6};
 
         Ok(cognitive_memory)
     }
@@ -1244,8 +1215,7 @@ impl MemoryManager for CognitiveMemoryManager {
 /// Production-quality cognitive query enhancer with synchronous operations
 pub struct CognitiveQueryEnhancer {
     /// Completion provider integration
-    completion_provider: Arc<dyn CompletionProvider>,
-}
+    completion_provider: Arc<dyn CompletionProvider>}
 
 impl CognitiveQueryEnhancer {
     /// Create new cognitive query enhancer
@@ -1257,8 +1227,7 @@ impl CognitiveQueryEnhancer {
     /// Configured query enhancer instance
     pub fn new(completion_provider: Arc<dyn CompletionProvider>) -> Self {
         Self {
-            completion_provider,
-        }
+            completion_provider}
     }
 
     /// Enhance query with cognitive context using synchronous operations
@@ -1283,7 +1252,6 @@ impl CognitiveQueryEnhancer {
             context_embedding,
             temporal_context: None,
             cognitive_hints,
-            expected_complexity: 0.5,
-        })
+            expected_complexity: 0.5})
     }
 }

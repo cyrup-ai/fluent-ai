@@ -9,21 +9,29 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_async::{AsyncStream, emit, handle_error};
+// AsyncStream, emit, handle_error - removed unused imports
 use uuid::Uuid;
 
 use super::types::*;
 use crate::types::candle_chat::chat::commands::ImmutableChatCommand;
 
 /// Action handler registry for processing different action types
-#[derive(Debug)]
 pub struct ActionHandlerRegistry {
     /// Registered action handlers
     handlers: SkipMap<String, ActionHandler>,
     /// Handler execution statistics
     stats: ActionHandlerStats,
     /// Registry configuration
-    config: ActionHandlerConfig,
+    config: ActionHandlerConfig}
+
+impl std::fmt::Debug for ActionHandlerRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ActionHandlerRegistry")
+            .field("handlers", &format!("[{} handlers]", self.handlers.len()))
+            .field("stats", &self.stats)
+            .field("config", &self.config)
+            .finish()
+    }
 }
 
 /// Configuration for action handler behavior
@@ -31,13 +39,14 @@ pub struct ActionHandlerRegistry {
 pub struct ActionHandlerConfig {
     /// Enable action validation
     pub enable_validation: bool,
+    /// Enable action queuing
+    pub enable_queuing: bool,
     /// Maximum action execution time
     pub max_execution_time: Duration,
     /// Enable action logging
     pub enable_logging: bool,
     /// Maximum concurrent actions
-    pub max_concurrent_actions: usize,
-}
+    pub max_concurrent_actions: usize}
 
 /// Statistics for action handler performance
 #[derive(Debug)]
@@ -49,8 +58,7 @@ pub struct ActionHandlerStats {
     /// Failed actions
     pub failed_actions: AtomicUsize,
     /// Average execution time per action type
-    pub execution_times: SkipMap<String, AtomicUsize>,
-}
+    pub execution_times: SkipMap<String, AtomicUsize>}
 
 /// Action handler function type
 pub type ActionHandler = Box<dyn Fn(&MacroAction, &mut MacroExecutionContext) -> Result<ActionExecutionResult, MacroSystemError> + Send + Sync>;
@@ -63,8 +71,7 @@ pub struct MessageActionProcessor {
     /// Message queue for processing
     message_queue: Arc<crossbeam_queue::SegQueue<QueuedMessage>>,
     /// Processing statistics
-    stats: MessageProcessorStats,
-}
+    stats: MessageProcessorStats}
 
 /// Configuration for message action processing
 #[derive(Debug, Clone)]
@@ -76,8 +83,7 @@ pub struct MessageProcessorConfig {
     /// Message send timeout
     pub send_timeout: Duration,
     /// Enable message validation
-    pub enable_validation: bool,
-}
+    pub enable_validation: bool}
 
 /// Statistics for message processing
 #[derive(Debug)]
@@ -89,8 +95,7 @@ pub struct MessageProcessorStats {
     /// Send failures
     pub send_failures: AtomicUsize,
     /// Average send time
-    pub average_send_time: AtomicUsize,
-}
+    pub average_send_time: AtomicUsize}
 
 /// Queued message for processing
 #[derive(Debug, Clone)]
@@ -106,8 +111,7 @@ pub struct QueuedMessage {
     /// Queue timestamp
     pub queued_at: Instant,
     /// Priority level
-    pub priority: MessagePriority,
-}
+    pub priority: MessagePriority}
 
 /// Message priority levels
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -119,8 +123,7 @@ pub enum MessagePriority {
     /// High priority message
     High,
     /// Critical priority message
-    Critical,
-}
+    Critical}
 
 /// Command action processor for executing commands
 #[derive(Debug)]
@@ -130,8 +133,7 @@ pub struct CommandActionProcessor {
     /// Command execution history
     history: Arc<SkipMap<Uuid, CommandExecution>>,
     /// Processing statistics
-    stats: CommandProcessorStats,
-}
+    stats: CommandProcessorStats}
 
 /// Configuration for command action processing
 #[derive(Debug, Clone)]
@@ -143,8 +145,7 @@ pub struct CommandProcessorConfig {
     /// Enable command history
     pub enable_history: bool,
     /// Maximum history entries
-    pub max_history_entries: usize,
-}
+    pub max_history_entries: usize}
 
 /// Statistics for command processing
 #[derive(Debug)]
@@ -154,8 +155,7 @@ pub struct CommandProcessorStats {
     /// Command failures
     pub command_failures: AtomicUsize,
     /// Average execution time
-    pub average_execution_time: AtomicUsize,
-}
+    pub average_execution_time: AtomicUsize}
 
 /// Command execution record
 #[derive(Debug, Clone)]
@@ -173,8 +173,7 @@ pub struct CommandExecution {
     /// Execution result
     pub result: Option<CommandExecutionResult>,
     /// Error message if failed
-    pub error: Option<String>,
-}
+    pub error: Option<String>}
 
 /// Result of command execution
 #[derive(Debug, Clone)]
@@ -186,8 +185,7 @@ pub enum CommandExecutionResult {
     /// Command timed out
     Timeout,
     /// Command was cancelled
-    Cancelled,
-}
+    Cancelled}
 
 /// Variable action processor for variable operations
 #[derive(Debug)]
@@ -197,8 +195,7 @@ pub struct VariableActionProcessor {
     /// Variable change history
     history: Arc<SkipMap<String, Vec<VariableChange>>>,
     /// Processing statistics
-    stats: VariableProcessorStats,
-}
+    stats: VariableProcessorStats}
 
 /// Configuration for variable action processing
 #[derive(Debug, Clone)]
@@ -210,8 +207,7 @@ pub struct VariableProcessorConfig {
     /// Maximum history per variable
     pub max_history_per_variable: usize,
     /// Enable change notifications
-    pub enable_notifications: bool,
-}
+    pub enable_notifications: bool}
 
 /// Statistics for variable processing
 #[derive(Debug)]
@@ -221,8 +217,7 @@ pub struct VariableProcessorStats {
     /// Variables retrieved
     pub variables_retrieved: AtomicUsize,
     /// Variable changes
-    pub variable_changes: AtomicUsize,
-}
+    pub variable_changes: AtomicUsize}
 
 /// Variable change record
 #[derive(Debug, Clone)]
@@ -234,8 +229,7 @@ pub struct VariableChange {
     /// New value
     pub new_value: String,
     /// Context where change occurred
-    pub context_id: Uuid,
-}
+    pub context_id: Uuid}
 
 impl ActionHandlerRegistry {
     /// Create a new action handler registry
@@ -243,8 +237,19 @@ impl ActionHandlerRegistry {
         let mut registry = Self {
             handlers: SkipMap::new(),
             stats: ActionHandlerStats::default(),
-            config: ActionHandlerConfig::default(),
-        };
+            config: ActionHandlerConfig::default()};
+
+        // Register default handlers
+        registry.register_default_handlers();
+        registry
+    }
+
+    /// Create a new action handler registry with custom configuration
+    pub fn with_config(config: ActionHandlerConfig) -> Self {
+        let mut registry = Self {
+            handlers: SkipMap::new(),
+            stats: ActionHandlerStats::default(),
+            config};
 
         // Register default handlers
         registry.register_default_handlers();
@@ -256,7 +261,7 @@ impl ActionHandlerRegistry {
         // Message action handler
         self.register_handler(
             "send_message".to_string(),
-            Box::new(|action, context| {
+            Box::new(|action, _context| {
                 if let MacroAction::SendMessage { content, message_type, .. } = action {
                     // Process message sending
                     println!("Sending message: {} (type: {})", content, message_type);
@@ -270,7 +275,7 @@ impl ActionHandlerRegistry {
         // Command action handler
         self.register_handler(
             "execute_command".to_string(),
-            Box::new(|action, context| {
+            Box::new(|action, _context| {
                 if let MacroAction::ExecuteCommand { command, .. } = action {
                     // Process command execution
                     println!("Executing command: {:?}", command);
@@ -284,7 +289,7 @@ impl ActionHandlerRegistry {
         // Wait action handler
         self.register_handler(
             "wait".to_string(),
-            Box::new(|action, context| {
+            Box::new(|action, _context| {
                 if let MacroAction::Wait { duration, .. } = action {
                     Ok(ActionExecutionResult::Wait(*duration))
                 } else {
@@ -349,8 +354,7 @@ impl ActionHandlerRegistry {
             MacroAction::Wait { .. } => "wait".to_string(),
             MacroAction::SetVariable { .. } => "set_variable".to_string(),
             MacroAction::Conditional { .. } => "conditional".to_string(),
-            MacroAction::Loop { .. } => "loop".to_string(),
-        }
+            MacroAction::Loop { .. } => "loop".to_string()}
     }
 
     /// Update execution statistics
@@ -404,8 +408,7 @@ impl MessageActionProcessor {
         Self {
             config: MessageProcessorConfig::default(),
             message_queue: Arc::new(crossbeam_queue::SegQueue::new()),
-            stats: MessageProcessorStats::default(),
-        }
+            stats: MessageProcessorStats::default()}
     }
 
     /// Process a message action
@@ -459,8 +462,7 @@ impl MessageActionProcessor {
             message_type: message_type.to_string(),
             context_id: context.execution_id,
             queued_at: Instant::now(),
-            priority: MessagePriority::Normal,
-        };
+            priority: MessagePriority::Normal};
 
         self.message_queue.push(message);
         self.stats.messages_queued.fetch_add(1, Ordering::Relaxed);
@@ -494,10 +496,10 @@ impl Default for ActionHandlerConfig {
     fn default() -> Self {
         Self {
             enable_validation: true,
+            enable_queuing: false,
             max_execution_time: Duration::from_secs(30),
             enable_logging: true,
-            max_concurrent_actions: 100,
-        }
+            max_concurrent_actions: 100}
     }
 }
 
@@ -507,8 +509,7 @@ impl Default for ActionHandlerStats {
             total_actions: AtomicUsize::new(0),
             successful_actions: AtomicUsize::new(0),
             failed_actions: AtomicUsize::new(0),
-            execution_times: SkipMap::new(),
-        }
+            execution_times: SkipMap::new()}
     }
 }
 
@@ -518,8 +519,7 @@ impl Default for MessageProcessorConfig {
             enable_queuing: true,
             max_queue_size: 1000,
             send_timeout: Duration::from_secs(10),
-            enable_validation: true,
-        }
+            enable_validation: true}
     }
 }
 
@@ -529,8 +529,7 @@ impl Default for MessageProcessorStats {
             messages_sent: AtomicUsize::new(0),
             messages_queued: AtomicUsize::new(0),
             send_failures: AtomicUsize::new(0),
-            average_send_time: AtomicUsize::new(0),
-        }
+            average_send_time: AtomicUsize::new(0)}
     }
 }
 

@@ -3,21 +3,18 @@
 //! Zero-allocation, crossbeam-based thread pool with proven performance
 //! Eliminated Future usage - pure closure-based execution
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::task::Waker;
 
 use crossbeam_channel::Receiver;
 
 pub struct GlobalExecutor {
-    waker_registry: Arc<Mutex<HashMap<u64, Waker>>>,
-}
+    waker_registry: Arc<Mutex<HashMap<u64, Waker>>>}
 
 impl GlobalExecutor {
     pub fn new() -> Self {
         Self {
-            waker_registry: Arc::new(Mutex::new(HashMap::new())),
-        }
+            waker_registry: Arc::new(Mutex::new(HashMap::new()))}
     }
 
     pub fn register_waker<T>(&self, rx: Receiver<T>, waker: Waker) {

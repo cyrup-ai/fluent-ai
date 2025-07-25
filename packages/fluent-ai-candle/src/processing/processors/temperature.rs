@@ -6,8 +6,7 @@
 use crate::processing::traits::{
     ConfigurableProcessor, LogitsProcessor, NumericallyStableProcessor, ProcessingResult,
     ZeroAllocationProcessor,
-    utils::{clamp_for_stability, find_max_logit, validate_logits},
-};
+    utils::{clamp_for_stability, find_max_logit, validate_logits}};
 use crate::processing::{ProcessingContext, ProcessingError};
 
 /// Temperature scaling processor for controlling generation randomness
@@ -26,8 +25,7 @@ pub struct TemperatureProcessor {
     /// Pre-computed inverse temperature for efficiency
     inv_temperature: f32,
     /// Cached identity status for optimization
-    is_identity: bool,
-}
+    is_identity: bool}
 
 impl TemperatureProcessor {
     /// Minimum allowed temperature to prevent numerical instability
@@ -96,8 +94,7 @@ impl TemperatureProcessor {
         Ok(Self {
             temperature,
             inv_temperature,
-            is_identity,
-        })
+            is_identity})
     }
 
     /// Create temperature processor with creative preset (0.8)
@@ -289,8 +286,7 @@ impl LogitsProcessor for TemperatureProcessor {
 /// Configuration for temperature processor
 #[derive(Debug, Clone)]
 pub struct TemperatureConfig {
-    pub temperature: f32,
-}
+    pub temperature: f32}
 
 impl ConfigurableProcessor for TemperatureProcessor {
     type Config = TemperatureConfig;
@@ -309,8 +305,7 @@ impl ConfigurableProcessor for TemperatureProcessor {
 
     fn get_config(&self) -> Self::Config {
         TemperatureConfig {
-            temperature: self.temperature,
-        }
+            temperature: self.temperature}
     }
 }
 
@@ -321,8 +316,7 @@ impl NumericallyStableProcessor for TemperatureProcessor {}
 /// Builder for temperature processor with validation and presets
 #[derive(Debug, Clone, Default)]
 pub struct TemperatureBuilder {
-    temperature: Option<f32>,
-}
+    temperature: Option<f32>}
 
 impl TemperatureBuilder {
     /// Create a new temperature builder

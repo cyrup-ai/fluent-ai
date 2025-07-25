@@ -14,8 +14,7 @@ pub fn validate_command(command: &ImmutableChatCommand) -> ParseResult<()> {
             if !valid_formats.contains(&format.as_str()) {
                 return Err(ParseError::InvalidParameterValue {
                     parameter: "format".to_string(),
-                    value: format.clone(),
-                });
+                    value: format.clone()});
             }
         }
         ImmutableChatCommand::Clear {
@@ -24,8 +23,7 @@ pub fn validate_command(command: &ImmutableChatCommand) -> ParseResult<()> {
             if *n == 0 {
                 return Err(ParseError::InvalidParameterValue {
                     parameter: "keep-last".to_string(),
-                    value: "0".to_string(),
-                });
+                    value: "0".to_string()});
             }
         }
         _ => {}

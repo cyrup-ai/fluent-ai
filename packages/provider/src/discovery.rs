@@ -1,6 +1,5 @@
 //! Provider model discovery and registration
 
-use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -16,8 +15,7 @@ use crate::model::{
     error::ModelError,
     info::ModelInfo,
     registry::{ModelRegistry, RegisteredModel},
-    traits::Model,
-};
+    traits::Model};
 
 /// Error type for model discovery operations
 #[derive(Debug, Error)]
@@ -36,8 +34,7 @@ pub enum DiscoveryError {
 
     /// Wrapper for underlying errors
     #[error(transparent)]
-    Other(#[from] Box<dyn std::error::Error + Send + Sync>),
-}
+    Other(#[from] Box<dyn std::error::Error + Send + Sync>)}
 
 /// Result type for discovery operations
 pub type DiscoveryResult<T> = std::result::Result<T, DiscoveryError>;
@@ -138,8 +135,7 @@ mod tests {
     struct TestProvider {
         name: &'static str,
         models: &'static [&'static str],
-        discover_count: AtomicUsize,
-    }
+        discover_count: AtomicUsize}
 
     #[async_trait]
     impl ProviderModelDiscovery for TestProvider {
@@ -162,8 +158,7 @@ mod tests {
         let provider = TestProvider {
             name: "test",
             models: &["model1", "model2"],
-            discover_count: AtomicUsize::new(0),
-        };
+            discover_count: AtomicUsize::new(0)};
 
         // Register the provider
         register_provider(provider).expect("Failed to register test provider");
@@ -195,14 +190,12 @@ mod tests {
         let provider1 = TestProvider {
             name: "test1",
             models: &["model1"],
-            discover_count: AtomicUsize::new(0),
-        };
+            discover_count: AtomicUsize::new(0)};
 
         let provider2 = TestProvider {
             name: "test2",
             models: &["model2"],
-            discover_count: AtomicUsize::new(0),
-        };
+            discover_count: AtomicUsize::new(0)};
 
         // Register providers
         register_provider(provider1).expect("Failed to register test provider1");

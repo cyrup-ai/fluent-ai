@@ -21,8 +21,7 @@ pub enum ParseError {
     UnknownParameter { parameter: String },
 
     #[error("Parameter type mismatch: expected {expected}, got {actual}")]
-    TypeMismatch { expected: String, actual: String },
-}
+    TypeMismatch { expected: String, actual: String }}
 
 /// Result type for parsing operations
 pub type ParseResult<T> = Result<T, ParseError>;

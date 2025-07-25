@@ -8,8 +8,7 @@ use super::models::CandleModel;
 #[derive(Debug, Clone)]
 pub struct CandleProvider {
     /// Available Candle models
-    models: Vec<CandleModel>,
-}
+    models: Vec<CandleModel>}
 
 impl CandleProvider {
     /// Create a new Candle provider
@@ -20,8 +19,7 @@ impl CandleProvider {
                 CandleModel::Llama2_13B,
                 CandleModel::Mistral_7B,
                 CandleModel::CodeLlama_7B,
-            ],
-        }
+            ]}
     }
 
     /// Create a provider with specific models

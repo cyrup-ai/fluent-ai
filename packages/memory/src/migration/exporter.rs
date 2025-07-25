@@ -20,8 +20,7 @@ pub struct CsvExportConfig {
     /// Buffer size for I/O operations (default: 16KB)
     pub buffer_size: usize,
     /// Batch size for processing records (default: 1000)
-    pub batch_size: usize,
-}
+    pub batch_size: usize}
 
 impl Default for CsvExportConfig {
     #[inline]
@@ -45,8 +44,7 @@ impl CsvExportConfig {
             quote_char: b'"',
             has_headers: true,
             buffer_size: 16 * 1024,
-            batch_size: 1000,
-        }
+            batch_size: 1000}
     }
 
     /// Set custom delimiter
@@ -117,13 +115,11 @@ pub enum ExportFormat {
     /// CSV format
     Csv,
     /// Binary format
-    Binary,
-}
+    Binary}
 
 /// Data exporter
 pub struct DataExporter {
-    format: ExportFormat,
-}
+    format: ExportFormat}
 
 impl DataExporter {
     /// Create a new exporter
@@ -143,8 +139,7 @@ impl DataExporter {
             ExportFormat::Binary => Err(crate::migration::MigrationError::UnsupportedFormat(
                 "Binary export requires bincode::Encode trait - use export_binary directly"
                     .to_string(),
-            )),
-        }
+            ))}
     }
 
     /// Export as JSON
@@ -382,8 +377,7 @@ pub struct ExportConfig {
     pub include_relationships: bool,
 
     /// Batch size for large exports
-    pub batch_size: usize,
-}
+    pub batch_size: usize}
 
 impl Default for ExportConfig {
     fn default() -> Self {
@@ -391,7 +385,6 @@ impl Default for ExportConfig {
             format: ExportFormat::Json,
             include_metadata: true,
             include_relationships: true,
-            batch_size: 1000,
-        }
+            batch_size: 1000}
     }
 }

@@ -216,8 +216,7 @@ pub struct ModelConfig {
     pub supports_thinking: bool,
     pub optimal_thinking_budget: u32,
     pub provider: &'static str,
-    pub model_name: &'static str,
-}
+    pub model_name: &'static str}
 
 /// Universal model info trait for compile-time defaults
 ///
@@ -295,8 +294,7 @@ pub struct CompletionResponse<T> {
     /// Token usage information (if available)
     pub token_usage: Option<TokenUsage>,
     /// Response metadata
-    pub metadata: ResponseMetadata,
-}
+    pub metadata: ResponseMetadata}
 
 impl<T> CompletionResponse<T> {
     /// Create a new completion response with zero allocations
@@ -306,8 +304,7 @@ impl<T> CompletionResponse<T> {
             raw_response,
             content,
             token_usage: None,
-            metadata: ResponseMetadata::default(),
-        }
+            metadata: ResponseMetadata::default()}
     }
 
     /// Add token usage information
@@ -330,8 +327,7 @@ impl<T> CompletionResponse<T> {
         match &self.content {
             ZeroOneOrMany::Zero => None,
             ZeroOneOrMany::One(text) => Some(text),
-            ZeroOneOrMany::Many(texts) => texts.first().map(|s| s.as_str()),
-        }
+            ZeroOneOrMany::Many(texts) => texts.first().map(|s| s.as_str())}
     }
 
     /// Get all completion texts
@@ -351,8 +347,7 @@ pub struct StreamingResponse<T> {
     /// Stream of completion chunks
     pub stream: AsyncStream<CompletionChunk>,
     /// Response metadata (filled as chunks arrive)
-    pub metadata: ResponseMetadata,
-}
+    pub metadata: ResponseMetadata}
 
 impl<T> StreamingResponse<T> {
     /// Create a new streaming response
@@ -364,8 +359,7 @@ impl<T> StreamingResponse<T> {
         Self {
             raw_response,
             stream,
-            metadata: ResponseMetadata::default(),
-        }
+            metadata: ResponseMetadata::default()}
     }
 
     /// Add metadata
@@ -384,8 +378,7 @@ pub struct TokenUsage {
     /// Number of tokens in the completion
     pub completion_tokens: u32,
     /// Total tokens used
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 impl TokenUsage {
     /// Create new token usage info
@@ -394,8 +387,7 @@ impl TokenUsage {
         Self {
             prompt_tokens,
             completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens,
-        }
+            total_tokens: prompt_tokens + completion_tokens}
     }
 }
 
@@ -409,8 +401,7 @@ pub struct ResponseMetadata {
     /// Response time in milliseconds
     pub response_time_ms: Option<u64>,
     /// Additional provider-specific metadata
-    pub provider_metadata: Option<Value>,
-}
+    pub provider_metadata: Option<Value>}
 
 impl ResponseMetadata {
     /// Create new response metadata

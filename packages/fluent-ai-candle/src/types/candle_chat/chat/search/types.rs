@@ -5,22 +5,15 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
 
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::candle_chat::chat::MessageRole;
+use crate::types::candle_chat::chat::message::MessageRole;
 use crate::types::candle_chat::chat::message::SearchChatMessage;
 
-/// Handle errors in streaming context without panicking
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error);
-        // Continue processing instead of returning error
-    };
-}
+// Removed unused handle_error macro
 
 /// Stream collection trait to provide .collect() method for future-like behavior
 pub trait StreamCollect<T> {
@@ -83,8 +76,7 @@ pub struct SearchQuery {
     /// Minimum message length filter
     pub min_length: Option<usize>,
     /// Maximum message length filter
-    pub max_length: Option<usize>,
-}
+    pub max_length: Option<usize>}
 
 /// Date range filter for search queries
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,8 +92,7 @@ pub struct DateRange {
     /// Whether to include time in matching
     pub include_time: bool,
     /// Custom date format for parsing
-    pub date_format: Option<String>,
-}
+    pub date_format: Option<String>}
 
 /// Sort order options for search results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,8 +112,7 @@ pub enum SortOrder {
     /// Sort by user/role
     Role,
     /// Custom sort field
-    Custom(String),
-}
+    Custom(String)}
 
 /// Represents a single search result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,8 +138,7 @@ pub struct SearchResult {
     /// Timestamp when this result was generated
     pub result_timestamp: chrono::DateTime<chrono::Utc>,
     /// Additional result-specific data
-    pub extra_data: HashMap<String, serde_json::Value>,
-}
+    pub extra_data: HashMap<String, serde_json::Value>}
 
 /// Position information for a match within content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,8 +152,7 @@ pub struct MatchPosition {
     /// Match type (exact, fuzzy, regex, etc.)
     pub match_type: MatchType,
     /// Confidence score for this match
-    pub confidence: f32,
-}
+    pub confidence: f32}
 
 /// Type of match found
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -180,8 +168,7 @@ pub enum MatchType {
     /// Synonym match
     Synonym,
     /// Phonetic match
-    Phonetic,
-}
+    Phonetic}
 
 /// Statistics about search operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,8 +190,7 @@ pub struct SearchStatistics {
     /// Last index update timestamp
     pub last_update: chrono::DateTime<chrono::Utc>,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 /// Term frequency information for search indexing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,8 +204,7 @@ pub struct TermFrequency {
     /// Inverse document frequency score
     pub idf_score: f64,
     /// Term importance weight
-    pub weight: f32,
-}
+    pub weight: f32}
 
 impl TermFrequency {
     /// Create a new term frequency entry
@@ -235,8 +220,7 @@ impl TermFrequency {
             frequency,
             document_frequency,
             idf_score,
-            weight: 1.0,
-        }
+            weight: 1.0}
     }
 }
 
@@ -262,8 +246,7 @@ impl Default for SearchQuery {
             include_deleted: false,
             language_filter: None,
             min_length: None,
-            max_length: None,
-        }
+            max_length: None}
     }
 }
 
@@ -284,7 +267,109 @@ impl Default for SearchStatistics {
             index_size_bytes: 0,
             memory_usage_bytes: 0,
             last_update: chrono::Utc::now(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 }
+
+/// Search error types for proper error handling
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum SearchError {
+    #[error("Query processing failed: {0}")]
+    QueryProcessing(String),
+    #[error("Index operation failed: {0}")]
+    IndexOperation(String),
+    #[error("Invalid query parameters: {0}")]
+    InvalidQuery(String),
+    #[error("Search timeout after {0}ms")]
+    Timeout(u64),
+    #[error("Internal search error: {0}")]
+    Internal(String)}
+
+/// Query error for conversion pattern mentioned in TODO4.md
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum QueryError {
+    #[error("Invalid search terms")]
+    InvalidTerms,
+    #[error("Invalid date range")]
+    InvalidDateRange,
+    #[error("Invalid regex pattern: {0}")]
+    InvalidRegex(String),
+    #[error("Query too complex")]
+    TooComplex}
+
+/// From implementation mentioned in TODO4.md
+impl From<QueryError> for SearchError {
+    fn from(err: QueryError) -> Self {
+        SearchError::QueryProcessing(err.to_string())
+    }
+}
+
+/// Search filter for advanced filtering capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchFilter {
+    /// Message content filters
+    pub content_filters: Vec<String>,
+    /// Role filters
+    pub role_filters: Vec<MessageRole>,
+    /// Tag filters
+    pub tag_filters: Vec<String>,
+    /// Date range filter
+    pub date_filter: Option<DateRange>,
+    /// Custom metadata filters
+    pub metadata_filters: HashMap<String, String>,
+    /// Minimum score threshold
+    pub min_score: Option<f32>,
+    /// Maximum score threshold
+    pub max_score: Option<f32>}
+
+impl Default for SearchFilter {
+    fn default() -> Self {
+        Self {
+            content_filters: Vec::new(),
+            role_filters: Vec::new(),
+            tag_filters: Vec::new(),
+            date_filter: None,
+            metadata_filters: HashMap::new(),
+            min_score: None,
+            max_score: None}
+    }
+}
+
+/// Search metadata for tracking search operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchMetadata {
+    /// Search session ID
+    pub session_id: Uuid,
+    /// Search query used
+    pub query: SearchQuery,
+    /// Search execution time in milliseconds
+    pub execution_time_ms: u64,
+    /// Number of results found
+    pub result_count: usize,
+    /// Total messages searched
+    pub messages_searched: usize,
+    /// Cache usage information
+    pub cache_hit: bool,
+    /// Index version used
+    pub index_version: String,
+    /// Timestamp when search was performed
+    pub search_timestamp: chrono::DateTime<chrono::Utc>,
+    /// Additional diagnostic information
+    pub diagnostics: HashMap<String, serde_json::Value>}
+
+impl Default for SearchMetadata {
+    fn default() -> Self {
+        Self {
+            session_id: Uuid::new_v4(),
+            query: SearchQuery::default(),
+            execution_time_ms: 0,
+            result_count: 0,
+            messages_searched: 0,
+            cache_hit: false,
+            index_version: "1.0.0".to_string(),
+            search_timestamp: chrono::Utc::now(),
+            diagnostics: HashMap::new()}
+    }
+}
+
+// Send + Sync are automatically derived for these types since all fields implement Send + Sync

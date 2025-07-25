@@ -10,16 +10,14 @@ use super::core::CompositeProcessor;
 /// Builder for creating composite processors with fluent API
 #[derive(Debug, Default)]
 pub struct CompositeProcessorBuilder {
-    processors: Vec<Box<dyn LogitsProcessor>>,
-}
+    processors: Vec<Box<dyn LogitsProcessor>>}
 
 impl CompositeProcessorBuilder {
     /// Create a new builder
     #[inline(always)]
     pub fn new() -> Self {
         Self {
-            processors: Vec::new(),
-        }
+            processors: Vec::new()}
     }
 
     /// Add a processor to the chain

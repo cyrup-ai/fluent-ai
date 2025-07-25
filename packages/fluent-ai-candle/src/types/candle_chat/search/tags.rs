@@ -6,16 +6,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use atomic_counter::{AtomicCounter, ConsistentCounter};
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
-use crate::types::candle_chat::message::types::CandleMessage;
-use super::types::StreamCollect;
-use super::error::SearchError;
+use crate::types::CandleMessage;
 
 /// Tag with hierarchical structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,8 +41,7 @@ pub struct ConversationTag {
     /// Tag usage count
     pub usage_count: u64,
     /// Tag is active
-    pub is_active: bool,
-}
+    pub is_active: bool}
 
 impl ConversationTag {
     /// Create a new tag
@@ -66,8 +63,7 @@ impl ConversationTag {
             created_at: now,
             updated_at: now,
             usage_count: 0,
-            is_active: true,
-        }
+            is_active: true}
     }
 
     /// Update tag usage statistics
@@ -125,33 +121,31 @@ impl ConversationTag {
 /// Conversation tagger with lock-free operations
 pub struct ConversationTagger {
     /// Tags storage
-    tags: SkipMap<Arc<str>, ConversationTag>,
+    tags: Arc<SkipMap<Arc<str>, ConversationTag>>,
     /// Message to tags mapping
-    message_tags: SkipMap<Arc<str>, Vec<Arc<str>>>,
+    message_tags: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>,
     /// Tag to messages mapping
-    tag_messages: SkipMap<Arc<str>, Vec<Arc<str>>>,
+    tag_messages: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>,
     /// Tag hierarchy
-    tag_hierarchy: SkipMap<Arc<str>, Vec<Arc<str>>>,
+    tag_hierarchy: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>,
     /// Tag counter
     tag_counter: Arc<ConsistentCounter>,
     /// Tagging counter
     tagging_counter: Arc<ConsistentCounter>,
     /// Auto-tagging rules
-    auto_tagging_rules: Arc<RwLock<HashMap<Arc<str>, Vec<Arc<str>>>>>,
-}
+    auto_tagging_rules: Arc<RwLock<HashMap<Arc<str>, Vec<Arc<str>>>>>}
 
 impl ConversationTagger {
     /// Create a new conversation tagger
     pub fn new() -> Self {
         Self {
-            tags: SkipMap::new(),
-            message_tags: SkipMap::new(),
-            tag_messages: SkipMap::new(),
-            tag_hierarchy: SkipMap::new(),
+            tags: Arc::new(SkipMap::new()),
+            message_tags: Arc::new(SkipMap::new()),
+            tag_messages: Arc::new(SkipMap::new()),
+            tag_hierarchy: Arc::new(SkipMap::new()),
             tag_counter: Arc::new(ConsistentCounter::new(0)),
             tagging_counter: Arc::new(ConsistentCounter::new(0)),
-            auto_tagging_rules: Arc::new(RwLock::new(HashMap::new())),
-        }
+            auto_tagging_rules: Arc::new(RwLock::new(HashMap::new()))}
     }
 
     /// Create a new tag (streaming)
@@ -179,7 +173,6 @@ impl ConversationTagger {
         let parent_id_clone = parent_id.clone();
         let tags_clone = self.tags.clone();
         let tag_hierarchy_clone = self.tag_hierarchy.clone();
-        let statistics_clone = self.statistics.clone();
         
         AsyncStream::with_channel(move |sender| {
             let mut tag = ConversationTag::new(name, description, category);
@@ -202,7 +195,7 @@ impl ConversationTagger {
             tag_hierarchy_clone.insert(parent_id_clone, children);
 
             tags_clone.insert(tag_id.clone(), tag);
-            statistics_clone.total_tags.inc();
+            // Note: statistics tracking removed as field doesn't exist
 
             let _ = sender.send(tag_id);
         })
@@ -217,7 +210,6 @@ impl ConversationTagger {
         let message_tags_clone = self.message_tags.clone();
         let tag_messages_clone = self.tag_messages.clone();
         let tags_clone = self.tags.clone();
-        let statistics_clone = self.statistics.clone();
         
         AsyncStream::with_channel(move |sender| {
             // Update message tags mapping
@@ -243,17 +235,19 @@ impl ConversationTagger {
                 }
             }
 
-            statistics_clone.total_tagged_messages.inc();
+            // Note: statistics tracking removed as field doesn't exist
             let _ = sender.send(());
         })
     }
 
     /// Auto-tag message based on content (streaming)
     pub fn auto_tag_message_stream(&self, message: CandleMessage) -> AsyncStream<Arc<str>> {
+        let auto_tagging_rules = Arc::clone(&self.auto_tagging_rules);
+        
         AsyncStream::with_channel(move |sender| {
-            let content = message.message.content.to_lowercase();
+            let content = message.content.to_lowercase();
 
-            if let Ok(rules) = self.auto_tagging_rules.try_read() {
+            if let Ok(rules) = auto_tagging_rules.try_read() {
                 let mut suggested_tags = Vec::new();
 
                 for (pattern, tag_ids) in rules.iter() {
@@ -447,8 +441,7 @@ impl ConversationTagger {
                 .iter()
                 .filter(|entry| entry.value().is_active)
                 .count(),
-            most_used_tag: self.get_most_used_tag(),
-        }
+            most_used_tag: self.get_most_used_tag()}
     }
 
     /// Get most used tag
@@ -491,8 +484,7 @@ pub struct TaggingStatistics {
     /// Number of active tags
     pub active_tags: usize,
     /// Most frequently used tag
-    pub most_used_tag: Option<Arc<str>>,
-}
+    pub most_used_tag: Option<Arc<str>>}
 
 impl TaggingStatistics {
     /// Create new empty statistics

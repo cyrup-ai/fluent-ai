@@ -11,10 +11,8 @@
 //! proper lifetime annotations, and efficient serialization patterns.
 
 use crate::{MAX_MESSAGES, MAX_TOOLS, MAX_CHOICES, MAX_EMBEDDINGS};
-use arrayvec::ArrayVec;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
+use arrayvec::ArrayVec;
 // =============================================================================
 // Chat Completions API
 // =============================================================================
@@ -68,8 +66,7 @@ pub struct OpenAICompletionRequest {
     pub logprobs: Option<bool>,
     /// Number of log probabilities to return
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub top_logprobs: Option<u32>,
-}
+    pub top_logprobs: Option<u32>}
 
 /// Tool choice configuration for function calling
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -84,16 +81,13 @@ pub enum OpenAIToolChoice {
         /// Tool type (always "function")
         r#type: String,
         /// Function specification
-        function: OpenAIFunctionChoice,
-    },
-}
+        function: OpenAIFunctionChoice}}
 
 /// Specific function choice for tool calling
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OpenAIFunctionChoice {
     /// Name of the function to call
-    pub name: String,
-}
+    pub name: String}
 
 /// Message in a conversation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,8 +105,7 @@ pub struct OpenAIMessage {
     pub tool_call_id: Option<String>,
     /// Name of the function (for function role messages)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-}
+    pub name: Option<String>}
 
 /// Message content (text or multimodal)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -121,8 +114,7 @@ pub enum OpenAIMessageContent {
     /// Simple text content
     Text(String),
     /// Multimodal content (text + images)
-    Parts(ArrayVec<OpenAIContentPart, 16>),
-}
+    Parts(ArrayVec<OpenAIContentPart, 16>)}
 
 /// Content part for multimodal messages
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -132,15 +124,12 @@ pub enum OpenAIContentPart {
     #[serde(rename = "text")]
     Text {
         /// Text content
-        text: String,
-    },
+        text: String},
     /// Image content
     #[serde(rename = "image_url")]
     ImageUrl {
         /// Image URL configuration
-        image_url: OpenAIImageUrl,
-    },
-}
+        image_url: OpenAIImageUrl}}
 
 /// Image URL configuration for vision
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -161,8 +150,7 @@ pub struct OpenAIToolCall {
     #[serde(rename = "type")]
     pub tool_type: String,
     /// Function call details
-    pub function: OpenAIFunction,
-}
+    pub function: OpenAIFunction}
 
 /// Function call details
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -170,8 +158,7 @@ pub struct OpenAIFunction {
     /// Name of the function
     pub name: String,
     /// Function arguments as JSON string
-    pub arguments: String,
-}
+    pub arguments: String}
 
 // =============================================================================
 // Streaming Response Types
@@ -195,8 +182,7 @@ pub struct OpenAIStreamChunk {
     pub usage: Option<OpenAIUsage>,
     /// System fingerprint for backend configuration
     #[serde(default)]
-    pub system_fingerprint: Option<String>,
-}
+    pub system_fingerprint: Option<String>}
 
 /// Choice in a streaming response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,8 +210,7 @@ pub struct OpenAIDelta {
     pub content: Option<String>,
     /// Tool calls delta
     #[serde(default)]
-    pub tool_calls: Option<ArrayVec<OpenAIToolCallDelta, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<OpenAIToolCallDelta, MAX_TOOLS>>}
 
 /// Tool call delta in streaming response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -240,8 +225,7 @@ pub struct OpenAIToolCallDelta {
     pub tool_type: Option<String>,
     /// Function delta
     #[serde(default)]
-    pub function: Option<OpenAIFunctionDelta>,
-}
+    pub function: Option<OpenAIFunctionDelta>}
 
 /// Function call delta
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -251,15 +235,13 @@ pub struct OpenAIFunctionDelta {
     pub name: Option<String>,
     /// Incremental arguments
     #[serde(default)]
-    pub arguments: Option<String>,
-}
+    pub arguments: Option<String>}
 
 /// Log probabilities information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAILogprobs {
     /// Content log probabilities
-    pub content: Option<ArrayVec<OpenAIContentLogprob, 256>>,
-}
+    pub content: Option<ArrayVec<OpenAIContentLogprob, 256>>}
 
 /// Content log probability
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,8 +253,7 @@ pub struct OpenAIContentLogprob {
     /// Raw bytes of the token
     pub bytes: Option<Vec<u8>>,
     /// Top alternative tokens with probabilities
-    pub top_logprobs: ArrayVec<OpenAITopLogprob, 16>,
-}
+    pub top_logprobs: ArrayVec<OpenAITopLogprob, 16>}
 
 /// Top alternative token with probability
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -282,8 +263,7 @@ pub struct OpenAITopLogprob {
     /// Log probability
     pub logprob: f64,
     /// Raw bytes of the token
-    pub bytes: Option<Vec<u8>>,
-}
+    pub bytes: Option<Vec<u8>>}
 
 /// Token usage statistics
 #[derive(Debug, Deserialize)]
@@ -299,22 +279,19 @@ pub struct OpenAIUsage {
     pub prompt_tokens_details: Option<OpenAIPromptTokensDetails>,
     /// Detailed completion token usage
     #[serde(default)]
-    pub completion_tokens_details: Option<OpenAICompletionTokensDetails>,
-}
+    pub completion_tokens_details: Option<OpenAICompletionTokensDetails>}
 
 /// Detailed prompt token usage
 #[derive(Debug, Deserialize)]
 pub struct OpenAIPromptTokensDetails {
     /// Cached tokens from previous requests
-    pub cached_tokens: u32,
-}
+    pub cached_tokens: u32}
 
 /// Detailed completion token usage
 #[derive(Debug, Deserialize)]
 pub struct OpenAICompletionTokensDetails {
     /// Tokens generated for reasoning
-    pub reasoning_tokens: u32,
-}
+    pub reasoning_tokens: u32}
 
 // =============================================================================
 // Embeddings API
@@ -335,8 +312,7 @@ pub struct OpenAIEmbeddingRequest {
     pub dimensions: Option<u32>,
     /// Unique identifier for the request
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user: Option<String>,
-}
+    pub user: Option<String>}
 
 /// Input for embedding generation
 #[derive(Debug, Serialize)]
@@ -345,8 +321,7 @@ pub enum OpenAIEmbeddingInput {
     /// Single text input
     Single(String),
     /// Multiple text inputs
-    Multiple(ArrayVec<String, MAX_EMBEDDINGS>),
-}
+    Multiple(ArrayVec<String, MAX_EMBEDDINGS>)}
 
 /// OpenAI embeddings response
 #[derive(Debug, Deserialize)]
@@ -358,8 +333,7 @@ pub struct OpenAIEmbeddingResponse {
     /// Model used for embeddings
     pub model: String,
     /// Token usage statistics
-    pub usage: OpenAIEmbeddingUsage,
-}
+    pub usage: OpenAIEmbeddingUsage}
 
 /// Individual embedding data
 #[derive(Debug, Deserialize)]
@@ -369,8 +343,7 @@ pub struct OpenAIEmbeddingData {
     /// Embedding vector
     pub embedding: Vec<f32>,
     /// Index in the input array
-    pub index: usize,
-}
+    pub index: usize}
 
 /// Token usage for embeddings
 #[derive(Debug, Deserialize)]
@@ -378,8 +351,7 @@ pub struct OpenAIEmbeddingUsage {
     /// Number of tokens in the input
     pub prompt_tokens: u32,
     /// Total tokens used (same as prompt_tokens)
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // =============================================================================
 // Moderation API
@@ -402,8 +374,7 @@ pub enum OpenAIModerationInput {
     /// Single text input
     Single(String),
     /// Multiple text inputs
-    Multiple(Vec<String>),
-}
+    Multiple(Vec<String>)}
 
 /// OpenAI moderation response
 #[derive(Debug, Deserialize)]
@@ -413,8 +384,7 @@ pub struct OpenAIModerationResponse {
     /// Model used for moderation
     pub model: String,
     /// Array of moderation results
-    pub results: Vec<OpenAIModerationResult>,
-}
+    pub results: Vec<OpenAIModerationResult>}
 
 /// Individual moderation result
 #[derive(Debug, Deserialize)]
@@ -424,8 +394,7 @@ pub struct OpenAIModerationResult {
     /// Category flags
     pub categories: OpenAIModerationCategories,
     /// Category confidence scores
-    pub category_scores: OpenAIModerationScores,
-}
+    pub category_scores: OpenAIModerationScores}
 
 /// Moderation category flags
 #[derive(Debug, Deserialize)]
@@ -458,8 +427,7 @@ pub struct OpenAIModerationCategories {
     #[serde(rename = "harassment/threatening")]
     pub harassment_threatening: bool,
     /// Violence
-    pub violence: bool,
-}
+    pub violence: bool}
 
 /// Moderation confidence scores (0.0 to 1.0)
 #[derive(Debug, Deserialize)]
@@ -492,8 +460,7 @@ pub struct OpenAIModerationScores {
     #[serde(rename = "harassment/threatening")]
     pub harassment_threatening: f64,
     /// Violence score
-    pub violence: f64,
-}
+    pub violence: f64}
 
 // =============================================================================
 // Audio API (Transcription, Translation, TTS)
@@ -541,8 +508,7 @@ pub struct OpenAITranscriptionResponse {
     pub words: Option<Vec<OpenAITranscriptionWord>>,
     /// Segment-level information (if verbose format)
     #[serde(default)]
-    pub segments: Option<Vec<OpenAITranscriptionSegment>>,
-}
+    pub segments: Option<Vec<OpenAITranscriptionSegment>>}
 
 /// Word-level transcription data
 #[derive(Debug, Deserialize)]
@@ -552,8 +518,7 @@ pub struct OpenAITranscriptionWord {
     /// Start time in seconds
     pub start: f64,
     /// End time in seconds
-    pub end: f64,
-}
+    pub end: f64}
 
 /// Segment-level transcription data
 #[derive(Debug, Deserialize)]
@@ -577,8 +542,7 @@ pub struct OpenAITranscriptionSegment {
     /// Compression ratio
     pub compression_ratio: f64,
     /// No speech probability
-    pub no_speech_prob: f64,
-}
+    pub no_speech_prob: f64}
 
 /// Audio translation request (same as transcription)
 pub type OpenAITranslationRequest = OpenAITranscriptionRequest;
@@ -600,8 +564,7 @@ pub struct OpenAITTSRequest {
     pub response_format: Option<String>, // "mp3", "opus", "aac", "flac", "wav", "pcm"
     /// Speech speed (0.25 to 4.0)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub speed: Option<f32>,
-}
+    pub speed: Option<f32>}
 
 // TTS response is raw audio bytes, no struct needed
 
@@ -628,8 +591,7 @@ impl Default for OpenAICompletionRequest {
             user: None,
             logit_bias: None,
             logprobs: None,
-            top_logprobs: None,
-        }
+            top_logprobs: None}
     }
 }
 
@@ -650,8 +612,7 @@ impl OpenAICompletionRequest {
             content: Some(OpenAIMessageContent::Text(content.to_string())),
             tool_calls: None,
             tool_call_id: None,
-            name: None,
-        };
+            name: None};
         
         self.messages.try_push(message).map_err(|_| "Maximum messages exceeded")
     }
@@ -685,8 +646,7 @@ impl Default for OpenAIEmbeddingRequest {
             input: OpenAIEmbeddingInput::Single(String::new()),
             encoding_format: None,
             dimensions: None,
-            user: None,
-        }
+            user: None}
     }
 }
 
@@ -716,8 +676,7 @@ impl Default for OpenAIModerationRequest {
     fn default() -> Self {
         Self {
             input: OpenAIModerationInput::Single(String::new()),
-            model: Some("text-moderation-latest".to_string()),
-        }
+            model: Some("text-moderation-latest".to_string())}
     }
 }
 
@@ -785,8 +744,7 @@ pub type OpenAIResponseFunction = OpenAIFunction;
 /// Error response structure for API errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIErrorResponse {
-    pub error: OpenAIError,
-}
+    pub error: OpenAIError}
 
 /// Error detail structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -795,8 +753,7 @@ pub struct OpenAIError {
     #[serde(rename = "type")]
     pub error_type: Option<String>,
     pub param: Option<String>,
-    pub code: Option<String>,
-}
+    pub code: Option<String>}
 
 /// Streaming chunk type (alias for existing)
 pub type OpenAIStreamingChunk = OpenAIStreamChunk;

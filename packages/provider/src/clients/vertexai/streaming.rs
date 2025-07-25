@@ -5,9 +5,8 @@
 
 use crate::clients::vertexai::{
     VertexAIError, VertexAIResult,
-    completion::{CompletionChunk, CompletionResponse, Candidate, UsageMetadata, Part, Content},
-};
-use arrayvec::{ArrayString, ArrayVec};
+    completion::{CompletionChunk, CompletionResponse, Candidate, UsageMetadata, Part, Content}};
+use arrayvec::{ArrayString};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use futures_util::{Stream, StreamExt};
 use serde_json;
@@ -47,8 +46,7 @@ pub struct VertexAIStream {
     events_processed: usize,
     
     /// Last error for recovery
-    last_error: Option<VertexAIError>,
-}
+    last_error: Option<VertexAIError>}
 
 /// Stream processing state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,8 +61,7 @@ enum StreamState {
     Error,
     
     /// Stream was terminated early
-    Terminated,
-}
+    Terminated}
 
 /// Server-Sent Event structure
 #[derive(Debug, Clone)]
@@ -79,8 +76,7 @@ pub struct SseEvent {
     pub id: Option<ArrayString<64>>,
     
     /// Retry interval
-    pub retry: Option<u32>,
-}
+    pub retry: Option<u32>}
 
 /// Stream event types for external consumption
 #[derive(Debug, Clone)]
@@ -94,20 +90,17 @@ pub enum StreamEvent {
         function_call: Option<Part>,
         
         /// Chunk metadata
-        metadata: Option<ChunkMetadata>,
-    },
+        metadata: Option<ChunkMetadata>},
     
     /// Usage statistics (final event)
     Usage {
         /// Token usage information
-        usage: UsageMetadata,
-    },
+        usage: UsageMetadata},
     
     /// Stream completed
     Completed {
         /// Final accumulated response
-        response: CompletionResponse,
-    },
+        response: CompletionResponse},
     
     /// Stream error
     Error {
@@ -115,9 +108,7 @@ pub enum StreamEvent {
         error: VertexAIError,
         
         /// Partial response if available
-        partial_response: Option<CompletionResponse>,
-    },
-}
+        partial_response: Option<CompletionResponse>}}
 
 /// Chunk metadata
 #[derive(Debug, Clone)]
@@ -132,8 +123,7 @@ pub struct ChunkMetadata {
     pub size: usize,
     
     /// Finish reason (if final chunk)
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 impl VertexAIStream {
     /// Create new streaming response handler
@@ -159,13 +149,10 @@ impl VertexAIStream {
                         event_type,
                         data: sse_event.data.unwrap_or_default(),
                         id,
-                        retry: sse_event.retry,
-                    })
+                        retry: sse_event.retry})
                 }
                 Err(e) => Err(VertexAIError::Streaming {
-                    source: format!("SSE parsing error: {}", e),
-                }),
-            }
+                    source: format!("SSE parsing error: {}", e)})}
         });
         
         Self {
@@ -175,8 +162,7 @@ impl VertexAIStream {
             state: StreamState::Active,
             accumulated_size: 0,
             events_processed: 0,
-            last_error: None,
-        }
+            last_error: None}
     }
     
     /// Get next stream event
@@ -199,8 +185,7 @@ impl VertexAIStream {
                         
                         Some(StreamEvent::Error {
                             error,
-                            partial_response: self.accumulated_response.clone(),
-                        })
+                            partial_response: self.accumulated_response.clone()})
                     }
                 }
             }
@@ -210,8 +195,7 @@ impl VertexAIStream {
                 
                 Some(StreamEvent::Error {
                     error,
-                    partial_response: self.accumulated_response.clone(),
-                })
+                    partial_response: self.accumulated_response.clone()})
             }
             None => {
                 self.state = StreamState::Completed;
@@ -221,10 +205,8 @@ impl VertexAIStream {
                 } else {
                     Some(StreamEvent::Error {
                         error: VertexAIError::Streaming {
-                            source: "Stream ended without final response".to_string(),
-                        },
-                        partial_response: None,
-                    })
+                            source: "Stream ended without final response".to_string()},
+                        partial_response: None})
                 }
             }
         }
@@ -235,8 +217,7 @@ impl VertexAIStream {
         // Check accumulated size limit
         if self.accumulated_size + event.data.len() > MAX_ACCUMULATED_SIZE {
             return Err(VertexAIError::Streaming {
-                source: format!("Response size limit {} exceeded", MAX_ACCUMULATED_SIZE),
-            });
+                source: format!("Response size limit {} exceeded", MAX_ACCUMULATED_SIZE)});
         }
         
         self.accumulated_size += event.data.len();
@@ -245,8 +226,7 @@ impl VertexAIStream {
             "data" => self.process_data_event(event.data),
             "error" => {
                 let error = VertexAIError::Streaming {
-                    source: format!("Server error: {}", event.data),
-                };
+                    source: format!("Server error: {}", event.data)};
                 Err(error)
             }
             "close" | "end" => {
@@ -271,8 +251,7 @@ impl VertexAIStream {
         let chunk: CompletionChunk = serde_json::from_str(&data)
             .map_err(|e| VertexAIError::SseParsing {
                 line: self.events_processed as u32,
-                details: format!("JSON parsing failed: {}", e),
-            })?;
+                details: format!("JSON parsing failed: {}", e)})?;
         
         // Process chunk and extract events
         self.process_completion_chunk(chunk)
@@ -285,14 +264,12 @@ impl VertexAIStream {
             self.accumulated_response = Some(CompletionResponse {
                 candidates: ArrayVec::new(),
                 prompt_feedback: None,
-                usage_metadata: None,
-            });
+                usage_metadata: None});
         }
         
         let accumulated = self.accumulated_response.as_mut().ok_or_else(|| {
             VertexAIError::Internal {
-                context: "Accumulated response is None after initialization".to_string(),
-            }
+                context: "Accumulated response is None after initialization".to_string()}
         })?;
         
         // Process usage metadata (typically in final chunk)
@@ -308,13 +285,11 @@ impl VertexAIStream {
                 accumulated.candidates.push(Candidate {
                     content: Content {
                         role: ArrayString::from("model").unwrap_or_default(),
-                        parts: ArrayVec::new(),
-                    },
+                        parts: ArrayVec::new()},
                     finish_reason: None,
                     safety_ratings: ArrayVec::new(),
                     citation_metadata: None,
-                    grounding_attributions: ArrayVec::new(),
-                });
+                    grounding_attributions: ArrayVec::new()});
             }
             
             let accumulated_candidate = &mut accumulated.candidates[idx];
@@ -336,9 +311,7 @@ impl VertexAIStream {
                                     .unwrap_or_default()
                                     .as_secs(),
                                 size: text.len(),
-                                finish_reason: candidate.finish_reason.as_ref().map(|r| format!("{:?}", r)),
-                            }),
-                        }));
+                                finish_reason: candidate.finish_reason.as_ref().map(|r| format!("{:?}", r))})}));
                     }
                     Part::FunctionCall { name, args } => {
                         // Handle function call
@@ -355,9 +328,7 @@ impl VertexAIStream {
                                     .unwrap_or_default()
                                     .as_secs(),
                                 size: name.len(),
-                                finish_reason: candidate.finish_reason.as_ref().map(|r| format!("{:?}", r)),
-                            }),
-                        }));
+                                finish_reason: candidate.finish_reason.as_ref().map(|r| format!("{:?}", r))})}));
                     }
                     _ => {
                         // Handle other part types
@@ -401,12 +372,10 @@ impl VertexAIStream {
             // Add new text part
             if candidate.content.parts.len() < candidate.content.parts.capacity() {
                 candidate.content.parts.push(Part::Text {
-                    text: new_text.to_string(),
-                });
+                    text: new_text.to_string()});
             } else {
                 return Err(VertexAIError::Streaming {
-                    source: "Too many content parts in response".to_string(),
-                });
+                    source: "Too many content parts in response".to_string()});
             }
         }
         
@@ -420,8 +389,7 @@ impl VertexAIStream {
             candidate.content.parts.push(function_call);
         } else {
             return Err(VertexAIError::Streaming {
-                source: "Too many content parts in response".to_string(),
-            });
+                source: "Too many content parts in response".to_string()});
         }
         
         Ok(())
@@ -443,8 +411,7 @@ impl VertexAIStream {
             events_processed: self.events_processed,
             accumulated_size: self.accumulated_size,
             state: self.state,
-            last_error: self.last_error.as_ref().map(|e| format!("{}", e)),
-        }
+            last_error: self.last_error.as_ref().map(|e| format!("{}", e))}
     }
     
     /// Get global streaming statistics
@@ -470,8 +437,7 @@ pub struct StreamStats {
     pub state: StreamState,
     
     /// Last error message (if any)
-    pub last_error: Option<String>,
-}
+    pub last_error: Option<String>}
 
 impl Stream for VertexAIStream {
     type Item = StreamEvent;
@@ -511,8 +477,7 @@ impl VertexAIStream {
         if event.data.len() > MAX_SSE_EVENT_SIZE {
             return Err(VertexAIError::SseParsing {
                 line: 0,
-                details: format!("Event size {} exceeds maximum {}", event.data.len(), MAX_SSE_EVENT_SIZE),
-            });
+                details: format!("Event size {} exceeds maximum {}", event.data.len(), MAX_SSE_EVENT_SIZE)});
         }
         
         // Validate JSON if it's a data event
@@ -520,8 +485,7 @@ impl VertexAIStream {
             serde_json::from_str::<serde_json::Value>(&event.data)
                 .map_err(|e| VertexAIError::SseParsing {
                     line: 0,
-                    details: format!("Invalid JSON in SSE data: {}", e),
-                })?;
+                    details: format!("Invalid JSON in SSE data: {}", e)})?;
         }
         
         Ok(())

@@ -19,16 +19,14 @@ use crate::transaction::Transaction;
 pub struct WorkspaceManager {
     root_path: PathBuf,
     config: WorkspaceConfig,
-    comment_patterns: CommentPatterns,
-}
+    comment_patterns: CommentPatterns}
 
 /// Pre-compiled regex patterns for commenting/uncommenting
 struct CommentPatterns {
     workspace_hack_member: Regex,
     workspace_hack_dep: Regex,
     commented_workspace_hack_member: Regex,
-    commented_workspace_hack_dep: Regex,
-}
+    commented_workspace_hack_dep: Regex}
 
 impl CommentPatterns {
     /// Create new comment patterns
@@ -49,8 +47,7 @@ impl CommentPatterns {
             commented_workspace_hack_dep: Regex::new(r#"^#\s*fluent-ai-workspace-hack\s*="#)
                 .map_err(|e| crate::error::WorkspaceError::InvalidStructure { 
                     reason: format!("Invalid regex pattern: {}", e) 
-                })?,
-        })
+                })?})
     }
 }
 
@@ -64,8 +61,7 @@ impl WorkspaceManager {
         Ok(Self {
             root_path,
             config,
-            comment_patterns: CommentPatterns::new()?,
-        })
+            comment_patterns: CommentPatterns::new()?})
     }
     
     /// Get workspace configuration
@@ -92,13 +88,11 @@ impl WorkspaceManager {
             
             match current.parent() {
                 Some(parent) => current = parent.to_path_buf(),
-                None => break,
-            }
+                None => break}
         }
         
         Err(WorkspaceError::RootNotFound {
-            path: start_path.to_path_buf(),
-        }.into())
+            path: start_path.to_path_buf()}.into())
     }
     
     /// Parse workspace Cargo.toml
@@ -208,8 +202,7 @@ impl WorkspaceManager {
         
         if !cargo_toml_path.exists() {
             return Err(WorkspaceError::InvalidStructure {
-                reason: "workspace Cargo.toml not found".to_string(),
-            }.into());
+                reason: "workspace Cargo.toml not found".to_string()}.into());
         }
         
         let content = fs::read_to_string(&cargo_toml_path)
@@ -218,8 +211,7 @@ impl WorkspaceManager {
         
         if !content.contains("[workspace]") {
             return Err(WorkspaceError::InvalidStructure {
-                reason: "not a workspace (missing [workspace] section)".to_string(),
-            }.into());
+                reason: "not a workspace (missing [workspace] section)".to_string()}.into());
         }
         
         // Validate packages exist
@@ -235,8 +227,7 @@ impl WorkspaceManager {
                                 let member_path = self.root_path.join(member_str);
                                 if !member_path.exists() {
                                     return Err(WorkspaceError::MemberNotFound {
-                                        member: member_str.to_string(),
-                                    }.into());
+                                        member: member_str.to_string()}.into());
                                 }
                             }
                         }
@@ -406,8 +397,7 @@ impl WorkspaceManager {
         for package in &self.config.packages {
             let relative_path = package.cargo_toml_path.strip_prefix(&self.root_path)
                 .map_err(|_| WorkspaceError::InvalidStructure {
-                    reason: format!("package path not in workspace: {:?}", package.cargo_toml_path),
-                })?;
+                    reason: format!("package path not in workspace: {:?}", package.cargo_toml_path)})?;
             
             let backup_path = backup_dir.join(relative_path);
             
@@ -429,8 +419,7 @@ impl WorkspaceManager {
     pub async fn restore_workspace_state(&self, backup_dir: &Path) -> Result<()> {
         if !backup_dir.exists() {
             return Err(WorkspaceError::InvalidStructure {
-                reason: "backup directory does not exist".to_string(),
-            }.into());
+                reason: "backup directory does not exist".to_string()}.into());
         }
         
         // Restore root Cargo.toml
@@ -451,8 +440,7 @@ impl WorkspaceManager {
         {
             let relative_path = entry.path().strip_prefix(backup_dir)
                 .map_err(|_| WorkspaceError::InvalidStructure {
-                    reason: format!("backup file not in backup dir: {:?}", entry.path()),
-                })?;
+                    reason: format!("backup file not in backup dir: {:?}", entry.path())})?;
             
             let target_path = self.root_path.join(relative_path);
             
@@ -469,8 +457,7 @@ impl WorkspaceManager {
 pub struct PackageDiscovery {
     root_path: PathBuf,
     packages_cache: SmallVec<[PackageInfo; 32]>,
-    cache_valid: bool,
-}
+    cache_valid: bool}
 
 impl PackageDiscovery {
     /// Create new package discovery
@@ -478,8 +465,7 @@ impl PackageDiscovery {
         Self {
             root_path,
             packages_cache: SmallVec::new(),
-            cache_valid: false,
-        }
+            cache_valid: false}
     }
     
     /// Discover all packages in workspace
@@ -528,8 +514,7 @@ impl PackageDiscovery {
                         name,
                         path,
                         cargo_toml_path,
-                        has_workspace_hack_dep,
-                    });
+                        has_workspace_hack_dep});
                 }
             }
         }

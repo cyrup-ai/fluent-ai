@@ -34,8 +34,7 @@ pub struct MarkdownTheme {
     pub heading: Color,
     pub link: Color,
     pub emphasis: Color,
-    pub strong: Color,
-}
+    pub strong: Color}
 
 impl Default for MarkdownTheme {
     fn default() -> Self {
@@ -49,8 +48,7 @@ impl Default for MarkdownTheme {
             heading: Color::Yellow,
             link: Color::Blue,
             emphasis: Color::Yellow,
-            strong: Color::Red,
-        }
+            strong: Color::Red}
     }
 }
 
@@ -60,8 +58,7 @@ pub struct MarkdownRenderer {
     theme: MarkdownTheme,
     // Pre-allocated buffers for performance
     line_buffer: Vec<Line<'static>>,
-    span_buffer: Vec<Span<'static>>,
-}
+    span_buffer: Vec<Span<'static>>}
 
 impl MarkdownRenderer {
     #[inline]
@@ -69,8 +66,7 @@ impl MarkdownRenderer {
         Self {
             theme,
             line_buffer: Vec::with_capacity(64),
-            span_buffer: Vec::with_capacity(16),
-        }
+            span_buffer: Vec::with_capacity(16)}
     }
 
     /// Create renderer with default theme
@@ -139,8 +135,7 @@ impl MarkdownRenderer {
                         level,
                         id: _,
                         classes: _,
-                        attrs: _,
-                    } => {
+                        attrs: _} => {
                         let heading_style = Style::default()
                             .fg(self.theme.heading)
                             .add_modifier(Modifier::BOLD);
@@ -153,8 +148,7 @@ impl MarkdownRenderer {
                             pulldown_cmark::HeadingLevel::H3 => "### ",
                             pulldown_cmark::HeadingLevel::H4 => "#### ",
                             pulldown_cmark::HeadingLevel::H5 => "##### ",
-                            pulldown_cmark::HeadingLevel::H6 => "###### ",
-                        };
+                            pulldown_cmark::HeadingLevel::H6 => "###### "};
                         self.span_buffer.push(Span::styled(prefix, heading_style));
                     }
                     Tag::CodeBlock(kind) => {
@@ -167,8 +161,7 @@ impl MarkdownRenderer {
                                     Some(lang.to_string())
                                 }
                             }
-                            pulldown_cmark::CodeBlockKind::Indented => None,
-                        };
+                            pulldown_cmark::CodeBlockKind::Indented => None};
                         code_block_content.clear();
                     }
                     // Inline code is handled by Event::Code, not Tag
@@ -184,8 +177,7 @@ impl MarkdownRenderer {
                         link_type: _,
                         dest_url,
                         title: _,
-                        id: _,
-                    } => {
+                        id: _} => {
                         current_style = Style::default()
                             .fg(self.theme.link)
                             .add_modifier(Modifier::UNDERLINED);
@@ -393,8 +385,7 @@ pub fn render_markdown_to_string(markdown: &str) -> String {
                         pulldown_cmark::HeadingLevel::H3 => 3,
                         pulldown_cmark::HeadingLevel::H4 => 4,
                         pulldown_cmark::HeadingLevel::H5 => 5,
-                        pulldown_cmark::HeadingLevel::H6 => 6,
-                    };
+                        pulldown_cmark::HeadingLevel::H6 => 6};
                     output.push_str(&"#".repeat(heading_level));
                     output.push(' ');
                 }
@@ -408,8 +399,7 @@ pub fn render_markdown_to_string(markdown: &str) -> String {
                                 lang.to_string()
                             }
                         }
-                        pulldown_cmark::CodeBlockKind::Indented => "text".to_string(),
-                    };
+                        pulldown_cmark::CodeBlockKind::Indented => "text".to_string()};
 
                     output.push_str(&format!(
                         "╭─ {}\n",

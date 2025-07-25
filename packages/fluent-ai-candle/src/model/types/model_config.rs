@@ -28,8 +28,7 @@ pub struct ModelConfig {
     /// Use flash attention
     pub use_flash_attn: bool,
     /// Quantization type
-    pub quantization: QuantizationType,
-}
+    pub quantization: QuantizationType}
 
 impl Default for ModelConfig {
     #[inline(always)]
@@ -44,8 +43,7 @@ impl Default for ModelConfig {
             rope_theta: 10000.0,
             rope_freq_base: 1.0,
             use_flash_attn: true,
-            quantization: QuantizationType::None,
-        }
+            quantization: QuantizationType::None}
     }
 }
 

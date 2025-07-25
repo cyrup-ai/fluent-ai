@@ -158,8 +158,7 @@ pub fn create_secure_ramdisk(config: &RamdiskConfig) -> Result<(), StorageError>
     let jail_config = crate::jail::JailConfig {
         allowed_dir: watched_dir,
         enable_landlock: config.landlock_enabled,
-        check_apparmor: config.check_apparmor,
-    };
+        check_apparmor: config.check_apparmor};
 
     if let Err(e) = crate::jail::init_jail(&jail_config) {
         warn!("Landlock failed: {}. Security may be reduced.", e);

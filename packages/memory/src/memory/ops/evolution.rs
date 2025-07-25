@@ -5,7 +5,7 @@
 //! including transitions, relationships between versions, and
 //! analysis of memory development patterns.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
@@ -31,8 +31,7 @@ pub enum TransitionType {
     /// Deletion (removing a version)
     Deletion,
     /// Custom transition
-    Custom(u8),
-}
+    Custom(u8)}
 
 impl TransitionType {
     /// Convert to string
@@ -43,8 +42,7 @@ impl TransitionType {
             TransitionType::Merging => "merging",
             TransitionType::Restoration => "restoration",
             TransitionType::Deletion => "deletion",
-            TransitionType::Custom(_) => "custom",
-        }
+            TransitionType::Custom(_) => "custom"}
     }
 }
 
@@ -71,8 +69,7 @@ impl std::str::FromStr for TransitionType {
             }
             _ => Err(Error::ValidationError(format!(
                 "Invalid transition type: {s}"
-            ))),
-        }
+            )))}
     }
 }
 
@@ -85,8 +82,7 @@ impl TransitionType {
             TransitionType::Merging => Value::Strand("merging".into()),
             TransitionType::Restoration => Value::Strand("restoration".into()),
             TransitionType::Deletion => Value::Strand("deletion".into()),
-            TransitionType::Custom(code) => Value::Strand(format!("custom{code}").into()),
-        }
+            TransitionType::Custom(code) => Value::Strand(format!("custom{code}").into())}
     }
 
     /// Create from value
@@ -123,8 +119,7 @@ pub struct EvolutionTransition {
     /// Transition metadata
     pub metadata: HashMap<String, Value>,
     /// Transition description
-    pub description: Option<String>,
-}
+    pub description: Option<String>}
 
 impl EvolutionTransition {
     /// Create a new evolution transition
@@ -157,8 +152,7 @@ impl EvolutionTransition {
             source_version_ids,
             target_version_ids,
             metadata: HashMap::new(),
-            description: None,
-        }
+            description: None}
     }
 
     /// Create a linear transition
@@ -375,8 +369,7 @@ impl EvolutionTransition {
             from_version_id: String::new(),
             to_version_id: String::new(),
             metadata,
-            description,
-        })
+            description})
     }
 }
 
@@ -388,8 +381,7 @@ pub struct EvolutionGraph {
     /// Transitions
     pub transitions: Vec<EvolutionTransition>,
     /// Version IDs
-    pub version_ids: HashSet<String>,
-}
+    pub version_ids: HashSet<String>}
 
 impl EvolutionGraph {
     /// Create a new evolution graph
@@ -397,8 +389,7 @@ impl EvolutionGraph {
         Self {
             memory_id: memory_id.to_string(),
             transitions: Vec::new(),
-            version_ids: HashSet::new(),
-        }
+            version_ids: HashSet::new()}
     }
 
     /// Add transition

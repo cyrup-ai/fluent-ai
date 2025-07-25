@@ -5,9 +5,8 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-use atomic_counter::{AtomicCounter, ConsistentCounter};
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -17,6 +16,9 @@ use super::types::{SearchResult, SearchQuery};
 use super::index::ChatSearchIndex;
 use super::tagging::ConversationTagger;
 use super::export::{HistoryExporter, ExportOptions};
+
+// Note: Clone implementation for ConsistentCounter removed due to orphan trait rules
+// Use AtomicU64 or custom wrapper types instead for cloneable counters
 
 /// Enhanced history manager combining all search functionality
 pub struct EnhancedHistoryManager {
@@ -29,8 +31,7 @@ pub struct EnhancedHistoryManager {
     /// Manager statistics
     pub stats: Arc<HistoryManagerStatistics>,
     /// Operation counters
-    pub operation_counter: ConsistentCounter,
-}
+    pub operation_counter: ConsistentCounter}
 
 /// Statistics for the history manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,8 +51,7 @@ pub struct HistoryManagerStatistics {
     /// Cache statistics
     pub cache_stats: HashMap<String, usize>,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 impl EnhancedHistoryManager {
     /// Create a new enhanced history manager
@@ -61,8 +61,7 @@ impl EnhancedHistoryManager {
             tagger: ConversationTagger::new(),
             exporter: HistoryExporter::new(),
             stats: Arc::new(HistoryManagerStatistics::default()),
-            operation_counter: ConsistentCounter::new(0),
-        }
+            operation_counter: ConsistentCounter::new(0)}
     }
 
     /// Add a message to the history (streaming)
@@ -88,12 +87,14 @@ impl EnhancedHistoryManager {
             let _ = sender.send(SearchResult {
                 id: Uuid::new_v4(),
                 message: SearchChatMessage {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().to_string(),
                     content: "Sample result".to_string(),
-                    role: crate::chat::message::MessageRole::User,
-                    timestamp: chrono::Utc::now(),
-                    metadata: HashMap::new(),
-                },
+                    role: crate::types::candle_chat::message::CandleMessageRole::User,
+                    name: None,
+                    metadata: None,
+                    timestamp: Some(chrono::Utc::now().timestamp_millis() as u64),
+                    relevance_score: 1.0,
+                    search_timestamp: chrono::Utc::now().timestamp_millis() as u64},
                 score: 1.0,
                 highlighted_content: None,
                 context: Vec::new(),
@@ -102,8 +103,7 @@ impl EnhancedHistoryManager {
                 conversation_id: None,
                 tags: Vec::new(),
                 result_timestamp: chrono::Utc::now(),
-                extra_data: HashMap::new(),
-            });
+                extra_data: HashMap::new()});
         })
     }
 
@@ -148,8 +148,7 @@ pub struct HistoryManagerBuilder {
     /// Whether to enable export functionality
     pub enable_export: bool,
     /// Custom configuration options
-    pub config: HashMap<String, String>,
-}
+    pub config: HashMap<String, String>}
 
 impl HistoryManagerBuilder {
     /// Create a new builder
@@ -158,8 +157,7 @@ impl HistoryManagerBuilder {
             enable_indexing: true,
             enable_tagging: true,
             enable_export: true,
-            config: HashMap::new(),
-        }
+            config: HashMap::new()}
     }
 
     /// Enable or disable search indexing
@@ -209,7 +207,52 @@ impl Default for HistoryManagerStatistics {
             avg_response_time_ms: 0.0,
             memory_usage_bytes: 0,
             cache_stats: HashMap::new(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
+    }
+}
+
+/// Type alias for compatibility with mod.rs imports
+pub type SearchManager = EnhancedHistoryManager;
+
+/// Search configuration for the search manager
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchConfiguration {
+    /// Maximum number of results to return
+    pub max_results: usize,
+    /// Whether to enable fuzzy search
+    pub enable_fuzzy_search: bool,
+    /// Minimum similarity score for fuzzy search
+    pub min_similarity_score: f32,
+    /// Whether to enable highlighting
+    pub enable_highlighting: bool,
+    /// Search timeout in milliseconds
+    pub search_timeout_ms: u64,
+    /// Whether to enable caching
+    pub enable_caching: bool,
+    /// Cache size limit
+    pub cache_size_limit: usize,
+    /// Whether to enable real-time indexing
+    pub enable_real_time_indexing: bool,
+    /// Batch size for bulk operations
+    pub batch_size: usize,
+    /// Whether to enable SIMD optimization
+    pub enable_simd: bool,
+    /// Index update frequency in seconds
+    pub index_update_frequency_secs: u64}
+
+impl Default for SearchConfiguration {
+    fn default() -> Self {
+        Self {
+            max_results: 100,
+            enable_fuzzy_search: false,
+            min_similarity_score: 0.7,
+            enable_highlighting: true,
+            search_timeout_ms: 5000,
+            enable_caching: true,
+            cache_size_limit: 10000,
+            enable_real_time_indexing: true,
+            batch_size: 1000,
+            enable_simd: true,
+            index_update_frequency_secs: 300}
     }
 }

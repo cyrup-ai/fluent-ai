@@ -15,7 +15,7 @@ use fluent_ai_domain::{AsyncStream, AsyncTask};
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::usage::Usage;
 
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use serde_json::{Value, Map};
 use std::pin::Pin;
@@ -47,8 +47,7 @@ pub struct CohereStream {
     recovery_context: ErrorRecoveryContext,
     
     /// Performance monitoring
-    performance_tracker: StreamPerformanceTracker,
-}
+    performance_tracker: StreamPerformanceTracker}
 
 /// SSE event structure for Cohere streaming
 #[derive(Debug, Clone)]
@@ -63,8 +62,7 @@ pub struct SseEvent {
     pub id: Option<ArrayString<64>>,
     
     /// Retry interval for connection failures
-    pub retry: Option<u32>,
-}
+    pub retry: Option<u32>}
 
 /// Token counting for usage statistics
 #[derive(Debug, Clone, Default)]
@@ -76,8 +74,7 @@ struct TokenCounter {
     output_tokens: u32,
     
     /// Total tokens (input + output)
-    total_tokens: u32,
-}
+    total_tokens: u32}
 
 /// Stream processing state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,8 +92,7 @@ enum StreamState {
     Errored,
     
     /// Stream was interrupted
-    Interrupted,
-}
+    Interrupted}
 
 /// Error recovery context for partial responses
 #[derive(Debug, Clone)]
@@ -111,8 +107,7 @@ struct ErrorRecoveryContext {
     recovery_possible: bool,
     
     /// Accumulated partial content
-    partial_content: ArrayString<1024>,
-}
+    partial_content: ArrayString<1024>}
 
 /// Performance tracking for stream processing
 #[derive(Debug, Clone)]
@@ -130,8 +125,7 @@ struct StreamPerformanceTracker {
     error_count: u32,
     
     /// Average processing time per event (microseconds)
-    avg_event_processing_time: u32,
-}
+    avg_event_processing_time: u32}
 
 impl CohereStream {
     /// Create new Cohere stream from HTTP response
@@ -153,8 +147,7 @@ impl CohereStream {
                                 event_type,
                                 data,
                                 id,
-                                retry,
-                            })
+                                retry})
                         }
                         Err(e) => Err(CohereError::streaming_error(
                             "chat",
@@ -162,8 +155,7 @@ impl CohereStream {
                             0,
                             None,
                             false,
-                        )),
-                    }
+                        ))}
                 })
         );
         
@@ -178,16 +170,13 @@ impl CohereStream {
                 last_successful_event: None,
                 error_count: 0,
                 recovery_possible: true,
-                partial_content: ArrayString::new(),
-            },
+                partial_content: ArrayString::new()},
             performance_tracker: StreamPerformanceTracker {
                 start_time: std::time::Instant::now(),
                 events_processed: 0,
                 bytes_processed: 0,
                 error_count: 0,
-                avg_event_processing_time: 0,
-            },
-        }
+                avg_event_processing_time: 0}}
     }
     
     /// Convert to AsyncStream<CompletionChunk>
@@ -214,8 +203,7 @@ impl CohereStream {
                                     finish_reason: Some("error".to_string()),
                                     usage: Some(stream.create_usage_stats()),
                                     model: Some(stream.model.to_string()),
-                                    delta: None,
-                                };
+                                    delta: None};
                                 chunk_stream = chunk_stream.chain(AsyncStream::from_single(error_chunk));
                                 break;
                             }
@@ -228,8 +216,7 @@ impl CohereStream {
                             finish_reason: Some("error".to_string()),
                             usage: Some(stream.create_usage_stats()),
                             model: Some(stream.model.to_string()),
-                            delta: None,
-                        };
+                            delta: None};
                         chunk_stream = chunk_stream.chain(AsyncStream::from_single(error_chunk));
                         break;
                     }
@@ -243,8 +230,7 @@ impl CohereStream {
                     finish_reason: Some("stop".to_string()),
                     usage: Some(stream.create_usage_stats()),
                     model: Some(stream.model.to_string()),
-                    delta: None,
-                };
+                    delta: None};
                 chunk_stream = chunk_stream.chain(AsyncStream::from_single(final_chunk));
             }
             
@@ -328,8 +314,7 @@ impl CohereStream {
                     finish_reason: None,
                     usage: None,
                     model: Some(self.model.to_string()),
-                    delta: Some(text_delta.to_string()),
-                }));
+                    delta: Some(text_delta.to_string())}));
             }
         }
         
@@ -348,8 +333,7 @@ impl CohereStream {
             finish_reason: None,
             usage: None,
             model: Some(self.model.to_string()),
-            delta: if text_delta.is_empty() { None } else { Some(text_delta.to_string()) },
-        }))
+            delta: if text_delta.is_empty() { None } else { Some(text_delta.to_string()) }}))
     }
     
     /// Process stream start event
@@ -374,8 +358,7 @@ impl CohereStream {
             finish_reason: None,
             usage: None,
             model: Some(self.model.to_string()),
-            delta: None,
-        }))
+            delta: None}))
     }
     
     /// Process stream end event with final statistics
@@ -410,8 +393,7 @@ impl CohereStream {
             finish_reason: Some(finish_reason),
             usage: Some(self.create_usage_stats()),
             model: Some(self.model.to_string()),
-            delta: None,
-        }))
+            delta: None}))
     }
     
     /// Process tool calls event (if model supports tools)
@@ -439,8 +421,7 @@ impl CohereStream {
             usage: None,
             model: Some(self.model.to_string()),
             delta: None,
-            // tool_calls: Some(converted_tool_calls),
-        }))
+            // tool_calls: Some(converted_tool_calls)}))
     }
     
     /// Process citation generation event (Cohere-specific)
@@ -465,8 +446,7 @@ impl CohereStream {
             usage: None,
             model: Some(self.model.to_string()),
             delta: None,
-            // citations: citations.map(|c| convert_citations(c)),
-        }))
+            // citations: citations.map(|c| convert_citations(c))}))
     }
     
     /// Process unknown event type with fallback handling
@@ -481,8 +461,7 @@ impl CohereStream {
                     finish_reason: None,
                     usage: None,
                     model: Some(self.model.to_string()),
-                    delta: Some(text.to_string()),
-                }));
+                    delta: Some(text.to_string())}));
             }
         }
         
@@ -516,8 +495,7 @@ impl CohereStream {
         Usage {
             prompt_tokens: self.token_count.input_tokens,
             completion_tokens: self.token_count.output_tokens,
-            total_tokens: self.token_count.total_tokens,
-        }
+            total_tokens: self.token_count.total_tokens}
     }
     
     /// Update average event processing time
@@ -551,8 +529,7 @@ impl CohereStream {
                 self.performance_tracker.bytes_processed / total_duration.as_secs() as usize
             } else {
                 0
-            },
-        }
+            }}
     }
 }
 
@@ -578,8 +555,7 @@ pub struct StreamPerformanceStats {
     pub events_per_second: u32,
     
     /// Bytes processed per second
-    pub bytes_per_second: usize,
-}
+    pub bytes_per_second: usize}
 
 /// Stream error recovery utilities
 impl ErrorRecoveryContext {
@@ -599,8 +575,7 @@ impl ErrorRecoveryContext {
             CohereError::JsonProcessing { recovery_possible, .. } => {
                 *recovery_possible && self.error_count < 5
             }
-            _ => false,
-        }
+            _ => false}
     }
     
     /// Get partial content for graceful degradation

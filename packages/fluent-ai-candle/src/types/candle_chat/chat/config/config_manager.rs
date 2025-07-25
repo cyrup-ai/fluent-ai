@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
-use super::config_core::ChatConfig;
+use super::core::ChatConfig;
 use super::validation::{
     ConfigurationValidator, PersonalityValidator, BehaviorValidator, 
     UIValidator, IntegrationValidator
@@ -40,8 +40,7 @@ pub struct ConfigurationChangeEvent {
     /// User who made the change
     pub user: Option<Arc<str>>,
     /// Human-readable description
-    pub description: Arc<str>,
-}
+    pub description: Arc<str>}
 
 /// Configuration change type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,8 +56,7 @@ pub enum ConfigurationChangeType {
     /// Import from file
     Import,
     /// Export to file
-    Export,
-}
+    Export}
 
 /// Configuration persistence settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,8 +74,7 @@ pub struct ConfigurationPersistence {
     /// Encryption enabled
     pub encryption: bool,
     /// File format (json, yaml, toml, binary)
-    pub format: Arc<str>,
-}
+    pub format: Arc<str>}
 
 impl Default for ConfigurationPersistence {
     fn default() -> Self {
@@ -88,8 +85,7 @@ impl Default for ConfigurationPersistence {
             backup_retention: 5,
             compression: true,
             encryption: false,
-            format: Arc::from("json"),
-        }
+            format: Arc::from("json")}
     }
 }
 
@@ -112,8 +108,7 @@ pub struct ConfigurationManager {
     /// Configuration version counter
     version_counter: Arc<AtomicUsize>,
     /// Configuration locks for atomic operations
-    configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>,
-}
+    configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>}
 
 impl Clone for ConfigurationManager {
     fn clone(&self) -> Self {
@@ -130,8 +125,7 @@ impl Clone for ConfigurationManager {
             change_counter: Arc::new(AtomicUsize::new(0)), // Fresh counter
             last_persistence: parking_lot::Mutex::new(Instant::now()),
             version_counter: Arc::new(AtomicUsize::new(1)), // Fresh version counter
-            configuration_locks: Arc::clone(&self.configuration_locks),
-        }
+            configuration_locks: Arc::clone(&self.configuration_locks)}
     }
 }
 
@@ -149,15 +143,14 @@ impl ConfigurationManager {
             change_counter: Arc::new(AtomicUsize::new(0)),
             last_persistence: parking_lot::Mutex::new(Instant::now()),
             version_counter: Arc::new(AtomicUsize::new(1)),
-            configuration_locks: Arc::new(RwLock::new(HashMap::new())),
-        };
+            configuration_locks: Arc::new(RwLock::new(HashMap::new()))};
 
         // Initialize default validators using shared references (zero-allocation, lock-free)
         let validation_rules = manager.validation_rules.clone();
         
-        // Use AsyncTask for streaming initialization (no async/await patterns)
-        use fluent_ai_async::AsyncTask;
-        let _init_task = AsyncTask::spawn(move || {
+        // Use spawn_task for streaming initialization (no async/await patterns)
+        use fluent_ai_async::spawn_task;
+        let _init_task = spawn_task(move || {
             // Synchronous initialization with atomic operations for blazing-fast performance
             if let Ok(mut rules) = validation_rules.try_write() {
                 rules.insert("personality".into(), Arc::new(PersonalityValidator));
@@ -200,8 +193,7 @@ impl ConfigurationManager {
                 old_value: Some(Arc::from(format!("{:?}", old_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
-                description: Arc::from("Configuration updated"),
-            };
+                description: Arc::from("Configuration updated")};
 
             // Queue change event
             manager.change_events.push(change_event.clone());
@@ -250,8 +242,7 @@ impl ConfigurationManager {
                 old_value: Some(Arc::from(format!("{:?}", current_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
-                description: Arc::from("Configuration section updated"),
-            };
+                description: Arc::from("Configuration section updated")};
 
             // Queue change event
             manager.change_events.push(change_event.clone());
@@ -298,8 +289,7 @@ impl ConfigurationManager {
 
         let serialized = match format {
             "json" => serde_json::to_string_pretty(&*config)?,
-            _ => return Err("Unsupported format".into()),
-        };
+            _ => return Err("Unsupported format".into())};
 
         let data = if compression {
             // Compression logic would go here
@@ -338,8 +328,7 @@ impl ConfigurationManager {
 
         let config: ChatConfig = match format {
             "json" => serde_json::from_str(&data)?,
-            _ => return Err("Unsupported format".into()),
-        };
+            _ => return Err("Unsupported format".into())};
 
         // Update configuration atomically
         self.config.store(Arc::new(config));
@@ -380,5 +369,4 @@ pub struct ConfigurationStatistics {
     /// Number of events in the queue
     pub event_queue_length: usize,
     /// Number of registered validators
-    pub validator_count: usize,
-}
+    pub validator_count: usize}

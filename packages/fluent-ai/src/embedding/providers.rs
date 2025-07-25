@@ -3,7 +3,6 @@
 //! Comprehensive embedding provider implementations with optimal performance,
 //! batch processing, and advanced features for production workloads.
 
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
@@ -18,8 +17,7 @@ use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::EmbeddingChunk;
 use crate::embedding::batch::EmbeddingBatch;
 use crate::embedding::cognitive_embedder::{
-    CoherenceTracker, Complex64, QuantumMemory, QuantumRouterTrait, SuperpositionState,
-};
+    CoherenceTracker, Complex64, QuantumMemory, QuantumRouterTrait, SuperpositionState};
 
 /// Embedding provider error types
 #[derive(Debug, Clone)]
@@ -29,8 +27,7 @@ pub enum EmbeddingError {
     AuthenticationError(String),
     RateLimitError(String),
     ModelError(String),
-    ProcessingError(String),
-}
+    ProcessingError(String)}
 
 impl std::fmt::Display for EmbeddingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -40,8 +37,7 @@ impl std::fmt::Display for EmbeddingError {
             EmbeddingError::AuthenticationError(msg) => write!(f, "Authentication error: {}", msg),
             EmbeddingError::RateLimitError(msg) => write!(f, "Rate limit error: {}", msg),
             EmbeddingError::ModelError(msg) => write!(f, "Model error: {}", msg),
-            EmbeddingError::ProcessingError(msg) => write!(f, "Processing error: {}", msg),
-        }
+            EmbeddingError::ProcessingError(msg) => write!(f, "Processing error: {}", msg)}
     }
 }
 
@@ -115,8 +111,7 @@ pub struct EmbeddingConfig {
     /// Truncate input if too long
     pub truncate: bool,
     /// Additional provider-specific parameters
-    pub additional_params: HashMap<String, Value>,
-}
+    pub additional_params: HashMap<String, Value>}
 
 impl Default for EmbeddingConfig {
     fn default() -> Self {
@@ -126,8 +121,7 @@ impl Default for EmbeddingConfig {
             normalize: true,
             batch_size: 100,
             truncate: true,
-            additional_params: HashMap::new(),
-        }
+            additional_params: HashMap::new()}
     }
 }
 
@@ -137,22 +131,19 @@ struct CohereEmbeddingResponse {
     embeddings: Vec<Vec<f32>>,
     texts: Vec<String>,
     #[serde(default)]
-    meta: Option<CohereResponseMeta>,
-}
+    meta: Option<CohereResponseMeta>}
 
 /// Cohere API response metadata
 #[derive(Debug, Clone, Deserialize)]
 struct CohereResponseMeta {
     #[serde(default)]
-    api_version: Option<CohereApiVersion>,
-}
+    api_version: Option<CohereApiVersion>}
 
 /// Cohere API version information
 #[derive(Debug, Clone, Deserialize)]
 struct CohereApiVersion {
     #[serde(default)]
-    version: Option<String>,
-}
+    version: Option<String>}
 
 /// OpenAI embedding provider with latest models
 #[derive(Clone)]
@@ -161,8 +152,7 @@ pub struct OpenAIEmbeddingProvider {
     api_key: String,
     base_url: String,
     default_model: String,
-    request_timeout: Duration,
-}
+    request_timeout: Duration}
 
 /// OpenAI embedding request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,16 +164,14 @@ pub struct OpenAIEmbeddingRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub encoding_format: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user: Option<String>,
-}
+    pub user: Option<String>}
 
 /// OpenAI embedding input types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum EmbeddingInput {
     Single(String),
-    Multiple(Vec<String>),
-}
+    Multiple(Vec<String>)}
 
 /// OpenAI embedding response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,23 +179,20 @@ pub struct OpenAIEmbeddingResponse {
     pub object: String,
     pub data: Vec<EmbeddingData>,
     pub model: String,
-    pub usage: EmbeddingUsage,
-}
+    pub usage: EmbeddingUsage}
 
 /// Individual embedding data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingData {
     pub object: String,
     pub index: usize,
-    pub embedding: Vec<f32>,
-}
+    pub embedding: Vec<f32>}
 
 /// Usage statistics for embeddings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingUsage {
     pub prompt_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 impl OpenAIEmbeddingProvider {
     /// Create new OpenAI embedding provider
@@ -228,8 +213,7 @@ impl OpenAIEmbeddingProvider {
             api_key: api_key.into(),
             base_url: "https://api.openai.com/v1".to_string(),
             default_model: "text-embedding-3-large".to_string(),
-            request_timeout: Duration::from_secs(120),
-        })
+            request_timeout: Duration::from_secs(120)})
     }
 
     /// Create provider with custom model
@@ -323,8 +307,7 @@ impl EnhancedEmbeddingModel for OpenAIEmbeddingProvider {
                 input: EmbeddingInput::Single(text),
                 dimensions: config.dimensions,
                 encoding_format: Some("float".to_string()),
-                user: None,
-            };
+                user: None};
 
             match provider.make_embedding_request(request).await {
                 Ok(response) => {
@@ -364,8 +347,7 @@ impl EnhancedEmbeddingModel for OpenAIEmbeddingProvider {
                 input: EmbeddingInput::Multiple(texts),
                 dimensions: config.dimensions,
                 encoding_format: Some("float".to_string()),
-                user: None,
-            };
+                user: None};
 
             match provider.make_embedding_request(request).await {
                 Ok(response) => {
@@ -441,8 +423,7 @@ impl EnhancedEmbeddingModel for OpenAIEmbeddingProvider {
                             let chunk = EmbeddingChunk {
                                 embeddings: embedding,
                                 index: batch_idx * batch_size + idx,
-                                metadata: HashMap::new(),
-                            };
+                                metadata: HashMap::new()};
 
                             if tx.try_send(chunk).is_err() {
                                 break;
@@ -462,8 +443,7 @@ impl EnhancedEmbeddingModel for OpenAIEmbeddingProvider {
                                 json!("Images not supported by OpenAI text embedding models"),
                             );
                             map
-                        },
-                    };
+                        }};
                     let _ = tx.try_send(error_chunk);
                 }
                 EmbeddingBatch::Mixed { .. } => {
@@ -478,8 +458,7 @@ impl EnhancedEmbeddingModel for OpenAIEmbeddingProvider {
                                 json!("Mixed batches not supported yet"),
                             );
                             map
-                        },
-                    };
+                        }};
                     let _ = tx.try_send(error_chunk);
                 }
             }
@@ -517,8 +496,7 @@ pub struct CohereEmbeddingProvider {
     api_key: String,
     base_url: String,
     default_model: String,
-    request_timeout: Duration,
-}
+    request_timeout: Duration}
 
 impl CohereEmbeddingProvider {
     /// Create new Cohere embedding provider
@@ -539,8 +517,7 @@ impl CohereEmbeddingProvider {
             api_key: api_key.into(),
             base_url: "https://api.cohere.ai/v1".to_string(),
             default_model: "embed-english-v3.0".to_string(),
-            request_timeout: Duration::from_secs(120),
-        })
+            request_timeout: Duration::from_secs(120)})
     }
 
     /// Create provider with custom model
@@ -584,8 +561,7 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                     .header("Authorization", &format!("Bearer {}", api_key))
                     .header("Content-Type", "application/json")
                     .with_body(body),
-                Err(e) => return ZeroOneOrMany::None,
-            };
+                Err(e) => return ZeroOneOrMany::None};
 
             match client.send(http_request).await {
                 Ok(response) => {
@@ -663,8 +639,7 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
             // Create HTTP3 request for batch processing
             let request_body = match serde_json::to_vec(&request) {
                 Ok(body) => body,
-                Err(_) => return ZeroOneOrMany::None,
-            };
+                Err(_) => return ZeroOneOrMany::None};
 
             let http_request = provider
                 .client
@@ -698,17 +673,14 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                                             .collect::<Vec<_>>();
                                         ZeroOneOrMany::from_vec(embeddings_zero_one_many)
                                     }
-                                    Err(_) => ZeroOneOrMany::None,
-                                }
+                                    Err(_) => ZeroOneOrMany::None}
                             }
-                            Err(_) => ZeroOneOrMany::None,
-                        }
+                            Err(_) => ZeroOneOrMany::None}
                     } else {
                         ZeroOneOrMany::None
                     }
                 }
-                Err(_) => ZeroOneOrMany::None,
-            }
+                Err(_) => ZeroOneOrMany::None}
         })
     }
 
@@ -747,8 +719,7 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                                 let chunk = EmbeddingChunk {
                                     embeddings: embedding_result,
                                     index: idx,
-                                    metadata: HashMap::new(),
-                                };
+                                    metadata: HashMap::new()};
 
                                 if tx.send(chunk).is_err() {
                                     break;
@@ -771,8 +742,7 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
             "embed-english-v3.0" => 1024,
             "embed-multilingual-v3.0" => 1024,
             "embed-english-v2.0" => 4096,
-            _ => 1024,
-        }
+            _ => 1024}
     }
 
     fn max_input_length(&self) -> usize {
@@ -815,8 +785,7 @@ pub struct CognitiveEmbeddingProvider {
     /// Performance metrics collector
     metrics: std::sync::Arc<crossbeam_utils::CachePadded<CognitiveMetrics>>,
     /// Configuration settings
-    config: CognitiveEmbeddingConfig,
-}
+    config: CognitiveEmbeddingConfig}
 
 /// Trait for cognitive memory manager integration - NO FUTURES!
 pub trait CognitiveMemoryManagerTrait: Send + Sync {
@@ -880,8 +849,7 @@ pub enum QueryIntent {
     Prediction,
     Reasoning,
     Exploration,
-    Creation,
-}
+    Creation}
 
 /// Multi-layer cache system for optimal performance
 pub struct MultiLayerCache {
@@ -894,8 +862,7 @@ pub struct MultiLayerCache {
     /// Cache configuration
     config: CacheConfig,
     /// Cache metrics
-    metrics: std::sync::Arc<crossbeam_utils::CachePadded<CacheMetrics>>,
-}
+    metrics: std::sync::Arc<crossbeam_utils::CachePadded<CacheMetrics>>}
 
 /// Cached embedding with metadata
 #[derive(Debug, Clone)]
@@ -909,8 +876,7 @@ pub struct CachedEmbedding {
     /// Quality score
     quality_score: f32,
     /// Quantum coherence score
-    coherence_score: f64,
-}
+    coherence_score: f64}
 
 /// Trait for SurrealDB storage integration - NO FUTURES!
 pub trait SurrealDBStorageTrait: Send + Sync {
@@ -992,8 +958,7 @@ pub struct CognitiveCircuitBreaker {
     failure_count: std::sync::atomic::AtomicU64,
     last_failure_time: std::sync::atomic::AtomicU64,
     success_count: std::sync::atomic::AtomicU64,
-    config: CircuitBreakerConfig,
-}
+    config: CircuitBreakerConfig}
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone)]
@@ -1001,8 +966,7 @@ pub struct CircuitBreakerConfig {
     pub failure_threshold: u64,
     pub success_threshold: u64,
     pub timeout_duration: std::time::Duration,
-    pub probe_interval: std::time::Duration,
-}
+    pub probe_interval: std::time::Duration}
 
 impl Default for CircuitBreakerConfig {
     fn default() -> Self {
@@ -1010,8 +974,7 @@ impl Default for CircuitBreakerConfig {
             failure_threshold: 5,
             success_threshold: 3,
             timeout_duration: std::time::Duration::from_secs(60),
-            probe_interval: std::time::Duration::from_secs(10),
-        }
+            probe_interval: std::time::Duration::from_secs(10)}
     }
 }
 
@@ -1033,8 +996,7 @@ pub struct CognitiveMetrics {
     /// Quantum enhancement operations
     pub quantum_enhancements: std::sync::atomic::AtomicU64,
     /// Average coherence score (scaled by 1000)
-    pub avg_coherence_score_scaled: std::sync::atomic::AtomicU64,
-}
+    pub avg_coherence_score_scaled: std::sync::atomic::AtomicU64}
 
 /// Cache performance metrics
 #[derive(Debug)]
@@ -1048,8 +1010,7 @@ pub struct CacheMetrics {
     /// Total cache misses
     pub total_misses: std::sync::atomic::AtomicU64,
     /// Cache evictions
-    pub evictions: std::sync::atomic::AtomicU64,
-}
+    pub evictions: std::sync::atomic::AtomicU64}
 
 /// Cache configuration
 #[derive(Debug, Clone)]
@@ -1063,8 +1024,7 @@ pub struct CacheConfig {
     /// Enable L3 vector similarity caching
     pub enable_l3_similarity: bool,
     /// Similarity threshold for L3 cache hits
-    pub l3_similarity_threshold: f32,
-}
+    pub l3_similarity_threshold: f32}
 
 impl Default for CacheConfig {
     fn default() -> Self {
@@ -1073,8 +1033,7 @@ impl Default for CacheConfig {
             l1_ttl: std::time::Duration::from_secs(3600),
             l2_ttl: std::time::Duration::from_secs(86400),
             enable_l3_similarity: true,
-            l3_similarity_threshold: 0.95,
-        }
+            l3_similarity_threshold: 0.95}
     }
 }
 
@@ -1094,8 +1053,7 @@ pub struct CognitiveEmbeddingConfig {
     /// Cache configuration
     pub cache_config: CacheConfig,
     /// Circuit breaker configuration
-    pub circuit_breaker_config: CircuitBreakerConfig,
-}
+    pub circuit_breaker_config: CircuitBreakerConfig}
 
 impl Default for CognitiveEmbeddingConfig {
     fn default() -> Self {
@@ -1106,8 +1064,7 @@ impl Default for CognitiveEmbeddingConfig {
             batch_size: 100,
             operation_timeout: std::time::Duration::from_secs(30),
             cache_config: CacheConfig::default(),
-            circuit_breaker_config: CircuitBreakerConfig::default(),
-        }
+            circuit_breaker_config: CircuitBreakerConfig::default()}
     }
 }
 
@@ -1119,8 +1076,7 @@ impl CognitiveCircuitBreaker {
             failure_count: std::sync::atomic::AtomicU64::new(0),
             last_failure_time: std::sync::atomic::AtomicU64::new(0),
             success_count: std::sync::atomic::AtomicU64::new(0),
-            config,
-        }
+            config}
     }
 
     /// Check if request is allowed
@@ -1154,8 +1110,7 @@ impl CognitiveCircuitBreaker {
                 }
             }
             2 => true, // HalfOpen
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Record successful operation
@@ -1214,9 +1169,7 @@ impl MultiLayerCache {
                 l2_hits: std::sync::atomic::AtomicU64::new(0),
                 l3_hits: std::sync::atomic::AtomicU64::new(0),
                 total_misses: std::sync::atomic::AtomicU64::new(0),
-                evictions: std::sync::atomic::AtomicU64::new(0),
-            })),
-        }
+                evictions: std::sync::atomic::AtomicU64::new(0)}))}
     }
 
     /// Get embedding from cache (tries L1 -> L2 -> L3)
@@ -1251,8 +1204,7 @@ impl MultiLayerCache {
                 timestamp: std::time::Instant::now(),
                 hit_count: std::sync::atomic::AtomicU64::new(1),
                 quality_score: 1.0,
-                coherence_score: 1.0,
-            };
+                coherence_score: 1.0};
             self.l1_cache.insert(key.to_string(), cached_embedding);
 
             return Ok(Some(embedding));
@@ -1280,8 +1232,7 @@ impl MultiLayerCache {
             timestamp: std::time::Instant::now(),
             hit_count: std::sync::atomic::AtomicU64::new(0),
             quality_score,
-            coherence_score,
-        };
+            coherence_score};
 
         // Enforce L1 cache size limit
         if self.l1_cache.len() >= self.config.l1_size {
@@ -1404,8 +1355,7 @@ impl CognitiveEmbeddingProvider {
             cache_misses: std::sync::atomic::AtomicU64::new(0),
             total_processing_time_us: std::sync::atomic::AtomicU64::new(0),
             quantum_enhancements: std::sync::atomic::AtomicU64::new(0),
-            avg_coherence_score_scaled: std::sync::atomic::AtomicU64::new(0),
-        }));
+            avg_coherence_score_scaled: std::sync::atomic::AtomicU64::new(0)}));
 
         Ok(Self {
             cognitive_manager,
@@ -1414,8 +1364,7 @@ impl CognitiveEmbeddingProvider {
             cache_system,
             circuit_breaker,
             metrics,
-            config,
-        })
+            config})
     }
 
     /// Generate embedding with full cognitive enhancement pipeline
@@ -1603,8 +1552,7 @@ impl CognitiveEmbeddingProvider {
                 .await
             {
                 Ok(embeddings) => embeddings,
-                Err(e) => return Err(format!("Batch cognitive embedding failed: {}", e)),
-            };
+                Err(e) => return Err(format!("Batch cognitive embedding failed: {}", e))};
 
             // Apply quantum enhancement to each embedding if enabled
             let enhanced_embeddings = if self.config.enable_quantum_enhancement {
@@ -1783,8 +1731,7 @@ impl CognitiveEmbeddingProvider {
             } else {
                 0.0
             },
-            average_coherence_score: avg_coherence_scaled as f64 / 1000.0,
-        }
+            average_coherence_score: avg_coherence_scaled as f64 / 1000.0}
     }
 }
 
@@ -1798,8 +1745,7 @@ pub struct CognitivePerformanceMetrics {
     pub cache_hit_rate: f64,
     pub average_processing_time_us: u64,
     pub quantum_enhancement_rate: f64,
-    pub average_coherence_score: f64,
-}
+    pub average_coherence_score: f64}
 
 impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
     fn embed_text(
@@ -1814,8 +1760,7 @@ impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
         crate::async_task::spawn_async(async move {
             match provider.generate_cognitive_embedding(&text).await {
                 Ok(embedding) => ZeroOneOrMany::from_vec(embedding),
-                Err(_) => ZeroOneOrMany::None,
-            }
+                Err(_) => ZeroOneOrMany::None}
         })
     }
 
@@ -1841,8 +1786,7 @@ impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
                         .collect();
                     ZeroOneOrMany::from_vec(embeddings_zero_one_many)
                 }
-                Err(_) => ZeroOneOrMany::None,
-            }
+                Err(_) => ZeroOneOrMany::None}
         })
     }
 
@@ -1893,8 +1837,7 @@ impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
                                                 json!(provider.config.enable_quantum_enhancement),
                                             );
                                             map
-                                        },
-                                    };
+                                        }};
 
                                     if tx.try_send(chunk).is_err() {
                                         break;
@@ -1909,8 +1852,7 @@ impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
                                         let mut map = HashMap::new();
                                         map.insert("error".to_string(), json!(e));
                                         map
-                                    },
-                                };
+                                    }};
                                 let _ = tx.try_send(error_chunk);
                                 break;
                             }
@@ -1928,8 +1870,7 @@ impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
                                 json!("Image embeddings not supported by cognitive provider"),
                             );
                             map
-                        },
-                    };
+                        }};
                     let _ = tx.try_send(error_chunk);
                 }
                 EmbeddingBatch::Mixed { .. } => {
@@ -1943,8 +1884,7 @@ impl EnhancedEmbeddingModel for CognitiveEmbeddingProvider {
                                 json!("Mixed batches not supported yet"),
                             );
                             map
-                        },
-                    };
+                        }};
                     let _ = tx.try_send(error_chunk);
                 }
             }

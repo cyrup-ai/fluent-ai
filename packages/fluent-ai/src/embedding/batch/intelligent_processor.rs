@@ -50,8 +50,7 @@ pub struct BatchRequest {
     /// Request timestamp
     pub timestamp: Instant,
     /// Quality requirements
-    pub quality_requirements: QualityRequirements,
-}
+    pub quality_requirements: QualityRequirements}
 
 /// Quality requirements for embedding generation
 #[derive(Debug, Clone)]
@@ -63,8 +62,7 @@ pub struct QualityRequirements {
     /// Whether to use cache
     pub use_cache: bool,
     /// Consistency requirements
-    pub consistency_level: ConsistencyLevel,
-}
+    pub consistency_level: ConsistencyLevel}
 
 impl Default for QualityRequirements {
     fn default() -> Self {
@@ -72,8 +70,7 @@ impl Default for QualityRequirements {
             min_quality: 0.8,
             max_latency_ms: 5000,
             use_cache: true,
-            consistency_level: ConsistencyLevel::Eventually,
-        }
+            consistency_level: ConsistencyLevel::Eventually}
     }
 }
 
@@ -102,8 +99,7 @@ pub struct BatchResponse {
     /// Model used
     pub model: ArrayString<64>,
     /// Error if any
-    pub error: Option<BatchProcessingError>,
-}
+    pub error: Option<BatchProcessingError>}
 
 /// Provider-specific batch capabilities
 #[derive(Debug, Clone)]
@@ -121,8 +117,7 @@ pub struct ProviderCapabilities {
     /// Memory-based batch sizing (for local providers)
     pub memory_based_sizing: bool,
     /// Supports parallel processing
-    pub supports_parallel: bool,
-}
+    pub supports_parallel: bool}
 
 impl ProviderCapabilities {
     /// OpenAI provider capabilities
@@ -134,8 +129,7 @@ impl ProviderCapabilities {
             avg_latency_per_item_ms: 10.0,
             rate_limit_rps: 3000.0,
             memory_based_sizing: false,
-            supports_parallel: true,
-        }
+            supports_parallel: true}
     }
 
     /// Local Candle provider capabilities
@@ -177,8 +171,7 @@ pub struct BatchSizeOptimizer {
     /// Provider capabilities
     capabilities: ProviderCapabilities,
     /// Performance history for trend analysis
-    performance_history: Arc<RwLock<VecDeque<PerformanceDataPoint>>>,
-}
+    performance_history: Arc<RwLock<VecDeque<PerformanceDataPoint>>>}
 
 #[derive(Debug, Clone)]
 struct PerformanceDataPoint {
@@ -186,8 +179,7 @@ struct PerformanceDataPoint {
     latency_per_item_ms: f64,
     throughput_items_per_sec: f64,
     timestamp: Instant,
-    memory_usage_mb: f32,
-}
+    memory_usage_mb: f32}
 
 impl BatchSizeOptimizer {
     pub fn new(capabilities: ProviderCapabilities) -> Self {
@@ -202,8 +194,7 @@ impl BatchSizeOptimizer {
                 (1000.0 / capabilities.avg_latency_per_item_ms) as u64
             )),
             capabilities,
-            performance_history: Arc::new(RwLock::new(VecDeque::with_capacity(100))),
-        }
+            performance_history: Arc::new(RwLock::new(VecDeque::with_capacity(100)))}
     }
 
     /// Update optimizer with batch performance data
@@ -237,8 +228,7 @@ impl BatchSizeOptimizer {
             latency_per_item_ms,
             throughput_items_per_sec: throughput,
             timestamp: Instant::now(),
-            memory_usage_mb,
-        };
+            memory_usage_mb};
 
         {
             let mut history = self.performance_history.write().await;
@@ -312,16 +302,14 @@ pub struct WorkStealingQueue {
     /// Stealers for work stealing
     stealers: Vec<Stealer<BatchTask>>,
     /// Work notification
-    work_notify: Arc<Notify>,
-}
+    work_notify: Arc<Notify>}
 
 #[derive(Debug)]
 pub struct BatchTask {
     pub requests: SmallVec<[BatchRequest; MAX_REQUEST_BATCH_SIZE]>,
     pub response_sender: broadcast::Sender<BatchResponse>,
     pub provider: ArrayString<32>,
-    pub priority: TaskPriority,
-}
+    pub priority: TaskPriority}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
@@ -329,8 +317,7 @@ pub enum TaskPriority {
     Low = 0,
     Normal = 1,
     High = 2,
-    Critical = 3,
-}
+    Critical = 3}
 
 impl WorkStealingQueue {
     pub fn new(num_workers: usize) -> Self {
@@ -348,8 +335,7 @@ impl WorkStealingQueue {
             injector,
             workers,
             stealers,
-            work_notify: Arc::new(Notify::new()),
-        }
+            work_notify: Arc::new(Notify::new())}
     }
 
     /// Push task to queue
@@ -407,16 +393,14 @@ pub struct BatchMetrics {
     /// Failed batches
     pub failed_batches: CachePadded<AtomicU64>,
     /// Provider-specific metrics
-    pub provider_metrics: DashMap<ArrayString<32>, ProviderMetrics>,
-}
+    pub provider_metrics: DashMap<ArrayString<32>, ProviderMetrics>}
 
 #[derive(Debug)]
 pub struct ProviderMetrics {
     pub requests: CachePadded<AtomicU64>,
     pub latency_sum_ms: CachePadded<AtomicU64>,
     pub errors: CachePadded<AtomicU64>,
-    pub optimal_batch_size: CachePadded<AtomicUsize>,
-}
+    pub optimal_batch_size: CachePadded<AtomicUsize>}
 
 impl BatchMetrics {
     pub fn new() -> Self {
@@ -427,8 +411,7 @@ impl BatchMetrics {
             queue_depth: CachePadded::new(AtomicUsize::new(0)),
             backpressure_events: CachePadded::new(AtomicU64::new(0)),
             failed_batches: CachePadded::new(AtomicU64::new(0)),
-            provider_metrics: DashMap::new(),
-        }
+            provider_metrics: DashMap::new()}
     }
 
     /// Record batch completion
@@ -455,8 +438,7 @@ impl BatchMetrics {
                 requests: CachePadded::new(AtomicU64::new(0)),
                 latency_sum_ms: CachePadded::new(AtomicU64::new(0)),
                 errors: CachePadded::new(AtomicU64::new(0)),
-                optimal_batch_size: CachePadded::new(AtomicUsize::new(32)),
-            })
+                optimal_batch_size: CachePadded::new(AtomicUsize::new(32))})
             .requests.fetch_add(request_count as u64, Ordering::Relaxed);
 
         if let Some(provider_metrics) = self.provider_metrics.get(&provider_key) {
@@ -507,8 +489,7 @@ pub enum BatchProcessingError {
     QualityNotMet { actual: f32, required: f32 },
     
     #[error("Circuit breaker open")]
-    CircuitBreakerOpen,
-}
+    CircuitBreakerOpen}
 
 /// Intelligent batch processor with adaptive optimization
 #[derive(Debug)]
@@ -526,8 +507,7 @@ pub struct IntelligentBatchProcessor {
     /// Active processors
     active_processors: AtomicUsize,
     /// Shutdown signal
-    shutdown_signal: Arc<AtomicBool>,
-}
+    shutdown_signal: Arc<AtomicBool>}
 
 impl IntelligentBatchProcessor {
     /// Create new intelligent batch processor
@@ -539,8 +519,7 @@ impl IntelligentBatchProcessor {
             backpressure_semaphore: Arc::new(Semaphore::new(max_concurrent_batches)),
             provider_capabilities: DashMap::new(),
             active_processors: AtomicUsize::new(0),
-            shutdown_signal: Arc::new(AtomicBool::new(false)),
-        }
+            shutdown_signal: Arc::new(AtomicBool::new(false))}
     }
 
     /// Register provider capabilities
@@ -636,8 +615,7 @@ impl IntelligentBatchProcessor {
                         quality_score: 0.9,
                         provider: provider.clone(),
                         model: ArrayString::from("placeholder").unwrap_or_default(),
-                        error: None,
-                    };
+                        error: None};
 
                     let _ = task.response_sender.send(response);
                 }
@@ -662,8 +640,7 @@ impl IntelligentBatchProcessor {
                         quality_score: 0.0,
                         provider: provider.clone(),
                         model: ArrayString::from("error").unwrap_or_default(),
-                        error: Some(error.clone()),
-                    };
+                        error: Some(error.clone())};
 
                     let _ = task.response_sender.send(response);
                 }
@@ -684,8 +661,7 @@ impl IntelligentBatchProcessor {
         if requests.len() > MAX_REQUEST_BATCH_SIZE {
             return Err(BatchProcessingError::BatchSizeExceeded {
                 actual: requests.len(),
-                max: MAX_REQUEST_BATCH_SIZE,
-            });
+                max: MAX_REQUEST_BATCH_SIZE});
         }
 
         // SIMD-style validation in chunks
@@ -738,8 +714,7 @@ impl IntelligentBatchProcessor {
             requests,
             response_sender,
             provider: provider_key,
-            priority,
-        };
+            priority};
 
         // Submit to work queue
         self.work_queue.push(task);

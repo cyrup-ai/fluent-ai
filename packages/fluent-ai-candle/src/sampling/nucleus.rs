@@ -177,8 +177,7 @@ impl TopPProcessor {
 /// Builder for nucleus sampling processor with validation and presets
 #[derive(Debug, Clone)]
 pub struct TopPBuilder {
-    top_p: Option<f32>,
-}
+    top_p: Option<f32>}
 
 impl TopPBuilder {
     /// Create a new top-p builder

@@ -4,7 +4,7 @@
 //! automatic token refresh, and hot-swappable credential management.
 
 use crate::clients::vertexai::{VertexAIError, VertexAIResult, VertexString, ProjectId};
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use arc_swap::{ArcSwap, Guard};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use base64;
@@ -67,8 +67,7 @@ pub struct ServiceAccountConfig {
     pub auth_provider_x509_cert_url: ArrayString<256>,
     
     /// Client certificate URL
-    pub client_x509_cert_url: ArrayString<256>,
-}
+    pub client_x509_cert_url: ArrayString<256>}
 
 /// JWT claims for Google service account authentication
 #[derive(Debug, Clone, Serialize)]
@@ -86,8 +85,7 @@ struct JwtClaims {
     exp: u64,
     
     /// Issued at time (Unix timestamp)
-    iat: u64,
-}
+    iat: u64}
 
 /// OAuth2 access token with metadata
 #[derive(Debug, Clone)]
@@ -105,8 +103,7 @@ pub struct AccessToken {
     pub scope: ArrayString<128>,
     
     /// Token generation timestamp
-    pub generated_at: u64,
-}
+    pub generated_at: u64}
 
 /// Token manager with zero allocation token generation and caching
 #[derive(Debug)]
@@ -121,8 +118,7 @@ pub struct TokenManager {
     http_client: fluent_ai_http3::HttpClient,
     
     /// Token refresh margin in seconds
-    refresh_margin_seconds: u64,
-}
+    refresh_margin_seconds: u64}
 
 impl Default for TokenManager {
     fn default() -> Self {
@@ -142,15 +138,13 @@ impl TokenManager {
     pub fn new(config: ServiceAccountConfig) -> VertexAIResult<Self> {
         let http_client = fluent_ai_http3::HttpClient::new()
             .map_err(|e| VertexAIError::Auth {
-                message: format!("Failed to create HTTP client: {}", e),
-            })?;
+                message: format!("Failed to create HTTP client: {}", e)})?;
         
         Ok(Self {
             config: Some(config),
             current_token: ArcSwap::from_pointee(None),
             http_client,
-            refresh_margin_seconds: 300,
-        })
+            refresh_margin_seconds: 300})
     }
     
     /// Get current valid access token, refreshing if necessary
@@ -162,8 +156,7 @@ impl TokenManager {
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_err(|e| VertexAIError::Internal {
-                    context: format!("System time error: {}", e),
-                })?
+                    context: format!("System time error: {}", e)})?
                 .as_secs();
             
             if token.expires_at > now + self.refresh_margin_seconds {
@@ -179,8 +172,7 @@ impl TokenManager {
     /// Refresh access token using service account credentials
     async fn refresh_token(&self) -> VertexAIResult<()> {
         let config = self.config.as_ref().ok_or_else(|| VertexAIError::Auth {
-            message: "Service account configuration not set".to_string(),
-        })?;
+            message: "Service account configuration not set".to_string()})?;
         
         TOKEN_REFRESHES.inc();
         
@@ -205,15 +197,13 @@ impl TokenManager {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| VertexAIError::Internal {
-                context: format!("System time error: {}", e),
-            })?
+                context: format!("System time error: {}", e)})?
             .as_secs();
         
         // Build JWT header
         let header = JwtHeader {
             alg: JWT_ALGORITHM,
-            typ: "JWT",
-        };
+            typ: "JWT"};
         
         // Build JWT claims
         let claims = JwtClaims {
@@ -221,19 +211,16 @@ impl TokenManager {
             scope: VERTEXAI_OAUTH_SCOPE,
             aud: GOOGLE_TOKEN_ENDPOINT,
             exp: now + 3600, // 1 hour expiration
-            iat: now,
-        };
+            iat: now};
         
         // Encode header and claims
         let header_json = serde_json::to_vec(&header)
             .map_err(|e| VertexAIError::JwtToken {
-                details: format!("Header serialization failed: {}", e),
-            })?;
+                details: format!("Header serialization failed: {}", e)})?;
         
         let claims_json = serde_json::to_vec(&claims)
             .map_err(|e| VertexAIError::JwtToken {
-                details: format!("Claims serialization failed: {}", e),
-            })?;
+                details: format!("Claims serialization failed: {}", e)})?;
         
         // Base64 encode header and claims
         let header_b64 = self.base64url_encode(&header_json)?;
@@ -250,8 +237,7 @@ impl TokenManager {
         let jwt = format!("{}.{}", signing_input, signature_b64);
         
         ArrayString::from(&jwt).map_err(|_| VertexAIError::JwtToken {
-            details: "JWT token too large".to_string(),
-        })
+            details: "JWT token too large".to_string()})
     }
     
     /// Build OAuth2 token request body
@@ -278,8 +264,7 @@ impl TokenManager {
             AUTH_FAILURES.inc();
             return Err(VertexAIError::TokenRefresh {
                 error_code: response.status().as_u16().to_string(),
-                description: format!("Token request failed with status {}", response.status()),
-            });
+                description: format!("Token request failed with status {}", response.status())});
         }
         
         let response_body = response.text().await
@@ -293,14 +278,12 @@ impl TokenManager {
         let token_response: TokenResponse = serde_json::from_str(response_body)
             .map_err(|e| VertexAIError::Json {
                 operation: "token_response_parsing".to_string(),
-                details: format!("Failed to parse token response: {}", e),
-            })?;
+                details: format!("Failed to parse token response: {}", e)})?;
         
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|e| VertexAIError::Internal {
-                context: format!("System time error: {}", e),
-            })?
+                context: format!("System time error: {}", e)})?
             .as_secs();
         
         let expires_at = now + token_response.expires_in;
@@ -308,22 +291,18 @@ impl TokenManager {
         Ok(AccessToken {
             token: ArrayString::from(&token_response.access_token).map_err(|_| {
                 VertexAIError::JwtToken {
-                    details: "Access token too large".to_string(),
-                }
+                    details: "Access token too large".to_string()}
             })?,
             token_type: ArrayString::from(&token_response.token_type).map_err(|_| {
                 VertexAIError::JwtToken {
-                    details: "Token type too large".to_string(),
-                }
+                    details: "Token type too large".to_string()}
             })?,
             expires_at,
             scope: ArrayString::from(token_response.scope.as_deref().unwrap_or("")).map_err(|_| {
                 VertexAIError::JwtToken {
-                    details: "Scope too large".to_string(),
-                }
+                    details: "Scope too large".to_string()}
             })?,
-            generated_at: now,
-        })
+            generated_at: now})
     }
     
     /// Base64URL encode data
@@ -347,14 +326,12 @@ impl TokenManager {
         let key_bytes = base64::engine::general_purpose::STANDARD
             .decode(&pem_contents)
             .map_err(|e| VertexAIError::JwtToken {
-                details: format!("Failed to decode private key: {}", e),
-            })?;
+                details: format!("Failed to decode private key: {}", e)})?;
         
         // Create RSA key pair from PKCS#8 DER
         let key_pair = signature::RsaKeyPair::from_pkcs8(&key_bytes)
             .map_err(|e| VertexAIError::JwtToken {
-                details: format!("Failed to parse RSA private key: {}", e),
-            })?;
+                details: format!("Failed to parse RSA private key: {}", e)})?;
         
         // Create system random number generator
         let rng = rand::SystemRandom::new();
@@ -364,8 +341,7 @@ impl TokenManager {
         key_pair
             .sign(&signature::RSA_PKCS1_SHA256, &rng, data.as_bytes(), &mut signature)
             .map_err(|e| VertexAIError::JwtToken {
-                details: format!("RSA signing failed: {}", e),
-            })?;
+                details: format!("RSA signing failed: {}", e)})?;
         
         Ok(signature)
     }
@@ -375,8 +351,7 @@ impl TokenManager {
 #[derive(Debug, Serialize)]
 struct JwtHeader {
     alg: &'static str,
-    typ: &'static str,
-}
+    typ: &'static str}
 
 /// OAuth2 token response structure
 #[derive(Debug, Deserialize)]
@@ -384,13 +359,11 @@ struct TokenResponse {
     access_token: String,
     token_type: String,
     expires_in: u64,
-    scope: Option<String>,
-}
+    scope: Option<String>}
 
 /// VertexAI authentication manager
 pub struct VertexAIAuth {
-    token_manager: Arc<TokenManager>,
-}
+    token_manager: Arc<TokenManager>}
 
 impl VertexAIAuth {
     /// Create new authentication manager with service account
@@ -408,12 +381,10 @@ impl VertexAIAuth {
         if let Some(token) = token_guard.as_ref() {
             let header = format!("Bearer {}", token.token.as_str());
             ArrayString::from(&header).map_err(|_| VertexAIError::Auth {
-                message: "Authorization header too large".to_string(),
-            })
+                message: "Authorization header too large".to_string()})
         } else {
             Err(VertexAIError::Auth {
-                message: "No valid access token available".to_string(),
-            })
+                message: "No valid access token available".to_string()})
         }
     }
     
@@ -437,8 +408,7 @@ impl ServiceAccountConfig {
     pub fn from_json(json_data: &str) -> VertexAIResult<Self> {
         let mut config: ServiceAccountConfig = serde_json::from_str(json_data)
             .map_err(|e| VertexAIError::ServiceAccount {
-                reason: format!("JSON parsing failed: {}", e),
-            })?;
+                reason: format!("JSON parsing failed: {}", e)})?;
         
         // Extract and validate private key
         // This is a simplified implementation - in production, properly parse PEM format
@@ -452,20 +422,17 @@ impl ServiceAccountConfig {
     fn validate(&self) -> VertexAIResult<()> {
         if self.project_id.is_empty() {
             return Err(VertexAIError::ServiceAccount {
-                reason: "Project ID cannot be empty".to_string(),
-            });
+                reason: "Project ID cannot be empty".to_string()});
         }
         
         if self.client_email.is_empty() {
             return Err(VertexAIError::ServiceAccount {
-                reason: "Client email cannot be empty".to_string(),
-            });
+                reason: "Client email cannot be empty".to_string()});
         }
         
         if self.private_key.is_empty() {
             return Err(VertexAIError::ServiceAccount {
-                reason: "Private key cannot be empty".to_string(),
-            });
+                reason: "Private key cannot be empty".to_string()});
         }
         
         Ok(())

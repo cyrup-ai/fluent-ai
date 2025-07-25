@@ -2,8 +2,6 @@
 //!
 //! All audio construction logic and builder patterns.
 
-use std::collections::HashMap;
-
 use fluent_ai_domain::AsyncStream;
 use fluent_ai_domain::audio::{Audio, AudioMediaType, ContentFormat};
 use fluent_ai_domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
@@ -11,8 +9,7 @@ use fluent_ai_domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
 pub struct AudioBuilder {
     data: String,
     format: Option<ContentFormat>,
-    media_type: Option<AudioMediaType>,
-}
+    media_type: Option<AudioMediaType>}
 
 pub struct AudioBuilderWithHandler {
     data: String,
@@ -20,8 +17,7 @@ pub struct AudioBuilderWithHandler {
     media_type: Option<AudioMediaType>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
     chunk_handler:
-        Option<Box<dyn FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static>>,
-}
+        Option<Box<dyn FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static>>}
 
 impl Audio {
     // Semantic entry points
@@ -29,24 +25,21 @@ impl Audio {
         AudioBuilder {
             data: data.into(),
             format: Some(ContentFormat::Base64),
-            media_type: None,
-        }
+            media_type: None}
     }
 
     pub fn from_url(url: impl Into<String>) -> AudioBuilder {
         AudioBuilder {
             data: url.into(),
             format: Some(ContentFormat::Url),
-            media_type: None,
-        }
+            media_type: None}
     }
 
     pub fn from_raw(data: impl Into<String>) -> AudioBuilder {
         AudioBuilder {
             data: data.into(),
             format: Some(ContentFormat::Raw),
-            media_type: None,
-        }
+            media_type: None}
     }
 }
 
@@ -81,8 +74,7 @@ impl AudioBuilder {
             format: self.format,
             media_type: self.media_type,
             error_handler: Box::new(handler),
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_chunk<F>(self, handler: F) -> AudioBuilderWithHandler
@@ -94,8 +86,7 @@ impl AudioBuilder {
             format: self.format,
             media_type: self.media_type,
             error_handler: Box::new(|e| eprintln!("Audio chunk error: {}", e)),
-            chunk_handler: Some(Box::new(handler)),
-        }
+            chunk_handler: Some(Box::new(handler))}
     }
 }
 
@@ -109,8 +100,7 @@ impl AudioBuilderWithHandler {
             start_time_ms: Some(0),
             end_time_ms: Some(1000),
             is_final: true,
-            metadata: HashMap::new(),
-        };
+            metadata: HashMap::new()};
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
@@ -126,8 +116,7 @@ impl AudioBuilderWithHandler {
             AudioMediaType::WAV => AudioFormat::WAV,
             AudioMediaType::OGG => AudioFormat::OGG,
             AudioMediaType::M4A => AudioFormat::M4A,
-            AudioMediaType::FLAC => AudioFormat::FLAC,
-        };
+            AudioMediaType::FLAC => AudioFormat::FLAC};
 
         let chunk = SpeechChunk {
             audio_data,
@@ -135,8 +124,7 @@ impl AudioBuilderWithHandler {
             duration_ms: Some(1000),
             sample_rate: Some(44100),
             is_final: true,
-            metadata: HashMap::new(),
-        };
+            metadata: HashMap::new()};
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);

@@ -28,10 +28,10 @@ impl CsvExporter {
         for result in results {
             csv.push_str(&format!(
                 "{},{},{},{}",
-                Self::escape_csv_field(&result.message.message.id),
-                Self::escape_csv_field(&result.message.message.user.as_deref().unwrap_or("")),
-                Self::escape_csv_field(&result.message.message.content),
-                result.message.message.timestamp.map(|t| t.to_string()).unwrap_or_default()
+                Self::escape_csv_field(&result.message.id),
+                Self::escape_csv_field(&result.message.role.to_string()),
+                Self::escape_csv_field(&result.message.content),
+                result.message.timestamp.map(|t| t.to_string()).unwrap_or_default()
             ));
             
             if options.include_scores {
@@ -39,7 +39,7 @@ impl CsvExporter {
             }
             
             if options.include_timestamps {
-                if let Some(timestamp) = result.message.message.timestamp {
+                if let Some(timestamp) = result.message.timestamp {
                     csv.push_str(&format!(",{}", timestamp));
                 } else {
                     csv.push_str(",");
@@ -57,9 +57,7 @@ impl CsvExporter {
         let mut csv = String::new();
         csv.push_str("metric,value\n");
         csv.push_str(&format!("total_queries,{}\n", stats.total_queries));
-        csv.push_str(&format!("total_results,{}\n", stats.total_results));
         csv.push_str(&format!("average_query_time,{}\n", stats.average_query_time));
-        csv.push_str(&format!("cache_hit_rate,{}\n", stats.cache_hit_rate));
         csv
     }
 

@@ -24,8 +24,7 @@ pub enum ValidationError {
     InvalidRange {
         parameter: String,
         expected: String,
-        actual: String,
-    },
+        actual: String},
 
     /// Model not found
     #[error("Model not found: {model_name}")]
@@ -41,8 +40,7 @@ pub enum ValidationError {
 
     /// Resource limit exceeded
     #[error("Resource limit exceeded: {resource} ({limit})")]
-    ResourceLimitExceeded { resource: String, limit: String },
-}
+    ResourceLimitExceeded { resource: String, limit: String }}
 
 /// Result type for validation operations
 pub type ValidationResult<T> = Result<T, ValidationError>;
@@ -94,15 +92,12 @@ pub enum ModelError {
     #[error("Model not found: {provider}::{name}")]
     ModelNotFound {
         provider: std::borrow::Cow<'static, str>,
-        name: std::borrow::Cow<'static, str>,
-    },
+        name: std::borrow::Cow<'static, str>},
 
     /// Model already exists error
     #[error("Model already exists: {name}")]
     ModelAlreadyExists {
-        name: std::borrow::Cow<'static, str>,
-    },
-}
+        name: std::borrow::Cow<'static, str>}}
 
 /// Result type for model operations
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -111,23 +106,20 @@ impl ValidationError {
     /// Create a new invalid config error
     pub fn invalid_config(message: impl Into<String>) -> Self {
         Self::InvalidConfig {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new missing field error
     pub fn missing_field(field: impl Into<String>) -> Self {
         Self::MissingField {
-            field: field.into(),
-        }
+            field: field.into()}
     }
 
     /// Create a new invalid parameter error
     pub fn invalid_parameter(parameter: impl Into<String>, value: impl Into<String>) -> Self {
         Self::InvalidParameter {
             parameter: parameter.into(),
-            value: value.into(),
-        }
+            value: value.into()}
     }
 }
 
@@ -135,21 +127,18 @@ impl ModelError {
     /// Create a new Candle error
     pub fn candle(message: impl Into<String>) -> Self {
         Self::Candle {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 
     /// Create a new initialization error
     pub fn initialization_failed(reason: impl Into<String>) -> Self {
         Self::InitializationFailed {
-            reason: reason.into(),
-        }
+            reason: reason.into()}
     }
 
     /// Create a new inference error
     pub fn inference(message: impl Into<String>) -> Self {
         Self::Inference {
-            message: message.into(),
-        }
+            message: message.into()}
     }
 }

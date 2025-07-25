@@ -19,8 +19,7 @@ impl CommandParser {
                 arg if !arg.starts_with('-') => command = Some(arg.to_string()),
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string(),
-                    });
+                        parameter: args[i].to_string()});
                 }
             }
             i += 1;
@@ -42,8 +41,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "keep-last".to_string(),
-                        });
+                            parameter: "keep-last".to_string()});
                     }
                     keep_last =
                         Some(
@@ -51,14 +49,12 @@ impl CommandParser {
                                 .parse()
                                 .map_err(|_| ParseError::InvalidParameterValue {
                                     parameter: "keep-last".to_string(),
-                                    value: args[i].to_string(),
-                                })?,
+                                    value: args[i].to_string()})?,
                         );
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string(),
-                    });
+                        parameter: args[i].to_string()});
                 }
             }
             i += 1;
@@ -80,8 +76,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "format".to_string(),
-                        });
+                            parameter: "format".to_string()});
                     }
                     format = Some(args[i].to_string());
                 }
@@ -89,30 +84,26 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "output".to_string(),
-                        });
+                            parameter: "output".to_string()});
                     }
                     output = Some(args[i].to_string());
                 }
                 "--include-metadata" => include_metadata = true,
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string(),
-                    });
+                        parameter: args[i].to_string()});
                 }
             }
             i += 1;
         }
 
         let format = format.ok_or_else(|| ParseError::MissingParameter {
-            parameter: "format".to_string(),
-        })?;
+            parameter: "format".to_string()})?;
 
         Ok(ImmutableChatCommand::Export {
             format,
             output,
-            include_metadata,
-        })
+            include_metadata})
     }
 
     /// Parse config command
@@ -134,14 +125,12 @@ impl CommandParser {
                         value = Some(arg.to_string());
                     } else {
                         return Err(ParseError::InvalidSyntax {
-                            detail: "Too many positional arguments".to_string(),
-                        });
+                            detail: "Too many positional arguments".to_string()});
                     }
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string(),
-                    });
+                        parameter: args[i].to_string()});
                 }
             }
             i += 1;
@@ -151,8 +140,7 @@ impl CommandParser {
             key,
             value,
             show,
-            reset,
-        })
+            reset})
     }
 
     /// Parse search command
@@ -169,8 +157,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "scope".to_string(),
-                        });
+                            parameter: "scope".to_string()});
                     }
                     scope = match args[i] {
                         "all" => SearchScope::All,
@@ -179,8 +166,7 @@ impl CommandParser {
                         _ => {
                             return Err(ParseError::InvalidParameterValue {
                                 parameter: "scope".to_string(),
-                                value: args[i].to_string(),
-                            });
+                                value: args[i].to_string()});
                         }
                     };
                 }
@@ -188,8 +174,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "limit".to_string(),
-                        });
+                            parameter: "limit".to_string()});
                     }
                     limit =
                         Some(
@@ -197,8 +182,7 @@ impl CommandParser {
                                 .parse()
                                 .map_err(|_| ParseError::InvalidParameterValue {
                                     parameter: "limit".to_string(),
-                                    value: args[i].to_string(),
-                                })?,
+                                    value: args[i].to_string()})?,
                         );
                 }
                 "--include-context" => include_context = true,
@@ -207,28 +191,24 @@ impl CommandParser {
                         query = Some(arg.to_string());
                     } else {
                         return Err(ParseError::InvalidSyntax {
-                            detail: "Multiple query arguments not supported".to_string(),
-                        });
+                            detail: "Multiple query arguments not supported".to_string()});
                     }
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string(),
-                    });
+                        parameter: args[i].to_string()});
                 }
             }
             i += 1;
         }
 
         let query = query.ok_or_else(|| ParseError::MissingParameter {
-            parameter: "query".to_string(),
-        })?;
+            parameter: "query".to_string()})?;
 
         Ok(ImmutableChatCommand::Search {
             query,
             scope,
             limit,
-            include_context,
-        })
+            include_context})
     }
 }

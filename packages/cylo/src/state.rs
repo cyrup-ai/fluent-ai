@@ -21,9 +21,7 @@ pub enum PipelineEvent {
         /// The programming language to use
         language: String,
         /// The code to execute
-        code: String,
-    },
-}
+        code: String}}
 
 /// States of the execution flow state machine
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -39,8 +37,7 @@ pub enum State {
     /// All operations completed successfully
     Done,
     /// An error occurred during execution
-    Failed,
-}
+    Failed}
 
 /// Manages the execution flow of code in a secure ramdisk environment
 pub struct ExecutionFlow {
@@ -59,8 +56,7 @@ pub struct ExecutionFlow {
     /// Number of tasks completed
     tasks_completed: usize,
     /// Firecracker VM instance if using VM isolation
-    firecracker_vm: Option<FirecrackerVM>,
-}
+    firecracker_vm: Option<FirecrackerVM>}
 
 impl Default for ExecutionFlow {
     fn default() -> Self {
@@ -72,8 +68,7 @@ impl Default for ExecutionFlow {
             execution_pool: None,
             tasks_submitted: 0,
             tasks_completed: 0,
-            firecracker_vm: None,
-        }
+            firecracker_vm: None}
     }
 }
 
@@ -88,8 +83,7 @@ impl ExecutionFlow {
             execution_pool: None,
             tasks_submitted: 0,
             tasks_completed: 0,
-            firecracker_vm: None,
-        }
+            firecracker_vm: None}
     }
 
     /// Returns the current state of the execution flow
@@ -187,8 +181,7 @@ impl ExecutionFlow {
                 if let Some((language, code)) = &self.pending_execution {
                     self.handle(&PipelineEvent::ExecuteCode {
                         language: language.clone(),
-                        code: code.clone(),
-                    });
+                        code: code.clone()});
                 }
             }
             (State::PrepareExecution, PipelineEvent::ExecuteCode { language, code }) => {
@@ -198,8 +191,7 @@ impl ExecutionFlow {
                     let task = ExecutionTask {
                         id: self.tasks_submitted,
                         language: language.clone(),
-                        code: code.clone(),
-                    };
+                        code: code.clone()};
 
                     match pool.submit_task(task) {
                         Ok(_) => {

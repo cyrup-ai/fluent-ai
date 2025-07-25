@@ -8,8 +8,7 @@ use serde_json::json;
 
 use super::{
     Client,
-    client::together_ai_api_types::{ApiErrorResponse, ApiResponse},
-};
+    client::together_ai_api_types::{ApiErrorResponse, ApiResponse}};
 use crate::embeddings::{self, EmbeddingError};
 
 // ================================================================
@@ -30,8 +29,7 @@ pub const UAE_LARGE_V1: &str = "WhereIsAI/UAE-Large-V1";
 pub struct EmbeddingResponse {
     pub model: String,
     pub object: String,
-    pub data: Vec<EmbeddingData>,
-}
+    pub data: Vec<EmbeddingData>}
 
 impl From<ApiErrorResponse> for EmbeddingError {
     fn from(err: ApiErrorResponse) -> Self {
@@ -43,8 +41,7 @@ impl From<ApiResponse<EmbeddingResponse>> for Result<EmbeddingResponse, Embeddin
     fn from(value: ApiResponse<EmbeddingResponse>) -> Self {
         match value {
             ApiResponse::Ok(response) => Ok(response),
-            ApiResponse::Error(err) => Err(EmbeddingError::ProviderError(err.message())),
-        }
+            ApiResponse::Error(err) => Err(EmbeddingError::ProviderError(err.message()))}
     }
 }
 
@@ -52,14 +49,12 @@ impl From<ApiResponse<EmbeddingResponse>> for Result<EmbeddingResponse, Embeddin
 pub struct EmbeddingData {
     pub object: String,
     pub embedding: Vec<f64>,
-    pub index: usize,
-}
+    pub index: usize}
 
 #[derive(Debug, Deserialize)]
 pub struct Usage {
     pub prompt_tokens: usize,
-    pub total_tokens: usize,
-}
+    pub total_tokens: usize}
 
 impl embeddings::EmbeddingModel for EmbeddingModel {
     const MAX_DOCUMENTS: usize = 1024; // This might need to be adjusted based on Together AI's actual limit
@@ -77,8 +72,7 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
 
         let request_body = serde_json::to_vec(&json!({
             "model": self.model,
-            "input": documents,
-        }))
+            "input": documents}))
         .map_err(|e| {
             EmbeddingError::ProviderError(format!("Failed to serialize request: {}", e))
         })?;
@@ -112,12 +106,10 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
                         .zip(documents.into_iter())
                         .map(|(embedding, document)| embeddings::Embedding {
                             document,
-                            vec: embedding.embedding,
-                        })
+                            vec: embedding.embedding})
                         .collect())
                 }
-                ApiResponse::Error(err) => Err(EmbeddingError::ProviderError(err.message())),
-            }
+                ApiResponse::Error(err) => Err(EmbeddingError::ProviderError(err.message()))}
         } else {
             let error_body = String::from_utf8_lossy(response.body());
             Err(EmbeddingError::ProviderError(error_body.to_string()))
@@ -130,7 +122,6 @@ impl EmbeddingModel {
         Self {
             client,
             model: model.to_string(),
-            ndims,
-        }
+            ndims}
     }
 }

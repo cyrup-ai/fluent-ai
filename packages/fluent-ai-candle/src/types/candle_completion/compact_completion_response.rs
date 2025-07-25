@@ -20,8 +20,7 @@ pub struct CompactCompletionResponse {
     /// The reason the completion finished
     pub finish_reason: Arc<str>,
     /// Response time in milliseconds
-    pub response_time_ms: u64,
-}
+    pub response_time_ms: u64}
 
 /// Builder for `CompactCompletionResponse` with ergonomic defaults
 pub struct CompactCompletionResponseBuilder {
@@ -30,8 +29,7 @@ pub struct CompactCompletionResponseBuilder {
     provider: Option<Arc<str>>,
     tokens_used: u32,
     finish_reason: Option<Arc<str>>,
-    response_time_ms: u64,
-}
+    response_time_ms: u64}
 
 impl CompactCompletionResponse {
     /// Create a new builder for a compact completion response
@@ -105,8 +103,7 @@ impl CompactCompletionResponseBuilder {
             provider: None,
             tokens_used: 0,
             finish_reason: None,
-            response_time_ms: 0,
-        }
+            response_time_ms: 0}
     }
 
     /// Set the content with elegant ergonomic API
@@ -157,8 +154,7 @@ impl CompactCompletionResponseBuilder {
         let content = self.content.unwrap_or_else(|| Arc::from(""));
         let model = match self.model {
             Some(m) => m,
-            None => Arc::from("unknown"),
-        };
+            None => Arc::from("unknown")};
         let provider = self.provider.unwrap_or_else(|| Arc::from("unknown"));
         let finish_reason = self.finish_reason.unwrap_or_else(|| Arc::from("stop"));
 
@@ -168,8 +164,7 @@ impl CompactCompletionResponseBuilder {
             provider,
             tokens_used: self.tokens_used,
             finish_reason,
-            response_time_ms: self.response_time_ms,
-        };
+            response_time_ms: self.response_time_ms};
 
         Ok(AsyncStream::with_channel(move |sender| {
             if sender.send(response).is_err() {
@@ -192,8 +187,7 @@ impl CompactCompletionResponseBuilder {
             provider,
             tokens_used: self.tokens_used,
             finish_reason,
-            response_time_ms: self.response_time_ms,
-        }
+            response_time_ms: self.response_time_ms}
     }
 }
 

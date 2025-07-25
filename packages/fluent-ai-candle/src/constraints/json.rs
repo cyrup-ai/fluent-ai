@@ -13,8 +13,7 @@ const MAX_DEPTH: usize = 32;
 #[derive(Clone, Copy, PartialEq)]
 pub enum JsonStackItem {
     Object,
-    Array,
-}
+    Array}
 
 /// Number parsing states for JSON number validation
 #[derive(Clone, Copy, PartialEq)]
@@ -26,8 +25,7 @@ pub enum NumberState {
     AfterFracDigit,
     AfterE,
     AfterExpSign,
-    AfterExpDigit,
-}
+    AfterExpDigit}
 
 /// Current JSON parsing state
 #[derive(Clone, Copy, PartialEq)]
@@ -41,24 +39,21 @@ pub enum JsonCurrentState {
     InNumber { state: NumberState },
     InTrue { pos: u8 },
     InFalse { pos: u8 },
-    InNull { pos: u8 },
-}
+    InNull { pos: u8 }}
 
 /// Zero-allocation JSON parsing state
 #[derive(Clone)]
 pub struct JsonState {
     stack: [Option<JsonStackItem>; MAX_DEPTH],
     stack_len: usize,
-    current: JsonCurrentState,
-}
+    current: JsonCurrentState}
 
 impl JsonState {
     fn new() -> Self {
         JsonState {
             stack: [None; MAX_DEPTH],
             stack_len: 0,
-            current: JsonCurrentState::ExpectValue,
-        }
+            current: JsonCurrentState::ExpectValue}
     }
 
     fn push_stack(&mut self, item: JsonStackItem) -> CandleResult<()> {
@@ -91,8 +86,7 @@ impl JsonState {
         self.current = match self.top_stack() {
             Some(JsonStackItem::Object) => JsonCurrentState::ExpectCommaOrObjectEnd,
             Some(JsonStackItem::Array) => JsonCurrentState::ExpectCommaOrArrayEnd,
-            None => JsonCurrentState::ExpectValue,
-        };
+            None => JsonCurrentState::ExpectValue};
     }
 
     fn is_end_char(b: u8) -> bool {
@@ -114,20 +108,16 @@ impl JsonState {
                 }
                 b'"' => S::InString {
                     escape: false,
-                    is_key: false,
-                },
+                    is_key: false},
                 b't' => S::InTrue { pos: 1 },
                 b'f' => S::InFalse { pos: 1 },
                 b'n' => S::InNull { pos: 1 },
                 b'-' => S::InNumber {
-                    state: NumberState::AfterSign,
-                },
+                    state: NumberState::AfterSign},
                 b'0' => S::InNumber {
-                    state: NumberState::AfterZero,
-                },
+                    state: NumberState::AfterZero},
                 b'1'..=b'9' => S::InNumber {
-                    state: NumberState::AfterIntDigit,
-                },
+                    state: NumberState::AfterIntDigit},
                 _ => {
                     return Err(crate::error::CandleError::ValidationError(format!(
                         "Invalid value start: {}",
@@ -139,8 +129,7 @@ impl JsonState {
                 b' ' | b'\t' | b'\n' | b'\r' => S::ExpectObjectKey,
                 b'"' => S::InString {
                     escape: false,
-                    is_key: true,
-                },
+                    is_key: true},
                 b'}' => {
                     if self.pop_stack() != Some(JsonStackItem::Object) {
                         return Err(crate::error::CandleError::ProcessingError(
@@ -150,8 +139,7 @@ impl JsonState {
                     match self.top_stack() {
                         Some(JsonStackItem::Object) => S::ExpectCommaOrObjectEnd,
                         Some(JsonStackItem::Array) => S::ExpectCommaOrArrayEnd,
-                        None => S::ExpectValue,
-                    }
+                        None => S::ExpectValue}
                 }
                 _ => {
                     return Err(crate::error::CandleError::ValidationError(format!(
@@ -182,8 +170,7 @@ impl JsonState {
                     match self.top_stack() {
                         Some(JsonStackItem::Object) => S::ExpectCommaOrObjectEnd,
                         Some(JsonStackItem::Array) => S::ExpectCommaOrArrayEnd,
-                        None => S::ExpectValue,
-                    }
+                        None => S::ExpectValue}
                 }
                 _ => {
                     return Err(crate::error::CandleError::ValidationError(format!(
@@ -204,8 +191,7 @@ impl JsonState {
                     match self.top_stack() {
                         Some(JsonStackItem::Object) => S::ExpectCommaOrObjectEnd,
                         Some(JsonStackItem::Array) => S::ExpectCommaOrArrayEnd,
-                        None => S::ExpectValue,
-                    }
+                        None => S::ExpectValue}
                 }
                 _ => {
                     return Err(crate::error::CandleError::ValidationError(format!(
@@ -220,8 +206,7 @@ impl JsonState {
                         b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' | b'u' => {
                             S::InString {
                                 escape: false,
-                                is_key,
-                            }
+                                is_key}
                         }
                         _ => {
                             return Err(crate::error::CandleError::ValidationError(format!(
@@ -234,8 +219,7 @@ impl JsonState {
                     match b {
                         b'\\' => S::InString {
                             escape: true,
-                            is_key,
-                        },
+                            is_key},
                         b'"' => {
                             if is_key {
                                 S::ExpectColon
@@ -246,8 +230,7 @@ impl JsonState {
                         }
                         b if b >= 32 && b <= 126 => S::InString {
                             escape: false,
-                            is_key,
-                        },
+                            is_key},
                         _ => {
                             return Err(crate::error::CandleError::ValidationError(format!(
                                 "Invalid string char: {}",
@@ -260,11 +243,9 @@ impl JsonState {
             S::InNumber { state } => match state {
                 NumberState::AfterSign => match b {
                     b'0' => S::InNumber {
-                        state: NumberState::AfterZero,
-                    },
+                        state: NumberState::AfterZero},
                     b'1'..=b'9' => S::InNumber {
-                        state: NumberState::AfterIntDigit,
-                    },
+                        state: NumberState::AfterIntDigit},
                     _ => {
                         return Err(crate::error::CandleError::ValidationError(format!(
                             "Expected digit after sign: {}",
@@ -279,11 +260,9 @@ impl JsonState {
                         ));
                     }
                     b'.' => S::InNumber {
-                        state: NumberState::AfterDot,
-                    },
+                        state: NumberState::AfterDot},
                     b'e' | b'E' => S::InNumber {
-                        state: NumberState::AfterE,
-                    },
+                        state: NumberState::AfterE},
                     _ if Self::is_end_char(b) => {
                         self.set_after_value();
                         self.advance(b)?;
@@ -298,14 +277,11 @@ impl JsonState {
                 },
                 NumberState::AfterIntDigit => match b {
                     b'0'..=b'9' => S::InNumber {
-                        state: NumberState::AfterIntDigit,
-                    },
+                        state: NumberState::AfterIntDigit},
                     b'.' => S::InNumber {
-                        state: NumberState::AfterDot,
-                    },
+                        state: NumberState::AfterDot},
                     b'e' | b'E' => S::InNumber {
-                        state: NumberState::AfterE,
-                    },
+                        state: NumberState::AfterE},
                     _ if Self::is_end_char(b) => {
                         self.set_after_value();
                         self.advance(b)?;
@@ -320,8 +296,7 @@ impl JsonState {
                 },
                 NumberState::AfterDot => match b {
                     b'0'..=b'9' => S::InNumber {
-                        state: NumberState::AfterFracDigit,
-                    },
+                        state: NumberState::AfterFracDigit},
                     _ => {
                         return Err(crate::error::CandleError::ValidationError(format!(
                             "Expected digit after dot: {}",
@@ -331,11 +306,9 @@ impl JsonState {
                 },
                 NumberState::AfterFracDigit => match b {
                     b'0'..=b'9' => S::InNumber {
-                        state: NumberState::AfterFracDigit,
-                    },
+                        state: NumberState::AfterFracDigit},
                     b'e' | b'E' => S::InNumber {
-                        state: NumberState::AfterE,
-                    },
+                        state: NumberState::AfterE},
                     _ if Self::is_end_char(b) => {
                         self.set_after_value();
                         self.advance(b)?;
@@ -350,11 +323,9 @@ impl JsonState {
                 },
                 NumberState::AfterE => match b {
                     b'+' | b'-' => S::InNumber {
-                        state: NumberState::AfterExpSign,
-                    },
+                        state: NumberState::AfterExpSign},
                     b'0'..=b'9' => S::InNumber {
-                        state: NumberState::AfterExpDigit,
-                    },
+                        state: NumberState::AfterExpDigit},
                     _ => {
                         return Err(crate::error::CandleError::ValidationError(format!(
                             "Expected exp sign or digit: {}",
@@ -364,8 +335,7 @@ impl JsonState {
                 },
                 NumberState::AfterExpSign => match b {
                     b'0'..=b'9' => S::InNumber {
-                        state: NumberState::AfterExpDigit,
-                    },
+                        state: NumberState::AfterExpDigit},
                     _ => {
                         return Err(crate::error::CandleError::ValidationError(format!(
                             "Expected exp digit: {}",
@@ -375,8 +345,7 @@ impl JsonState {
                 },
                 NumberState::AfterExpDigit => match b {
                     b'0'..=b'9' => S::InNumber {
-                        state: NumberState::AfterExpDigit,
-                    },
+                        state: NumberState::AfterExpDigit},
                     _ if Self::is_end_char(b) => {
                         self.set_after_value();
                         self.advance(b)?;
@@ -387,8 +356,7 @@ impl JsonState {
                             "Invalid character after exponential digit in number".to_string(),
                         ));
                     }
-                },
-            },
+                }},
             S::InTrue { pos } => {
                 let expected = b"true"[pos as usize];
                 if b == expected {
@@ -443,8 +411,7 @@ impl JsonState {
 pub struct JsonConstraint {
     vocab_size: usize,
     token_bytes: Vec<Vec<u8>>,
-    tokens_per_start_byte: [Vec<u32>; 256],
-}
+    tokens_per_start_byte: [Vec<u32>; 256]}
 
 impl JsonConstraint {
     /// Create a new JSON constraint from tokenizer vocabulary
@@ -455,8 +422,7 @@ impl JsonConstraint {
         Self {
             vocab_size: 0,
             token_bytes: Vec::new(),
-            tokens_per_start_byte: std::array::from_fn(|_| Vec::new()),
-        }
+            tokens_per_start_byte: std::array::from_fn(|_| Vec::new())}
     }
 
     /// Initialize with tokenizer vocabulary

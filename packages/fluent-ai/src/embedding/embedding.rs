@@ -32,8 +32,7 @@ pub enum EmbeddingError {
 
     /// Remote provider surfaced an explicit error
     #[error("ProviderError: {0}")]
-    ProviderError(String),
-}
+    ProviderError(String)}
 
 // ---------------------------------------------------------------------------
 // 1. Core model trait (text)
@@ -65,13 +64,11 @@ pub trait EmbeddingModel: Clone + Send + Sync + 'static {
                     Some(embedding) => Ok(embedding),
                     None => Err(EmbeddingError::Provider(
                         "No embeddings returned from provider".to_string(),
-                    )),
-                },
+                    ))},
                 Some(Err(e)) => Err(e),
                 None => Err(EmbeddingError::Provider(
                     "No response from provider".to_string(),
-                )),
-            };
+                ))};
             let _ = tx.send(result);
         });
 
@@ -146,13 +143,11 @@ pub trait ImageEmbeddingModel: Clone + Send + Sync + 'static {
                     Some(embedding) => Ok(embedding),
                     None => Err(EmbeddingError::Provider(
                         "No embeddings returned from provider".to_string(),
-                    )),
-                },
+                    ))},
                 Some(Err(e)) => Err(e),
                 None => Err(EmbeddingError::Provider(
                     "No embeddings returned from provider".to_string(),
-                )),
-            };
+                ))};
             let _ = tx.send(result);
         });
         stream
@@ -168,8 +163,7 @@ pub struct Embedding {
     /// Original document (handy for debugging / tracing)
     pub document: String,
     /// Dense numeric vector
-    pub vec: Vec<f64>,
-}
+    pub vec: Vec<f64>}
 
 impl PartialEq for Embedding {
     #[inline(always)]

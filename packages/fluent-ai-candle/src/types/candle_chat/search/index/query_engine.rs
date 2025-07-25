@@ -3,14 +3,13 @@
 //! Contains the main search execution logic for different query types,
 //! including streaming search results and query optimization.
 
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+use atomic_counter::AtomicCounter;
 use fluent_ai_async::AsyncStream;
 
-use crate::types::candle_chat::message::types::CandleMessage;
 use super::core::ChatSearchIndex;
-use super::super::types::{SearchQuery, SearchResult, QueryOperator, SearchResultMetadata};
+use super::super::types::{SearchQuery, SearchResult, QueryOperator};
 
 impl ChatSearchIndex {
     /// Search messages with SIMD optimization (streaming individual results)
@@ -74,7 +73,7 @@ impl ChatSearchIndex {
     /// Search for documents containing any term (OR operation)
     pub(super) fn search_or(&self, terms: &[Arc<str>], fuzzy: bool) -> Vec<SearchResult> {
         let mut results = Vec::new();
-        let mut seen_docs = std::collections::HashSet::new();
+        let mut seen_docs: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for term in terms {
             let term_results = if fuzzy {
@@ -84,7 +83,7 @@ impl ChatSearchIndex {
             };
 
             for result in term_results {
-                let doc_id = result.message.message.id.as_ref().unwrap_or(&String::new()).clone();
+                let doc_id = result.message.id.clone();
                 if !seen_docs.contains(&doc_id) {
                     seen_docs.insert(doc_id);
                     results.push(result);

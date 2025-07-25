@@ -10,8 +10,7 @@ use super::{CandleModel, dummy_model::DummyModel};
 use crate::error::CandleResult;
 use crate::model::{
     loading::ModelMetadata,
-    types::{ModelConfig, ModelType},
-};
+    types::{ModelConfig, ModelType}};
 
 impl CandleModel {
     /// Create LLaMA model from VarBuilder with blazing-fast initialization

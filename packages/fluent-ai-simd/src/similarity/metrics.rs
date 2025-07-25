@@ -13,8 +13,7 @@ pub struct SimilarityMetrics {
     /// Total number of similarity calculations performed
     total_calculations: AtomicU64,
     /// Total number of vector elements processed
-    total_elements_processed: AtomicU64,
-}
+    total_elements_processed: AtomicU64}
 
 impl SimilarityMetrics {
     /// Increment the calculation counter (relaxed ordering)
@@ -35,8 +34,7 @@ impl SimilarityMetrics {
     pub fn get_metrics(&self) -> SimilarityMetricsSnapshot {
         SimilarityMetricsSnapshot {
             total_calculations: self.total_calculations.load(Ordering::SeqCst),
-            total_elements_processed: self.total_elements_processed.load(Ordering::SeqCst),
-        }
+            total_elements_processed: self.total_elements_processed.load(Ordering::SeqCst)}
     }
 
     /// Reset all metrics to zero (SeqCst for consistency)
@@ -53,8 +51,7 @@ pub struct SimilarityMetricsSnapshot {
     /// Total similarity calculations
     pub total_calculations: u64,
     /// Total elements processed
-    pub total_elements_processed: u64,
-}
+    pub total_elements_processed: u64}
 
 impl SimilarityMetricsSnapshot {
     /// Compute average vector length from snapshot
@@ -72,8 +69,7 @@ impl SimilarityMetricsSnapshot {
 ///
 /// Increments counters on creation and can be used for timing if extended.
 pub struct MetricsGuard<'a> {
-    metrics: &'a SimilarityMetrics,
-}
+    metrics: &'a SimilarityMetrics}
 
 impl<'a> MetricsGuard<'a> {
     /// Create a new guard and increment counters

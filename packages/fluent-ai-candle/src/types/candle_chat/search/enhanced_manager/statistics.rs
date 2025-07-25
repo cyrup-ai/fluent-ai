@@ -3,7 +3,6 @@
 //! This module provides comprehensive statistics and performance
 //! monitoring for the history management system.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 /// Statistics for history manager
@@ -26,8 +25,7 @@ pub struct HistoryManagerStatistics {
     /// Performance statistics
     pub performance_stats: HashMap<String, f64>,
     /// Error counts
-    pub error_counts: HashMap<String, usize>,
-}
+    pub error_counts: HashMap<String, usize>}
 
 impl Default for HistoryManagerStatistics {
     fn default() -> Self {
@@ -40,8 +38,7 @@ impl Default for HistoryManagerStatistics {
             memory_usage_bytes: 0,
             last_cleanup: chrono::Utc::now(),
             performance_stats: HashMap::new(),
-            error_counts: HashMap::new(),
-        }
+            error_counts: HashMap::new()}
     }
 }
 

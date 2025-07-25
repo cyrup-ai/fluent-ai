@@ -2,5 +2,4 @@ pub mod types;
 
 // Re-export the main cognitive types that are imported elsewhere
 pub use types::{
-    CognitiveMemory, CognitiveMemoryConfig, CognitiveProcessor, CognitiveProcessorConfig,
-};
+    CognitiveMemory, CognitiveMemoryConfig, CognitiveProcessor, CognitiveProcessorConfig};

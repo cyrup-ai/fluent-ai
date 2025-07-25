@@ -9,8 +9,7 @@ use super::core::TopKProcessor;
 /// Builder for top-k processor with validation and presets
 #[derive(Debug, Clone, Default)]
 pub struct TopKBuilder {
-    k: Option<usize>,
-}
+    k: Option<usize>}
 
 impl TopKBuilder {
     /// Create a new top-k builder

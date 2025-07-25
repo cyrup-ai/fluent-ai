@@ -17,8 +17,7 @@ pub struct SkipLayerGuidanceConfig {
     /// End fraction of inference steps
     pub end: f64,
     /// Layer indices to apply guidance to
-    pub layers: Vec<usize>,
-}
+    pub layers: Vec<usize>}
 
 impl Default for SkipLayerGuidanceConfig {
     fn default() -> Self {
@@ -26,8 +25,7 @@ impl Default for SkipLayerGuidanceConfig {
             scale: 2.5,
             start: 0.01,
             end: 0.2,
-            layers: vec![7, 8, 9],
-        }
+            layers: vec![7, 8, 9]}
     }
 }
 
@@ -44,8 +42,7 @@ pub enum SamplingError {
     InvalidParameters(String),
 
     #[error("Noise generation failed: {0}")]
-    NoiseGenerationError(String),
-}
+    NoiseGenerationError(String)}
 
 /// Result type for sampling operations
 pub type SamplingResult<T> = Result<T, SamplingError>;
@@ -82,8 +79,7 @@ pub fn euler_sample(
     for (step, window) in sigmas.windows(2).enumerate() {
         let (s_curr, s_prev) = match window {
             [a, b] => (a, b),
-            _ => continue,
-        };
+            _ => continue};
 
         let timestep = (*s_curr) * 1000.0;
 

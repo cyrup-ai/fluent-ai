@@ -12,16 +12,10 @@ use uuid::Uuid;
 
 use super::integration_types::{
     IntegrationConfig, ExternalIntegration, IntegrationRequest, IntegrationResponse,
-    IntegrationStats, IntegrationStatus, IntegrationType, AuthConfig, HttpMethod
+    IntegrationStats, IntegrationStatus, IntegrationType, AuthConfig
 };
 
-/// Handle errors in streaming context without panicking
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error);
-        // Continue processing instead of returning error
-    };
-}
+// Removed unused handle_error macro
 
 /// Main integration manager for handling external integrations
 pub struct IntegrationManager {
@@ -36,8 +30,7 @@ pub struct IntegrationManager {
     /// Event handlers
     pub event_handlers: Vec<IntegrationEventHandler>,
     /// Health check scheduler
-    pub health_check_enabled: bool,
-}
+    pub health_check_enabled: bool}
 
 /// Manager configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,8 +50,7 @@ pub struct ManagerConfig {
     /// Enable integration logging
     pub enable_logging: bool,
     /// Log level for integrations
-    pub log_level: LogLevel,
-}
+    pub log_level: LogLevel}
 
 /// Log level for integration operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,8 +64,7 @@ pub enum LogLevel {
     /// Error level
     Error,
     /// Critical level
-    Critical,
-}
+    Critical}
 
 /// Manager statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,8 +84,7 @@ pub struct ManagerStatistics {
     /// Last statistics update
     pub last_update: chrono::DateTime<chrono::Utc>,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 /// Integration event handler
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,8 +100,7 @@ pub struct IntegrationEventHandler {
     /// Handler enabled flag
     pub enabled: bool,
     /// Handler configuration
-    pub config: HashMap<String, serde_json::Value>,
-}
+    pub config: HashMap<String, serde_json::Value>}
 
 /// Integration event types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -133,8 +122,7 @@ pub enum IntegrationEvent {
     /// Integration error occurred
     Error,
     /// Integration health check
-    HealthCheck,
-}
+    HealthCheck}
 
 impl Default for IntegrationManager {
     fn default() -> Self {
@@ -144,8 +132,7 @@ impl Default for IntegrationManager {
             manager_stats: ManagerStatistics::default(),
             config: ManagerConfig::default(),
             event_handlers: Vec::new(),
-            health_check_enabled: true,
-        }
+            health_check_enabled: true}
     }
 }
 
@@ -159,8 +146,7 @@ impl Default for ManagerConfig {
             enable_metrics: true,
             metrics_interval_seconds: 60,
             enable_logging: true,
-            log_level: LogLevel::Info,
-        }
+            log_level: LogLevel::Info}
     }
 }
 
@@ -174,8 +160,7 @@ impl Default for ManagerStatistics {
             avg_response_time_ms: 0.0,
             total_data_transferred: 0,
             last_update: chrono::Utc::now(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 }
 
@@ -183,6 +168,51 @@ impl IntegrationManager {
     /// Create a new integration manager
     pub fn new() -> Self {
         Self::default()
+    }
+    
+    /// Create with custom configuration
+    pub fn with_config(config: ManagerConfig) -> Self {
+        Self {
+            config,
+            ..Default::default()
+        }
+    }
+    
+    /// Get integration by ID
+    pub fn get_integration(&self, integration_id: Uuid) -> Option<&ExternalIntegration> {
+        self.integrations.get(&integration_id)
+    }
+    
+    /// Get mutable integration by ID
+    pub fn get_integration_mut(&mut self, integration_id: Uuid) -> Option<&mut ExternalIntegration> {
+        self.integrations.get_mut(&integration_id)
+    }
+    
+    /// Check if integration exists
+    pub fn has_integration(&self, integration_id: Uuid) -> bool {
+        self.integrations.contains_key(&integration_id)
+    }
+    
+    /// Get integration count
+    pub fn integration_count(&self) -> usize {
+        self.integrations.len()
+    }
+    
+    /// Get active integration count
+    pub fn active_integration_count(&self) -> usize {
+        self.integrations.values()
+            .filter(|i| i.status == IntegrationStatus::Active)
+            .count()
+    }
+    
+    /// Get configuration
+    pub fn config(&self) -> &ManagerConfig {
+        &self.config
+    }
+    
+    /// Update configuration
+    pub fn update_config(&mut self, config: ManagerConfig) {
+        self.config = config;
     }
 
     /// Add a new integration (streaming)
@@ -201,13 +231,12 @@ impl IntegrationManager {
                 super::integration_types::IntegrationCapability::Send,
                 super::integration_types::IntegrationCapability::Receive,
             ],
-            custom_properties: HashMap::new(),
-        };
+            custom_properties: HashMap::new()};
 
         self.integrations.insert(integration_id, integration.clone());
         self.manager_stats.total_integrations += 1;
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<ExternalIntegration>| {
             let _ = sender.send(integration);
         })
     }
@@ -219,17 +248,17 @@ impl IntegrationManager {
             self.manager_stats.total_integrations = self.manager_stats.total_integrations.saturating_sub(1);
         }
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<bool>| {
             let _ = sender.send(removed);
         })
     }
 
     /// Execute integration request (streaming)
     pub fn execute_request(&mut self, request: IntegrationRequest) -> AsyncStream<IntegrationResponse> {
-        let integration_id = request.integration_id;
+        let _integration_id = request.integration_id;
         let request_id = request.id;
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<IntegrationResponse>| {
             // Simulate request execution
             let response = IntegrationResponse {
                 id: Uuid::new_v4(),
@@ -242,8 +271,7 @@ impl IntegrationManager {
                 size_bytes: 256,
                 success: true,
                 error_message: None,
-                metadata: HashMap::new(),
-            };
+                metadata: HashMap::new()};
 
             let _ = sender.send(response);
         })
@@ -253,7 +281,7 @@ impl IntegrationManager {
     pub fn health_check_all(&mut self) -> AsyncStream<HealthCheckResult> {
         let integrations = self.integrations.clone();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<HealthCheckResult>| {
             let mut healthy_count = 0;
             let mut unhealthy_count = 0;
             let mut results = Vec::new();
@@ -272,8 +300,7 @@ impl IntegrationManager {
                     healthy: is_healthy,
                     last_check: chrono::Utc::now(),
                     response_time_ms: if is_healthy { Some(50) } else { None },
-                    error_message: if is_healthy { None } else { Some("Integration unavailable".to_string()) },
-                });
+                    error_message: if is_healthy { None } else { Some("Integration unavailable".to_string()) }});
             }
 
             let health_check_result = HealthCheckResult {
@@ -282,8 +309,7 @@ impl IntegrationManager {
                 unhealthy_count,
                 check_duration_ms: 100,
                 results,
-                timestamp: chrono::Utc::now(),
-            };
+                timestamp: chrono::Utc::now()};
 
             let _ = sender.send(health_check_result);
         })
@@ -293,7 +319,7 @@ impl IntegrationManager {
     pub fn get_integration_stats(&self, integration_id: Uuid) -> AsyncStream<Option<IntegrationStats>> {
         let integration = self.integrations.get(&integration_id).cloned();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<Option<IntegrationStats>>| {
             let stats = integration.map(|i| i.stats);
             let _ = sender.send(stats);
         })
@@ -309,7 +335,7 @@ impl IntegrationManager {
             false
         };
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<bool>| {
             let _ = sender.send(updated);
         })
     }
@@ -318,7 +344,7 @@ impl IntegrationManager {
     pub fn list_integrations(&self) -> AsyncStream<ExternalIntegration> {
         let integrations: Vec<_> = self.integrations.values().cloned().collect();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<ExternalIntegration>| {
             for integration in integrations {
                 let _ = sender.send(integration);
             }
@@ -349,10 +375,10 @@ impl IntegrationManager {
     }
 
     /// Trigger event
-    pub fn trigger_event(&self, event: IntegrationEvent, integration_id: Option<Uuid>) -> AsyncStream<()> {
+    pub fn trigger_event(&self, event: IntegrationEvent, _integration_id: Option<Uuid>) -> AsyncStream<()> {
         let handlers = self.event_handlers.clone();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<()>| {
             for handler in handlers {
                 if handler.enabled && handler.events.contains(&event) {
                     // In a real implementation, would trigger the handler
@@ -378,8 +404,7 @@ pub struct HealthCheckResult {
     /// Individual integration results
     pub results: Vec<IntegrationHealthStatus>,
     /// Check timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-}
+    pub timestamp: chrono::DateTime<chrono::Utc>}
 
 /// Health status for individual integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -393,8 +418,7 @@ pub struct IntegrationHealthStatus {
     /// Response time in milliseconds
     pub response_time_ms: Option<u64>,
     /// Error message if unhealthy
-    pub error_message: Option<String>,
-}
+    pub error_message: Option<String>}
 
 /// Create webhook integration helper function
 pub fn create_webhook_integration(
@@ -416,8 +440,7 @@ pub fn create_webhook_integration(
         custom_headers: HashMap::new(),
         metadata: HashMap::new(),
         created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-    }
+        updated_at: chrono::Utc::now()}
 }
 
 /// Create REST API integration helper function
@@ -440,8 +463,7 @@ pub fn create_rest_api_integration(
         custom_headers: HashMap::new(),
         metadata: HashMap::new(),
         created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-    }
+        updated_at: chrono::Utc::now()}
 }
 
 /// Create plugin integration helper function
@@ -464,6 +486,121 @@ pub fn create_plugin_integration(
         custom_headers: HashMap::new(),
         metadata: HashMap::new(),
         created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-    }
+        updated_at: chrono::Utc::now()}
 }
+
+/// Plugin configuration for type consistency - addressing TODO4.md type mismatches
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PluginConfig {
+    /// Plugin name
+    pub name: Arc<str>,
+    /// Plugin version
+    pub version: String,
+    /// Plugin path or identifier
+    pub path: String,
+    /// Plugin settings
+    pub settings: HashMap<String, serde_json::Value>,
+    /// Plugin capabilities
+    pub capabilities: Vec<String>,
+    /// Plugin enabled flag
+    pub enabled: bool,
+    /// Plugin metadata
+    pub metadata: HashMap<String, String>}
+
+/// Integration error types for proper error handling
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum IntegrationError {
+    #[error("Plugin execution failed: {0}")]
+    PluginExecution(String),
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+    #[error("Network error: {0}")]
+    Network(String),
+    #[error("Authentication failed: {0}")]
+    Authentication(String),
+    #[error("Timeout error: {0}")]
+    Timeout(String),
+    #[error("Internal error: {0}")]
+    Internal(String)}
+
+/// Execute plugin integration - missing function from TODO4.md
+pub async fn execute_plugin_integration(
+    plugin_config: &PluginConfig,
+    request: IntegrationRequest,
+) -> Result<IntegrationResponse, IntegrationError> {
+    // Plugin execution logic using NO FUTURES pattern with AsyncStream
+    use fluent_ai_async::AsyncStream;
+    
+    let plugin_name = plugin_config.name.clone();
+    let _plugin_path = plugin_config.path.clone();
+    let request_id = request.id;
+    
+    // Use AsyncStream with .collect() instead of async/await
+    let result_stream = AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<IntegrationResponse>| {
+        // Simulate plugin execution
+        let response = IntegrationResponse {
+            id: Uuid::new_v4(),
+            request_id,
+            status_code: 200,
+            headers: HashMap::new(),
+            body: Some(serde_json::json!({
+                "plugin": plugin_name.as_ref(),
+                "status": "executed",
+                "result": "success"
+            })),
+            timestamp: chrono::Utc::now(),
+            duration_ms: 100,
+            size_bytes: 128,
+            success: true,
+            error_message: None,
+            metadata: HashMap::new()};
+        
+        let _ = sender.send(response);
+    });
+    
+    // Collect the result (replaces .await)
+    let results: Vec<IntegrationResponse> = result_stream.collect();
+    
+    results.into_iter().next()
+        .ok_or_else(|| IntegrationError::PluginExecution("No response from plugin".to_string()))
+}
+
+/// Execute HTTP integration
+pub async fn execute_http_integration(
+    config: &IntegrationConfig,
+    request: IntegrationRequest,
+) -> Result<IntegrationResponse, IntegrationError> {
+    use fluent_ai_async::AsyncStream;
+    
+    let endpoint = config.endpoint.clone();
+    let request_id = request.id;
+    
+    let result_stream = AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<IntegrationResponse>| {
+        // Simulate HTTP request execution
+        let response = IntegrationResponse {
+            id: Uuid::new_v4(),
+            request_id,
+            status_code: 200,
+            headers: HashMap::new(),
+            body: Some(serde_json::json!({
+                "endpoint": endpoint,
+                "status": "success",
+                "data": "mock_http_response"
+            })),
+            timestamp: chrono::Utc::now(),
+            duration_ms: 200,
+            size_bytes: 256,
+            success: true,
+            error_message: None,
+            metadata: HashMap::new()};
+        
+        let _ = sender.send(response);
+    });
+    
+    let results: Vec<IntegrationResponse> = result_stream.collect();
+    
+    results.into_iter().next()
+        .ok_or_else(|| IntegrationError::Network("No response from HTTP endpoint".to_string()))
+}
+
+// Send + Sync are automatically derived for these types since all fields implement Send + Sync

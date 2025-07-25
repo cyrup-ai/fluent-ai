@@ -14,8 +14,7 @@ pub struct MemoryNode {
     pub content: String,
     pub metadata: HashMap<String, String>,
     pub embedding: Option<Vec<f32>>,
-    pub timestamp: SystemTime,
-}
+    pub timestamp: SystemTime}
 
 impl MemoryNode {
     /// Create new memory node with owned strings
@@ -25,8 +24,7 @@ impl MemoryNode {
             content,
             metadata: HashMap::new(),
             embedding: None,
-            timestamp: SystemTime::now(),
-        }
+            timestamp: SystemTime::now()}
     }
 
     /// Add metadata entry
@@ -65,8 +63,7 @@ pub struct MemoryIntegration {
     pub memory_requests: AtomicU64,
     pub successful_operations: AtomicU64,
     pub failed_operations: AtomicU64,
-    pub total_processing_time_nanos: AtomicU64,
-}
+    pub total_processing_time_nanos: AtomicU64}
 
 impl Clone for MemoryIntegration {
     fn clone(&self) -> Self {
@@ -89,8 +86,7 @@ impl Clone for MemoryIntegration {
             total_processing_time_nanos: AtomicU64::new(
                 self.total_processing_time_nanos
                     .load(std::sync::atomic::Ordering::Relaxed),
-            ),
-        }
+            )}
     }
 }
 
@@ -105,8 +101,7 @@ impl MemoryIntegration {
             memory_requests: AtomicU64::new(0),
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
-            total_processing_time_nanos: AtomicU64::new(0),
-        }
+            total_processing_time_nanos: AtomicU64::new(0)}
     }
 
     /// Record successful operation

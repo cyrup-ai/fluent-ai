@@ -7,7 +7,7 @@
 use std::sync::LazyLock;
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use atomic_counter::RelaxedCounter;
 use bytes::Bytes;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
@@ -19,12 +19,10 @@ use super::completion::{CompletionModel, SONAR_PRO};
 use crate::{
     client::{CompletionClient, ProviderClient},
     completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
+        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError},
     json_util,
     message::Message,
-    runtime::{self, AsyncTask},
-};
+    runtime::{self, AsyncTask}};
 
 // ============================================================================
 // Perplexity API Client with HTTP3 and zero-allocation patterns
@@ -45,8 +43,7 @@ pub struct PerplexityMetrics {
     pub total_requests: RelaxedCounter,
     pub successful_requests: RelaxedCounter,
     pub failed_requests: RelaxedCounter,
-    pub concurrent_requests: RelaxedCounter,
-}
+    pub concurrent_requests: RelaxedCounter}
 
 impl PerplexityMetrics {
     #[inline]
@@ -55,8 +52,7 @@ impl PerplexityMetrics {
             total_requests: RelaxedCounter::new(0),
             successful_requests: RelaxedCounter::new(0),
             failed_requests: RelaxedCounter::new(0),
-            concurrent_requests: RelaxedCounter::new(0),
-        }
+            concurrent_requests: RelaxedCounter::new(0)}
     }
 }
 
@@ -70,8 +66,7 @@ pub struct Client {
     /// Shared HTTP3 client
     http_client: &'static HttpClient,
     /// Performance metrics
-    metrics: &'static PerplexityMetrics,
-}
+    metrics: &'static PerplexityMetrics}
 
 impl Client {
     /// Create a new Perplexity client with zero-allocation API key validation
@@ -90,8 +85,7 @@ impl Client {
             api_key: ArcSwap::from_pointee(api_key_array),
             base_url: PERPLEXITY_API_BASE_URL,
             http_client: &HTTP_CLIENT,
-            metrics: &PERPLEXITY_METRICS,
-        })
+            metrics: &PERPLEXITY_METRICS})
     }
 
     /// Environment variable names to search for Perplexity API keys (ordered by priority)
@@ -180,8 +174,7 @@ impl Client {
 
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
-            Err(_) => self.metrics.failed_requests.inc(),
-        }
+            Err(_) => self.metrics.failed_requests.inc()}
 
         response
     }
@@ -287,8 +280,7 @@ pub struct PerplexityCompletionBuilder<'a, S> {
     documents: Vec<completion::Document>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ============================================================================
 // Constructors
@@ -309,8 +301,7 @@ impl<'a> PerplexityCompletionBuilder<'a, NeedsPrompt> {
             documents: Vec::new(),
             additional_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 
     /// Convenience helper: sensible defaults for chat
@@ -402,8 +393,7 @@ impl<'a> PerplexityCompletionBuilder<'a, NeedsPrompt> {
             documents: self.documents,
             additional_params: self.additional_params,
             prompt: self.prompt,
-            _state: std::marker::PhantomData::<HasPrompt>,
-        }
+            _state: std::marker::PhantomData::<HasPrompt>}
     }
 }
 
@@ -535,12 +525,10 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct ApiErrorResponse {
-    pub message: String,
-}
+    pub message: String}
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}

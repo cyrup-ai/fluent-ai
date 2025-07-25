@@ -6,13 +6,13 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use atomic_counter::{AtomicCounter, ConsistentCounter};
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
-use crate::types::candle_chat::message::types::CandleMessage;
+use crate::types::CandleMessage;
 use super::super::types::{SearchStatistics, TermFrequency};
 
 /// Index entry for search operations
@@ -23,16 +23,9 @@ pub struct IndexEntry {
     /// Term frequency score
     pub term_frequency: f32,
     /// Token positions in document
-    pub positions: Vec<usize>,
-}
+    pub positions: Vec<usize>}
 
-/// Handle errors in streaming context without panicking
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error)
-        // Continue processing instead of returning error
-    };
-}
+// Removed unused handle_error macro
 
 /// Chat search index with SIMD optimization
 pub struct ChatSearchIndex {
@@ -51,8 +44,7 @@ pub struct ChatSearchIndex {
     /// Search statistics
     pub(super) statistics: Arc<RwLock<SearchStatistics>>,
     /// SIMD processing threshold
-    pub(super) simd_threshold: Arc<AtomicUsize>,
-}
+    pub(super) simd_threshold: Arc<AtomicUsize>}
 
 impl Clone for ChatSearchIndex {
     fn clone(&self) -> Self {

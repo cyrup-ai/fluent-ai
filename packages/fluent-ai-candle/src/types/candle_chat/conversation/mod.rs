@@ -27,16 +27,14 @@ pub struct ImmutableMessage {
     /// Message timestamp (nanoseconds since epoch)
     pub timestamp_nanos: u64,
     /// Message sequence number
-    pub sequence: u64,
-}
+    pub sequence: u64}
 
 /// Message role in conversation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MessageRole {
     User,
     Assistant,
-    System,
-}
+    System}
 
 impl ImmutableMessage {
     /// Create a new immutable message
@@ -46,8 +44,7 @@ impl ImmutableMessage {
             content: content.into(),
             role,
             timestamp_nanos: Self::current_timestamp_nanos(),
-            sequence,
-        }
+            sequence}
     }
 
     /// Create user message
@@ -114,9 +111,7 @@ pub enum ConversationEvent {
         total_messages: u64,
         user_messages: u64,
         assistant_messages: u64,
-        system_messages: u64,
-    },
-}
+        system_messages: u64}}
 
 /// Immutable conversation with streaming updates
 pub struct StreamingConversation {
@@ -133,8 +128,7 @@ pub struct StreamingConversation {
     /// System message count (atomic)
     system_messages: AtomicUsize,
     /// Event stream sender
-    event_sender: Option<AsyncStreamSender<ConversationEvent>>,
-}
+    event_sender: Option<AsyncStreamSender<ConversationEvent>>}
 
 impl std::fmt::Debug for StreamingConversation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -186,8 +180,7 @@ impl StreamingConversation {
             user_messages: AtomicUsize::new(0),
             assistant_messages: AtomicUsize::new(0),
             system_messages: AtomicUsize::new(0),
-            event_sender: None,
-        }
+            event_sender: None}
     }
 
     /// Create conversation with event streaming
@@ -222,8 +215,7 @@ impl StreamingConversation {
             Some(msg) => msg,
             None => panic!(
                 "Critical error: message vector empty after push - possible memory corruption"
-            ),
-        }
+            )}
     }
 
     /// Add assistant message (creates new immutable message)
@@ -246,8 +238,7 @@ impl StreamingConversation {
             Some(msg) => msg,
             None => panic!(
                 "Critical error: message vector empty after push - possible memory corruption"
-            ),
-        }
+            )}
     }
 
     /// Add system message (creates new immutable message)
@@ -270,8 +261,7 @@ impl StreamingConversation {
             Some(msg) => msg,
             None => panic!(
                 "Critical error: message vector empty after push - possible memory corruption"
-            ),
-        }
+            )}
     }
 
     /// Get all messages as borrowed slice (zero allocation)
@@ -375,8 +365,7 @@ impl StreamingConversation {
             total_messages: self.total_messages.load(Ordering::Relaxed) as u64,
             user_messages: self.user_messages.load(Ordering::Relaxed) as u64,
             assistant_messages: self.assistant_messages.load(Ordering::Relaxed) as u64,
-            system_messages: self.system_messages.load(Ordering::Relaxed) as u64,
-        }
+            system_messages: self.system_messages.load(Ordering::Relaxed) as u64}
     }
 
     /// Stream conversation statistics updates
@@ -388,8 +377,7 @@ impl StreamingConversation {
                 total_messages: stats.total_messages,
                 user_messages: stats.user_messages,
                 assistant_messages: stats.assistant_messages,
-                system_messages: stats.system_messages,
-            });
+                system_messages: stats.system_messages});
         }
     }
 }
@@ -407,8 +395,7 @@ pub struct ConversationStats {
     pub total_messages: u64,
     pub user_messages: u64,
     pub assistant_messages: u64,
-    pub system_messages: u64,
-}
+    pub system_messages: u64}
 
 impl ConversationStats {
     /// Calculate user message percentage
@@ -467,8 +454,7 @@ pub trait Conversation: Send + Sync + std::fmt::Debug + Clone {
 #[derive(Debug, Clone)]
 pub struct ConversationImpl {
     messages: Vec<String>,
-    latest_user_message: String,
-}
+    latest_user_message: String}
 
 impl Conversation for ConversationImpl {
     #[inline]
@@ -493,8 +479,7 @@ impl Conversation for ConversationImpl {
         match self.messages.len() {
             0 => ZeroOneOrMany::None,
             1 => ZeroOneOrMany::One(self.messages[0].clone()),
-            _ => ZeroOneOrMany::Many(self.messages.clone()),
-        }
+            _ => ZeroOneOrMany::Many(self.messages.clone())}
     }
 
     #[inline]
@@ -507,8 +492,7 @@ impl Conversation for ConversationImpl {
         let message = user_message.into();
         Self {
             latest_user_message: message.clone(),
-            messages: vec![message],
-        }
+            messages: vec![message]}
     }
 }
 
@@ -516,8 +500,7 @@ impl Conversation for ConversationImpl {
 #[derive(Debug, Default)]
 pub struct ConversationBuilder {
     enable_streaming: bool,
-    initial_messages: Vec<(String, MessageRole)>,
-}
+    initial_messages: Vec<(String, MessageRole)>}
 
 impl ConversationBuilder {
     /// Create a new conversation builder

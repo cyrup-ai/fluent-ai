@@ -8,8 +8,7 @@ use candle_core::DType;
 
 use super::types::{
     TensorName, ConfigKey, ConfigValue, DeviceHint,
-    MAX_TENSOR_NAME_LEN, MAX_TENSORS, MAX_CONFIG_ENTRIES,
-};
+    MAX_TENSOR_NAME_LEN, MAX_TENSORS, MAX_CONFIG_ENTRIES};
 use crate::error::{CandleError, CandleResult as Result};
 
 /// Ultra-compact model metadata with stack-allocated storage
@@ -35,8 +34,7 @@ pub struct ModelMetadata {
     created_at_nanos: u64,
 
     /// Model hash for integrity checking
-    model_hash: u64,
-}
+    model_hash: u64}
 
 impl ModelMetadata {
     /// Create new empty metadata
@@ -48,8 +46,7 @@ impl ModelMetadata {
             config_entries: ArrayVec::new(),
             tensor_entries: ArrayVec::new(),
             created_at_nanos: Self::current_time_nanos(),
-            model_hash: 0,
-        }
+            model_hash: 0}
     }
 
     /// Get current high-precision timestamp
@@ -207,8 +204,7 @@ pub struct TensorEntry {
     flags: u32,
 
     /// Device placement hint
-    device_hint: DeviceHint,
-}
+    device_hint: DeviceHint}
 
 impl TensorEntry {
     /// Create new tensor entry
@@ -241,8 +237,7 @@ impl TensorEntry {
             dtype,
             size_bytes,
             flags: 0,
-            device_hint: DeviceHint::Auto,
-        })
+            device_hint: DeviceHint::Auto})
     }
 
     /// Get tensor name
@@ -303,8 +298,8 @@ impl TensorEntry {
 
     /// Get device hint
     #[inline(always)]
-    pub const fn device_hint(&self) -> DeviceHint {
-        self.device_hint
+    pub fn device_hint(&self) -> DeviceHint {
+        self.device_hint.clone()
     }
 
     /// Set device hint

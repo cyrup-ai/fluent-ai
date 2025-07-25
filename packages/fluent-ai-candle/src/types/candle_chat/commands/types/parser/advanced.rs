@@ -4,7 +4,7 @@
 //! a unified interface for all advanced command parsing operations.
 
 use super::super::commands::ImmutableChatCommand;
-use super::super::core::{CommandError, CommandResult};
+use super::super::core::CommandResult;
 use super::{advanced_primary::AdvancedPrimaryParser, advanced_secondary::AdvancedSecondaryParser};
 
 /// Parser for advanced chat commands
@@ -29,8 +29,7 @@ impl AdvancedCommandParser {
             "debug" | "d" => AdvancedSecondaryParser::parse_debug_command(args),
             
             // Unknown commands
-            _ => Self::parse_custom_command(command_name, args),
-        }
+            _ => Self::parse_custom_command(command_name, args)}
     }
 
     /// Parse custom command (delegation to secondary parser)

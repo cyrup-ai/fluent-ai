@@ -1,0 +1,5665 @@
+    Blocking waiting for file lock on build directory
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/chat.rs:50:5
+   |
+50 |     pub injected_context: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> packages/domain/src/lib.rs:6:9
+   |
+6  | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/chat.rs:51:5
+   |
+51 |     pub relevance_score: f64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/chat.rs:52:5
+   |
+52 |     pub memory_nodes_used: usize}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/chat.rs:57:5
+   |
+57 |     pub response: String,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/chat.rs:58:5
+   |
+58 |     pub context_injection: ContextInjectionResult,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/chat.rs:59:5
+   |
+59 |     pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:45:5
+   |
+45 |     pub model: &'static dyn Model,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:46:5
+   |
+46 |     pub system_prompt: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:47:5
+   |
+47 |     pub context: ZeroOneOrMany<Document>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:48:5
+   |
+48 |     pub tools: ZeroOneOrMany<McpToolData>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:49:5
+   |
+49 |     pub memory: Option<Memory>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:50:5
+   |
+50 |     pub memory_tool: Option<MemoryTool>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:51:5
+   |
+51 |     pub temperature: Option<f64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:52:5
+   |
+52 |     pub max_tokens: Option<u64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/core.rs:53:5
+   |
+53 |     pub additional_params: Option<Value>}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/agent/role.rs:223:5
+    |
+223 |     pub fn last(&self) -> AgentConversationMessage {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+   --> packages/domain/src/agent/role.rs:237:1
+    |
+237 | pub struct AgentConversationMessage {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/agent/role.rs:241:5
+    |
+241 |     pub fn message(&self) -> &str {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/agent/role.rs:261:5
+    |
+261 |     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/agent/role.rs:266:5
+    |
+266 |     fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/agent/role.rs:271:5
+    |
+271 |     fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/types.rs:17:5
+   |
+17 |     pub messages: Option<ZeroOneOrMany<(MessageRole, String)>>}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> packages/domain/src/agent/types.rs:20:5
+   |
+20 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/agent/types.rs:24:5
+   |
+24 |     pub fn last(&self) -> AgentConversationMessage {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/agent/types.rs:44:1
+   |
+44 | pub struct AgentConversationMessage {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/agent/types.rs:48:5
+   |
+48 |     pub fn message(&self) -> &str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/agent/types.rs:57:5
+   |
+57 |     pub chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/agent/types.rs:63:5
+   |
+63 |     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/agent/types.rs:68:5
+   |
+68 |     fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/agent/types.rs:73:5
+   |
+73 |     fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/parsing.rs:17:5
+   |
+17 |     InvalidSyntax { detail: String },
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:17:21
+   |
+17 |     InvalidSyntax { detail: String },
+   |                     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/parsing.rs:20:5
+   |
+20 |     MissingParameter { parameter: String },
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:20:24
+   |
+20 |     MissingParameter { parameter: String },
+   |                        ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/parsing.rs:23:5
+   |
+23 |     InvalidParameterValue { parameter: String, value: String },
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:23:29
+   |
+23 |     InvalidParameterValue { parameter: String, value: String },
+   |                             ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:23:48
+   |
+23 |     InvalidParameterValue { parameter: String, value: String },
+   |                                                ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/parsing.rs:26:5
+   |
+26 |     UnknownParameter { parameter: String },
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:26:24
+   |
+26 |     UnknownParameter { parameter: String },
+   |                        ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/parsing.rs:29:5
+   |
+29 |     TypeMismatch { expected: String, actual: String }}
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:29:20
+   |
+29 |     TypeMismatch { expected: String, actual: String }}
+   |                    ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/parsing.rs:29:38
+   |
+29 |     TypeMismatch { expected: String, actual: String }}
+   |                                      ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:433:9
+    |
+433 |         current: u64,
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:434:9
+    |
+434 |         total: u64,
+    |         ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:435:9
+    |
+435 |         message: Arc<str>},
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:437:21
+    |
+437 |     PartialResult { data: Value },
+    |                     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:439:16
+    |
+439 |     Complete { output: CommandOutput }}
+    |                ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/response.rs:445:5
+    |
+445 |     SerializationError { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:445:26
+    |
+445 |     SerializationError { detail: Arc<str> },
+    |                          ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/response.rs:448:5
+    |
+448 |     StreamingError { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:448:22
+    |
+448 |     StreamingError { detail: Arc<str> },
+    |                      ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/response.rs:451:5
+    |
+451 |     FormatError { detail: Arc<str> }}
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/response.rs:451:19
+    |
+451 |     FormatError { detail: Arc<str> }}
+    |                   ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:20:5
+   |
+20 |     UnknownCommand { command: String },
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/types.rs:20:22
+   |
+20 |     UnknownCommand { command: String },
+   |                      ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:22:5
+   |
+22 |     InvalidArguments(String),
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:24:5
+   |
+24 |     InvalidSyntax { detail: String },
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/types.rs:24:21
+   |
+24 |     InvalidSyntax { detail: String },
+   |                     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:26:5
+   |
+26 |     ExecutionFailed(String),
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:28:5
+   |
+28 |     PermissionDenied,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:30:5
+   |
+30 |     ParseError(String),
+   |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:32:5
+   |
+32 |     ConfigurationError { detail: String },
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/commands/types.rs:32:26
+   |
+32 |     ConfigurationError { detail: String },
+   |                          ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:34:5
+   |
+34 |     IoError(String),
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:36:5
+   |
+36 |     NetworkError(String),
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:38:5
+   |
+38 |     Timeout,
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:40:5
+   |
+40 |     NotFound,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/commands/types.rs:42:5
+   |
+42 |     InternalError(String)}
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:381:9
+    |
+381 |         command: ImmutableChatCommand,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:382:9
+    |
+382 |         execution_id: u64,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:383:9
+    |
+383 |         timestamp_nanos: u64},
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:386:9
+    |
+386 |         execution_id: u64,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:387:9
+    |
+387 |         progress_percent: f32,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:388:9
+    |
+388 |         message: Option<String>},
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:391:9
+    |
+391 |         execution_id: u64,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:392:9
+    |
+392 |         output: String,
+    |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:393:9
+    |
+393 |         output_type: OutputType},
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:396:9
+    |
+396 |         execution_id: u64,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:397:9
+    |
+397 |         result: CommandExecutionResult,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:398:9
+    |
+398 |         duration_nanos: u64},
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:401:9
+    |
+401 |         execution_id: u64,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:402:9
+    |
+402 |         error: CommandError,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:403:9
+    |
+403 |         duration_nanos: u64},
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:405:17
+    |
+405 |     Cancelled { execution_id: u64, reason: String }}
+    |                 ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:405:36
+    |
+405 |     Cancelled { execution_id: u64, reason: String }}
+    |                                    ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:410:5
+    |
+410 |     Text,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:411:5
+    |
+411 |     Json,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:412:5
+    |
+412 |     Html,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:413:5
+    |
+413 |     Markdown,
+    |     ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:414:5
+    |
+414 |     Binary}
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:435:5
+    |
+435 |     All,
+    |     ^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:436:5
+    |
+436 |     Current,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:437:5
+    |
+437 |     Recent,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:438:5
+    |
+438 |     Bookmarked}
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:443:5
+    |
+443 |     List,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:444:5
+    |
+444 |     Create,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:445:5
+    |
+445 |     Delete,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:446:5
+    |
+446 |     Edit,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:447:5
+    |
+447 |     Use}
+    |     ^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:452:5
+    |
+452 |     List,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:453:5
+    |
+453 |     Create,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:454:5
+    |
+454 |     Delete,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:455:5
+    |
+455 |     Edit,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:456:5
+    |
+456 |     Execute}
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:461:5
+    |
+461 |     List,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:462:5
+    |
+462 |     Create,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:463:5
+    |
+463 |     Switch,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:464:5
+    |
+464 |     Merge,
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:465:5
+    |
+465 |     Delete}
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:470:5
+    |
+470 |     List,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:471:5
+    |
+471 |     New,
+    |     ^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:472:5
+    |
+472 |     Switch,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:473:5
+    |
+473 |     Delete,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:474:5
+    |
+474 |     Export,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:475:5
+    |
+475 |     Import}
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:480:5
+    |
+480 |     List,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:481:5
+    |
+481 |     Install,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:482:5
+    |
+482 |     Remove,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:483:5
+    |
+483 |     Configure,
+    |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:484:5
+    |
+484 |     Update,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:485:5
+    |
+485 |     Execute}
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:490:5
+    |
+490 |     Usage,
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:491:5
+    |
+491 |     Performance,
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:492:5
+    |
+492 |     History,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:493:5
+    |
+493 |     Tokens,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:494:5
+    |
+494 |     Costs,
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:495:5
+    |
+495 |     Errors}
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:500:5
+    |
+500 |     Set,
+    |     ^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:501:5
+    |
+501 |     List,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:502:5
+    |
+502 |     Create,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:503:5
+    |
+503 |     Export,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:504:5
+    |
+504 |     Import,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:505:5
+    |
+505 |     Edit}
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:510:5
+    |
+510 |     Info,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:511:5
+    |
+511 |     Logs,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:512:5
+    |
+512 |     Performance,
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:513:5
+    |
+513 |     Memory,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:514:5
+    |
+514 |     Network,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:515:5
+    |
+515 |     Cache}
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:520:5
+    |
+520 |     Show,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:521:5
+    |
+521 |     Search,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:522:5
+    |
+522 |     Clear,
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:523:5
+    |
+523 |     Export,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:524:5
+    |
+524 |     Import,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:525:5
+    |
+525 |     Backup}
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:530:5
+    |
+530 |     Chat,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:531:5
+    |
+531 |     Config,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:532:5
+    |
+532 |     Templates,
+    |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:533:5
+    |
+533 |     Macros}
+    |     ^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:544:9
+    |
+544 |         path: String,
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:545:9
+    |
+545 |         size_bytes: u64,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:546:9
+    |
+546 |         mime_type: String},
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:674:5
+    |
+674 |     pub active_executions: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:675:5
+    |
+675 |     pub total_executions: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:676:5
+    |
+676 |     pub successful_executions: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/types.rs:677:5
+    |
+677 |     pub failed_executions: u64}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:701:5
+    |
+701 |     Appearance,
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:702:5
+    |
+702 |     Behavior,
+    |     ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:703:5
+    |
+703 |     Security,
+    |     ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:704:5
+    |
+704 |     Performance,
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:705:5
+    |
+705 |     Integration,
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/types.rs:706:5
+    |
+706 |     Advanced}
+    |     ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:450:5
+    |
+450 |     EmptyParameter { parameter: Arc<str> },
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:450:22
+    |
+450 |     EmptyParameter { parameter: Arc<str> },
+    |                      ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:453:5
+    |
+453 |     ParameterTooLong {
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:454:9
+    |
+454 |         parameter: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:455:9
+    |
+455 |         max_length: usize,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:456:9
+    |
+456 |         actual_length: usize},
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:459:5
+    |
+459 |     ParameterOutOfRange {
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:460:9
+    |
+460 |         parameter: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:461:9
+    |
+461 |         value: String,
+    |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:462:9
+    |
+462 |         min: Option<String>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:463:9
+    |
+463 |         max: Option<String>},
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:466:5
+    |
+466 |     InvalidEnumValue {
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:467:9
+    |
+467 |         parameter: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:468:9
+    |
+468 |         value: Arc<str>,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:469:9
+    |
+469 |         allowed_values: Vec<Arc<str>>},
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:472:5
+    |
+472 |     InvalidParameterFormat {
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:473:9
+    |
+473 |         parameter: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:474:9
+    |
+474 |         value: Arc<str>,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:475:9
+    |
+475 |         expected_format: Arc<str>},
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:480:5
+    |
+480 |     InvalidFileExtension {
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:481:9
+    |
+481 |         parameter: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:482:9
+    |
+482 |         extension: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:483:9
+    |
+483 |         allowed_extensions: Vec<Arc<str>>},
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:486:5
+    |
+486 |     TooManyParameters {
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:487:9
+    |
+487 |         max_count: usize,
+    |         ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:488:9
+    |
+488 |         actual_count: usize},
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/commands/validation.rs:491:5
+    |
+491 |     SecurityViolation {
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:492:9
+    |
+492 |         parameter: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/commands/validation.rs:493:9
+    |
+493 |         detail: Arc<str>}}
+    |         ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:474:5
+    |
+474 |     InvalidPersonality { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:474:26
+    |
+474 |     InvalidPersonality { detail: Arc<str> },
+    |                          ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:476:5
+    |
+476 |     InvalidBehavior { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:476:23
+    |
+476 |     InvalidBehavior { detail: Arc<str> },
+    |                       ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:478:5
+    |
+478 |     InvalidUI { detail: Arc<str> },
+    |     ^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:478:17
+    |
+478 |     InvalidUI { detail: Arc<str> },
+    |                 ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:480:5
+    |
+480 |     InvalidIntegration { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:480:26
+    |
+480 |     InvalidIntegration { detail: Arc<str> },
+    |                          ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:482:5
+    |
+482 |     Conflict { detail: Arc<str> },
+    |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:482:16
+    |
+482 |     Conflict { detail: Arc<str> },
+    |                ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:484:5
+    |
+484 |     SchemaValidation { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:484:24
+    |
+484 |     SchemaValidation { detail: Arc<str> },
+    |                        ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:486:5
+    |
+486 |     RangeValidation { field: Arc<str>, min: f32, max: f32 },
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:486:23
+    |
+486 |     RangeValidation { field: Arc<str>, min: f32, max: f32 },
+    |                       ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:486:40
+    |
+486 |     RangeValidation { field: Arc<str>, min: f32, max: f32 },
+    |                                        ^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:486:50
+    |
+486 |     RangeValidation { field: Arc<str>, min: f32, max: f32 },
+    |                                                  ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/config.rs:488:5
+    |
+488 |     RequiredField { field: Arc<str> }}
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/config.rs:488:21
+    |
+488 |     RequiredField { field: Arc<str> }}
+    |                     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/config.rs:1324:5
+     |
+1324 |     pub total_changes: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/config.rs:1325:5
+     |
+1325 |     pub current_version: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/config.rs:1326:5
+     |
+1326 |     pub last_modified: Duration,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/config.rs:1327:5
+     |
+1327 |     pub validators_count: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/config.rs:1328:5
+     |
+1328 |     pub auto_save_enabled: bool}
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/conversation/mod.rs:29:5
+   |
+29 |     User,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/conversation/mod.rs:30:5
+   |
+30 |     Assistant,
+   |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/conversation/mod.rs:31:5
+   |
+31 |     System}
+   |     ^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:105:9
+    |
+105 |         total_messages: u64,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:106:9
+    |
+106 |         user_messages: u64,
+    |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:107:9
+    |
+107 |         assistant_messages: u64,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:108:9
+    |
+108 |         system_messages: u64}}
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:389:5
+    |
+389 |     pub total_messages: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:390:5
+    |
+390 |     pub user_messages: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:391:5
+    |
+391 |     pub assistant_messages: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/conversation/mod.rs:392:5
+    |
+392 |     pub system_messages: u64}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/export.rs:103:5
+    |
+103 |     SerializationError { detail: Arc<str> },
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/export.rs:103:26
+    |
+103 |     SerializationError { detail: Arc<str> },
+    |                          ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/export.rs:105:5
+    |
+105 |     InvalidFormat { format: Arc<str> },
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/export.rs:105:21
+    |
+105 |     InvalidFormat { format: Arc<str> },
+    |                     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/export.rs:107:5
+    |
+107 |     ExportTooLarge { size_bytes: usize },
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/export.rs:107:22
+    |
+107 |     ExportTooLarge { size_bytes: usize },
+    |                      ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/export.rs:109:5
+    |
+109 |     NoMessages,
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/export.rs:111:5
+    |
+111 |     IoError { detail: Arc<str> }}
+    |     ^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/export.rs:111:15
+    |
+111 |     IoError { detail: Arc<str> }}
+    |               ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:18:13
+   |
+18 |     Plain { text: String },
+   |             ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:21:9
+   |
+21 |         content: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:22:9
+   |
+22 |         rendered_html: Option<String>},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:25:9
+   |
+25 |         content: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:26:9
+   |
+26 |         language: String,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:27:9
+   |
+27 |         highlighted: Option<String>},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:30:9
+   |
+30 |         content: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:31:9
+   |
+31 |         styles: Vec<FormatStyle>},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/formatting.rs:33:17
+   |
+33 |     Composite { parts: Vec<ImmutableMessageContent> }}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:151:5
+    |
+151 |     Bold,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:152:5
+    |
+152 |     Italic,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:153:5
+    |
+153 |     Underline,
+    |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:154:5
+    |
+154 |     Strikethrough,
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:155:5
+    |
+155 |     Code,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:156:5
+    |
+156 |     Link { url: String },
+    |     ^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:156:12
+    |
+156 |     Link { url: String },
+    |            ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:157:5
+    |
+157 |     Color { rgb: u32 },
+    |     ^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:157:13
+    |
+157 |     Color { rgb: u32 },
+    |             ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:158:5
+    |
+158 |     Background { rgb: u32 }}
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:158:18
+    |
+158 |     Background { rgb: u32 }}
+    |                  ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:189:5
+    |
+189 |     InvalidMarkdown { detail: String },
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:189:23
+    |
+189 |     InvalidMarkdown { detail: String },
+    |                       ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:191:5
+    |
+191 |     UnsupportedLanguage { language: String },
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:191:27
+    |
+191 |     UnsupportedLanguage { language: String },
+    |                           ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:193:5
+    |
+193 |     ParseError { detail: String },
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:193:18
+    |
+193 |     ParseError { detail: String },
+    |                  ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:195:5
+    |
+195 |     RenderError { detail: String },
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:195:19
+    |
+195 |     RenderError { detail: String },
+    |                   ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:197:5
+    |
+197 |     InvalidContent { detail: String },
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:197:22
+    |
+197 |     InvalidContent { detail: String },
+    |                      ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:199:5
+    |
+199 |     ConfigurationError { detail: String },
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:199:26
+    |
+199 |     ConfigurationError { detail: String },
+    |                          ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:201:5
+    |
+201 |     IoError { detail: String },
+    |     ^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:201:15
+    |
+201 |     IoError { detail: String },
+    |               ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:203:5
+    |
+203 |     Timeout,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:205:5
+    |
+205 |     ResourceNotFound { resource: String },
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:205:24
+    |
+205 |     ResourceNotFound { resource: String },
+    |                        ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/formatting.rs:207:5
+    |
+207 |     InternalError { detail: String }}
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:207:21
+    |
+207 |     InternalError { detail: String }}
+    |                     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:566:9
+    |
+566 |         content_id: u64,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:567:9
+    |
+567 |         content_type: String,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:568:9
+    |
+568 |         timestamp_nanos: u64},
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:571:9
+    |
+571 |         content_id: u64,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:572:9
+    |
+572 |         progress_percent: f32,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:573:9
+    |
+573 |         stage: String},
+    |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:576:9
+    |
+576 |         content_id: u64,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:577:9
+    |
+577 |         result: ImmutableMessageContent,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:578:9
+    |
+578 |         duration_nanos: u64},
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:581:9
+    |
+581 |         content_id: u64,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:582:9
+    |
+582 |         error: FormatError,
+    |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:583:9
+    |
+583 |         duration_nanos: u64},
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:586:9
+    |
+586 |         content_id: u64,
+    |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:587:9
+    |
+587 |         partial_content: String}}
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:744:5
+    |
+744 |     pub active_operations: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:745:5
+    |
+745 |     pub total_operations: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:746:5
+    |
+746 |     pub successful_operations: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/formatting.rs:747:5
+    |
+747 |     pub failed_operations: u64}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/chat/formatting.rs:773:1
+    |
+773 | pub type FormatOptions = ImmutableFormatOptions;
+    | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/chat/formatting.rs:776:1
+    |
+776 | pub type ColorScheme = ImmutableColorScheme;
+    | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/chat/formatting.rs:779:1
+    |
+779 | pub type CustomFormatRule = ImmutableCustomFormatRule;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/integrations.rs:61:5
+   |
+61 |     ConnectionError { detail: Arc<str> },
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/integrations.rs:61:23
+   |
+61 |     ConnectionError { detail: Arc<str> },
+   |                       ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/integrations.rs:64:5
+   |
+64 |     AuthenticationError { detail: Arc<str> },
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/integrations.rs:64:27
+   |
+64 |     AuthenticationError { detail: Arc<str> },
+   |                           ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/integrations.rs:67:5
+   |
+67 |     TimeoutError { detail: Arc<str> },
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/integrations.rs:67:20
+   |
+67 |     TimeoutError { detail: Arc<str> },
+   |                    ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/integrations.rs:70:5
+   |
+70 |     ConfigurationError { detail: Arc<str> },
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/integrations.rs:70:26
+   |
+70 |     ConfigurationError { detail: Arc<str> },
+   |                          ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/integrations.rs:73:5
+   |
+73 |     PluginError { detail: Arc<str> }}
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/integrations.rs:73:19
+   |
+73 |     PluginError { detail: Arc<str> }}
+   |                   ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:28:9
+   |
+28 |         content: Arc<str>,
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:29:9
+   |
+29 |         message_type: Arc<str>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:30:9
+   |
+30 |         timestamp: Duration},
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:33:9
+   |
+33 |         command: ImmutableChatCommand,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:34:9
+   |
+34 |         timestamp: Duration},
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:37:9
+   |
+37 |         duration: Duration,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:38:9
+   |
+38 |         timestamp: Duration},
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:41:9
+   |
+41 |         name: Arc<str>,
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:42:9
+   |
+42 |         value: Arc<str>,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:43:9
+   |
+43 |         timestamp: Duration},
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:46:9
+   |
+46 |         condition: Arc<str>,
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:47:9
+   |
+47 |         then_actions: Arc<[MacroAction]>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:48:9
+   |
+48 |         else_actions: Option<Arc<[MacroAction]>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:49:9
+   |
+49 |         timestamp: Duration},
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:52:9
+   |
+52 |         iterations: u32,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:53:9
+   |
+53 |         actions: Arc<[MacroAction]>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:54:9
+   |
+54 |         timestamp: Duration}}
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:85:5
+   |
+85 |     pub variables: HashMap<Arc<str>, Arc<str>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:86:5
+   |
+86 |     pub execution_id: Uuid,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:87:5
+   |
+87 |     pub start_time: Instant,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:88:5
+   |
+88 |     pub current_action: usize,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:89:5
+   |
+89 |     pub loop_stack: Vec<LoopContext>}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:94:5
+   |
+94 |     pub iteration: u32,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:95:5
+   |
+95 |     pub max_iterations: u32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:96:5
+   |
+96 |     pub start_action: usize,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/macros.rs:97:5
+   |
+97 |     pub end_action: usize}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:102:5
+    |
+102 |     pub id: Uuid,
+    |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:103:5
+    |
+103 |     pub name: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:104:5
+    |
+104 |     pub description: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:105:5
+    |
+105 |     pub created_at: Duration,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:106:5
+    |
+106 |     pub updated_at: Duration,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:107:5
+    |
+107 |     pub version: u32,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:108:5
+    |
+108 |     pub tags: Arc<[Arc<str>]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:109:5
+    |
+109 |     pub author: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:110:5
+    |
+110 |     pub execution_count: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:111:5
+    |
+111 |     pub last_execution: Option<Duration>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:112:5
+    |
+112 |     pub average_duration: Duration,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:113:5
+    |
+113 |     pub success_rate: f64,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:114:5
+    |
+114 |     pub category: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:115:5
+    |
+115 |     pub is_private: bool}
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:120:5
+    |
+120 |     pub metadata: MacroMetadata,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:121:5
+    |
+121 |     pub actions: Arc<[MacroAction]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:122:5
+    |
+122 |     pub variables: HashMap<Arc<str>, Arc<str>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:123:5
+    |
+123 |     pub triggers: Arc<[Arc<str>]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:124:5
+    |
+124 |     pub conditions: Arc<[Arc<str>]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:125:5
+    |
+125 |     pub dependencies: Arc<[Arc<str>]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:126:5
+    |
+126 |     pub execution_config: MacroExecutionConfig}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:131:5
+    |
+131 |     pub max_execution_time: Duration,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:132:5
+    |
+132 |     pub retry_count: u32,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:133:5
+    |
+133 |     pub retry_delay: Duration,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:134:5
+    |
+134 |     pub abort_on_error: bool,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:135:5
+    |
+135 |     pub parallel_execution: bool,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:136:5
+    |
+136 |     pub priority: u8,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:137:5
+    |
+137 |     pub resource_limits: ResourceLimits}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:142:5
+    |
+142 |     pub max_memory_mb: u32,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:143:5
+    |
+143 |     pub max_cpu_percent: u8,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:144:5
+    |
+144 |     pub max_network_requests: u32,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:145:5
+    |
+145 |     pub max_file_operations: u32}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:150:5
+    |
+150 |     pub id: Uuid,
+    |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:151:5
+    |
+151 |     pub name: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:152:5
+    |
+152 |     pub start_time: Instant,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:153:5
+    |
+153 |     pub actions: SegQueue<MacroAction>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:154:5
+    |
+154 |     pub state: MacroRecordingState,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:155:5
+    |
+155 |     pub variables: HashMap<Arc<str>, Arc<str>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:156:5
+    |
+156 |     pub metadata: MacroMetadata}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:161:5
+    |
+161 |     pub id: Uuid,
+    |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:162:5
+    |
+162 |     pub macro_id: Uuid,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:163:5
+    |
+163 |     pub start_time: Instant,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:164:5
+    |
+164 |     pub context: MacroExecutionContext,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:165:5
+    |
+165 |     pub state: MacroPlaybackState,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:166:5
+    |
+166 |     pub current_action: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:167:5
+    |
+167 |     pub total_actions: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:168:5
+    |
+168 |     pub error: Option<Arc<str>>}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:188:5
+    |
+188 |     pub total_executions: ConsistentCounter,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:189:5
+    |
+189 |     pub successful_executions: ConsistentCounter,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:190:5
+    |
+190 |     pub failed_executions: ConsistentCounter,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:191:5
+    |
+191 |     pub total_duration: parking_lot::Mutex<Duration>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:192:5
+    |
+192 |     pub average_duration: parking_lot::Mutex<Duration>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/macros.rs:193:5
+    |
+193 |     pub last_execution: parking_lot::Mutex<Option<Instant>>}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:641:5
+    |
+641 |     Success,
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:642:5
+    |
+642 |     Wait(Duration),
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:643:5
+    |
+643 |     SkipToAction(usize),
+    |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:644:5
+    |
+644 |     Error(Arc<str>)}
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:649:5
+    |
+649 |     ActionExecuted,
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:650:5
+    |
+650 |     Completed,
+    |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:651:5
+    |
+651 |     Failed,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:652:5
+    |
+652 |     SessionNotActive}
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:658:5
+    |
+658 |     SessionNotFound,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:660:5
+    |
+660 |     RecordingNotActive,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:662:5
+    |
+662 |     MacroNotFound,
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:664:5
+    |
+664 |     SystemTimeError,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:666:5
+    |
+666 |     ExecutionError(String),
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/macros.rs:668:5
+    |
+668 |     ValidationError(String)}
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:28:9
+   |
+28 |         user_id: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:29:9
+   |
+29 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:30:9
+   |
+30 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:33:9
+   |
+33 |         user_id: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:34:9
+   |
+34 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:35:9
+   |
+35 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:38:9
+   |
+38 |         message: Message,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:39:9
+   |
+39 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:40:9
+   |
+40 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:43:9
+   |
+43 |         message_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:44:9
+   |
+44 |         content: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:45:9
+   |
+45 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:46:9
+   |
+46 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:49:9
+   |
+49 |         message_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:50:9
+   |
+50 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:51:9
+   |
+51 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:54:9
+   |
+54 |         user_id: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:55:9
+   |
+55 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:56:9
+   |
+56 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:59:9
+   |
+59 |         user_id: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:60:9
+   |
+60 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:61:9
+   |
+61 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:64:9
+   |
+64 |         user_id: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:65:9
+   |
+65 |         status: ConnectionStatus,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:66:9
+   |
+66 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:69:9
+   |
+69 |         user_id: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:70:9
+   |
+70 |         session_id: String,
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:71:9
+   |
+71 |         timestamp: u64},
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:74:9
+   |
+74 |         message: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:75:9
+   |
+75 |         level: NotificationLevel,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/realtime.rs:76:9
+   |
+76 |         timestamp: u64}}
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:417:5
+    |
+417 |     pub active_users: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:418:5
+    |
+418 |     pub total_typing_events: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:419:5
+    |
+419 |     pub expiry_duration: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:420:5
+    |
+420 |     pub cleanup_interval: u64}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:478:5
+    |
+478 |     pub total_messages: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:479:5
+    |
+479 |     pub active_subscribers: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:480:5
+    |
+480 |     pub queue_size: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:481:5
+    |
+481 |     pub backpressure_events: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:482:5
+    |
+482 |     pub processing_rate: f64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:483:5
+    |
+483 |     pub last_update: u64}
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:799:5
+    |
+799 |     pub user_id: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:800:5
+    |
+800 |     pub session_id: String,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:801:5
+    |
+801 |     pub status: ConnectionStatus,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:802:5
+    |
+802 |     pub last_heartbeat: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:803:5
+    |
+803 |     pub connection_duration: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:804:5
+    |
+804 |     pub heartbeat_count: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:805:5
+    |
+805 |     pub reconnection_attempts: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/realtime.rs:806:5
+    |
+806 |     pub is_healthy: bool}
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1070:5
+     |
+1070 |     pub total_connections: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1071:5
+     |
+1071 |     pub total_heartbeats: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1072:5
+     |
+1072 |     pub failed_connections: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1073:5
+     |
+1073 |     pub heartbeat_timeout: u64,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1074:5
+     |
+1074 |     pub health_check_interval: u64}
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1104:5
+     |
+1104 |     pub typing_stats: TypingStatistics,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1105:5
+     |
+1105 |     pub live_update_stats: LiveUpdateStatistics,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1106:5
+     |
+1106 |     pub connection_stats: ConnectionManagerStatistics,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1107:5
+     |
+1107 |     pub total_events: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1108:5
+     |
+1108 |     pub system_uptime: u64}
+     |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1208:5
+     |
+1208 |     BackpressureExceeded { current_size: usize, limit: usize },
+     |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1208:28
+     |
+1208 |     BackpressureExceeded { current_size: usize, limit: usize },
+     |                            ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1208:49
+     |
+1208 |     BackpressureExceeded { current_size: usize, limit: usize },
+     |                                                 ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1210:5
+     |
+1210 |     ConnectionNotFound { user_id: String, session_id: String },
+     |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1210:26
+     |
+1210 |     ConnectionNotFound { user_id: String, session_id: String },
+     |                          ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1210:43
+     |
+1210 |     ConnectionNotFound { user_id: String, session_id: String },
+     |                                           ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1212:5
+     |
+1212 |     SubscriptionFailed { reason: String },
+     |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1212:26
+     |
+1212 |     SubscriptionFailed { reason: String },
+     |                          ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1214:5
+     |
+1214 |     MessageDeliveryFailed { reason: String },
+     |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1214:29
+     |
+1214 |     MessageDeliveryFailed { reason: String },
+     |                             ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1216:5
+     |
+1216 |     SystemTimeout { operation: String },
+     |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1216:21
+     |
+1216 |     SystemTimeout { operation: String },
+     |                     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1218:5
+     |
+1218 |     InvalidMessageFormat { details: String },
+     |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1218:28
+     |
+1218 |     InvalidMessageFormat { details: String },
+     |                            ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1220:5
+     |
+1220 |     RateLimitExceeded { current_rate: usize, limit: usize },
+     |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1220:25
+     |
+1220 |     RateLimitExceeded { current_rate: usize, limit: usize },
+     |                         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1220:46
+     |
+1220 |     RateLimitExceeded { current_rate: usize, limit: usize },
+     |                                              ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/realtime.rs:1222:5
+     |
+1222 |     SystemOverload { resource: String }}
+     |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/realtime.rs:1222:22
+     |
+1222 |     SystemOverload { resource: String }}
+     |                      ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/chat/search.rs:35:5
+   |
+35 |     fn collect_sync(self) -> AsyncStream<Vec<T>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/search.rs:89:17
+   |
+89 |     Proximity { distance: u32 }}
+   |                 ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1390:5
+     |
+1390 |     pub total_tags: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1391:5
+     |
+1391 |     pub total_taggings: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1392:5
+     |
+1392 |     pub active_tags: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1393:5
+     |
+1393 |     pub most_used_tag: Option<Arc<str>>}
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1442:5
+     |
+1442 |     pub total_exports: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1443:5
+     |
+1443 |     pub total_messages_exported: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1444:5
+     |
+1444 |     pub most_popular_format: Option<ExportFormat>,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1445:5
+     |
+1445 |     pub average_export_time: f64,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:1446:5
+     |
+1446 |     pub last_export_time: u64}
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/search.rs:2087:5
+     |
+2087 |     IndexError { reason: Arc<str> },
+     |     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2087:18
+     |
+2087 |     IndexError { reason: Arc<str> },
+     |                  ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/search.rs:2089:5
+     |
+2089 |     SearchQueryError { reason: Arc<str> },
+     |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2089:24
+     |
+2089 |     SearchQueryError { reason: Arc<str> },
+     |                        ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/search.rs:2091:5
+     |
+2091 |     TagError { reason: Arc<str> },
+     |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2091:16
+     |
+2091 |     TagError { reason: Arc<str> },
+     |                ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/search.rs:2093:5
+     |
+2093 |     ExportError { reason: Arc<str> },
+     |     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2093:19
+     |
+2093 |     ExportError { reason: Arc<str> },
+     |                   ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/search.rs:2095:5
+     |
+2095 |     InvalidQuery { details: Arc<str> },
+     |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2095:20
+     |
+2095 |     InvalidQuery { details: Arc<str> },
+     |                    ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+    --> packages/domain/src/chat/search.rs:2097:5
+     |
+2097 |     SystemOverload { resource: Arc<str> }}
+     |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2097:22
+     |
+2097 |     SystemOverload { resource: Arc<str> }}
+     |                      ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2114:5
+     |
+2114 |     pub search_stats: SearchStatistics,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2115:5
+     |
+2115 |     pub tagging_stats: TaggingStatistics,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2116:5
+     |
+2116 |     pub export_stats: ExportStatistics,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2117:5
+     |
+2117 |     pub total_operations: usize,
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+    --> packages/domain/src/chat/search.rs:2118:5
+     |
+2118 |     pub system_uptime: u64}
+     |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/chat/templates/mod.rs:112:5
+    |
+112 |     pub fn new() -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/mod.rs:122:5
+    |
+122 |     pub fn name(mut self, name: impl Into<String>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/mod.rs:127:5
+    |
+127 |     pub fn content(mut self, content: impl Into<String>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/mod.rs:132:5
+    |
+132 |     pub fn description(mut self, description: impl Into<String>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/mod.rs:137:5
+    |
+137 |     pub fn category(mut self, category: TemplateCategory) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/mod.rs:142:5
+    |
+142 |     pub fn variable(mut self, var: impl Into<String>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/mod.rs:147:5
+    |
+147 |     pub fn build(self) -> ChatTemplate {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:16:5
+   |
+16 |     NotFound { name: Arc<str> },
+   |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:16:16
+   |
+16 |     NotFound { name: Arc<str> },
+   |                ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:19:5
+   |
+19 |     ParseError { message: Arc<str> },
+   |     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:19:18
+   |
+19 |     ParseError { message: Arc<str> },
+   |                  ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:22:5
+   |
+22 |     CompileError { message: Arc<str> },
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:22:20
+   |
+22 |     CompileError { message: Arc<str> },
+   |                    ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:25:5
+   |
+25 |     RenderError { message: Arc<str> },
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:25:19
+   |
+25 |     RenderError { message: Arc<str> },
+   |                   ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:28:5
+   |
+28 |     VariableError { message: Arc<str> },
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:28:21
+   |
+28 |     VariableError { message: Arc<str> },
+   |                     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:31:5
+   |
+31 |     PermissionDenied { message: Arc<str> },
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:31:24
+   |
+31 |     PermissionDenied { message: Arc<str> },
+   |                        ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:34:5
+   |
+34 |     StorageError { message: Arc<str> },
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:34:20
+   |
+34 |     StorageError { message: Arc<str> },
+   |                    ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:43:5
+   |
+43 |     pub id: Arc<str>,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:44:5
+   |
+44 |     pub name: Arc<str>,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:45:5
+   |
+45 |     pub category: TemplateCategory,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:46:5
+   |
+46 |     pub size: usize,
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:47:5
+   |
+47 |     pub variable_count: usize,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:48:5
+   |
+48 |     pub created_at: i64,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:49:5
+   |
+49 |     pub modified_at: i64,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:50:5
+   |
+50 |     pub version: Arc<str>,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:56:5
+   |
+56 |     Chat,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:57:5
+   |
+57 |     System,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:58:5
+   |
+58 |     User,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:59:5
+   |
+59 |     Assistant,
+   |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:60:5
+   |
+60 |     Function,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:61:5
+   |
+61 |     Tool,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:62:5
+   |
+62 |     Context,
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:63:5
+   |
+63 |     Prompt,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:64:5
+   |
+64 |     Response,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:65:5
+   |
+65 |     Custom,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:77:5
+   |
+77 |     String,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:78:5
+   |
+78 |     Number,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:79:5
+   |
+79 |     Boolean,
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:80:5
+   |
+80 |     Array,
+   |     ^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:81:5
+   |
+81 |     Object,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/chat/templates/core.rs:82:5
+   |
+82 |     Any,
+   |     ^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:88:5
+   |
+88 |     pub name: Arc<str>,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:89:5
+   |
+89 |     pub description: Arc<str>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:90:5
+   |
+90 |     pub var_type: VariableType,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:91:5
+   |
+91 |     pub default_value: Option<Arc<str>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:92:5
+   |
+92 |     pub required: bool,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:93:5
+   |
+93 |     pub validation_pattern: Option<Arc<str>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:94:5
+   |
+94 |     pub valid_values: Option<Arc<[Arc<str>]>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:95:5
+   |
+95 |     pub min_value: Option<f64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/core.rs:96:5
+   |
+96 |     pub max_value: Option<f64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:102:5
+    |
+102 |     pub read: bool,
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:103:5
+    |
+103 |     pub write: bool,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:104:5
+    |
+104 |     pub execute: bool,
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:105:5
+    |
+105 |     pub share: bool,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:106:5
+    |
+106 |     pub delete: bool,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:124:5
+    |
+124 |     pub id: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:125:5
+    |
+125 |     pub name: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:126:5
+    |
+126 |     pub description: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:127:5
+    |
+127 |     pub author: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:128:5
+    |
+128 |     pub version: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:129:5
+    |
+129 |     pub category: TemplateCategory,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:130:5
+    |
+130 |     pub tags: Arc<[Arc<str>]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:131:5
+    |
+131 |     pub created_at: u64,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:132:5
+    |
+132 |     pub modified_at: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:133:5
+    |
+133 |     pub usage_count: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:134:5
+    |
+134 |     pub rating: f64,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:135:5
+    |
+135 |     pub permissions: TemplatePermissions,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:141:5
+    |
+141 |     String(Arc<str>),
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:142:5
+    |
+142 |     Number(f64),
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:143:5
+    |
+143 |     Boolean(bool),
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:144:5
+    |
+144 |     Array(Arc<[TemplateValue]>),
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:145:5
+    |
+145 |     Object(Arc<HashMap<Arc<str>, TemplateValue>>),
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:146:5
+    |
+146 |     Null,
+    |     ^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:176:5
+    |
+176 |     pub variables: HashMap<Arc<str>, TemplateValue>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:177:5
+    |
+177 | /     pub functions: HashMap<
+178 | |         Arc<str>,
+179 | |         Arc<dyn Fn(&[TemplateValue]) -> TemplateResult<TemplateValue> + Send + Sync>,
+180 | |     >,
+    | |_____^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/chat/templates/core.rs:184:5
+    |
+184 |     pub fn new() -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:191:5
+    |
+191 | /     pub fn with_variable(
+192 | |         mut self,
+193 | |         name: impl Into<Arc<str>>,
+194 | |         value: impl Into<TemplateValue>,
+195 | |     ) -> Self {
+    | |_____________^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:200:5
+    |
+200 |     pub fn set_variable(&mut self, name: impl Into<Arc<str>>, value: impl Into<TemplateValue>) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:204:5
+    |
+204 |     pub fn get_variable(&self, name: &str) -> Option<&TemplateValue> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:223:5
+    |
+223 |     Text(Arc<str>),
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:224:5
+    |
+224 |     Variable(Arc<str>),
+    |     ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:225:5
+    |
+225 |     Expression {
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:226:9
+    |
+226 |         operator: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:227:9
+    |
+227 |         operands: Arc<[TemplateAst]>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:229:5
+    |
+229 |     Conditional {
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:230:9
+    |
+230 |         condition: Arc<TemplateAst>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:231:9
+    |
+231 |         if_true: Arc<TemplateAst>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:232:9
+    |
+232 |         if_false: Option<Arc<TemplateAst>>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:234:5
+    |
+234 |     Loop {
+    |     ^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:235:9
+    |
+235 |         variable: Arc<str>,
+    |         ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:236:9
+    |
+236 |         iterable: Arc<TemplateAst>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:237:9
+    |
+237 |         body: Arc<TemplateAst>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:239:5
+    |
+239 |     Block(Arc<[TemplateAst]>),
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:240:5
+    |
+240 |     Function {
+    |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:241:9
+    |
+241 |         name: Arc<str>,
+    |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:242:9
+    |
+242 |         args: Arc<[TemplateAst]>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:249:5
+    |
+249 |     pub metadata: TemplateMetadata,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:250:5
+    |
+250 |     pub ast: TemplateAst,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:251:5
+    |
+251 |     pub variables: Arc<[TemplateVariable]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:252:5
+    |
+252 |     pub optimized: bool,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/chat/templates/core.rs:256:5
+    |
+256 | /     pub fn new(
+257 | |         metadata: TemplateMetadata,
+258 | |         ast: TemplateAst,
+259 | |         variables: Arc<[TemplateVariable]>,
+260 | |     ) -> Self {
+    | |_____________^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:269:5
+    |
+269 |     pub fn render(&self, context: &TemplateContext) -> TemplateResult<Arc<str>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:324:5
+    |
+324 |     pub metadata: TemplateMetadata,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:325:5
+    |
+325 |     pub content: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:326:5
+    |
+326 |     pub variables: Arc<[TemplateVariable]>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:327:5
+    |
+327 |     pub compiled: Option<CompiledTemplate>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/chat/templates/core.rs:331:5
+    |
+331 | /     pub fn new(
+332 | |         metadata: TemplateMetadata,
+333 | |         content: Arc<str>,
+334 | |         variables: Arc<[TemplateVariable]>,
+335 | |     ) -> Self {
+    | |_____________^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:344:5
+    |
+344 |     pub fn render(&self, variables: &HashMap<Arc<str>, Arc<str>>) -> TemplateResult<Arc<str>> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:362:5
+    |
+362 |     pub fn get_id(&self) -> &Arc<str> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:366:5
+    |
+366 |     pub fn get_name(&self) -> &Arc<str> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:370:5
+    |
+370 |     pub fn get_content(&self) -> &Arc<str> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:374:5
+    |
+374 |     pub fn get_variables(&self) -> &Arc<[TemplateVariable]> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:420:5
+    |
+420 |     pub max_template_size: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:421:5
+    |
+421 |     pub max_variables: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:422:5
+    |
+422 |     pub allow_nested_templates: bool,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:423:5
+    |
+423 |     pub cache_compiled: bool,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:424:5
+    |
+424 |     pub optimize_templates: bool,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:425:5
+    |
+425 |     pub security_mode: SecurityMode,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:431:5
+    |
+431 |     Strict,   // No external access, limited functions
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:432:5
+    |
+432 |     Normal,   // Standard functions allowed
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:433:5
+    |
+433 |     Relaxed,  // Most functions allowed
+    |     ^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/chat/templates/core.rs:434:5
+    |
+434 |     Disabled, // All functions allowed
+    |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:453:5
+    |
+453 |     pub name: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:454:5
+    |
+454 |     pub description: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:455:5
+    |
+455 |     pub input_variables: HashMap<Arc<str>, Arc<str>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:456:5
+    |
+456 |     pub expected_output: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:462:5
+    |
+462 |     pub name: Arc<str>,
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:463:5
+    |
+463 |     pub color: Option<Arc<str>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/core.rs:464:5
+    |
+464 |     pub description: Option<Arc<str>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/chat/templates/core.rs:468:5
+    |
+468 |     pub fn new(name: impl Into<Arc<str>>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:476:5
+    |
+476 |     pub fn with_color(mut self, color: impl Into<Arc<str>>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/chat/templates/core.rs:481:5
+    |
+481 |     pub fn with_description(mut self, description: impl Into<Arc<str>>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/parser.rs:14:5
+   |
+14 |     pub max_depth: usize,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/parser.rs:15:5
+   |
+15 |     pub max_tokens: usize,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/parser.rs:16:5
+   |
+16 |     pub allow_expressions: bool,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/parser.rs:17:5
+   |
+17 |     pub allow_functions: bool,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/chat/templates/parser.rs:18:5
+   |
+18 |     pub strict_variables: bool}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> packages/domain/src/chat/templates/parser.rs:37:5
+   |
+37 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> packages/domain/src/chat/templates/parser.rs:42:5
+   |
+42 |     pub fn with_config(config: ParserConfig) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/parser.rs:268:5
+    |
+268 |     pub parsed_count: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/parser.rs:269:5
+    |
+269 |     pub total_parse_time_us: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/parser.rs:270:5
+    |
+270 |     pub error_count: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/chat/templates/parser.rs:271:5
+    |
+271 |     pub peak_memory_bytes: usize}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+  --> packages/domain/src/completion/mod.rs:27:1
+   |
+27 | pub type CompletionResult<T> = CompletionCoreResult<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+  --> packages/domain/src/completion/mod.rs:28:1
+   |
+28 | pub type StreamingResponse = StreamingCoreResponse;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/completion/candle.rs:52:29
+   |
+52 |     ContextLengthExceeded { current: u32, max: u32 },
+   |                             ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/completion/candle.rs:52:43
+   |
+52 |     ContextLengthExceeded { current: u32, max: u32 },
+   |                                           ^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/completion/types.rs:75:5
+   |
+75 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/completion/types.rs:76:5
+   |
+76 |     pub description: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/completion/types.rs:77:5
+   |
+77 |     pub parameters: Value}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:34:5
+   |
+34 |     PNG,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:35:5
+   |
+35 |     JPEG,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:36:5
+   |
+36 |     GIF,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:37:5
+   |
+37 |     WebP,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:38:5
+   |
+38 |     BMP,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:39:5
+   |
+39 |     TIFF}
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:60:5
+   |
+60 |     MP3,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:61:5
+   |
+61 |     WAV,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:62:5
+   |
+62 |     FLAC,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:63:5
+   |
+63 |     OGG,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:64:5
+   |
+64 |     M4A,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/chunk.rs:65:5
+   |
+65 |     OPUS}
+   |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/chunk.rs:105:5
+    |
+105 |     Stop,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/chunk.rs:106:5
+    |
+106 |     Length,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/chunk.rs:107:5
+    |
+107 |     ContentFilter,
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/chunk.rs:108:5
+    |
+108 |     ToolCalls,
+    |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/chunk.rs:109:5
+    |
+109 |     Error}
+    |     ^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:119:21
+    |
+119 |     ToolCallStart { id: String, name: String },
+    |                     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:119:33
+    |
+119 |     ToolCallStart { id: String, name: String },
+    |                                 ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:123:9
+    |
+123 |         id: String,
+    |         ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:124:9
+    |
+124 |         name: String,
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:125:9
+    |
+125 |         partial_input: String},
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:129:9
+    |
+129 |         id: String,
+    |         ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:130:9
+    |
+130 |         name: String,
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:131:9
+    |
+131 |         input: String},
+    |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:135:9
+    |
+135 |         text: String,
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:136:9
+    |
+136 |         finish_reason: Option<FinishReason>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/chunk.rs:137:9
+    |
+137 |         usage: Option<Usage>},
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/context/chunk.rs:201:5
+    |
+201 |     pub fn new(content: impl Into<String>) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+   --> packages/domain/src/context/chunk.rs:211:5
+    |
+211 |     pub fn new(content: impl Into<String>, role: crate::chat::message::MessageRole) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/context/document.rs:13:1
+   |
+13 | pub struct Document {
+   | ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/document.rs:14:5
+   |
+14 |     pub data: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/document.rs:15:5
+   |
+15 |     pub format: Option<ContentFormat>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/document.rs:16:5
+   |
+16 |     pub media_type: Option<DocumentMediaType>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/document.rs:18:5
+   |
+18 |     pub additional_props: HashMap<String, Value>}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> packages/domain/src/context/document.rs:21:1
+   |
+21 | pub enum ContentFormat {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:22:5
+   |
+22 |     Base64,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:23:5
+   |
+23 |     Text,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:24:5
+   |
+24 |     Html,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:25:5
+   |
+25 |     Markdown}
+   |     ^^^^^^^^
+
+warning: missing documentation for an enum
+  --> packages/domain/src/context/document.rs:28:1
+   |
+28 | pub enum DocumentMediaType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:29:5
+   |
+29 |     PDF,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:30:5
+   |
+30 |     DOCX,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:31:5
+   |
+31 |     TXT,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:32:5
+   |
+32 |     RTF,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/document.rs:33:5
+   |
+33 |     ODT}
+   |     ^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/extraction/error.rs:20:15
+   |
+20 |     Timeout { duration: Duration },
+   |               ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/extraction/error.rs:24:21
+   |
+24 |     InvalidFormat { actual: String },
+   |                     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/extraction/error.rs:28:21
+   |
+28 |     MissingFields { fields: Vec<String> },
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/extraction/error.rs:32:24
+   |
+32 |     ValidationFailed { reason: String },
+   |                        ^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/context/loader.rs:215:1
+    |
+215 | pub type DefaultLoader<T> = LoaderImpl<T>;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/context/loader.rs:218:1
+    |
+218 | pub type FileLoader<T> = LoaderImpl<T>;
+    | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/context/provider.rs:34:1
+   |
+34 | pub struct Files;
+   | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/context/provider.rs:35:1
+   |
+35 | pub struct Directory;
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/context/provider.rs:36:1
+   |
+36 | pub struct Github;
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:42:5
+   |
+42 |     ContextNotFound(String),
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:44:5
+   |
+44 |     InvalidPath(String),
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:46:5
+   |
+46 |     IoError(String),
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:48:5
+   |
+48 |     PatternError(String),
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:50:5
+   |
+50 |     MemoryError(String),
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:52:5
+   |
+52 |     ValidationError(String),
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:54:5
+   |
+54 |     PerformanceThresholdExceeded(String),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:56:5
+   |
+56 |     ProviderUnavailable(String)}
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:62:5
+   |
+62 |     FileProvider(String),
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:64:5
+   |
+64 |     DirectoryProvider(String),
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:66:5
+   |
+66 |     GithubProvider(String),
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:68:5
+   |
+68 |     EmbeddingProvider(String)}
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:74:5
+   |
+74 |     InvalidInput(String),
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:76:5
+   |
+76 |     PathValidation(String),
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:78:5
+   |
+78 |     PatternValidation(String),
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:80:5
+   |
+80 |     SizeLimitExceeded(String)}
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:87:9
+   |
+87 |         provider_type: String,
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:88:9
+   |
+88 |         provider_id: String,
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:89:9
+   |
+89 |         timestamp: SystemTime},
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/context/provider.rs:90:5
+   |
+90 |     ProviderStopped {
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:91:9
+   |
+91 |         provider_type: String,
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:92:9
+   |
+92 |         provider_id: String,
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:93:9
+   |
+93 |         timestamp: SystemTime},
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:97:9
+   |
+97 |         context_type: String,
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:98:9
+   |
+98 |         source: String,
+   |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/context/provider.rs:99:9
+   |
+99 |         timestamp: SystemTime},
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:100:5
+    |
+100 |     ContextLoadCompleted {
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:101:9
+    |
+101 |         context_type: String,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:102:9
+    |
+102 |         source: String,
+    |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:103:9
+    |
+103 |         documents_loaded: usize,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:104:9
+    |
+104 |         duration_nanos: u64,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:105:9
+    |
+105 |         timestamp: SystemTime},
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:106:5
+    |
+106 |     ContextLoadFailed {
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:107:9
+    |
+107 |         context_type: String,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:108:9
+    |
+108 |         source: String,
+    |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:109:9
+    |
+109 |         error: String,
+    |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:110:9
+    |
+110 |         timestamp: SystemTime},
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:114:9
+    |
+114 |         memory_id: String,
+    |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:115:9
+    |
+115 |         content_hash: String,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:116:9
+    |
+116 |         timestamp: SystemTime},
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:117:5
+    |
+117 |     MemorySearchCompleted {
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:118:9
+    |
+118 |         query: String,
+    |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:119:9
+    |
+119 |         results_count: usize,
+    |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:120:9
+    |
+120 |         duration_nanos: u64,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:121:9
+    |
+121 |         timestamp: SystemTime},
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:125:9
+    |
+125 |         metric: String,
+    |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:126:9
+    |
+126 |         threshold: f64,
+    |         ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:127:9
+    |
+127 |         actual: f64,
+    |         ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:128:9
+    |
+128 |         timestamp: SystemTime},
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:132:9
+    |
+132 |         validation_type: String,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:133:9
+    |
+133 |         error: String,
+    |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:134:9
+    |
+134 |         timestamp: SystemTime}}
+    |         ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:139:5
+    |
+139 |     pub id: String,
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:140:5
+    |
+140 |     pub content: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:141:5
+    |
+141 |     pub metadata: HashMap<String, String>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:142:5
+    |
+142 |     pub embedding: Option<Vec<f32>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:143:5
+    |
+143 |     pub timestamp: SystemTime}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:210:5
+    |
+210 |     pub successful_operations: AtomicU64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:211:5
+    |
+211 |     pub failed_operations: AtomicU64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:212:5
+    |
+212 |     pub total_processing_time_nanos: AtomicU64}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:308:5
+    |
+308 |     pub name: String,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:309:5
+    |
+309 |     pub version: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:310:5
+    |
+310 |     pub vector_dimension: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:311:5
+    |
+311 |     pub max_input_length: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:312:5
+    |
+312 |     pub supported_languages: Vec<String>}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:338:5
+    |
+338 |     pub name: String,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:339:5
+    |
+339 |     pub version: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:340:5
+    |
+340 |     pub storage_type: String,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:341:5
+    |
+341 |     pub max_memory_nodes: Option<usize>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:342:5
+    |
+342 |     pub supported_operations: Vec<String>}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:553:5
+    |
+553 |     pub processor_id: String,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:554:5
+    |
+554 |     pub context_requests: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:555:5
+    |
+555 |     pub active_contexts: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:556:5
+    |
+556 |     pub total_contexts_processed: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:557:5
+    |
+557 |     pub successful_contexts: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:558:5
+    |
+558 |     pub failed_contexts: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:559:5
+    |
+559 |     pub total_documents_loaded: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:560:5
+    |
+560 |     pub success_rate: f64,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/context/provider.rs:561:5
+    |
+561 |     pub average_processing_time_nanos: u64}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:572:5
+    |
+572 |     File(ImmutableFileContext),
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:573:5
+    |
+573 |     Files(ImmutableFilesContext),
+    |     ^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:574:5
+    |
+574 |     Directory(ImmutableDirectoryContext),
+    |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/context/provider.rs:575:5
+    |
+575 |     Github(ImmutableGithubContext)}
+    |     ^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/context/provider.rs:910:1
+    |
+910 | pub type FilesContext = ImmutableFilesContext;
+    | ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/context/provider.rs:913:1
+    |
+913 | pub type DirectoryContext = ImmutableDirectoryContext;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+   --> packages/domain/src/context/provider.rs:916:1
+    |
+916 | pub type GithubContext = ImmutableGithubContext;
+    | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+   --> packages/domain/src/context/provider.rs:919:1
+    |
+919 | pub trait EmbeddingModel: ImmutableEmbeddingModel {}
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+   --> packages/domain/src/context/provider.rs:922:1
+    |
+922 | pub trait MemoryManager: ImmutableMemoryManager {}
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/core/mod.rs:43:5
+   |
+43 |     SendError,
+   |     ^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/core/mod.rs:45:5
+   |
+45 |     ReceiveError,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/core/mod.rs:47:5
+   |
+47 |     Closed}
+   |     ^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/embedding/core.rs:40:1
+   |
+40 | pub struct Embedding {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/embedding/core.rs:41:5
+   |
+41 |     pub document: String,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/embedding/core.rs:42:5
+   |
+42 |     pub vec: ZeroOneOrMany<f64>}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> packages/domain/src/embedding/service.rs:13:1
+   |
+13 | pub enum VectorStoreError {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/embedding/service.rs:15:5
+   |
+15 |     NotFound,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/embedding/service.rs:17:5
+   |
+17 |     OperationFailed(String)}
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:27:5
+   |
+27 |     ProviderNotAvailable,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:30:5
+   |
+30 |     ModelNotFound,
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:33:5
+   |
+33 |     ConfigurationError(String),
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:36:5
+   |
+36 |     AuthenticationFailed,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:39:5
+   |
+39 |     RateLimitExceeded { retry_after_seconds: u64 },
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/engine.rs:39:25
+   |
+39 |     RateLimitExceeded { retry_after_seconds: u64 },
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:42:5
+   |
+42 |     RequestTimeout { timeout_seconds: u64 },
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/engine.rs:42:22
+   |
+42 |     RequestTimeout { timeout_seconds: u64 },
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:45:5
+   |
+45 |     NetworkError(String),
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:48:5
+   |
+48 |     InvalidInput,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:51:5
+   |
+51 |     ServiceUnavailable,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/engine.rs:54:5
+   |
+54 |     InternalError(String)}
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:183:5
+    |
+183 |     pub prompt: &'a str,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:184:5
+    |
+184 |     pub system_prompt: Option<&'a str>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:185:5
+    |
+185 |     pub conversation_history: &'a [&'a str],
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:186:5
+    |
+186 |     pub tools: &'a [&'a str],
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:187:5
+    |
+187 |     pub metadata: Option<&'a str>}
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:496:5
+    |
+496 |     pub total_requests: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:497:5
+    |
+497 |     pub active_requests: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:498:5
+    |
+498 |     pub successful_requests: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:499:5
+    |
+499 |     pub failed_requests: u64,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/engine.rs:500:5
+    |
+500 |     pub is_healthy: bool}
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/error.rs:107:5
+    |
+107 |     pub fn get_state(&self) -> CircuitBreakerState {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/error.rs:811:5
+    |
+811 |     fn into_zero_alloc_error(self) -> ZeroAllocError;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/error.rs:900:5
+    |
+900 | /     fn map_zero_alloc_err<F>(self, f: F) -> ZeroAllocResult<T>
+901 | |     where
+902 | |         F: FnOnce() -> ZeroAllocError;
+    | |______________________________________^
+
+warning: missing documentation for a method
+   --> packages/domain/src/error.rs:904:5
+    |
+904 |     fn with_error_metadata(self, key: &str, value: &str) -> ZeroAllocResult<T>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/error.rs:906:5
+    |
+906 |     fn with_error_code(self, code: u64) -> ZeroAllocResult<T>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+   --> packages/domain/src/error.rs:908:5
+    |
+908 |     fn record_error(self) -> ZeroAllocResult<T>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/http/auth.rs:878:26
+    |
+878 |     InvalidTokenPrefix { expected: String, actual: String },
+    |                          ^^^^^^^^^^^^^^^^
+    |
+note: the lint level is defined here
+   --> packages/domain/src/http/auth.rs:37:9
+    |
+37  | #![warn(missing_docs)]
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/http/auth.rs:878:44
+    |
+878 |     InvalidTokenPrefix { expected: String, actual: String },
+    |                                            ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/http/requests/completion.rs:820:16
+    |
+820 |     Required { function: FunctionChoice },
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the lint level is defined here
+   --> packages/domain/src/http/requests/mod.rs:22:9
+    |
+22  | #![warn(missing_docs)]
+    |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+ --> packages/domain/src/image.rs:4:1
+  |
+4 | pub struct Image {
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> packages/domain/src/image.rs:5:5
+  |
+5 |     pub data: String,
+  |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> packages/domain/src/image.rs:6:5
+  |
+6 |     pub format: Option<ContentFormat>,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> packages/domain/src/image.rs:7:5
+  |
+7 |     pub media_type: Option<ImageMediaType>,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> packages/domain/src/image.rs:8:5
+  |
+8 |     pub detail: Option<ImageDetail>}
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> packages/domain/src/image.rs:11:1
+   |
+11 | pub enum ContentFormat {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:12:5
+   |
+12 |     Base64,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:13:5
+   |
+13 |     Url,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:14:5
+   |
+14 |     Raw}
+   |     ^^^
+
+warning: missing documentation for an enum
+  --> packages/domain/src/image.rs:17:1
+   |
+17 | pub enum ImageMediaType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:18:5
+   |
+18 |     PNG,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:19:5
+   |
+19 |     JPEG,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:20:5
+   |
+20 |     GIF,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:21:5
+   |
+21 |     WEBP,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:22:5
+   |
+22 |     SVG}
+   |     ^^^
+
+warning: missing documentation for an enum
+  --> packages/domain/src/image.rs:26:1
+   |
+26 | pub enum ImageDetail {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:27:5
+   |
+27 |     Low,
+   |     ^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:28:5
+   |
+28 |     High,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/image.rs:29:5
+   |
+29 |     Auto}
+   |     ^^^^
+
+warning: missing documentation for a static
+  --> packages/domain/src/init/globals.rs:44:1
+   |
+44 | pub static CIRCUIT_BREAKER_LAST_RESET: std::sync::atomic::AtomicU64 =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a constant
+  --> packages/domain/src/init/globals.rs:48:1
+   |
+48 | / thread_local! {
+49 | |     pub static LOCAL_CONFIG: std::cell::RefCell<Option<Arc<MemoryConfig>>> =
+50 | |         std::cell::RefCell::new(None);
+51 | | }
+   | |_^
+   |
+   = note: this warning originates in the macro `$crate::thread::local_impl::thread_local_inner` which comes from the expansion of the macro `thread_local` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: missing documentation for an associated type
+  --> packages/domain/src/memory/mod.rs:82:5
+   |
+82 |     type Error;
+   |     ^^^^^^^^^^
+
+warning: missing documentation for an associated type
+  --> packages/domain/src/memory/mod.rs:83:5
+   |
+83 |     type MemoryNode;
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/memory/mod.rs:85:5
+   |
+85 |     fn store_memory(&self, memory: Self::MemoryNode) -> Result<(), Self::Error>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+  --> packages/domain/src/memory/mod.rs:91:1
+   |
+91 | pub type Error = crate::memory::primitives::MemoryError;
+   | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a type alias
+  --> packages/domain/src/memory/mod.rs:94:1
+   |
+94 | pub type VectorStoreError = Error;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> packages/domain/src/memory/primitives/mod.rs:1:1
+  |
+1 | pub mod node;
+  | ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> packages/domain/src/memory/primitives/mod.rs:2:1
+  |
+2 | pub mod types;
+  | ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/memory/primitives/types.rs:230:14
+    |
+230 |     Binary { data: Bytes, content_type: Arc<str> }}
+    |              ^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/memory/primitives/types.rs:230:27
+    |
+230 |     Binary { data: Bytes, content_type: Arc<str> }}
+    |                           ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:553:5
+    |
+553 |     NotFound(String),
+    |     ^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:555:5
+    |
+555 |     InvalidType(String),
+    |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:557:5
+    |
+557 |     InvalidContent(String),
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:559:5
+    |
+559 |     Serialization(String),
+    |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:561:5
+    |
+561 |     Validation(String),
+    |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:563:5
+    |
+563 |     OperationFailed(String),
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/primitives/types.rs:565:5
+    |
+565 |     StorageError(String)}
+    |     ^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> packages/domain/src/memory/config/mod.rs:2:1
+  |
+2 | pub mod database;
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> packages/domain/src/memory/config/mod.rs:4:1
+  |
+4 | pub mod memory;
+  | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a module
+ --> packages/domain/src/memory/config/mod.rs:6:1
+  |
+6 | pub mod vector;
+  | ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/config/llm.rs:157:5
+    |
+157 |     InvalidModel(String),
+    |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/config/llm.rs:160:5
+    |
+160 |     InvalidParameter(String),
+    |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> packages/domain/src/memory/config/llm.rs:163:5
+    |
+163 |     ValidationError(String)}
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/memory/manager.rs:28:1
+   |
+28 | pub struct MemoryConfig {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/manager.rs:29:5
+   |
+29 |     pub database_url: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/manager.rs:30:5
+   |
+30 |     pub embedding_dimension: usize}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a trait
+  --> packages/domain/src/memory/manager.rs:40:1
+   |
+40 | pub trait MemoryManagerTrait: Send + Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+  --> packages/domain/src/memory/manager.rs:44:1
+   |
+44 | pub struct SurrealDBMemoryManager {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:60:5
+   |
+60 |     pub avx2: bool,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:61:5
+   |
+61 |     pub avx512f: bool,
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:62:5
+   |
+62 |     pub avx512bw: bool,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:63:5
+   |
+63 |     pub avx512vl: bool,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:64:5
+   |
+64 |     pub fma: bool,
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:65:5
+   |
+65 |     pub sse42: bool,
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:66:5
+   |
+66 |     pub neon: bool,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/ops.rs:67:5
+   |
+67 |     pub architecture: CpuArchitecture}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/memory/ops.rs:72:5
+   |
+72 |     X86_64,
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/memory/ops.rs:73:5
+   |
+73 |     AArch64,
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/memory/ops.rs:74:5
+   |
+74 |     Other}
+   |     ^^^^^
+
+warning: missing documentation for an associated function
+  --> packages/domain/src/memory/ops.rs:78:5
+   |
+78 |     pub fn detect() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:51:9
+   |
+51 |         content: String,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:52:9
+   |
+52 |         memory_type: MemoryType},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:54:14
+   |
+54 |     Recall { query: String, limit: Option<usize> },
+   |              ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:54:29
+   |
+54 |     Recall { query: String, limit: Option<usize> },
+   |                             ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:56:20
+   |
+56 |     VectorSearch { vector: Vec<f32>, limit: usize },
+   |                    ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:56:38
+   |
+56 |     VectorSearch { vector: Vec<f32>, limit: usize },
+   |                                      ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:58:17
+   |
+58 |     GetMemory { id: String },
+   |                 ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:60:20
+   |
+60 |     UpdateMemory { memory: MemoryNode },
+   |                    ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/memory/tool.rs:62:20
+   |
+62 |     DeleteMemory { id: String }}
+   |                    ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/error.rs:12:9
+   |
+12 |         provider: Cow<'static, str>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/error.rs:13:9
+   |
+13 |         name: Cow<'static, str>},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/error.rs:20:9
+   |
+20 |         provider: Cow<'static, str>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/error.rs:21:9
+   |
+21 |         name: Cow<'static, str>},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/model/resolver.rs:118:21
+    |
+118 |     HasCapability { capability: String },
+    |                     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/model/resolver.rs:121:18
+    |
+121 |     HasFeature { feature: String },
+    |                  ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/model/resolver.rs:124:17
+    |
+124 |     EnvVarSet { name: String },
+    |                 ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> packages/domain/src/model/resolver.rs:127:22
+    |
+127 |     FeatureEnabled { name: String }}
+    |                      ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:15:20
+   |
+15 |     MissingField { field: String, model: String },
+   |                    ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:15:35
+   |
+15 |     MissingField { field: String, model: String },
+   |                                   ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:19:9
+   |
+19 |         field: String,
+   |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:20:9
+   |
+20 |         value: String,
+   |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:21:9
+   |
+21 |         expected: String},
+   |         ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:24:24
+   |
+24 |     InconsistentData { description: String },
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:27:23
+   |
+27 |     InvalidProvider { provider: String },
+   |                       ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:30:24
+   |
+30 |     InvalidModelName { name: String },
+   |                        ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:33:22
+   |
+33 |     InvalidPricing { description: String },
+   |                      ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:36:25
+   |
+36 |     InvalidCapability { description: String },
+   |                         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> packages/domain/src/model/validation.rs:39:27
+   |
+39 |     UnsafeConfiguration { description: String }}
+   |                           ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+ --> packages/domain/src/prompt/mod.rs:6:1
+  |
+6 | pub struct Prompt {
+  | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> packages/domain/src/prompt/mod.rs:7:5
+  |
+7 |     pub content: String,
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+ --> packages/domain/src/prompt/mod.rs:9:5
+  |
+9 |     pub role: MessageRole}
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> packages/domain/src/prompt/mod.rs:16:5
+   |
+16 |     pub fn new(content: impl Into<String>) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/prompt/mod.rs:22:5
+   |
+22 |     pub fn content(&self) -> &str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an associated function
+  --> packages/domain/src/tool/core.rs:43:5
+   |
+43 |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a method
+  --> packages/domain/src/tool/core.rs:47:5
+   |
+47 |     pub fn push(&mut self, tool: ToolDefinition) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/tool/core.rs:55:5
+   |
+55 |     Typed(Box<dyn std::any::Any + Send + Sync>),
+   |     ^^^^^
+
+warning: missing documentation for a variant
+  --> packages/domain/src/tool/core.rs:56:5
+   |
+56 |     Named(NamedTool)}
+   |     ^^^^^
+
+warning: `fluent_ai_domain` (lib) generated 937 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.67s

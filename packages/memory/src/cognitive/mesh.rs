@@ -20,46 +20,39 @@ pub struct CognitiveMesh {
     evolution_engine: Arc<RwLock<EvolutionEngine>>,
     meta_consciousness: Arc<MetaConsciousness>,
     query_enhancer: QueryEnhancer,
-    pattern_detector: EmergentPatternDetector,
-}
+    pattern_detector: EmergentPatternDetector}
 
 /// Meta-consciousness system for high-level system awareness
 pub struct MetaConsciousness {
     system_monitor: SystemMonitor,
     intervention_system: InterventionSystem,
-    strategy_selector: StrategySelector,
-}
+    strategy_selector: StrategySelector}
 
 /// Enhances queries with cognitive understanding
 pub struct QueryEnhancer {
     intent_analyzer: IntentAnalyzer,
     context_extractor: ContextExtractor,
-    complexity_estimator: ComplexityEstimator,
-}
+    complexity_estimator: ComplexityEstimator}
 
 /// Detects emergent patterns across the system
 pub struct EmergentPatternDetector {
     pattern_cache: RwLock<Vec<EmergentPattern>>,
-    detection_algorithms: Vec<PatternDetectionAlgorithm>,
-}
+    detection_algorithms: Vec<PatternDetectionAlgorithm>}
 
 /// Monitors overall system health and performance
 pub struct SystemMonitor {
     performance_metrics: RwLock<SystemMetrics>,
-    alert_thresholds: AlertThresholds,
-}
+    alert_thresholds: AlertThresholds}
 
 /// System for intervening when issues are detected
 pub struct InterventionSystem {
     intervention_strategies: Vec<InterventionStrategy>,
-    intervention_history: RwLock<Vec<InterventionEvent>>,
-}
+    intervention_history: RwLock<Vec<InterventionEvent>>}
 
 /// Selects optimal routing strategies
 pub struct StrategySelector {
     strategy_performance: RwLock<std::collections::HashMap<RoutingStrategy, f32>>,
-    adaptation_rate: f32,
-}
+    adaptation_rate: f32}
 
 #[derive(Debug, Clone)]
 pub struct SystemMetrics {
@@ -68,24 +61,21 @@ pub struct SystemMetrics {
     pub evolution_rate: f32,
     pub pattern_discovery_rate: f32,
     pub system_stability: f32,
-    pub user_satisfaction: f32,
-}
+    pub user_satisfaction: f32}
 
 #[derive(Debug, Clone)]
 pub struct AlertThresholds {
     pub max_cognitive_load: f32,
     pub min_routing_efficiency: f32,
     pub max_evolution_rate: f32,
-    pub min_stability: f32,
-}
+    pub min_stability: f32}
 
 #[derive(Debug, Clone)]
 pub struct InterventionStrategy {
     pub name: String,
     pub trigger_condition: TriggerCondition,
     pub action: InterventionAction,
-    pub priority: u8,
-}
+    pub priority: u8}
 
 #[derive(Debug, Clone)]
 pub enum TriggerCondition {
@@ -93,8 +83,7 @@ pub enum TriggerCondition {
     RoutingFailure,
     EvolutionStagnation,
     PatternDetectionFailure,
-    UserDissatisfaction,
-}
+    UserDissatisfaction}
 
 #[derive(Debug, Clone)]
 pub enum InterventionAction {
@@ -102,24 +91,21 @@ pub enum InterventionAction {
     SwitchRoutingStrategy,
     TriggerEvolution,
     ResetPatternDetection,
-    OptimizeForUser,
-}
+    OptimizeForUser}
 
 #[derive(Debug, Clone)]
 pub struct InterventionEvent {
     pub timestamp: chrono::DateTime<chrono::Utc>,
     pub trigger: TriggerCondition,
     pub action: InterventionAction,
-    pub effectiveness: f32,
-}
+    pub effectiveness: f32}
 
 pub enum PatternDetectionAlgorithm {
     TemporalCorrelation,
     SemanticClustering,
     CausalChainDetection,
     BehavioralPattern,
-    StructuralPattern,
-}
+    StructuralPattern}
 
 impl CognitiveMesh {
     /// Convert cognitive::types::EnhancedQuery to quantum::types::EnhancedQuery
@@ -137,13 +123,11 @@ impl CognitiveMesh {
                 crate::cognitive::quantum::types::TemporalContext {
                     timestamp: std::time::Instant::now(),
                     duration: std::time::Duration::from_secs(1),
-                    temporal_type: crate::cognitive::quantum::types::TemporalType::Present,
-                }
+                    temporal_type: crate::cognitive::quantum::types::TemporalType::Present}
             }),
             cognitive_hints: query.cognitive_hints.clone(),
             expected_complexity: query.expected_complexity as f64,
-            priority: query.priority as u32,
-        }
+            priority: query.priority as u32}
     }
     pub async fn new() -> CognitiveResult<Self> {
         let state_manager = Arc::new(CognitiveStateManager::new());
@@ -161,9 +145,7 @@ impl CognitiveMesh {
                 semantic_weight: 0.4,
                 lexical_weight: 0.3,
                 structural_weight: 0.2,
-                contextual_weight: 0.1,
-            },
-        };
+                contextual_weight: 0.1}};
         let attention_router = Arc::new(AttentionRouter::new(attention_config));
         let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::with_state_manager(
             state_manager.clone(),
@@ -178,8 +160,7 @@ impl CognitiveMesh {
             evolution_engine,
             meta_consciousness,
             query_enhancer: QueryEnhancer::new(),
-            pattern_detector: EmergentPatternDetector::new(),
-        })
+            pattern_detector: EmergentPatternDetector::new()})
     }
 
     /// Enhanced query processing with cognitive understanding
@@ -219,8 +200,7 @@ impl CognitiveMesh {
             }
             RoutingStrategy::Hybrid(strategies) => self.hybrid_route(query, strategies).await,
             RoutingStrategy::Emergent => self.emergent_route(query).await,
-            RoutingStrategy::Causal => self.causal_route(query).await,
-        }
+            RoutingStrategy::Causal => self.causal_route(query).await}
     }
 
     /// Hybrid routing combining multiple strategies
@@ -311,8 +291,7 @@ impl CognitiveMesh {
             PatternType::Semantic => RoutingStrategy::Attention,
             PatternType::Causal => RoutingStrategy::Causal,
             PatternType::Behavioral => RoutingStrategy::Quantum,
-            PatternType::Structural => RoutingStrategy::Attention,
-        };
+            PatternType::Structural => RoutingStrategy::Attention};
 
         Ok(RoutingDecision {
             strategy,
@@ -322,8 +301,7 @@ impl CognitiveMesh {
             reasoning: format!(
                 "Emergent routing based on {} pattern",
                 strongest_pattern.description
-            ),
-        })
+            )})
     }
 
     /// Causal routing for reasoning tasks
@@ -349,8 +327,7 @@ impl CognitiveMesh {
             target_context: format!("causal_chain_{}", causal_chain.len()),
             confidence: 0.8,
             alternatives: Vec::new(),
-            reasoning: format!("Causal routing with {} element chain", causal_chain.len()),
-        })
+            reasoning: format!("Causal routing with {} element chain", causal_chain.len())})
     }
 
     /// System evolution trigger
@@ -449,8 +426,7 @@ impl QueryEnhancer {
         Self {
             intent_analyzer: IntentAnalyzer::new(),
             context_extractor: ContextExtractor::new(),
-            complexity_estimator: ComplexityEstimator::new(),
-        }
+            complexity_estimator: ComplexityEstimator::new()}
     }
 
     pub async fn enhance(&self, query: &str) -> CognitiveResult<EnhancedQuery> {
@@ -481,8 +457,7 @@ impl QueryEnhancer {
             expected_complexity,
             context: "General".to_string(),
             priority: 0.5,
-            timestamp: chrono::Utc::now(),
-        })
+            timestamp: chrono::Utc::now()})
     }
 
     async fn generate_cognitive_hints(&self, query: &str) -> CognitiveResult<Vec<String>> {
@@ -510,8 +485,7 @@ impl MetaConsciousness {
         Self {
             system_monitor: SystemMonitor::new(),
             intervention_system: InterventionSystem::new(),
-            strategy_selector: StrategySelector::new(),
-        }
+            strategy_selector: StrategySelector::new()}
     }
 
     pub async fn select_routing_strategy(
@@ -587,8 +561,7 @@ impl EmergentPatternDetector {
                 PatternDetectionAlgorithm::TemporalCorrelation,
                 PatternDetectionAlgorithm::SemanticClustering,
                 PatternDetectionAlgorithm::CausalChainDetection,
-            ],
-        }
+            ]}
     }
 
     pub async fn detect_relevant_patterns(
@@ -635,8 +608,7 @@ impl EmergentPatternDetector {
             strength: innovation.impact_score as f32, // Convert f64 to f32
             affected_memories: Vec::new(),
             discovery_timestamp: innovation.discovered_at,
-            description: innovation.description,
-        };
+            description: innovation.description};
 
         self.pattern_cache.write().await.push(pattern);
         Ok(())
@@ -648,8 +620,7 @@ impl EmergentPatternDetector {
             QueryIntent::Prediction => matches!(pattern.pattern_type, PatternType::Temporal),
             QueryIntent::Reasoning => matches!(pattern.pattern_type, PatternType::Causal),
             QueryIntent::Association => matches!(pattern.pattern_type, PatternType::Semantic),
-            _ => true,
-        }
+            _ => true}
     }
 
     async fn run_detection_algorithm(
@@ -665,8 +636,7 @@ impl EmergentPatternDetector {
                     strength: 0.7,
                     affected_memories: Vec::new(),
                     discovery_timestamp: chrono::Utc::now(),
-                    description: "Temporal correlation pattern detected".to_string(),
-                }])
+                    description: "Temporal correlation pattern detected".to_string()}])
             }
             _ => Ok(Vec::new()), // Other algorithms would be implemented
         }
@@ -678,8 +648,7 @@ impl EmergentPatternDetector {
 pub struct CausalElement {
     pub element_type: String,
     pub confidence: f32,
-    pub position: usize,
-}
+    pub position: usize}
 
 pub struct IntentAnalyzer;
 pub struct ContextExtractor;
@@ -758,8 +727,7 @@ impl SystemMonitor {
     pub fn new() -> Self {
         Self {
             performance_metrics: RwLock::new(SystemMetrics::default()),
-            alert_thresholds: AlertThresholds::default(),
-        }
+            alert_thresholds: AlertThresholds::default()}
     }
 
     pub async fn collect_metrics(&self) -> CognitiveResult<SystemMetrics> {
@@ -828,11 +796,9 @@ impl SystemMonitor {
                 .map(|alt| AlternativeRoute {
                     strategy: self.convert_quantum_to_cognitive_strategy(&alt.strategy),
                     confidence: alt.confidence as f32,
-                    estimated_quality: alt.estimated_quality as f32,
-                })
+                    estimated_quality: alt.estimated_quality as f32})
                 .collect(),
-            reasoning: quantum_decision.reasoning,
-        }
+            reasoning: quantum_decision.reasoning}
     }
 
     /// Convert quantum RoutingStrategy to cognitive RoutingStrategy
@@ -868,10 +834,8 @@ impl InterventionSystem {
                 name: "Reduce Load".to_string(),
                 trigger_condition: TriggerCondition::CognitiveOverload,
                 action: InterventionAction::ReduceCognitiveLoad,
-                priority: 1,
-            }],
-            intervention_history: RwLock::new(Vec::new()),
-        }
+                priority: 1}],
+            intervention_history: RwLock::new(Vec::new())}
     }
 
     pub async fn check_intervention_needed(
@@ -885,8 +849,7 @@ impl InterventionSystem {
                 TriggerCondition::RoutingFailure => metrics.routing_efficiency < 0.3,
                 TriggerCondition::EvolutionStagnation => metrics.evolution_rate < 0.01,
                 TriggerCondition::PatternDetectionFailure => metrics.pattern_discovery_rate < 0.01,
-                TriggerCondition::UserDissatisfaction => metrics.user_satisfaction < 0.3,
-            };
+                TriggerCondition::UserDissatisfaction => metrics.user_satisfaction < 0.3};
 
             if should_trigger {
                 return Ok(Some(strategy.clone()));
@@ -957,8 +920,7 @@ impl StrategySelector {
     pub fn new() -> Self {
         Self {
             strategy_performance: RwLock::new(std::collections::HashMap::new()),
-            adaptation_rate: 0.1,
-        }
+            adaptation_rate: 0.1}
     }
 
     pub async fn select_optimal_strategy(
@@ -977,8 +939,7 @@ impl StrategySelector {
             QueryIntent::Exploration => {
                 RoutingStrategy::Hybrid(vec![RoutingStrategy::Quantum, RoutingStrategy::Attention])
             }
-            QueryIntent::Creation => RoutingStrategy::Emergent,
-        };
+            QueryIntent::Creation => RoutingStrategy::Emergent};
 
         // Check if we have performance data to make a better choice
         if performance.is_empty() {
@@ -1051,8 +1012,7 @@ impl Default for SystemMetrics {
             evolution_rate: 0.1,
             pattern_discovery_rate: 0.05,
             system_stability: 0.9,
-            user_satisfaction: 0.7,
-        }
+            user_satisfaction: 0.7}
     }
 }
 
@@ -1062,7 +1022,6 @@ impl Default for AlertThresholds {
             max_cognitive_load: 0.9,
             min_routing_efficiency: 0.3,
             max_evolution_rate: 0.5,
-            min_stability: 0.1,
-        }
+            min_stability: 0.1}
     }
 }

@@ -80,8 +80,7 @@ pub struct ModelInfo {
 
     /// Patch configuration for API requests
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub patch: Option<serde_json::Value>,
-}
+    pub patch: Option<serde_json::Value>}
 
 impl ModelInfo {
     /// Create a new model info builder
@@ -257,8 +256,7 @@ pub struct ModelInfoBuilder {
     supports_embeddings: bool,
     requires_max_tokens: bool,
     supports_thinking: bool,
-    optimal_thinking_budget: Option<u32>,
-}
+    optimal_thinking_budget: Option<u32>}
 
 impl ModelInfoBuilder {
     /// Set the provider name
@@ -363,8 +361,7 @@ impl ModelInfoBuilder {
             system_prompt_prefix: None,
             real_name: None,
             model_type: None,
-            patch: None,
-        };
+            patch: None};
 
         model_info.validate()?;
         Ok(model_info)
@@ -375,8 +372,7 @@ impl ModelInfoBuilder {
 #[derive(Debug, Clone, Default)]
 pub struct ProviderModels {
     provider_name: &'static str,
-    models: Vec<ModelInfo>,
-}
+    models: Vec<ModelInfo>}
 
 impl ProviderModels {
     /// Create a new provider model collection
@@ -384,8 +380,7 @@ impl ProviderModels {
     pub fn new(provider_name: &'static str) -> Self {
         Self {
             provider_name,
-            models: Vec::new(),
-        }
+            models: Vec::new()}
     }
 
     /// Add a model to the collection
@@ -399,8 +394,7 @@ impl ProviderModels {
         if self.models.iter().any(|m| m.name == model.name) {
             return Err(ModelError::ModelAlreadyExists {
                 provider: self.provider_name.into(),
-                name: model.name.into(),
-            });
+                name: model.name.into()});
         }
 
         self.models.push(model);

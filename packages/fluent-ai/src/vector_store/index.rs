@@ -3,8 +3,6 @@
 //! Implements various indexing approaches including LSH, k-means clustering,
 //! and hierarchical indices for approximate nearest neighbor search.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use crate::embedding::similarity::{SimilarityMetric, cosine_similarity, euclidean_distance};
@@ -22,8 +20,7 @@ pub enum IndexStrategy {
         /// Number of hash tables
         num_tables: usize,
         /// Random projection dimensions
-        projection_dim: usize,
-    },
+        projection_dim: usize},
     /// K-means clustering for approximate search
     KMeans {
         /// Number of clusters
@@ -31,16 +28,13 @@ pub enum IndexStrategy {
         /// Maximum iterations for k-means
         max_iterations: usize,
         /// Search multiple nearest clusters
-        search_clusters: usize,
-    },
+        search_clusters: usize},
     /// Hierarchical indexing
     Hierarchical {
         /// Branching factor
         branch_factor: usize,
         /// Maximum leaf size
-        leaf_size: usize,
-    },
-}
+        leaf_size: usize}}
 
 impl Default for IndexStrategy {
     fn default() -> Self {
@@ -58,8 +52,7 @@ pub struct IndexConfig {
     /// Enable parallel processing for index operations
     pub enable_parallel: bool,
     /// Memory limit for index structures (in MB)
-    pub memory_limit_mb: usize,
-}
+    pub memory_limit_mb: usize}
 
 impl Default for IndexConfig {
     fn default() -> Self {
@@ -67,8 +60,7 @@ impl Default for IndexConfig {
             strategy: IndexStrategy::Linear,
             rebuild_threshold: 1000,
             enable_parallel: true,
-            memory_limit_mb: 100,
-        }
+            memory_limit_mb: 100}
     }
 }
 
@@ -111,15 +103,13 @@ pub struct IndexStats {
     /// Average search time in microseconds
     pub avg_search_time_us: f64,
     /// Index efficiency score (0.0 to 1.0)
-    pub efficiency_score: f32,
-}
+    pub efficiency_score: f32}
 
 /// Linear search index (exact results)
 pub struct LinearIndex {
     entries: Vec<VectorEntry>,
     id_to_index: HashMap<String, usize>,
-    updates_count: usize,
-}
+    updates_count: usize}
 
 impl LinearIndex {
     #[inline(always)]
@@ -127,8 +117,7 @@ impl LinearIndex {
         Self {
             entries: Vec::new(),
             id_to_index: HashMap::new(),
-            updates_count: 0,
-        }
+            updates_count: 0}
     }
 }
 
@@ -203,8 +192,7 @@ impl VectorIndex for LinearIndex {
                     .zip(entry.vector.iter())
                     .map(|(&a, &b)| a * b)
                     .sum::<f32>(),
-                _ => cosine_similarity(query_vector, &entry.vector),
-            };
+                _ => cosine_similarity(query_vector, &entry.vector)};
 
             if similarity >= threshold {
                 results.push((entry.id.clone(), similarity));
@@ -247,8 +235,7 @@ pub struct LSHIndex {
     /// Configuration
     config: LSHConfig,
     /// Update counter
-    updates_count: usize,
-}
+    updates_count: usize}
 
 #[derive(Debug, Clone)]
 struct LSHConfig {
@@ -257,8 +244,7 @@ struct LSHConfig {
     num_tables: usize,
     #[allow(dead_code)] // TODO: Use in LSH implementation
     projection_dim: usize,
-    vector_dim: usize,
-}
+    vector_dim: usize}
 
 impl LSHIndex {
     pub fn new(
@@ -292,10 +278,8 @@ impl LSHIndex {
                 num_hashes,
                 num_tables,
                 projection_dim,
-                vector_dim,
-            },
-            updates_count: 0,
-        }
+                vector_dim},
+            updates_count: 0}
     }
 
     /// Compute LSH hash for a vector
@@ -428,8 +412,7 @@ impl VectorIndex for LSHIndex {
                         .zip(entry.vector.iter())
                         .map(|(&a, &b)| a * b)
                         .sum::<f32>(),
-                    _ => cosine_similarity(query_vector, &entry.vector),
-                };
+                    _ => cosine_similarity(query_vector, &entry.vector)};
 
                 if similarity >= threshold {
                     results.push((id, similarity));
@@ -487,8 +470,7 @@ impl IndexFactory {
             IndexStrategy::LSH {
                 num_hashes,
                 num_tables,
-                projection_dim,
-            } => Ok(Box::new(LSHIndex::new(
+                projection_dim} => Ok(Box::new(LSHIndex::new(
                 *num_hashes,
                 *num_tables,
                 *projection_dim,
@@ -524,15 +506,13 @@ impl IndexFactory {
             IndexStrategy::LSH {
                 num_hashes,
                 num_tables,
-                projection_dim,
-            }
+                projection_dim}
         } else {
             // Large datasets: use hierarchical LSH with performance optimization
             IndexStrategy::LSH {
                 num_hashes: 16,
                 num_tables: 20,
-                projection_dim: 32,
-            }
+                projection_dim: 32}
         }
     }
 }

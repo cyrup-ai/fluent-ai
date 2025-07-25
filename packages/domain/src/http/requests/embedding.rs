@@ -51,7 +51,7 @@
 use std::fmt;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use serde::{Deserialize, Serialize};
 
 use crate::http::common::{ValidationError, MAX_IDENTIFIER_LEN};
@@ -101,8 +101,7 @@ pub struct EmbeddingRequest {
     
     /// Provider-specific extensions
     #[serde(flatten)]
-    pub extensions: EmbeddingExtensions,
-}
+    pub extensions: EmbeddingExtensions}
 
 /// Input types for embedding generation
 /// 
@@ -121,8 +120,7 @@ pub enum EmbeddingInput {
     LargeBatch(Vec<String>),
     
     /// Token arrays for advanced use cases
-    TokenArrays(Vec<Vec<u32>>),
-}
+    TokenArrays(Vec<Vec<u32>>)}
 
 /// Provider-specific extensions for embedding requests
 /// 
@@ -152,8 +150,7 @@ pub struct EmbeddingExtensions {
     
     /// Ollama-specific options
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ollama_options: Option<OllamaEmbeddingOptions>,
-}
+    pub ollama_options: Option<OllamaEmbeddingOptions>}
 
 /// Cohere input type for optimization hints
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -166,8 +163,7 @@ pub enum CohereInputType {
     /// Text for classification tasks
     Classification,
     /// Text for clustering tasks
-    Clustering,
-}
+    Clustering}
 
 /// Cohere truncation mode for oversized texts
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -178,8 +174,7 @@ pub enum CohereTruncate {
     /// Truncate from the start
     Start,
     /// Truncate from the end
-    End,
-}
+    End}
 
 /// Cohere embedding types to return
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -194,8 +189,7 @@ pub enum CohereEmbeddingType {
     /// Binary embeddings
     Binary,
     /// Unsigned binary embeddings
-    Ubinary,
-}
+    Ubinary}
 
 /// Ollama-specific embedding options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -206,8 +200,7 @@ pub struct OllamaEmbeddingOptions {
     
     /// Truncate input to fit context window
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub truncate: Option<bool>,
-}
+    pub truncate: Option<bool>}
 
 /// Model capabilities and constraints for embedding models
 #[derive(Debug, Clone)]
@@ -234,8 +227,7 @@ pub struct EmbeddingModelInfo {
     pub supports_custom_dimensions: bool,
     
     /// Whether model supports batch processing
-    pub supports_batch: bool,
-}
+    pub supports_batch: bool}
 
 /// Embedding request error types
 #[derive(Debug, Clone, PartialEq)]
@@ -265,8 +257,7 @@ pub enum EmbeddingRequestError {
     ModelNotFound(String),
     
     /// Provider-specific parameter error
-    ProviderParameterError { provider: Provider, parameter: String, message: String },
-}
+    ProviderParameterError { provider: Provider, parameter: String, message: String }}
 
 /// Statistics for embedding request processing
 #[derive(Debug)]
@@ -278,8 +269,7 @@ pub struct EmbeddingStats {
     /// Total tokens processed (estimated)
     pub total_tokens: AtomicU32,
     /// Batch requests processed
-    pub batch_requests: AtomicU32,
-}
+    pub batch_requests: AtomicU32}
 
 impl EmbeddingRequest {
     /// Create a new embedding request for a single text
@@ -299,8 +289,7 @@ impl EmbeddingRequest {
             encoding_format: None,
             dimensions: None,
             user: None,
-            extensions: EmbeddingExtensions::default(),
-        })
+            extensions: EmbeddingExtensions::default()})
     }
     
     /// Create a new embedding request for batch processing
@@ -342,8 +331,7 @@ impl EmbeddingRequest {
             encoding_format: None,
             dimensions: None,
             user: None,
-            extensions: EmbeddingExtensions::default(),
-        })
+            extensions: EmbeddingExtensions::default()})
     }
     
     /// Create a provider-specific embedding request
@@ -374,8 +362,7 @@ impl EmbeddingRequest {
             encoding_format: Self::default_encoding_format(provider),
             dimensions: None,
             user: None,
-            extensions,
-        })
+            extensions})
     }
     
     /// Set encoding format
@@ -385,8 +372,7 @@ impl EmbeddingRequest {
             .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                 provider: Provider::OpenAI, // Generic provider for format error
                 parameter: "encoding_format".to_string(),
-                message: "Encoding format too long".to_string(),
-            })?);
+                message: "Encoding format too long".to_string()})?);
         Ok(self)
     }
     
@@ -399,15 +385,13 @@ impl EmbeddingRequest {
                 return Err(EmbeddingRequestError::InvalidDimensions {
                     model: self.model.to_string(),
                     dimensions,
-                    max_dimensions: model_info.max_dimensions,
-                });
+                    max_dimensions: model_info.max_dimensions});
             }
             if dimensions > model_info.max_dimensions {
                 return Err(EmbeddingRequestError::InvalidDimensions {
                     model: self.model.to_string(),
                     dimensions,
-                    max_dimensions: model_info.max_dimensions,
-                });
+                    max_dimensions: model_info.max_dimensions});
             }
         }
         
@@ -422,8 +406,7 @@ impl EmbeddingRequest {
             .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                 provider: Provider::OpenAI,
                 parameter: "user".to_string(),
-                message: "User identifier too long".to_string(),
-            })?);
+                message: "User identifier too long".to_string()})?);
         Ok(self)
     }
     
@@ -450,8 +433,7 @@ impl EmbeddingRequest {
                 .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                     provider: Provider::Cohere,
                     parameter: "embedding_types".to_string(),
-                    message: "Too many embedding types".to_string(),
-                })?;
+                    message: "Too many embedding types".to_string()})?;
         }
         self.extensions.embedding_types = Some(type_array);
         Ok(self)
@@ -464,8 +446,7 @@ impl EmbeddingRequest {
             .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                 provider: Provider::Azure,
                 parameter: "deployment".to_string(),
-                message: "Deployment name too long".to_string(),
-            })?);
+                message: "Deployment name too long".to_string()})?);
         Ok(self)
     }
     
@@ -476,8 +457,7 @@ impl EmbeddingRequest {
             .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                 provider: Provider::Azure, // Common for versioned APIs
                 parameter: "api_version".to_string(),
-                message: "API version too long".to_string(),
-            })?);
+                message: "API version too long".to_string()})?);
         Ok(self)
     }
     
@@ -507,15 +487,13 @@ impl EmbeddingRequest {
                     return Err(EmbeddingRequestError::InvalidDimensions {
                         model: self.model.to_string(),
                         dimensions,
-                        max_dimensions: model_info.max_dimensions,
-                    });
+                        max_dimensions: model_info.max_dimensions});
                 }
                 if dimensions > model_info.max_dimensions {
                     return Err(EmbeddingRequestError::InvalidDimensions {
                         model: self.model.to_string(),
                         dimensions,
-                        max_dimensions: model_info.max_dimensions,
-                    });
+                        max_dimensions: model_info.max_dimensions});
                 }
             }
         }
@@ -560,8 +538,7 @@ impl EmbeddingRequest {
             Provider::Ollama => self.to_ollama_format(),
             Provider::Gemini => self.to_gemini_format(),
             Provider::HuggingFace => self.to_huggingface_format(),
-            _ => Err(EmbeddingRequestError::ProviderNotSupported(provider)),
-        }
+            _ => Err(EmbeddingRequestError::ProviderNotSupported(provider))}
     }
     
     /// Validate individual text input
@@ -577,8 +554,7 @@ impl EmbeddingRequest {
             return Err(EmbeddingRequestError::TextTooLong {
                 index,
                 length: estimated_tokens,
-                max_length: MAX_TOKENS_PER_TEXT,
-            });
+                max_length: MAX_TOKENS_PER_TEXT});
         }
         
         Ok(())
@@ -599,8 +575,7 @@ impl EmbeddingRequest {
         match provider {
             Provider::OpenAI | Provider::Azure => Some(ArrayString::from("float").unwrap_or_default()),
             Provider::Cohere => None, // Cohere doesn't use encoding_format
-            _ => None,
-        }
+            _ => None}
     }
     
     /// Get default extensions for provider
@@ -616,8 +591,7 @@ impl EmbeddingRequest {
                 api_version: Some(ArrayString::from("2024-02-01").unwrap_or_default()),
                 ..Default::default()
             },
-            _ => EmbeddingExtensions::default(),
-        }
+            _ => EmbeddingExtensions::default()}
     }
     
     /// Get model information for known models
@@ -633,8 +607,7 @@ impl EmbeddingRequest {
                 max_input_tokens: 8191,
                 max_batch_size: 2048,
                 supports_custom_dimensions: true,
-                supports_batch: true,
-            }),
+                supports_batch: true}),
             "text-embedding-3-small" => Some(EmbeddingModelInfo {
                 provider: Provider::OpenAI,
                 name: ArrayString::from(model).unwrap_or_default(),
@@ -643,8 +616,7 @@ impl EmbeddingRequest {
                 max_input_tokens: 8191,
                 max_batch_size: 2048,
                 supports_custom_dimensions: true,
-                supports_batch: true,
-            }),
+                supports_batch: true}),
             "text-embedding-ada-002" => Some(EmbeddingModelInfo {
                 provider: Provider::OpenAI,
                 name: ArrayString::from(model).unwrap_or_default(),
@@ -653,8 +625,7 @@ impl EmbeddingRequest {
                 max_input_tokens: 8191,
                 max_batch_size: 2048,
                 supports_custom_dimensions: false,
-                supports_batch: true,
-            }),
+                supports_batch: true}),
             // Cohere models
             "embed-english-v3.0" | "embed-multilingual-v3.0" => Some(EmbeddingModelInfo {
                 provider: Provider::Cohere,
@@ -664,8 +635,7 @@ impl EmbeddingRequest {
                 max_input_tokens: 512,
                 max_batch_size: 96,
                 supports_custom_dimensions: false,
-                supports_batch: true,
-            }),
+                supports_batch: true}),
             // Mistral models
             "mistral-embed" => Some(EmbeddingModelInfo {
                 provider: Provider::Mistral,
@@ -675,8 +645,7 @@ impl EmbeddingRequest {
                 max_input_tokens: 8192,
                 max_batch_size: 1000,
                 supports_custom_dimensions: false,
-                supports_batch: true,
-            }),
+                supports_batch: true}),
             // Google Gemini models
             "text-embedding-004" => Some(EmbeddingModelInfo {
                 provider: Provider::Gemini,
@@ -686,10 +655,8 @@ impl EmbeddingRequest {
                 max_input_tokens: 2048,
                 max_batch_size: 100,
                 supports_custom_dimensions: false,
-                supports_batch: true,
-            }),
-            _ => None,
-        }
+                supports_batch: true}),
+            _ => None}
     }
     
     /// Convert to OpenAI format
@@ -728,8 +695,7 @@ impl EmbeddingRequest {
                 .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                     provider: Provider::Cohere,
                     parameter: "input_type".to_string(),
-                    message: "Failed to serialize input_type".to_string(),
-                })?;
+                    message: "Failed to serialize input_type".to_string()})?;
         }
         
         if let Some(truncate) = self.extensions.truncate {
@@ -737,8 +703,7 @@ impl EmbeddingRequest {
                 .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                     provider: Provider::Cohere,
                     parameter: "truncate".to_string(),
-                    message: "Failed to serialize truncate".to_string(),
-                })?;
+                    message: "Failed to serialize truncate".to_string()})?;
         }
         
         if let Some(ref embedding_types) = self.extensions.embedding_types {
@@ -746,8 +711,7 @@ impl EmbeddingRequest {
                 .map_err(|_| EmbeddingRequestError::ProviderParameterError {
                     provider: Provider::Cohere,
                     parameter: "embedding_types".to_string(),
-                    message: "Failed to serialize embedding_types".to_string(),
-                })?;
+                    message: "Failed to serialize embedding_types".to_string()})?;
         }
         
         Ok(json)

@@ -13,5 +13,4 @@ pub mod circuit_breaker;
 pub use circuit_breaker::{
     AdaptiveThresholdCalculator, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError,
     CircuitBreakerRegistry, CircuitMetricsSnapshot, CircuitState, CircuitStateChange,
-    ErrorCategory, ErrorEntry, FailureType, RegistryStats,
-};
+    ErrorCategory, ErrorEntry, FailureType, RegistryStats};

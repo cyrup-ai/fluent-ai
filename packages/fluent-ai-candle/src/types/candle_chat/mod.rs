@@ -20,7 +20,6 @@
 
 pub mod chat;
 pub mod commands;
-pub mod config;
 pub mod conversation;
 pub mod export;
 pub mod formatting;
@@ -33,15 +32,14 @@ pub mod templates;
 
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use commands::{CommandExecutor, CommandRegistry, ImmutableChatCommand};
-pub use config::{ChatConfig, PersonalityConfig};
+pub use chat::config::{ChatConfig, PersonalityConfig};
 pub use conversation::{CandleChat, Conversation, ConversationBuilder, ConversationImpl};
 pub use export::{ExportData, ExportFormat};
 pub use formatting::{FormatStyle, StreamingMessageFormatter};
 pub use integrations::{IntegrationConfig, IntegrationManager};
 pub use macros::{MacroAction, MacroSystem};
 pub use message::message_processing::{
-    process_message, sanitize_content, validate_message, validate_message_sync,
-};
+    process_message, sanitize_content, validate_message, validate_message_sync};
 // Removed old duplicate types - use CandleMessage, CandleMessageRole from types module instead
 pub use realtime::RealTimeSystem;
 pub use search::{ChatSearchIndex, SearchQuery};

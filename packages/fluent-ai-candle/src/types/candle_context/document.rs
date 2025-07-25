@@ -3,9 +3,8 @@
 //! This module provides document types, content formats, and basic document loading
 //! functionality. Originally from document.rs.
 
-use std::collections::HashMap;
-
 // Removed fluent_ai_http3::async_task import - not needed for streams-only architecture
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -15,16 +14,14 @@ pub struct Document {
     pub format: Option<ContentFormat>,
     pub media_type: Option<DocumentMediaType>,
     #[serde(flatten)]
-    pub additional_props: HashMap<String, Value>,
-}
+    pub additional_props: HashMap<String, Value>}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ContentFormat {
     Base64,
     Text,
     Html,
-    Markdown,
-}
+    Markdown}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum DocumentMediaType {
@@ -32,8 +29,7 @@ pub enum DocumentMediaType {
     DOCX,
     TXT,
     RTF,
-    ODT,
-}
+    ODT}
 
 // Builder implementations moved to fluent_ai/src/builders/document.rs
 
@@ -42,23 +38,20 @@ impl Document {
     /// Full builder functionality is in fluent-ai/src/builders/document.rs
     pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> DocumentLoader {
         DocumentLoader {
-            path: path.as_ref().display().to_string(),
-        }
+            path: path.as_ref().display().to_string()}
     }
 
     /// Extract the text content from the document
     pub fn content(&self) -> String {
         match self.format {
             Some(ContentFormat::Base64) => "[Base64 Document]".to_string(),
-            _ => self.data.clone(),
-        }
+            _ => self.data.clone()}
     }
 }
 
 /// Simple document loader for domain use
 pub struct DocumentLoader {
-    path: String,
-}
+    path: String}
 
 impl DocumentLoader {
     /// Load the document (simplified version)
@@ -69,8 +62,7 @@ impl DocumentLoader {
             data: format!("Document from: {}", self.path),
             format: Some(ContentFormat::Text),
             media_type: Some(DocumentMediaType::TXT),
-            additional_props: HashMap::new(),
-        }
+            additional_props: HashMap::new()}
     }
 }
 

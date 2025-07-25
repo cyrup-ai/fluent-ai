@@ -41,13 +41,11 @@ pub trait MessageFactory {
 
 /// Concrete user message builder implementation
 pub struct UserMessageBuilder {
-    content: Option<UserContent>,
-}
+    content: Option<UserContent>}
 
 /// Concrete assistant message builder implementation
 pub struct AssistantMessageBuilder {
-    content: Option<AssistantContent>,
-}
+    content: Option<AssistantContent>}
 
 impl UserMessageBuilder {
     pub fn new() -> Self {
@@ -74,8 +72,7 @@ impl MessageBuilder for UserMessageBuilder {
             self.content
                 .unwrap_or_else(|| {
                     UserContent::Text(fluent_ai_domain::message::Text {
-                        content: "".to_string(),
-                    })
+                        content: "".to_string()})
                 })
                 .as_text(),
         )
@@ -85,8 +82,7 @@ impl MessageBuilder for UserMessageBuilder {
 impl UserMessageBuilderTrait for UserMessageBuilder {
     fn text(mut self, text: impl Into<String>) -> Self {
         self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
-            content: text.into(),
-        }));
+            content: text.into()}));
         self
     }
 
@@ -94,24 +90,21 @@ impl UserMessageBuilderTrait for UserMessageBuilder {
         // Convert image to user content format
         self.content = Some(UserContent::Image {
             url: image.data,
-            detail: None,
-        });
+            detail: None});
         self
     }
 
     fn audio(mut self, audio: Audio) -> Self {
         // Convert audio to text for user content
         self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
-            content: format!("[Audio: {}]", audio.data),
-        }));
+            content: format!("[Audio: {}]", audio.data)}));
         self
     }
 
     fn document(mut self, document: Document) -> Self {
         // Convert document to text for user content
         self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
-            content: document.content,
-        }));
+            content: document.content}));
         self
     }
 
@@ -133,8 +126,7 @@ impl MessageBuilder for AssistantMessageBuilder {
             self.content
                 .unwrap_or_else(|| {
                     AssistantContent::Text(fluent_ai_domain::message::Text {
-                        content: "".to_string(),
-                    })
+                        content: "".to_string()})
                 })
                 .as_text(),
         )
@@ -144,8 +136,7 @@ impl MessageBuilder for AssistantMessageBuilder {
 impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
     fn text(mut self, text: impl Into<String>) -> Self {
         self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
-            content: text.into(),
-        }));
+            content: text.into()}));
         self
     }
 
@@ -160,24 +151,20 @@ impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
             function: fluent_ai_domain::message::ToolFunction {
                 name: name.into(),
                 description: None,
-                parameters: arguments,
-            },
-        };
+                parameters: arguments}};
         self.content = Some(AssistantContent::ToolCall(tool_call));
         self
     }
 
     fn tool_result(mut self, tool_call_id: impl Into<String>, result: Value) -> Self {
         self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
-            content: format!("Tool result for {}: {}", tool_call_id.into(), result),
-        }));
+            content: format!("Tool result for {}: {}", tool_call_id.into(), result)}));
         self
     }
 
     fn tool_error(mut self, tool_call_id: impl Into<String>, error: impl Into<String>) -> Self {
         self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
-            content: format!("Tool error for {}: {}", tool_call_id.into(), error.into()),
-        }));
+            content: format!("Tool error for {}: {}", tool_call_id.into(), error.into())}));
         self
     }
 

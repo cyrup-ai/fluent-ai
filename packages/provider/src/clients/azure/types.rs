@@ -24,8 +24,7 @@ pub struct AzureOpenAIConfig {
     /// API key for authentication
     pub api_key: String,
     /// API version (e.g., "2024-02-15-preview")
-    pub api_version: String,
-}
+    pub api_version: String}
 
 impl AzureOpenAIConfig {
     /// Create a new Azure OpenAI configuration
@@ -35,8 +34,7 @@ impl AzureOpenAIConfig {
             resource,
             deployment,
             api_key,
-            api_version: "2024-02-15-preview".to_string(),
-        }
+            api_version: "2024-02-15-preview".to_string()}
     }
 
     /// Get the base URL for Azure OpenAI
@@ -106,8 +104,7 @@ impl Default for AzureOpenAIConfig {
             resource: String::new(),
             deployment: String::new(),
             api_key: String::new(),
-            api_version: "2024-02-15-preview".to_string(),
-        }
+            api_version: "2024-02-15-preview".to_string()}
     }
 }
 

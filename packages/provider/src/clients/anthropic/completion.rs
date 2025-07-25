@@ -12,24 +12,17 @@
 //!     .prompt("Hello world")
 //! ```
 
-use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::spawn_async;
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{Document, Message};
-// Import centralized HTTP structs - no more local definitions!
-use fluent_ai_http_structs::{
-    anthropic::{
-        AnthropicCacheControl, AnthropicChatRequest, AnthropicContent, AnthropicContentBlock,
-        AnthropicMessage, AnthropicStreamingChoice, AnthropicStreamingChunk,
-        AnthropicStreamingDelta, AnthropicSystemMessage, AnthropicThinkingConfig, AnthropicTool,
-        AnthropicToolResult, AnthropicToolUse, AnthropicUsage,
-    },
-    builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
-    common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
-    errors::{HttpStructError, HttpStructResult},
-    validation::{ValidateRequest, ValidationResult},
+// Use local Anthropic request/response types
+use super::types::{
+    AnthropicCacheControl, AnthropicChatRequest, AnthropicContent, AnthropicContentBlock,
+    AnthropicMessage, AnthropicStreamingChoice, AnthropicStreamingChunk,
+    AnthropicStreamingDelta, AnthropicSystemMessage, AnthropicThinkingConfig, AnthropicTool,
+    AnthropicToolResult, AnthropicToolUse, AnthropicUsage
 };
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use log;
@@ -39,9 +32,7 @@ use super::messages::ContentBlock;
 use crate::{
     AsyncStream,
     completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo,
-    },
-};
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo}};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -63,8 +54,7 @@ pub fn get_model_config(model_name: &'static str) -> &'static ModelConfig {
 pub struct SearchResultData {
     pub source: String,
     pub title: String,
-    pub content: Vec<ContentBlock>,
-}
+    pub content: Vec<ContentBlock>}
 
 /// Zero-allocation Anthropic completion builder with perfect ergonomics
 #[derive(Clone)]
@@ -93,8 +83,7 @@ pub struct AnthropicCompletionBuilder {
     thinking_enabled: bool,
     thinking_config: Option<AnthropicThinkingConfig>,
     // Search results for citation support
-    search_results: ArrayVec<SearchResultData, MAX_SEARCH_RESULTS>,
-}
+    search_results: ArrayVec<SearchResultData, MAX_SEARCH_RESULTS>}
 
 /// Anthropic-specific builder extensions available only for Anthropic provider
 pub trait AnthropicExtensions {
@@ -148,8 +137,7 @@ impl CompletionProvider for AnthropicCompletionBuilder {
             auto_cache_large_content: false,
             thinking_enabled: false,
             thinking_config: None,
-            search_results: ArrayVec::new(),
-        })
+            search_results: ArrayVec::new()})
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -368,8 +356,7 @@ impl AnthropicExtensions for AnthropicCompletionBuilder {
         let result = SearchResultData {
             source: source.into(),
             title: title.into(),
-            content,
-        };
+            content};
         let _ = self.search_results.try_push(result);
         self
     }
@@ -491,8 +478,7 @@ impl AnthropicCompletionBuilder {
                 401 => CompletionError::ProviderUnavailable("Authentication failed".to_string()),
                 413 => CompletionError::InvalidRequest("Request too large".to_string()),
                 429 => CompletionError::RateLimitExceeded,
-                _ => CompletionError::ProviderUnavailable("HTTP error".to_string()),
-            });
+                _ => CompletionError::ProviderUnavailable("HTTP error".to_string())});
         }
 
         let sse_stream = response.sse();
@@ -561,8 +547,7 @@ impl AnthropicCompletionBuilder {
                 Ok((role, content)) => {
                     chat_builder = chat_builder.add_message(role, content);
                 }
-                Err(e) => return Err(e),
-            }
+                Err(e) => return Err(e)}
         }
 
         // Add user prompt
@@ -614,8 +599,7 @@ impl AnthropicCompletionBuilder {
             Err(e) => Err(CompletionError::InvalidRequest(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
 
     /// Convert domain Message to Anthropic content (zero allocation)
@@ -656,8 +640,7 @@ impl AnthropicCompletionBuilder {
             let anthropic_tool = AnthropicTool {
                 name: tool.name(),
                 description: tool.description(),
-                input_schema: tool.parameters().clone(),
-            };
+                input_schema: tool.parameters().clone()};
 
             if tools.try_push(anthropic_tool).is_err() {
                 return Err(CompletionError::InvalidRequest(
@@ -675,8 +658,7 @@ impl AnthropicCompletionBuilder {
         // Use centralized deserialization
         let anthropic_chunk: AnthropicStreamingChunk = match serde_json::from_slice(data) {
             Ok(chunk) => chunk,
-            Err(_) => return Err(CompletionError::ParseError),
-        };
+            Err(_) => return Err(CompletionError::ParseError)};
 
         // Convert to domain CompletionChunk based on Anthropic's streaming format
         match anthropic_chunk.chunk_type.as_str() {
@@ -717,8 +699,7 @@ impl AnthropicCompletionBuilder {
                             "end_turn" => FinishReason::Stop,
                             "max_tokens" => FinishReason::Length,
                             "tool_use" => FinishReason::ToolCalls,
-                            _ => FinishReason::Other,
-                        });
+                            _ => FinishReason::Other});
 
                 Ok(CompletionChunk::new(
                     "anthropic_chunk".to_string(),

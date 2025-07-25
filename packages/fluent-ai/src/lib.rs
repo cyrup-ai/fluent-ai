@@ -82,8 +82,7 @@ pub use crate::builders::{
     AudioBuilderWithHandler, ConversationBuilder, ImageBuilder, ImageBuilderWithHandler,
     McpClientBuilder, McpServerBuilder, McpToolBuilder, McpToolImpl, ModelInfoBuilder,
     PromptBuilder, SecureMcpToolBuilder, Stdio, VectorQueryBuilder, VectorStoreIndexExt,
-    WorkflowBuilder,
-};
+    WorkflowBuilder};
 
 // Re-export embeddings module for compatibility
 pub mod embeddings {
@@ -158,8 +157,7 @@ pub use domain::tool::ExecToText;
 pub use domain::{
     Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
     audio::{AudioMediaType, ContentFormat as AudioContentFormat},
-    image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType},
-};
+    image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType}};
 // Re-export traits from domain
 pub use domain::{CompletionBackend, CompletionModel};
 pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
@@ -246,9 +244,7 @@ mod tests {
     /// Test streaming operations with chunks
     #[test]
     fn test_streaming_with_chunks() {
-        use std::collections::HashMap;
-
-        use crate::domain::chunk::{DocumentChunk, ImageChunk, VoiceChunk};
+                use crate::domain::chunk::{DocumentChunk, ImageChunk, VoiceChunk};
 
         // Test that chunk types work with AsyncStream (using default empty streams for tests)
         let _doc_stream: AsyncStream<DocumentChunk> = AsyncStream::default();
@@ -260,14 +256,12 @@ mod tests {
             path: None,
             content: "test content".to_string(),
             byte_range: None,
-            metadata: HashMap::new(),
-        };
+            metadata: HashMap::new()};
 
         let _image_chunk = ImageChunk {
             data: vec![1, 2, 3],
             format: crate::domain::chunk::ImageFormat::PNG,
             dimensions: Some((100, 100)),
-            metadata: HashMap::new(),
-        };
+            metadata: HashMap::new()};
     }
 }

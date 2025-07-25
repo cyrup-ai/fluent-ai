@@ -8,10 +8,8 @@ use std::arch::aarch64::*;
 // SIMD intrinsics imports
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use arrayvec::ArrayVec;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use crossbeam_skiplist::SkipMap;
 use smallvec::SmallVec;
@@ -29,8 +27,7 @@ pub struct PatternMatcher {
     search_operations: RelaxedCounter,
     search_time_nanos: RelaxedCounter,
     /// Next pattern ID
-    next_pattern_id: RelaxedCounter,
-}
+    next_pattern_id: RelaxedCounter}
 
 /// Compiled pattern with optimized search tables
 #[derive(Debug, Clone)]
@@ -40,8 +37,7 @@ struct CompiledPattern {
     algorithm: MatchingAlgorithm,
     boyer_moore_table: Option<ArrayVec<usize, 256>>,
     kmp_table: Option<ArrayVec<isize, MAX_PATTERN_LENGTH>>,
-    content_hash: u64,
-}
+    content_hash: u64}
 
 /// Pattern matching algorithms
 #[derive(Debug, Clone, Copy)]
@@ -49,8 +45,7 @@ enum MatchingAlgorithm {
     Naive,
     BoyerMoore,
     KMP,
-    SIMD,
-}
+    SIMD}
 
 impl Default for PatternMatcher {
     fn default() -> Self {
@@ -68,8 +63,7 @@ impl PatternMatcher {
             matches_found: RelaxedCounter::new(0),
             search_operations: RelaxedCounter::new(0),
             search_time_nanos: RelaxedCounter::new(0),
-            next_pattern_id: RelaxedCounter::new(1),
-        }
+            next_pattern_id: RelaxedCounter::new(1)}
     }
 
     /// Add pattern to matcher
@@ -113,8 +107,7 @@ impl PatternMatcher {
             algorithm,
             boyer_moore_table,
             kmp_table,
-            content_hash,
-        };
+            content_hash};
 
         self.patterns.insert(pattern_id, compiled_pattern);
         self.pattern_lookup.insert(content_hash, pattern_id);
@@ -182,8 +175,7 @@ impl PatternMatcher {
             MatchingAlgorithm::Naive => self.find_matches_naive(text, pattern),
             MatchingAlgorithm::BoyerMoore => self.find_matches_boyer_moore(text, pattern),
             MatchingAlgorithm::KMP => self.find_matches_kmp(text, pattern),
-            MatchingAlgorithm::SIMD => self.find_matches_simd(text, pattern),
-        }
+            MatchingAlgorithm::SIMD => self.find_matches_simd(text, pattern)}
     }
 
     /// Naive pattern matching algorithm
@@ -429,8 +421,7 @@ impl PatternMatcher {
                 }
             }
             9..=32 => MatchingAlgorithm::BoyerMoore,
-            _ => MatchingAlgorithm::KMP,
-        }
+            _ => MatchingAlgorithm::KMP}
     }
 
     /// Build Boyer-Moore bad character table
@@ -502,8 +493,7 @@ impl PatternMatcher {
             average_analysis_time_nanos: 0,
             simd_operations_count: 0,
             cache_hits: 0,
-            cache_misses: 0,
-        }
+            cache_misses: 0}
     }
 
     /// Reset performance counters

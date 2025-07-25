@@ -37,22 +37,19 @@ pub struct ExportStatistics {
     /// Average export time in milliseconds
     pub average_export_time: f64,
     /// Last export timestamp
-    pub last_export_time: u64,
-}
+    pub last_export_time: u64}
 
 /// Search exporter for generating output in various formats
 #[derive(Debug, Clone)]
 pub struct SearchExporter {
     /// Export statistics
-    stats: ExportStatistics,
-}
+    stats: ExportStatistics}
 
 impl SearchExporter {
     /// Create a new search exporter
     pub fn new() -> Self {
         Self {
-            stats: ExportStatistics::default(),
-        }
+            stats: ExportStatistics::default()}
     }
 
     /// Export search results using fluent-ai-async streaming architecture
@@ -78,13 +75,11 @@ impl SearchExporter {
                 ExportFormat::Xml => text_formats::TextFormatsExporter::export_as_xml(&limited_results, &options),
                 ExportFormat::Text => text_formats::TextFormatsExporter::export_as_text(&limited_results, &options),
                 ExportFormat::Markdown => text_formats::TextFormatsExporter::export_as_markdown(&limited_results, &options),
-                ExportFormat::Html => text_formats::TextFormatsExporter::export_as_html(&limited_results, &options),
-            };
+                ExportFormat::Html => text_formats::TextFormatsExporter::export_as_html(&limited_results, &options)};
 
             match exported_data {
                 Ok(data) => emit!(sender, data),
-                Err(error) => handle_error!(error, "Export failed"),
-            }
+                Err(error) => handle_error!(error, "Export failed")}
         })
     }
 
@@ -100,8 +95,7 @@ impl SearchExporter {
                 ExportFormat::Csv => csv::CsvExporter::export_statistics(&stats),
                 ExportFormat::Text => text_formats::TextFormatsExporter::export_statistics_as_text(&stats),
                 ExportFormat::Markdown => text_formats::TextFormatsExporter::export_statistics_as_markdown(&stats),
-                _ => format!("Statistics export not supported for format: {:?}", format),
-            };
+                _ => format!("Statistics export not supported for format: {:?}", format)};
 
             emit!(sender, exported_stats);
         })

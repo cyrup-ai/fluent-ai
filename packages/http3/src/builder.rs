@@ -25,8 +25,7 @@ pub enum ContentType {
     /// text/plain content type
     TextPlain,
     /// text/html content type
-    TextHtml,
-}
+    TextHtml}
 
 impl ContentType {
     /// Convert content type to string representation
@@ -37,8 +36,7 @@ impl ContentType {
             ContentType::ApplicationFormUrlEncoded => "application/x-www-form-urlencoded",
             ContentType::ApplicationOctetStream => "application/octet-stream",
             ContentType::TextPlain => "text/plain",
-            ContentType::TextHtml => "text/html",
-        }
+            ContentType::TextHtml => "text/html"}
     }
 }
 
@@ -56,8 +54,7 @@ pub struct Http3Builder<S = BodyNotSet> {
     client: HttpClient,
     request: HttpRequest,
     state: PhantomData<S>,
-    debug_enabled: bool,
-}
+    debug_enabled: bool}
 
 // Entry points
 impl Http3Builder<BodyNotSet> {
@@ -67,8 +64,7 @@ impl Http3Builder<BodyNotSet> {
             client: client.clone(),
             request: HttpRequest::new(Method::GET, "".to_string(), None, None, None),
             state: PhantomData,
-            debug_enabled: false,
-        }
+            debug_enabled: false}
     }
 
     /// Shorthand for setting Content-Type to application/json
@@ -183,14 +179,12 @@ impl<S> Http3Builder<S> {
             // Serialize as form-urlencoded
             match serde_urlencoded::to_string(body) {
                 Ok(form_string) => form_string.into_bytes(),
-                Err(_) => Vec::new(),
-            }
+                Err(_) => Vec::new()}
         } else {
             // Default to JSON serialization
             match serde_json::to_vec(body) {
                 Ok(bytes) => bytes,
-                Err(_) => Vec::new(),
-            }
+                Err(_) => Vec::new()}
         };
 
         if self.debug_enabled {
@@ -207,8 +201,7 @@ impl<S> Http3Builder<S> {
             client: self.client,
             request,
             state: PhantomData,
-            debug_enabled: self.debug_enabled,
-        }
+            debug_enabled: self.debug_enabled}
     }
 }
 
@@ -334,16 +327,13 @@ impl HttpStream {
 
         if all_bytes.is_empty() {
             return Err(HttpError::InvalidResponse {
-                message: "Empty response body".to_string(),
-            });
+                message: "Empty response body".to_string()});
         }
 
         match serde_json::from_slice(&all_bytes) {
             Ok(value) => Ok(value),
             Err(err) => Err(HttpError::DeserializationError {
-                message: format!("JSON deserialization failed: {}", err),
-            }),
-        }
+                message: format!("JSON deserialization failed: {}", err)})}
     }
 }
 
@@ -363,8 +353,7 @@ impl HttpStreamExt for HttpStream {
         // Receive result synchronously
         match rx.recv() {
             Ok(Ok(value)) => value,
-            _ => T::default(),
-        }
+            _ => T::default()}
     }
 
     // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
@@ -390,16 +379,13 @@ impl HttpStreamExt for HttpStream {
             Ok(Ok(value)) => value,
             Ok(Err(err)) => f(err),
             Err(_) => f(HttpError::InvalidResponse {
-                message: "Channel communication failed".to_string(),
-            }),
-        }
+                message: "Channel communication failed".to_string()})}
     }
 }
 
 /// Builder for download-specific operations
 pub struct DownloadBuilder {
-    stream: DownloadStream,
-}
+    stream: DownloadStream}
 
 impl DownloadBuilder {
     fn new(stream: DownloadStream) -> Self {
@@ -427,8 +413,7 @@ impl DownloadBuilder {
                     total_written += bytes_written as u64;
                     chunk_count += 1;
                 }
-                Err(e) => return Err(e),
-            }
+                Err(e) => return Err(e)}
         }
 
         Ok(DownloadProgress {
@@ -436,8 +421,7 @@ impl DownloadBuilder {
             bytes_written: total_written,
             total_size,
             local_path: local_path.to_string(),
-            is_complete: true,
-        })
+            is_complete: true})
     }
 }
 
@@ -453,8 +437,7 @@ pub struct DownloadProgress {
     /// Local filesystem path where file was saved
     pub local_path: String,
     /// Whether the download completed successfully
-    pub is_complete: bool,
-}
+    pub is_complete: bool}
 
 impl DownloadProgress {
     /// Calculate progress percentage if total size is known

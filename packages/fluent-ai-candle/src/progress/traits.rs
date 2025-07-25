@@ -1,6 +1,6 @@
 //! Progress reporting traits and interfaces
 
-use std::sync::Arc;
+// Removed unused import: Arc
 
 /// Core progress reporting trait for ML operations
 /// 

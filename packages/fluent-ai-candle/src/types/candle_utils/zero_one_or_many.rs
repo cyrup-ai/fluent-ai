@@ -11,8 +11,7 @@ pub enum ZeroOneOrMany<T> {
     /// Single value
     One(T),
     /// Multiple values
-    Many(Vec<T>),
-}
+    Many(Vec<T>)}
 
 impl<T> Default for ZeroOneOrMany<T> {
     fn default() -> Self {
@@ -46,8 +45,7 @@ impl<T> ZeroOneOrMany<T> {
         match self {
             Self::None => 0,
             Self::One(_) => 1,
-            Self::Many(vec) => vec.len(),
-        }
+            Self::Many(vec) => vec.len()}
     }
 
     /// Convert to a Vec
@@ -55,8 +53,7 @@ impl<T> ZeroOneOrMany<T> {
         match self {
             Self::None => Vec::new(),
             Self::One(value) => vec![value],
-            Self::Many(values) => values,
-        }
+            Self::Many(values) => values}
     }
 
     /// Get an iterator over the values
@@ -64,8 +61,7 @@ impl<T> ZeroOneOrMany<T> {
         match self {
             Self::None => Box::new(std::iter::empty()) as Box<dyn Iterator<Item = &T>>,
             Self::One(value) => Box::new(std::iter::once(value)) as Box<dyn Iterator<Item = &T>>,
-            Self::Many(values) => Box::new(values.iter()) as Box<dyn Iterator<Item = &T>>,
-        }
+            Self::Many(values) => Box::new(values.iter()) as Box<dyn Iterator<Item = &T>>}
     }
 }
 
@@ -89,7 +85,6 @@ impl<T> From<Option<T>> for ZeroOneOrMany<T> {
     fn from(option: Option<T>) -> Self {
         match option {
             Some(value) => Self::One(value),
-            None => Self::None,
-        }
+            None => Self::None}
     }
 }

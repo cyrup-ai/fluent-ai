@@ -59,8 +59,7 @@ pub fn config_for_model_type(model_type: &str) -> TokenizerConfig {
             .add_eos_token(true)
             .max_length(Some(8192))
             .build(),
-        _ => TokenizerConfig::default(),
-    }
+        _ => TokenizerConfig::default()}
 }
 
 /// Validate tokenizer for ML model compatibility

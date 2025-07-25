@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use candle_core::Result as CandleResult;
-use fluent_ai_async::handle_error;
+// Removed unused import: handle_error
 
 use crate::error::CandleError;
 
@@ -24,8 +24,7 @@ pub enum RecoveryStrategy {
     FallbackToDummy,
     
     /// Retry the operation up to N times
-    Retry(u32),
-}
+    Retry(u32)}
 
 impl Default for RecoveryStrategy {
     fn default() -> Self {
@@ -38,8 +37,7 @@ pub struct RecoveryContext {
     strategy: RecoveryStrategy,
     retry_attempts: u32,
     max_retries: u32,
-    is_cancelled: Arc<AtomicBool>,
-}
+    is_cancelled: Arc<AtomicBool>}
 
 impl RecoveryContext {
     /// Create a new recovery context
@@ -49,10 +47,8 @@ impl RecoveryContext {
             retry_attempts: 0,
             max_retries: match strategy {
                 RecoveryStrategy::Retry(n) => n,
-                _ => 0,
-            },
-            is_cancelled: Arc::new(AtomicBool::new(false)),
-        }
+                _ => 0},
+            is_cancelled: Arc::new(AtomicBool::new(false))}
     }
     
     /// Check if recovery should be attempted
@@ -65,8 +61,7 @@ impl RecoveryContext {
             RecoveryStrategy::FailFast => false,
             RecoveryStrategy::Recover => is_recoverable_error(error),
             RecoveryStrategy::FallbackToDummy => true,
-            RecoveryStrategy::Retry(_) => self.retry_attempts < self.max_retries,
-        }
+            RecoveryStrategy::Retry(_) => self.retry_attempts < self.max_retries}
     }
     
     /// Get the recovery action for an error
@@ -78,8 +73,7 @@ impl RecoveryContext {
                 RecoveryAction::Retry
             }
             RecoveryStrategy::FallbackToDummy => RecoveryAction::FallbackToDummy,
-            _ => RecoveryAction::Fail(error),
-        }
+            _ => RecoveryAction::Fail(error)}
     }
     
     /// Cancel any pending recovery operations
@@ -105,8 +99,7 @@ pub enum RecoveryAction {
     Fail(CandleError),
     
     /// Recover with a modified model
-    Recover(Box<dyn FnOnce() -> CandleResult<()> + Send + 'static>),
-}
+    Recover(Box<dyn FnOnce() -> CandleResult<()> + Send + 'static>)}
 
 /// Check if an error is recoverable
 fn is_recoverable_error(error: &CandleError) -> bool {
@@ -116,8 +109,7 @@ fn is_recoverable_error(error: &CandleError) -> bool {
         CandleError::DeviceError(_) => false,
         CandleError::IoError(_) => false,
         CandleError::JsonError(_) => false,
-        _ => false,
-    }
+        _ => false}
 }
 
 /// Attempt to recover from a model loading error

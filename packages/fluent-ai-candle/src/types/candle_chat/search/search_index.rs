@@ -3,7 +3,6 @@
 //! This module provides the core search indexing capabilities with
 //! zero-allocation streaming patterns and lock-free data structures.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use fluent_ai_async::AsyncStream;
@@ -33,8 +32,7 @@ pub struct IndexEntry {
     /// Document length
     pub document_length: usize,
     /// Metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// Chat search index with lock-free operations
 #[derive(Serialize, Deserialize)]
@@ -54,8 +52,7 @@ pub struct ChatSearchIndex {
     /// Index version
     pub version: u32,
     /// Configuration
-    pub config: IndexConfig,
-}
+    pub config: IndexConfig}
 
 /// Configuration for search index
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,8 +72,7 @@ pub struct IndexConfig {
     /// Batch size for indexing
     pub batch_size: usize,
     /// Memory limit in bytes
-    pub memory_limit: usize,
-}
+    pub memory_limit: usize}
 
 impl Clone for ChatSearchIndex {
     fn clone(&self) -> Self {
@@ -88,8 +84,7 @@ impl Clone for ChatSearchIndex {
             statistics: self.statistics.clone(),
             last_update: self.last_update,
             version: self.version,
-            config: self.config.clone(),
-        }
+            config: self.config.clone()}
     }
 }
 
@@ -115,8 +110,7 @@ impl ChatSearchIndex {
             statistics: SearchStatistics::default(),
             last_update: chrono::Utc::now(),
             version: 1,
-            config: IndexConfig::default(),
-        }
+            config: IndexConfig::default()}
     }
 
     /// Add messages to the index (streaming)
@@ -138,8 +132,7 @@ impl ChatSearchIndex {
                     positions: Vec::new(), // Would calculate actual positions
                     frequency: terms.len(),
                     document_length: message.content.len(),
-                    metadata: HashMap::new(),
-                };
+                    metadata: HashMap::new()};
 
                 // Update term index
                 for term in &terms {
@@ -191,8 +184,7 @@ impl ChatSearchIndex {
                                     role: crate::types::CandleMessageRole::User,
                                     content: "Mock content".to_string(),
                                     timestamp: chrono::Utc::now(),
-                                    metadata: HashMap::new(),
-                                },
+                                    metadata: HashMap::new()},
                                 score: 1.0, // Would calculate actual score
                                 highlighted_content: None,
                                 context: Vec::new(),
@@ -202,13 +194,11 @@ impl ChatSearchIndex {
                                     end: term.len(),
                                     term: term.to_string(),
                                     match_type: MatchType::Exact,
-                                    confidence: 1.0,
-                                }],
+                                    confidence: 1.0}],
                                 conversation_id: None,
                                 tags: Vec::new(),
                                 result_timestamp: chrono::Utc::now(),
-                                extra_data: HashMap::new(),
-                            };
+                                extra_data: HashMap::new()};
                             results.push(result);
                         }
                     }

@@ -41,8 +41,7 @@ pub enum TransactionError {
     RollbackFailed(String),
 
     #[error("Database error: {0}")]
-    DatabaseError(String),
-}
+    DatabaseError(String)}
 
 /// Transaction isolation level
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,8 +53,7 @@ pub enum IsolationLevel {
     /// Repeatable read - prevents dirty and non-repeatable reads
     RepeatableRead,
     /// Serializable - highest isolation
-    Serializable,
-}
+    Serializable}
 
 /// Transaction state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,13 +69,11 @@ pub enum TransactionState {
     /// Transaction is being aborted
     Aborting,
     /// Transaction is aborted
-    Aborted,
-}
+    Aborted}
 
 /// A pending commit operation that can be awaited
 pub struct PendingCommit {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl PendingCommit {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -94,15 +90,13 @@ impl Future for PendingCommit {
             Poll::Ready(Err(_)) => Poll::Ready(Err(TransactionError::DatabaseError(
                 "Commit task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending rollback operation that can be awaited
 pub struct PendingRollback {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl PendingRollback {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -119,8 +113,7 @@ impl Future for PendingRollback {
             Poll::Ready(Err(_)) => Poll::Ready(Err(TransactionError::RollbackFailed(
                 "Rollback task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
@@ -157,5 +150,4 @@ pub struct TransactionContext {
     /// Start timestamp
     pub started_at: std::time::Instant,
     /// Timeout duration
-    pub timeout: Option<std::time::Duration>,
-}
+    pub timeout: Option<std::time::Duration>}

@@ -40,8 +40,7 @@ pub struct CommandHandlerMetadata {
     /// Handler version
     pub version: String,
     /// Whether handler is enabled
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 impl CommandHandlerMetadata {
     /// Create new command handler metadata
@@ -56,8 +55,7 @@ impl CommandHandlerMetadata {
             description: description.into(),
             supported_commands,
             version: "1.0.0".to_string(),
-            enabled: true,
-        }
+            enabled: true}
     }
 
     /// Set handler version
@@ -78,8 +76,7 @@ impl CommandHandlerMetadata {
 /// Default command handler implementation
 #[derive(Debug)]
 pub struct DefaultCommandHandler {
-    metadata: CommandHandlerMetadata,
-}
+    metadata: CommandHandlerMetadata}
 
 impl DefaultCommandHandler {
     /// Create new default command handler
@@ -122,8 +119,7 @@ impl CommandHandler for DefaultCommandHandler {
             let output = match &command {
                 ImmutableChatCommand::Help {
                     command: cmd,
-                    extended,
-                } => {
+                    extended} => {
                     let content = if let Some(cmd) = cmd {
                         if *extended {
                             format!("Extended help for command: {}", cmd)
@@ -163,15 +159,13 @@ impl CommandHandler for DefaultCommandHandler {
                         HistoryAction::Clear => "Chat history cleared".to_string(),
                         HistoryAction::Export => "Chat history exported".to_string(),
                         HistoryAction::Import => "Chat history imported".to_string(),
-                        HistoryAction::Backup => "Chat history backed up".to_string(),
-                    };
+                        HistoryAction::Backup => "Chat history backed up".to_string()};
                     CommandOutput::text(context.execution_id, content)
                 }
                 _ => CommandOutput::text(
                     context.execution_id,
                     format!("Command {} executed successfully", command.command_name()),
-                ),
-            };
+                )};
 
             // Send output through stream
             let _ = sender.try_send(output.final_output());

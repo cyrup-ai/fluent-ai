@@ -15,8 +15,7 @@ pub use crate::clients::openai::StreamingCompletionResponse;
 use crate::{
     clients::openai::{CompletionResponse, StreamingChoice, StreamingMessage},
     completion::CompletionError,
-    http::{HttpClient, HttpRequest},
-};
+    http::{HttpClient, HttpRequest}};
 
 /// Send a streaming request to Groq and return an AsyncStream
 pub fn send_groq_streaming_request(

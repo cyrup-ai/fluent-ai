@@ -8,8 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Complex64 {
     pub real: f64,
-    pub imaginary: f64,
-}
+    pub imaginary: f64}
 
 impl Complex64 {
     /// Create a new complex number

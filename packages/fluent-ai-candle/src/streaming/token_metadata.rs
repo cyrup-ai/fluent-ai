@@ -21,8 +21,7 @@ pub struct TokenMetadata {
     /// Top-p parameter if used
     pub top_p: Option<f32>,
     /// Top-k parameter if used
-    pub top_k: Option<u32>,
-}
+    pub top_k: Option<u32>}
 
 impl TokenMetadata {
     /// Create new metadata with blazing-fast initialization
@@ -35,8 +34,7 @@ impl TokenMetadata {
             processing_latency_nanos: 0,
             temperature: 1.0,
             top_p: None,
-            top_k: None,
-        }
+            top_k: None}
     }
 
     /// Create metadata with finish reason for stream termination
@@ -49,8 +47,7 @@ impl TokenMetadata {
             processing_latency_nanos: 0,
             temperature: 1.0,
             top_p: None,
-            top_k: None,
-        }
+            top_k: None}
     }
 
     /// Merge metadata from another instance for chunk aggregation

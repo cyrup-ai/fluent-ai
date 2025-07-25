@@ -37,22 +37,29 @@ pub enum AgentError {
     Config(String),
     /// Agent initialization error
     #[error("Agent initialization failed: {0}")]
-    InitializationError(String),
-}
+    InitializationError(String)}
 
 /// Agent data structure with automatic memory tool injection
 #[derive(Debug, Clone)]
 pub struct Agent {
+    /// The model configuration and implementation to use for this agent
     pub model: &'static dyn Model,
+    /// System prompt that defines the agent's personality and behavior
     pub system_prompt: String,
+    /// Context documents that provide background information
     pub context: ZeroOneOrMany<Document>,
+    /// MCP tools available to the agent for function calling
     pub tools: ZeroOneOrMany<McpToolData>,
+    /// Optional memory system for storing and retrieving conversation context
     pub memory: Option<Memory>,
+    /// Memory tool for automated memory management operations
     pub memory_tool: Option<MemoryTool>,
+    /// Temperature setting for response randomness (0.0 to 2.0)
     pub temperature: Option<f64>,
+    /// Maximum number of tokens to generate in responses
     pub max_tokens: Option<u64>,
-    pub additional_params: Option<Value>,
-}
+    /// Additional model-specific parameters as flexible JSON
+    pub additional_params: Option<Value>}
 
 impl Agent {
     /// Create a new agent with zero-allocation memory tool injection
@@ -76,8 +83,7 @@ impl Agent {
         // Convert comprehensive config to Memory::new() format
         let memory_config = MemoryConfig {
             database_url: comprehensive_config.database.connection_string.to_string(),
-            embedding_dimension: comprehensive_config.vector_store.dimension,
-        };
+            embedding_dimension: comprehensive_config.vector_store.dimension};
         let memory_stream = Memory::new(memory_config);
         // Use streaming-only pattern to get the Memory instance
         let mut stream = memory_stream;
@@ -103,8 +109,7 @@ impl Agent {
             memory_tool: Some(memory_tool),
             temperature: None,
             max_tokens: None,
-            additional_params: None,
-        })
+            additional_params: None})
     }
 
     /// Create a new agent with custom memory configuration
@@ -129,8 +134,7 @@ impl Agent {
         // Convert comprehensive config to Memory::new() format
         let memory_cfg = MemoryConfig {
             database_url: memory_config.database.connection_string.to_string(),
-            embedding_dimension: memory_config.vector_store.dimension,
-        };
+            embedding_dimension: memory_config.vector_store.dimension};
         let memory_stream = Memory::new(memory_cfg);
         // Use streaming-only pattern to get the Memory instance
         let mut stream = memory_stream;
@@ -156,8 +160,7 @@ impl Agent {
             memory_tool: Some(memory_tool),
             temperature: None,
             max_tokens: None,
-            additional_params: None,
-        })
+            additional_params: None})
     }
 
     /// Create a new agent with shared memory instance
@@ -191,8 +194,7 @@ impl Agent {
             memory_tool: Some(memory_tool),
             temperature: None,
             max_tokens: None,
-            additional_params: None,
-        })
+            additional_params: None})
     }
 
     /// Get memory tool reference for direct access

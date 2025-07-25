@@ -14,16 +14,14 @@ pub struct ModelRegistry {
     models: RwLock<HashMap<String, Arc<dyn Model>>>,
 
     /// Model information by name
-    info: RwLock<HashMap<String, &'static crate::types::CandleModelInfo>>,
-}
+    info: RwLock<HashMap<String, &'static crate::types::CandleModelInfo>>}
 
 impl ModelRegistry {
     /// Create a new model registry
     pub fn new() -> Self {
         Self {
             models: RwLock::new(HashMap::new()),
-            info: RwLock::new(HashMap::new()),
-        }
+            info: RwLock::new(HashMap::new())}
     }
 
     /// Register a model in the registry
@@ -54,8 +52,7 @@ impl ModelRegistry {
             .get(name)
             .cloned()
             .ok_or_else(|| RegistryError::ModelNotFound {
-                name: name.to_string(),
-            })
+                name: name.to_string()})
     }
 
     /// Get model information by name
@@ -68,8 +65,7 @@ impl ModelRegistry {
         info.get(name)
             .copied()
             .ok_or_else(|| RegistryError::ModelNotFound {
-                name: name.to_string(),
-            })
+                name: name.to_string()})
     }
 
     /// List all registered model names
@@ -92,8 +88,7 @@ impl ModelRegistry {
         let model = models
             .remove(name)
             .ok_or_else(|| RegistryError::ModelNotFound {
-                name: name.to_string(),
-            })?;
+                name: name.to_string()})?;
 
         info.remove(name);
 
@@ -153,8 +148,7 @@ pub enum RegistryError {
 
     /// Invalid model name
     #[error("Invalid model name: {name}")]
-    InvalidName { name: String },
-}
+    InvalidName { name: String }}
 
 /// Global model registry instance
 static GLOBAL_REGISTRY: std::sync::OnceLock<ModelRegistry> = std::sync::OnceLock::new();
@@ -192,7 +186,6 @@ impl Clone for ModelRegistry {
 
         Self {
             models: RwLock::new(models),
-            info: RwLock::new(info),
-        }
+            info: RwLock::new(info)}
     }
 }

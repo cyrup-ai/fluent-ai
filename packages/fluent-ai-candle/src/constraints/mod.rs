@@ -10,5 +10,4 @@ pub mod json;
 pub use generation_constraint::GenerationConstraint;
 pub use json::{
     JsonConstraint, JsonCurrentState, JsonStackItem, JsonState, NumberState,
-    create_json_constraint_for_tokenizer,
-};
+    create_json_constraint_for_tokenizer};

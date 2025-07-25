@@ -17,8 +17,7 @@ pub struct MetricsCollector {
     /// Total bytes sent
     pub total_bytes_sent: AtomicU64,
     /// Total bytes received
-    pub total_bytes_received: AtomicU64,
-}
+    pub total_bytes_received: AtomicU64}
 
 impl Default for MetricsCollector {
     fn default() -> Self {
@@ -35,8 +34,7 @@ impl MetricsCollector {
             failed_requests: AtomicUsize::new(0),
             total_response_time_nanos: AtomicU64::new(0),
             total_bytes_sent: AtomicU64::new(0),
-            total_bytes_received: AtomicU64::new(0),
-        }
+            total_bytes_received: AtomicU64::new(0)}
     }
 
     /// Record successful request
@@ -80,8 +78,7 @@ impl MetricsCollector {
             failed_requests,
             average_response_time,
             total_bytes_sent,
-            total_bytes_received,
-        }
+            total_bytes_received}
     }
 }
 
@@ -99,8 +96,7 @@ pub struct RequestMetrics {
     /// Total bytes sent in request bodies
     pub total_bytes_sent: u64,
     /// Total bytes received in response bodies
-    pub total_bytes_received: u64,
-}
+    pub total_bytes_received: u64}
 
 impl RequestMetrics {
     /// Calculate success rate as percentage
@@ -123,8 +119,7 @@ pub struct OperationMetrics {
     /// Average response time for this operation type
     pub average_response_time: Duration,
     /// Success rate for this operation type (0.0-1.0)
-    pub success_rate: f64,
-}
+    pub success_rate: f64}
 
 lazy_static::lazy_static! {
     /// Global metrics instance

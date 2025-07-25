@@ -5,8 +5,6 @@
 
 use std::sync::Arc;
 use std::time::Instant;
-use std::collections::HashMap;
-
 use fluent_ai_async::{AsyncStream, emit, handle_error};
 
 use super::types::{QueryOperator, SearchOptions};
@@ -23,8 +21,7 @@ pub struct ProcessedQuery {
     /// Query operator
     pub operator: QueryOperator,
     /// Processing metadata
-    pub metadata: QueryMetadata,
-}
+    pub metadata: QueryMetadata}
 
 /// Query metadata
 #[derive(Debug, Clone)]
@@ -36,8 +33,7 @@ pub struct QueryMetadata {
     /// Expansion applied
     pub expansion_applied: bool,
     /// Normalization applied
-    pub normalization_applied: bool,
-}
+    pub normalization_applied: bool}
 
 /// Query processor for handling search queries
 #[derive(Debug, Clone)]
@@ -45,24 +41,21 @@ pub struct QueryProcessor {
     /// Enable query expansion
     expansion_enabled: bool,
     /// Expansion dictionary for synonyms
-    expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>,
-}
+    expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>}
 
 impl QueryProcessor {
     /// Create a new query processor
     pub fn new() -> Self {
         Self {
             expansion_enabled: false,
-            expansion_dict: HashMap::new(),
-        }
+            expansion_dict: HashMap::new()}
     }
 
     /// Create query processor with options
     pub fn with_options(options: &SearchOptions) -> Self {
         Self {
             expansion_enabled: options.enable_query_expansion,
-            expansion_dict: options.expansion_dictionary.clone(),
-        }
+            expansion_dict: options.expansion_dictionary.clone()}
     }
 
     /// Process a query string with fluent-ai-async streaming architecture
@@ -108,9 +101,7 @@ impl QueryProcessor {
                         .as_secs(),
                     processing_time_us: start_time.elapsed().as_micros() as u64,
                     expansion_applied: options.enable_query_expansion,
-                    normalization_applied: true,
-                },
-            });
+                    normalization_applied: true}});
         })
     }
 
@@ -269,8 +260,7 @@ pub enum QueryValidationError {
     InvalidOperator,
     
     #[error("Unsupported query syntax")]
-    UnsupportedSyntax,
-}
+    UnsupportedSyntax}
 
 impl Default for QueryProcessor {
     fn default() -> Self {

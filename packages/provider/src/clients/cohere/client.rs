@@ -27,7 +27,7 @@ use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use fluent_ai_domain::{AsyncTask, AsyncStream};
 use arc_swap::{ArcSwap, Guard};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use circuit_breaker::{CircuitBreaker, Config as CBConfig, State as CBState};
 use std::sync::{Arc, LazyLock};
@@ -66,16 +66,14 @@ pub struct CohereClient {
     timeout: Duration,
     
     /// Maximum retries for transient failures
-    max_retries: u8,
-}
+    max_retries: u8}
 
 /// Zero allocation endpoint routing with compile-time optimizations
 #[derive(Debug, Clone)]
 struct EndpointRouter {
     chat_url: &'static str,
     embed_url: &'static str,
-    rerank_url: &'static str,
-}
+    rerank_url: &'static str}
 
 /// Lock-free performance metrics per endpoint
 struct CohereMetrics {
@@ -85,15 +83,13 @@ struct CohereMetrics {
     failed_requests: RelaxedCounter,
     total_latency_ms: RelaxedCounter,
     active_requests: RelaxedCounter,
-    peak_active_requests: RelaxedCounter,
-}
+    peak_active_requests: RelaxedCounter}
 
 /// Circuit breaker protection for all endpoints
 struct CohereCircuitBreakers {
     chat: CircuitBreaker<CohereError>,
     embed: CircuitBreaker<CohereError>,
-    rerank: CircuitBreaker<CohereError>,
-}
+    rerank: CircuitBreaker<CohereError>}
 
 impl CohereClient {
     /// Create new Cohere client with API key validation
@@ -103,16 +99,14 @@ impl CohereClient {
             .map_err(|err| CohereError::InvalidApiKey {
                 reason: err,
                 key_length: api_key.len(),
-                format_valid: !api_key.is_empty(),
-            })?;
+                format_valid: !api_key.is_empty()})?;
         
         // Convert to fixed-size array string for zero allocation storage
         let api_key_array = ArrayString::from(&api_key)
             .map_err(|_| CohereError::InvalidApiKey {
                 reason: ArrayString::from("API key too long").unwrap_or_default(),
                 key_length: api_key.len(),
-                format_valid: true,
-            })?;
+                format_valid: true})?;
         
         Ok(Self {
             api_key: ArcSwap::from_pointee(api_key_array),
@@ -120,8 +114,7 @@ impl CohereClient {
             endpoint_router: EndpointRouter::new(),
             circuit_breakers: &CIRCUIT_BREAKERS,
             timeout: Duration::from_secs(config::DEFAULT_TIMEOUT_SECS),
-            max_retries: config::MAX_RETRIES,
-        })
+            max_retries: config::MAX_RETRIES})
     }
     
     /// Update API key with zero downtime using hot-swapping
@@ -131,15 +124,13 @@ impl CohereClient {
             .map_err(|err| CohereError::InvalidApiKey {
                 reason: err,
                 key_length: new_api_key.len(),
-                format_valid: !new_api_key.is_empty(),
-            })?;
+                format_valid: !new_api_key.is_empty()})?;
         
         let api_key_array = ArrayString::from(&new_api_key)
             .map_err(|_| CohereError::InvalidApiKey {
                 reason: ArrayString::from("API key too long").unwrap_or_default(),
                 key_length: new_api_key.len(),
-                format_valid: true,
-            })?;
+                format_valid: true})?;
         
         self.api_key.store(Arc::new(api_key_array));
         Ok(())
@@ -224,8 +215,7 @@ impl CohereClient {
                         ModelType::Chat => "chat",
                         ModelType::Embedding => "embed",
                         ModelType::Reranking => "rerank",
-                        ModelType::Unknown => "unknown",
-                    }).unwrap_or_default(),
+                        ModelType::Unknown => "unknown"}).unwrap_or_default(),
                     state: super::error::CircuitBreakerState::Open,
                     failure_count: 0, // Circuit breaker doesn't expose this
                     success_count: 0, // Circuit breaker doesn't expose this
@@ -247,8 +237,7 @@ impl CohereClient {
                 setting: ArrayString::from("http_request").unwrap_or_default(),
                 reason: ArrayString::from(&e.to_string()).unwrap_or_default(),
                 current_value: ArrayString::new(),
-                valid_range: None,
-            })?
+                valid_range: None})?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(Duration::from_secs(10));
         
@@ -269,8 +258,7 @@ impl CohereClient {
                 AuthErrorCode::InsufficientPermissions,
                 false,
             )),
-            status => Err(CohereError::from(status)),
-        }
+            status => Err(CohereError::from(status))}
     }
     
     /// Get client statistics for monitoring
@@ -288,8 +276,7 @@ impl CohereClient {
             rerank_failures: RERANK_METRICS.failed_requests.get(),
             active_requests: CHAT_METRICS.active_requests.get() 
                 + EMBED_METRICS.active_requests.get() 
-                + RERANK_METRICS.active_requests.get(),
-        }
+                + RERANK_METRICS.active_requests.get()}
     }
     
     /// Create embedding client for text embedding operations
@@ -378,8 +365,7 @@ impl CompletionClient for CohereClient {
         let static_model = match model {
             models::COMMAND_A_03_2025 => models::COMMAND_A_03_2025,
             models::COMMAND_R7B_12_2024 => models::COMMAND_R7B_12_2024,
-            _ => Box::leak(model.to_string().into_boxed_str()),
-        };
+            _ => Box::leak(model.to_string().into_boxed_str())};
         
         CohereCompletionBuilder::new(
             self.http_client,
@@ -414,8 +400,7 @@ impl EndpointRouter {
         Self {
             chat_url: endpoints::CHAT_URL,
             embed_url: endpoints::EMBED_URL,
-            rerank_url: endpoints::RERANK_URL,
-        }
+            rerank_url: endpoints::RERANK_URL}
     }
 }
 
@@ -429,8 +414,7 @@ impl CohereMetrics {
             failed_requests: RelaxedCounter::new(0),
             total_latency_ms: RelaxedCounter::new(0),
             active_requests: RelaxedCounter::new(0),
-            peak_active_requests: RelaxedCounter::new(0),
-        }
+            peak_active_requests: RelaxedCounter::new(0)}
     }
     
     #[inline]
@@ -448,8 +432,7 @@ impl CohereMetrics {
                 std::sync::atomic::Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(actual) => current_peak = actual,
-            }
+                Err(actual) => current_peak = actual}
         }
     }
     
@@ -492,14 +475,12 @@ impl CohereCircuitBreakers {
         let config = CBConfig {
             failure_threshold: config::CIRCUIT_BREAKER_THRESHOLD,
             recovery_timeout: Duration::from_secs(60),
-            expected_update_interval: Duration::from_secs(10),
-        };
+            expected_update_interval: Duration::from_secs(10)};
         
         Self {
             chat: CircuitBreaker::new(config.clone()),
             embed: CircuitBreaker::new(config.clone()),
-            rerank: CircuitBreaker::new(config),
-        }
+            rerank: CircuitBreaker::new(config)}
     }
 }
 
@@ -515,8 +496,7 @@ pub struct ClientStats {
     pub rerank_requests: usize,
     pub rerank_success: usize,
     pub rerank_failures: usize,
-    pub active_requests: usize,
-}
+    pub active_requests: usize}
 
 impl ClientStats {
     #[inline]
@@ -548,8 +528,7 @@ impl ClientStats {
 /// Request timing utility for performance monitoring
 pub struct RequestTimer {
     start_time: SystemTime,
-    metrics: &'static CohereMetrics,
-}
+    metrics: &'static CohereMetrics}
 
 impl RequestTimer {
     #[inline]
@@ -557,8 +536,7 @@ impl RequestTimer {
         metrics.record_request_start();
         Self {
             start_time: SystemTime::now(),
-            metrics,
-        }
+            metrics}
     }
     
     #[inline]

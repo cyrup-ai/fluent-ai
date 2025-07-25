@@ -24,8 +24,7 @@ pub struct ProcessingContext {
     pub max_new_tokens: Option<usize>,
 
     /// Optional stop tokens that will halt generation if encountered
-    pub stop_tokens: Vec<u32>,
-}
+    pub stop_tokens: Vec<u32>}
 
 impl Default for ProcessingContext {
     fn default() -> Self {
@@ -36,8 +35,7 @@ impl Default for ProcessingContext {
             token_history: Vec::new(),
             start_time: None,
             max_new_tokens: None,
-            stop_tokens: Vec::new(),
-        }
+            stop_tokens: Vec::new()}
     }
 }
 

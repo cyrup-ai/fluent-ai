@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::progress::config::ProgressHubConfig;
 use crate::progress::metrics::{MetricsAggregator, InferenceMetrics};
@@ -22,8 +22,7 @@ pub struct ProgressHubReporter {
     /// Update counter for rate limiting
     update_counter: AtomicU64,
     /// Inference metrics
-    inference_metrics: Arc<parking_lot::RwLock<InferenceMetrics>>,
-}
+    inference_metrics: Arc<parking_lot::RwLock<InferenceMetrics>>}
 
 impl ProgressHubReporter {
     /// Create new ProgressHub reporter with default configuration
@@ -42,8 +41,7 @@ impl ProgressHubReporter {
             active: AtomicBool::new(true),
             last_update: AtomicU64::new(0),
             update_counter: AtomicU64::new(0),
-            inference_metrics: Arc::new(parking_lot::RwLock::new(InferenceMetrics::new())),
-        };
+            inference_metrics: Arc::new(parking_lot::RwLock::new(InferenceMetrics::new()))};
 
         Ok(reporter)
     }

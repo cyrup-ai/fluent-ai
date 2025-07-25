@@ -16,8 +16,7 @@ pub enum BuilderError {
     #[error("Name not configured - call name() first")]
     NameNotConfigured,
     #[error("Registration failed")]
-    RegistrationFailed,
-}
+    RegistrationFailed}
 
 /// Marker types for typestate pattern
 pub mod states {
@@ -49,8 +48,7 @@ pub struct EngineBuilder<E, N, D> {
     engine: Option<Arc<dyn Engine>>,
     name: Option<String>,
     set_as_default: bool,
-    _phantom: PhantomData<(E, N, D)>,
-}
+    _phantom: PhantomData<(E, N, D)>}
 
 impl EngineBuilder<states::NoEngine, states::NoName, states::DefaultNotSet> {
     /// Create a new engine builder
@@ -64,8 +62,7 @@ impl EngineBuilder<states::NoEngine, states::NoName, states::DefaultNotSet> {
             engine: None,
             name: None,
             set_as_default: false,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -85,8 +82,7 @@ impl<N, D> EngineBuilder<states::NoEngine, N, D> {
             engine: Some(engine),
             name: self.name,
             set_as_default: self.set_as_default,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -107,8 +103,7 @@ impl<E, D> EngineBuilder<E, states::NoName, D> {
             engine: self.engine,
             name: Some(name.into()),
             set_as_default: self.set_as_default,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -129,8 +124,7 @@ impl<E, N> EngineBuilder<E, N, states::DefaultNotSet> {
             engine: self.engine,
             name: self.name,
             set_as_default: true,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -138,8 +132,7 @@ impl<E, N> EngineBuilder<E, N, states::DefaultNotSet> {
 pub struct EngineConfig {
     pub engine: Arc<dyn Engine>,
     pub name: String,
-    pub is_default: bool,
-}
+    pub is_default: bool}
 
 impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::DefaultNotSet> {
     /// Build the engine configuration (without setting as default)
@@ -161,8 +154,7 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
         Ok(EngineConfig {
             engine,
             name,
-            is_default: self.set_as_default,
-        })
+            is_default: self.set_as_default})
     }
 
     /// Build and register the engine in the global registry
@@ -208,8 +200,7 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
         Ok(EngineConfig {
             engine,
             name,
-            is_default: self.set_as_default,
-        })
+            is_default: self.set_as_default})
     }
 
     /// Build and register the engine, setting it as default

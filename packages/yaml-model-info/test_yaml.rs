@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct ProviderInfo {
     provider: String,
-    models: Vec<ModelConfig>,
-}
+    models: Vec<ModelConfig>}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct ModelConfig {
@@ -23,8 +22,7 @@ struct ModelConfig {
     #[serde(default)]
     supports_function_calling: Option<bool>,
     #[serde(default)]
-    require_max_tokens: Option<bool>,
-}
+    require_max_tokens: Option<bool>}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let yaml_content = std::fs::read_to_string(".yaml-cache/models.yaml")?;

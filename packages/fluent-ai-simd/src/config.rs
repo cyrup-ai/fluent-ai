@@ -19,8 +19,7 @@ pub struct ProcessorConfig {
     pub frequency_penalty: f32,
 
     /// Penalty for tokens present in context (0.0 = no penalty, > 0.0 = more penalty)
-    pub presence_penalty: f32,
-}
+    pub presence_penalty: f32}
 
 impl Default for ProcessorConfig {
     fn default() -> Self {
@@ -30,8 +29,7 @@ impl Default for ProcessorConfig {
             top_p: None,
             repetition_penalty: 1.0,
             frequency_penalty: 0.0,
-            presence_penalty: 0.0,
-        }
+            presence_penalty: 0.0}
     }
 }
 
@@ -56,8 +54,7 @@ pub enum ConfigError {
 
     /// Invalid presence penalty - must be >= 0.0
     #[error("Invalid presence penalty: {0}. Must be >= 0.0")]
-    InvalidPresencePenalty(f32),
-}
+    InvalidPresencePenalty(f32)}
 
 impl ProcessorConfig {
     /// Create a new configuration with default values

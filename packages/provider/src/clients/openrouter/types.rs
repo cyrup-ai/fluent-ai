@@ -37,8 +37,7 @@ pub use crate::openai::{
     OpenAIStreamingChoice as OpenRouterStreamingChoice,
     OpenAIStreamingDelta as OpenRouterStreamingDelta,
     OpenAIStreamingToolCall as OpenRouterStreamingToolCall,
-    OpenAIStreamingFunction as OpenRouterStreamingFunction,
-};
+    OpenAIStreamingFunction as OpenRouterStreamingFunction};
 
 // ============================================================================
 // Chat Completions API (OpenAI-compatible with OpenRouter extensions)
@@ -86,8 +85,7 @@ pub struct OpenRouterChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub models: Option<ArrayVec<&'a str, 8>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub transforms: Option<ArrayVec<&'a str, 8>>,
-}
+    pub transforms: Option<ArrayVec<&'a str, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterProvider<'a> {
@@ -113,8 +111,7 @@ pub struct OpenRouterChatResponse {
     pub system_fingerprint: Option<String>,
     // OpenRouter-specific response fields
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub provider: Option<String>,
-}
+    pub provider: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterChoice {
@@ -122,8 +119,7 @@ pub struct OpenRouterChoice {
     pub message: OpenRouterResponseMessage,
     pub finish_reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<OpenRouterLogprobs>,
-}
+    pub logprobs: Option<OpenRouterLogprobs>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterUsage {
@@ -131,8 +127,7 @@ pub struct OpenRouterUsage {
     pub completion_tokens: u32,
     pub total_tokens: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_cost: Option<f32>,
-}
+    pub total_cost: Option<f32>}
 
 // ============================================================================
 // Models API with OpenRouter Extensions
@@ -140,8 +135,7 @@ pub struct OpenRouterUsage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterModelsResponse {
-    pub data: ArrayVec<OpenRouterModel, 256>,
-}
+    pub data: ArrayVec<OpenRouterModel, 256>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterModel {
@@ -152,35 +146,30 @@ pub struct OpenRouterModel {
     pub architecture: OpenRouterArchitecture,
     pub pricing: OpenRouterPricing,
     pub top_provider: OpenRouterTopProvider,
-    pub per_request_limits: Option<OpenRouterLimits>,
-}
+    pub per_request_limits: Option<OpenRouterLimits>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterArchitecture {
     pub modality: String,
     pub tokenizer: String,
-    pub instruct_type: Option<String>,
-}
+    pub instruct_type: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterPricing {
     pub prompt: String,
     pub completion: String,
     pub image: Option<String>,
-    pub request: Option<String>,
-}
+    pub request: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterTopProvider {
     pub max_completion_tokens: Option<u32>,
-    pub is_moderated: bool,
-}
+    pub is_moderated: bool}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterLimits {
     pub prompt_tokens: Option<String>,
-    pub completion_tokens: Option<String>,
-}
+    pub completion_tokens: Option<String>}
 
 // ============================================================================
 // Generation Stats API
@@ -191,21 +180,18 @@ pub struct OpenRouterGenerationRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_date: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub end_date: Option<&'a str>,
-}
+    pub end_date: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterGenerationResponse {
-    pub data: ArrayVec<OpenRouterGenerationStat, 365>,
-}
+    pub data: ArrayVec<OpenRouterGenerationStat, 365>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterGenerationStat {
     pub date: String,
     pub requests: u32,
     pub tokens: u64,
-    pub cost: f32,
-}
+    pub cost: f32}
 
 // ============================================================================
 // Activity API
@@ -216,14 +202,12 @@ pub struct OpenRouterActivityRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<u32>,
-}
+    pub offset: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterActivityResponse {
     pub data: ArrayVec<OpenRouterActivity, 100>,
-    pub has_more: bool,
-}
+    pub has_more: bool}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterActivity {
@@ -235,15 +219,13 @@ pub struct OpenRouterActivity {
     pub origin: String,
     pub streamed: bool,
     pub total_tokens: u32,
-    pub usage: OpenRouterActivityUsage,
-}
+    pub usage: OpenRouterActivityUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterActivityUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // ============================================================================
 // Credit Balance API
@@ -251,15 +233,13 @@ pub struct OpenRouterActivityUsage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterCreditResponse {
-    pub data: OpenRouterCredit,
-}
+    pub data: OpenRouterCredit}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterCredit {
     pub balance: f32,
     pub usage: f32,
-    pub limit: Option<f32>,
-}
+    pub limit: Option<f32>}
 
 // ============================================================================
 // Streaming Support with OpenRouter Extensions
@@ -273,15 +253,13 @@ pub struct OpenRouterStreamingChunkExtended {
     pub model: String,
     pub choices: ArrayVec<OpenRouterStreamingChoiceExtended, 8>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub provider: Option<String>,
-}
+    pub provider: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenRouterStreamingChoiceExtended {
     pub index: u32,
     pub delta: OpenRouterStreamingDelta,
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -310,8 +288,7 @@ impl<'a> OpenRouterChatRequest<'a> {
             provider: None,
             route: None,
             models: None,
-            transforms: None,
-        }
+            transforms: None}
     }
 
     #[inline(always)]
@@ -322,8 +299,7 @@ impl<'a> OpenRouterChatRequest<'a> {
                 content: Some(content),
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -393,8 +369,7 @@ impl<'a> OpenRouterChatRequest<'a> {
             order: Some(providers),
             allow_fallbacks: None,
             require_parameters: None,
-            data_collection: None,
-        };
+            data_collection: None};
         self.provider = Some(provider);
         self
     }
@@ -457,8 +432,7 @@ impl<'a> Default for OpenRouterProvider<'a> {
             order: None,
             allow_fallbacks: None,
             require_parameters: None,
-            data_collection: None,
-        }
+            data_collection: None}
     }
 }
 
@@ -466,8 +440,7 @@ impl<'a> OpenRouterGenerationRequest<'a> {
     pub fn new() -> Self {
         Self {
             start_date: None,
-            end_date: None,
-        }
+            end_date: None}
     }
 
     pub fn date_range(mut self, start: &'a str, end: &'a str) -> Self {
@@ -481,8 +454,7 @@ impl OpenRouterActivityRequest {
     pub fn new() -> Self {
         Self {
             limit: None,
-            offset: None,
-        }
+            offset: None}
     }
 
     pub fn limit(mut self, limit: u32) -> Self {

@@ -3,8 +3,6 @@
 //! This module defines the core traits that provider clients implement
 //! for completion, embedding, transcription, and other AI services.
 
-use std::collections::HashMap;
-
 use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 use fluent_ai_domain::chunk::{CompletionChunk, EmbeddingChunk, VoiceChunk};
 use fluent_ai_domain::{AsyncStream, AsyncTask};

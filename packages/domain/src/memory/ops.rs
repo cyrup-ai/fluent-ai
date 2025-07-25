@@ -64,16 +64,14 @@ pub struct CpuFeatures {
     pub fma: bool,
     pub sse42: bool,
     pub neon: bool,
-    pub architecture: CpuArchitecture,
-}
+    pub architecture: CpuArchitecture}
 
 /// CPU architecture detection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CpuArchitecture {
     X86_64,
     AArch64,
-    Other,
-}
+    Other}
 
 impl CpuFeatures {
     #[inline(always)]
@@ -86,8 +84,7 @@ impl CpuFeatures {
             fma: Self::detect_fma(),
             sse42: Self::detect_sse42(),
             neon: Self::detect_neon(),
-            architecture: Self::detect_architecture(),
-        }
+            architecture: Self::detect_architecture()}
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -201,8 +198,7 @@ pub enum Op {
     /// Search operation
     Search,
     /// Index operation
-    Index,
-}
+    Index}
 
 /// Get memory operation performance statistics
 #[inline]

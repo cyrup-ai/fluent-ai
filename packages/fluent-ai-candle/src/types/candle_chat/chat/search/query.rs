@@ -10,7 +10,6 @@ use std::time::Instant;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 
-use super::types::SearchQuery;
 
 /// Processed query with expanded terms and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,8 +23,7 @@ pub struct ProcessedQuery {
     /// Processing timestamp
     pub processed_at: chrono::DateTime<chrono::Utc>,
     /// Query complexity score
-    pub complexity_score: f32,
-}
+    pub complexity_score: f32}
 
 /// Metadata about query processing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,8 +37,7 @@ pub struct QueryMetadata {
     /// Language detected
     pub language: Option<String>,
     /// Confidence scores for various aspects
-    pub confidence_scores: HashMap<String, f32>,
-}
+    pub confidence_scores: HashMap<String, f32>}
 
 /// Type of query classification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,24 +55,21 @@ pub enum QueryType {
     /// Regular expression
     Regex,
     /// Semantic search
-    Semantic,
-}
+    Semantic}
 
 /// Query processor for advanced query handling
 pub struct QueryProcessor {
     /// Term expansion dictionary
     pub expansion_dictionary: HashMap<Arc<str>, Vec<Arc<str>>>,
     /// Query processing statistics
-    pub stats: HashMap<String, usize>,
-}
+    pub stats: HashMap<String, usize>}
 
 impl QueryProcessor {
     /// Create a new query processor
     pub fn new() -> Self {
         Self {
             expansion_dictionary: HashMap::new(),
-            stats: HashMap::new(),
-        }
+            stats: HashMap::new()}
     }
 
     /// Process a query with expansion and optimization (streaming)
@@ -121,11 +115,9 @@ impl QueryProcessor {
                     terms_expanded: 0, // Would calculate actual expansion count
                     query_type,
                     language: Some("en".to_string()), // Would use language detection
-                    confidence_scores: HashMap::new(),
-                },
+                    confidence_scores: HashMap::new()},
                 processed_at: chrono::Utc::now(),
-                complexity_score: Self::calculate_complexity(&original_terms),
-            };
+                complexity_score: Self::calculate_complexity(&original_terms)};
 
             let _ = sender.send(processed_query);
         })
@@ -182,8 +174,7 @@ pub struct SearchOptions {
     /// Enable semantic analysis
     pub enable_semantic_analysis: bool,
     /// Custom processing parameters
-    pub custom_params: HashMap<String, String>,
-}
+    pub custom_params: HashMap<String, String>}
 
 impl Default for QueryProcessor {
     fn default() -> Self {
@@ -198,8 +189,7 @@ impl Default for SearchOptions {
             expansion_dictionary: HashMap::new(),
             max_processing_time_ms: 1000,
             enable_semantic_analysis: false,
-            custom_params: HashMap::new(),
-        }
+            custom_params: HashMap::new()}
     }
 }
 

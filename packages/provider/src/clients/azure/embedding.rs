@@ -32,21 +32,18 @@ pub struct EmbeddingResponse {
     pub object: String,
     pub data: Vec<EmbeddingData>,
     pub model: String,
-    pub usage: Usage,
-}
+    pub usage: Usage}
 
 #[derive(Debug, Deserialize)]
 pub struct EmbeddingData {
     pub object: String,
     pub embedding: Vec<f64>,
-    pub index: usize,
-}
+    pub index: usize}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Usage {
     pub prompt_tokens: usize,
-    pub total_tokens: usize,
-}
+    pub total_tokens: usize}
 
 impl std::fmt::Display for Usage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -62,15 +59,13 @@ impl std::fmt::Display for Usage {
 
 #[derive(Debug, Deserialize)]
 struct ApiErrorResponse {
-    message: String,
-}
+    message: String}
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 impl From<ApiErrorResponse> for EmbeddingError {
     fn from(err: ApiErrorResponse) -> Self {
@@ -82,8 +77,7 @@ impl From<ApiResponse<EmbeddingResponse>> for Result<EmbeddingResponse, Embeddin
     fn from(value: ApiResponse<EmbeddingResponse>) -> Self {
         match value {
             ApiResponse::Ok(response) => Ok(response),
-            ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
-        }
+            ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message))}
     }
 }
 
@@ -96,8 +90,7 @@ impl EmbeddingModel {
         Self {
             client,
             model: model.to_string(),
-            ndims,
-        }
+            ndims}
     }
 }
 
@@ -135,8 +128,7 @@ impl super::super::client::EmbeddingModel for EmbeddingModel {
                 Ok(embedding_vec) => cyrup_sugars::ZeroOneOrMany::from_iter(
                     embedding_vec.into_iter().map(|v| v as f32),
                 ),
-                Err(_) => cyrup_sugars::ZeroOneOrMany::None,
-            }
+                Err(_) => cyrup_sugars::ZeroOneOrMany::None}
         })
     }
 
@@ -162,14 +154,11 @@ impl super::super::client::EmbeddingModel for EmbeddingModel {
                                 text,
                                 embedding: cyrup_sugars::ZeroOneOrMany::from_iter(
                                     embedding_vec.into_iter().map(|v| v as f32),
-                                ),
-                            },
+                                )},
                             Err(_) => fluent_ai_domain::chunk::EmbeddingChunk {
                                 index,
                                 text,
-                                embedding: cyrup_sugars::ZeroOneOrMany::None,
-                            },
-                        }
+                                embedding: cyrup_sugars::ZeroOneOrMany::None}}
                     }
                 },
             ),
@@ -238,8 +227,7 @@ impl EmbeddingModel {
             Some(embedding_data) => Ok(embedding_data.embedding),
             None => Err(EmbeddingError::ResponseError(
                 "No embedding data in response".to_string(),
-            )),
-        }
+            ))}
     }
 
     /// High-performance batch embedding with optimized memory usage  
@@ -325,8 +313,7 @@ impl EmbeddingModel {
         {
             results.push(fluent_ai_domain::embedding::Embedding {
                 document,
-                vec: cyrup_sugars::ZeroOneOrMany::from_iter(embedding_data.embedding.into_iter()),
-            });
+                vec: cyrup_sugars::ZeroOneOrMany::from_iter(embedding_data.embedding.into_iter())});
         }
 
         Ok(results)

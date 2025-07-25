@@ -15,8 +15,7 @@ use crate::domain::completion::ToolDefinition;
 pub struct OpenAITool {
     #[serde(rename = "type")]
     pub tool_type: String,
-    pub function: OpenAIFunction,
-}
+    pub function: OpenAIFunction}
 
 /// OpenAI function definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,8 +24,7 @@ pub struct OpenAIFunction {
     pub description: String,
     pub parameters: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub strict: Option<bool>,
-}
+    pub strict: Option<bool>}
 
 /// Tool choice configuration for OpenAI API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,15 +36,12 @@ pub enum OpenAIToolChoice {
     Specific {
         #[serde(rename = "type")]
         tool_type: String,
-        function: OpenAIFunctionChoice,
-    },
-}
+        function: OpenAIFunctionChoice}}
 
 /// Specific function choice
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIFunctionChoice {
-    pub name: String,
-}
+    pub name: String}
 
 /// Tool call from OpenAI response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,8 +49,7 @@ pub struct OpenAIToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
-    pub function: OpenAIFunctionCall,
-}
+    pub function: OpenAIFunctionCall}
 
 /// Function call from OpenAI response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,8 +63,7 @@ pub struct OpenAIFunctionCall {
 pub struct OpenAIToolResult {
     pub tool_call_id: String,
     pub result: Value,
-    pub error: Option<String>,
-}
+    pub error: Option<String>}
 
 /// Function execution context
 #[derive(Debug, Clone)]
@@ -78,8 +71,7 @@ pub struct OpenAIFunctionContext {
     pub name: String,
     pub arguments: Value,
     pub call_id: String,
-    pub model: String,
-}
+    pub model: String}
 
 impl OpenAITool {
     /// Create new tool with function definition
@@ -95,9 +87,7 @@ impl OpenAITool {
                 name: name.into(),
                 description: description.into(),
                 parameters,
-                strict: None,
-            },
-        }
+                strict: None}}
     }
 
     /// Create tool with strict mode enabled (for structured outputs)
@@ -113,9 +103,7 @@ impl OpenAITool {
                 name: name.into(),
                 description: description.into(),
                 parameters,
-                strict: Some(true),
-            },
-        }
+                strict: Some(true)}}
     }
 
     /// Create code interpreter tool
@@ -127,9 +115,7 @@ impl OpenAITool {
                 name: "code_interpreter".to_string(),
                 description: "Execute Python code in a sandboxed environment".to_string(),
                 parameters: Value::Object(Map::new()),
-                strict: None,
-            },
-        }
+                strict: None}}
     }
 
     /// Create file search tool
@@ -141,9 +127,7 @@ impl OpenAITool {
                 name: "file_search".to_string(),
                 description: "Search and retrieve information from uploaded files".to_string(),
                 parameters: Value::Object(Map::new()),
-                strict: None,
-            },
-        }
+                strict: None}}
     }
 
     /// Validate tool definition
@@ -228,8 +212,7 @@ impl OpenAIToolChoice {
     pub fn function(name: impl Into<String>) -> Self {
         Self::Specific {
             tool_type: "function".to_string(),
-            function: OpenAIFunctionChoice { name: name.into() },
-        }
+            function: OpenAIFunctionChoice { name: name.into() }}
     }
 
     /// Serialize to JSON value for API
@@ -241,8 +224,7 @@ impl OpenAIToolChoice {
             Self::Required => Value::String("required".to_string()),
             Self::Specific {
                 tool_type,
-                function,
-            } => {
+                function} => {
                 serde_json::json!({
                     "type": tool_type,
                     "function": {
@@ -280,8 +262,7 @@ impl OpenAIToolCall {
             name: self.function.name.clone(),
             arguments,
             call_id: self.id.clone(),
-            model: model.into(),
-        })
+            model: model.into()})
     }
 
     /// Validate tool call against function definition
@@ -330,8 +311,7 @@ impl OpenAIToolResult {
         Self {
             tool_call_id: tool_call_id.into(),
             result,
-            error: None,
-        }
+            error: None}
     }
 
     /// Create error tool result
@@ -340,8 +320,7 @@ impl OpenAIToolResult {
         Self {
             tool_call_id: tool_call_id.into(),
             result: Value::Null,
-            error: Some(error_message.into()),
-        }
+            error: Some(error_message.into())}
     }
 
     /// Check if result is successful

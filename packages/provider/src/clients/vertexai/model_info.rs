@@ -25,8 +25,7 @@ impl ModelInfo for Gemini25Flash {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "gemini-2.5-flash",
-    };
+        model_name: "gemini-2.5-flash"};
 }
 
 impl ModelPrompt for Gemini25Flash {
@@ -50,8 +49,7 @@ impl ModelInfo for Gemini25Pro {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "gemini-2.5-pro",
-    };
+        model_name: "gemini-2.5-pro"};
 }
 
 impl ModelPrompt for Gemini25Pro {
@@ -75,8 +73,7 @@ impl ModelInfo for Gemini15Flash {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "gemini-1.5-flash",
-    };
+        model_name: "gemini-1.5-flash"};
 }
 
 impl ModelPrompt for Gemini15Flash {
@@ -100,8 +97,7 @@ impl ModelInfo for Gemini15Pro {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "gemini-1.5-pro",
-    };
+        model_name: "gemini-1.5-pro"};
 }
 
 impl ModelPrompt for Gemini15Pro {
@@ -125,8 +121,7 @@ impl ModelInfo for Claude35Sonnet {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "claude-3-5-sonnet",
-    };
+        model_name: "claude-3-5-sonnet"};
 }
 
 impl ModelPrompt for Claude35Sonnet {
@@ -150,8 +145,7 @@ impl ModelInfo for Claude35Haiku {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "claude-3-5-haiku",
-    };
+        model_name: "claude-3-5-haiku"};
 }
 
 impl ModelPrompt for Claude35Haiku {
@@ -175,8 +169,7 @@ impl ModelInfo for Claude3Opus {
         supports_vision: true,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "claude-3-opus",
-    };
+        model_name: "claude-3-opus"};
 }
 
 impl ModelPrompt for Claude3Opus {
@@ -200,8 +193,7 @@ impl ModelInfo for MistralLarge {
         supports_vision: false,
         supports_audio: false,
         provider: "vertexai",
-        model_name: "mistral-large",
-    };
+        model_name: "mistral-large"};
 }
 
 impl ModelPrompt for MistralLarge {

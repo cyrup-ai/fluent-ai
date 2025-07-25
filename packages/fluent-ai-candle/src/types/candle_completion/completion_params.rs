@@ -18,8 +18,7 @@ pub struct CompletionParams {
     /// Number of completions to generate
     pub n: std::num::NonZeroU8,
     /// Whether to stream the response
-    pub stream: bool,
-}
+    pub stream: bool}
 
 impl Default for CompletionParams {
     #[inline(always)]
@@ -34,8 +33,7 @@ impl Default for CompletionParams {
             temperature: 1.0,
             max_tokens: None,
             n: ONE,
-            stream: false,
-        }
+            stream: false}
     }
 }
 
@@ -52,8 +50,7 @@ impl CompletionParams {
             temperature: 1.0,
             max_tokens: None,
             n: ONE,
-            stream: false,
-        }
+            stream: false}
     }
 
     /// Set the temperature with zero-allocation validation
@@ -67,8 +64,7 @@ impl CompletionParams {
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
                     TEMPERATURE_RANGE.end()
-                ),
-            });
+                )});
         }
         self.temperature = temperature;
         Ok(self)

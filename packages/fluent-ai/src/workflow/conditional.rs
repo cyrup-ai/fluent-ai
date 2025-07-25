@@ -85,8 +85,7 @@ mod tests {
     async fn conditional_dispatches_correctly() {
         enum E<T> {
             A(T),
-            B(T),
-        }
+            B(T)}
 
         let add = map(|x: i32| x + 1);
         let mul = map(|x: i32| x * 2);
@@ -104,8 +103,7 @@ mod tests {
     async fn try_conditional_propagates_errors() {
         enum E<T> {
             A(T),
-            B(T),
-        }
+            B(T)}
 
         let ok = map(|x: i32| Ok::<_, &str>(x + 1));
         let err = map(|_| Err::<i32, &str>("nope"));

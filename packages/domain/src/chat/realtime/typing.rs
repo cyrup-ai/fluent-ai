@@ -39,8 +39,7 @@ pub enum RealTimeError {
     #[error("Typing state error: {message}")]
     TypingStateError { message: Arc<str> },
     #[error("Cleanup task error: {message}")]
-    CleanupTaskError { message: Arc<str> },
-}
+    CleanupTaskError { message: Arc<str> }}
 
 /// Typing indicator state with atomic operations for zero-allocation performance
 #[derive(Debug)]
@@ -58,8 +57,7 @@ pub struct TypingState {
     /// Typing session start timestamp
     pub session_start: AtomicU64,
     /// Number of typing events in this session
-    pub event_count: AtomicU64,
-}
+    pub event_count: AtomicU64}
 
 impl TypingState {
     /// Create a new typing state with current timestamp
@@ -77,8 +75,7 @@ impl TypingState {
             is_typing: AtomicBool::new(false),
             typing_duration: AtomicU64::new(0),
             session_start: AtomicU64::new(now_nanos),
-            event_count: AtomicU64::new(0),
-        }
+            event_count: AtomicU64::new(0)}
     }
 
     /// Start typing with atomic timestamp update
@@ -191,8 +188,7 @@ pub struct TypingIndicator {
     /// Total typing events counter
     typing_events: Arc<ConsistentCounter>,
     /// Cleanup task handle with atomic swap
-    cleanup_task_active: Arc<AtomicBool>,
-}
+    cleanup_task_active: Arc<AtomicBool>}
 
 impl TypingIndicator {
     /// Create a new typing indicator with nanosecond precision
@@ -207,8 +203,7 @@ impl TypingIndicator {
             event_broadcaster,
             active_users: Arc::new(ConsistentCounter::new(0)),
             typing_events: Arc::new(ConsistentCounter::new(0)),
-            cleanup_task_active: Arc::new(AtomicBool::new(false)),
-        }
+            cleanup_task_active: Arc::new(AtomicBool::new(false))}
     }
 
     /// Start typing indicator with zero-allocation key generation
@@ -346,8 +341,7 @@ impl TypingIndicator {
                         timestamp: std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)
                             .map(|d| d.as_nanos() as u64)
-                            .unwrap_or(0),
-                    };
+                            .unwrap_or(0)};
 
                     emit!(sender, cleanup_event);
 
@@ -380,8 +374,7 @@ impl TypingIndicator {
             total_typing_events: self.typing_events.get(),
             expiry_duration_seconds: self.expiry_duration_nanos.load(Ordering::Acquire) / 1_000_000_000,
             cleanup_interval_seconds: self.cleanup_interval_nanos.load(Ordering::Acquire) / 1_000_000_000,
-            total_states: self.typing_states.len(),
-        }
+            total_states: self.typing_states.len()}
     }
 
     /// Update expiry duration dynamically
@@ -457,8 +450,7 @@ pub struct TypingStatistics {
     /// Cleanup interval in seconds
     pub cleanup_interval_seconds: u64,
     /// Total number of typing states
-    pub total_states: usize,
-}
+    pub total_states: usize}
 
 /// Typing cleanup event for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -470,8 +462,7 @@ pub struct TypingCleanupEvent {
     /// Duration of cleanup operation in nanoseconds
     pub cleanup_duration_nanos: u64,
     /// Event timestamp in nanoseconds
-    pub timestamp: u64,
-}
+    pub timestamp: u64}
 
 impl TypingCleanupEvent {
     /// Get cleanup duration in seconds
@@ -486,8 +477,7 @@ impl TypingCleanupEvent {
 pub struct TypingIndicatorBuilder {
     expiry_duration_secs: u64,
     cleanup_interval_secs: u64,
-    event_buffer_size: usize,
-}
+    event_buffer_size: usize}
 
 impl TypingIndicatorBuilder {
     /// Create new builder with defaults
@@ -533,8 +523,7 @@ impl TypingIndicatorBuilder {
             event_broadcaster,
             active_users: Arc::new(ConsistentCounter::new(0)),
             typing_events: Arc::new(ConsistentCounter::new(0)),
-            cleanup_task_active: Arc::new(AtomicBool::new(false)),
-        }
+            cleanup_task_active: Arc::new(AtomicBool::new(false))}
     }
 }
 

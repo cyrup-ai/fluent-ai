@@ -15,5 +15,4 @@ pub struct ModelState {
     /// Model configuration
     pub config: ModelConfig,
     /// Model file memory mapping for efficient resource management
-    pub _mmap: Option<Mmap>,
-}
+    pub _mmap: Option<Mmap>}

@@ -9,8 +9,7 @@ use super::core::TopKProcessor;
 /// Configuration for top-k processor
 #[derive(Debug, Clone)]
 pub struct TopKConfig {
-    pub k: usize,
-}
+    pub k: usize}
 
 impl ConfigurableProcessor for TopKProcessor {
     type Config = TopKConfig;

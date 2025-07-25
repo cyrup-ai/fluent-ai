@@ -26,8 +26,7 @@ pub struct TopPProcessor {
     buffer: ArrayVec<(usize, f32), 32768>,
 
     /// Cached identity state (optimization)
-    is_identity: bool,
-}
+    is_identity: bool}
 
 impl TopPProcessor {
     /// Create new Top-P processor with nucleus threshold
@@ -49,8 +48,7 @@ impl TopPProcessor {
         Ok(Self {
             p,
             buffer: ArrayVec::new(),
-            is_identity: (p - 1.0).abs() < f32::EPSILON,
-        })
+            is_identity: (p - 1.0).abs() < f32::EPSILON})
     }
 
     /// Apply nucleus sampling filtering with zero allocation

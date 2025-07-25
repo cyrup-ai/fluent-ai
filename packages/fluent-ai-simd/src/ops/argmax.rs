@@ -155,14 +155,14 @@ unsafe fn neon_argmax(logits: &[f32]) -> SimdResult<usize> {
     let mut i = 0;
 
     while i + 4 <= len {
-        let v = vld1q_f32(logits.as_ptr().add(i));
+        let v = unsafe { vld1q_f32(logits.as_ptr().add(i)) };
         maxv = vmaxq_f32(maxv, v);
         i += 4;
     }
 
     // Reduce maxv
     let mut max_arr = [f32::NEG_INFINITY; 4];
-    vst1q_f32(max_arr.as_mut_ptr(), maxv);
+    unsafe { vst1q_f32(max_arr.as_mut_ptr(), maxv) };
     let mut max_scalar = f32::NEG_INFINITY;
     for &val in max_arr.iter() {
         if val > max_scalar {
@@ -201,8 +201,7 @@ fn create_argmax_dispatch() -> ArgmaxDispatch {
         #[cfg(not(target_arch = "aarch64"))]
         neon: None,
 
-        scalar: scalar_argmax,
-    }
+        scalar: scalar_argmax}
 }
 
 /// Global dispatch table for argmax operations with runtime CPU feature detection

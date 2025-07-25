@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use crate::chat::templates::core::{TemplateError, TemplateResult, TemplateValue};
+use crate::types::candle_chat::chat::templates::core::{TemplateError, TemplateResult, TemplateValue};
 
 /// Template filter function type
 pub type FilterFunction =
@@ -12,15 +12,13 @@ pub type FilterFunction =
 
 /// Filter registry for managing template filters
 pub struct FilterRegistry {
-    filters: std::collections::HashMap<Arc<str>, FilterFunction>,
-}
+    filters: std::collections::HashMap<Arc<str>, FilterFunction>}
 
 impl FilterRegistry {
     /// Create a new filter registry
     pub fn new() -> Self {
         Self {
-            filters: std::collections::HashMap::new(),
-        }
+            filters: std::collections::HashMap::new()}
     }
 
     /// Create a registry with default filters
@@ -50,9 +48,7 @@ impl FilterRegistry {
         match self.get(name) {
             Some(filter) => filter(value, args),
             None => Err(TemplateError::RenderError {
-                message: Arc::from(format!("Unknown filter: {}", name)),
-            }),
-        }
+                message: Arc::from(format!("Unknown filter: {}", name))})}
     }
 
     /// Register default filters
@@ -63,9 +59,7 @@ impl FilterRegistry {
             Arc::new(|value, _args| match value {
                 TemplateValue::String(s) => Ok(TemplateValue::String(Arc::from(s.to_uppercase()))),
                 _ => Err(TemplateError::RenderError {
-                    message: Arc::from("uppercase filter can only be applied to strings"),
-                }),
-            }),
+                    message: Arc::from("uppercase filter can only be applied to strings")})}),
         );
 
         // lowercase filter
@@ -74,9 +68,7 @@ impl FilterRegistry {
             Arc::new(|value, _args| match value {
                 TemplateValue::String(s) => Ok(TemplateValue::String(Arc::from(s.to_lowercase()))),
                 _ => Err(TemplateError::RenderError {
-                    message: Arc::from("lowercase filter can only be applied to strings"),
-                }),
-            }),
+                    message: Arc::from("lowercase filter can only be applied to strings")})}),
         );
 
         // trim filter
@@ -85,9 +77,7 @@ impl FilterRegistry {
             Arc::new(|value, _args| match value {
                 TemplateValue::String(s) => Ok(TemplateValue::String(Arc::from(s.trim()))),
                 _ => Err(TemplateError::RenderError {
-                    message: Arc::from("trim filter can only be applied to strings"),
-                }),
-            }),
+                    message: Arc::from("trim filter can only be applied to strings")})}),
         );
 
         // length filter
@@ -97,9 +87,7 @@ impl FilterRegistry {
                 TemplateValue::String(s) => Ok(TemplateValue::Number(s.len() as f64)),
                 TemplateValue::Array(arr) => Ok(TemplateValue::Number(arr.len() as f64)),
                 _ => Err(TemplateError::RenderError {
-                    message: Arc::from("length filter can only be applied to strings or arrays"),
-                }),
-            }),
+                    message: Arc::from("length filter can only be applied to strings or arrays")})}),
         );
 
         // default filter
@@ -109,8 +97,7 @@ impl FilterRegistry {
                 let is_empty = match value {
                     TemplateValue::String(s) => s.is_empty(),
                     TemplateValue::Null => true,
-                    _ => false,
-                };
+                    _ => false};
 
                 if is_empty && !args.is_empty() {
                     Ok(args[0].clone())

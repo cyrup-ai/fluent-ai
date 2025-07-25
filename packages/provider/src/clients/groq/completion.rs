@@ -4,13 +4,11 @@
 // Groq completion model implementation
 // ============================================================================
 
-use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::AsyncTask;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
 use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest,
-};
+    self, CompletionCoreError as CompletionError, CompletionRequest};
 use fluent_ai_domain::message::{self, MessageError};
 use fluent_ai_domain::tool::ToolDefinition as DomainToolDefinition;
 use fluent_ai_domain::{Document, Message};
@@ -18,7 +16,6 @@ use fluent_ai_http3::{Http3, HttpStreamExt, header};
 use futures_util::{self, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::HashMap;
 use tokio::task;
 use tokio_stream;
 
@@ -27,10 +24,8 @@ use super::streaming;
 use crate::{
     AsyncStream, OneOrMany,
     completion_provider::{
-        ChunkHandler, CompletionError as ProviderCompletionError, CompletionProvider, ModelConfig,
-    },
-    streaming::StreamingCompletionResponse,
-};
+        ChunkHandler, CompletionError as ProviderCompletionError, CompletionProvider, ModelConfig},
+    streaming::StreamingCompletionResponse};
 
 /// Helper function to merge two JSON values
 fn merge_json_values(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
@@ -79,15 +74,13 @@ pub const MIXTRAL_8X7B_32768: &str = "mixtral-8x7b-32768";
 // ============================================================================
 #[derive(Debug, Deserialize)]
 struct ApiErrorResponse {
-    message: String,
-}
+    message: String}
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 // ============================================================================
 // Message conversion types (Groq uses OpenAI-compatible format)
@@ -95,8 +88,7 @@ enum ApiResponse<T> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GroqMessage {
     pub role: String,
-    pub content: Option<String>,
-}
+    pub content: Option<String>}
 
 impl TryFrom<GroqMessage> for message::Message {
     type Error = message::MessageError;
@@ -111,8 +103,7 @@ impl TryFrom<GroqMessage> for message::Message {
                         .ok_or_else(|| {
                             message::MessageError::ConversionError("Empty user message".to_string())
                         })?,
-                ),
-            }),
+                )}),
             "assistant" => Ok(Self::Assistant {
                 content: OneOrMany::one(
                     message
@@ -123,13 +114,11 @@ impl TryFrom<GroqMessage> for message::Message {
                                 "Empty assistant message".to_string(),
                             )
                         })?,
-                ),
-            }),
+                )}),
             _ => Err(message::MessageError::ConversionError(format!(
                 "Unknown role: {}",
                 message.role
-            ))),
-        }
+            )))}
     }
 }
 
@@ -142,9 +131,7 @@ impl TryFrom<message::Message> for GroqMessage {
                 role: "user".to_string(),
                 content: content.iter().find_map(|c| match c {
                     message::UserContent::Text(text) => Some(text.text.clone()),
-                    _ => None,
-                }),
-            }),
+                    _ => None})}),
             message::Message::Assistant { content } => {
                 let mut text_content: Option<String> = None;
 
@@ -171,8 +158,7 @@ impl TryFrom<message::Message> for GroqMessage {
 
                 Ok(Self {
                     role: "assistant".to_string(),
-                    content: text_content,
-                })
+                    content: text_content})
             }
         }
     }
@@ -191,15 +177,13 @@ pub use crate::clients::openai::CompletionResponse;
 #[derive(Clone)]
 pub struct CompletionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 
     fn create_completion_request(
@@ -220,8 +204,7 @@ impl CompletionModel {
                 .map_or_else(Vec::new, |preamble| {
                     vec![GroqMessage {
                         role: "system".to_string(),
-                        content: Some(preamble),
-                    }]
+                        content: Some(preamble)}]
                 });
 
         // Convert and extend the rest of the history
@@ -236,8 +219,7 @@ impl CompletionModel {
             json!({
                 "model": self.model,
                 "messages": full_history,
-                "temperature": completion_request.temperature,
-            })
+                "temperature": completion_request.temperature})
         } else {
             // Convert tools to OpenAI format
             let tools: Vec<Value> = completion_request
@@ -260,8 +242,7 @@ impl CompletionModel {
                 "messages": full_history,
                 "temperature": completion_request.temperature,
                 "tools": tools,
-                "tool_choice": "auto",
-            })
+                "tool_choice": "auto"})
         };
 
         let request = if let Some(params) = completion_request.additional_params {
@@ -385,8 +366,7 @@ pub struct GroqCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<DomainToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>,
-}
+    chunk_handler: Option<ChunkHandler>}
 
 impl CompletionProvider for GroqCompletionBuilder {
     /// Create new Groq completion builder with ModelInfo defaults
@@ -408,8 +388,7 @@ impl CompletionProvider for GroqCompletionBuilder {
             supports_vision: false,
             supports_audio: false,
             provider: "groq",
-            model_name,
-        };
+            model_name};
 
         Ok(Self {
             client,
@@ -428,8 +407,7 @@ impl CompletionProvider for GroqCompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None,
-        })
+            chunk_handler: None})
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -589,8 +567,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                     content: Some(format!("Error: {}", e)),
                     finish_reason: Some(FinishReason::Stop),
                     usage: None,
-                    tool_calls: vec![],
-                };
+                    tool_calls: vec![]};
                 let _ = tx.send(error_chunk);
             }
         });
@@ -608,9 +585,7 @@ impl CompletionProvider for GroqCompletionBuilder {
         // Add the user prompt to messages
         let user_message = Message::User {
             content: cyrup_sugars::OneOrMany::One(fluent_ai_domain::UserContent::Text {
-                text: prompt_text,
-            }),
-        };
+                text: prompt_text})};
         if builder.messages.try_push(user_message).is_err() {
             return Err("Too many messages".to_string());
         }
@@ -624,8 +599,7 @@ impl CompletionProvider for GroqCompletionBuilder {
             "max_tokens": builder.max_tokens,
             "top_p": builder.top_p,
             "frequency_penalty": builder.frequency_penalty,
-            "presence_penalty": builder.presence_penalty,
-        });
+            "presence_penalty": builder.presence_penalty});
 
         // Add system prompt if provided
         let mut messages = Vec::new();
@@ -658,8 +632,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                         .iter()
                         .filter_map(|c| match c {
                             fluent_ai_domain::UserContent::Text { text } => Some(text.clone()),
-                            _ => None,
-                        })
+                            _ => None})
                         .collect::<Vec<_>>()
                         .join(" ");
                     messages.push(json!({
@@ -672,8 +645,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                         .iter()
                         .filter_map(|c| match c {
                             fluent_ai_domain::AssistantContent::Text { text } => Some(text.clone()),
-                            _ => None,
-                        })
+                            _ => None})
                         .collect::<Vec<_>>()
                         .join(" ");
                     messages.push(json!({
@@ -762,8 +734,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                                         content: None,
                                         finish_reason: None,
                                         usage: None,
-                                        tool_calls: vec![],
-                                    };
+                                        tool_calls: vec![]};
 
                                     // Handle delta content
                                     if let Some(delta) = &choice.delta {
@@ -776,8 +747,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                                                 "stop" => Some(FinishReason::Stop),
                                                 "length" => Some(FinishReason::Length),
                                                 "tool_calls" => Some(FinishReason::ToolCalls),
-                                                _ => Some(FinishReason::Stop),
-                                            };
+                                                _ => Some(FinishReason::Stop)};
                                         }
                                     }
 
@@ -786,8 +756,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                                         chunk.usage = Some(DomainUsage {
                                             prompt_tokens: usage.prompt_tokens as u64,
                                             completion_tokens: usage.completion_tokens as u64,
-                                            total_tokens: usage.total_tokens as u64,
-                                        });
+                                            total_tokens: usage.total_tokens as u64});
                                     }
 
                                     // Call chunk handler if provided

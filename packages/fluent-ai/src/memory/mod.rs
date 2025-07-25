@@ -15,8 +15,7 @@ pub use library::{LibraryExt, LibraryMemoryService, LibraryServiceError, Library
 use parking_lot::RwLock;
 // Re-export key types from sweetmcp-memory
 pub use sweetmcp_memory::{
-    MemoryManager as MemoryManagerTrait, MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType,
-};
+    MemoryManager as MemoryManagerTrait, MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType};
 
 // Placeholder types until sweetmcp_memory is added
 #[derive(Debug, Clone)]
@@ -24,8 +23,7 @@ pub struct MemoryNode {
     pub id: String,
     pub content: String,
     pub memory_type: MemoryType,
-    pub metadata: MemoryMetadata,
-}
+    pub metadata: MemoryMetadata}
 
 impl MemoryNode {
     pub fn new(content: String, memory_type: MemoryType) -> Self {
@@ -33,8 +31,7 @@ impl MemoryNode {
             id: uuid::Uuid::new_v4().to_string(),
             content,
             memory_type,
-            metadata: MemoryMetadata::default(),
-        }
+            metadata: MemoryMetadata::default()}
     }
 
     pub fn with_embedding(mut self, embedding: Vec<f32>) -> Self {
@@ -55,15 +52,13 @@ impl MemoryNode {
 #[derive(Debug, Clone, Default)]
 pub struct MemoryMetadata {
     pub importance: f32,
-    pub embedding: Option<Vec<f32>>,
-}
+    pub embedding: Option<Vec<f32>>}
 
 #[derive(Debug, Clone)]
 pub enum MemoryType {
     Semantic,
     Episodic,
-    Procedural,
-}
+    Procedural}
 
 #[derive(Debug, Clone)]
 pub struct MemoryRelationship {
@@ -71,8 +66,7 @@ pub struct MemoryRelationship {
     pub source_id: String,
     pub target_id: String,
     pub relationship_type: String,
-    pub metadata: Option<serde_json::Value>,
-}
+    pub metadata: Option<serde_json::Value>}
 
 // Error type for memory operations
 #[derive(Debug, thiserror::Error)]
@@ -84,8 +78,7 @@ pub enum Error {
     #[error("Invalid operation: {0}")]
     InvalidOperation(String),
     #[error("Memory manager not configured - call with_manager() first")]
-    ManagerNotConfigured,
-}
+    ManagerNotConfigured}
 
 pub trait MemoryManagerTrait: Send + Sync {
     fn get_memory(
@@ -161,13 +154,11 @@ pub trait MemoryManager: MemoryManagerTrait {}
 
 /// Fluent memory builder
 pub struct Memory {
-    inner: Arc<RwLock<MemoryBuilder>>,
-}
+    inner: Arc<RwLock<MemoryBuilder>>}
 
 struct MemoryBuilder {
     manager: Option<Arc<dyn MemoryManagerTrait>>,
-    default_type: MemoryType,
-}
+    default_type: MemoryType}
 
 impl Debug for Memory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -180,8 +171,7 @@ impl Debug for Memory {
 impl Clone for Memory {
     fn clone(&self) -> Self {
         Self {
-            inner: Arc::clone(&self.inner),
-        }
+            inner: Arc::clone(&self.inner)}
     }
 }
 
@@ -190,9 +180,7 @@ impl Memory {
         Self {
             inner: Arc::new(RwLock::new(MemoryBuilder {
                 manager: None,
-                default_type: MemoryType::Semantic,
-            })),
-        }
+                default_type: MemoryType::Semantic}))}
     }
 
     /// Set the memory manager backend
@@ -213,8 +201,7 @@ impl Memory {
             memory: self,
             content: content.into(),
             memory_type: None,
-            metadata: None,
-        }
+            metadata: None}
     }
 
     /// Query memories by content
@@ -222,8 +209,7 @@ impl Memory {
         QueryMemory {
             memory: self,
             query_type: QueryType::ByContent(query.into()),
-            limit: 10,
-        }
+            limit: 10}
     }
 
     /// Recall all memories
@@ -231,8 +217,7 @@ impl Memory {
         QueryMemory {
             memory: self,
             query_type: QueryType::All,
-            limit: 10,
-        }
+            limit: 10}
     }
 
     /// Get a specific memory by ID
@@ -240,14 +225,12 @@ impl Memory {
         let id = id.into();
         let manager = match self.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return crate::async_task::spawn_async(async move { None }),
-        };
+            None => return crate::async_task::spawn_async(async move { None })};
 
         crate::async_task::spawn_async(async move {
             match manager.get_memory(&id).await {
                 Ok(result) => result,
-                Err(_) => None,
-            }
+                Err(_) => None}
         })
     }
 
@@ -256,8 +239,7 @@ impl Memory {
         let id = id.into();
         let manager = match self.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return crate::async_task::spawn_async(async move { false }),
-        };
+            None => return crate::async_task::spawn_async(async move { false })};
 
         crate::async_task::spawn_async(async move { manager.delete_memory(&id).await })
     }
@@ -268,8 +250,7 @@ pub struct StoreMemory {
     memory: Memory,
     content: String,
     memory_type: Option<MemoryType>,
-    metadata: Option<MemoryMetadata>,
-}
+    metadata: Option<MemoryMetadata>}
 
 impl StoreMemory {
     pub fn memory_type(mut self, memory_type: MemoryType) -> Self {
@@ -309,8 +290,7 @@ impl StoreMemory {
 
         let manager = match self.memory.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return crate::async_task::spawn_async(async move { node }),
-        };
+            None => return crate::async_task::spawn_async(async move { node })};
 
         crate::async_task::spawn_async(async move {
             match manager.create_memory(node.clone()).await {
@@ -325,15 +305,13 @@ impl StoreMemory {
 pub struct QueryMemory {
     memory: Memory,
     query_type: QueryType,
-    limit: usize,
-}
+    limit: usize}
 
 enum QueryType {
     All,
     ByType(MemoryType),
     ByContent(String),
-    ByVector(Vec<f32>),
-}
+    ByVector(Vec<f32>)}
 
 impl QueryMemory {
     pub fn by_type(mut self, memory_type: MemoryType) -> Self {
@@ -474,8 +452,7 @@ impl QueryMemory {
                         ZeroOneOrMany::None
                     }
                 }
-                _ => ZeroOneOrMany::from_vec(results),
-            }
+                _ => ZeroOneOrMany::from_vec(results)}
         })
     }
 }
@@ -485,8 +462,7 @@ pub struct Relationship {
     source_id: String,
     target_id: String,
     relationship_type: String,
-    metadata: Option<serde_json::Value>,
-}
+    metadata: Option<serde_json::Value>}
 
 impl Relationship {
     pub fn new(source_id: impl Into<String>, target_id: impl Into<String>) -> Self {
@@ -494,8 +470,7 @@ impl Relationship {
             source_id: source_id.into(),
             target_id: target_id.into(),
             relationship_type: "related".to_string(),
-            metadata: None,
-        }
+            metadata: None}
     }
 
     pub fn relationship_type(mut self, rel_type: impl Into<String>) -> Self {
@@ -519,8 +494,7 @@ impl Relationship {
                         source_id: String::new(),
                         target_id: String::new(),
                         relationship_type: "error".to_string(),
-                        metadata: None,
-                    }
+                        metadata: None}
                 });
             }
         };
@@ -530,8 +504,7 @@ impl Relationship {
             source_id: self.source_id,
             target_id: self.target_id,
             relationship_type: self.relationship_type,
-            metadata: self.metadata,
-        };
+            metadata: self.metadata};
 
         crate::async_task::spawn_async(async move {
             match manager.create_relationship(relationship.clone()).await {

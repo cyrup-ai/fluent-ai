@@ -31,8 +31,7 @@ pub struct ExecutionMetrics {
     /// Error counts by type
     pub error_counts: HashMap<String, u64>,
     /// Average execution time in nanoseconds
-    pub average_execution_time: u64,
-}
+    pub average_execution_time: u64}
 
 impl ExecutionMetrics {
     /// Create new execution metrics
@@ -50,8 +49,7 @@ impl ExecutionMetrics {
             successful_commands: 0,
             failed_commands: 0,
             error_counts: HashMap::new(),
-            average_execution_time: 0,
-        }
+            average_execution_time: 0}
     }
 
     /// Calculate duration in milliseconds

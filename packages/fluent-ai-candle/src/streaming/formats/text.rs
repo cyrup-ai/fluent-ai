@@ -74,7 +74,7 @@ impl StreamingFormatter {
 
     /// Format SSE error message
     #[inline]
-    pub fn format_sse_error(&self, error: &StreamingError) -> String {
+    pub fn format_sse_error(&self, _error: &StreamingError) -> String {
         format!(
             "id: {}-{}\nevent: error\ndata: {{}}\n\n",
             self.event_id_prefix, self.sequence_number
@@ -109,8 +109,7 @@ impl StreamingFormatter {
             crate::streaming::formats::types::OutputFormat::Raw => self.format_raw(response),
             crate::streaming::formats::types::OutputFormat::Custom(format_name) => {
                 self.format_custom(response, format_name)
-            },
-        }
+            }}
     }
 
     /// Format end-of-stream marker using the configured format
@@ -126,8 +125,7 @@ impl StreamingFormatter {
             crate::streaming::formats::types::OutputFormat::Raw => Ok(self.format_raw_end_marker()),
             crate::streaming::formats::types::OutputFormat::Custom(format_name) => {
                 self.format_custom_end_marker(format_name)
-            },
-        }
+            }}
     }
 
     /// Format error message using the configured format
@@ -143,8 +141,7 @@ impl StreamingFormatter {
             crate::streaming::formats::types::OutputFormat::Raw => Ok(self.format_raw_error(error)),
             crate::streaming::formats::types::OutputFormat::Custom(format_name) => {
                 self.format_custom_error(error, format_name)
-            },
-        }
+            }}
     }
 }
 
@@ -169,8 +166,7 @@ pub mod text_utils {
             _ => Err(StreamingError::FormatError(format!(
                 "Unknown output format: {}",
                 format_str
-            ))),
-        }
+            )))}
     }
 
     /// Escape special characters for SSE format
@@ -242,8 +238,7 @@ mod tests {
             probability: Some(0.95),
             alternatives: None,
             timing: TokenTiming::default(),
-            metadata: TokenMetadata::default(),
-        }
+            metadata: TokenMetadata::default()}
     }
 
     #[test]

@@ -11,8 +11,7 @@ use crate::cognitive::quantum::{Complex64, types::CognitiveResult};
 pub struct MeasurementBasis {
     pub basis_vectors: Vec<Vec<Complex64>>,
     pub basis_type: BasisType,
-    pub measurement_operators: Vec<MeasurementOperator>,
-}
+    pub measurement_operators: Vec<MeasurementOperator>}
 
 /// Basis types for quantum measurements
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -20,16 +19,14 @@ pub enum BasisType {
     Computational,
     Hadamard,
     Bell,
-    Custom(String),
-}
+    Custom(String)}
 
 /// Measurement operator for quantum measurements
 #[derive(Debug, Clone)]
 pub struct MeasurementOperator {
     pub matrix: Vec<Vec<Complex64>>,
     pub eigenvalues: Vec<f64>,
-    pub eigenvectors: Vec<Vec<Complex64>>,
-}
+    pub eigenvectors: Vec<Vec<Complex64>>}
 
 /// Measurement metadata
 #[derive(Debug, Clone)]
@@ -38,8 +35,7 @@ pub struct MeasurementMetadata {
     pub environmental_conditions: EnvironmentalConditions,
     pub measurement_shots: usize,
     pub measurement_uncertainty: f64,
-    pub calibration_data: CalibrationData,
-}
+    pub calibration_data: CalibrationData}
 
 /// Environmental conditions during measurement
 #[derive(Debug, Clone)]
@@ -47,8 +43,7 @@ pub struct EnvironmentalConditions {
     pub temperature: f64,
     pub magnetic_field: f64,
     pub electromagnetic_noise: f64,
-    pub system_load: f64,
-}
+    pub system_load: f64}
 
 /// Calibration data for measurements
 #[derive(Debug, Clone)]
@@ -59,8 +54,7 @@ pub struct CalibrationData {
     pub coherence_time_t2: Duration,
     pub calibration_timestamp: Instant,
     pub temperature_drift: f64,
-    pub frequency_drift: f64,
-}
+    pub frequency_drift: f64}
 
 impl MeasurementBasis {
     /// Create computational basis (|0⟩, |1⟩)
@@ -75,8 +69,7 @@ impl MeasurementBasis {
         Self {
             basis_vectors,
             basis_type: BasisType::Computational,
-            measurement_operators,
-        }
+            measurement_operators}
     }
 
     /// Create Hadamard basis (|+⟩, |-⟩)
@@ -99,8 +92,7 @@ impl MeasurementBasis {
         Self {
             basis_vectors,
             basis_type: BasisType::Hadamard,
-            measurement_operators,
-        }
+            measurement_operators}
     }
 
     /// Create Bell basis for entangled states
@@ -143,8 +135,7 @@ impl MeasurementBasis {
         Self {
             basis_vectors,
             basis_type: BasisType::Bell,
-            measurement_operators,
-        }
+            measurement_operators}
     }
 
     /// Generate computational basis measurement operators
@@ -160,8 +151,7 @@ impl MeasurementBasis {
                 eigenvectors: vec![
                     vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                     vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
-                ],
-            },
+                ]},
             // |1⟩⟨1| projector
             MeasurementOperator {
                 matrix: vec![
@@ -172,8 +162,7 @@ impl MeasurementBasis {
                 eigenvectors: vec![
                     vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                     vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
-                ],
-            },
+                ]},
         ]
     }
 
@@ -190,8 +179,7 @@ impl MeasurementBasis {
                 eigenvectors: vec![
                     vec![Complex64::new(0.707, 0.0), Complex64::new(0.707, 0.0)],
                     vec![Complex64::new(0.707, 0.0), Complex64::new(-0.707, 0.0)],
-                ],
-            },
+                ]},
             // |-⟩⟨-| projector
             MeasurementOperator {
                 matrix: vec![
@@ -202,8 +190,7 @@ impl MeasurementBasis {
                 eigenvectors: vec![
                     vec![Complex64::new(0.707, 0.0), Complex64::new(0.707, 0.0)],
                     vec![Complex64::new(0.707, 0.0), Complex64::new(-0.707, 0.0)],
-                ],
-            },
+                ]},
         ]
     }
 
@@ -214,8 +201,7 @@ impl MeasurementBasis {
         vec![MeasurementOperator {
             matrix: vec![vec![Complex64::new(1.0, 0.0)]],
             eigenvalues: vec![1.0],
-            eigenvectors: vec![vec![Complex64::new(1.0, 0.0)]],
-        }]
+            eigenvectors: vec![vec![Complex64::new(1.0, 0.0)]]}]
     }
 
     /// Perform measurement in this basis
@@ -227,8 +213,7 @@ impl MeasurementBasis {
             outcome_index: outcome,
             probability: probabilities[outcome],
             post_measurement_state: self.collapse_state(state, outcome)?,
-            measurement_basis: self.basis_type.clone(),
-        })
+            measurement_basis: self.basis_type.clone()})
     }
 
     /// Calculate measurement probabilities
@@ -297,8 +282,7 @@ pub struct MeasurementResult {
     pub outcome_index: usize,
     pub probability: f64,
     pub post_measurement_state: Vec<Complex64>,
-    pub measurement_basis: BasisType,
-}
+    pub measurement_basis: BasisType}
 
 impl Default for MeasurementMetadata {
     fn default() -> Self {
@@ -307,8 +291,7 @@ impl Default for MeasurementMetadata {
             environmental_conditions: EnvironmentalConditions::default(),
             measurement_shots: 1000,
             measurement_uncertainty: 0.01,
-            calibration_data: CalibrationData::default(),
-        }
+            calibration_data: CalibrationData::default()}
     }
 }
 
@@ -318,8 +301,7 @@ impl Default for EnvironmentalConditions {
             temperature: 300.0,      // Room temperature in Kelvin
             magnetic_field: 0.00005, // Earth's magnetic field in Tesla
             electromagnetic_noise: 0.001,
-            system_load: 0.5,
-        }
+            system_load: 0.5}
     }
 }
 
@@ -332,8 +314,7 @@ impl Default for CalibrationData {
             coherence_time_t2: Duration::from_micros(50),
             calibration_timestamp: Instant::now(),
             temperature_drift: 0.001,
-            frequency_drift: 0.0001,
-        }
+            frequency_drift: 0.0001}
     }
 }
 

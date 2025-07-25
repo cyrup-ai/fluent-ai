@@ -1,7 +1,6 @@
 // src/cognitive/mcts.rs
 //! MCTS for exploring code modifications with committee-based evaluation
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use rand::Rng;
@@ -21,8 +20,7 @@ pub struct CodeState {
     pub code_content: String,
     pub latency: f64,
     pub memory: f64,
-    pub relevance: f64,
-}
+    pub relevance: f64}
 
 impl Default for CodeState {
     fn default() -> Self {
@@ -31,8 +29,7 @@ impl Default for CodeState {
             code_content: String::new(),
             latency: 0.0,
             memory: 0.0,
-            relevance: 0.0,
-        }
+            relevance: 0.0}
     }
 }
 
@@ -57,8 +54,7 @@ pub struct MCTS {
     committee: Arc<EvaluationCommittee>,
     spec: Arc<OptimizationSpec>,
     user_objective: String,
-    exploration_constant: f64,
-}
+    exploration_constant: f64}
 
 impl MCTS {
     pub async fn new(
@@ -84,8 +80,7 @@ impl MCTS {
                 state: initial_state,
                 untried_actions,
                 is_terminal: false,
-                applied_action: None,
-            },
+                applied_action: None},
         )]);
 
         Ok(Self {
@@ -181,8 +176,7 @@ impl MCTS {
             state: new_state.clone(),
             untried_actions: Self::get_possible_actions(&new_state, &self.spec),
             is_terminal: false, // Will be determined later
-            applied_action: Some(action.clone()),
-        };
+            applied_action: Some(action.clone())};
 
         self.tree.insert(child_id.clone(), child_node);
         let parent_node = self.tree.get_mut(node_id).ok_or_else(|| {
@@ -223,8 +217,7 @@ impl MCTS {
 
             match &node.parent {
                 Some(parent_id) => node_id = parent_id.clone(),
-                None => break,
-            }
+                None => break}
         }
     }
 
@@ -296,8 +289,7 @@ impl MCTS {
             total_visits,
             max_depth,
             best_path,
-            explored_actions,
-        }
+            explored_actions}
     }
 
     fn calculate_max_depth(&self) -> usize {
@@ -450,8 +442,7 @@ impl MCTS {
             code_content: new_code,
             latency: new_latency,
             memory: new_memory,
-            relevance: new_relevance,
-        })
+            relevance: new_relevance})
     }
 }
 
@@ -462,8 +453,7 @@ pub struct TreeStatistics {
     pub total_visits: u64,
     pub max_depth: usize,
     pub best_path: Vec<String>,
-    pub explored_actions: Vec<String>,
-}
+    pub explored_actions: Vec<String>}
 
 // Ensure Node is cloneable for async operations
 impl Clone for MCTSNode {
@@ -476,7 +466,6 @@ impl Clone for MCTSNode {
             state: self.state.clone(),
             untried_actions: self.untried_actions.clone(),
             is_terminal: self.is_terminal,
-            applied_action: self.applied_action.clone(),
-        }
+            applied_action: self.applied_action.clone()}
     }
 }

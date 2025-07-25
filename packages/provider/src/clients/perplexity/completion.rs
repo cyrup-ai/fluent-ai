@@ -4,16 +4,11 @@
 // Perplexity completion types and implementation
 // ============================================================================
 
-// Import centralized HTTP structs - no more local definitions!
-use fluent_ai_http_structs::{
-    builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
-    common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
-    errors::{HttpStructError, HttpStructResult},
-    perplexity::{
-        PerplexityChatRequest, PerplexityChatResponse, PerplexityChoice, PerplexityContent,
-        PerplexityMessage, PerplexityResponseMessage, PerplexityStreamingChunk, PerplexityUsage,
-    },
-    validation::{ValidateRequest, ValidationResult},
+// Use local Perplexity request/response types
+use super::types::{
+    PerplexityChatRequest, PerplexityChatResponse, PerplexityChoice, PerplexityContent,
+    PerplexityMessage, PerplexityResponseMessage, PerplexityStreamingChunk, PerplexityUsage,
+    PerplexityRole
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -22,8 +17,7 @@ use super::client::Client;
 use crate::{
     OneOrMany,
     completion::{self, CompletionError, CompletionModel, CompletionRequest},
-    json_util, message,
-};
+    json_util, message};
 
 // ================================================================
 // Perplexity Completion API
@@ -33,23 +27,20 @@ pub const SONAR_PRO: &str = "sonar-pro";
 /// `sonar` completion model
 pub const SONAR: &str = "sonar";
 
-/// Legacy alias for centralized Perplexity response type
-pub type CompletionResponse = fluent_ai_http_structs::perplexity::PerplexityChatResponse;
+/// Legacy alias for local Perplexity response type
+pub type CompletionResponse = PerplexityChatResponse;
 
-/// Legacy alias for centralized message type
-pub type Message = fluent_ai_http_structs::perplexity::PerplexityMessage;
+/// Legacy alias for local message type
+pub type Message = PerplexityMessage;
 
-/// Legacy alias for centralized role type  
-pub type Role = fluent_ai_http_structs::perplexity::PerplexityRole;
+/// Legacy alias for local role type  
+pub type Role = PerplexityRole;
 
-/// Legacy alias for centralized delta type
-pub type Delta = fluent_ai_http_structs::perplexity::PerplexityDelta;
+/// Legacy alias for local choice type
+pub type Choice = PerplexityChoice;
 
-/// Legacy alias for centralized choice type
-pub type Choice = fluent_ai_http_structs::perplexity::PerplexityChoice;
-
-/// Legacy alias for centralized usage type
-pub type Usage = fluent_ai_http_structs::perplexity::PerplexityUsage;
+/// Legacy alias for local usage type
+pub type Usage = PerplexityUsage;
 
 // Display implementation is provided by centralized PerplexityUsage type
 
@@ -64,17 +55,15 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
         match &choice.message {
             message
                 if message.role
-                    == fluent_ai_http_structs::perplexity::PerplexityRole::Assistant =>
+                    == PerplexityRole::Assistant =>
             {
                 Ok(completion::CompletionResponse {
                     choice: OneOrMany::one(message.content.clone().into()),
-                    raw_response: response,
-                })
+                    raw_response: response})
             }
             _ => Err(CompletionError::ResponseError(
                 "Response contained no assistant message".to_owned(),
-            )),
-        }
+            ))}
     }
 }
 
@@ -82,15 +71,13 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
 #[derive(Debug, Clone)]
 pub struct PerplexityCompletionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl PerplexityCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 
     pub(crate) fn create_completion_request(
@@ -158,8 +145,7 @@ impl PerplexityCompletionModel {
             Err(e) => Err(CompletionError::InvalidRequest(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
 }
 
@@ -175,15 +161,13 @@ impl TryFrom<message::Message> for Message {
                         message::UserContent::Text(message::Text { text }) => Ok(text),
                         _ => Err(fluent_ai_domain::message::MessageError::ConversionError(
                             "Only text content is supported by Perplexity".to_owned(),
-                        )),
-                    })
+                        ))})
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n");
 
                 fluent_ai_http_structs::perplexity::PerplexityMessage {
                     role: fluent_ai_http_structs::perplexity::PerplexityRole::User,
-                    content: collapsed_content,
-                }
+                    content: collapsed_content}
             }
 
             message::Message::Assistant { content } => {
@@ -195,16 +179,14 @@ impl TryFrom<message::Message> for Message {
                             _ => return Err(fluent_ai_domain::message::MessageError::ConversionError(
                                 "Only text assistant message content is supported by Perplexity"
                                     .to_owned(),
-                            )),
-                        })
+                            ))})
                     })
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n");
 
                 fluent_ai_http_structs::perplexity::PerplexityMessage {
                     role: fluent_ai_http_structs::perplexity::PerplexityRole::Assistant,
-                    content: collapsed_content,
-                }
+                    content: collapsed_content}
             }
         })
     }
@@ -213,15 +195,15 @@ impl TryFrom<message::Message> for Message {
 impl From<Message> for message::Message {
     fn from(message: Message) -> Self {
         match message.role {
-            fluent_ai_http_structs::perplexity::PerplexityRole::User => {
+            PerplexityRole::User => {
                 message::Message::user(message.content)
             }
-            fluent_ai_http_structs::perplexity::PerplexityRole::Assistant => {
+            PerplexityRole::Assistant => {
                 message::Message::assistant(message.content)
             }
             // System messages get coerced into user messages for ease of error handling.
             // They should be handled on the outside of `Message` conversions via the preamble.
-            fluent_ai_http_structs::perplexity::PerplexityRole::System => {
+            PerplexityRole::System => {
                 message::Message::user(message.content)
             }
         }

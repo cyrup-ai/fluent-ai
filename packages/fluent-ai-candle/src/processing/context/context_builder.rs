@@ -11,8 +11,7 @@ use crate::processing::traits::ProcessingResult;
 pub struct ContextBuilder {
     vocab_size: usize,
     context_size: Option<usize>,
-    base_config: Option<BaseProcessingContext>,
-}
+    base_config: Option<BaseProcessingContext>}
 
 impl ContextBuilder {
     /// Create new context builder
@@ -21,8 +20,7 @@ impl ContextBuilder {
         Self {
             vocab_size,
             context_size: None,
-            base_config: None,
-        }
+            base_config: None}
     }
 
     /// Set context window size

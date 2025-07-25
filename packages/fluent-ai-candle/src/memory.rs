@@ -19,8 +19,7 @@ pub fn track_allocation(size: usize) {
         match PEAK_USAGE.compare_exchange_weak(peak, current, Ordering::Relaxed, Ordering::Relaxed)
         {
             Ok(_) => break,
-            Err(x) => peak = x,
-        }
+            Err(x) => peak = x}
     }
 }
 

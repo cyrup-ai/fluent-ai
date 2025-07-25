@@ -33,10 +33,7 @@ pub use memory::{MemoryNode, MemoryIntegration};
 // Re-export trait types
 pub use traits::{
     ImmutableEmbeddingModel, ImmutableMemoryManager,
-    EmbeddingModelInfo, MemoryManagerInfo,
-    // Deprecated traits for backward compatibility
-    EmbeddingModel, MemoryManager,
-};
+    EmbeddingModelInfo, MemoryManagerInfo};
 
 // Re-export processor types
 pub use processor::{StreamingContextProcessor, ContextProcessorStatistics};
@@ -47,8 +44,7 @@ pub use context_types::{
     File, Files, Directory, Github,
     ImmutableFileContext, ImmutableFilesContext, 
     ImmutableDirectoryContext, ImmutableGithubContext,
-    // Deprecated aliases for backward compatibility
-    FileContext, FilesContext, DirectoryContext, GithubContext,
+    // Deprecated aliases removed - use Immutable* versions instead
 };
 
 // Context implementations are available through the context_types re-exports

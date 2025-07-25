@@ -40,9 +40,7 @@ pub enum ClientFactoryError {
     #[error("HTTP error: {source}")]
     HttpError {
         #[from]
-        source: crate::http::HttpError,
-    },
-}
+        source: crate::http::HttpError}}
 
 /// Result type for client factory operations
 pub type ClientFactoryResult<T> = Result<T, ClientFactoryError>;
@@ -63,8 +61,7 @@ pub struct ClientConfig {
     pub max_retries: Option<u32>,
 
     /// Custom headers for requests
-    pub headers: Option<hashbrown::HashMap<String, String>>,
-}
+    pub headers: Option<hashbrown::HashMap<String, String>>}
 
 impl Default for ClientConfig {
     fn default() -> Self {
@@ -73,8 +70,7 @@ impl Default for ClientConfig {
             base_url: None,
             timeout_seconds: Some(300),
             max_retries: Some(3),
-            headers: None,
-        }
+            headers: None}
     }
 }
 
@@ -114,8 +110,7 @@ pub trait UnifiedClient: Send + Sync {
 #[derive(Clone)]
 pub struct OpenAIUnifiedClient {
     client: openai::OpenAIClient,
-    provider: openai::OpenAIProvider,
-}
+    provider: openai::OpenAIProvider}
 
 impl UnifiedClient for OpenAIUnifiedClient {
     fn provider_name(&self) -> &'static str {
@@ -129,8 +124,7 @@ impl UnifiedClient for OpenAIUnifiedClient {
             let models = self_clone.get_models().await?;
             if models.is_empty() {
                 return Err(ClientFactoryError::ConfigurationError {
-                    message: "No models available".to_string(),
-                });
+                    message: "No models available".to_string()});
             }
             Ok(())
         })
@@ -161,8 +155,7 @@ impl UnifiedClient for OpenAIUnifiedClient {
             let completion_request: openai::OpenAICompletionRequest =
                 serde_json::from_value(request_clone).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Invalid completion request: {}", e),
-                    }
+                        message: format!("Invalid completion request: {}", e)}
                 })?;
 
             let response = self_clone
@@ -170,12 +163,10 @@ impl UnifiedClient for OpenAIUnifiedClient {
                 .send_completion(&completion_request)
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Completion request failed: {}", e),
-                })?;
+                    message: format!("Completion request failed: {}", e)})?;
 
             serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Failed to serialize response: {}", e),
-            })
+                message: format!("Failed to serialize response: {}", e)})
         })
     }
 
@@ -191,8 +182,7 @@ impl UnifiedClient for OpenAIUnifiedClient {
             let completion_request: openai::OpenAICompletionRequest =
                 serde_json::from_value(request_clone).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Invalid streaming completion request: {}", e),
-                    }
+                        message: format!("Invalid streaming completion request: {}", e)}
                 })?;
 
             let stream = self_clone
@@ -200,8 +190,7 @@ impl UnifiedClient for OpenAIUnifiedClient {
                 .send_streaming_completion(&completion_request)
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Streaming completion request failed: {}", e),
-                })?;
+                    message: format!("Streaming completion request failed: {}", e)})?;
 
             let (tx, rx) = crate::channel();
 
@@ -212,13 +201,10 @@ impl UnifiedClient for OpenAIUnifiedClient {
                     let result = match chunk_result {
                         Ok(chunk) => serde_json::to_value(&chunk).map_err(|e| {
                             ClientFactoryError::ConfigurationError {
-                                message: format!("Failed to serialize chunk: {}", e),
-                            }
+                                message: format!("Failed to serialize chunk: {}", e)}
                         }),
                         Err(e) => Err(ClientFactoryError::ConfigurationError {
-                            message: format!("Stream chunk error: {}", e),
-                        }),
-                    };
+                            message: format!("Stream chunk error: {}", e)})};
                     if tx.send(result).is_err() {
                         break;
                     }
@@ -239,8 +225,7 @@ impl UnifiedClient for OpenAIUnifiedClient {
             let embedding_request: openai::OpenAIEmbeddingRequest =
                 serde_json::from_value(request_clone).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Invalid embedding request: {}", e),
-                    }
+                        message: format!("Invalid embedding request: {}", e)}
                 })?;
 
             let response = self_clone
@@ -248,12 +233,10 @@ impl UnifiedClient for OpenAIUnifiedClient {
                 .send_embedding(&embedding_request)
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Embedding request failed: {}", e),
-                })?;
+                    message: format!("Embedding request failed: {}", e)})?;
 
             serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Failed to serialize response: {}", e),
-            })
+                message: format!("Failed to serialize response: {}", e)})
         })
     }
 }
@@ -262,33 +245,27 @@ impl UnifiedClient for OpenAIUnifiedClient {
 #[derive(Clone)]
 pub struct AnthropicUnifiedClient {
     client: anthropic::AnthropicClient,
-    provider: anthropic::AnthropicProvider,
-}
+    provider: anthropic::AnthropicProvider}
 
 /// Gemini client wrapper implementing UnifiedClient
 pub struct GeminiUnifiedClient {
-    client: gemini::Client,
-}
+    client: gemini::Client}
 
 /// Mistral client wrapper implementing UnifiedClient
 pub struct MistralUnifiedClient {
-    client: mistral::Client,
-}
+    client: mistral::Client}
 
 /// Groq client wrapper implementing UnifiedClient
 pub struct GroqUnifiedClient {
-    client: groq::Client,
-}
+    client: groq::Client}
 
 /// Perplexity client wrapper implementing UnifiedClient
 pub struct PerplexityUnifiedClient {
-    client: perplexity::Client,
-}
+    client: perplexity::Client}
 
 /// xAI client wrapper implementing UnifiedClient
 pub struct XAIUnifiedClient {
-    client: xai::Client,
-}
+    client: xai::Client}
 
 impl UnifiedClient for AnthropicUnifiedClient {
     fn provider_name(&self) -> &'static str {
@@ -302,8 +279,7 @@ impl UnifiedClient for AnthropicUnifiedClient {
             let models = self_clone.get_models().await?;
             if models.is_empty() {
                 return Err(ClientFactoryError::ConfigurationError {
-                    message: "No models available".to_string(),
-                });
+                    message: "No models available".to_string()});
             }
             Ok(())
         })
@@ -332,8 +308,7 @@ impl UnifiedClient for AnthropicUnifiedClient {
             let completion_request: anthropic::AnthropicCompletionRequest =
                 serde_json::from_value(request_clone).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Invalid completion request: {}", e),
-                    }
+                        message: format!("Invalid completion request: {}", e)}
                 })?;
 
             let response = self_clone
@@ -341,12 +316,10 @@ impl UnifiedClient for AnthropicUnifiedClient {
                 .send_completion(&completion_request)
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Completion request failed: {}", e),
-                })?;
+                    message: format!("Completion request failed: {}", e)})?;
 
             serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Failed to serialize response: {}", e),
-            })
+                message: format!("Failed to serialize response: {}", e)})
         })
     }
 
@@ -362,8 +335,7 @@ impl UnifiedClient for AnthropicUnifiedClient {
             let completion_request: anthropic::AnthropicCompletionRequest =
                 serde_json::from_value(request_clone).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Invalid streaming completion request: {}", e),
-                    }
+                        message: format!("Invalid streaming completion request: {}", e)}
                 })?;
 
             let stream = self_clone
@@ -371,8 +343,7 @@ impl UnifiedClient for AnthropicUnifiedClient {
                 .send_streaming_completion(&completion_request)
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Streaming completion request failed: {}", e),
-                })?;
+                    message: format!("Streaming completion request failed: {}", e)})?;
 
             let (tx, rx) = crate::channel();
 
@@ -383,13 +354,10 @@ impl UnifiedClient for AnthropicUnifiedClient {
                     let result = match chunk_result {
                         Ok(chunk) => serde_json::to_value(&chunk).map_err(|e| {
                             ClientFactoryError::ConfigurationError {
-                                message: format!("Failed to serialize chunk: {}", e),
-                            }
+                                message: format!("Failed to serialize chunk: {}", e)}
                         }),
                         Err(e) => Err(ClientFactoryError::ConfigurationError {
-                            message: format!("Stream chunk error: {}", e),
-                        }),
-                    };
+                            message: format!("Stream chunk error: {}", e)})};
                     if tx.send(result).is_err() {
                         break;
                     }
@@ -406,8 +374,7 @@ impl UnifiedClient for AnthropicUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async move {
             Err(ClientFactoryError::ProviderNotImplemented {
-                provider: "anthropic".to_string(),
-            })
+                provider: "anthropic".to_string()})
         })
     }
 }
@@ -445,8 +412,7 @@ impl UnifiedClient for GeminiUnifiedClient {
         crate::spawn_async(async {
             // Implementation would integrate with existing Gemini client
             Err(ClientFactoryError::ConfigurationError {
-                message: "Gemini completion integration pending".to_string(),
-            })
+                message: "Gemini completion integration pending".to_string()})
         })
     }
 
@@ -458,8 +424,7 @@ impl UnifiedClient for GeminiUnifiedClient {
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Gemini streaming integration pending".to_string(),
-            })
+                message: "Gemini streaming integration pending".to_string()})
         })
     }
 
@@ -470,8 +435,7 @@ impl UnifiedClient for GeminiUnifiedClient {
         crate::spawn_async(async {
             // Implementation would integrate with existing Gemini client
             Err(ClientFactoryError::ConfigurationError {
-                message: "Gemini embedding integration pending".to_string(),
-            })
+                message: "Gemini embedding integration pending".to_string()})
         })
     }
 }
@@ -504,8 +468,7 @@ impl UnifiedClient for MistralUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Mistral completion integration pending".to_string(),
-            })
+                message: "Mistral completion integration pending".to_string()})
         })
     }
 
@@ -517,8 +480,7 @@ impl UnifiedClient for MistralUnifiedClient {
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Mistral streaming integration pending".to_string(),
-            })
+                message: "Mistral streaming integration pending".to_string()})
         })
     }
 
@@ -528,8 +490,7 @@ impl UnifiedClient for MistralUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Mistral embedding integration pending".to_string(),
-            })
+                message: "Mistral embedding integration pending".to_string()})
         })
     }
 }
@@ -562,8 +523,7 @@ impl UnifiedClient for GroqUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Groq completion integration pending".to_string(),
-            })
+                message: "Groq completion integration pending".to_string()})
         })
     }
 
@@ -575,8 +535,7 @@ impl UnifiedClient for GroqUnifiedClient {
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Groq streaming integration pending".to_string(),
-            })
+                message: "Groq streaming integration pending".to_string()})
         })
     }
 
@@ -586,8 +545,7 @@ impl UnifiedClient for GroqUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ProviderNotImplemented {
-                provider: "groq".to_string(),
-            })
+                provider: "groq".to_string()})
         })
     }
 }
@@ -618,8 +576,7 @@ impl UnifiedClient for PerplexityUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Perplexity completion integration pending".to_string(),
-            })
+                message: "Perplexity completion integration pending".to_string()})
         })
     }
 
@@ -631,8 +588,7 @@ impl UnifiedClient for PerplexityUnifiedClient {
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "Perplexity streaming integration pending".to_string(),
-            })
+                message: "Perplexity streaming integration pending".to_string()})
         })
     }
 
@@ -642,8 +598,7 @@ impl UnifiedClient for PerplexityUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ProviderNotImplemented {
-                provider: "perplexity".to_string(),
-            })
+                provider: "perplexity".to_string()})
         })
     }
 }
@@ -674,8 +629,7 @@ impl UnifiedClient for XAIUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "xAI completion integration pending".to_string(),
-            })
+                message: "xAI completion integration pending".to_string()})
         })
     }
 
@@ -687,8 +641,7 @@ impl UnifiedClient for XAIUnifiedClient {
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
-                message: "xAI streaming integration pending".to_string(),
-            })
+                message: "xAI streaming integration pending".to_string()})
         })
     }
 
@@ -698,8 +651,7 @@ impl UnifiedClient for XAIUnifiedClient {
     ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
         crate::spawn_async(async {
             Err(ClientFactoryError::ProviderNotImplemented {
-                provider: "xai".to_string(),
-            })
+                provider: "xai".to_string()})
         })
     }
 }
@@ -720,8 +672,7 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "OpenAI API key required".to_string(),
-                        })?;
+                            message: "OpenAI API key required".to_string()})?;
 
                 let client = openai::OpenAIClient::new(
                     api_key,
@@ -731,8 +682,7 @@ impl Providers {
                 )
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Failed to create OpenAI client: {}", e),
-                })?;
+                    message: format!("Failed to create OpenAI client: {}", e)})?;
 
                 let provider = openai::OpenAIProvider::new();
 
@@ -744,8 +694,7 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "Anthropic API key required".to_string(),
-                        })?;
+                            message: "Anthropic API key required".to_string()})?;
 
                 let client = anthropic::AnthropicClient::new(
                     api_key,
@@ -755,8 +704,7 @@ impl Providers {
                 )
                 .await
                 .map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Failed to create Anthropic client: {}", e),
-                })?;
+                    message: format!("Failed to create Anthropic client: {}", e)})?;
 
                 let provider = anthropic::AnthropicProvider::new();
 
@@ -768,13 +716,11 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "Google API key required".to_string(),
-                        })?;
+                            message: "Google API key required".to_string()})?;
 
                 let client = gemini::Client::new(&api_key).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Failed to create Gemini client: {}", e),
-                    }
+                        message: format!("Failed to create Gemini client: {}", e)}
                 })?;
 
                 Ok(Arc::new(GeminiUnifiedClient { client }))
@@ -785,13 +731,11 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "Mistral API key required".to_string(),
-                        })?;
+                            message: "Mistral API key required".to_string()})?;
 
                 let client = mistral::Client::new(&api_key).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Failed to create Mistral client: {}", e),
-                    }
+                        message: format!("Failed to create Mistral client: {}", e)}
                 })?;
 
                 Ok(Arc::new(MistralUnifiedClient { client }))
@@ -802,13 +746,11 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "Groq API key required".to_string(),
-                        })?;
+                            message: "Groq API key required".to_string()})?;
 
                 let client = groq::Client::new(&api_key).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Failed to create Groq client: {}", e),
-                    }
+                        message: format!("Failed to create Groq client: {}", e)}
                 })?;
 
                 Ok(Arc::new(GroqUnifiedClient { client }))
@@ -819,13 +761,11 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "Perplexity API key required".to_string(),
-                        })?;
+                            message: "Perplexity API key required".to_string()})?;
 
                 let client = perplexity::Client::new(&api_key).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Failed to create Perplexity client: {}", e),
-                    }
+                        message: format!("Failed to create Perplexity client: {}", e)}
                 })?;
 
                 Ok(Arc::new(PerplexityUnifiedClient { client }))
@@ -836,13 +776,11 @@ impl Providers {
                     config
                         .api_key
                         .ok_or_else(|| ClientFactoryError::AuthenticationError {
-                            message: "xAI API key required".to_string(),
-                        })?;
+                            message: "xAI API key required".to_string()})?;
 
                 let client = xai::Client::new(&api_key).map_err(|e| {
                     ClientFactoryError::ConfigurationError {
-                        message: format!("Failed to create xAI client: {}", e),
-                    }
+                        message: format!("Failed to create xAI client: {}", e)}
                 })?;
 
                 Ok(Arc::new(XAIUnifiedClient { client }))
@@ -850,9 +788,7 @@ impl Providers {
 
             // Default case for unimplemented providers
             _ => Err(ClientFactoryError::ProviderNotImplemented {
-                provider: self.name().to_string(),
-            }),
-        }
+                provider: self.name().to_string()})}
     }
 
     /// Create a client from environment variables
@@ -903,8 +839,7 @@ impl Providers {
                 ..Default::default()
             },
 
-            _ => ClientConfig::default(),
-        };
+            _ => ClientConfig::default()};
 
         self.create_client(config).await
     }
@@ -933,8 +868,7 @@ impl Providers {
             Providers::Groq => vec!["GROQ_API_KEY"],
             Providers::Perplexity => vec!["PERPLEXITY_API_KEY"],
             Providers::Xai => vec!["XAI_API_KEY"],
-            _ => vec![],
-        }
+            _ => vec![]}
     }
 }
 
@@ -967,8 +901,7 @@ impl Providers {
     ) -> ClientFactoryResult<Arc<dyn UnifiedClient>> {
         let provider =
             Self::from_name(name).ok_or_else(|| ClientFactoryError::ProviderNotImplemented {
-                provider: name.to_string(),
-            })?;
+                provider: name.to_string()})?;
 
         provider.create_client(config).await
     }

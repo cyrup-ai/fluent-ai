@@ -3,8 +3,6 @@
 //! Production-ready image processing and embedding generation using Candle ML framework
 //! for blazing-fast computer vision feature extraction with zero allocations.
 
-use std::collections::HashMap;
-
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use serde::{Deserialize, Serialize};
@@ -27,8 +25,7 @@ pub enum ImageFormat {
     /// BMP format
     Bmp,
     /// TIFF format
-    Tiff,
-}
+    Tiff}
 
 /// Image preprocessing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,8 +39,7 @@ pub struct ImagePreprocessing {
     /// Whether to convert to grayscale
     pub convert_to_grayscale: bool,
     /// JPEG quality for compression (1-100)
-    pub jpeg_quality: u8,
-}
+    pub jpeg_quality: u8}
 
 /// Pixel normalization methods
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -55,8 +51,7 @@ pub enum PixelNormalization {
     /// Standard ImageNet normalization
     ImageNet,
     /// No normalization
-    None,
-}
+    None}
 
 impl Default for ImagePreprocessing {
     fn default() -> Self {
@@ -65,8 +60,7 @@ impl Default for ImagePreprocessing {
             maintain_aspect_ratio: true,
             pixel_normalization: PixelNormalization::ImageNet,
             convert_to_grayscale: false,
-            jpeg_quality: 85,
-        }
+            jpeg_quality: 85}
     }
 }
 
@@ -80,8 +74,7 @@ pub struct ImageEmbeddingConfig {
     /// Model-specific parameters
     pub model_params: HashMap<String, serde_json::Value>,
     /// Batch size for processing multiple images
-    pub batch_size: usize,
-}
+    pub batch_size: usize}
 
 impl Default for ImageEmbeddingConfig {
     fn default() -> Self {
@@ -89,8 +82,7 @@ impl Default for ImageEmbeddingConfig {
             preprocessing: ImagePreprocessing::default(),
             vector_normalization: NormalizationMethod::L2,
             model_params: HashMap::new(),
-            batch_size: 32,
-        }
+            batch_size: 32}
     }
 }
 
@@ -104,8 +96,7 @@ pub struct ImageData {
     /// Image dimensions (width, height)
     pub dimensions: Option<(u32, u32)>,
     /// Additional metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// Result of image embedding operation
 #[derive(Debug, Clone)]
@@ -113,8 +104,7 @@ pub struct ImageEmbeddingResult {
     /// Generated embedding vector
     pub embedding: Vec<f32>,
     /// Processing metadata
-    pub metadata: ImageEmbeddingMetadata,
-}
+    pub metadata: ImageEmbeddingMetadata}
 
 /// Metadata for image embedding operations
 #[derive(Debug, Clone)]
@@ -130,8 +120,7 @@ pub struct ImageEmbeddingMetadata {
     /// Model used for embedding
     pub model: String,
     /// Additional model-specific metadata
-    pub model_metadata: HashMap<String, serde_json::Value>,
-}
+    pub model_metadata: HashMap<String, serde_json::Value>}
 
 /// Trait for image embedding models
 pub trait ImageEmbeddingModel: Send + Sync + Clone {
@@ -172,8 +161,7 @@ pub struct CLIPEmbeddingModel {
     model_name: String,
     embedding_dims: usize,
     device: Device,
-    config: candle_transformers::models::clip::ClipConfig,
-}
+    config: candle_transformers::models::clip::ClipConfig}
 
 impl CLIPEmbeddingModel {
     /// Create new CLIP embedding model with production Candle backend
@@ -181,8 +169,7 @@ impl CLIPEmbeddingModel {
     pub fn new(model_name: impl Into<String>, embedding_dims: usize) -> Result<Self, String> {
         let device = match Device::cuda_if_available(0) {
             Ok(device) => device,
-            Err(_) => Device::Cpu,
-        };
+            Err(_) => Device::Cpu};
 
         let config = candle_transformers::models::clip::ClipConfig::vit_base_patch32();
 
@@ -190,8 +177,7 @@ impl CLIPEmbeddingModel {
             model_name: model_name.into(),
             embedding_dims,
             device,
-            config,
-        })
+            config})
     }
 
     /// Create CLIP model with specific device
@@ -207,8 +193,7 @@ impl CLIPEmbeddingModel {
             model_name: model_name.into(),
             embedding_dims,
             device,
-            config,
-        }
+            config}
     }
 
     /// Process image data using Candle-powered computer vision
@@ -220,8 +205,7 @@ impl CLIPEmbeddingModel {
         // Decode image using the standard image crate
         let dynamic_image = match image::load_from_memory(&image.data) {
             Ok(img) => img,
-            Err(e) => return Err(format!("Failed to decode image: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to decode image: {}", e))};
 
         // Get target dimensions (default to CLIP standard)
         let (target_width, target_height) = config.target_size.unwrap_or((224, 224));
@@ -267,20 +251,17 @@ impl CLIPEmbeddingModel {
             &self.device,
         ) {
             Ok(t) => t,
-            Err(e) => return Err(format!("Failed to create tensor: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to create tensor: {}", e))};
 
         // Permute to channels-first format (3, H, W)
         let image_tensor = match image_tensor.permute((2, 0, 1)) {
             Ok(t) => t,
-            Err(e) => return Err(format!("Failed to permute tensor: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to permute tensor: {}", e))};
 
         // Convert to F32 for neural network processing
         let image_tensor = match image_tensor.to_dtype(DType::F32) {
             Ok(t) => t,
-            Err(e) => return Err(format!("Failed to convert to F32: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to convert to F32: {}", e))};
 
         // Apply normalization based on config
         let normalized_tensor = match config.pixel_normalization {
@@ -288,22 +269,19 @@ impl CLIPEmbeddingModel {
                 // Normalize from [0, 255] to [0, 1]
                 match image_tensor.affine(1.0 / 255.0, 0.0) {
                     Ok(t) => t,
-                    Err(e) => return Err(format!("Failed to normalize to [0,1]: {}", e)),
-                }
+                    Err(e) => return Err(format!("Failed to normalize to [0,1]: {}", e))}
             }
             PixelNormalization::MinusOneToOne => {
                 // Normalize from [0, 255] to [-1, 1] (standard for many vision models)
                 match image_tensor.affine(2.0 / 255.0, -1.0) {
                     Ok(t) => t,
-                    Err(e) => return Err(format!("Failed to normalize to [-1,1]: {}", e)),
-                }
+                    Err(e) => return Err(format!("Failed to normalize to [-1,1]: {}", e))}
             }
             PixelNormalization::ImageNet => {
                 // ImageNet normalization: (pixel / 255 - mean) / std
                 let normalized = match image_tensor.affine(1.0 / 255.0, 0.0) {
                     Ok(t) => t,
-                    Err(e) => return Err(format!("Failed to scale for ImageNet: {}", e)),
-                };
+                    Err(e) => return Err(format!("Failed to scale for ImageNet: {}", e))};
 
                 // Apply per-channel ImageNet normalization
                 let means = [0.485, 0.456, 0.406];
@@ -313,24 +291,20 @@ impl CLIPEmbeddingModel {
                 for c in 0..3 {
                     let channel = match normalized.get(c) {
                         Ok(ch) => ch,
-                        Err(e) => return Err(format!("Failed to get channel {}: {}", c, e)),
-                    };
+                        Err(e) => return Err(format!("Failed to get channel {}: {}", c, e))};
                     let normalized_channel = match channel
                         .affine(1.0 / stds[c], -means[c] / stds[c])
                     {
                         Ok(ch) => ch,
-                        Err(e) => return Err(format!("Failed to normalize channel {}: {}", c, e)),
-                    };
+                        Err(e) => return Err(format!("Failed to normalize channel {}: {}", c, e))};
                     channels.push(normalized_channel);
                 }
 
                 match Tensor::stack(&channels, 0) {
                     Ok(t) => t,
-                    Err(e) => return Err(format!("Failed to stack normalized channels: {}", e)),
-                }
+                    Err(e) => return Err(format!("Failed to stack normalized channels: {}", e))}
             }
-            PixelNormalization::None => image_tensor,
-        };
+            PixelNormalization::None => image_tensor};
 
         Ok(normalized_tensor)
     }
@@ -374,50 +348,38 @@ impl CLIPEmbeddingModel {
         for c in 0..3 {
             let channel = match tensor.get(c) {
                 Ok(ch) => ch,
-                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e)),
-            };
+                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e))};
 
             // Compute channel statistics
             let mean = match channel.mean_all() {
                 Ok(m) => match m.to_scalar::<f32>() {
                     Ok(val) => val,
-                    Err(e) => return Err(format!("Failed to extract mean scalar: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute mean: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to extract mean scalar: {}", e))},
+                Err(e) => return Err(format!("Failed to compute mean: {}", e))};
 
             let variance = match channel.var(0) {
                 Ok(v) => match v.mean_all() {
                     Ok(vm) => match vm.to_scalar::<f32>() {
                         Ok(val) => val,
-                        Err(e) => return Err(format!("Failed to extract variance scalar: {}", e)),
-                    },
-                    Err(e) => return Err(format!("Failed to compute variance mean: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute variance: {}", e)),
-            };
+                        Err(e) => return Err(format!("Failed to extract variance scalar: {}", e))},
+                    Err(e) => return Err(format!("Failed to compute variance mean: {}", e))},
+                Err(e) => return Err(format!("Failed to compute variance: {}", e))};
 
             let max_val = match channel.max(1) {
                 Ok(m) => match m.max(0) {
                     Ok(mm) => match mm.to_scalar::<f32>() {
                         Ok(val) => val,
-                        Err(e) => return Err(format!("Failed to extract max scalar: {}", e)),
-                    },
-                    Err(e) => return Err(format!("Failed to compute max reduction: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute max: {}", e)),
-            };
+                        Err(e) => return Err(format!("Failed to extract max scalar: {}", e))},
+                    Err(e) => return Err(format!("Failed to compute max reduction: {}", e))},
+                Err(e) => return Err(format!("Failed to compute max: {}", e))};
 
             let min_val = match channel.min(1) {
                 Ok(m) => match m.min(0) {
                     Ok(mm) => match mm.to_scalar::<f32>() {
                         Ok(val) => val,
-                        Err(e) => return Err(format!("Failed to extract min scalar: {}", e)),
-                    },
-                    Err(e) => return Err(format!("Failed to compute min reduction: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute min: {}", e)),
-            };
+                        Err(e) => return Err(format!("Failed to extract min scalar: {}", e))},
+                    Err(e) => return Err(format!("Failed to compute min reduction: {}", e))},
+                Err(e) => return Err(format!("Failed to compute min: {}", e))};
 
             features.push(mean);
             features.push(variance.sqrt()); // Standard deviation
@@ -443,8 +405,7 @@ impl CLIPEmbeddingModel {
             &self.device,
         ) {
             Ok(t) => t,
-            Err(e) => return Err(format!("Failed to create Sobel X kernel: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to create Sobel X kernel: {}", e))};
 
         let sobel_y = match Tensor::new(
             &[[[
@@ -455,34 +416,28 @@ impl CLIPEmbeddingModel {
             &self.device,
         ) {
             Ok(t) => t,
-            Err(e) => return Err(format!("Failed to create Sobel Y kernel: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to create Sobel Y kernel: {}", e))};
 
         for c in 0..3 {
             let channel = match tensor.get(c) {
                 Ok(ch) => ch,
-                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e)),
-            };
+                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e))};
 
             // Add batch and channel dimensions for convolution
             let channel_4d = match channel.unsqueeze(0) {
                 Ok(t) => match t.unsqueeze(0) {
                     Ok(t) => t,
-                    Err(e) => return Err(format!("Failed to add dimensions: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to add batch dimension: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to add dimensions: {}", e))},
+                Err(e) => return Err(format!("Failed to add batch dimension: {}", e))};
 
             // Compute gradients using convolution
             let grad_x = match channel_4d.conv2d(&sobel_x, 1, 1, 1, 1) {
                 Ok(g) => g,
-                Err(e) => return Err(format!("Failed to compute X gradient: {}", e)),
-            };
+                Err(e) => return Err(format!("Failed to compute X gradient: {}", e))};
 
             let grad_y = match channel_4d.conv2d(&sobel_y, 1, 1, 1, 1) {
                 Ok(g) => g,
-                Err(e) => return Err(format!("Failed to compute Y gradient: {}", e)),
-            };
+                Err(e) => return Err(format!("Failed to compute Y gradient: {}", e))};
 
             // Compute gradient magnitudes
             let grad_x_mean = match grad_x.abs() {
@@ -493,10 +448,8 @@ impl CLIPEmbeddingModel {
                             return Err(format!("Failed to extract gradient X scalar: {}", e));
                         }
                     },
-                    Err(e) => return Err(format!("Failed to compute gradient X mean: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute gradient X abs: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to compute gradient X mean: {}", e))},
+                Err(e) => return Err(format!("Failed to compute gradient X abs: {}", e))};
 
             let grad_y_mean = match grad_y.abs() {
                 Ok(abs_grad) => match abs_grad.mean_all() {
@@ -506,10 +459,8 @@ impl CLIPEmbeddingModel {
                             return Err(format!("Failed to extract gradient Y scalar: {}", e));
                         }
                     },
-                    Err(e) => return Err(format!("Failed to compute gradient Y mean: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute gradient Y abs: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to compute gradient Y mean: {}", e))},
+                Err(e) => return Err(format!("Failed to compute gradient Y abs: {}", e))};
 
             features.push(grad_x_mean);
             features.push(grad_y_mean);
@@ -526,17 +477,14 @@ impl CLIPEmbeddingModel {
         for c in 0..3 {
             let channel = match tensor.get(c) {
                 Ok(ch) => ch,
-                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e)),
-            };
+                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e))};
 
             // First moment (mean)
             let mean = match channel.mean_all() {
                 Ok(m) => match m.to_scalar::<f32>() {
                     Ok(val) => val,
-                    Err(e) => return Err(format!("Failed to extract color mean scalar: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute color mean: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to extract color mean scalar: {}", e))},
+                Err(e) => return Err(format!("Failed to compute color mean: {}", e))};
 
             // Second moment (variance)
             let variance = match channel.var(0) {
@@ -547,33 +495,25 @@ impl CLIPEmbeddingModel {
                             return Err(format!("Failed to extract color variance scalar: {}", e));
                         }
                     },
-                    Err(e) => return Err(format!("Failed to compute color variance mean: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute color variance: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to compute color variance mean: {}", e))},
+                Err(e) => return Err(format!("Failed to compute color variance: {}", e))};
 
             // Third moment approximation (using range as proxy for skewness)
             let max_val = match channel.max(1) {
                 Ok(m) => match m.max(0) {
                     Ok(mm) => match mm.to_scalar::<f32>() {
                         Ok(val) => val,
-                        Err(e) => return Err(format!("Failed to extract color max scalar: {}", e)),
-                    },
-                    Err(e) => return Err(format!("Failed to compute color max reduction: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute color max: {}", e)),
-            };
+                        Err(e) => return Err(format!("Failed to extract color max scalar: {}", e))},
+                    Err(e) => return Err(format!("Failed to compute color max reduction: {}", e))},
+                Err(e) => return Err(format!("Failed to compute color max: {}", e))};
 
             let min_val = match channel.min(1) {
                 Ok(m) => match m.min(0) {
                     Ok(mm) => match mm.to_scalar::<f32>() {
                         Ok(val) => val,
-                        Err(e) => return Err(format!("Failed to extract color min scalar: {}", e)),
-                    },
-                    Err(e) => return Err(format!("Failed to compute color min reduction: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute color min: {}", e)),
-            };
+                        Err(e) => return Err(format!("Failed to extract color min scalar: {}", e))},
+                    Err(e) => return Err(format!("Failed to compute color min reduction: {}", e))},
+                Err(e) => return Err(format!("Failed to compute color min: {}", e))};
 
             let range = max_val - min_val;
 
@@ -596,41 +536,33 @@ impl CLIPEmbeddingModel {
             &self.device,
         ) {
             Ok(t) => t,
-            Err(e) => return Err(format!("Failed to create Laplacian kernel: {}", e)),
-        };
+            Err(e) => return Err(format!("Failed to create Laplacian kernel: {}", e))};
 
         for c in 0..3 {
             let channel = match tensor.get(c) {
                 Ok(ch) => ch,
-                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e)),
-            };
+                Err(e) => return Err(format!("Failed to get channel {}: {}", c, e))};
 
             // Add batch and channel dimensions
             let channel_4d = match channel.unsqueeze(0) {
                 Ok(t) => match t.unsqueeze(0) {
                     Ok(t) => t,
-                    Err(e) => return Err(format!("Failed to add edge dimensions: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to add edge batch dimension: {}", e)),
-            };
+                    Err(e) => return Err(format!("Failed to add edge dimensions: {}", e))},
+                Err(e) => return Err(format!("Failed to add edge batch dimension: {}", e))};
 
             // Apply Laplacian filter
             let edges = match channel_4d.conv2d(&laplacian, 1, 1, 1, 1) {
                 Ok(e) => e,
-                Err(e) => return Err(format!("Failed to compute edges: {}", e)),
-            };
+                Err(e) => return Err(format!("Failed to compute edges: {}", e))};
 
             // Compute edge strength (mean absolute response)
             let edge_strength = match edges.abs() {
                 Ok(abs_edges) => match abs_edges.mean_all() {
                     Ok(mean) => match mean.to_scalar::<f32>() {
                         Ok(val) => val,
-                        Err(e) => return Err(format!("Failed to extract edge scalar: {}", e)),
-                    },
-                    Err(e) => return Err(format!("Failed to compute edge mean: {}", e)),
-                },
-                Err(e) => return Err(format!("Failed to compute edge abs: {}", e)),
-            };
+                        Err(e) => return Err(format!("Failed to extract edge scalar: {}", e))},
+                    Err(e) => return Err(format!("Failed to compute edge mean: {}", e))},
+                Err(e) => return Err(format!("Failed to compute edge abs: {}", e))};
 
             features.push(edge_strength);
         }
@@ -675,9 +607,7 @@ impl ImageEmbeddingModel for CLIPEmbeddingModel {
                                     serde_json::Value::String(e),
                                 );
                                 metadata
-                            },
-                        },
-                    };
+                            }}};
                 }
             };
 
@@ -704,9 +634,7 @@ impl ImageEmbeddingModel for CLIPEmbeddingModel {
                                     serde_json::Value::String(e),
                                 );
                                 metadata
-                            },
-                        },
-                    };
+                            }}};
                 }
             };
 
@@ -796,9 +724,7 @@ impl ImageEmbeddingModel for CLIPEmbeddingModel {
                             serde_json::Value::String(format!("{:?}", model.config)),
                         );
                         metadata
-                    },
-                },
-            }
+                    }}}
         })
     }
 
@@ -860,8 +786,7 @@ impl ImageEmbeddingModel for CLIPEmbeddingModel {
                 let chunk = EmbeddingChunk {
                     embeddings: crate::ZeroOneOrMany::from_vec(result.embedding),
                     index: idx,
-                    metadata,
-                };
+                    metadata};
 
                 if tx.send(chunk).is_err() {
                     break;
@@ -981,8 +906,7 @@ pub mod utils {
             data,
             format,
             dimensions,
-            metadata,
-        })
+            metadata})
     }
 
     /// Load image from file path
@@ -1003,8 +927,7 @@ pub mod utils {
             maintain_aspect_ratio: true,
             pixel_normalization: PixelNormalization::ZeroToOne,
             convert_to_grayscale: false,
-            jpeg_quality: 75,
-        }
+            jpeg_quality: 75}
     }
 
     /// Estimate memory usage for image batch processing

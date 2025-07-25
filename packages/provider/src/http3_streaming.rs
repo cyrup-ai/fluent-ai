@@ -86,8 +86,7 @@ pub enum HttpErrorKind {
     /// Configuration errors
     Config = 6,
     /// Unknown/other errors
-    Unknown = 7,
-}
+    Unknown = 7}
 
 impl fmt::Display for HttpErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -99,8 +98,7 @@ impl fmt::Display for HttpErrorKind {
             Self::RateLimit => write!(f, "Rate Limit"),
             Self::Parsing => write!(f, "Parsing"),
             Self::Config => write!(f, "Configuration"),
-            Self::Unknown => write!(f, "Unknown"),
-        }
+            Self::Unknown => write!(f, "Unknown")}
     }
 }
 
@@ -268,8 +266,7 @@ pub struct TokenUsage {
     /// Tokens in the completion/output
     pub completion_tokens: u32,
     /// Total tokens used
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 impl TokenUsage {
     /// Create new token usage
@@ -278,8 +275,7 @@ impl TokenUsage {
         Self {
             prompt_tokens,
             completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens,
-        }
+            total_tokens: prompt_tokens + completion_tokens}
     }
 
     /// Check if usage is empty
@@ -297,8 +293,7 @@ pub struct ToolCall {
     /// Tool arguments as JSON
     pub arguments: Value,
     /// Tool call ID
-    pub id: Option<String>,
-}
+    pub id: Option<String>}
 
 impl ToolCall {
     /// Create new tool call
@@ -307,8 +302,7 @@ impl ToolCall {
         Self {
             name,
             arguments,
-            id: None,
-        }
+            id: None}
     }
 
     /// Set tool call ID
@@ -331,8 +325,7 @@ pub struct TranscriptionChunkImpl {
     data: Vec<u8>,
     progress: Option<f32>,
     is_final: bool,
-    metadata: Option<Value>,
-}
+    metadata: Option<Value>}
 
 impl TranscriptionChunkImpl {
     pub fn new(
@@ -348,8 +341,7 @@ impl TranscriptionChunkImpl {
             data,
             progress: None,
             is_final: false,
-            metadata: None,
-        }
+            metadata: None}
     }
 
     pub fn with_progress(mut self, progress: f32) -> Self {
@@ -407,8 +399,7 @@ pub struct DownloadChunkImpl {
     mime_type: Option<String>,
     progress: Option<f32>,
     is_final: bool,
-    metadata: Option<Value>,
-}
+    metadata: Option<Value>}
 
 impl DownloadChunkImpl {
     pub fn new(data: Vec<u8>, filename: Option<String>, mime_type: Option<String>) -> Self {
@@ -418,8 +409,7 @@ impl DownloadChunkImpl {
             mime_type,
             progress: None,
             is_final: false,
-            metadata: None,
-        }
+            metadata: None}
     }
 
     pub fn with_progress(mut self, progress: f32) -> Self {

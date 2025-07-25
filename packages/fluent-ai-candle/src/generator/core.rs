@@ -2,17 +2,17 @@
 
 use std::sync::Arc;
 use candle_core::Device;
-use fluent_ai_async::AsyncStream;
+
 
 use crate::error::CandleResult;
 use crate::kv_cache::{KVCache, KVCacheConfig};
 use crate::model::CandleModel;
-use crate::processing::{processors::{CompositeProcessor, presets}, traits::LogitsProcessor};
+use crate::processing::processors::{CompositeProcessor, presets};
 use crate::sampling::{Sampling, SamplingConfig};
 use crate::streaming::{StreamingConfig, TokenOutputStream};
 use crate::tokenizer::CandleTokenizer;
 
-use super::types::{GenerationConfig, GenerationState};
+use super::types::GenerationConfig;
 
 /// Zero-allocation text generator
 pub struct CandleGenerator {
@@ -37,8 +37,7 @@ pub struct CandleGenerator {
     /// CompositeProcessor for sophisticated sampling
     pub(super) composite_processor: CompositeProcessor,
     /// TokenOutputStream for real-time streaming
-    pub(super) token_output_stream: Option<Arc<parking_lot::Mutex<TokenOutputStream>>>,
-}
+    pub(super) token_output_stream: Option<Arc<parking_lot::Mutex<TokenOutputStream>>>}
 
 impl Clone for CandleGenerator {
     fn clone(&self) -> Self {
@@ -53,8 +52,7 @@ impl Clone for CandleGenerator {
             streaming_config: self.streaming_config.clone(),
             kv_cache: self.kv_cache.as_ref().map(Arc::clone),
             composite_processor: CompositeProcessor::new(),
-            token_output_stream: self.token_output_stream.as_ref().map(Arc::clone),
-        }
+            token_output_stream: self.token_output_stream.as_ref().map(Arc::clone)}
     }
 }
 
@@ -78,8 +76,7 @@ impl CandleGenerator {
             streaming_config: StreamingConfig::default(),
             kv_cache: None,
             composite_processor: CompositeProcessor::new(),
-            token_output_stream: None,
-        }
+            token_output_stream: None}
     }
 
     /// Create a new generator with sophisticated features configured
@@ -119,14 +116,13 @@ impl CandleGenerator {
             streaming_config,
             kv_cache,
             composite_processor,
-            token_output_stream,
-        })
+            token_output_stream})
     }
 
     /// Update generation configuration
     #[inline(always)]
     pub fn update_config(&mut self, config: GenerationConfig) {
-        self.config = config;
+        self.config = config.clone();
         *self.rng_state.lock() = config.seed;
     }
 
@@ -152,5 +148,40 @@ impl CandleGenerator {
     #[inline(always)]
     pub fn composite_processor(&self) -> &CompositeProcessor {
         &self.composite_processor
+    }
+
+    /// Generate a completion response using AsyncStream architecture
+    pub fn generate(&self, _request: &crate::types::CandleCompletionRequest) -> fluent_ai_async::AsyncStream<crate::types::CandleCompletionResponse<'static>> {
+        use fluent_ai_async::{AsyncStream, handle_error};
+        
+        AsyncStream::with_channel(move |_sender: fluent_ai_async::AsyncStreamSender<crate::types::CandleCompletionResponse<'static>>| {
+            // TODO: Implement actual generation logic
+            handle_error!(crate::error::CandleError::Msg("Generation not implemented yet".to_string()), "Generation not implemented");
+        })
+    }
+
+    /// Generate a streaming completion response using AsyncStream architecture
+    pub fn generate_stream(&self, _request: &crate::types::CandleCompletionRequest) -> fluent_ai_async::AsyncStream<crate::types::CandleStreamingResponse> {
+        use fluent_ai_async::{AsyncStream, handle_error};
+        
+        AsyncStream::with_channel(move |_sender: fluent_ai_async::AsyncStreamSender<crate::types::CandleStreamingResponse>| {
+            // TODO: Implement actual streaming generation logic
+            handle_error!(crate::error::CandleError::Msg("Streaming generation not implemented yet".to_string()), "Streaming generation not implemented");
+        })
+    }
+}
+
+impl Default for CandleGenerator {
+    /// Create default generator with production-ready configuration
+    /// NOTE: Current implementation uses locks (parking_lot::Mutex) which violates
+    /// the "no locking" constraint and should be refactored to use atomic types
+    #[inline(always)]
+    fn default() -> Self {
+        let model = Arc::new(CandleModel::default());
+        let tokenizer = Arc::new(CandleTokenizer::default());
+        let config = GenerationConfig::default();
+        let device = Device::Cpu;
+        
+        Self::new(model, tokenizer, config, device)
     }
 }

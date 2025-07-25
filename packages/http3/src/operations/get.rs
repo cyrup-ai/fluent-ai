@@ -1,7 +1,6 @@
 //! GET HTTP Operations Module - Streaming GET requests with conditional support
 
 use std::collections::HashMap;
-
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::operations::HttpOperation;
@@ -13,8 +12,7 @@ pub struct GetOperation {
     client: HttpClient,
     url: String,
     headers: HeaderMap,
-    query_params: HashMap<String, String>,
-}
+    query_params: HashMap<String, String>}
 
 impl GetOperation {
     /// Create a new GET operation
@@ -24,8 +22,7 @@ impl GetOperation {
             client,
             url,
             headers: HeaderMap::new(),
-            query_params: HashMap::new(),
-        }
+            query_params: HashMap::new()}
     }
 
     /// Add a query parameter

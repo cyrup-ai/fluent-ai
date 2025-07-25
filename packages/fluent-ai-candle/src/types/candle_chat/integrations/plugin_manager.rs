@@ -10,13 +10,7 @@ use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Handle errors in streaming context without panicking
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error);
-        // Continue processing instead of returning error
-    };
-}
+// Removed unused handle_error macro
 
 /// Plugin manager for handling dynamic plugins
 pub struct PluginManager {
@@ -29,8 +23,7 @@ pub struct PluginManager {
     /// Plugin statistics
     pub stats: PluginManagerStats,
     /// Event listeners
-    pub event_listeners: Vec<PluginEventListener>,
-}
+    pub event_listeners: Vec<PluginEventListener>}
 
 /// Plugin configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,8 +55,7 @@ pub struct PluginConfig {
     /// Created timestamp
     pub created_at: chrono::DateTime<chrono::Utc>,
     /// Updated timestamp
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
+    pub updated_at: chrono::DateTime<chrono::Utc>}
 
 /// Plugin dependency
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,8 +67,7 @@ pub struct PluginDependency {
     /// Whether dependency is optional
     pub optional: bool,
     /// Dependency type
-    pub dependency_type: DependencyType,
-}
+    pub dependency_type: DependencyType}
 
 /// Type of plugin dependency
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,8 +79,7 @@ pub enum DependencyType {
     /// External service
     Service,
     /// Configuration requirement
-    Config,
-}
+    Config}
 
 /// Plugin permission
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,8 +97,7 @@ pub enum PluginPermission {
     /// Database access
     DatabaseAccess,
     /// Custom permission
-    Custom(String),
-}
+    Custom(String)}
 
 /// Loaded plugin instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,8 +115,7 @@ pub struct LoadedPlugin {
     /// Plugin instance data
     pub instance_data: HashMap<String, serde_json::Value>,
     /// Performance metrics
-    pub performance_metrics: PluginPerformanceMetrics,
-}
+    pub performance_metrics: PluginPerformanceMetrics}
 
 /// Plugin status
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,8 +131,7 @@ pub enum PluginStatus {
     /// Plugin is being loaded
     Loading,
     /// Plugin is being unloaded
-    Unloading,
-}
+    Unloading}
 
 /// Plugin performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,8 +147,7 @@ pub struct PluginPerformanceMetrics {
     /// Success rate (0.0 to 1.0)
     pub success_rate: f32,
     /// Error count
-    pub error_count: usize,
-}
+    pub error_count: usize}
 
 /// Plugin registry for managing available plugins
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,8 +159,7 @@ pub struct PluginRegistry {
     /// Registry configuration
     pub config: RegistryConfig,
     /// Last update timestamp
-    pub last_update: chrono::DateTime<chrono::Utc>,
-}
+    pub last_update: chrono::DateTime<chrono::Utc>}
 
 /// Plugin metadata in registry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -200,8 +185,7 @@ pub struct PluginMetadata {
     /// Download count
     pub download_count: usize,
     /// Last updated
-    pub last_updated: chrono::DateTime<chrono::Utc>,
-}
+    pub last_updated: chrono::DateTime<chrono::Utc>}
 
 /// Registry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,8 +199,7 @@ pub struct RegistryConfig {
     /// Enable plugin verification
     pub verify_plugins: bool,
     /// Allowed plugin sources
-    pub allowed_sources: Vec<String>,
-}
+    pub allowed_sources: Vec<String>}
 
 /// Plugin manager configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,8 +219,7 @@ pub struct PluginManagerConfig {
     /// Enable plugin logging
     pub enable_logging: bool,
     /// Plugin log level
-    pub log_level: super::integration_manager::LogLevel,
-}
+    pub log_level: super::integration_manager::LogLevel}
 
 /// Plugin manager statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -255,8 +237,7 @@ pub struct PluginManagerStats {
     /// Total memory used by plugins
     pub total_memory_usage_bytes: usize,
     /// Last statistics update
-    pub last_update: chrono::DateTime<chrono::Utc>,
-}
+    pub last_update: chrono::DateTime<chrono::Utc>}
 
 /// Plugin event listener
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,8 +251,7 @@ pub struct PluginEventListener {
     /// Callback function name
     pub callback: String,
     /// Listener enabled flag
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 /// Plugin event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,8 +267,7 @@ pub enum PluginEvent {
     /// Plugin error occurred
     Error,
     /// Plugin configuration changed
-    ConfigChanged,
-}
+    ConfigChanged}
 
 impl Default for PluginManager {
     fn default() -> Self {
@@ -297,8 +276,7 @@ impl Default for PluginManager {
             registry: PluginRegistry::default(),
             config: PluginManagerConfig::default(),
             stats: PluginManagerStats::default(),
-            event_listeners: Vec::new(),
-        }
+            event_listeners: Vec::new()}
     }
 }
 
@@ -308,8 +286,7 @@ impl Default for PluginRegistry {
             available_plugins: HashMap::new(),
             categories: HashMap::new(),
             config: RegistryConfig::default(),
-            last_update: chrono::Utc::now(),
-        }
+            last_update: chrono::Utc::now()}
     }
 }
 
@@ -320,8 +297,7 @@ impl Default for RegistryConfig {
             auto_update: true,
             update_interval_hours: 24,
             verify_plugins: true,
-            allowed_sources: vec!["official".to_string(), "community".to_string()],
-        }
+            allowed_sources: vec!["official".to_string(), "community".to_string()]}
     }
 }
 
@@ -335,8 +311,7 @@ impl Default for PluginManagerConfig {
             memory_limit_per_plugin_bytes: 100 * 1024 * 1024, // 100MB
             cpu_limit_per_plugin_percent: 10.0,
             enable_logging: true,
-            log_level: super::integration_manager::LogLevel::Info,
-        }
+            log_level: super::integration_manager::LogLevel::Info}
     }
 }
 
@@ -349,8 +324,7 @@ impl Default for PluginManagerStats {
             total_executions: 0,
             avg_load_time_ms: 0.0,
             total_memory_usage_bytes: 0,
-            last_update: chrono::Utc::now(),
-        }
+            last_update: chrono::Utc::now()}
     }
 }
 
@@ -362,8 +336,7 @@ impl Default for PluginPerformanceMetrics {
             memory_usage_bytes: 0,
             cpu_usage_percent: 0.0,
             success_rate: 1.0,
-            error_count: 0,
-        }
+            error_count: 0}
     }
 }
 
@@ -383,8 +356,7 @@ impl PluginManager {
             last_execution: None,
             execution_count: 0,
             instance_data: HashMap::new(),
-            performance_metrics: PluginPerformanceMetrics::default(),
-        };
+            performance_metrics: PluginPerformanceMetrics::default()};
 
         self.plugins.insert(plugin_id, loaded_plugin.clone());
         self.stats.total_plugins_loaded += 1;
@@ -410,7 +382,7 @@ impl PluginManager {
     }
 
     /// Execute a plugin (streaming)
-    pub fn execute_plugin(&mut self, plugin_id: Uuid, input_data: serde_json::Value) -> AsyncStream<PluginExecutionResult> {
+    pub fn execute_plugin(&mut self, plugin_id: Uuid, _input_data: serde_json::Value) -> AsyncStream<PluginExecutionResult> {
         let plugin = self.plugins.get_mut(&plugin_id).cloned();
 
         AsyncStream::with_channel(move |sender| {
@@ -427,8 +399,7 @@ impl PluginManager {
                     error_message: None,
                     execution_time_ms: 100,
                     memory_used_bytes: 1024 * 1024, // 1MB
-                    timestamp: chrono::Utc::now(),
-                };
+                    timestamp: chrono::Utc::now()};
 
                 plugin.status = PluginStatus::Ready;
                 execution_result
@@ -440,8 +411,7 @@ impl PluginManager {
                     error_message: Some("Plugin not found".to_string()),
                     execution_time_ms: 0,
                     memory_used_bytes: 0,
-                    timestamp: chrono::Utc::now(),
-                }
+                    timestamp: chrono::Utc::now()}
             };
 
             let _ = sender.send(result);
@@ -469,8 +439,7 @@ impl PluginManager {
                 new_plugins: 2,
                 update_duration_ms: 2000,
                 last_update: chrono::Utc::now(),
-                errors: Vec::new(),
-            };
+                errors: Vec::new()};
 
             let _ = sender.send(result);
         })
@@ -516,8 +485,7 @@ pub struct PluginExecutionResult {
     /// Memory used during execution
     pub memory_used_bytes: usize,
     /// Execution timestamp
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-}
+    pub timestamp: chrono::DateTime<chrono::Utc>}
 
 /// Registry update result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -533,5 +501,4 @@ pub struct RegistryUpdateResult {
     /// Last update timestamp
     pub last_update: chrono::DateTime<chrono::Utc>,
     /// Update errors
-    pub errors: Vec<String>,
-}
+    pub errors: Vec<String>}

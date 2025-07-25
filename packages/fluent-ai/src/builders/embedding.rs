@@ -7,8 +7,7 @@ use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 
 pub struct EmbeddingBuilder {
     document: String,
-    vec: Option<ZeroOneOrMany<f64>>,
-}
+    vec: Option<ZeroOneOrMany<f64>>}
 
 pub struct EmbeddingBuilderWithHandler {
     #[allow(dead_code)] // TODO: Use for source document text content for embedding generation
@@ -22,16 +21,14 @@ pub struct EmbeddingBuilderWithHandler {
         Option<Box<dyn FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
     #[allow(dead_code)] // TODO: Use for embedding streaming chunk processing
     chunk_handler:
-        Option<Box<dyn FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
-}
+        Option<Box<dyn FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>}
 
 impl Embedding {
     // Semantic entry point
     pub fn from_document(document: impl Into<String>) -> EmbeddingBuilder {
         EmbeddingBuilder {
             document: document.into(),
-            vec: None,
-        }
+            vec: None}
     }
 }
 
@@ -56,8 +53,7 @@ impl EmbeddingBuilder {
             vec: self.vec,
             error_handler: Box::new(handler),
             result_handler: None,
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_result<F>(self, handler: F) -> EmbeddingBuilderWithHandler
@@ -69,8 +65,7 @@ impl EmbeddingBuilder {
             vec: self.vec,
             error_handler: Box::new(|e| eprintln!("Embedding error: {}", e)),
             result_handler: Some(Box::new(handler)),
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_chunk<F>(self, handler: F) -> EmbeddingBuilderWithHandler
@@ -82,8 +77,7 @@ impl EmbeddingBuilder {
             vec: self.vec,
             error_handler: Box::new(|e| eprintln!("Embedding chunk error: {}", e)),
             result_handler: None,
-            chunk_handler: Some(Box::new(handler)),
-        }
+            chunk_handler: Some(Box::new(handler))}
     }
 }
 
@@ -93,8 +87,7 @@ impl EmbeddingBuilderWithHandler {
         spawn_async(async move {
             Embedding {
                 document: self.document,
-                vec: self.vec.unwrap_or(ZeroOneOrMany::None),
-            }
+                vec: self.vec.unwrap_or(ZeroOneOrMany::None)}
         })
     }
 }

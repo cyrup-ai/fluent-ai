@@ -35,8 +35,7 @@ pub struct OpenAIModel {
     pub name: ArrayString<64>,
     pub dimensions: u16,
     pub max_input_tokens: u32,
-    pub price_per_1k_tokens: f32,
-}
+    pub price_per_1k_tokens: f32}
 
 impl OpenAIModel {
     /// Create text-embedding-3-small model configuration
@@ -45,8 +44,7 @@ impl OpenAIModel {
             name: ArrayString::from("text-embedding-3-small").unwrap_or_default(),
             dimensions: 1536,
             max_input_tokens: 8191,
-            price_per_1k_tokens: 0.00002,
-        }
+            price_per_1k_tokens: 0.00002}
     }
 
     /// Create text-embedding-3-large model configuration  
@@ -55,8 +53,7 @@ impl OpenAIModel {
             name: ArrayString::from("text-embedding-3-large").unwrap_or_default(),
             dimensions: 3072,
             max_input_tokens: 8191,
-            price_per_1k_tokens: 0.00013,
-        }
+            price_per_1k_tokens: 0.00013}
     }
 
     /// Create text-embedding-ada-002 model configuration
@@ -65,8 +62,7 @@ impl OpenAIModel {
             name: ArrayString::from("text-embedding-ada-002").unwrap_or_default(),
             dimensions: 1536,
             max_input_tokens: 8191,
-            price_per_1k_tokens: 0.0001,
-        }
+            price_per_1k_tokens: 0.0001}
     }
 }
 
@@ -76,8 +72,7 @@ impl OpenAIModel {
 pub enum CircuitState {
     Closed = 0,
     Open = 1,
-    HalfOpen = 2,
-}
+    HalfOpen = 2}
 
 /// Circuit breaker for OpenAI API resilience
 #[derive(Debug)]
@@ -85,8 +80,7 @@ pub struct CircuitBreaker {
     state: AtomicU32,
     failure_count: CachePadded<AtomicU32>,
     last_failure_time: CachePadded<AtomicU64>,
-    success_count: CachePadded<AtomicU32>,
-}
+    success_count: CachePadded<AtomicU32>}
 
 impl CircuitBreaker {
     pub fn new() -> Self {
@@ -94,8 +88,7 @@ impl CircuitBreaker {
             state: AtomicU32::new(CircuitState::Closed as u32),
             failure_count: CachePadded::new(AtomicU32::new(0)),
             last_failure_time: CachePadded::new(AtomicU64::new(0)),
-            success_count: CachePadded::new(AtomicU32::new(0)),
-        }
+            success_count: CachePadded::new(AtomicU32::new(0))}
     }
 
     pub fn can_execute(&self) -> bool {
@@ -158,8 +151,7 @@ pub struct CachedEmbedding {
     pub timestamp: u64,
     pub ttl_seconds: u32,
     pub model: ArrayString<64>,
-    pub token_count: u32,
-}
+    pub token_count: u32}
 
 impl CachedEmbedding {
     pub fn is_expired(&self) -> bool {
@@ -183,8 +175,7 @@ pub struct OpenAIMetrics {
     pub latency_sum_ms: CachePadded<AtomicU64>,
     pub latency_count: CachePadded<AtomicU64>,
     pub bytes_sent: CachePadded<AtomicU64>,
-    pub bytes_received: CachePadded<AtomicU64>,
-}
+    pub bytes_received: CachePadded<AtomicU64>}
 
 impl OpenAIMetrics {
     pub fn new() -> Self {
@@ -197,8 +188,7 @@ impl OpenAIMetrics {
             latency_sum_ms: CachePadded::new(AtomicU64::new(0)),
             latency_count: CachePadded::new(AtomicU64::new(0)),
             bytes_sent: CachePadded::new(AtomicU64::new(0)),
-            bytes_received: CachePadded::new(AtomicU64::new(0)),
-        }
+            bytes_received: CachePadded::new(AtomicU64::new(0))}
     }
 
     pub fn record_request(&self, latency_ms: u64, tokens: u32, bytes_sent: usize, bytes_received: usize) {
@@ -240,20 +230,17 @@ impl OpenAIMetrics {
 #[derive(Debug, Deserialize)]
 struct OpenAIEmbeddingResponse {
     data: Vec<EmbeddingData>,
-    usage: Usage,
-}
+    usage: Usage}
 
 #[derive(Debug, Deserialize)]
 struct EmbeddingData {
     embedding: Vec<f32>,
-    index: usize,
-}
+    index: usize}
 
 #[derive(Debug, Deserialize)]
 struct Usage {
     prompt_tokens: u32,
-    total_tokens: u32,
-}
+    total_tokens: u32}
 
 /// OpenAI embedding provider errors
 #[derive(Debug, Error)]
@@ -283,8 +270,7 @@ pub enum OpenAIEmbeddingError {
     AuthenticationFailed,
     
     #[error("Unknown API error: {0}")]
-    ApiError(String),
-}
+    ApiError(String)}
 
 /// Production OpenAI embedding provider
 #[derive(Debug)]
@@ -296,8 +282,7 @@ pub struct ProductionOpenAIProvider {
     metrics: Arc<OpenAIMetrics>,
     cache_ttl_seconds: u32,
     base_url: ArrayString<128>,
-    api_key: ArrayString<128>,
-}
+    api_key: ArrayString<128>}
 
 impl ProductionOpenAIProvider {
     /// Create a new production OpenAI provider
@@ -322,8 +307,7 @@ impl ProductionOpenAIProvider {
             metrics: Arc::new(OpenAIMetrics::new()),
             cache_ttl_seconds: 3600, // 1 hour default TTL
             base_url,
-            api_key: api_key_array,
-        })
+            api_key: api_key_array})
     }
 
     /// Build JSON request body with zero allocation
@@ -362,8 +346,7 @@ impl ProductionOpenAIProvider {
                         // Skip control characters for safety
                         continue;
                     }
-                    c => json.push(c),
-                }.map_err(|_| OpenAIEmbeddingError::SerializationError("JSON too large".to_string()))?;
+                    c => json.push(c)}.map_err(|_| OpenAIEmbeddingError::SerializationError("JSON too large".to_string()))?;
             }
             
             json.push('"')
@@ -423,8 +406,7 @@ impl ProductionOpenAIProvider {
             timestamp: now,
             ttl_seconds: self.cache_ttl_seconds,
             model: self.model.name.clone(),
-            token_count,
-        };
+            token_count};
 
         // Simple cache size management - remove random entries if too large
         if self.cache.len() >= CACHE_CAPACITY {

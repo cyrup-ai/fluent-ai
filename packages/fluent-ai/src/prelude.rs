@@ -9,8 +9,7 @@ pub use hashbrown::HashMap;
 
 pub use crate::chat::chat_loop::ChatLoop;
 pub use crate::domain::conversation::{
-    Conversation as ConversationTrait, ConversationBuilder, ConversationImpl,
-};
+    Conversation as ConversationTrait, ConversationBuilder, ConversationImpl};
 pub use crate::engine::*;
 pub use crate::fluent::*;
 // McpTool is now exported through domain module

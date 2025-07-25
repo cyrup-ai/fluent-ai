@@ -40,8 +40,7 @@ pub use types::{
     CandleMessageRole,
     CandleModelInfo,
     CandleStreamingResponse,
-    CandleUsage,
-};
+    CandleUsage};
 pub mod var_builder;
 
 pub mod builders;
@@ -58,37 +57,30 @@ pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient
 // Re-export constraint system for structured generation
 pub use constraints::{
     GenerationConstraint, JsonConstraint, JsonCurrentState, JsonStackItem, JsonState, NumberState,
-    create_json_constraint_for_tokenizer,
-};
+    create_json_constraint_for_tokenizer};
 pub use error::{CandleError, CandleResult};
 // Re-export completion types from local Candle types
 // Removed unused imports: CandleCompletionRequest, CandleCompletionResponse, CandleFinishReason
 pub use generator::{CandleGenerator, GenerationConfig};
 pub use hub::{
     Backend, Client, DownloadConfig, DownloadEvent, DownloadProgress, DownloadResult, ProgressData,
-    ProgressHandler, ProgressHubConfig, create_client, create_download_config,
-};
+    ProgressHandler, ProgressHubConfig, create_client, create_download_config};
 pub use kv_cache::{
-    CacheStats, EvictionStrategy, KVCache, KVCacheBuilder, KVCacheConfig, KVCacheEntry,
-};
+    CacheStats, EvictionStrategy, KVCache, KVCacheBuilder, KVCacheConfig, KVCacheEntry};
 pub use logits::{
     CompositeProcessor, LogitsProcessor, LogitsSampler, ProcessingContext,
     RepetitionPenaltyProcessor, SamplingConfig, SamplingMetrics, TemperatureProcessor,
-    TopKProcessor, TopPProcessor, sampling_metrics,
-};
+    TopKProcessor, TopPProcessor, sampling_metrics};
 pub use model::CandleModel;
 pub use progress::{
-    AggregatorStats, InferenceMetrics, MetricsAggregator, ProgressHubReporter, ProgressReporter,
-};
+    AggregatorStats, InferenceMetrics, MetricsAggregator, ProgressHubReporter, ProgressReporter};
 pub use streaming::{
     FlushPolicy, StreamingConfig, StreamingMetrics, TokenChunk, TokenMetadata, TokenOutputStream,
-    TokenStreamSender,
-};
+    TokenStreamSender};
 pub use tokenizer::{CandleTokenizer, TokenizerConfig};
 pub use var_builder::{
     CandleVarBuilder, LoadingStats, ModelMetadata, TensorEntry, VarBuilderConfig,
-    VarBuilderConfigBuilder,
-};
+    VarBuilderConfigBuilder};
 
 /// Device utilities for optimal device selection
 pub mod device {
@@ -126,8 +118,7 @@ pub mod device {
             Device::Cuda(_) => "CUDA",
             #[cfg(feature = "metal")]
             Device::Metal(_) => "Metal",
-            _ => "Unknown",
-        }
+            _ => "Unknown"}
     }
 
     /// Check if device supports fast matrix operations
@@ -139,15 +130,13 @@ pub mod device {
             Device::Cuda(_) => true,
             #[cfg(feature = "metal")]
             Device::Metal(_) => true,
-            _ => false,
-        }
+            _ => false}
     }
 }
 
 // Memory utilities are now in the separate memory module
 pub use memory::{
-    allocation_count, current_usage, peak_usage, reset_stats, track_allocation, track_deallocation,
-};
+    allocation_count, current_usage, peak_usage, reset_stats, track_allocation, track_deallocation};
 
 /// Performance utilities for optimization
 pub mod perf {
@@ -156,8 +145,7 @@ pub mod perf {
     /// Performance timer for benchmarking
     pub struct PerfTimer {
         start: Instant,
-        name: &'static str,
-    }
+        name: &'static str}
 
     impl PerfTimer {
         /// Start a new performance timer
@@ -165,8 +153,7 @@ pub mod perf {
         pub fn new(name: &'static str) -> Self {
             Self {
                 start: Instant::now(),
-                name,
-            }
+                name}
         }
 
         /// Get elapsed time in microseconds
@@ -200,8 +187,8 @@ pub mod perf {
 
 /// Utilities for working with candle tensors
 pub mod tensor_utils {
-    use arrayvec::ArrayVec;
-    use candle_core::{Result as CandleResult, Tensor};
+        use candle_core::{Result as CandleResult, Tensor};
+        use arrayvec::ArrayVec;
 
     /// Convert tensor to token IDs with zero allocation
     #[inline(always)]

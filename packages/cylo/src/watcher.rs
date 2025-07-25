@@ -71,8 +71,7 @@ pub fn watch_directory(path: PathBuf, tx: mpsc::Sender<PipelineEvent>) -> Result
                     }
                 }
             }
-            Err(e) => error!("Failed to create runtime: {}", e),
-        }
+            Err(e) => error!("Failed to create runtime: {}", e)}
 
         info!("File watcher thread exited");
     });

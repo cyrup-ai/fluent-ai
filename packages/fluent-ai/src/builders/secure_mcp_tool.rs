@@ -19,8 +19,7 @@ pub struct SecureMcpToolBuilder {
     cylo_instance: Option<CyloInstance>,
     timeout_seconds: u64,
     memory_limit: Option<u64>,
-    cpu_limit: Option<u32>,
-}
+    cpu_limit: Option<u32>}
 
 impl SecureMcpToolBuilder {
     /// Create new builder with optimal defaults
@@ -194,8 +193,7 @@ impl SecureMcpToolBuilder {
 
         let mut tool = match self.server {
             Some(server) => SecureMcpTool::with_server(name, description, parameters, server),
-            None => SecureMcpTool::new(name, description, parameters),
-        };
+            None => SecureMcpTool::new(name, description, parameters)};
 
         // Set the configured values
         tool.set_cylo_instance(self.cylo_instance);

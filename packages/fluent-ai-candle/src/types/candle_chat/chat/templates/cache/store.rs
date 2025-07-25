@@ -27,15 +27,13 @@ pub trait TemplateStore: Send + Sync {
 
 /// In-memory template store implementation
 pub struct MemoryStore {
-    templates: std::sync::RwLock<HashMap<Arc<str>, ChatTemplate>>,
-}
+    templates: std::sync::RwLock<HashMap<Arc<str>, ChatTemplate>>}
 
 impl MemoryStore {
     /// Create a new memory store
     pub fn new() -> Self {
         Self {
-            templates: std::sync::RwLock::new(HashMap::new()),
-        }
+            templates: std::sync::RwLock::new(HashMap::new())}
     }
 }
 
@@ -51,8 +49,7 @@ impl TemplateStore for MemoryStore {
             .templates
             .write()
             .map_err(|_| TemplateError::StorageError {
-                message: Arc::from("Failed to acquire write lock"),
-            })?;
+                message: Arc::from("Failed to acquire write lock")})?;
 
         store.insert(template.name().clone(), template.clone());
         Ok(())
@@ -63,8 +60,7 @@ impl TemplateStore for MemoryStore {
             .templates
             .read()
             .map_err(|_| TemplateError::StorageError {
-                message: Arc::from("Failed to acquire read lock"),
-            })?;
+                message: Arc::from("Failed to acquire read lock")})?;
 
         Ok(store.get(name).cloned())
     }
@@ -74,8 +70,7 @@ impl TemplateStore for MemoryStore {
             .templates
             .write()
             .map_err(|_| TemplateError::StorageError {
-                message: Arc::from("Failed to acquire write lock"),
-            })?;
+                message: Arc::from("Failed to acquire write lock")})?;
 
         Ok(store.remove(name).is_some())
     }
@@ -85,8 +80,7 @@ impl TemplateStore for MemoryStore {
             .templates
             .read()
             .map_err(|_| TemplateError::StorageError {
-                message: Arc::from("Failed to acquire read lock"),
-            })?;
+                message: Arc::from("Failed to acquire read lock")})?;
 
         Ok(store.keys().cloned().collect())
     }
@@ -96,8 +90,7 @@ impl TemplateStore for MemoryStore {
             .templates
             .read()
             .map_err(|_| TemplateError::StorageError {
-                message: Arc::from("Failed to acquire read lock"),
-            })?;
+                message: Arc::from("Failed to acquire read lock")})?;
 
         Ok(store.contains_key(name))
     }

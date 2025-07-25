@@ -56,8 +56,7 @@ pub struct CandleClientConfig {
     /// Enable KV caching
     pub enable_kv_cache: bool,
     /// Enable Hub integration
-    pub enable_hub_integration: bool,
-}
+    pub enable_hub_integration: bool}
 
 impl Default for CandleClientConfig {
     #[inline(always)]
@@ -83,8 +82,7 @@ impl Default for CandleClientConfig {
             enable_sophisticated_sampling: true,
             enable_streaming_optimization: true,
             enable_kv_cache: true,
-            enable_hub_integration: true,
-        }
+            enable_hub_integration: true}
     }
 }
 
@@ -99,8 +97,7 @@ pub enum DeviceType {
     /// Use CUDA GPU
     Cuda = 2,
     /// Use Metal GPU (macOS)
-    Metal = 3,
-}
+    Metal = 3}
 
 /// Model configuration
 #[repr(C)]
@@ -121,8 +118,7 @@ pub struct ModelConfig {
     /// Use flash attention
     pub use_flash_attention: bool,
     /// RoPE scaling factor
-    pub rope_scaling: f32,
-}
+    pub rope_scaling: f32}
 
 impl Default for ModelConfig {
     #[inline(always)]
@@ -135,8 +131,7 @@ impl Default for ModelConfig {
             num_layers: 32,
             vocab_size: 32000,
             use_flash_attention: true,
-            rope_scaling: 1.0,
-        }
+            rope_scaling: 1.0}
     }
 }
 
@@ -155,8 +150,7 @@ pub enum ModelArchitecture {
     /// Phi models
     Phi = 4,
     /// Custom architecture
-    Custom = 255,
-}
+    Custom = 255}
 
 /// Quantization types
 #[repr(u8)]
@@ -169,8 +163,7 @@ pub enum QuantizationType {
     /// 8-bit quantization
     Q8_0 = 2,
     /// No quantization
-    None = 255,
-}
+    None = 255}
 
 /// Maximum messages per completion request (compile-time bounded)
 pub const MAX_MESSAGES: usize = 128;

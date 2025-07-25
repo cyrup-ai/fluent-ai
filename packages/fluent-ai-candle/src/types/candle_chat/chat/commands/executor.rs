@@ -10,8 +10,7 @@ use crate::{AsyncStream, AsyncStreamSender};
 use super::{
     error::{CommandError, CommandResult},
     command::ImmutableChatCommand,
-    events::CommandEvent,
-};
+    events::CommandEvent};
 
 /// Streaming command executor with atomic state tracking
 ///
@@ -29,8 +28,7 @@ pub struct StreamingCommandExecutor {
     /// Failed executions (atomic)
     failed_executions: AtomicU64,
     /// Event stream sender
-    event_sender: Option<AsyncStreamSender<CommandEvent>>,
-}
+    event_sender: Option<AsyncStreamSender<CommandEvent>>}
 
 impl StreamingCommandExecutor {
     /// Create new streaming command executor
@@ -42,8 +40,7 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender: None,
-        }
+            event_sender: None}
     }
 
     /// Create executor with event streaming
@@ -68,8 +65,7 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender,
-        };
+            event_sender};
 
         (executor, stream)
     }
@@ -91,8 +87,7 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Started {
                 command: command.clone(),
                 execution_id,
-                timestamp_nanos: Self::current_timestamp_nanos(),
-            });
+                timestamp_nanos: Self::current_timestamp_nanos()});
         }
 
         // TODO: Implement actual command execution logic here
@@ -103,7 +98,7 @@ impl StreamingCommandExecutor {
 
     /// Execute command asynchronously with progress tracking
     pub fn execute_command_async(&self, command: ImmutableChatCommand) -> AsyncStream<CommandEvent> {
-        let event_sender = self.event_sender.clone();
+        let _event_sender = self.event_sender.clone();
         let executor_ref = self as *const _ as usize; // Safe reference for thread
         
         AsyncStream::with_channel(move |sender| {
@@ -116,8 +111,7 @@ impl StreamingCommandExecutor {
                     let _ = sender.send(CommandEvent::Failed {
                         execution_id: 0,
                         error,
-                        duration_nanos: 0,
-                    });
+                        duration_nanos: 0});
                     return;
                 }
 
@@ -133,8 +127,7 @@ impl StreamingCommandExecutor {
                 let _ = sender.send(CommandEvent::Started {
                     command: command.clone(),
                     execution_id,
-                    timestamp_nanos: start_time,
-                });
+                    timestamp_nanos: start_time});
 
                 // TODO: Implement actual command execution logic here
                 // For now, simulate execution with progress updates
@@ -144,8 +137,7 @@ impl StreamingCommandExecutor {
                     let _ = sender.send(CommandEvent::Progress {
                         execution_id,
                         progress_percent: progress as f32,
-                        message: Some(format!("Processing step {}", progress / 25)),
-                    });
+                        message: Some(format!("Processing step {}", progress / 25))});
                 }
 
                 // Complete execution
@@ -156,8 +148,7 @@ impl StreamingCommandExecutor {
                 let _ = sender.send(CommandEvent::Completed {
                     execution_id,
                     result: super::events::CommandExecutionResult::success("Command completed successfully"),
-                    duration_nanos,
-                });
+                    duration_nanos});
             });
         })
     }
@@ -169,8 +160,7 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Progress {
                 execution_id,
                 progress_percent,
-                message,
-            });
+                message});
         }
     }
 
@@ -181,8 +171,7 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Completed {
                 execution_id,
                 result,
-                duration_nanos,
-            });
+                duration_nanos});
         }
         self.successful_executions.fetch_add(1, Ordering::Relaxed);
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
@@ -195,8 +184,7 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Failed {
                 execution_id,
                 error,
-                duration_nanos,
-            });
+                duration_nanos});
         }
         self.failed_executions.fetch_add(1, Ordering::Relaxed);
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
@@ -208,8 +196,7 @@ impl StreamingCommandExecutor {
         if let Some(ref sender) = self.event_sender {
             let _ = sender.send(CommandEvent::Cancelled {
                 execution_id,
-                reason: reason.into(),
-            });
+                reason: reason.into()});
         }
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
     }
@@ -230,8 +217,7 @@ impl StreamingCommandExecutor {
             active_executions: self.active_executions.load(Ordering::Relaxed) as u64,
             total_executions: self.total_executions.load(Ordering::Relaxed),
             successful_executions: self.successful_executions.load(Ordering::Relaxed),
-            failed_executions: self.failed_executions.load(Ordering::Relaxed),
-        }
+            failed_executions: self.failed_executions.load(Ordering::Relaxed)}
     }
 
     /// Check if executor is currently busy
@@ -276,8 +262,7 @@ pub struct CommandExecutorStats {
     /// Number of successful executions
     pub successful_executions: u64,
     /// Number of failed executions
-    pub failed_executions: u64,
-}
+    pub failed_executions: u64}
 
 impl CommandExecutorStats {
     /// Calculate success rate as percentage
@@ -327,8 +312,7 @@ impl Default for CommandExecutorStats {
             active_executions: 0,
             total_executions: 0,
             successful_executions: 0,
-            failed_executions: 0,
-        }
+            failed_executions: 0}
     }
 }
 

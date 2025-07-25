@@ -1,6 +1,5 @@
 //! Health check functionality for the memory system
 
-use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -20,8 +19,7 @@ pub enum HealthStatus {
     /// System is unhealthy
     Unhealthy,
     /// System status is unknown
-    Unknown,
-}
+    Unknown}
 
 /// Health check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,8 +34,7 @@ pub struct HealthCheck {
     pub timestamp: DateTime<Utc>,
 
     /// System version
-    pub version: String,
-}
+    pub version: String}
 
 /// Component health information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,13 +49,11 @@ pub struct ComponentHealth {
     pub message: Option<String>,
 
     /// Additional details
-    pub details: HashMap<String, serde_json::Value>,
-}
+    pub details: HashMap<String, serde_json::Value>}
 
 /// A pending component health check that can be awaited
 pub struct PendingComponentHealth {
-    rx: oneshot::Receiver<ComponentHealth>,
-}
+    rx: oneshot::Receiver<ComponentHealth>}
 
 impl PendingComponentHealth {
     pub fn new(rx: oneshot::Receiver<ComponentHealth>) -> Self {
@@ -76,25 +71,21 @@ impl Future for PendingComponentHealth {
                 name: "unknown".to_string(),
                 status: HealthStatus::Unhealthy,
                 message: Some("Health check task failed".to_string()),
-                details: HashMap::new(),
-            }),
-            Poll::Pending => Poll::Pending,
-        }
+                details: HashMap::new()}),
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// Health checker
 pub struct HealthChecker {
     /// Component checkers
-    checkers: Vec<Box<dyn ComponentChecker>>,
-}
+    checkers: Vec<Box<dyn ComponentChecker>>}
 
 impl HealthChecker {
     /// Create a new health checker
     pub fn new() -> Self {
         Self {
-            checkers: Vec::new(),
-        }
+            checkers: Vec::new()}
     }
 
     /// Add a component checker
@@ -126,8 +117,7 @@ impl HealthChecker {
             status: overall_status,
             components,
             timestamp: Utc::now(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-        }
+            version: env!("CARGO_PKG_VERSION").to_string()}
     }
 }
 
@@ -164,8 +154,7 @@ impl ComponentChecker for DatabaseHealthChecker {
                 name: name.clone(),
                 status: HealthStatus::Unknown,
                 message: None,
-                details: HashMap::new(),
-            };
+                details: HashMap::new()};
 
             // Perform multiple health checks concurrently
             let connection_start = std::time::Instant::now();
@@ -294,8 +283,7 @@ impl ComponentChecker for VectorStoreHealthChecker {
                 name: name.clone(),
                 status: HealthStatus::Unknown,
                 message: None,
-                details: HashMap::new(),
-            };
+                details: HashMap::new()};
 
             let health_check_start = std::time::Instant::now();
 

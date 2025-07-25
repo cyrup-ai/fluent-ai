@@ -11,16 +11,14 @@ use std::{
     io::BufReader,
     iter::Iterator,
     marker::PhantomData,
-    path::{Path, PathBuf},
-};
+    path::{Path, PathBuf}};
 
 use epub::doc::EpubDoc;
 use glob::glob;
 
 use super::{
     errors::EpubLoaderError,
-    text_processors::{RawTextProcessor, TextProcessor},
-};
+    text_processors::{RawTextProcessor, TextProcessor}};
 use crate::loaders::file::FileLoaderError;
 
 // -------------------------------------------------------------------------
@@ -62,8 +60,7 @@ where
 // ----------------------------------------------------------------------
 pub struct EpubFileLoader<'a, It, P = RawTextProcessor> {
     it: Box<dyn Iterator<Item = It> + 'a>,
-    _processor: PhantomData<P>,
-}
+    _processor: PhantomData<P>}
 
 // -- constructor helpers --------------------------------------------------
 impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
@@ -71,16 +68,14 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
         let paths = glob(pattern).map_err(FileLoaderError::PatternError)?;
         Ok(Self {
             it: Box::new(paths.map(|r| r.map_err(FileLoaderError::GlobError))),
-            _processor: PhantomData,
-        })
+            _processor: PhantomData})
     }
 
     pub fn with_dir(dir: &str) -> Result<Self, EpubLoaderError> {
         let entries = std::fs::read_dir(dir).map_err(FileLoaderError::IoError)?;
         Ok(Self {
             it: Box::new(entries.map(|e| Ok(e.map_err(FileLoaderError::IoError)?.path()))),
-            _processor: PhantomData,
-        })
+            _processor: PhantomData})
     }
 }
 
@@ -89,8 +84,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
     pub fn load(self) -> EpubFileLoader<'a, Result<EpubDoc<BufReader<File>>, EpubLoaderError>, P> {
         EpubFileLoader {
             it: Box::new(self.it.map(|r| r.map_err(EpubLoaderError::from).load())),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 
     pub fn load_with_path(
@@ -101,8 +95,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
                 let path = r.map_err(EpubLoaderError::from)?;
                 open_epub(&path).map(|doc| (path, doc))
             })),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 
     pub fn read(self) -> EpubFileLoader<'a, Result<String, EpubLoaderError>, P>
@@ -116,8 +109,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
                     .collect::<Result<Vec<_>, _>>()
                     .map(|v| v.concat())
             })),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 
     pub fn read_with_path(self) -> EpubFileLoader<'a, Result<(PathBuf, String), EpubLoaderError>, P>
@@ -132,8 +124,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
                     .concat();
                 Ok((path, txt))
             })),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 }
 
@@ -143,8 +134,7 @@ impl<'a, P, T> EpubFileLoader<'a, Result<T, EpubLoaderError>, P> {
     pub fn ignore_errors(self) -> EpubFileLoader<'a, T, P> {
         EpubFileLoader {
             it: Box::new(self.it.filter_map(Result::ok)),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 }
 
@@ -156,8 +146,7 @@ where
     pub fn by_chapter(self) -> EpubFileLoader<'a, Result<String, EpubLoaderError>, P> {
         EpubFileLoader {
             it: Box::new(self.it.flat_map(EpubChapterIter::<P>::from)),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 }
 
@@ -173,15 +162,13 @@ where
                 let chapters = EpubChapterIter::<P>::from(doc).enumerate().collect();
                 (path, chapters)
             })),
-            _processor: PhantomData,
-        }
+            _processor: PhantomData}
     }
 }
 
 // -- iterator plumbing ---------------------------------------------------
 pub struct LoaderIter<'a, T> {
-    it: Box<dyn Iterator<Item = T> + 'a>,
-}
+    it: Box<dyn Iterator<Item = T> + 'a>}
 impl<'a, T, P> IntoIterator for EpubFileLoader<'a, T, P> {
     type Item = T;
     type IntoIter = LoaderIter<'a, T>;
@@ -203,8 +190,7 @@ impl<'a, T> Iterator for LoaderIter<'a, T> {
 struct EpubChapterIter<P> {
     epub: EpubDoc<BufReader<File>>,
     finished: bool,
-    _proc: PhantomData<P>,
-}
+    _proc: PhantomData<P>}
 
 impl<P> From<EpubDoc<BufReader<File>>> for EpubChapterIter<P> {
     #[inline]
@@ -212,8 +198,7 @@ impl<P> From<EpubDoc<BufReader<File>>> for EpubChapterIter<P> {
         Self {
             epub,
             finished: false,
-            _proc: PhantomData,
-        }
+            _proc: PhantomData}
     }
 }
 

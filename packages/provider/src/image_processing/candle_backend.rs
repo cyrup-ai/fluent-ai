@@ -17,16 +17,14 @@ pub struct CandleImageProcessor {
     model_name: String,
     embedding_dims: usize,
     config: candle_transformers::models::clip::ClipConfig,
-    is_initialized: bool,
-}
+    is_initialized: bool}
 
 impl CandleImageProcessor {
     /// Create new Candle image processor with automatic device selection
     pub fn new() -> ImageProcessingResult<Self> {
         let device = match Device::cuda_if_available(0) {
             Ok(device) => device,
-            Err(_) => Device::Cpu,
-        };
+            Err(_) => Device::Cpu};
 
         let config = candle_transformers::models::clip::ClipConfig::vit_base_patch32();
 
@@ -35,8 +33,7 @@ impl CandleImageProcessor {
             model_name: "clip-vit-base-patch32".to_string(),
             embedding_dims: 512,
             config,
-            is_initialized: false,
-        })
+            is_initialized: false})
     }
 
     /// Create Candle processor with specific device
@@ -48,8 +45,7 @@ impl CandleImageProcessor {
             model_name: "clip-vit-base-patch32".to_string(),
             embedding_dims: 512,
             config,
-            is_initialized: false,
-        })
+            is_initialized: false})
     }
 
     /// Process image data using Candle-powered computer vision
@@ -182,8 +178,7 @@ impl CandleImageProcessor {
                         ))
                     })?
                 }
-                PixelNormalization::None => image_tensor,
-            };
+                PixelNormalization::None => image_tensor};
 
             Ok(normalized_tensor)
         }
@@ -754,8 +749,7 @@ impl ImageProcessingBackend for CandleImageProcessor {
                     })?,
                     DeviceType::Auto => Device::cuda_if_available(0)
                         .or_else(|_| Device::metal_if_available(0))
-                        .unwrap_or(Device::Cpu),
-                };
+                        .unwrap_or(Device::Cpu)};
             }
         }
 
@@ -805,8 +799,7 @@ impl ImageProcessingBackend for CandleImageProcessor {
             generation: cfg!(feature = "generation"),
             batch_processing: true,
             gpu_acceleration: cfg!(any(feature = "cuda", feature = "metal")),
-            acceleration_types,
-        }
+            acceleration_types}
     }
 }
 
@@ -857,9 +850,7 @@ impl ImageEmbeddingProvider for CandleImageProcessor {
                         serde_json::Value::String(format!("{:?}", self.config)),
                     );
                     metadata
-                },
-            },
-        })
+                }}})
     }
 
     fn embed_image_batch(
@@ -907,7 +898,6 @@ impl ImageEmbeddingProvider for CandleImageProcessor {
                     serde_json::Value::Number(serde_json::Number::from(self.embedding_dims)),
                 );
                 metadata
-            },
-        }
+            }}
     }
 }

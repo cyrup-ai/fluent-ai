@@ -10,6 +10,7 @@
 pub mod types;
 pub mod index;
 pub mod tags;
+pub mod tagging;
 pub mod export;
 pub mod error;
 pub mod history_export;
@@ -18,34 +19,32 @@ pub mod history_export;
 pub use types::{
     SearchQuery, QueryOperator, DateRange, SortOrder, SearchResult, SearchStatistics,
     MatchPosition, MatchType, SearchResultMetadata, SearchOptions, SearchScope,
-    StreamCollect,
-};
+    StreamCollect};
 
 pub use index::{
-    ChatSearchIndex, IndexEntry,
-};
+    ChatSearchIndex, IndexEntry};
 
 pub use types::{
-    TermFrequency,
-};
+    TermFrequency};
 
 pub use tags::{
-    ConversationTag, ConversationTagger, TaggingStatistics,
-};
+    ConversationTag, ConversationTagger, TaggingStatistics};
 
 pub use export::{
-    ExportFormat, ExportOptions, ExportStatistics, HistoryExporter,
-};
+    ExportFormat, ExportOptions, HistoryExporter};
+
+// Import the ExportStatistics from history_export instead of export
+pub use history_export::{ExportStatistics};
 
 pub use error::{
-    SearchError, ErrorSeverity, ErrorContext, SearchResult as Result,
-};
+    SearchError, ErrorSeverity, ErrorContext, SearchResult as Result};
 
 use std::sync::Arc;
 use fluent_ai_async::AsyncStream;
-use crate::types::candle_chat::message::types::CandleMessage;
+use crate::types::CandleMessage;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
+use crate::types::candle_chat::search::history_export::{ExportOptions as HistoryExportOptions, CompressionOptions, CompressionAlgorithm, PrivacyOptions};
 
 /// Enhanced history management system
 ///
@@ -63,8 +62,7 @@ pub struct EnhancedHistoryManager {
     /// Export functionality
     pub exporter: Arc<HistoryExporter>,
     /// System statistics
-    pub statistics: Arc<RwLock<HistoryManagerStatistics>>,
-}
+    pub statistics: Arc<RwLock<HistoryManagerStatistics>>}
 
 /// Comprehensive history manager statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -78,18 +76,45 @@ pub struct HistoryManagerStatistics {
     /// Total operations performed
     pub total_operations: usize,
     /// System uptime in seconds
-    pub system_uptime: u64,
-}
+    pub system_uptime: u64}
 
 impl EnhancedHistoryManager {
     /// Create a new enhanced history manager
     pub fn new() -> Self {
+        // Create default export options
+        let export_options = HistoryExportOptions {
+            format: history_export::ExportFormat::Json,
+            date_range: None,
+            role_filter: None,
+            include_metadata: true,
+            include_system: true,
+            include_deleted: false,
+            max_messages: None,
+            compression: CompressionOptions {
+                enabled: false,
+                algorithm: CompressionAlgorithm::None,
+                level: 1,
+                archive_format: None},
+            privacy: PrivacyOptions {
+                anonymize_users: false,
+                redact_sensitive: false,
+                hash_user_ids: false,
+                remove_timestamps: false,
+                redaction_patterns: Vec::new(),
+                encryption: None},
+            custom_fields: Vec::new(),
+            filename: None,
+            batch_size: 1000,
+            include_attachments: false,
+            language_filter: None,
+            min_length: None,
+            max_length: None};
+        
         Self {
             search_index: Arc::new(ChatSearchIndex::new()),
             tagger: Arc::new(ConversationTagger::new()),
-            exporter: Arc::new(HistoryExporter::new()),
-            statistics: Arc::new(RwLock::new(HistoryManagerStatistics::default())),
-        }
+            exporter: Arc::new(HistoryExporter::new(export_options)),
+            statistics: Arc::new(RwLock::new(HistoryManagerStatistics::default()))}
     }
 
     /// Add a message to both search index and tagging system
@@ -100,27 +125,19 @@ impl EnhancedHistoryManager {
 
         AsyncStream::with_channel(move |sender| {
             // Add to search index
-            let mut index_stream = search_index.add_message_stream(message.clone());
-            if let Some(_) = index_stream.recv() {
-                // Successfully added to index
-            }
+            let search_message = crate::types::candle_chat::message::SearchChatMessage::from(message.clone());
+            let index_stream = search_index.add_message_stream(search_message);
+            let _ = index_stream.collect(); // Consume the stream
 
             // Auto-tag the message
-            let mut auto_tag_stream = tagger.auto_tag_message_stream(message.clone());
-            let mut suggested_tags = Vec::new();
-            while let Some(tag) = auto_tag_stream.recv() {
-                suggested_tags.push(tag);
-            }
+            let auto_tag_stream = tagger.auto_tag_message_stream(message.clone());
+            let suggested_tags = auto_tag_stream.collect();
 
             // Apply suggested tags if any
             if !suggested_tags.is_empty() {
-                let message_id = message
-                    .message
-                    .id
-                    .clone()
-                    .unwrap_or_else(|| Arc::from("unknown"));
-                let mut tag_stream = tagger.tag_message_stream(message_id, suggested_tags);
-                let _ = tag_stream.recv();
+                let message_id = Arc::from(message.id.as_str());
+                let tag_stream = tagger.tag_message_stream(message_id, suggested_tags);
+                let _ = tag_stream.collect(); // Consume the stream
             }
 
             // Update statistics
@@ -140,7 +157,8 @@ impl EnhancedHistoryManager {
         AsyncStream::with_channel(move |sender| {
             // Perform search
             let mut search_stream = search_index.search_stream(query);
-            while let Some(result) = search_stream.recv() {
+
+            while let Some(result) = search_stream.try_next() {
                 let _ = sender.send(result);
             }
 
@@ -155,7 +173,7 @@ impl EnhancedHistoryManager {
     pub fn export_history_stream(
         &self,
         messages: Vec<CandleMessage>,
-        options: ExportOptions,
+        options: HistoryExportOptions,
     ) -> AsyncStream<String> {
         let exporter = Arc::clone(&self.exporter);
         let statistics = Arc::clone(&self.statistics);
@@ -163,7 +181,8 @@ impl EnhancedHistoryManager {
         AsyncStream::with_channel(move |sender| {
             // Perform export
             let mut export_stream = exporter.export_history_stream(messages, options);
-            if let Some(exported_data) = export_stream.recv() {
+
+            while let Some(exported_data) = export_stream.try_next() {
                 let _ = sender.send(exported_data);
             }
 
@@ -205,16 +224,17 @@ impl EnhancedHistoryManager {
 
             // Get search statistics
             let mut search_stats_stream = search_index.get_statistics_stream();
-            if let Some(search_stats) = search_stats_stream.recv() {
+            if let Some(search_stats) = search_stats_stream.try_next() {
                 stats.search_stats = search_stats;
             }
 
             // Get tagging statistics
             stats.tagging_stats = tagger.get_statistics();
 
-            // Get export statistics
+            // Get export statistics  
             let mut export_stats_stream = exporter.get_statistics_stream();
-            if let Some(export_stats) = export_stats_stream.recv() {
+            if let Some(export_stats) = export_stats_stream.try_next() {
+                // Use the export_stats directly since types now match
                 stats.export_stats = export_stats;
             }
 
@@ -271,8 +291,7 @@ impl EnhancedHistoryManager {
             last_check: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
-        }
+                .as_secs()}
     }
 }
 
@@ -294,8 +313,7 @@ pub struct HealthStatus {
     /// Export system health
     pub export_system: bool,
     /// Last health check timestamp
-    pub last_check: u64,
-}
+    pub last_check: u64}
 
 impl HealthStatus {
     /// Check if system is fully operational

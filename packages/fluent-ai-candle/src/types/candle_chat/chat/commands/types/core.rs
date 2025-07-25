@@ -3,7 +3,7 @@
 //! Provides fundamental types for the command system including error types,
 //! parameter definitions, and resource usage tracking with zero-allocation patterns.
 
-use std::collections::HashMap;
+// Removed unused import: HashMap
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -33,8 +33,7 @@ pub enum CommandError {
     #[error("Resource not found")]
     NotFound,
     #[error("Internal error: {0}")]
-    InternalError(String),
-}
+    InternalError(String)}
 
 /// Result type for command operations
 pub type CommandResult<T> = Result<T, CommandError>;
@@ -61,8 +60,7 @@ pub enum ParameterType {
     /// Enumeration parameter with possible values
     Enum,
     /// Path parameter for file/directory paths
-    Path,
-}
+    Path}
 
 /// Parameter information for command definitions with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,8 +74,7 @@ pub struct ParameterInfo {
     /// Whether the parameter is required
     pub required: bool,
     /// Default value if not required
-    pub default_value: Option<String>,
-}
+    pub default_value: Option<String>}
 
 /// Command information for command registry with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,8 +92,7 @@ pub struct CommandInfo {
     /// Command category
     pub category: String,
     /// Usage examples
-    pub examples: Vec<String>,
-}
+    pub examples: Vec<String>}
 
 /// Resource usage tracking for command execution
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -108,8 +104,7 @@ pub struct ResourceUsage {
     /// Number of network requests made
     pub network_requests: u32,
     /// Number of disk operations performed
-    pub disk_operations: u32,
-}
+    pub disk_operations: u32}
 
 /// Settings categories
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -119,5 +114,4 @@ pub enum SettingsCategory {
     Security,
     Performance,
     Integration,
-    Advanced,
-}
+    Advanced}

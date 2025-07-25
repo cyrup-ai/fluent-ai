@@ -34,8 +34,7 @@ where
     /// API configuration
     config: APIConfig,
     /// Router
-    router: Router,
-}
+    router: Router}
 
 #[cfg(feature = "api")]
 impl<M> APIServer<M>
@@ -51,8 +50,7 @@ where
         Self {
             _memory_manager: memory_manager,
             config,
-            router,
-        }
+            router}
     }
 
     /// Start the API server

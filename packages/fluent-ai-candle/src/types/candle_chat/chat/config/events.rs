@@ -4,7 +4,7 @@
 //! and persistence settings.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -24,13 +24,12 @@ pub struct ConfigurationChangeEvent {
     pub old_value: Option<serde_json::Value>,
     /// New value (JSON representation)
     pub new_value: serde_json::Value,
-    /// Timestamp of change
-    pub timestamp: Instant,
+    /// Timestamp of change (Unix timestamp in seconds)
+    pub timestamp: u64,
     /// User who made the change
     pub user_id: Option<Arc<str>>,
     /// Source of the change ("ui", "api", "system")
-    pub source: Arc<str>,
-}
+    pub source: Arc<str>}
 
 /// Configuration change type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,8 +45,7 @@ pub enum ConfigurationChangeType {
     /// Configuration exported
     Exported,
     /// Configuration reset to defaults
-    Reset,
-}
+    Reset}
 
 /// Configuration validation error
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,8 +54,7 @@ pub enum ConfigurationValidationError {
     InvalidValue {
         field: Arc<str>,
         value: serde_json::Value,
-        expected: Arc<str>,
-    },
+        expected: Arc<str>},
     /// Missing required field
     MissingField(Arc<str>),
     /// Field out of range
@@ -65,16 +62,13 @@ pub enum ConfigurationValidationError {
         field: Arc<str>,
         value: f64,
         min: f64,
-        max: f64,
-    },
+        max: f64},
     /// Invalid combination of fields
     InvalidCombination {
         fields: Vec<Arc<str>>,
-        reason: Arc<str>,
-    },
+        reason: Arc<str>},
     /// Custom validation error
-    Custom(Arc<str>),
-}
+    Custom(Arc<str>)}
 
 /// Configuration validation result
 pub type ConfigurationValidationResult = Result<(), Vec<ConfigurationValidationError>>;
@@ -93,8 +87,7 @@ pub struct ConfigurationPersistence {
     /// Backup settings
     pub backup: BackupConfig,
     /// Encryption settings
-    pub encryption: EncryptionConfig,
-}
+    pub encryption: EncryptionConfig}
 
 /// Backup configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,8 +101,7 @@ pub struct BackupConfig {
     /// Backup location
     pub backup_path: Option<Arc<str>>,
     /// Compress backups
-    pub compress: bool,
-}
+    pub compress: bool}
 
 /// Encryption configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,8 +111,7 @@ pub struct EncryptionConfig {
     /// Encryption algorithm
     pub algorithm: Arc<str>,
     /// Key derivation method
-    pub key_derivation: Arc<str>,
-}
+    pub key_derivation: Arc<str>}
 
 impl Default for ConfigurationPersistence {
     fn default() -> Self {
@@ -130,8 +121,7 @@ impl Default for ConfigurationPersistence {
             save_location: Arc::from("file"),
             file_path: None,
             backup: BackupConfig::default(),
-            encryption: EncryptionConfig::default(),
-        }
+            encryption: EncryptionConfig::default()}
     }
 }
 
@@ -142,8 +132,7 @@ impl Default for BackupConfig {
             interval_hours: 24,
             max_backups: 7,
             backup_path: None,
-            compress: true,
-        }
+            compress: true}
     }
 }
 
@@ -152,8 +141,7 @@ impl Default for EncryptionConfig {
         Self {
             enabled: false,
             algorithm: Arc::from("AES-256-GCM"),
-            key_derivation: Arc::from("PBKDF2"),
-        }
+            key_derivation: Arc::from("PBKDF2")}
     }
 }
 
@@ -175,15 +163,21 @@ impl ConfigurationChangeEvent {
             field_path: field_path.into(),
             old_value,
             new_value,
-            timestamp: Instant::now(),
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
             user_id,
-            source: source.into(),
-        }
+            source: source.into()}
     }
 
     /// Get the age of this event
     pub fn age(&self) -> Duration {
-        Instant::now().duration_since(self.timestamp)
+        let now_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        Duration::from_secs(now_timestamp.saturating_sub(self.timestamp))
     }
 
     /// Check if this event is recent (within specified duration)
@@ -215,8 +209,7 @@ impl ConfigurationValidationError {
                     reason
                 )
             }
-            Self::Custom(message) => message.to_string(),
-        }
+            Self::Custom(message) => message.to_string()}
     }
 
     /// Get the field(s) involved in this error
@@ -228,8 +221,7 @@ impl ConfigurationValidationError {
             Self::InvalidCombination { fields, .. } => {
                 fields.iter().map(|f| f.as_ref()).collect()
             }
-            Self::Custom(_) => vec![],
-        }
+            Self::Custom(_) => vec![]}
     }
 
     /// Get the severity level of this error
@@ -239,8 +231,7 @@ impl ConfigurationValidationError {
             Self::OutOfRange { .. } => ErrorSeverity::Error,
             Self::InvalidValue { .. } => ErrorSeverity::Warning,
             Self::InvalidCombination { .. } => ErrorSeverity::Error,
-            Self::Custom(_) => ErrorSeverity::Warning,
-        }
+            Self::Custom(_) => ErrorSeverity::Warning}
     }
 }
 
@@ -254,8 +245,7 @@ pub enum ErrorSeverity {
     /// Error
     Error,
     /// Critical error
-    Critical,
-}
+    Critical}
 
 impl std::fmt::Display for ConfigurationChangeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -265,8 +255,7 @@ impl std::fmt::Display for ConfigurationChangeType {
             Self::Deleted => write!(f, "deleted"),
             Self::Imported => write!(f, "imported"),
             Self::Exported => write!(f, "exported"),
-            Self::Reset => write!(f, "reset"),
-        }
+            Self::Reset => write!(f, "reset")}
     }
 }
 
@@ -276,7 +265,6 @@ impl std::fmt::Display for ErrorSeverity {
             Self::Info => write!(f, "info"),
             Self::Warning => write!(f, "warning"),
             Self::Error => write!(f, "error"),
-            Self::Critical => write!(f, "critical"),
-        }
+            Self::Critical => write!(f, "critical")}
     }
 }

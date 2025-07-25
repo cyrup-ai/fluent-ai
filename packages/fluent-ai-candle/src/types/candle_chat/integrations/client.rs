@@ -39,16 +39,14 @@ pub struct PluginManager {
     /// Loaded plugins
     plugins: std::collections::HashMap<Arc<str>, Arc<dyn Plugin>>,
     /// Plugin configurations
-    configs: std::collections::HashMap<Arc<str>, PluginConfig>,
-}
+    configs: std::collections::HashMap<Arc<str>, PluginConfig>}
 
 impl PluginManager {
     /// Create a new plugin manager
     pub fn new() -> Self {
         Self {
             plugins: std::collections::HashMap::new(),
-            configs: std::collections::HashMap::new(),
-        }
+            configs: std::collections::HashMap::new()}
     }
 
     /// Load a plugin
@@ -93,8 +91,7 @@ pub struct ExternalIntegration {
     /// HTTP client for API calls
     client: Option<Arc<reqwest::Client>>,
     /// Plugin manager for plugin integrations
-    plugin_manager: Option<Arc<PluginManager>>,
-}
+    plugin_manager: Option<Arc<PluginManager>>}
 
 impl ExternalIntegration {
     /// Create a new external integration
@@ -118,8 +115,7 @@ impl ExternalIntegration {
             config,
             stats: IntegrationStats::default(),
             client,
-            plugin_manager,
-        }
+            plugin_manager}
     }
 
     /// Execute an integration request using fluent-ai-async streaming architecture
@@ -180,8 +176,7 @@ impl ExternalIntegration {
         let _client = client
             .as_ref()
             .ok_or_else(|| IntegrationError::ConfigurationError {
-                detail: Arc::from("HTTP client not initialized"),
-            })?;
+                detail: Arc::from("HTTP client not initialized")})?;
 
         // Placeholder implementation - in production this would use async HTTP client
         // with proper streaming patterns and fluent_ai_http3 library
@@ -194,8 +189,7 @@ impl ExternalIntegration {
                 "method": request.method.as_ref()
             })),
             response_time_ms: 0, // Will be set by caller
-            success: true,
-        };
+            success: true};
 
         Ok(response)
     }
@@ -209,8 +203,7 @@ impl ExternalIntegration {
         let _plugin_manager = plugin_manager
             .as_ref()
             .ok_or_else(|| IntegrationError::ConfigurationError {
-                detail: Arc::from("Plugin manager not initialized"),
-            })?;
+                detail: Arc::from("Plugin manager not initialized")})?;
 
         // Placeholder implementation - in production this would interface with actual plugins
         let response = IntegrationResponse {
@@ -222,8 +215,7 @@ impl ExternalIntegration {
                 "action": request.path.as_ref()
             })),
             response_time_ms: 0,
-            success: true,
-        };
+            success: true};
 
         Ok(response)
     }
@@ -235,8 +227,7 @@ impl ExternalIntegration {
     ) -> IntegrationResult<IntegrationResponse> {
         // Placeholder for external service integration
         Err(IntegrationError::ConfigurationError {
-            detail: Arc::from("External service integration not implemented"),
-        })
+            detail: Arc::from("External service integration not implemented")})
     }
 
     /// Get integration statistics
@@ -284,8 +275,7 @@ impl ExternalIntegration {
 
             let success = match result {
                 Ok(response) => response.success,
-                Err(_) => false,
-            };
+                Err(_) => false};
 
             emit!(sender, success);
         })

@@ -4,7 +4,6 @@
 //! multiple provider evaluators, manages evaluation sessions, handles caching,
 //! and provides the main public API for the committee evaluation system.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -19,9 +18,7 @@ use super::committee_evaluators::{EvaluationSession, EvaluatorPool, ProviderEval
 use super::committee_types::{
     CacheEntry, CacheMetrics, CommitteeError, CommitteeEvaluation, CommitteeMetrics,
     CommitteeResult, EvaluationConfig, EvaluationResult, ModelType,
-    MAX_COMMITTEE_SIZE, MAX_CACHE_LIFETIME_SECS, MetricsSnapshot, CacheMetricsSnapshot,
-};
-use arrayvec::ArrayVec;
+    MAX_COMMITTEE_SIZE, MAX_CACHE_LIFETIME_SECS, MetricsSnapshot, CacheMetricsSnapshot};
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::OptimizationSpec;
 
@@ -39,8 +36,7 @@ pub struct CommitteeEvaluator {
     /// Performance metrics tracking (atomic counters)
     metrics: CommitteeMetrics,
     /// Cache performance metrics (atomic counters)
-    cache_metrics: CacheMetrics,
-}
+    cache_metrics: CacheMetrics}
 
 impl CommitteeEvaluator {
     /// Create a new committee evaluator
@@ -84,8 +80,7 @@ impl CommitteeEvaluator {
             consensus_engine,
             evaluation_cache: SkipMap::new(),
             metrics: CommitteeMetrics::default(),
-            cache_metrics: CacheMetrics::default(),
-        })
+            cache_metrics: CacheMetrics::default()})
     }
 
     /// Evaluate an optimization proposal against user objectives
@@ -201,26 +196,22 @@ impl CommitteeEvaluator {
     fn validate_config(config: &EvaluationConfig) -> CommitteeResult<()> {
         if config.models.is_empty() {
             return Err(CommitteeError::InvalidConfiguration {
-                message: "No models specified in configuration".into(),
-            });
+                message: "No models specified in configuration".into()});
         }
 
         if config.models.len() < 2 {
             return Err(CommitteeError::InvalidConfiguration {
-                message: "At least 2 models required for committee evaluation".into(),
-            });
+                message: "At least 2 models required for committee evaluation".into()});
         }
 
         if config.consensus_threshold < 0.5 || config.consensus_threshold > 1.0 {
             return Err(CommitteeError::InvalidConfiguration {
-                message: "Consensus threshold must be between 0.5 and 1.0".into(),
-            });
+                message: "Consensus threshold must be between 0.5 and 1.0".into()});
         }
 
         if config.timeout_ms < 5000 {
             return Err(CommitteeError::ConfigurationError {
-                message: "Timeout must be at least 5 seconds".into(),
-            });
+                message: "Timeout must be at least 5 seconds".into()});
         }
 
         Ok(())
@@ -303,8 +294,7 @@ impl CommitteeEvaluator {
         if successful_evaluations.len() < 2 {
             return Err(CommitteeError::InsufficientMembers {
                 available: successful_evaluations.len(),
-                required: 2,
-            });
+                required: 2});
         }
 
         info!(
@@ -330,15 +320,13 @@ impl CommitteeEvaluator {
                 code_content: current_code.to_string(),
                 latency: 0.0,
                 memory: 0.0,
-                relevance: 1.0,
-            },
+                relevance: 1.0},
             &CodeState {
                 code: proposed_code.to_string(),
                 code_content: proposed_code.to_string(),
                 latency: 0.0,
                 memory: 0.0,
-                relevance: 1.0,
-            },
+                relevance: 1.0},
         );
 
         Ok(EvaluationResult {
@@ -347,8 +335,7 @@ impl CommitteeEvaluator {
             from_cache: false,
             request_timestamp: start_time,
             evaluation_duration_ms: total_time.as_millis() as u64,
-            cache_generation: 0,
-        })
+            cache_generation: 0})
     }
 
     /// Get evaluators for evaluation session
@@ -368,8 +355,7 @@ impl CommitteeEvaluator {
         if evaluators.len() < 2 {
             return Err(CommitteeError::InsufficientMembers {
                 available: evaluators.len(),
-                required: 2,
-            });
+                required: 2});
         }
 
         Ok(evaluators)
@@ -437,8 +423,7 @@ impl CommitteeEvaluator {
             average_response_time,
             score_variance,
             reasoning_quality,
-            completed_on_time,
-        }
+            completed_on_time}
     }
 
     /// Cache evaluation result
@@ -507,8 +492,7 @@ pub struct EvaluationWorkflow {
     /// Steps in the evaluation workflow
     steps: Vec<WorkflowStep>,
     /// Current step index
-    current_step: usize,
-}
+    current_step: usize}
 
 /// Individual step in an evaluation workflow
 #[derive(Debug, Clone)]
@@ -522,8 +506,7 @@ pub struct WorkflowStep {
     /// Whether this step is required for workflow completion
     pub is_required: bool,
     /// Dependencies on other steps
-    pub dependencies: Vec<String>,
-}
+    pub dependencies: Vec<String>}
 
 impl EvaluationWorkflow {
     /// Create a new evaluation workflow
@@ -532,8 +515,7 @@ impl EvaluationWorkflow {
             evaluator,
             workflow_id: Uuid::new_v4().to_string(),
             steps,
-            current_step: 0,
-        }
+            current_step: 0}
     }
 
     /// Execute the complete workflow
@@ -587,16 +569,14 @@ pub struct CommitteeCoordinator {
     /// Active committee instances
     committees: HashMap<String, Arc<CommitteeEvaluator>>,
     /// Default committee configuration
-    default_config: EvaluationConfig,
-}
+    default_config: EvaluationConfig}
 
 impl CommitteeCoordinator {
     /// Create a new committee coordinator
     pub fn new(default_config: EvaluationConfig) -> Self {
         Self {
             committees: HashMap::new(),
-            default_config,
-        }
+            default_config}
     }
 
     /// Get or create committee for specific configuration

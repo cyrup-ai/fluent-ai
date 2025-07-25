@@ -16,8 +16,7 @@ pub enum HttpChunk {
     /// The head of the response, containing status and headers.
     Head(StatusCode, HeaderMap),
     /// A chunk of the response body.
-    Body(Bytes),
-}
+    Body(Bytes)}
 
 /// Represents a chunk of a file download stream.
 #[derive(Debug, Clone)]
@@ -29,8 +28,7 @@ pub struct DownloadChunk {
     /// Total file size if known from headers
     pub total_size: Option<u64>,
     /// Total bytes downloaded so far
-    pub bytes_downloaded: u64,
-}
+    pub bytes_downloaded: u64}
 
 // Stream newtype wrappers to allow for extension methods
 

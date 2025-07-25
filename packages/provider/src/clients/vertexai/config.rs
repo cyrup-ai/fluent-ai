@@ -55,8 +55,7 @@ pub struct VertexAIConfig {
     pub model_defaults: ModelDefaults,
     
     /// Performance tuning parameters
-    pub performance: PerformanceConfig,
-}
+    pub performance: PerformanceConfig}
 
 /// Timeout configuration with specific limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,8 +70,7 @@ pub struct TimeoutConfig {
     pub streaming_timeout_ms: u64,
     
     /// Token refresh timeout in milliseconds
-    pub token_refresh_timeout_ms: u64,
-}
+    pub token_refresh_timeout_ms: u64}
 
 /// Exponential backoff retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,8 +88,7 @@ pub struct RetryConfig {
     pub backoff_multiplier: f64,
     
     /// Jitter factor to randomize backoff (0.0 to 1.0)
-    pub jitter_factor: f64,
-}
+    pub jitter_factor: f64}
 
 /// Rate limiting configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,8 +103,7 @@ pub struct RateLimitConfig {
     pub burst_capacity: u32,
     
     /// Rate limit enforcement enabled
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 /// Authentication configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,8 +121,7 @@ pub struct AuthConfig {
     pub jwt_algorithm: &'static str,
     
     /// Token endpoint URL
-    pub token_endpoint: &'static str,
-}
+    pub token_endpoint: &'static str}
 
 /// Model default configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,8 +145,7 @@ pub struct ModelDefaults {
     pub stop_sequences: [ArrayString<32>; 4],
     
     /// Number of stop sequences used
-    pub stop_sequences_count: usize,
-}
+    pub stop_sequences_count: usize}
 
 /// Performance configuration for optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,8 +169,7 @@ pub struct PerformanceConfig {
     pub keep_alive_timeout_seconds: u64,
     
     /// Enable metrics collection
-    pub enable_metrics: bool,
-}
+    pub enable_metrics: bool}
 
 impl Default for VertexAIConfig {
     fn default() -> Self {
@@ -191,8 +184,7 @@ impl Default for VertexAIConfig {
             rate_limit: RateLimitConfig::default(),
             auth: AuthConfig::default(),
             model_defaults: ModelDefaults::default(),
-            performance: PerformanceConfig::default(),
-        }
+            performance: PerformanceConfig::default()}
     }
 }
 
@@ -202,8 +194,7 @@ impl Default for TimeoutConfig {
             connection_timeout_ms: 10_000,
             request_timeout_ms: 30_000,
             streaming_timeout_ms: 300_000,
-            token_refresh_timeout_ms: 5_000,
-        }
+            token_refresh_timeout_ms: 5_000}
     }
 }
 
@@ -214,8 +205,7 @@ impl Default for RetryConfig {
             initial_backoff_ms: 1_000,
             max_backoff_ms: 60_000,
             backoff_multiplier: 2.0,
-            jitter_factor: 0.1,
-        }
+            jitter_factor: 0.1}
     }
 }
 
@@ -225,8 +215,7 @@ impl Default for RateLimitConfig {
             requests_per_minute: 300,
             tokens_per_minute: 300_000,
             burst_capacity: 10,
-            enabled: true,
-        }
+            enabled: true}
     }
 }
 
@@ -237,8 +226,7 @@ impl Default for AuthConfig {
             max_token_lifetime_seconds: 3600,
             oauth_scope: "https://www.googleapis.com/auth/cloud-platform",
             jwt_algorithm: "RS256",
-            token_endpoint: "https://oauth2.googleapis.com/token",
-        }
+            token_endpoint: "https://oauth2.googleapis.com/token"}
     }
 }
 
@@ -251,8 +239,7 @@ impl Default for ModelDefaults {
             max_output_tokens: 1024,
             candidate_count: 1,
             stop_sequences: [ArrayString::new(); 4],
-            stop_sequences_count: 0,
-        }
+            stop_sequences_count: 0}
     }
 }
 
@@ -265,8 +252,7 @@ impl Default for PerformanceConfig {
             enable_http3: true,
             enable_compression: true,
             keep_alive_timeout_seconds: 90,
-            enable_metrics: true,
-        }
+            enable_metrics: true}
     }
 }
 
@@ -278,8 +264,7 @@ impl VertexAIConfig {
         let project_id = ProjectId::from(project_id).map_err(|_| {
             VertexAIError::Config {
                 parameter: "project_id".to_string(),
-                issue: "Project ID too long, maximum 64 characters".to_string(),
-            }
+                issue: "Project ID too long, maximum 64 characters".to_string()}
         })?;
         
         let mut config = Self::default();
@@ -303,15 +288,13 @@ impl VertexAIConfig {
         config.service_account_email = VertexString::from(service_account_email).map_err(|_| {
             VertexAIError::Config {
                 parameter: "service_account_email".to_string(),
-                issue: "Service account email too long, maximum 256 characters".to_string(),
-            }
+                issue: "Service account email too long, maximum 256 characters".to_string()}
         })?;
         
         config.private_key_id = ArrayString::from(private_key_id).map_err(|_| {
             VertexAIError::Config {
                 parameter: "private_key_id".to_string(),
-                issue: "Private key ID too long, maximum 64 characters".to_string(),
-            }
+                issue: "Private key ID too long, maximum 64 characters".to_string()}
         })?;
         
         config.validate()?;
@@ -337,43 +320,37 @@ impl VertexAIConfig {
         if self.project_id.is_empty() {
             return Err(VertexAIError::Config {
                 parameter: "project_id".to_string(),
-                issue: "Project ID cannot be empty".to_string(),
-            });
+                issue: "Project ID cannot be empty".to_string()});
         }
         
         if self.timeout.request_timeout_ms == 0 {
             return Err(VertexAIError::Config {
                 parameter: "request_timeout_ms".to_string(),
-                issue: "Request timeout must be greater than 0".to_string(),
-            });
+                issue: "Request timeout must be greater than 0".to_string()});
         }
         
         if self.retry.max_attempts == 0 {
             return Err(VertexAIError::Config {
                 parameter: "max_attempts".to_string(),
-                issue: "Max retry attempts must be greater than 0".to_string(),
-            });
+                issue: "Max retry attempts must be greater than 0".to_string()});
         }
         
         if !(0.0..=1.0).contains(&self.retry.jitter_factor) {
             return Err(VertexAIError::Config {
                 parameter: "jitter_factor".to_string(),
-                issue: "Jitter factor must be between 0.0 and 1.0".to_string(),
-            });
+                issue: "Jitter factor must be between 0.0 and 1.0".to_string()});
         }
         
         if self.model_defaults.temperature < 0.0 || self.model_defaults.temperature > 2.0 {
             return Err(VertexAIError::Config {
                 parameter: "temperature".to_string(),
-                issue: "Temperature must be between 0.0 and 2.0".to_string(),
-            });
+                issue: "Temperature must be between 0.0 and 2.0".to_string()});
         }
         
         if !(0.0..=1.0).contains(&self.model_defaults.top_p) {
             return Err(VertexAIError::Config {
                 parameter: "top_p".to_string(),
-                issue: "Top-p must be between 0.0 and 1.0".to_string(),
-            });
+                issue: "Top-p must be between 0.0 and 1.0".to_string()});
         }
         
         Ok(())

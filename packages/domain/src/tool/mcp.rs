@@ -5,7 +5,7 @@
 //! - MCP client for tool execution
 //! - Error handling and response management
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
@@ -21,23 +21,20 @@ struct JsonRpcRequest {
     jsonrpc: &'static str,
     method: String,
     params: Value,
-    id: u64,
-}
+    id: u64}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
     error: Option<JsonRpcError>,
-    id: u64,
-}
+    id: u64}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct JsonRpcError {
     code: i32,
     message: String,
-    data: Option<Value>,
-}
+    data: Option<Value>}
 
 /// Error types for MCP (Model Context Protocol) operations.
 ///
@@ -56,8 +53,7 @@ pub enum McpError {
     /// Operation timed out waiting for response.
     Timeout,
     /// Received an invalid or malformed response from the MCP server.
-    InvalidResponse,
-}
+    InvalidResponse}
 
 /// Transport layer abstraction for MCP (Model Context Protocol) communication.
 ///
@@ -93,8 +89,7 @@ pub trait Transport: Send + Sync + 'static {
 /// to handle the communication without blocking.
 pub struct StdioTransport {
     stdin_tx: mpsc::UnboundedSender<Vec<u8>>,
-    stdout_rx: Arc<RwLock<mpsc::UnboundedReceiver<Vec<u8>>>>,
-}
+    stdout_rx: Arc<RwLock<mpsc::UnboundedReceiver<Vec<u8>>>>}
 
 impl StdioTransport {
     /// Create a new StdioTransport instance.
@@ -144,15 +139,13 @@ impl StdioTransport {
                             }
                         }
                     }
-                    Err(_) => break,
-                }
+                    Err(_) => break}
             }
         });
 
         Self {
             stdin_tx,
-            stdout_rx: Arc::new(RwLock::new(stdout_rx)),
-        }
+            stdout_rx: Arc::new(RwLock::new(stdout_rx))}
     }
 }
 
@@ -184,8 +177,7 @@ pub struct Client<T: Transport> {
     transport: Arc<T>,
     request_id: AtomicU64,
     response_cache: Arc<RwLock<HashMap<u64, Value>>>,
-    request_timeout: Duration,
-}
+    request_timeout: Duration}
 
 impl<T: Transport> Client<T> {
     /// Create a new MCP client with the specified transport.
@@ -203,8 +195,7 @@ impl<T: Transport> Client<T> {
             transport: Arc::new(transport),
             request_id: AtomicU64::new(1),
             response_cache: Arc::new(RwLock::new(HashMap::with_capacity(256))),
-            request_timeout: Duration::from_secs(30),
-        }
+            request_timeout: Duration::from_secs(30)}
     }
 
     /// Call a tool on the MCP server with the specified arguments.
@@ -238,8 +229,7 @@ impl<T: Transport> Client<T> {
                 "name": name,
                 "arguments": args
             }),
-            id,
-        };
+            id};
 
         let mut buffer = Vec::with_capacity(1024);
         serde_json::to_writer(&mut buffer, &request).map_err(|_| McpError::SerializationFailed)?;
@@ -315,8 +305,7 @@ impl<T: Transport> Client<T> {
             jsonrpc: "2.0",
             method: method.to_string(),
             params,
-            id,
-        };
+            id};
 
         let mut buffer = Vec::with_capacity(512);
         serde_json::to_writer(&mut buffer, &request).map_err(|_| McpError::SerializationFailed)?;

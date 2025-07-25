@@ -25,8 +25,7 @@ impl ProviderEvaluationAgent {
         Ok(Self {
             id: format!("{}_{}_agent", model_type.display_name(), perspective),
             model,
-            perspective: perspective.to_string(),
-        })
+            perspective: perspective.to_string()})
     }
 
     pub async fn evaluate_with_context(
@@ -60,8 +59,7 @@ impl ProviderEvaluationAgent {
                 proposed_action,
                 rubric,
                 previous_evaluations.unwrap_or(&[]),
-            ),
-        };
+            )};
 
         let response = self
             .model
@@ -267,8 +265,7 @@ Key guidelines:
             risk_assessment: f64,
             reasoning: String,
             #[serde(default)]
-            suggested_improvements: Vec<String>,
-        }
+            suggested_improvements: Vec<String>}
 
         let eval: EvalResponse = serde_json::from_str(json_str).map_err(|e| {
             CognitiveError::ParseError(format!("Failed to parse evaluation: {}", e))
@@ -295,7 +292,6 @@ Key guidelines:
             implementation_quality: eval.implementation_quality,
             risk_assessment: eval.risk_assessment,
             reasoning: eval.reasoning,
-            suggested_improvements: eval.suggested_improvements,
-        })
+            suggested_improvements: eval.suggested_improvements})
     }
 }

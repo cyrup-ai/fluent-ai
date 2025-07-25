@@ -7,8 +7,7 @@ use crate::migration::{MigrationError, Result};
 /// Data validator
 pub struct DataValidator {
     /// Validation rules
-    rules: Vec<Box<dyn ValidationRule>>,
-}
+    rules: Vec<Box<dyn ValidationRule>>}
 
 impl DataValidator {
     /// Create a new validator
@@ -50,8 +49,7 @@ pub trait ValidationRule: Send + Sync {
 
 /// Required field validation
 pub struct RequiredField {
-    field_name: String,
-}
+    field_name: String}
 
 impl RequiredField {
     pub fn new(field_name: String) -> Self {
@@ -80,8 +78,7 @@ impl ValidationRule for RequiredField {
 /// Type validation
 pub struct TypeValidation {
     field_name: String,
-    expected_type: ValueType,
-}
+    expected_type: ValueType}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueType {
@@ -89,15 +86,13 @@ pub enum ValueType {
     Number,
     Boolean,
     Array,
-    Object,
-}
+    Object}
 
 impl TypeValidation {
     pub fn new(field_name: String, expected_type: ValueType) -> Self {
         Self {
             field_name,
-            expected_type,
-        }
+            expected_type}
     }
 }
 
@@ -111,8 +106,7 @@ impl ValidationRule for TypeValidation {
                 ValueType::Number => field_value.is_number(),
                 ValueType::Boolean => field_value.is_boolean(),
                 ValueType::Array => field_value.is_array(),
-                ValueType::Object => field_value.is_object(),
-            };
+                ValueType::Object => field_value.is_object()};
 
             if !matches {
                 return Err(MigrationError::ValidationFailed(format!(
@@ -133,8 +127,7 @@ impl ValidationRule for TypeValidation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SchemaValidator {
     /// Schema definition
-    pub schema: serde_json::Value,
-}
+    pub schema: serde_json::Value}
 
 impl SchemaValidator {
     /// Create a new schema validator

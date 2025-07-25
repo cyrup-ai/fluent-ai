@@ -34,8 +34,7 @@ pub enum DomainInitError {
     CircuitBreakerOpen,
     /// Invalid state error
     #[error("Invalid state: {0}")]
-    InvalidState(String),
-}
+    InvalidState(String)}
 
 /// Channel error type for proper error handling
 #[derive(Debug, thiserror::Error)]
@@ -45,13 +44,11 @@ pub enum ChannelError {
     #[error("Channel receive error")]
     ReceiveError,
     #[error("Channel closed")]
-    Closed,
-}
+    Closed}
 
 /// Channel sender wrapper using crossbeam for zero-allocation performance
 pub struct ChannelSender<T> {
-    sender: crossbeam_channel::Sender<std::result::Result<T, ChannelError>>,
-}
+    sender: crossbeam_channel::Sender<std::result::Result<T, ChannelError>>}
 
 impl<T: Send + 'static> ChannelSender<T> {
     /// Finish the task by sending the result
@@ -83,18 +80,16 @@ static CIRCUIT_BREAKER: Lazy<ArcSwap<CircuitBreaker>> =
 
 /// Circuit breaker state
 struct CircuitBreaker {
-    failure_count: AtomicUsize,
+    _failure_count: AtomicUsize,
     reset_after: Duration,
-    last_failure: CachePadded<parking_lot::Mutex<Option<std::time::Instant>>>,
-}
+    last_failure: CachePadded<parking_lot::Mutex<Option<std::time::Instant>>>}
 
 impl CircuitBreaker {
     fn new() -> Self {
         Self {
-            failure_count: AtomicUsize::new(0),
+            _failure_count: AtomicUsize::new(0),
             reset_after: Duration::from_secs(60),
-            last_failure: CachePadded::new(parking_lot::Mutex::new(None)),
-        }
+            last_failure: CachePadded::new(parking_lot::Mutex::new(None))}
     }
 
     fn is_open(&self) -> bool {
@@ -137,4 +132,3 @@ where
 
 // Re-export commonly used types
 // REMOVED: pub use futures::stream::Stream; - ALL FUTURES ELIMINATED!
-pub use std::collections::HashMap;

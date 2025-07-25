@@ -15,14 +15,12 @@ pub struct Cli {
     disable_landlock: bool,
 
     #[command(subcommand)]
-    command: Commands,
-}
+    command: Commands}
 
 #[derive(Subcommand)]
 pub enum Commands {
     /// Execute code in various languages
-    Exec(ExecArgs),
-}
+    Exec(ExecArgs)}
 
 #[derive(Args)]
 pub struct ExecArgs {
@@ -32,8 +30,7 @@ pub struct ExecArgs {
 
     /// Code to execute
     #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
-    code: Vec<String>,
-}
+    code: Vec<String>}
 
 impl ExecArgs {
     pub fn lang(&self) -> &str {
@@ -56,8 +53,7 @@ impl Cli {
 
     pub fn get_exec_args(&self) -> Option<&ExecArgs> {
         match &self.command {
-            Commands::Exec(args) => Some(args),
-        }
+            Commands::Exec(args) => Some(args)}
     }
 
     pub fn execute(&self) -> Result<(), ExecError> {
@@ -73,8 +69,7 @@ impl Cli {
                     "python" => exec::exec_python(&args.code(), &config)?,
                     "js" => exec::exec_js(&args.code(), &config)?,
                     "bash" => exec::exec_bash(&args.code(), &config)?,
-                    _ => return Err(ExecError::UnsupportedLanguage(args.lang().to_string())),
-                }
+                    _ => return Err(ExecError::UnsupportedLanguage(args.lang().to_string()))}
                 info!("{} code executed successfully", args.lang());
             }
         }

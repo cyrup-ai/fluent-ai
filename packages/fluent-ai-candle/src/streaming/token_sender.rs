@@ -6,21 +6,17 @@
 use std::{
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering},
-    },
-    time::Instant,
-};
+        atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering}},
+    time::Instant};
 
 use crossbeam_channel::{Sender, TrySendError};
 
 use super::{
     streaming_config::StreamingConfig, streaming_metrics::StreamingMetrics,
-    token_chunk::TokenChunk, token_metadata::TokenMetadata,
-};
+    token_chunk::TokenChunk, token_metadata::TokenMetadata};
 use crate::{
     error::{CandleError, CandleResult},
-    types::FinishReason,
-};
+    types::FinishReason};
 
 /// Token stream sender for producer side
 #[derive(Clone)]
@@ -34,8 +30,7 @@ pub struct TokenStreamSender {
     /// Stream configuration
     config: StreamingConfig,
     /// Sequence counter for ordering
-    sequence_counter: Arc<AtomicU64>,
-}
+    sequence_counter: Arc<AtomicU64>}
 
 impl TokenStreamSender {
     /// Create new sender
@@ -50,8 +45,7 @@ impl TokenStreamSender {
             terminated,
             metrics,
             config,
-            sequence_counter: Arc::new(AtomicU64::new(0)),
-        }
+            sequence_counter: Arc::new(AtomicU64::new(0))}
     }
 
     /// Send token chunk with latency tracking

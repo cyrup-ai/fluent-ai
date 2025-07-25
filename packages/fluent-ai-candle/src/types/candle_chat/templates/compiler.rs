@@ -3,8 +3,7 @@
 //! Provides template compilation with optimization passes.
 
 use crate::types::candle_chat::templates::core::{
-    ChatTemplate, CompiledTemplate, TemplateAst, TemplateResult,
-};
+    ChatTemplate, CompiledTemplate, TemplateAst, TemplateResult};
 
 /// Template compiler configuration
 #[derive(Debug, Clone)]
@@ -12,8 +11,7 @@ pub struct CompilerConfig {
     /// Enable optimization passes
     pub optimize: bool,
     /// Maximum compilation time in milliseconds
-    pub max_compile_time_ms: u64,
-}
+    pub max_compile_time_ms: u64}
 
 impl Default for CompilerConfig {
     fn default() -> Self {
@@ -27,15 +25,13 @@ impl Default for CompilerConfig {
 /// Template compiler for optimizing templates
 #[derive(Debug, Clone)]
 pub struct TemplateCompiler {
-    config: CompilerConfig,
-}
+    config: CompilerConfig}
 
 impl TemplateCompiler {
     /// Create a new template compiler
     pub fn new() -> Self {
         Self {
-            config: CompilerConfig::default(),
-        }
+            config: CompilerConfig::default()}
     }
 
     /// Create compiler with configuration

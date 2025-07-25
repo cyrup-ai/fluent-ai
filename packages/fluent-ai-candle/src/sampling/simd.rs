@@ -4,25 +4,24 @@
 //! fluent-ai-simd crate. All actual SIMD implementations have been moved to the shared crate
 //! to eliminate duplication across packages and achieve blazing-fast performance.
 
-use candle_core::Result as CandleResult;
+use crate::error::error_types::CandleResult;
 // Import real SIMD types from shared crate
 use fluent_ai_simd::{
     config::ProcessorConfig,
     context::ProcessingContext,
     error::SimdError,
-    logits::{process_logits_scalar, topk_filtering_simd, LogitsProcessor},
-    ops::{argmax, softmax, scale_temperature},
-};
+    logits::topk_filtering_simd,
+    ops::{softmax, scale_temperature}};
 
 use crate::error::CandleError;
+use crate::processing::processors::temperature::TemperatureProcessor;
 
 /// Processing statistics for SIMD operations
 #[derive(Debug, Clone, Default)]
 pub struct ProcessingStats {
     pub operations_count: u64,
     pub total_time_nanos: u64,
-    pub avg_time_nanos: f64,
-}
+    pub avg_time_nanos: f64}
 
 /// Convert SimdError to CandleError for compatibility
 impl From<SimdError> for CandleError {
@@ -44,24 +43,21 @@ impl From<SimdError> for CandleError {
                 CandleError::TensorOperation("SIMD tensor operation failed")
             }
             // Handle any other variants with a catch-all
-            _ => CandleError::ProcessingError("Unknown SIMD error"),
-        }
+            _ => CandleError::ProcessingError("Unknown SIMD error")}
     }
 }
 
 /// Bridge processor that implements LogitsProcessor using shared SIMD operations
 #[repr(C, align(64))]
 pub struct CandleSimdProcessor {
-    config: ProcessorConfig,
-}
+    config: ProcessorConfig}
 
 impl CandleSimdProcessor {
     /// Create new SIMD-accelerated processor with zero allocation
     #[inline(always)]
     pub fn new() -> CandleResult<Self> {
         Ok(Self {
-            config: ProcessorConfig::default(),
-        })
+            config: ProcessorConfig::default()})
     }
 
     /// Create processor with custom configuration
@@ -86,7 +82,7 @@ impl CandleSimdProcessor {
     #[inline(always)]
     pub fn apply_temperature(&self, logits: &mut [f32], temperature: f32) -> CandleResult<()> {
         scale_temperature(logits, temperature).map_err(|e| {
-            candle_core::Error::Msg(format!("SIMD temperature scaling failed: {:?}", e))
+            CandleError::Msg(format!("SIMD temperature scaling failed: {:?}", e))
         })
     }
 
@@ -127,8 +123,12 @@ impl CandleSoftmaxProcessor {
     /// Compute softmax in-place with SIMD acceleration
     #[inline(always)]
     pub fn softmax_inplace(&mut self, logits: &mut [f32]) -> Result<(), candle_core::Error> {
-        softmax(logits)
-            .map_err(|e| candle_core::Error::Msg(format!("Softmax failed: {}", e)))
+        let result = softmax(logits)
+            .map_err(|e| candle_core::Error::Msg(format!("Softmax failed: {}", e)))?;
+        
+        // Zero-allocation in-place copy with SIMD optimization
+        logits.copy_from_slice(&result);
+        Ok(())
     }
 
     /// Get processing statistics (zero allocation)
@@ -144,14 +144,14 @@ impl CandleSoftmaxProcessor {
 #[repr(C, align(64))]
 pub struct CandleTemperatureProcessor {
     inner: TemperatureProcessor,
-    temperature: f32,
-}
+    temperature: f32}
 
 impl CandleTemperatureProcessor {
     /// Create new SIMD temperature processor with zero allocation
     #[inline(always)]
     pub fn new(temperature: f32) -> CandleResult<Self> {
-        let inner = TemperatureProcessor::new();
+        let inner = TemperatureProcessor::new(temperature)
+            .map_err(|e| candle_core::Error::Msg(format!("ProcessingError: {}", e)))?; // Convert ProcessingError to candle_core::Error
 
         Ok(Self { inner, temperature })
     }

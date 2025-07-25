@@ -6,8 +6,7 @@ use crate::domain::mcp_tool::Tool;
 pub struct McpToolBuilder {
     name: String,
     description: String,
-    parameters: Value,
-}
+    parameters: Value}
 
 impl McpToolBuilder {
     /// Create a new McpToolBuilder
@@ -15,8 +14,7 @@ impl McpToolBuilder {
         Self {
             name,
             description,
-            parameters: Value::Object(Default::default()),
-        }
+            parameters: Value::Object(Default::default())}
     }
 
     /// Set the parameters schema
@@ -30,8 +28,7 @@ impl McpToolBuilder {
         McpToolImpl {
             name: self.name,
             description: self.description,
-            parameters: self.parameters,
-        }
+            parameters: self.parameters}
     }
 }
 
@@ -39,8 +36,7 @@ impl McpToolBuilder {
 pub struct McpToolImpl {
     name: String,
     description: String,
-    parameters: Value,
-}
+    parameters: Value}
 
 impl Tool for McpToolImpl {
     fn name(&self) -> &str {

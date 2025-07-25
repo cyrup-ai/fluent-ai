@@ -11,8 +11,7 @@ pub struct MemoryNodeBuilder {
     content: String,
     memory_type: MemoryType,
     importance: f32,
-    embedding: Option<Vec<f32>>,
-}
+    embedding: Option<Vec<f32>>}
 
 impl MemoryNodeBuilder {
     /// Create new memory node builder - EXACT syntax: MemoryNodeBuilder::new(content, memory_type)
@@ -22,8 +21,7 @@ impl MemoryNodeBuilder {
             content,
             memory_type,
             importance: 0.5,
-            embedding: None,
-        }
+            embedding: None}
     }
 
     /// Set importance level - EXACT syntax: .with_importance(importance)
@@ -51,9 +49,7 @@ impl MemoryNodeBuilder {
             metadata: MemoryMetadata {
                 importance: self.importance,
                 last_accessed: now,
-                creation_time: now,
-            },
-        }
+                creation_time: now}}
     }
 }
 

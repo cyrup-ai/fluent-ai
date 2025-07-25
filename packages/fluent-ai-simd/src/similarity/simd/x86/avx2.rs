@@ -10,8 +10,7 @@ use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics
 
 /// AVX2-optimized similarity implementation for x86/x64
 pub struct Avx2Similarity {
-    metrics: Arc<SimilarityMetrics>,
-}
+    metrics: Arc<SimilarityMetrics>}
 
 impl Default for Avx2Similarity {
     fn default() -> Self {
@@ -24,8 +23,7 @@ impl Avx2Similarity {
     #[inline]
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(SimilarityMetrics::default()),
-        }
+            metrics: Arc::new(SimilarityMetrics::default())}
     }
 
     /// Process vectors using real AVX2 SIMD instructions with FMA

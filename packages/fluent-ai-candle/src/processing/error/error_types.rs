@@ -123,8 +123,7 @@ pub enum ProcessingError {
     /// - Algorithm implementation bugs
     /// - Unreachable code paths
     #[error("Internal processing error: {0}")]
-    InternalError(String),
-}
+    InternalError(String)}
 
 impl ProcessingError {
     /// Create configuration error with context
@@ -207,8 +206,7 @@ impl ProcessingError {
             Self::BufferOverflow(_) => ErrorCategory::Resource,
             Self::InvalidInput(_) => ErrorCategory::Validation,
             Self::TensorOperationFailed(_) => ErrorCategory::External,
-            Self::InternalError(_) => ErrorCategory::Internal,
-        }
+            Self::InternalError(_) => ErrorCategory::Internal}
     }
 
     /// Check if error is recoverable
@@ -243,8 +241,7 @@ impl ProcessingError {
             Self::BufferOverflow(_) => ErrorSeverity::High,
             Self::InvalidInput(_) => ErrorSeverity::Low,
             Self::TensorOperationFailed(_) => ErrorSeverity::Medium,
-            Self::InternalError(_) => ErrorSeverity::Critical,
-        }
+            Self::InternalError(_) => ErrorSeverity::Critical}
     }
 
     /// Get suggested action for error resolution
@@ -263,8 +260,7 @@ impl ProcessingError {
             Self::TensorOperationFailed(_) => {
                 "Check tensor shapes and try different tensor operations"
             }
-            Self::InternalError(_) => "Report as bug, restart system if necessary",
-        }
+            Self::InternalError(_) => "Report as bug, restart system if necessary"}
     }
 
     /// Create error with additional context
@@ -289,7 +285,6 @@ impl ProcessingError {
             Self::TensorOperationFailed(msg) => {
                 Self::TensorOperationFailed(format!("{}: {}", context_str, msg))
             }
-            Self::InternalError(msg) => Self::InternalError(format!("{}: {}", context_str, msg)),
-        }
+            Self::InternalError(msg) => Self::InternalError(format!("{}: {}", context_str, msg))}
     }
 }

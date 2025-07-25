@@ -8,8 +8,7 @@ use std::sync::Arc;
 
 use fluent_ai_domain::{
     Library,
-    memory::{Memory, MemoryConfig, MemoryError, MemoryTool},
-};
+    memory::{Memory, MemoryConfig, MemoryError, MemoryTool}};
 use fluent_ai_memory::utils::config::DatabaseConfig;
 
 /// Library service error types
@@ -20,15 +19,13 @@ pub enum LibraryServiceError {
     MemoryInit {
         library: String,
         #[source]
-        source: MemoryError,
-    },
+        source: MemoryError},
     /// Library name validation error
     #[error("Invalid library name '{name}': {reason}")]
     InvalidName { name: String, reason: String },
     /// Configuration error
     #[error("Library configuration error: {0}")]
-    Config(String),
-}
+    Config(String)}
 
 /// Result type for library service operations
 pub type LibraryServiceResult<T> = Result<T, LibraryServiceError>;
@@ -74,8 +71,7 @@ impl LibraryMemoryService {
         if let Err(reason) = Library::validate_name(library.name()) {
             return Err(LibraryServiceError::InvalidName {
                 name: library.name().to_string(),
-                reason,
-            });
+                reason});
         }
 
         // Create library-specific memory configuration
@@ -87,8 +83,7 @@ impl LibraryMemoryService {
                 connection_string: std::env::var("FLUENT_AI_DB_URL")
                     .unwrap_or_else(|_| "mem://".to_string()),
                 username: None,
-                password: None,
-            },
+                password: None},
             vector_store: fluent_ai_memory::utils::config::VectorStoreConfig {
                 enabled: true,
                 dimension: 1536, // OpenAI embedding dimension
@@ -97,8 +92,7 @@ impl LibraryMemoryService {
             cache: fluent_ai_memory::utils::config::CacheConfig {
                 enabled: true,
                 max_size: 1000,
-                ttl_seconds: 3600,
-            },
+                ttl_seconds: 3600},
             provider_model: fluent_ai_provider::completion_provider::ModelConfig {
                 model_name: "gpt-4o-mini".to_string(),
                 max_tokens: None,
@@ -106,21 +100,18 @@ impl LibraryMemoryService {
                 top_p: None,
                 frequency_penalty: None,
                 presence_penalty: None,
-                stop_sequences: Vec::new(),
-            },
+                stop_sequences: Vec::new()},
             logging: fluent_ai_memory::utils::config::LoggingConfig {
                 level: "info".to_string(),
                 ..Default::default()
-            },
-        };
+            }};
 
         // Create memory instance with library-specific configuration
         Memory::new(config)
             .await
             .map_err(|source| LibraryServiceError::MemoryInit {
                 library: library.name().to_string(),
-                source,
-            })
+                source})
     }
 
     /// Create shared memory namespace that can be used by multiple agents

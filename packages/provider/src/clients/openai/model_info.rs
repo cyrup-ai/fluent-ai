@@ -26,8 +26,7 @@ impl ModelInfo for Gpt4o {
         supports_vision: true,
         supports_audio: true,
         provider: "openai",
-        model_name: "gpt-4o",
-    };
+        model_name: "gpt-4o"};
 }
 
 impl ModelPrompt for Gpt4o {
@@ -51,8 +50,7 @@ impl ModelInfo for Gpt4oMini {
         supports_vision: true,
         supports_audio: false,
         provider: "openai",
-        model_name: "gpt-4o-mini",
-    };
+        model_name: "gpt-4o-mini"};
 }
 
 impl ModelPrompt for Gpt4oMini {
@@ -76,8 +74,7 @@ impl ModelInfo for Gpt4Turbo {
         supports_vision: true,
         supports_audio: false,
         provider: "openai",
-        model_name: "gpt-4-turbo",
-    };
+        model_name: "gpt-4-turbo"};
 }
 
 impl ModelPrompt for Gpt4Turbo {
@@ -101,8 +98,7 @@ impl ModelInfo for Gpt35Turbo {
         supports_vision: false,
         supports_audio: false,
         provider: "openai",
-        model_name: "gpt-3.5-turbo",
-    };
+        model_name: "gpt-3.5-turbo"};
 }
 
 impl ModelPrompt for Gpt35Turbo {

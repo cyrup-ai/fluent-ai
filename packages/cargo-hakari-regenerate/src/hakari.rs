@@ -19,8 +19,7 @@ pub struct HakariManager {
     workspace_root: PathBuf,
     workspace_hack_path: PathBuf,
     config_manager: ConfigManager,
-    metadata_cache: Option<cargo_metadata::Metadata>,
-}
+    metadata_cache: Option<cargo_metadata::Metadata>}
 
 /// Hakari operation options
 #[derive(Debug, Clone)]
@@ -28,8 +27,7 @@ pub struct HakariOptions {
     pub verbose: bool,
     pub dry_run: bool,
     pub skip_verification: bool,
-    pub force_regenerate: bool,
-}
+    pub force_regenerate: bool}
 
 impl Default for HakariOptions {
     fn default() -> Self {
@@ -37,8 +35,7 @@ impl Default for HakariOptions {
             verbose: false,
             dry_run: false,
             skip_verification: false,
-            force_regenerate: false,
-        }
+            force_regenerate: false}
     }
 }
 
@@ -48,8 +45,7 @@ pub struct HakariResult {
     pub success: bool,
     pub operations_performed: SmallVec<[String; 8]>,
     pub warnings: SmallVec<[String; 4]>,
-    pub duration: std::time::Duration,
-}
+    pub duration: std::time::Duration}
 
 impl HakariManager {
     /// Create new hakari manager
@@ -62,8 +58,7 @@ impl HakariManager {
             workspace_root,
             workspace_hack_path,
             config_manager,
-            metadata_cache: None,
-        }
+            metadata_cache: None}
     }
     
     /// Get cargo metadata with caching
@@ -73,8 +68,7 @@ impl HakariManager {
                 .manifest_path(self.workspace_root.join("Cargo.toml"))
                 .exec()
                 .map_err(|e| HakariError::InitializationFailed {
-                    reason: format!("failed to get cargo metadata: {}", e),
-                })?;
+                    reason: format!("failed to get cargo metadata: {}", e)})?;
             
             self.metadata_cache = Some(metadata);
         }
@@ -115,8 +109,7 @@ impl HakariManager {
         
         if !init_result.success {
             return Err(HakariError::InitializationFailed {
-                reason: "cargo hakari init failed".to_string(),
-            }.into());
+                reason: "cargo hakari init failed".to_string()}.into());
         }
         
         operations.push("Initialized workspace-hack with cargo hakari".to_string());
@@ -131,8 +124,7 @@ impl HakariManager {
             success: true,
             operations_performed: operations,
             warnings,
-            duration: start_time.elapsed(),
-        })
+            duration: start_time.elapsed()})
     }
     
     /// Run cargo hakari init command
@@ -154,14 +146,12 @@ impl HakariManager {
         
         let output = cmd.output()
             .map_err(|e| HakariError::InitializationFailed {
-                reason: format!("failed to run cargo hakari init: {}", e),
-            })?;
+                reason: format!("failed to run cargo hakari init: {}", e)})?;
         
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(HakariError::InitializationFailed {
-                reason: format!("cargo hakari init failed: {}", stderr),
-            }.into());
+                reason: format!("cargo hakari init failed: {}", stderr)}.into());
         }
         
         Ok(HakariResult {
@@ -178,8 +168,7 @@ impl HakariManager {
         
         if !cargo_toml_path.exists() {
             return Err(HakariError::WorkspaceHackNotFound {
-                path: cargo_toml_path,
-            }.into());
+                path: cargo_toml_path}.into());
         }
         
         transaction.record_file_modified(cargo_toml_path.clone()).await?;
@@ -235,8 +224,7 @@ impl HakariManager {
         
         if !generate_result.success {
             return Err(HakariError::GenerationFailed {
-                reason: "cargo hakari generate failed".to_string(),
-            }.into());
+                reason: "cargo hakari generate failed".to_string()}.into());
         }
         
         operations.extend(generate_result.operations_performed);
@@ -257,8 +245,7 @@ impl HakariManager {
             success: true,
             operations_performed: operations,
             warnings,
-            duration: start_time.elapsed(),
-        })
+            duration: start_time.elapsed()})
     }
     
     /// Run cargo hakari generate command
@@ -278,14 +265,12 @@ impl HakariManager {
         
         let output = cmd.output()
             .map_err(|e| HakariError::GenerationFailed {
-                reason: format!("failed to run cargo hakari generate: {}", e),
-            })?;
+                reason: format!("failed to run cargo hakari generate: {}", e)})?;
         
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(HakariError::GenerationFailed {
-                reason: format!("cargo hakari generate failed: {}", stderr),
-            }.into());
+                reason: format!("cargo hakari generate failed: {}", stderr)}.into());
         }
         
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -318,8 +303,7 @@ impl HakariManager {
         
         let output = cmd.output()
             .map_err(|e| HakariError::VerificationFailed {
-                reason: format!("failed to run cargo hakari verify: {}", e),
-            })?;
+                reason: format!("failed to run cargo hakari verify: {}", e)})?;
         
         let success = output.status.success();
         let operations = if success {
@@ -333,8 +317,7 @@ impl HakariManager {
             success,
             operations_performed: operations,
             warnings: SmallVec::new(),
-            duration: start_time.elapsed(),
-        })
+            duration: start_time.elapsed()})
     }
     
     /// Complete workspace-hack regeneration workflow
@@ -382,8 +365,7 @@ impl HakariManager {
             success: true,
             operations_performed: all_operations,
             warnings: all_warnings,
-            duration: start_time.elapsed(),
-        })
+            duration: start_time.elapsed()})
     }
     
     /// Check if workspace-hack exists and is valid
@@ -419,8 +401,7 @@ impl HakariManager {
         
         let doc = content.parse::<toml_edit::Document>()
             .map_err(|e| HakariError::ConfigInvalid {
-                reason: format!("failed to parse workspace-hack Cargo.toml: {}", e),
-            })?;
+                reason: format!("failed to parse workspace-hack Cargo.toml: {}", e)})?;
         
         let name = doc.get("package")
             .and_then(|p| p.get("name"))
@@ -441,8 +422,7 @@ impl HakariManager {
             name: name.to_string(),
             version: version.to_string(),
             path: self.workspace_hack_path.clone(),
-            dependency_count,
-        }))
+            dependency_count}))
     }
     
     /// Clean up temporary files and backups
@@ -464,13 +444,11 @@ pub struct WorkspaceHackInfo {
     pub name: String,
     pub version: String,
     pub path: PathBuf,
-    pub dependency_count: usize,
-}
+    pub dependency_count: usize}
 
 /// Hakari configuration validator
 pub struct ConfigValidator {
-    config: HakariConfig,
-}
+    config: HakariConfig}
 
 impl ConfigValidator {
     /// Create new validator
@@ -541,16 +519,14 @@ impl ConfigValidator {
 #[derive(Debug, Clone)]
 pub struct ValidationReport {
     pub errors: SmallVec<[String; 4]>,
-    pub warnings: SmallVec<[String; 8]>,
-}
+    pub warnings: SmallVec<[String; 8]>}
 
 impl ValidationReport {
     /// Create new validation report
     pub fn new() -> Self {
         Self {
             errors: SmallVec::new(),
-            warnings: SmallVec::new(),
-        }
+            warnings: SmallVec::new()}
     }
     
     /// Add error

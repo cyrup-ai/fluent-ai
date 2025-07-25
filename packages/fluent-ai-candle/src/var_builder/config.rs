@@ -1,8 +1,6 @@
 //! Configuration structures and builders for VarBuilder
 
 use candle_core::{DType, Device};
-use super::types::{ConfigKey, ConfigValue, MAX_CONFIG_ENTRIES};
-use arrayvec::{ArrayString, ArrayVec};
 
 /// Ultra-compact VarBuilder configuration
 ///
@@ -32,8 +30,7 @@ pub struct VarBuilderConfig {
     /// Bit 5: enable_tensor_fusion
     /// Bit 6: enable_tensor_cache
     /// Bits 7-63: Reserved
-    flags: u64,
-}
+    flags: u64}
 
 impl VarBuilderConfig {
     /// Create new configuration with defaults
@@ -216,8 +213,7 @@ impl Default for VarBuilderConfig {
 /// Configuration builder with fluent API
 #[derive(Debug, Clone)]
 pub struct VarBuilderConfigBuilder {
-    config: VarBuilderConfig,
-}
+    config: VarBuilderConfig}
 
 impl VarBuilderConfigBuilder {
     #[inline(always)]

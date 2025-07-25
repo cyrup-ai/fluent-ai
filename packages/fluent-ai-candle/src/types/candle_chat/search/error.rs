@@ -77,8 +77,7 @@ pub enum SearchError {
     ConfigurationError { 
         /// Invalid setting
         setting: Arc<str> 
-    },
-}
+    }}
 
 impl SearchError {
     /// Create an index error
@@ -143,8 +142,7 @@ impl SearchError {
             Self::IoError { .. } => false,
             Self::SerializationError { .. } => false,
             Self::ConcurrencyError { .. } => true,
-            Self::ConfigurationError { .. } => false,
-        }
+            Self::ConfigurationError { .. } => false}
     }
     
     /// Get error category
@@ -159,8 +157,7 @@ impl SearchError {
             Self::IoError { .. } => "io",
             Self::SerializationError { .. } => "serialization",
             Self::ConcurrencyError { .. } => "concurrency",
-            Self::ConfigurationError { .. } => "configuration",
-        }
+            Self::ConfigurationError { .. } => "configuration"}
     }
     
     /// Get error severity level
@@ -175,8 +172,7 @@ impl SearchError {
             Self::IoError { .. } => ErrorSeverity::Error,
             Self::SerializationError { .. } => ErrorSeverity::Error,
             Self::ConcurrencyError { .. } => ErrorSeverity::Warning,
-            Self::ConfigurationError { .. } => ErrorSeverity::Critical,
-        }
+            Self::ConfigurationError { .. } => ErrorSeverity::Critical}
     }
 }
 
@@ -190,8 +186,7 @@ pub enum ErrorSeverity {
     /// Error conditions
     Error,
     /// Critical system failures
-    Critical,
-}
+    Critical}
 
 impl ErrorSeverity {
     /// Get severity as string
@@ -200,8 +195,7 @@ impl ErrorSeverity {
             Self::Info => "info",
             Self::Warning => "warning",
             Self::Error => "error",
-            Self::Critical => "critical",
-        }
+            Self::Critical => "critical"}
     }
     
     /// Get severity as numeric level (0-3)
@@ -210,8 +204,7 @@ impl ErrorSeverity {
             Self::Info => 0,
             Self::Warning => 1,
             Self::Error => 2,
-            Self::Critical => 3,
-        }
+            Self::Critical => 3}
     }
 }
 
@@ -226,8 +219,7 @@ pub struct ErrorContext {
     /// Additional context information
     pub context: Vec<(Arc<str>, Arc<str>)>,
     /// Timestamp when error occurred
-    pub timestamp: u64,
-}
+    pub timestamp: u64}
 
 impl ErrorContext {
     /// Create new error context
@@ -238,8 +230,7 @@ impl ErrorContext {
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
-        }
+                .as_secs()}
     }
     
     /// Add context information

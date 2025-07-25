@@ -18,24 +18,19 @@
 ///   ring powering [`AsyncStream`].
 /// * concurrent fetches use `FuturesUnordered` which avoids intermediate `Vec`s
 ///   and allocates at most **once** for the task list.
-use std::collections::HashMap;
-
 use futures_util::{
     StreamExt, TryStreamExt,
-    stream::{self, FuturesUnordered},
-};
+    stream::{self, FuturesUnordered}};
 
 use crate::{
     agent::Agent,
     client::completion::Chat,
     completion::{
         Completion, CompletionError, CompletionModelTrait, CompletionRequestBuilder, Document,
-        Message, Prompt, PromptError,
-    },
+        Message, Prompt, PromptError},
     domain::tool::ToolSet,
     streaming::{StreamingChat, StreamingCompletion, StreamingCompletionResponse, StreamingPrompt},
-    vector_store::{VectorStoreError, VectorStoreIndexDyn},
-};
+    vector_store::{VectorStoreError, VectorStoreIndexDyn}};
 
 // -------------------------------------------------------------------------
 // Completion impl
@@ -121,8 +116,7 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
                                     id,
                                     text: serde_json::to_string_pretty(&doc)
                                         .unwrap_or_else(|_| doc.to_string()),
-                                    additional_props: HashMap::new(),
-                                })
+                                    additional_props: HashMap::new()})
                                 .collect::<Vec<_>>()
                         })
                         .map_err(VectorStoreError::from)
@@ -202,8 +196,7 @@ impl<M: CompletionModelTrait> Prompt for Agent<M> {
         let prompt_request = PromptRequest {
             agent: self,
             prompt: prompt_text,
-            _phantom: std::marker::PhantomData,
-        };
+            _phantom: std::marker::PhantomData};
         Ok(prompt_request)
     }
 }

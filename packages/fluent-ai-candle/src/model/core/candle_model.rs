@@ -16,8 +16,7 @@ use crate::constants::DEFAULT_TOKEN_BUFFER_SIZE;
 use crate::error::{CandleError, CandleResult};
 use crate::model::{
     cache::{KVCacheConfig, KVCacheManager},
-    types::ModelConfig,
-};
+    types::ModelConfig};
 
 /// Zero-allocation candle model with enhanced lock-free caching
 #[repr(C)]
@@ -43,8 +42,7 @@ pub struct CandleModel {
     /// Average tokens per second
     pub(super) avg_tokens_per_second: AtomicU64,
     /// Last generation timestamp
-    pub(super) last_generation_time: AtomicU64,
-}
+    pub(super) last_generation_time: AtomicU64}
 
 impl CandleModel {
     /// Create a new candle model with enhanced KV cache
@@ -59,8 +57,7 @@ impl CandleModel {
         let initial_state = ModelState {
             model: Box::new(super::dummy_model::DummyModel),
             config: ModelConfig::default(),
-            _mmap: None,
-        };
+            _mmap: None};
 
         let cache_manager = Arc::new(KVCacheManager::new(cache_config));
 
@@ -75,8 +72,7 @@ impl CandleModel {
             memory_usage: AtomicU64::new(0),
             total_tokens_generated: AtomicU64::new(0),
             avg_tokens_per_second: AtomicU64::new(0),
-            last_generation_time: AtomicU64::new(0),
-        }
+            last_generation_time: AtomicU64::new(0)}
     }
 
     /// Start a new sequence for generation with blazing-fast atomic operations
@@ -176,7 +172,7 @@ impl CandleModel {
 
         let _file_path = file_path.to_string();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<()>| {
             // For now, provide a simple placeholder implementation
             // TODO: Implement proper async model loading
             emit!(sender, ());
@@ -191,7 +187,7 @@ impl CandleModel {
         let _repo_id = repo_id.to_string();
         let _filename = filename.to_string();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<()>| {
             // For now, provide a simple placeholder implementation
             // TODO: Implement proper async hub loading
             emit!(sender, ());
@@ -216,8 +212,7 @@ impl CandleModel {
         let model_state = ModelState {
             model: Box::new(kimi_model),
             config: ModelConfig::default(),
-            _mmap: None,
-        };
+            _mmap: None};
 
         // Update model state atomically
         self.model_state.store(Arc::new(model_state));
@@ -254,8 +249,7 @@ fn load_from_file_sync_impl(
     let new_model_state = ModelState {
         model: Box::new(kimi_model),
         config: ModelConfig::default(),
-        _mmap: None,
-    };
+        _mmap: None};
 
     // Update model state atomically
     model_state.store(Arc::new(new_model_state));
@@ -265,8 +259,13 @@ fn load_from_file_sync_impl(
     Ok(())
 }
 
-unsafe impl Send for CandleModel {}
-unsafe impl Sync for CandleModel {}
+// Send + Sync are automatically derived since CandleModel uses safe types
+
+impl Default for CandleModel {
+    fn default() -> Self {
+        Self::new(Device::Cpu)
+    }
+}
 
 impl Drop for CandleModel {
     fn drop(&mut self) {

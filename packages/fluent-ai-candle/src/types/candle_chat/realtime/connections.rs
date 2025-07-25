@@ -5,16 +5,14 @@
 
 use crate::types::candle_chat::realtime::{
     events::{RealTimeEvent, ConnectionStatus},
-    errors::RealTimeError,
-};
+    errors::RealTimeError};
 use arc_swap::ArcSwap;
 use crossbeam_skiplist::SkipMap;
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-    Arc,
-};
+    Arc};
 use tokio::sync::broadcast;
 
 /// Connection state with atomic operations for zero-allocation, lock-free concurrency
@@ -34,8 +32,7 @@ pub struct ConnectionState {
     /// Reconnection attempts
     pub reconnection_attempts: AtomicU64,
     /// Is connection healthy
-    pub is_healthy: AtomicBool,
-}
+    pub is_healthy: AtomicBool}
 
 impl ConnectionState {
     /// Create a new connection state
@@ -53,8 +50,7 @@ impl ConnectionState {
             connected_at: AtomicU64::new(now),
             heartbeat_count: AtomicU64::new(0),
             reconnection_attempts: AtomicU64::new(0),
-            is_healthy: AtomicBool::new(true),
-        }
+            is_healthy: AtomicBool::new(true)}
     }
 
     /// Update heartbeat
@@ -121,8 +117,7 @@ impl ConnectionState {
             connection_duration,
             heartbeat_count: self.heartbeat_count.load(Ordering::Relaxed),
             reconnection_attempts: self.reconnection_attempts.load(Ordering::Relaxed),
-            is_healthy: self.is_healthy.load(Ordering::Relaxed),
-        }
+            is_healthy: self.is_healthy.load(Ordering::Relaxed)}
     }
 }
 
@@ -136,8 +131,7 @@ pub struct ConnectionStatistics {
     pub connection_duration: u64,
     pub heartbeat_count: u64,
     pub reconnection_attempts: u64,
-    pub is_healthy: bool,
-}
+    pub is_healthy: bool}
 
 /// Connection manager with heartbeat and health monitoring
 pub struct ConnectionManager {
@@ -156,8 +150,7 @@ pub struct ConnectionManager {
     /// Failed connection counter
     failed_connection_counter: Arc<ConsistentCounter>,
     /// Health check task handle
-    health_check_task: ArcSwap<Option<fluent_ai_async::AsyncTask<()>>>,
-}
+    health_check_task: ArcSwap<Option<fluent_ai_async::AsyncTask<()>>>}
 
 impl std::fmt::Debug for ConnectionManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -198,8 +191,7 @@ impl ConnectionManager {
             connection_counter: Arc::new(ConsistentCounter::new(0)),
             heartbeat_counter: Arc::new(ConsistentCounter::new(0)),
             failed_connection_counter: Arc::new(ConsistentCounter::new(0)),
-            health_check_task: ArcSwap::new(Arc::new(None)),
-        }
+            health_check_task: ArcSwap::new(Arc::new(None))}
     }
 
     /// Add connection
@@ -224,8 +216,7 @@ impl ConnectionManager {
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
-        };
+                .as_secs()};
 
         let _ = self.event_broadcaster.send(event);
 
@@ -257,8 +248,7 @@ impl ConnectionManager {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs(),
-            };
+                    .as_secs()};
 
             let _ = self.event_broadcaster.send(event);
         }
@@ -285,8 +275,7 @@ impl ConnectionManager {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs(),
-            };
+                    .as_secs()};
 
             let _ = self.event_broadcaster.send(event);
         }
@@ -327,8 +316,7 @@ impl ConnectionManager {
             total_heartbeats: self.heartbeat_counter.get(),
             failed_connections: self.failed_connection_counter.get(),
             heartbeat_timeout: self.heartbeat_timeout.load(Ordering::Relaxed),
-            health_check_interval: self.health_check_interval.load(Ordering::Relaxed),
-        }
+            health_check_interval: self.health_check_interval.load(Ordering::Relaxed)}
     }
 }
 
@@ -339,5 +327,4 @@ pub struct ConnectionManagerStatistics {
     pub total_heartbeats: usize,
     pub failed_connections: usize,
     pub heartbeat_timeout: u64,
-    pub health_check_interval: u64,
-}
+    pub health_check_interval: u64}

@@ -36,8 +36,7 @@ impl ProcessingContext {
                     (frequency as f32).exp().min(10.0) // Clamp to prevent overflow
                 }
             }
-            RepetitionPenaltyType::SquareRoot => (frequency as f32).sqrt(),
-        }
+            RepetitionPenaltyType::SquareRoot => (frequency as f32).sqrt()}
     }
 
     /// Get context utilization ratio

@@ -83,8 +83,7 @@ mod integration_tests {
                 assert!(msg.contains("temperature calculation"));
                 assert!(msg.contains("division by zero"));
             }
-            _ => panic!("Expected NumericalError"),
-        }
+            _ => panic!("Expected NumericalError")}
     }
 
     #[test]
@@ -110,8 +109,7 @@ mod integration_tests {
             ProcessingError::InvalidConfiguration(msg) => {
                 assert!(msg.contains("Invalid temperature"));
             }
-            _ => panic!("Expected InvalidConfiguration error"),
-        }
+            _ => panic!("Expected InvalidConfiguration error")}
     }
 
     #[test]

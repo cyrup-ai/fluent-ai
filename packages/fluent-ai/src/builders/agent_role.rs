@@ -6,9 +6,8 @@ use std::marker::PhantomData;
 
 use fluent_ai_domain::{
     AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
-    AgentWithHistory, ChatMessageChunk, ContextArgs, ConversationHistoryArgs, HashMap, MessageRole,
-    ToolArgs, ZeroOneOrMany,
-};
+    AgentWithHistory, ChatMessageChunk, ContextArgs, ConversationHistoryArgs, MessageRole,
+    ToolArgs, ZeroOneOrMany};
 use serde_json::Value;
 
 /// MCP Server configuration
@@ -19,8 +18,7 @@ struct McpServerConfig {
     #[allow(dead_code)] // TODO: Use for MCP server binary executable path
     bin_path: Option<String>,
     #[allow(dead_code)] // TODO: Use for MCP server initialization command
-    init_command: Option<String>,
-}
+    init_command: Option<String>}
 
 /// Builder for creating agent roles - EXACT API from ARCHITECTURE.md
 pub struct AgentRoleBuilder {
@@ -37,15 +35,13 @@ pub struct AgentRoleBuilder {
     metadata: Option<HashMap<String, Value>>,
     on_tool_result_handler: Option<Box<dyn Fn(ZeroOneOrMany<Value>) + Send + Sync>>,
     on_conversation_turn_handler:
-        Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>,
-}
+        Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>}
 
 /// MCP Server builder
 pub struct McpServerBuilder<T> {
     parent: AgentRoleBuilder,
     server_type: PhantomData<T>,
-    bin_path: Option<String>,
-}
+    bin_path: Option<String>}
 
 /// Placeholder for Stdio type
 pub struct Stdio;
@@ -66,8 +62,7 @@ impl AgentRoleBuilder {
             memory: None,
             metadata: None,
             on_tool_result_handler: None,
-            on_conversation_turn_handler: None,
-        }
+            on_conversation_turn_handler: None}
     }
 
     /// Set the completion provider - EXACT syntax: .completion_provider(Mistral::MagistralSmall)
@@ -108,8 +103,7 @@ impl AgentRoleBuilder {
         McpServerBuilder {
             parent: self,
             server_type: PhantomData,
-            bin_path: None,
-        }
+            bin_path: None}
     }
 
     /// Add tools - EXACT syntax: .tools(Tool<Perplexity>::new(...), Tool::named(...).bin(...).description(...))
@@ -178,8 +172,7 @@ impl AgentRoleBuilder {
     {
         AgentRoleBuilderWithHandler {
             inner: self,
-            error_handler: Box::new(error_handler),
-        }
+            error_handler: Box::new(error_handler)}
     }
 
     /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
@@ -190,8 +183,7 @@ impl AgentRoleBuilder {
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self,
-            chunk_handler: Box::new(handler),
-        }
+            chunk_handler: Box::new(handler)}
     }
 }
 
@@ -208,12 +200,10 @@ impl<T> McpServerBuilder<T> {
         let new_config = McpServerConfig {
             server_type: std::any::type_name::<T>().to_string(),
             bin_path: self.bin_path,
-            init_command: Some(command.into()),
-        };
+            init_command: Some(command.into())};
         parent.mcp_servers = match parent.mcp_servers {
             Some(servers) => Some(servers.with_pushed(new_config)),
-            None => Some(ZeroOneOrMany::one(new_config)),
-        };
+            None => Some(ZeroOneOrMany::one(new_config))};
         parent
     }
 }
@@ -223,8 +213,7 @@ pub struct AgentRoleBuilderWithHandler {
     #[allow(dead_code)] // TODO: Use for accessing agent role configuration and building
     inner: AgentRoleBuilder,
     #[allow(dead_code)] // TODO: Use for polymorphic error handling during agent role creation
-    error_handler: Box<dyn FnMut(String) + Send>,
-}
+    error_handler: Box<dyn FnMut(String) + Send>}
 
 impl AgentRoleBuilderWithHandler {
     /// Add chunk handler after error handler - EXACT syntax: .on_chunk(|chunk| { ... })
@@ -234,8 +223,7 @@ impl AgentRoleBuilderWithHandler {
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self.inner,
-            chunk_handler: Box::new(handler),
-        }
+            chunk_handler: Box::new(handler)}
     }
 
     /// Build an agent role directly - EXACT syntax: .build()
@@ -254,16 +242,14 @@ impl AgentRoleBuilderWithHandler {
             memory: self.inner.memory,
             metadata: self.inner.metadata,
             on_tool_result_handler: self.inner.on_tool_result_handler,
-            on_conversation_turn_handler: self.inner.on_conversation_turn_handler,
-        }
+            on_conversation_turn_handler: self.inner.on_conversation_turn_handler}
     }
 }
 
 /// Builder with chunk handler - has access to terminal methods
 pub struct AgentRoleBuilderWithChunkHandler {
     inner: AgentRoleBuilder,
-    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
-}
+    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>}
 
 impl AgentRoleBuilderWithChunkHandler {
     /// Convert to agent - EXACT syntax: .into_agent()
@@ -271,7 +257,6 @@ impl AgentRoleBuilderWithChunkHandler {
         AgentWithHistory {
             inner: self.inner,
             chunk_handler: self.chunk_handler,
-            conversation_history: None,
-        }
+            conversation_history: None}
     }
 }

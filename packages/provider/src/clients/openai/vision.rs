@@ -3,8 +3,6 @@
 //! Provides comprehensive support for OpenAI's vision models (GPT-4O, GPT-4V)
 //! with optimal performance patterns and full multimodal capabilities.
 
-use std::collections::HashMap;
-
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,8 +18,7 @@ pub enum ImageDetail {
     /// High detail - more detailed analysis, higher cost
     High,
     /// Auto detail - model decides based on image
-    Auto,
-}
+    Auto}
 
 /// Image format types supported by OpenAI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,8 +26,7 @@ pub enum ImageFormat {
     PNG,
     JPEG,
     WEBP,
-    GIF,
-}
+    GIF}
 
 impl ImageFormat {
     /// Convert to image crate's ImageFormat for processing
@@ -41,8 +37,7 @@ impl ImageFormat {
             Self::PNG => Ok(image::ImageFormat::Png),
             Self::JPEG => Ok(image::ImageFormat::Jpeg),
             Self::WEBP => Ok(image::ImageFormat::WebP),
-            Self::GIF => Ok(image::ImageFormat::Gif),
-        }
+            Self::GIF => Ok(image::ImageFormat::Gif)}
     }
 
     /// Detect image format from raw bytes using magic numbers
@@ -90,8 +85,7 @@ impl ImageFormat {
             _ => Err(OpenAIError::VisionError(format!(
                 "Unsupported image extension: {}",
                 ext
-            ))),
-        }
+            )))}
     }
 
     /// Get MIME type for the format
@@ -101,8 +95,7 @@ impl ImageFormat {
             Self::PNG => "image/png",
             Self::JPEG => "image/jpeg",
             Self::WEBP => "image/webp",
-            Self::GIF => "image/gif",
-        }
+            Self::GIF => "image/gif"}
     }
 
     /// Get file extension for the format
@@ -112,8 +105,7 @@ impl ImageFormat {
             Self::PNG => "png",
             Self::JPEG => "jpg",
             Self::WEBP => "webp",
-            Self::GIF => "gif",
-        }
+            Self::GIF => "gif"}
     }
 }
 
@@ -123,8 +115,7 @@ pub struct ImageData {
     pub data: Vec<u8>,
     pub format: ImageFormat,
     pub width: Option<u32>,
-    pub height: Option<u32>,
-}
+    pub height: Option<u32>}
 
 /// Vision analysis request configuration
 #[derive(Debug, Clone)]
@@ -133,8 +124,7 @@ pub struct VisionRequest {
     pub images: Vec<ImageInput>,
     pub detail: ImageDetail,
     pub max_tokens: Option<u32>,
-    pub temperature: Option<f32>,
-}
+    pub temperature: Option<f32>}
 
 /// Image input for vision requests
 #[derive(Debug, Clone)]
@@ -142,20 +132,16 @@ pub enum ImageInput {
     /// Image URL (publicly accessible)
     Url {
         url: String,
-        detail: Option<ImageDetail>,
-    },
+        detail: Option<ImageDetail>},
     /// Base64 encoded image data
     Data {
         data: Vec<u8>,
         mime_type: String,
-        detail: Option<ImageDetail>,
-    },
+        detail: Option<ImageDetail>},
     /// File path to image
     Path {
         path: String,
-        detail: Option<ImageDetail>,
-    },
-}
+        detail: Option<ImageDetail>}}
 
 /// Vision analysis response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,8 +150,7 @@ pub struct VisionResponse {
     pub objects: Vec<DetectedObject>,
     pub text: Vec<ExtractedText>,
     pub confidence: f32,
-    pub processing_time_ms: u64,
-}
+    pub processing_time_ms: u64}
 
 /// Detected object in image
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,8 +158,7 @@ pub struct DetectedObject {
     pub name: String,
     pub confidence: f32,
     pub bounding_box: BoundingBox,
-    pub attributes: HashMap<String, String>,
-}
+    pub attributes: HashMap<String, String>}
 
 /// Extracted text from image (OCR)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -182,8 +166,7 @@ pub struct ExtractedText {
     pub text: String,
     pub confidence: f32,
     pub bounding_box: BoundingBox,
-    pub language: Option<String>,
-}
+    pub language: Option<String>}
 
 /// Bounding box coordinates
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,8 +174,7 @@ pub struct BoundingBox {
     pub x: f32,
     pub y: f32,
     pub width: f32,
-    pub height: f32,
-}
+    pub height: f32}
 
 /// Image analysis capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -202,8 +184,7 @@ pub struct ImageAnalysisCapabilities {
     pub scene_description: bool,
     pub facial_recognition: bool,
     pub brand_detection: bool,
-    pub landmark_recognition: bool,
-}
+    pub landmark_recognition: bool}
 
 impl ImageDetail {
     /// Convert to API string representation
@@ -212,8 +193,7 @@ impl ImageDetail {
         match self {
             Self::Low => "low",
             Self::High => "high",
-            Self::Auto => "auto",
-        }
+            Self::Auto => "auto"}
     }
 
     /// Get token cost multiplier for detail level
@@ -233,8 +213,7 @@ impl ImageDetail {
             (Self::High, _) => true, // High detail supports all features
             (Self::Auto, "text_extraction" | "object_detection") => true,
             (Self::Low, "scene_description") => true,
-            _ => false,
-        }
+            _ => false}
     }
 }
 
@@ -250,8 +229,7 @@ impl ImageFormat {
             _ => Err(OpenAIError::VisionError(format!(
                 "Unsupported image format: {}",
                 ext
-            ))),
-        }
+            )))}
     }
 
     /// Detect format from magic bytes
@@ -283,8 +261,7 @@ impl ImageFormat {
             Self::PNG => "image/png",
             Self::JPEG => "image/jpeg",
             Self::WEBP => "image/webp",
-            Self::GIF => "image/gif",
-        }
+            Self::GIF => "image/gif"}
     }
 
     /// Check if format supports transparency
@@ -309,8 +286,7 @@ impl ImageData {
             data,
             format,
             width: None,
-            height: None,
-        })
+            height: None})
     }
 
     /// Create from file path
@@ -329,8 +305,7 @@ impl ImageData {
             data,
             format,
             width: None,
-            height: None,
-        })
+            height: None})
     }
 
     /// Get data URL for embedding in requests
@@ -366,8 +341,7 @@ impl ImageData {
 
         // Validate format is supported
         match self.format {
-            ImageFormat::PNG | ImageFormat::JPEG | ImageFormat::WEBP | ImageFormat::GIF => Ok(()),
-        }
+            ImageFormat::PNG | ImageFormat::JPEG | ImageFormat::WEBP | ImageFormat::GIF => Ok(())}
     }
 
     /// Resize image if dimensions exceed the specified limits using production-grade image processing
@@ -444,8 +418,7 @@ impl ImageInput {
     pub fn url(url: impl Into<String>, detail: Option<ImageDetail>) -> Self {
         Self::Url {
             url: url.into(),
-            detail,
-        }
+            detail}
     }
 
     /// Create from raw image data
@@ -454,8 +427,7 @@ impl ImageInput {
         Self::Data {
             data,
             mime_type: mime_type.into(),
-            detail,
-        }
+            detail}
     }
 
     /// Create from file path
@@ -463,8 +435,7 @@ impl ImageInput {
     pub fn file(path: impl Into<String>, detail: Option<ImageDetail>) -> Self {
         Self::Path {
             path: path.into(),
-            detail,
-        }
+            detail}
     }
 
     /// Get detail level with fallback to auto
@@ -498,8 +469,7 @@ impl ImageInput {
             Self::Data {
                 data,
                 mime_type,
-                detail,
-            } => {
+                detail} => {
                 let base64_data = base64::engine::general_purpose::STANDARD.encode(data);
                 let data_url = format!("data:{};base64,{}", mime_type, base64_data);
 
@@ -611,8 +581,7 @@ impl VisionRequest {
             images: Vec::new(),
             detail: ImageDetail::Auto,
             max_tokens: None,
-            temperature: None,
-        }
+            temperature: None}
     }
 
     /// Add image URL to request
@@ -751,25 +720,21 @@ pub fn get_model_capabilities(model: &str) -> ImageAnalysisCapabilities {
             scene_description: true,
             facial_recognition: false, // Not officially supported
             brand_detection: true,
-            landmark_recognition: true,
-        },
+            landmark_recognition: true},
         "gpt-4-vision-preview" | "gpt-4-turbo" => ImageAnalysisCapabilities {
             object_detection: true,
             text_extraction: true,
             scene_description: true,
             facial_recognition: false,
             brand_detection: false,
-            landmark_recognition: false,
-        },
+            landmark_recognition: false},
         _ => ImageAnalysisCapabilities {
             object_detection: false,
             text_extraction: false,
             scene_description: false,
             facial_recognition: false,
             brand_detection: false,
-            landmark_recognition: false,
-        },
-    }
+            landmark_recognition: false}}
 }
 
 /// Check if model supports vision features

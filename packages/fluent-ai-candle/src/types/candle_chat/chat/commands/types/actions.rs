@@ -11,8 +11,7 @@ pub enum SearchScope {
     All,
     Current,
     Recent,
-    Bookmarked,
-}
+    Bookmarked}
 
 /// Template-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,8 +20,7 @@ pub enum TemplateAction {
     Create,
     Delete,
     Edit,
-    Use,
-}
+    Use}
 
 /// Macro-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,8 +29,7 @@ pub enum MacroAction {
     Create,
     Delete,
     Edit,
-    Execute,
-}
+    Execute}
 
 /// Branch-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,8 +38,7 @@ pub enum BranchAction {
     Create,
     Switch,
     Merge,
-    Delete,
-}
+    Delete}
 
 /// Session-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,8 +48,7 @@ pub enum SessionAction {
     Switch,
     Delete,
     Export,
-    Import,
-}
+    Import}
 
 /// Tool-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,8 +58,7 @@ pub enum ToolAction {
     Remove,
     Configure,
     Update,
-    Execute,
-}
+    Execute}
 
 /// Stats-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,8 +68,7 @@ pub enum StatsType {
     History,
     Tokens,
     Costs,
-    Errors,
-}
+    Errors}
 
 /// Theme-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,8 +78,7 @@ pub enum ThemeAction {
     Create,
     Export,
     Import,
-    Edit,
-}
+    Edit}
 
 /// Debug-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,8 +88,7 @@ pub enum DebugAction {
     Performance,
     Memory,
     Network,
-    Cache,
-}
+    Cache}
 
 /// History-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,8 +98,7 @@ pub enum HistoryAction {
     Clear,
     Export,
     Import,
-    Backup,
-}
+    Backup}
 
 /// Import-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -116,5 +106,4 @@ pub enum ImportType {
     Chat,
     Config,
     Templates,
-    Macros,
-}
+    Macros}

@@ -14,15 +14,13 @@ pub const XATTR_EXECUTION_COUNT: &str = "user.ironexec.execution_count";
 /// Manages source code metadata using extended attributes
 pub struct MetadataManager {
     /// Base directory for the repository
-    repo_path: PathBuf,
-}
+    repo_path: PathBuf}
 
 impl MetadataManager {
     /// Creates a new metadata manager for the specified repository path
     pub fn new<P: AsRef<Path>>(repo_path: P) -> Self {
         Self {
-            repo_path: repo_path.as_ref().to_path_buf(),
-        }
+            repo_path: repo_path.as_ref().to_path_buf()}
     }
 
     /// Sets up git filters for the repository
@@ -160,8 +158,7 @@ fn main() -> io::Result<()> {{
                     Ok(Some(bytes)) => {
                         String::from_utf8_lossy(&bytes).parse::<u32>().unwrap_or(0) + 1
                     }
-                    _ => 1,
-                };
+                    _ => 1};
 
                 if let Err(e) = file.set_xattr(XATTR_EXECUTION_COUNT, count.to_string().as_bytes())
                 {
@@ -192,8 +189,7 @@ fn main() -> io::Result<()> {{
 
         let language = match file.get_xattr(XATTR_LANGUAGE) {
             Ok(Some(bytes)) => String::from_utf8_lossy(&bytes).to_string(),
-            _ => return Ok(None),
-        };
+            _ => return Ok(None)};
 
         let last_executed = file
             .get_xattr(XATTR_LAST_EXECUTED)
@@ -211,8 +207,7 @@ fn main() -> io::Result<()> {{
         Ok(Some(FileMetadata {
             language,
             last_executed,
-            execution_count,
-        }))
+            execution_count}))
     }
 }
 
@@ -224,5 +219,4 @@ pub struct FileMetadata {
     /// When the file was last executed
     pub last_executed: Option<String>,
     /// Number of times the file has been executed
-    pub execution_count: u32,
-}
+    pub execution_count: u32}

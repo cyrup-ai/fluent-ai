@@ -13,8 +13,7 @@ mod tests {
     #[test]
     fn test_message_content_validation() {
         let content = ImmutableMessageContent::Plain {
-            text: "Hello, world!".to_string(),
-        };
+            text: "Hello, world!".to_string()};
         assert!(content.validate().is_ok());
         assert_eq!(content.content_type(), "plain");
         assert!(!content.is_empty());

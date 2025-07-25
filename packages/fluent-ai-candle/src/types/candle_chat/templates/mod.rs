@@ -15,8 +15,7 @@ pub mod parser;
 pub use core::{
     ChatTemplate, CompiledTemplate, TemplateAst, TemplateCategory, TemplateConfig, TemplateContext,
     TemplateError, TemplateExample, TemplateInfo, TemplateMetadata, TemplateResult, TemplateTag,
-    TemplateValue,
-};
+    TemplateValue};
 // Global template functions for convenience
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -43,8 +42,7 @@ pub fn template(name: impl Into<String>, content: impl Into<String>) -> ChatTemp
         modified_at: 0,
         usage_count: 0,
         rating: 0.0,
-        permissions: core::TemplatePermissions::default(),
-    };
+        permissions: core::TemplatePermissions::default()};
 
     ChatTemplate::new(metadata, template_content, Arc::new([]))
 }
@@ -77,8 +75,7 @@ pub fn render_template(
         template.render(&variables)
     } else {
         Err(TemplateError::NotFound {
-            name: Arc::from(name),
-        })
+            name: Arc::from(name)})
     }
 }
 
@@ -103,8 +100,7 @@ pub struct TemplateBuilder {
     content: Option<String>,
     description: Option<String>,
     category: TemplateCategory,
-    variables: Vec<String>,
-}
+    variables: Vec<String>}
 
 impl TemplateBuilder {
     pub fn new() -> Self {
@@ -113,8 +109,7 @@ impl TemplateBuilder {
             content: None,
             description: None,
             category: TemplateCategory::Chat,
-            variables: Vec::new(),
-        }
+            variables: Vec::new()}
     }
 
     pub fn name(mut self, name: impl Into<String>) -> Self {
@@ -162,8 +157,7 @@ impl TemplateBuilder {
             modified_at: 0,
             usage_count: 0,
             rating: 0.0,
-            permissions: core::TemplatePermissions::default(),
-        };
+            permissions: core::TemplatePermissions::default()};
 
         let variables: Arc<[core::TemplateVariable]> = self
             .variables
@@ -177,8 +171,7 @@ impl TemplateBuilder {
                 validation_pattern: None,
                 valid_values: None,
                 min_value: None,
-                max_value: None,
-            })
+                max_value: None})
             .collect::<Vec<_>>()
             .into();
 

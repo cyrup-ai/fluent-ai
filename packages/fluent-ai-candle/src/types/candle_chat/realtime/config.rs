@@ -5,23 +5,17 @@
 
 use crate::types::candle_chat::realtime::{
     events::{RealTimeEvent, ConnectionStatus},
-    errors::RealTimeError,
     builder::RealTimeSystemBuilder,
-    system::RealTimeSystem,
-};
+    system::RealTimeSystem};
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_async::{AsyncStream, emit, handle_error};
-use atomic_counter::{AtomicCounter, ConsistentCounter};
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     sync::{
         atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering},
-        Arc, RwLock,
-    },
-};
+        Arc, RwLock}};
 use tokio::sync::{broadcast, mpsc};
-use uuid::Uuid;
 
 /// Real-time chat configuration for managing real-time features
 ///
@@ -71,8 +65,7 @@ pub struct RealtimeConfig {
     /// Reconnection delay in milliseconds
     pub reconnect_delay_ms: u64,
     /// Maximum reconnection attempts
-    pub max_reconnect_attempts: u32,
-}
+    pub max_reconnect_attempts: u32}
 
 impl Default for RealtimeConfig {
     fn default() -> Self {
@@ -96,8 +89,7 @@ impl Default for RealtimeConfig {
             connection_pool_size: 100,
             auto_reconnect: true,
             reconnect_delay_ms: 1000,
-            max_reconnect_attempts: 5,
-        }
+            max_reconnect_attempts: 5}
     }
 }
 
@@ -123,8 +115,7 @@ pub struct RealtimeChat {
     /// Performance metrics
     metrics: Arc<RealtimeChatMetrics>,
     /// Connection manager task handle
-    connection_task: Option<fluent_ai_async::AsyncTask<()>>,
-}
+    connection_task: Option<fluent_ai_async::AsyncTask<()>>}
 
 impl std::fmt::Debug for RealtimeChat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -163,8 +154,7 @@ pub struct RealtimeConnection {
     /// Typing status
     pub is_typing: AtomicBool,
     /// Presence status (atomic enum representation)
-    pub presence: AtomicU8,
-}
+    pub presence: AtomicU8}
 
 impl Clone for RealtimeConnection {
     fn clone(&self) -> Self {
@@ -180,8 +170,7 @@ impl Clone for RealtimeConnection {
             status: AtomicU8::new(self.status.load(std::sync::atomic::Ordering::Relaxed)),
             message_sender: self.message_sender.clone(),
             is_typing: AtomicBool::new(self.is_typing.load(std::sync::atomic::Ordering::Relaxed)),
-            presence: AtomicU8::new(self.presence.load(std::sync::atomic::Ordering::Relaxed)),
-        }
+            presence: AtomicU8::new(self.presence.load(std::sync::atomic::Ordering::Relaxed))}
     }
 }
 
@@ -239,8 +228,7 @@ pub struct RealtimeMessage {
     /// Message timestamp
     pub timestamp: u64,
     /// Message metadata
-    pub metadata: HashMap<String, serde_json::Value>,
-}
+    pub metadata: HashMap<String, serde_json::Value>}
 
 /// Real-time message types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -256,8 +244,7 @@ pub enum RealtimeMessageType {
     /// Connection status
     Connection,
     /// Error message
-    Error,
-}
+    Error}
 
 /// Presence status
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -271,8 +258,7 @@ pub enum PresenceStatus {
     /// Offline
     Offline,
     /// Invisible
-    Invisible,
-}
+    Invisible}
 
 impl PresenceStatus {
     /// Convert to atomic representation (u8)
@@ -283,8 +269,7 @@ impl PresenceStatus {
             Self::Away => 1,
             Self::DoNotDisturb => 2,
             Self::Offline => 3,
-            Self::Invisible => 4,
-        }
+            Self::Invisible => 4}
     }
 
     /// Convert from atomic representation (u8)
@@ -319,8 +304,7 @@ pub enum RealtimeEventType {
     /// Presence changed
     PresenceChanged,
     /// Error occurred
-    Error,
-}
+    Error}
 
 /// Real-time event handler trait
 pub trait RealtimeEventHandler: Send + Sync + std::fmt::Debug {
@@ -353,8 +337,7 @@ pub struct RealtimeChatMetrics {
     /// Connection errors
     pub connection_errors: ConsistentCounter,
     /// Message delivery failures
-    pub delivery_failures: ConsistentCounter,
-}
+    pub delivery_failures: ConsistentCounter}
 
 impl RealtimeChat {
     /// Create a new real-time chat system
@@ -374,8 +357,7 @@ impl RealtimeChat {
             message_broadcaster,
             event_handlers: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(RealtimeChatMetrics::default()),
-            connection_task: None,
-        }
+            connection_task: None}
     }
 
     /// Get configuration

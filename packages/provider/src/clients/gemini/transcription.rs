@@ -6,16 +6,13 @@ use mime_guess;
 use serde_json::{Map, Value};
 
 pub use super::completion::{
-    GEMINI_1_5_FLASH, GEMINI_1_5_PRO, GEMINI_1_5_PRO_8B, GEMINI_2_0_FLASH,
-};
+    GEMINI_1_5_FLASH, GEMINI_1_5_PRO, GEMINI_1_5_PRO_8B, GEMINI_2_0_FLASH};
 use super::{Client, completion::gemini_api_types::GenerateContentResponse};
 use crate::transcription::{self, TranscriptionError};
 use crate::{
     OneOrMany,
     clients::gemini::completion::gemini_api_types::{
-        Blob, Content, GenerateContentRequest, GenerationConfig, Part, Role,
-    },
-};
+        Blob, Content, GenerateContentRequest, GenerationConfig, Part, Role}};
 
 const TRANSCRIPTION_PREAMBLE: &str =
     "Translate the provided audio exactly. Do not add additional information.";
@@ -27,15 +24,13 @@ const TRANSCRIPTION_PREAMBLE: &str =
 #[derive(Debug, Clone)]
 pub struct TranscriptionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl TranscriptionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -63,8 +58,7 @@ impl transcription::TranscriptionModel for TranscriptionModel {
 
         let system_instruction = Some(Content {
             parts: OneOrMany::one(TRANSCRIPTION_PREAMBLE.into()),
-            role: Some(Role::Model),
-        });
+            role: Some(Role::Model)});
 
         let mime_type =
             if let Some(mime) = mime_guess::from_path(Path::new(&request.filename)).first() {
@@ -77,16 +71,13 @@ impl transcription::TranscriptionModel for TranscriptionModel {
             contents: vec![Content {
                 parts: OneOrMany::one(Part::InlineData(Blob {
                     mime_type,
-                    data: BASE64_STANDARD.encode(request.data),
-                })),
-                role: Some(Role::User),
-            }],
+                    data: BASE64_STANDARD.encode(request.data)})),
+                role: Some(Role::User)}],
             generation_config: Some(generation_config),
             safety_settings: None,
             tools: None,
             tool_config: None,
-            system_instruction,
-        };
+            system_instruction};
 
         tracing::debug!(
             "Sending completion request to Gemini API {}",
@@ -109,8 +100,7 @@ impl transcription::TranscriptionModel for TranscriptionModel {
                 ),
                 None => tracing::info!(target: "rig",
                     "Gemini completion token usage: n/a",
-                ),
-            }
+                )}
 
             tracing::debug!("Received response");
 

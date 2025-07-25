@@ -1,6 +1,5 @@
 //! Memory storage abstraction layer
 
-use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -13,8 +12,7 @@ use crate::utils::Result;
 
 /// A pending store operation
 pub struct PendingStore {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl PendingStore {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -31,15 +29,13 @@ impl Future for PendingStore {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Store task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending retrieve operation
 pub struct PendingRetrieve {
-    rx: oneshot::Receiver<Result<MemoryNode>>,
-}
+    rx: oneshot::Receiver<Result<MemoryNode>>}
 
 impl PendingRetrieve {
     pub fn new(rx: oneshot::Receiver<Result<MemoryNode>>) -> Self {
@@ -56,15 +52,13 @@ impl Future for PendingRetrieve {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Retrieve task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending update operation
 pub struct PendingUpdate {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl PendingUpdate {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -81,15 +75,13 @@ impl Future for PendingUpdate {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Update task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending delete operation
 pub struct PendingDelete {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl PendingDelete {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -106,15 +98,13 @@ impl Future for PendingDelete {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Delete task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending relationships retrieval
 pub struct PendingRelationships {
-    rx: oneshot::Receiver<Result<Vec<MemoryRelationship>>>,
-}
+    rx: oneshot::Receiver<Result<Vec<MemoryRelationship>>>}
 
 impl PendingRelationships {
     pub fn new(rx: oneshot::Receiver<Result<Vec<MemoryRelationship>>>) -> Self {
@@ -131,15 +121,13 @@ impl Future for PendingRelationships {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Get relationships task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending stats retrieval
 pub struct PendingStats {
-    rx: oneshot::Receiver<Result<StorageStats>>,
-}
+    rx: oneshot::Receiver<Result<StorageStats>>}
 
 impl PendingStats {
     pub fn new(rx: oneshot::Receiver<Result<StorageStats>>) -> Self {
@@ -156,8 +144,7 @@ impl Future for PendingStats {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Stats task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
@@ -204,21 +191,18 @@ pub struct StorageStats {
     pub storage_size_bytes: u64,
 
     /// Backend-specific stats
-    pub backend_stats: HashMap<String, serde_json::Value>,
-}
+    pub backend_stats: HashMap<String, serde_json::Value>}
 
 /// In-memory storage implementation (for testing and caching)
 pub struct InMemoryStorage {
     memories: std::sync::Arc<tokio::sync::RwLock<HashMap<String, MemoryNode>>>,
-    relationships: std::sync::Arc<tokio::sync::RwLock<HashMap<String, Vec<MemoryRelationship>>>>,
-}
+    relationships: std::sync::Arc<tokio::sync::RwLock<HashMap<String, Vec<MemoryRelationship>>>>}
 
 impl InMemoryStorage {
     pub fn new() -> Self {
         Self {
             memories: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            relationships: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-        }
+            relationships: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new()))}
     }
 }
 
@@ -387,8 +371,7 @@ impl MemoryStorage for InMemoryStorage {
                 total_memories: memories.len() as u64,
                 total_relationships: total_relationships as u64,
                 storage_size_bytes: 0, // Not meaningful for in-memory storage
-                backend_stats: HashMap::new(),
-            });
+                backend_stats: HashMap::new()});
             let _ = tx.send(result);
         });
 
@@ -406,8 +389,7 @@ pub struct StorageConfig {
     pub connection_string: Option<String>,
 
     /// Additional options
-    pub options: HashMap<String, serde_json::Value>,
-}
+    pub options: HashMap<String, serde_json::Value>}
 
 /// Supported storage backends
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -424,8 +406,7 @@ pub enum StorageBackend {
     /// MongoDB
     MongoDB,
     /// Redis
-    Redis,
-}
+    Redis}
 
 /// Storage factory for creating storage instances
 pub struct StorageFactory;
@@ -438,7 +419,6 @@ impl StorageFactory {
             _ => Err(crate::utils::error::Error::NotImplemented(format!(
                 "Storage backend {:?} not implemented",
                 config.backend
-            ))),
-        }
+            )))}
     }
 }

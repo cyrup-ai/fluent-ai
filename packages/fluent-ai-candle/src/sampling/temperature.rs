@@ -70,8 +70,7 @@ impl TemperatureProcessor {
         Ok(Self {
             temperature,
             inv_temperature,
-            is_identity,
-        })
+            is_identity})
     }
 
     /// Get the temperature value
@@ -177,8 +176,7 @@ impl TemperatureProcessor {
 /// Builder for temperature processor with validation and presets
 #[derive(Debug, Clone)]
 pub struct TemperatureBuilder {
-    temperature: Option<f32>,
-}
+    temperature: Option<f32>}
 
 impl TemperatureBuilder {
     /// Create a new temperature builder

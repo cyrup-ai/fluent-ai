@@ -35,8 +35,7 @@ pub struct MirostatProcessor {
 
     /// Processing statistics
     tokens_processed: u64,
-    avg_processing_time_nanos: f64,
-}
+    avg_processing_time_nanos: f64}
 
 impl std::fmt::Debug for MirostatProcessor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -53,8 +52,7 @@ impl MirostatProcessor {
     pub fn new(config: MirostatConfig) -> CandleResult<Self> {
         let ema_alpha = match config {
             MirostatConfig::V1 { learning_rate, .. } => learning_rate * 0.5,
-            MirostatConfig::V2 { eta, .. } => (eta * 0.1).clamp(0.01, 0.2),
-        };
+            MirostatConfig::V2 { eta, .. } => (eta * 0.1).clamp(0.01, 0.2)};
 
         Ok(Self {
             config,
@@ -62,8 +60,7 @@ impl MirostatProcessor {
             current_tau: AtomicU64::new(Self::f32_to_atomic_u64(config.tau())),
             rng: Rng::new(),
             tokens_processed: 0,
-            avg_processing_time_nanos: 0.0,
-        })
+            avg_processing_time_nanos: 0.0})
     }
 
     /// Create Mirostat v1 processor with default parameters
@@ -246,8 +243,7 @@ impl MirostatProcessor {
             current_tau: self.current_tau(),
             current_perplexity: self.current_perplexity(),
             perplexity_variance: self.state.variance(),
-            config: self.config,
-        }
+            config: self.config}
     }
 
     /// Reset processor state for new sequence
@@ -313,8 +309,7 @@ impl LogitsProcessor for MirostatProcessor {
     fn name(&self) -> &'static str {
         match self.config {
             MirostatConfig::V1 { .. } => "MirostatV1",
-            MirostatConfig::V2 { .. } => "MirostatV2",
-        }
+            MirostatConfig::V2 { .. } => "MirostatV2"}
     }
 }
 

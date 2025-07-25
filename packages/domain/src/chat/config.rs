@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use arc_swap::ArcSwap;
 #[cfg(feature = "bincode-serialization")]
@@ -79,8 +79,7 @@ pub struct ModelConfig {
     /// Retry configuration
     pub retry_config: ModelRetryConfig,
     /// Performance settings
-    pub performance: ModelPerformanceConfig,
-}
+    pub performance: ModelPerformanceConfig}
 
 /// Model retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,8 +93,7 @@ pub struct ModelRetryConfig {
     /// Exponential backoff multiplier
     pub backoff_multiplier: f32,
     /// Enable jitter to avoid thundering herd
-    pub enable_jitter: bool,
-}
+    pub enable_jitter: bool}
 
 /// Model performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,8 +113,7 @@ pub struct ModelPerformanceConfig {
     /// Connection pool size
     pub connection_pool_size: u32,
     /// Keep-alive timeout in seconds
-    pub keep_alive_timeout_seconds: u64,
-}
+    pub keep_alive_timeout_seconds: u64}
 
 impl Default for ModelConfig {
     fn default() -> Self {
@@ -137,8 +134,7 @@ impl Default for ModelConfig {
             custom_parameters: HashMap::new(),
             timeout_ms: 30000, // 30 seconds
             retry_config: ModelRetryConfig::default(),
-            performance: ModelPerformanceConfig::default(),
-        }
+            performance: ModelPerformanceConfig::default()}
     }
 }
 
@@ -149,8 +145,7 @@ impl Default for ModelRetryConfig {
             base_delay_ms: 1000, // 1 second
             max_delay_ms: 30000, // 30 seconds
             backoff_multiplier: 2.0,
-            enable_jitter: true,
-        }
+            enable_jitter: true}
     }
 }
 
@@ -164,8 +159,7 @@ impl Default for ModelPerformanceConfig {
             batch_timeout_ms: 100,
             enable_streaming: true,
             connection_pool_size: 10,
-            keep_alive_timeout_seconds: 60,
-        }
+            keep_alive_timeout_seconds: 60}
     }
 }
 
@@ -225,7 +219,7 @@ impl ModelConfig {
 
     /// Validate the model configuration
     pub fn validate(&self) -> AsyncStream<()> {
-        let config = self.clone();
+        let _config = self.clone();
         // Use AsyncStream::with_channel for streaming-only architecture - emit success immediately
         AsyncStream::with_channel(move |sender| {
             // Emit success via sender - validation happens during stream processing
@@ -261,8 +255,7 @@ pub struct ChatConfig {
     /// UI configuration
     pub ui: UIConfig,
     /// Integration configuration
-    pub integration: IntegrationConfig,
-}
+    pub integration: IntegrationConfig}
 
 /// Personality configuration for AI behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -296,8 +289,7 @@ pub struct PersonalityConfig {
     /// Verbosity level
     pub verbosity: Arc<str>,
     /// Personality traits
-    pub traits: Vec<Arc<str>>,
-}
+    pub traits: Vec<Arc<str>>}
 
 /// Behavior configuration for chat system
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -327,8 +319,7 @@ pub struct BehaviorConfig {
     /// Follow-up behavior style
     pub follow_up_behavior: Arc<str>,
     /// Error handling approach
-    pub error_handling: Arc<str>,
-}
+    pub error_handling: Arc<str>}
 
 /// User interface configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -356,8 +347,7 @@ pub struct UIConfig {
     /// Display density
     pub display_density: Arc<str>,
     /// Animation settings
-    pub animations: Arc<str>,
-}
+    pub animations: Arc<str>}
 
 /// Integration configuration for external services
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -381,8 +371,7 @@ pub struct IntegrationConfig {
     /// API configurations
     pub api_configurations: Vec<Arc<str>>,
     /// Authentication methods
-    pub authentication: Vec<Arc<str>>,
-}
+    pub authentication: Vec<Arc<str>>}
 
 impl Default for PersonalityConfig {
     fn default() -> Self {
@@ -397,8 +386,7 @@ impl Default for PersonalityConfig {
             empathy: 0.7,
             expertise_level: Arc::from("intermediate"),
             verbosity: Arc::from("balanced"),
-            traits: Vec::new(),
-        }
+            traits: Vec::new()}
     }
 }
 
@@ -413,8 +401,7 @@ impl Default for BehaviorConfig {
             question_frequency: 0.3,
             conversation_flow: Arc::from("natural"),
             follow_up_behavior: Arc::from("contextual"),
-            error_handling: Arc::from("graceful"),
-        }
+            error_handling: Arc::from("graceful")}
     }
 }
 
@@ -428,8 +415,7 @@ impl Default for UIConfig {
             layout: Arc::from("standard"),
             color_scheme: Arc::from("adaptive"),
             display_density: Arc::from("comfortable"),
-            animations: Arc::from("smooth"),
-        }
+            animations: Arc::from("smooth")}
     }
 }
 
@@ -441,8 +427,7 @@ impl Default for IntegrationConfig {
             webhooks: Vec::new(),
             external_services: Vec::new(),
             api_configurations: Vec::new(),
-            authentication: Vec::new(),
-        }
+            authentication: Vec::new()}
     }
 }
 
@@ -464,8 +449,7 @@ pub struct ConfigurationChangeEvent {
     /// User who made the change
     pub user: Option<Arc<str>>,
     /// Change description
-    pub description: Arc<str>,
-}
+    pub description: Arc<str>}
 
 /// Configuration change type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -481,8 +465,7 @@ pub enum ConfigurationChangeType {
     /// Import from file
     Import,
     /// Export to file
-    Export,
-}
+    Export}
 
 /// Configuration validation error
 #[derive(Debug, Clone, thiserror::Error)]
@@ -502,8 +485,7 @@ pub enum ConfigurationValidationError {
     #[error("Range validation failed: {field} must be between {min} and {max}")]
     RangeValidation { field: Arc<str>, min: f32, max: f32 },
     #[error("Required field missing: {field}")]
-    RequiredField { field: Arc<str> },
-}
+    RequiredField { field: Arc<str> }}
 
 /// Configuration validation result
 pub type ConfigurationValidationResult<T> = Result<T, ConfigurationValidationError>;
@@ -518,8 +500,7 @@ pub struct PersistenceEvent {
     /// Type of persistence operation
     pub persistence_type: PersistenceType,
     /// Whether persistence operation was successful
-    pub success: bool,
-}
+    pub success: bool}
 
 /// Type of persistence operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -531,8 +512,7 @@ pub enum PersistenceType {
     /// Configuration change triggered persistence
     Change,
     /// System shutdown persistence
-    Shutdown,
-}
+    Shutdown}
 
 /// Configuration update event for streaming operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -546,8 +526,7 @@ pub struct ConfigUpdate {
     /// Success status of the update
     pub success: bool,
     /// Optional description of the update
-    pub description: Option<Arc<str>>,
-}
+    pub description: Option<Arc<str>>}
 
 /// Type of configuration update operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -567,8 +546,7 @@ pub enum ConfigUpdateType {
     /// Configuration section updated
     SectionUpdated,
     /// Persistence event triggered
-    PersistenceTriggered,
-}
+    PersistenceTriggered}
 
 /// Configuration persistence settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -586,8 +564,7 @@ pub struct ConfigurationPersistence {
     /// Encryption enabled
     pub encryption: bool,
     /// File format (json, yaml, toml, binary)
-    pub format: Arc<str>,
-}
+    pub format: Arc<str>}
 
 impl Default for ConfigurationPersistence {
     fn default() -> Self {
@@ -598,8 +575,7 @@ impl Default for ConfigurationPersistence {
             backup_retention: 5,
             compression: true,
             encryption: false,
-            format: Arc::from("json"),
-        }
+            format: Arc::from("json")}
     }
 }
 
@@ -622,8 +598,7 @@ pub struct ConfigurationManager {
     /// Configuration version counter
     version_counter: Arc<AtomicUsize>,
     /// Configuration locks for atomic operations
-    configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>,
-}
+    configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>}
 
 impl Clone for ConfigurationManager {
     fn clone(&self) -> Self {
@@ -645,8 +620,7 @@ impl Clone for ConfigurationManager {
                     .as_nanos() as u64
             )),
             version_counter: Arc::new(AtomicUsize::new(1)), // Fresh version counter
-            configuration_locks: Arc::clone(&self.configuration_locks),
-        }
+            configuration_locks: Arc::clone(&self.configuration_locks)}
     }
 }
 
@@ -672,8 +646,7 @@ impl ConfigurationValidator for PersonalityValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("creativity"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate formality range
@@ -681,8 +654,7 @@ impl ConfigurationValidator for PersonalityValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("formality"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate humor range
@@ -690,8 +662,7 @@ impl ConfigurationValidator for PersonalityValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("humor"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate empathy range
@@ -699,32 +670,28 @@ impl ConfigurationValidator for PersonalityValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("empathy"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate expertise level
         let valid_expertise = ["beginner", "intermediate", "advanced", "expert"];
         if !valid_expertise.contains(&personality.expertise_level.as_ref()) {
             return Err(ConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid expertise level"),
-            });
+                detail: Arc::from("Invalid expertise level")});
         }
 
         // Validate tone
         let valid_tones = ["formal", "casual", "friendly", "professional", "neutral"];
         if !valid_tones.contains(&personality.tone.as_ref()) {
             return Err(ConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid tone"),
-            });
+                detail: Arc::from("Invalid tone")});
         }
 
         // Validate verbosity
         let valid_verbosity = ["concise", "balanced", "detailed"];
         if !valid_verbosity.contains(&personality.verbosity.as_ref()) {
             return Err(ConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid verbosity level"),
-            });
+                detail: Arc::from("Invalid verbosity level")});
         }
 
         Ok(())
@@ -751,8 +718,7 @@ impl ConfigurationValidator for BehaviorValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("proactivity"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate question frequency range
@@ -760,32 +726,28 @@ impl ConfigurationValidator for BehaviorValidator {
             return Err(ConfigurationValidationError::RangeValidation {
                 field: Arc::from("question_frequency"),
                 min: 0.0,
-                max: 1.0,
-            });
+                max: 1.0});
         }
 
         // Validate conversation flow
         let valid_flows = ["natural", "structured", "adaptive", "guided"];
         if !valid_flows.contains(&behavior.conversation_flow.as_ref()) {
             return Err(ConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid conversation flow"),
-            });
+                detail: Arc::from("Invalid conversation flow")});
         }
 
         // Validate follow-up behavior
         let valid_followups = ["contextual", "consistent", "adaptive", "minimal"];
         if !valid_followups.contains(&behavior.follow_up_behavior.as_ref()) {
             return Err(ConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid follow-up behavior"),
-            });
+                detail: Arc::from("Invalid follow-up behavior")});
         }
 
         // Validate error handling
         let valid_error_handling = ["graceful", "verbose", "silent", "strict"];
         if !valid_error_handling.contains(&behavior.error_handling.as_ref()) {
             return Err(ConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid error handling approach"),
-            });
+                detail: Arc::from("Invalid error handling approach")});
         }
 
         Ok(())
@@ -811,40 +773,35 @@ impl ConfigurationValidator for UIValidator {
         let valid_themes = ["light", "dark", "auto", "system", "custom"];
         if !valid_themes.contains(&ui.theme.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid theme"),
-            });
+                detail: Arc::from("Invalid theme")});
         }
 
         // Validate layout
         let valid_layouts = ["standard", "compact", "wide", "mobile", "adaptive"];
         if !valid_layouts.contains(&ui.layout.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid layout"),
-            });
+                detail: Arc::from("Invalid layout")});
         }
 
         // Validate color scheme
         let valid_color_schemes = ["adaptive", "high_contrast", "colorblind", "custom"];
         if !valid_color_schemes.contains(&ui.color_scheme.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid color scheme"),
-            });
+                detail: Arc::from("Invalid color scheme")});
         }
 
         // Validate display density
         let valid_densities = ["compact", "comfortable", "spacious"];
         if !valid_densities.contains(&ui.display_density.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid display density"),
-            });
+                detail: Arc::from("Invalid display density")});
         }
 
         // Validate animations
         let valid_animations = ["none", "minimal", "smooth", "rich"];
         if !valid_animations.contains(&ui.animations.as_ref()) {
             return Err(ConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid animation setting"),
-            });
+                detail: Arc::from("Invalid animation setting")});
         }
 
         Ok(())
@@ -871,8 +828,7 @@ impl ConfigurationValidator for IntegrationValidator {
         for service in &integration.external_services {
             if !valid_services.contains(&service.as_ref()) {
                 return Err(ConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid external service: {}", service)),
-                });
+                    detail: Arc::from(format!("Invalid external service: {}", service))});
             }
         }
 
@@ -881,8 +837,7 @@ impl ConfigurationValidator for IntegrationValidator {
         for api in &integration.api_configurations {
             if !valid_apis.contains(&api.as_ref()) {
                 return Err(ConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid API configuration: {}", api)),
-                });
+                    detail: Arc::from(format!("Invalid API configuration: {}", api))});
             }
         }
 
@@ -891,8 +846,7 @@ impl ConfigurationValidator for IntegrationValidator {
         for auth in &integration.authentication {
             if !valid_auth.contains(&auth.as_ref()) {
                 return Err(ConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid authentication method: {}", auth)),
-                });
+                    detail: Arc::from(format!("Invalid authentication method: {}", auth))});
             }
         }
 
@@ -927,8 +881,7 @@ impl ConfigurationManager {
                     .as_nanos() as u64
             )),
             version_counter: Arc::new(AtomicUsize::new(1)),
-            configuration_locks: Arc::new(RwLock::new(HashMap::new())),
-        };
+            configuration_locks: Arc::new(RwLock::new(HashMap::new()))};
 
         // Initialize default validators using shared references
         let validation_rules = manager.validation_rules.clone();
@@ -978,8 +931,7 @@ impl ConfigurationManager {
                 old_value: Some(Arc::from(format!("{:?}", old_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
-                description: Arc::from("Configuration updated"),
-            };
+                description: Arc::from("Configuration updated")};
 
             // Queue change event
             manager.change_events.push(change_event.clone());
@@ -1035,8 +987,7 @@ impl ConfigurationManager {
                 old_value: Some(Arc::from(format!("{:?}", current_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
-                description: Arc::from("Configuration section updated"),
-            };
+                description: Arc::from("Configuration section updated")};
 
             // Queue change event
             manager.change_events.push(change_event.clone());
@@ -1064,8 +1015,8 @@ impl ConfigurationManager {
     }
 
     /// Validate configuration using streaming pattern
-    pub fn validate_config_stream(&self, config: ChatConfig) -> AsyncStream<ConfigUpdate> {
-        let manager = self.clone();
+    pub fn validate_config_stream(&self, _config: ChatConfig) -> AsyncStream<ConfigUpdate> {
+        let _manager = self.clone();
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
                 // Create validation update
@@ -1079,8 +1030,7 @@ impl ConfigurationManager {
                     update_type: ConfigUpdateType::ValidationCompleted,
                     section: None,
                     success: true,
-                    description: Some(Arc::from("Configuration validation initiated")),
-                };
+                    description: Some(Arc::from("Configuration validation initiated"))};
                 
                 emit!(sender, validation_start);
                 
@@ -1090,8 +1040,7 @@ impl ConfigurationManager {
                     update_type: ConfigUpdateType::ValidationCompleted,
                     section: None,
                     success: true,
-                    description: Some(Arc::from("Configuration validation completed")),
-                };
+                    description: Some(Arc::from("Configuration validation completed"))};
                 
                 emit!(sender, completion_update);
             });
@@ -1103,7 +1052,7 @@ impl ConfigurationManager {
         &self,
         validator: Arc<dyn ConfigurationValidator + Send + Sync>,
     ) -> AsyncStream<ConfigUpdate> {
-        let manager = self.clone();
+        let _manager = self.clone();
         let validator_name = Arc::from(validator.name());
         
         AsyncStream::with_channel(move |sender| {
@@ -1119,8 +1068,7 @@ impl ConfigurationManager {
                     update_type: ConfigUpdateType::ValidatorRegistered,
                     section: Some(validator_name),
                     success: true,
-                    description: Some(Arc::from("Configuration validator registered")),
-                };
+                    description: Some(Arc::from("Configuration validator registered"))};
                 
                 emit!(sender, registration_update);
             });
@@ -1145,8 +1093,7 @@ impl ConfigurationManager {
                     timestamp_nanos: now_nanos,
                     previous_timestamp_nanos: previous_nanos,
                     persistence_type: PersistenceType::Manual,
-                    success: true,
-                };
+                    success: true};
                 
                 emit!(sender, event);
             });
@@ -1169,8 +1116,7 @@ impl ConfigurationManager {
                     update_type: ConfigUpdateType::AutoSaveChecked,
                     section: None,
                     success: true,
-                    description: Some(Arc::from("Auto-save check initiated")),
-                };
+                    description: Some(Arc::from("Auto-save check initiated"))};
                 
                 emit!(sender, check_update);
                 
@@ -1190,8 +1136,7 @@ impl ConfigurationManager {
                         update_type: ConfigUpdateType::AutoSaveExecuted,
                         section: None,
                         success: true,
-                        description: Some(Arc::from("Auto-save executed")),
-                    };
+                        description: Some(Arc::from("Auto-save executed"))};
                     
                     emit!(sender, autosave_update);
                 }
@@ -1215,8 +1160,7 @@ impl ConfigurationManager {
                     update_type: ConfigUpdateType::SavedToFile,
                     section: None,
                     success: false,
-                    description: Some(Arc::from("File save initiated")),
-                };
+                    description: Some(Arc::from("File save initiated"))};
                 
                 emit!(sender, save_start);
                 
@@ -1233,8 +1177,7 @@ impl ConfigurationManager {
                         "File save completed successfully" 
                     } else { 
                         "File save failed" 
-                    })),
-                };
+                    }))};
                 
                 emit!(sender, save_complete);
             });
@@ -1256,8 +1199,7 @@ impl ConfigurationManager {
             "json" => serde_json::to_string_pretty(&*config)?,
             "yaml" => yyaml::to_string(&*config)?,
             "toml" => toml::to_string(&*config)?,
-            _ => return Err("Unsupported format".into()),
-        };
+            _ => return Err("Unsupported format".into())};
 
         let data = if compression {
             let compressed = lz4::block::compress(&serialized.as_bytes(), None, true)?;
@@ -1290,8 +1232,7 @@ impl ConfigurationManager {
                     update_type: ConfigUpdateType::LoadedFromFile,
                     section: None,
                     success: false,
-                    description: Some(Arc::from("File load initiated")),
-                };
+                    description: Some(Arc::from("File load initiated"))};
                 
                 emit!(sender, load_start);
                 
@@ -1308,8 +1249,7 @@ impl ConfigurationManager {
                         "File load completed successfully" 
                     } else { 
                         "File load failed" 
-                    })),
-                };
+                    }))};
                 
                 emit!(sender, load_complete);
             });
@@ -1342,8 +1282,7 @@ impl ConfigurationManager {
             "json" => serde_json::from_str(&content)?,
             "yaml" => yyaml::from_str(&content)?,
             "toml" => toml::from_str(&content)?,
-            _ => return Err("Unsupported format".into()),
-        };
+            _ => return Err("Unsupported format".into())};
 
         // Update config atomically
         let config_arc = Arc::new(config);
@@ -1386,20 +1325,17 @@ pub struct ConfigurationStatistics {
     pub current_version: usize,
     pub last_modified: Duration,
     pub validators_count: usize,
-    pub auto_save_enabled: bool,
-}
+    pub auto_save_enabled: bool}
 
 /// Configuration builder for ergonomic configuration creation
 pub struct ConfigurationBuilder {
-    config: ChatConfig,
-}
+    config: ChatConfig}
 
 impl ConfigurationBuilder {
     /// Create a new configuration builder
     pub fn new() -> Self {
         Self {
-            config: ChatConfig::default(),
-        }
+            config: ChatConfig::default()}
     }
 
     /// Set personality configuration
@@ -1440,15 +1376,13 @@ impl Default for ConfigurationBuilder {
 
 /// Personality configuration builder
 pub struct PersonalityConfigBuilder {
-    config: PersonalityConfig,
-}
+    config: PersonalityConfig}
 
 impl PersonalityConfigBuilder {
     /// Create a new personality configuration builder
     pub fn new() -> Self {
         Self {
-            config: PersonalityConfig::default(),
-        }
+            config: PersonalityConfig::default()}
     }
 
     /// Set tone

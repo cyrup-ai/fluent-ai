@@ -20,8 +20,7 @@ pub use error::ProcessingError;
 // Processor implementations
 pub use processors::{
     CompositeProcessor, RepetitionPenaltyProcessor, TemperatureProcessor, TopKProcessor,
-    TopPProcessor,
-};
+    TopPProcessor};
 pub use traits::{LogitsProcessor, ProcessingResult};
 
 /// Processing module version for compatibility tracking
@@ -44,8 +43,7 @@ pub struct ProcessingEngine {
     /// Processing context for token tracking
     context: ProcessingContext,
     /// Processing metrics for performance monitoring
-    metrics: ProcessingMetrics,
-}
+    metrics: ProcessingMetrics}
 
 impl ProcessingEngine {
     /// Create new processing engine with configuration
@@ -65,8 +63,7 @@ impl ProcessingEngine {
         Ok(Self {
             processor,
             context,
-            metrics,
-        })
+            metrics})
     }
 
     /// Create processing engine with custom context size
@@ -96,8 +93,7 @@ impl ProcessingEngine {
         Ok(Self {
             processor,
             context,
-            metrics,
-        })
+            metrics})
     }
 
     /// Set the processor chain
@@ -168,8 +164,7 @@ pub struct ProcessingMetrics {
     /// Total tokens processed
     total_tokens: std::sync::atomic::AtomicU64,
     /// Current sequence length
-    sequence_length: std::sync::atomic::AtomicU32,
-}
+    sequence_length: std::sync::atomic::AtomicU32}
 
 impl ProcessingMetrics {
     /// Create new metrics instance
@@ -179,8 +174,7 @@ impl ProcessingMetrics {
             total_operations: std::sync::atomic::AtomicU64::new(0),
             total_processing_time: std::sync::atomic::AtomicU64::new(0),
             total_tokens: std::sync::atomic::AtomicU64::new(0),
-            sequence_length: std::sync::atomic::AtomicU32::new(0),
-        }
+            sequence_length: std::sync::atomic::AtomicU32::new(0)}
     }
 
     /// Record a processing operation
@@ -274,8 +268,7 @@ impl Default for ProcessingMetrics {
 pub struct ProcessingEngineBuilder {
     vocab_size: usize,
     context_size: Option<usize>,
-    processors: Vec<Box<dyn LogitsProcessor>>,
-}
+    processors: Vec<Box<dyn LogitsProcessor>>}
 
 impl ProcessingEngineBuilder {
     /// Create new builder with vocabulary size
@@ -284,8 +277,7 @@ impl ProcessingEngineBuilder {
         Self {
             vocab_size,
             context_size: None,
-            processors: Vec::new(),
-        }
+            processors: Vec::new()}
     }
 
     /// Set context window size

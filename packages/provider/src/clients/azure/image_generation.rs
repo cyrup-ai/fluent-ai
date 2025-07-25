@@ -14,22 +14,19 @@ use crate::{
     client::ImageGenerationClient,
     image_generation::{self, ImageGenerationError, ImageGenerationRequest},
     providers::openai::ImageGenerationResponse,
-    runtime::{self, AsyncTask},
-};
+    runtime::{self, AsyncTask}};
 
 // ───────────────────────────── error handling ───────────────────────
 
 #[derive(Debug, serde::Deserialize)]
 struct ApiErrorResponse {
-    message: String,
-}
+    message: String}
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(untagged)]
 enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 // ───────────────────────────── provider model ────────────────────────────
 // ImageGenerationModel is now imported from fluent_ai_domain::model
@@ -39,8 +36,7 @@ impl ImageGenerationModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -96,8 +92,7 @@ impl ImageGenerationModel {
 
         match serde_json::from_str::<ApiResponse<ImageGenerationResponse>>(&t)? {
             ApiResponse::Ok(response) => response.try_into(),
-            ApiResponse::Err(err) => Err(ImageGenerationError::ProviderError(err.message)),
-        }
+            ApiResponse::Err(err) => Err(ImageGenerationError::ProviderError(err.message))}
     }
 }
 

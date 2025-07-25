@@ -95,8 +95,7 @@ mod tests {
             role: MessageRole::User,
             content: "  Hello, world!  ".to_string(),
             id: None,
-            timestamp: None,
-        };
+            timestamp: None};
 
         process_message(&mut message).unwrap();
         assert_eq!(message.content, "Hello, world!");
@@ -108,15 +107,13 @@ mod tests {
             role: MessageRole::User,
             content: "Hello, world!".to_string(),
             id: None,
-            timestamp: None,
-        };
+            timestamp: None};
 
         let empty_message = Message {
             role: MessageRole::User,
             content: "   ".to_string(),
             id: None,
-            timestamp: None,
-        };
+            timestamp: None};
 
         assert!(validate_message(&valid_message).is_ok());
         assert!(validate_message(&empty_message).is_err());

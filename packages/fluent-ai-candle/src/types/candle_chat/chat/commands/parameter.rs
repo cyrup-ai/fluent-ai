@@ -30,8 +30,7 @@ pub enum ParameterType {
     /// Enumeration parameter with possible values
     Enum,
     /// Path parameter for file/directory paths
-    Path,
-}
+    Path}
 
 impl ParameterType {
     /// Get type name as string
@@ -47,8 +46,7 @@ impl ParameterType {
             Self::Url => "url",
             Self::Json => "json",
             Self::Enum => "enum",
-            Self::Path => "path",
-        }
+            Self::Path => "path"}
     }
 
     /// Check if type supports multiple values
@@ -88,8 +86,7 @@ impl ParameterType {
             Self::Url => "A valid URL",
             Self::Json => "A JSON object",
             Self::Enum => "One of several predefined values",
-            Self::Path => "A filesystem path",
-        }
+            Self::Path => "A filesystem path"}
     }
 }
 
@@ -114,8 +111,7 @@ impl std::str::FromStr for ParameterType {
             "json" => Ok(Self::Json),
             "enum" => Ok(Self::Enum),
             "path" => Ok(Self::Path),
-            _ => Err(format!("Unknown parameter type: {}", s)),
-        }
+            _ => Err(format!("Unknown parameter type: {}", s))}
     }
 }
 
@@ -142,8 +138,7 @@ pub struct ParameterInfo {
     /// Maximum value for numeric parameters  
     pub max_value: Option<f64>,
     /// Regular expression pattern for validation
-    pub pattern: Option<String>,
-}
+    pub pattern: Option<String>}
 
 impl ParameterInfo {
     /// Create a new required parameter
@@ -158,8 +153,7 @@ impl ParameterInfo {
             possible_values: None,
             min_value: None,
             max_value: None,
-            pattern: None,
-        }
+            pattern: None}
     }
 
     /// Create a new optional parameter with default value
@@ -179,8 +173,7 @@ impl ParameterInfo {
             possible_values: None,
             min_value: None,
             max_value: None,
-            pattern: None,
-        }
+            pattern: None}
     }
 
     /// Create an enum parameter with possible values
@@ -200,8 +193,7 @@ impl ParameterInfo {
             possible_values: Some(possible_values),
             min_value: None,
             max_value: None,
-            pattern: None,
-        }
+            pattern: None}
     }
 
     /// Add numeric constraints
@@ -315,8 +307,7 @@ impl ParameterInfo {
                     String::new()
                 }
             }
-            _ => format!(" ({})", self.parameter_type),
-        };
+            _ => format!(" ({})", self.parameter_type)};
 
         format!("{}{}", name, type_info)
     }
@@ -333,8 +324,7 @@ impl Default for ParameterInfo {
             possible_values: None,
             min_value: None,
             max_value: None,
-            pattern: None,
-        }
+            pattern: None}
     }
 }
 

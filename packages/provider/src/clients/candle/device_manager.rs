@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::ArrayVec;
 use candle_core::Device;
 use crossbeam::utils::CachePadded;
 use smallvec::SmallVec;
@@ -24,8 +23,7 @@ pub enum DeviceType {
     CudaGpu = 1,
     MetalGpu = 2,
     RocmGpu = 3,
-    VulkanGpu = 4,
-}
+    VulkanGpu = 4}
 
 impl From<CandleDevice> for DeviceType {
     #[inline(always)]
@@ -33,8 +31,7 @@ impl From<CandleDevice> for DeviceType {
         match device {
             CandleDevice::Cpu => DeviceType::Cpu,
             CandleDevice::Cuda(_) => DeviceType::CudaGpu,
-            CandleDevice::Metal(_) => DeviceType::MetalGpu,
-        }
+            CandleDevice::Metal(_) => DeviceType::MetalGpu}
     }
 }
 
@@ -62,8 +59,7 @@ pub struct DeviceInfo {
     /// Number of failed operations
     pub failure_count: u64,
     /// Average operation time in microseconds
-    pub avg_operation_time_us: u32,
-}
+    pub avg_operation_time_us: u32}
 
 impl DeviceInfo {
     /// Create new device info with validation
@@ -90,8 +86,7 @@ impl DeviceInfo {
             last_init_timestamp: now,
             success_count: 0,
             failure_count: 0,
-            avg_operation_time_us: 0,
-        }
+            avg_operation_time_us: 0}
     }
 
     /// Update device statistics after operation
@@ -151,8 +146,7 @@ struct DeviceManagerState {
     /// Last device scan timestamp
     last_scan_timestamp: u64,
     /// Device preference order
-    preference_order: SmallVec<[DeviceType; 4]>,
-}
+    preference_order: SmallVec<[DeviceType; 4]>}
 
 impl Default for DeviceManagerState {
     fn default() -> Self {
@@ -176,8 +170,7 @@ impl Default for DeviceManagerState {
                 }
                 order.push(DeviceType::Cpu);
                 order
-            },
-        }
+            }}
     }
 }
 
@@ -190,8 +183,7 @@ pub struct DeviceManager {
     /// Device scan interval for automatic updates
     scan_interval_ms: AtomicU64,
     /// Performance metrics
-    metrics: DeviceMetrics,
-}
+    metrics: DeviceMetrics}
 
 /// Device manager performance metrics
 #[derive(Debug)]
@@ -207,8 +199,7 @@ struct DeviceMetrics {
     /// Average device scan time in microseconds
     avg_scan_time_us: CachePadded<AtomicU32>,
     /// Last error timestamp
-    last_error_timestamp: CachePadded<AtomicU64>,
-}
+    last_error_timestamp: CachePadded<AtomicU64>}
 
 impl DeviceMetrics {
     fn new() -> Self {
@@ -218,8 +209,7 @@ impl DeviceMetrics {
             fallback_count: CachePadded::new(AtomicU64::new(0)),
             switch_count: CachePadded::new(AtomicU64::new(0)),
             avg_scan_time_us: CachePadded::new(AtomicU32::new(0)),
-            last_error_timestamp: CachePadded::new(AtomicU64::new(0)),
-        }
+            last_error_timestamp: CachePadded::new(AtomicU64::new(0))}
     }
 }
 
@@ -230,8 +220,7 @@ impl DeviceManager {
             state: ArcSwap::from_pointee(DeviceManagerState::default()),
             initialization_in_progress: AtomicBool::new(false),
             scan_interval_ms: AtomicU64::new(30000), // 30 second default scan interval
-            metrics: DeviceMetrics::new(),
-        })
+            metrics: DeviceMetrics::new()})
     }
 
     /// Initialize device manager and discover available devices
@@ -270,16 +259,14 @@ impl DeviceManager {
         // Discover CUDA devices
         match self.discover_cuda_devices().await {
             Ok(mut cuda_devices) => discovered_devices.append(&mut cuda_devices),
-            Err(e) => initialization_errors.push(e),
-        }
+            Err(e) => initialization_errors.push(e)}
 
         // Discover Metal devices (macOS only)
         #[cfg(target_os = "macos")]
         {
             match self.discover_metal_devices().await {
                 Ok(mut metal_devices) => discovered_devices.append(&mut metal_devices),
-                Err(e) => initialization_errors.push(e),
-            }
+                Err(e) => initialization_errors.push(e)}
         }
 
         // Select best available device
@@ -302,8 +289,7 @@ impl DeviceManager {
             current_device_index: best_device_index,
             is_initialized: true,
             last_scan_timestamp: now,
-            preference_order: self.state.load().preference_order.clone(),
-        };
+            preference_order: self.state.load().preference_order.clone()};
 
         self.state.store(Arc::new(new_state));
         self.metrics.init_successes.fetch_add(1, Ordering::Relaxed);
@@ -472,8 +458,7 @@ impl DeviceManager {
                 .position(|&pref| pref == device.device_type)
             {
                 Some(pos) => 10.0 / (pos as f32 + 1.0), // Higher bonus for preferred devices
-                None => 1.0,
-            };
+                None => 1.0};
 
             let score = device.performance_score() * preference_bonus;
 
@@ -598,8 +583,7 @@ impl DeviceManager {
             fallback_count: self.metrics.fallback_count.load(Ordering::Relaxed),
             switch_count: self.metrics.switch_count.load(Ordering::Relaxed),
             avg_scan_time_us: self.metrics.avg_scan_time_us.load(Ordering::Relaxed),
-            last_error_timestamp: self.metrics.last_error_timestamp.load(Ordering::Relaxed),
-        }
+            last_error_timestamp: self.metrics.last_error_timestamp.load(Ordering::Relaxed)}
     }
 
     // Helper methods for device capability detection
@@ -663,8 +647,7 @@ pub struct DeviceManagerStatistics {
     pub fallback_count: u64,
     pub switch_count: u64,
     pub avg_scan_time_us: u32,
-    pub last_error_timestamp: u64,
-}
+    pub last_error_timestamp: u64}
 
 impl DeviceManagerStatistics {
     /// Get initialization success rate

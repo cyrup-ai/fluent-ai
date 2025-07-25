@@ -12,8 +12,7 @@ pub struct DecoderStats {
     /// Number of partial sequences handled
     pub partial_sequences_handled: usize,
     /// Number of decode errors encountered
-    pub decode_errors: usize,
-}
+    pub decode_errors: usize}
 
 impl fmt::Display for DecoderStats {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -45,8 +44,7 @@ impl DecoderStats {
             total_bytes_processed,
             total_chars_decoded,
             partial_sequences_handled,
-            decode_errors,
-        }
+            decode_errors}
     }
 
     /// Reset all counters to zero

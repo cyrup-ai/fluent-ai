@@ -1,9 +1,8 @@
 //! Core types and constants for VarBuilder
 
-use std::sync::{Arc, atomic::{AtomicU64, AtomicUsize, Ordering}};
-use arrayvec::{ArrayString, ArrayVec};
-use candle_core::{DType, Device, Tensor};
-use crossbeam_skiplist::SkipMap;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use arrayvec::ArrayString;
+use candle_core::{DType, Device};
 
 /// Convert safetensors Dtype to candle DType
 pub fn convert_dtype(dtype: safetensors::Dtype) -> DType {
@@ -64,8 +63,7 @@ pub enum TensorLoadStrategy {
     /// Memory-map the tensor data
     MemoryMapped,
     /// Lazy loading with on-demand creation
-    Lazy,
-}
+    Lazy}
 
 /// Metadata for a tensor in the safetensors file
 #[derive(Debug, Clone)]
@@ -81,11 +79,10 @@ pub struct TensorMetadata {
     /// Byte length in file
     pub length: usize,
     /// Loading strategy
-    pub strategy: TensorLoadStrategy,
-}
+    pub strategy: TensorLoadStrategy}
 
 /// Device placement hint for optimal performance
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum DeviceHint {
     /// Prefer CPU placement
     PreferCpu,
@@ -94,8 +91,7 @@ pub enum DeviceHint {
     /// Automatic device selection
     Auto,
     /// Enforce specific device
-    ForceDevice(Device),
-}
+    ForceDevice(Device)}
 
 /// Loading statistics for performance tracking
 #[repr(C, align(64))] // Cache line aligned
@@ -124,8 +120,7 @@ pub struct LoadingStats {
     /// Peak memory usage in bytes
     pub peak_memory_bytes: AtomicU64,
     /// Failed operations count
-    pub failed_operations: AtomicUsize,
-}
+    pub failed_operations: AtomicUsize}
 
 impl LoadingStats {
     /// Create new loading statistics
@@ -143,8 +138,7 @@ impl LoadingStats {
             tensor_fusions: AtomicUsize::new(0),
             memory_usage_bytes: AtomicU64::new(0),
             peak_memory_bytes: AtomicU64::new(0),
-            failed_operations: AtomicUsize::new(0),
-        }
+            failed_operations: AtomicUsize::new(0)}
     }
 
     /// Record tensor load
@@ -246,6 +240,15 @@ impl LoadingStats {
         } else {
             0.0
         }
+    }
+
+    /// Get current time in nanoseconds since UNIX epoch
+    #[inline(always)]
+    pub fn current_time_nanos() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64
     }
 }
 

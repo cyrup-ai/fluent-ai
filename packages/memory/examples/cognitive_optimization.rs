@@ -43,11 +43,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Initial code to optimize
     let initial_code = r#"
-use std::collections::HashMap;
-
 pub struct QuantumMemory {
-    cache: HashMap<String, Vec<f64>>,
-}
+    cache: HashMap<String, Vec<f64>>}
 
 impl QuantumMemory {
     pub fn search(&self, query: &str) -> Vec<f64> {

@@ -24,9 +24,7 @@ pub enum ExportFormat {
         /// Format name
         name: String,
         /// Template for formatting
-        template: String,
-    },
-}
+        template: String}}
 
 impl Default for ExportFormat {
     fn default() -> Self {
@@ -40,15 +38,13 @@ pub struct DateRange {
     /// Start date (inclusive)
     pub start: Option<chrono::DateTime<chrono::Utc>>,
     /// End date (inclusive)
-    pub end: Option<chrono::DateTime<chrono::Utc>>,
-}
+    pub end: Option<chrono::DateTime<chrono::Utc>>}
 
 impl Default for DateRange {
     fn default() -> Self {
         Self {
             start: None,
-            end: None,
-        }
+            end: None}
     }
 }
 
@@ -84,8 +80,7 @@ pub struct ExportOptions {
     /// Filter by message roles
     pub message_roles: Vec<String>,
     /// Include attachments
-    pub include_attachments: bool,
-}
+    pub include_attachments: bool}
 
 impl Default for ExportOptions {
     fn default() -> Self {
@@ -104,7 +99,6 @@ impl Default for ExportOptions {
             custom_template: None,
             conversation_ids: Vec::new(),
             message_roles: Vec::new(),
-            include_attachments: true,
-        }
+            include_attachments: true}
     }
 }

@@ -24,8 +24,7 @@ pub struct GeminiStreamProcessor {
     /// Base URL for Gemini API
     base_url: &'static str,
     /// Cancellation flag for graceful shutdown
-    cancel_flag: Arc<AtomicBool>,
-}
+    cancel_flag: Arc<AtomicBool>}
 
 impl GeminiStreamProcessor {
     /// Create new streaming processor with HTTP3 client
@@ -34,8 +33,7 @@ impl GeminiStreamProcessor {
         Self {
             client,
             base_url: "https://generativelanguage.googleapis.com",
-            cancel_flag: Arc::new(AtomicBool::new(false)),
-        }
+            cancel_flag: Arc::new(AtomicBool::new(false))}
     }
 
     /// Execute streaming completion with zero-allocation patterns
@@ -104,8 +102,7 @@ impl GeminiStreamProcessor {
 
         match error_body {
             Some(body) => super::gemini_error::parse_api_error_response(&body),
-            None => super::gemini_error::parse_http_status_error(status_code, None),
-        }
+            None => super::gemini_error::parse_http_status_error(status_code, None)}
     }
 
     /// Create blazing-fast streaming pipeline with zero allocation where possible
@@ -190,8 +187,7 @@ pub struct StreamingResponse<S> {
     /// Performance metrics
     metrics: StreamingMetrics,
     /// Start time for duration calculation
-    start_time: Instant,
-}
+    start_time: Instant}
 
 impl<S> StreamingResponse<S>
 where
@@ -203,8 +199,7 @@ where
         Self {
             stream,
             metrics: StreamingMetrics::default(),
-            start_time: Instant::now(),
-        }
+            start_time: Instant::now()}
     }
 
     /// Get performance metrics
@@ -274,8 +269,7 @@ where
                 self.metrics.completed = true;
                 std::task::Poll::Ready(None)
             }
-            std::task::Poll::Pending => std::task::Poll::Pending,
-        }
+            std::task::Poll::Pending => std::task::Poll::Pending}
     }
 }
 
@@ -295,8 +289,7 @@ pub struct StreamingMetrics {
     /// Total tokens if available
     pub total_tokens: Option<u32>,
     /// Whether stream completed successfully
-    pub completed: bool,
-}
+    pub completed: bool}
 
 impl StreamingMetrics {
     /// Calculate average chunk size
@@ -338,8 +331,7 @@ pub struct StreamingConfig {
     /// Read timeout for chunks
     pub read_timeout: Duration,
     /// Enable detailed metrics collection
-    pub enable_metrics: bool,
-}
+    pub enable_metrics: bool}
 
 impl Default for StreamingConfig {
     fn default() -> Self {
@@ -348,8 +340,7 @@ impl Default for StreamingConfig {
             max_connections: 100,
             connection_timeout: Duration::from_secs(30),
             read_timeout: Duration::from_secs(60),
-            enable_metrics: true,
-        }
+            enable_metrics: true}
     }
 }
 

@@ -3,22 +3,35 @@
 //! Provides comprehensive validation for command parameters with zero-allocation
 //! patterns and blazing-fast constraint checking with production-ready error handling.
 
-use super::error_handling::{ParseError, ParseResult};
-use crate::types::candle_chat::chat::commands::types::ImmutableChatCommand;
 use std::collections::HashMap;
 
+use super::error_handling::{ParseError, ParseResult};
+use crate::types::candle_chat::chat::commands::types::ImmutableChatCommand;
 /// Command parameter validator
 pub struct CommandValidator {
     /// Custom validation rules
-    validation_rules: HashMap<String, Box<dyn Fn(&str) -> bool + Send + Sync>>,
+    validation_rules: HashMap<String, Box<dyn Fn(&str) -> bool + Send + Sync>>}
+
+impl std::fmt::Debug for CommandValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CommandValidator")
+            .field("validation_rules", &format!("{} rules", self.validation_rules.len()))
+            .finish()
+    }
+}
+
+impl Clone for CommandValidator {
+    fn clone(&self) -> Self {
+        // We can't clone function pointers, so create a new validator with default rules
+        Self::new()
+    }
 }
 
 impl CommandValidator {
     /// Create a new command validator
     pub fn new() -> Self {
         let mut validator = Self {
-            validation_rules: HashMap::new(),
-        };
+            validation_rules: HashMap::new()};
         validator.register_default_rules();
         validator
     }
@@ -85,19 +98,17 @@ impl CommandValidator {
         if !valid_formats.contains(&format) {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "format".to_string(),
-                value: format.to_string(),
-            });
+                value: format.to_string()});
         }
         Ok(())
     }
 
     /// Validate keep_last parameter for clear command
-    fn validate_keep_last_value(&self, n: u32) -> ParseResult<()> {
+    fn validate_keep_last_value(&self, n: usize) -> ParseResult<()> {
         if n == 0 {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "keep-last".to_string(),
-                value: "0".to_string(),
-            });
+                value: "0".to_string()});
         }
         Ok(())
     }
@@ -107,19 +118,17 @@ impl CommandValidator {
         if query.trim().is_empty() {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "query".to_string(),
-                value: query.to_string(),
-            });
+                value: query.to_string()});
         }
         Ok(())
     }
 
     /// Validate search limit parameter
-    fn validate_search_limit(&self, limit: u32) -> ParseResult<()> {
+    fn validate_search_limit(&self, limit: usize) -> ParseResult<()> {
         if limit == 0 || limit > 1000 {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "limit".to_string(),
-                value: limit.to_string(),
-            });
+                value: limit.to_string()});
         }
         Ok(())
     }
@@ -129,16 +138,14 @@ impl CommandValidator {
         if key.trim().is_empty() {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "key".to_string(),
-                value: key.to_string(),
-            });
+                value: key.to_string()});
         }
 
         // Check for valid configuration key format
         if !key.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.') {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "key".to_string(),
-                value: key.to_string(),
-            });
+                value: key.to_string()});
         }
 
         Ok(())
@@ -149,8 +156,7 @@ impl CommandValidator {
         if value.trim().is_empty() {
             return Err(ParseError::InvalidParameterValue {
                 parameter: "value".to_string(),
-                value: value.to_string(),
-            });
+                value: value.to_string()});
         }
         Ok(())
     }
@@ -169,8 +175,7 @@ impl CommandValidator {
             if !rule(value) {
                 return Err(ParseError::InvalidParameterValue {
                     parameter: rule_name.to_string(),
-                    value: value.to_string(),
-                });
+                    value: value.to_string()});
             }
         }
         Ok(())
@@ -184,8 +189,7 @@ impl CommandValidator {
                 if actual.parse::<i64>().is_err() {
                     Err(ParseError::TypeMismatch {
                         expected: expected.to_string(),
-                        actual: actual.to_string(),
-                    })
+                        actual: actual.to_string()})
                 } else {
                     Ok(())
                 }
@@ -194,8 +198,7 @@ impl CommandValidator {
                 if actual.parse::<f64>().is_err() {
                     Err(ParseError::TypeMismatch {
                         expected: expected.to_string(),
-                        actual: actual.to_string(),
-                    })
+                        actual: actual.to_string()})
                 } else {
                     Ok(())
                 }
@@ -204,14 +207,12 @@ impl CommandValidator {
                 if !matches!(actual.to_lowercase().as_str(), "true" | "false" | "yes" | "no" | "1" | "0") {
                     Err(ParseError::TypeMismatch {
                         expected: expected.to_string(),
-                        actual: actual.to_string(),
-                    })
+                        actual: actual.to_string()})
                 } else {
                     Ok(())
                 }
             }
-            _ => Ok(()),
-        }
+            _ => Ok(())}
     }
 }
 

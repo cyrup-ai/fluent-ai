@@ -28,8 +28,7 @@ pub struct TypingState {
     /// Is currently typing
     pub is_typing: AtomicBool,
     /// Typing duration in seconds
-    pub typing_duration: AtomicU64,
-}
+    pub typing_duration: AtomicU64}
 
 impl TypingState {
     /// Create a new typing state
@@ -44,8 +43,7 @@ impl TypingState {
             session_id,
             last_activity: AtomicU64::new(now),
             is_typing: AtomicBool::new(false),
-            typing_duration: AtomicU64::new(0),
-        }
+            typing_duration: AtomicU64::new(0)}
     }
 
     /// Start typing
@@ -113,8 +111,7 @@ pub struct TypingIndicator {
     /// Total typing events counter
     typing_events: Arc<ConsistentCounter>,
     /// Cleanup task handle
-    cleanup_task: ArcSwap<Option<fluent_ai_async::AsyncTask<()>>>,
-}
+    cleanup_task: ArcSwap<Option<fluent_ai_async::AsyncTask<()>>>}
 
 impl TypingIndicator {
     /// Create a new typing indicator
@@ -128,8 +125,7 @@ impl TypingIndicator {
             event_broadcaster,
             active_users: Arc::new(ConsistentCounter::new(0)),
             typing_events: Arc::new(ConsistentCounter::new(0)),
-            cleanup_task: ArcSwap::new(Arc::new(None)),
-        }
+            cleanup_task: ArcSwap::new(Arc::new(None))}
     }
 
     /// Start typing indicator
@@ -155,8 +151,7 @@ impl TypingIndicator {
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
-        };
+                .as_secs()};
 
         let _ = self.event_broadcaster.send(event);
 
@@ -178,8 +173,7 @@ impl TypingIndicator {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs(),
-            };
+                    .as_secs()};
 
             let _ = self.event_broadcaster.send(event);
         }
@@ -235,8 +229,7 @@ impl TypingIndicator {
                                 timestamp: std::time::SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .unwrap_or_default()
-                                    .as_secs(),
-                            };
+                                    .as_secs()};
 
                             let _ = event_broadcaster.send(event);
                         }
@@ -275,8 +268,7 @@ impl TypingIndicator {
             active_users: self.active_users.get(),
             total_typing_events: self.typing_events.get(),
             expiry_duration: self.expiry_duration.load(Ordering::Relaxed),
-            cleanup_interval: self.cleanup_interval.load(Ordering::Relaxed),
-        }
+            cleanup_interval: self.cleanup_interval.load(Ordering::Relaxed)}
     }
 }
 
@@ -297,8 +289,7 @@ pub struct TypingStatistics {
     pub active_users: usize,
     pub total_typing_events: usize,
     pub expiry_duration: u64,
-    pub cleanup_interval: u64,
-}
+    pub cleanup_interval: u64}
 
 impl Default for TypingStatistics {
     fn default() -> Self {
@@ -306,7 +297,6 @@ impl Default for TypingStatistics {
             active_users: 0,
             total_typing_events: 0,
             expiry_duration: 10,
-            cleanup_interval: 30,
-        }
+            cleanup_interval: 30}
     }
 }

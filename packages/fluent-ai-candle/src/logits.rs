@@ -13,7 +13,6 @@
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 
 use arrayvec::ArrayVec;
-
 use crate::error::{CandleError, CandleResult};
 // Re-export the new unified system for compatibility
 pub use crate::processing::{
@@ -21,10 +20,8 @@ pub use crate::processing::{
     error::ProcessingError,
     processors::{
         CompositeProcessor, CompositeProcessorBuilder, RepetitionPenaltyProcessor,
-        TemperatureProcessor, TopKProcessor, TopPProcessor, presets,
-    },
-    traits::LogitsProcessor,
-};
+        TemperatureProcessor, TopKProcessor, TopPProcessor, presets},
+    traits::LogitsProcessor};
 
 /// Maximum vocabulary size for zero-allocation processing
 #[allow(dead_code)] // Reserved for future vocabulary size validation
@@ -53,8 +50,7 @@ pub struct SamplingConfig {
     /// Presence penalty factor (0.0 = disabled)  
     pub presence_penalty: f32,
     /// Minimum probability threshold for token selection
-    pub min_probability: f32,
-}
+    pub min_probability: f32}
 
 impl Default for SamplingConfig {
     #[inline(always)]
@@ -66,8 +62,7 @@ impl Default for SamplingConfig {
             repetition_penalty: 1.0,
             frequency_penalty: 0.0,
             presence_penalty: 0.0,
-            min_probability: 0.0,
-        }
+            min_probability: 0.0}
     }
 }
 
@@ -129,8 +124,7 @@ pub struct LogitsSampler {
     /// Main processing engine
     engine: ProcessingEngine,
     /// Legacy configuration
-    config: SamplingConfig,
-}
+    config: SamplingConfig}
 
 impl LogitsSampler {
     /// Create new sampler with configuration - DEPRECATED
@@ -220,8 +214,7 @@ pub struct SamplingMetrics {
     /// Total processing time in nanoseconds
     pub total_processing_time_ns: AtomicU64,
     /// Number of cache hits for repeated configurations
-    pub cache_hits: AtomicU64,
-}
+    pub cache_hits: AtomicU64}
 
 impl SamplingMetrics {
     /// Create new metrics instance
@@ -230,8 +223,7 @@ impl SamplingMetrics {
         Self {
             total_samples: AtomicU64::new(0),
             total_processing_time_ns: AtomicU64::new(0),
-            cache_hits: AtomicU64::new(0),
-        }
+            cache_hits: AtomicU64::new(0)}
     }
 
     /// Record a sampling operation

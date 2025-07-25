@@ -12,51 +12,44 @@ use chrono::Local;
 #[derive(Debug, Serialize, Deserialize)]
 struct BenchmarkResults {
     memory_creation: std::collections::HashMap<String, BenchmarkStats>,
-    memory_with_embedding: std::collections::HashMap<String, BenchmarkStats>,
-}
+    memory_with_embedding: std::collections::HashMap<String, BenchmarkStats>}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct BenchmarkStats {
     mean_ms: f64,
     median_ms: f64,
     min_ms: f64,
-    max_ms: f64,
-}
+    max_ms: f64}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ComparisonResult {
     python_results: BenchmarkResults,
     rust_results: BenchmarkResults,
-    comparison: ComparisonSummary,
-}
+    comparison: ComparisonSummary}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ComparisonSummary {
     memory_creation: std::collections::HashMap<String, ComparisonStats>,
     memory_with_embedding: std::collections::HashMap<String, ComparisonStats>,
-    summary: SummaryStats,
-}
+    summary: SummaryStats}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ComparisonStats {
     python_mean_ms: f64,
     rust_mean_ms: f64,
-    speedup_factor: f64,
-}
+    speedup_factor: f64}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SummaryStats {
     memory_creation: OperationSummary,
     memory_with_embedding: OperationSummary,
-    overall: OperationSummary,
-}
+    overall: OperationSummary}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct OperationSummary {
     python_avg_ms: f64,
     rust_avg_ms: f64,
-    speedup_factor: f64,
-}
+    speedup_factor: f64}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Python mem0 vs Rust benchmark comparison...");

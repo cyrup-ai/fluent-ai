@@ -1,6 +1,5 @@
 //! OpenAI model discovery and registration
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -14,23 +13,19 @@ use super::{
     error::OpenAIError,
     model_info::{
         get_model_config, model_name_from_variant, model_supports_audio, model_supports_tools,
-        model_supports_vision,
-    },
-};
+        model_supports_vision}};
 use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use crate::model::{
     error::ModelError,
     info::{ModelCapability, ModelInfo, ModelInfoBuilder},
     registry::{ModelRegistry, RegisteredModel},
-    traits::Model,
-};
+    traits::Model};
 
 /// OpenAI model discovery implementation
 #[derive(Debug, Clone)]
 pub struct OpenAIDiscovery {
     client: Arc<OpenAIClient>,
-    supported_models: &'static [&'static str],
-}
+    supported_models: &'static [&'static str]}
 
 impl OpenAIDiscovery {
     /// Create a new OpenAI model discovery instance
@@ -46,8 +41,7 @@ impl OpenAIDiscovery {
 
         Self {
             client: Arc::new(client),
-            supported_models: SUPPORTED_MODELS,
-        }
+            supported_models: SUPPORTED_MODELS}
     }
 
     /// Get model information for a specific model
@@ -101,8 +95,7 @@ impl ProviderModelDiscovery for OpenAIDiscovery {
                 // Create a new model instance for each model
                 let model = OpenAIModel {
                     info: model_info,
-                    client: self.client.clone(),
-                };
+                    client: self.client.clone()};
 
                 // Register the model
                 if let Err(e) = registry.register("openai", model) {
@@ -129,8 +122,7 @@ impl ProviderModelDiscovery for OpenAIDiscovery {
 #[derive(Debug, Clone)]
 struct OpenAIModel {
     info: ModelInfo,
-    client: Arc<OpenAIClient>,
-}
+    client: Arc<OpenAIClient>}
 
 impl Model for OpenAIModel {
     fn info(&self) -> &'static ModelInfo {

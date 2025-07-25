@@ -142,8 +142,7 @@ pub mod models {
             EMBED_V4_0 => 8_192,
             EMBED_ENGLISH_V3_0 => 8_192,
             RERANK_V3_5 => 4_096,
-            _ => 0,
-        }
+            _ => 0}
     }
     
     /// Model dimension for embeddings - compile-time constants
@@ -152,8 +151,7 @@ pub mod models {
         match model {
             EMBED_V4_0 => 1024,
             EMBED_ENGLISH_V3_0 => 1024,
-            _ => 0,
-        }
+            _ => 0}
     }
 }
 
@@ -179,8 +177,7 @@ pub mod endpoints {
             ModelType::Chat => CHAT_URL,
             ModelType::Embedding => EMBED_URL,
             ModelType::Reranking => RERANK_URL,
-            ModelType::Unknown => "",
-        }
+            ModelType::Unknown => ""}
     }
 }
 
@@ -190,8 +187,7 @@ pub enum ModelType {
     Chat,
     Embedding,
     Reranking,
-    Unknown,
-}
+    Unknown}
 
 /// Cohere provider configuration - zero allocation
 pub mod config {

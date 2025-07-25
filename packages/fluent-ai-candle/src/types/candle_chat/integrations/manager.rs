@@ -16,15 +16,13 @@ pub struct IntegrationManager {
     /// Active integrations
     pub integrations: Vec<IntegrationConfig>,
     /// Default timeout
-    pub default_timeout: u32,
-}
+    pub default_timeout: u32}
 
 impl Default for IntegrationManager {
     fn default() -> Self {
         Self {
             integrations: Vec::new(),
-            default_timeout: 30,
-        }
+            default_timeout: 30}
     }
 }
 
@@ -38,14 +36,12 @@ impl IntegrationManager {
     pub fn add_integration(&mut self, config: IntegrationConfig) -> IntegrationResult<()> {
         if config.name.is_empty() {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration name cannot be empty"),
-            });
+                detail: Arc::from("Integration name cannot be empty")});
         }
 
         if config.endpoint.is_empty() {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration endpoint cannot be empty"),
-            });
+                detail: Arc::from("Integration endpoint cannot be empty")});
         }
 
         self.integrations.push(config);
@@ -60,8 +56,7 @@ impl IntegrationManager {
 
         if self.integrations.len() == initial_len {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration not found"),
-            });
+                detail: Arc::from("Integration not found")});
         }
 
         Ok(())
@@ -214,16 +209,13 @@ impl IntegrationManager {
             for integration in &integrations {
                 let result = if integration.name.is_empty() {
                     Err(IntegrationError::ConfigurationError {
-                        detail: Arc::from("Integration name cannot be empty"),
-                    })
+                        detail: Arc::from("Integration name cannot be empty")})
                 } else if integration.endpoint.is_empty() {
                     Err(IntegrationError::ConfigurationError {
-                        detail: Arc::from("Integration endpoint cannot be empty"),
-                    })
+                        detail: Arc::from("Integration endpoint cannot be empty")})
                 } else if integration.timeout_seconds == 0 {
                     Err(IntegrationError::ConfigurationError {
-                        detail: Arc::from("Timeout must be greater than zero"),
-                    })
+                        detail: Arc::from("Timeout must be greater than zero")})
                 } else {
                     Ok(())
                 };

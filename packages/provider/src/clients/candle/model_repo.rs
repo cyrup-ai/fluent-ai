@@ -7,8 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{
     Arc,
-    atomic::{AtomicU8, Ordering},
-};
+    atomic::{AtomicU8, Ordering}};
 
 use arc_swap::{ArcSwap, Guard};
 use arrayvec::ArrayString;
@@ -28,8 +27,7 @@ pub enum ModelState {
     Downloading = 1,
     Loading = 2,
     Loaded = 3,
-    Failed = 4,
-}
+    Failed = 4}
 
 impl From<u8> for ModelState {
     #[inline(always)]
@@ -39,8 +37,7 @@ impl From<u8> for ModelState {
             1 => ModelState::Downloading,
             2 => ModelState::Loading,
             3 => ModelState::Loaded,
-            _ => ModelState::Failed,
-        }
+            _ => ModelState::Failed}
     }
 }
 
@@ -53,8 +50,7 @@ pub enum ModelArchitecture {
     CodeLlama = 2,
     Phi3 = 3,
     Gemma = 4,
-    Kimi = 5,
-}
+    Kimi = 5}
 
 /// Zero-allocation model metadata with cache-aligned fields
 #[repr(C, align(64))]
@@ -75,8 +71,7 @@ pub struct ModelMetadata {
     /// Total model size in bytes
     pub model_size_bytes: u64,
     /// Recommended minimum VRAM/RAM in GB
-    pub min_memory_gb: u8,
-}
+    pub min_memory_gb: u8}
 
 impl ModelMetadata {
     /// Create new model metadata with specified parameters
@@ -101,8 +96,7 @@ impl ModelMetadata {
                 .map_err(|_| ModelRepoError::TokenizerFileTooLong)?,
             state: AtomicU8::new(ModelState::Unloaded as u8),
             model_size_bytes,
-            min_memory_gb,
-        })
+            min_memory_gb})
     }
 
     /// Get current model state atomically
@@ -137,8 +131,7 @@ pub struct DownloadProgress {
     pub model: CandleModel,
     pub bytes_downloaded: u64,
     pub total_bytes: u64,
-    pub file_name: ArrayString<64>,
-}
+    pub file_name: ArrayString<64>}
 
 /// Model file information after download
 #[derive(Debug)]
@@ -146,8 +139,7 @@ pub struct ModelFileInfo {
     pub file_path: PathBuf,
     pub file_size: u64,
     pub checksum: [u8; 32],
-    pub memory_map: Option<Mmap>,
-}
+    pub memory_map: Option<Mmap>}
 
 /// Lock-free model repository with atomic operations
 pub struct ModelRepository {
@@ -159,8 +151,7 @@ pub struct ModelRepository {
     /// Cache directory for downloaded models
     cache_dir: PathBuf,
     /// Hot-swappable HuggingFace API client
-    hf_client: ArcSwap<Option<hf_hub::api::tokio::Api>>,
-}
+    hf_client: ArcSwap<Option<hf_hub::api::tokio::Api>>}
 
 impl ModelRepository {
     /// Create new model repository with default model mappings
@@ -172,8 +163,7 @@ impl ModelRepository {
             progress_tx,
             progress_rx,
             cache_dir: cache_dir.as_ref().to_path_buf(),
-            hf_client: ArcSwap::from_pointee(None),
-        };
+            hf_client: ArcSwap::from_pointee(None)};
 
         // Initialize default model mappings
         repository.initialize_default_models()?;
@@ -345,16 +335,14 @@ impl ModelRepository {
                         return Err(ModelRepoError::StateTransitionFailed(model));
                     }
                 }
-                ModelState::Unloaded => unreachable!(),
-            }
+                ModelState::Unloaded => unreachable!()}
         }
 
         let result = self.download_model_files(&metadata, model).await;
 
         match &result {
             Ok(_) => metadata.set_state(ModelState::Loaded),
-            Err(_) => metadata.set_state(ModelState::Failed),
-        }
+            Err(_) => metadata.set_state(ModelState::Failed)}
 
         result
     }
@@ -389,8 +377,7 @@ impl ModelRepository {
                 .map_err(|e| ModelRepoError::IoError(e))?
                 .len(),
             checksum: self.calculate_checksum(&config_path).await?,
-            memory_map: None,
-        });
+            memory_map: None});
 
         // Download tokenizer file
         let tokenizer_path = self
@@ -403,8 +390,7 @@ impl ModelRepository {
                 .map_err(|e| ModelRepoError::IoError(e))?
                 .len(),
             checksum: self.calculate_checksum(&tokenizer_path).await?,
-            memory_map: None,
-        });
+            memory_map: None});
 
         // Download model files (handle both single file and index-based models)
         if metadata.model_files.ends_with(".index.json") {
@@ -428,8 +414,7 @@ impl ModelRepository {
                     file_path,
                     file_size,
                     checksum: self.calculate_checksum_from_mmap(&memory_map)?,
-                    memory_map: Some(memory_map),
-                });
+                    memory_map: Some(memory_map)});
             }
         } else {
             // Single model file
@@ -447,8 +432,7 @@ impl ModelRepository {
                 file_path: model_path,
                 file_size,
                 checksum: self.calculate_checksum_from_mmap(&memory_map)?,
-                memory_map: Some(memory_map),
-            });
+                memory_map: Some(memory_map)});
         }
 
         Ok(file_infos)
@@ -495,8 +479,7 @@ impl ModelRepository {
                 model,
                 bytes_downloaded: metadata.len(),
                 total_bytes: metadata.len(),
-                file_name: ArrayString::from(filename).unwrap_or_default(),
-            };
+                file_name: ArrayString::from(filename).unwrap_or_default()};
 
             // Non-blocking progress send
             let _ = self.progress_tx.try_send(progress);
@@ -675,5 +658,4 @@ pub enum ModelRepoError {
     ParseError(String),
 
     #[error("Memory map error: {0}")]
-    MemoryMapError(String),
-}
+    MemoryMapError(String)}

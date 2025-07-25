@@ -13,8 +13,7 @@ pub enum QuantizationType {
     /// 4-bit quantization (Q4_1)
     Q4_1 = 2,
     /// 8-bit quantization
-    Q8_0 = 3,
-}
+    Q8_0 = 3}
 
 impl Default for QuantizationType {
     #[inline(always)]

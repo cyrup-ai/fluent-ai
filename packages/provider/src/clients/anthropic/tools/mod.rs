@@ -15,8 +15,7 @@ pub mod function_calling;
 // Re-export core types for API compatibility
 pub use core::{
     AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError,
-};
+    Message, ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError};
 
 // Note: ToolError not available - using anyhow::Error instead
 
@@ -31,8 +30,7 @@ pub use fluent_ai_domain::tool::Tool;
 pub use function_calling::{
     Conversation, DescribedTool, NamedTool, ToolBuilder, ToolExecutionContext, ToolExecutor,
     ToolOutput, ToolRegistry, ToolResult, ToolWithDeps, ToolWithInvocation, ToolWithRequestSchema,
-    ToolWithSchemas, TypedTool, TypedToolStorage, TypedToolTrait,
-};
+    ToolWithSchemas, TypedTool, TypedToolStorage, TypedToolTrait};
 
 /// Create a new tool registry with built-in tools pre-registered
 ///
@@ -68,16 +66,14 @@ fn register_builtin_tools(registry: &mut ToolRegistry) -> AnthropicResult<()> {
 
 /// Production-ready tool registry builder with fluent API
 pub struct ToolRegistryBuilder {
-    registry: ToolRegistry,
-}
+    registry: ToolRegistry}
 
 impl ToolRegistryBuilder {
     /// Create new builder
     #[inline(always)]
     pub fn new() -> Self {
         Self {
-            registry: ToolRegistry::new(),
-        }
+            registry: ToolRegistry::new()}
     }
 
     /// Add built-in tools (calculator, file operations)

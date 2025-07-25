@@ -20,8 +20,7 @@ use super::{Op, TryOp};
 // ================================================================
 pub struct Parallel<A, B> {
     left: A,
-    right: B,
-}
+    right: B}
 
 impl<A, B> Parallel<A, B> {
     #[inline(always)]

@@ -13,8 +13,8 @@
 //! proper lifetime annotations, and efficient serialization patterns.
 
 use crate::{MAX_MESSAGES, MAX_TOOLS, MAX_CHOICES};
-use arrayvec::ArrayVec;
 use serde::{Deserialize, Serialize};
+use arrayvec::ArrayVec;
 
 
 // =============================================================================
@@ -43,8 +43,7 @@ pub struct GeminiGenerateContentRequest {
     pub system_instruction: Option<GeminiContent>,
     /// Cached content reference
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cached_content: Option<String>,
-}
+    pub cached_content: Option<String>}
 
 /// Content in a conversation turn
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,8 +52,7 @@ pub struct GeminiContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
     /// Array of content parts
-    pub parts: ArrayVec<GeminiPart, 16>,
-}
+    pub parts: ArrayVec<GeminiPart, 16>}
 
 /// Individual content part (text, image, function call, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,39 +61,31 @@ pub enum GeminiPart {
     /// Text content
     Text {
         /// Text content
-        text: String,
-    },
+        text: String},
     /// Inline data (images, etc.)
     InlineData {
         /// Inline data blob
-        inline_data: GeminiInlineData,
-    },
+        inline_data: GeminiInlineData},
     /// File data reference
     FileData {
         /// File data reference
-        file_data: GeminiFileData,
-    },
+        file_data: GeminiFileData},
     /// Function call
     FunctionCall {
         /// Function call details
-        function_call: GeminiFunctionCall,
-    },
+        function_call: GeminiFunctionCall},
     /// Function response
     FunctionResponse {
         /// Function response details
-        function_response: GeminiFunctionResponse,
-    },
+        function_response: GeminiFunctionResponse},
     /// Executable code
     ExecutableCode {
         /// Executable code details
-        executable_code: GeminiExecutableCode,
-    },
+        executable_code: GeminiExecutableCode},
     /// Code execution result
     CodeExecutionResult {
         /// Code execution result details
-        code_execution_result: GeminiCodeExecutionResult,
-    },
-}
+        code_execution_result: GeminiCodeExecutionResult}}
 
 /// Inline data (base64 encoded)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,8 +93,7 @@ pub struct GeminiInlineData {
     /// MIME type of the data
     pub mime_type: String,
     /// Base64 encoded data
-    pub data: String,
-}
+    pub data: String}
 
 /// File data reference
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,8 +101,7 @@ pub struct GeminiFileData {
     /// MIME type of the file
     pub mime_type: String,
     /// File URI
-    pub file_uri: String,
-}
+    pub file_uri: String}
 
 /// Function call in content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,8 +109,7 @@ pub struct GeminiFunctionCall {
     /// Name of the function
     pub name: String,
     /// Function arguments
-    pub args: serde_json::Value,
-}
+    pub args: serde_json::Value}
 
 /// Function response in content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,8 +117,7 @@ pub struct GeminiFunctionResponse {
     /// Name of the function
     pub name: String,
     /// Function response data
-    pub response: serde_json::Value,
-}
+    pub response: serde_json::Value}
 
 /// Executable code part
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -139,8 +125,7 @@ pub struct GeminiExecutableCode {
     /// Programming language
     pub language: String, // "python"
     /// Code content
-    pub code: String,
-}
+    pub code: String}
 
 /// Code execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -149,8 +134,7 @@ pub struct GeminiCodeExecutionResult {
     pub outcome: String, // "ok", "error"
     /// Execution output
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output: Option<String>,
-}
+    pub output: Option<String>}
 
 /// Tool definition for function calling
 #[derive(Debug, Clone, Serialize)]
@@ -163,8 +147,7 @@ pub struct GeminiTool {
     pub code_execution: Option<GeminiCodeExecution>,
     /// Google search tool
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub google_search_retrieval: Option<GeminiGoogleSearchRetrieval>,
-}
+    pub google_search_retrieval: Option<GeminiGoogleSearchRetrieval>}
 
 /// Function declaration for tools
 #[derive(Debug, Clone, Serialize)]
@@ -175,24 +158,21 @@ pub struct GeminiFunctionDeclaration {
     pub description: String,
     /// Function parameters (JSON schema)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<serde_json::Value>,
-}
+    pub parameters: Option<serde_json::Value>}
 
 /// Code execution tool configuration
 #[derive(Debug, Clone, Serialize)]
 pub struct GeminiCodeExecution {
     /// Supported languages
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub languages: Option<Vec<String>>,
-}
+    pub languages: Option<Vec<String>>}
 
 /// Google search retrieval tool
 #[derive(Debug, Clone, Serialize)]
 pub struct GeminiGoogleSearchRetrieval {
     /// Dynamic retrieval config
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub dynamic_retrieval_config: Option<GeminiDynamicRetrievalConfig>,
-}
+    pub dynamic_retrieval_config: Option<GeminiDynamicRetrievalConfig>}
 
 /// Dynamic retrieval configuration
 #[derive(Debug, Clone, Serialize)]
@@ -200,16 +180,14 @@ pub struct GeminiDynamicRetrievalConfig {
     /// Mode for dynamic retrieval
     pub mode: String, // "mode_dynamic"
     /// Dynamic threshold
-    pub dynamic_threshold: f32,
-}
+    pub dynamic_threshold: f32}
 
 /// Tool configuration
 #[derive(Debug, Clone, Serialize)]
 pub struct GeminiToolConfig {
     /// Function calling configuration
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_calling_config: Option<GeminiFunctionCallingConfig>,
-}
+    pub function_calling_config: Option<GeminiFunctionCallingConfig>}
 
 /// Function calling configuration
 #[derive(Debug, Clone, Serialize)]
@@ -218,8 +196,7 @@ pub struct GeminiFunctionCallingConfig {
     pub mode: String, // "auto", "any", "none"
     /// Allowed function names (for "any" mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub allowed_function_names: Option<Vec<String>>,
-}
+    pub allowed_function_names: Option<Vec<String>>}
 
 /// Safety setting for content filtering
 #[derive(Debug, Clone, Serialize)]
@@ -271,8 +248,7 @@ pub struct GeminiGenerationConfig {
     pub response_logprobs: Option<bool>,
     /// Logprobs count
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<u32>,
-}
+    pub logprobs: Option<u32>}
 
 // =============================================================================
 // Response Types
@@ -291,8 +267,7 @@ pub struct GeminiGenerateContentResponse {
     pub usage_metadata: Option<GeminiUsageMetadata>,
     /// Model version
     #[serde(default)]
-    pub model_version: Option<String>,
-}
+    pub model_version: Option<String>}
 
 /// Response candidate
 #[derive(Debug, Deserialize)]
@@ -316,8 +291,7 @@ pub struct GeminiCandidate {
     pub grounding_attributions: Option<Vec<GeminiGroundingAttribution>>,
     /// Index of this candidate
     #[serde(default)]
-    pub index: Option<u32>,
-}
+    pub index: Option<u32>}
 
 /// Safety rating for content
 #[derive(Debug, Deserialize)]
@@ -328,15 +302,13 @@ pub struct GeminiSafetyRating {
     pub probability: String, // "negligible", "low", "medium", "high"
     /// Blocked status
     #[serde(default)]
-    pub blocked: Option<bool>,
-}
+    pub blocked: Option<bool>}
 
 /// Citation metadata
 #[derive(Debug, Deserialize)]
 pub struct GeminiCitationMetadata {
     /// Citation sources
-    pub citation_sources: Vec<GeminiCitationSource>,
-}
+    pub citation_sources: Vec<GeminiCitationSource>}
 
 /// Citation source
 #[derive(Debug, Deserialize)]
@@ -352,8 +324,7 @@ pub struct GeminiCitationSource {
     pub uri: Option<String>,
     /// License information
     #[serde(default)]
-    pub license: Option<String>,
-}
+    pub license: Option<String>}
 
 /// Grounding attribution
 #[derive(Debug, Deserialize)]
@@ -361,8 +332,7 @@ pub struct GeminiGroundingAttribution {
     /// Attribution source
     pub source_id: Option<String>,
     /// Content that is attributed
-    pub content: GeminiContent,
-}
+    pub content: GeminiContent}
 
 /// Prompt feedback
 #[derive(Debug, Deserialize)]
@@ -372,8 +342,7 @@ pub struct GeminiPromptFeedback {
     pub block_reason: Option<String>, // "safety", "other"
     /// Safety ratings for the prompt
     #[serde(default)]
-    pub safety_ratings: Option<ArrayVec<GeminiSafetyRating, 8>>,
-}
+    pub safety_ratings: Option<ArrayVec<GeminiSafetyRating, 8>>}
 
 /// Usage metadata
 #[derive(Debug, Deserialize)]
@@ -387,8 +356,7 @@ pub struct GeminiUsageMetadata {
     pub total_token_count: u32,
     /// Cached content token count
     #[serde(default)]
-    pub cached_content_token_count: Option<u32>,
-}
+    pub cached_content_token_count: Option<u32>}
 
 // =============================================================================
 // Streaming Response Types
@@ -407,8 +375,7 @@ pub struct GeminiStreamGenerateContentResponse {
     pub usage_metadata: Option<GeminiUsageMetadata>,
     /// Model version
     #[serde(default)]
-    pub model_version: Option<String>,
-}
+    pub model_version: Option<String>}
 
 // =============================================================================
 // Embeddings API
@@ -427,36 +394,31 @@ pub struct GeminiEmbedContentRequest {
     pub title: Option<String>,
     /// Output dimensionality
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output_dimensionality: Option<u32>,
-}
+    pub output_dimensionality: Option<u32>}
 
 /// Embed content response
 #[derive(Debug, Deserialize)]
 pub struct GeminiEmbedContentResponse {
     /// Content embedding
-    pub embedding: GeminiContentEmbedding,
-}
+    pub embedding: GeminiContentEmbedding}
 
 /// Content embedding
 #[derive(Debug, Deserialize)]
 pub struct GeminiContentEmbedding {
     /// Embedding values
-    pub values: Vec<f32>,
-}
+    pub values: Vec<f32>}
 
 /// Batch embed contents request
 #[derive(Debug, Serialize)]
 pub struct GeminiBatchEmbedContentsRequest {
     /// Array of embed requests
-    pub requests: Vec<GeminiEmbedContentRequest>,
-}
+    pub requests: Vec<GeminiEmbedContentRequest>}
 
 /// Batch embed contents response
 #[derive(Debug, Deserialize)]
 pub struct GeminiBatchEmbedContentsResponse {
     /// Array of embeddings
-    pub embeddings: Vec<GeminiContentEmbedding>,
-}
+    pub embeddings: Vec<GeminiContentEmbedding>}
 
 // =============================================================================
 // Count Tokens API
@@ -469,8 +431,7 @@ pub struct GeminiCountTokensRequest {
     pub contents: ArrayVec<GeminiContent, MAX_MESSAGES>,
     /// Generate content request (alternative to contents)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub generate_content_request: Option<GeminiGenerateContentRequest>,
-}
+    pub generate_content_request: Option<GeminiGenerateContentRequest>}
 
 /// Count tokens response
 #[derive(Debug, Deserialize)]
@@ -479,8 +440,7 @@ pub struct GeminiCountTokensResponse {
     pub total_tokens: u32,
     /// Cached content token count
     #[serde(default)]
-    pub cached_content_token_count: Option<u32>,
-}
+    pub cached_content_token_count: Option<u32>}
 
 // =============================================================================
 // Utility Types and Implementations
@@ -495,8 +455,7 @@ impl Default for GeminiGenerateContentRequest {
             safety_settings: None,
             generation_config: None,
             system_instruction: None,
-            cached_content: None,
-        }
+            cached_content: None}
     }
 }
 
@@ -515,8 +474,7 @@ impl GeminiGenerateContentRequest {
         
         let content = GeminiContent {
             role: Some("user".to_string()),
-            parts,
-        };
+            parts};
         
         self.contents.try_push(content)
             .map_err(|_| "Maximum contents exceeded")
@@ -530,8 +488,7 @@ impl GeminiGenerateContentRequest {
         
         let content = GeminiContent {
             role: Some("model".to_string()),
-            parts,
-        };
+            parts};
         
         self.contents.try_push(content)
             .map_err(|_| "Maximum contents exceeded")
@@ -544,8 +501,7 @@ impl GeminiGenerateContentRequest {
         
         self.system_instruction = Some(GeminiContent {
             role: None,
-            parts,
-        });
+            parts});
         self
     }
 
@@ -561,8 +517,7 @@ impl GeminiGenerateContentRequest {
         let function_declaration = GeminiFunctionDeclaration {
             name,
             description,
-            parameters,
-        };
+            parameters};
 
         if self.tools.is_none() {
             self.tools = Some(ArrayVec::new());
@@ -577,8 +532,7 @@ impl GeminiGenerateContentRequest {
                 let tool = GeminiTool {
                     function_declarations: Some(function_declarations),
                     code_execution: None,
-                    google_search_retrieval: None,
-                };
+                    google_search_retrieval: None};
                 
                 tools.try_push(tool)
                     .map_err(|_| "Maximum tools exceeded")
@@ -616,8 +570,7 @@ impl Default for GeminiGenerationConfig {
             presence_penalty: None,
             frequency_penalty: None,
             response_logprobs: None,
-            logprobs: None,
-        }
+            logprobs: None}
     }
 }
 
@@ -674,8 +627,7 @@ impl GeminiContent {
         
         Self {
             role: Some("user".to_string()),
-            parts,
-        }
+            parts}
     }
 
     /// Create model content with text
@@ -686,8 +638,7 @@ impl GeminiContent {
         
         Self {
             role: Some("model".to_string()),
-            parts,
-        }
+            parts}
     }
 
     /// Create content with text and image
@@ -697,14 +648,11 @@ impl GeminiContent {
         let _ = parts.try_push(GeminiPart::InlineData {
             inline_data: GeminiInlineData {
                 mime_type,
-                data: image_data,
-            },
-        });
+                data: image_data}});
         
         Self {
             role: Some("user".to_string()),
-            parts,
-        }
+            parts}
     }
 
     /// Add a text part
@@ -743,8 +691,7 @@ impl GeminiSafetySetting {
         Self {
             category: "HARM_CATEGORY_HARASSMENT".to_string(),
             threshold: "BLOCK_MEDIUM_AND_ABOVE".to_string(),
-            method: None,
-        }
+            method: None}
     }
 
     /// Create hate speech safety setting
@@ -753,8 +700,7 @@ impl GeminiSafetySetting {
         Self {
             category: "HARM_CATEGORY_HATE_SPEECH".to_string(),
             threshold: "BLOCK_MEDIUM_AND_ABOVE".to_string(),
-            method: None,
-        }
+            method: None}
     }
 
     /// Create sexually explicit safety setting
@@ -763,8 +709,7 @@ impl GeminiSafetySetting {
         Self {
             category: "HARM_CATEGORY_SEXUALLY_EXPLICIT".to_string(),
             threshold: "BLOCK_MEDIUM_AND_ABOVE".to_string(),
-            method: None,
-        }
+            method: None}
     }
 
     /// Create dangerous content safety setting
@@ -773,8 +718,7 @@ impl GeminiSafetySetting {
         Self {
             category: "HARM_CATEGORY_DANGEROUS_CONTENT".to_string(),
             threshold: "BLOCK_MEDIUM_AND_ABOVE".to_string(),
-            method: None,
-        }
+            method: None}
     }
 }
 

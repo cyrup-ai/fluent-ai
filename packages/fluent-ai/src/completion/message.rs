@@ -31,18 +31,14 @@ use crate::OneOrMany;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Message {
     User {
-        content: OneOrMany<UserContent>,
-    },
+        content: OneOrMany<UserContent>},
     Assistant {
-        content: OneOrMany<AssistantContent>,
-    },
-}
+        content: OneOrMany<AssistantContent>}}
 
 impl Message {
     pub fn user(content: impl Into<String>) -> Self {
         Message::User {
-            content: OneOrMany::one(UserContent::Text(Text(content.into()))),
-        }
+            content: OneOrMany::one(UserContent::Text(Text(content.into())))}
     }
 }
 
@@ -52,8 +48,7 @@ pub enum UserContent {
     Image(Image),
     Audio(Audio),
     Document(Document),
-    ToolResult(ToolResult),
-}
+    ToolResult(ToolResult)}
 
 impl UserContent {
     /// Create text content
@@ -72,8 +67,7 @@ impl UserContent {
             data: data.into(),
             format,
             media_type,
-            detail,
-        })
+            detail})
     }
 
     /// Create audio content
@@ -85,8 +79,7 @@ impl UserContent {
         UserContent::Audio(Audio {
             data: data.into(),
             format,
-            media_type,
-        })
+            media_type})
     }
 
     /// Create document content
@@ -98,16 +91,14 @@ impl UserContent {
         UserContent::Document(Document {
             data: data.into(),
             format,
-            media_type,
-        })
+            media_type})
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum AssistantContent {
     Text(Text),
-    ToolCall(ToolCall),
-}
+    ToolCall(ToolCall)}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Text(pub String);
@@ -123,52 +114,44 @@ pub struct Image {
     pub data: String,
     pub format: Option<ContentFormat>,
     pub media_type: Option<ImageMediaType>,
-    pub detail: Option<ImageDetail>,
-}
+    pub detail: Option<ImageDetail>}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Audio {
     pub data: String,
     pub format: Option<ContentFormat>,
-    pub media_type: Option<AudioMediaType>,
-}
+    pub media_type: Option<AudioMediaType>}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Document {
     pub data: String,
     pub format: Option<ContentFormat>,
-    pub media_type: Option<DocumentMediaType>,
-}
+    pub media_type: Option<DocumentMediaType>}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolCall {
     pub id: String,
-    pub function: ToolFunction,
-}
+    pub function: ToolFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolFunction {
     pub name: String,
-    pub arguments: serde_json::Value,
-}
+    pub arguments: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolResult {
     pub id: String,
-    pub content: OneOrMany<ToolResultContent>,
-}
+    pub content: OneOrMany<ToolResultContent>}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ToolResultContent {
-    Text(Text),
-}
+    Text(Text)}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum ContentFormat {
     Base64,
     Url,
-    Raw,
-}
+    Raw}
 
 impl Default for ContentFormat {
     fn default() -> Self {
@@ -182,15 +165,13 @@ pub enum ImageMediaType {
     JPEG,
     GIF,
     WEBP,
-    SVG,
-}
+    SVG}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum ImageDetail {
     Low,
     High,
-    Auto,
-}
+    Auto}
 
 impl Default for ImageDetail {
     fn default() -> Self {
@@ -204,8 +185,7 @@ pub enum AudioMediaType {
     WAV,
     OGG,
     M4A,
-    FLAC,
-}
+    FLAC}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum DocumentMediaType {
@@ -213,16 +193,14 @@ pub enum DocumentMediaType {
     DOCX,
     TXT,
     RTF,
-    ODT,
-}
+    ODT}
 
 /// Unified media type enum for parsing mime types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum MediaType {
     Image(ImageMediaType),
     Audio(AudioMediaType),
-    Document(DocumentMediaType),
-}
+    Document(DocumentMediaType)}
 
 impl MediaType {
     /// Parse a mime type string into a MediaType
@@ -247,8 +225,7 @@ impl MediaType {
             "application/vnd.oasis.opendocument.text" => {
                 Some(MediaType::Document(DocumentMediaType::ODT))
             }
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -256,8 +233,7 @@ impl MediaType {
 #[derive(Clone, Copy)]
 enum Role {
     User,
-    Assistant,
-}
+    Assistant}
 
 /// Builder with const-generic flag that tracks whether we already have content.
 ///
@@ -269,15 +245,13 @@ pub struct MessageBuilder<const HAS_CONTENT: bool> {
     // never allocates.  Additional items (rare) spill into the Vec inside
     // `OneOrMany::many` – still zero-cost if only one item is pushed.
     first: Option<Content>,
-    overflow: Vec<Content>,
-}
+    overflow: Vec<Content>}
 
 /// Erased content so we can keep a single field pair even though
 /// `UserContent` and `AssistantContent` are distinct enums.
 enum Content {
     User(UserContent),
-    Assistant(AssistantContent),
-}
+    Assistant(AssistantContent)}
 
 // ---------- Smart constructors ---------------------------------------------
 
@@ -287,8 +261,7 @@ impl MessageBuilder<false> {
         Self {
             role: Role::User,
             first: None,
-            overflow: Vec::new(),
-        }
+            overflow: Vec::new()}
     }
 
     #[inline(always)]
@@ -296,8 +269,7 @@ impl MessageBuilder<false> {
         Self {
             role: Role::Assistant,
             first: None,
-            overflow: Vec::new(),
-        }
+            overflow: Vec::new()}
     }
 }
 
@@ -308,8 +280,7 @@ impl<const HAD: bool> MessageBuilder<HAD> {
     pub fn text(self, txt: impl Into<String>) -> MessageBuilder<true> {
         self.push(match self.role {
             Role::User => Content::User(UserContent::Text(txt.into().into())),
-            Role::Assistant => Content::Assistant(AssistantContent::Text(txt.into().into())),
-        })
+            Role::Assistant => Content::Assistant(AssistantContent::Text(txt.into().into()))})
     }
 
     #[inline(always)]
@@ -324,8 +295,7 @@ impl<const HAD: bool> MessageBuilder<HAD> {
             data: data.into(),
             format,
             media_type: ty,
-            detail,
-        };
+            detail};
         self.push(Content::User(UserContent::Image(img)))
     }
 
@@ -339,8 +309,7 @@ impl<const HAD: bool> MessageBuilder<HAD> {
         let audio = Audio {
             data: data.into(),
             format,
-            media_type: ty,
-        };
+            media_type: ty};
         self.push(Content::User(UserContent::Audio(audio)))
     }
 
@@ -354,8 +323,7 @@ impl<const HAD: bool> MessageBuilder<HAD> {
         let doc = Document {
             data: data.into(),
             format,
-            media_type: ty,
-        };
+            media_type: ty};
         self.push(Content::User(UserContent::Document(doc)))
     }
 
@@ -371,9 +339,7 @@ impl<const HAD: bool> MessageBuilder<HAD> {
             id: id.into(),
             function: ToolFunction {
                 name: name.into(),
-                arguments: args,
-            },
-        };
+                arguments: args}};
         self.push(Content::Assistant(AssistantContent::ToolCall(tc)))
     }
 
@@ -386,8 +352,7 @@ impl<const HAD: bool> MessageBuilder<HAD> {
         debug_assert!(matches!(self.role, Role::User));
         let tr = ToolResult {
             id: id.into(),
-            content: OneOrMany::one(ToolResultContent::Text(content.into().into())),
-        };
+            content: OneOrMany::one(ToolResultContent::Text(content.into().into()))};
         self.push(Content::User(UserContent::ToolResult(tr)))
     }
 
@@ -396,14 +361,12 @@ impl<const HAD: bool> MessageBuilder<HAD> {
     fn push(mut self, item: Content) -> MessageBuilder<true> {
         match &mut self.first {
             None => self.first = Some(item),
-            Some(_) => self.overflow.push(item),
-        }
+            Some(_) => self.overflow.push(item)}
         // Safe transition to HAS_CONTENT=true state
         MessageBuilder::<true> {
             role: self.role,
             first: self.first,
-            overflow: self.overflow,
-        }
+            overflow: self.overflow}
     }
 }
 
@@ -440,23 +403,19 @@ impl MessageBuilder<true> {
                     Content::$variant(first_val) => {
                         if vec.is_empty() {
                             Message::$variant {
-                                content: OneOrMany::one(first_val),
-                            }
+                                content: OneOrMany::one(first_val)}
                         } else {
                             vec.insert(0, first_val);
                             Message::$variant {
-                                content: OneOrMany::many(vec),
-                            }
+                                content: OneOrMany::many(vec)}
                         }
                     }
-                    _ => unreachable!(),
-                }
+                    _ => unreachable!()}
             }};
         }
 
         match self.role {
             Role::User => finish!(User, UserContent),
-            Role::Assistant => finish!(Assistant, AssistantContent),
-        }
+            Role::Assistant => finish!(Assistant, AssistantContent)}
     }
 }

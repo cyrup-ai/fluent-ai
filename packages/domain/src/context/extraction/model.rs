@@ -12,8 +12,7 @@ pub struct ExtractionConfig {
     /// Top-p sampling parameter
     pub top_p: f32,
     /// Stop sequences for generation
-    pub stop_sequences: Vec<String>,
-}
+    pub stop_sequences: Vec<String>}
 
 impl Default for ExtractionConfig {
     fn default() -> Self {
@@ -21,8 +20,7 @@ impl Default for ExtractionConfig {
             max_tokens: 1000,
             temperature: 0.2,
             top_p: 1.0,
-            stop_sequences: vec!["\n".to_string()],
-        }
+            stop_sequences: vec!["\n".to_string()]}
     }
 }
 
@@ -36,8 +34,7 @@ pub struct ExtractionRequest<T> {
     /// Optional system prompt
     pub system_prompt: Option<String>,
     /// Model configuration
-    pub config: ExtractionConfig,
-}
+    pub config: ExtractionConfig}
 
 impl<T> ExtractionRequest<T> {
     /// Create a new extraction request
@@ -46,8 +43,7 @@ impl<T> ExtractionRequest<T> {
             text: text.into(),
             target_type: std::marker::PhantomData,
             system_prompt: None,
-            config: ExtractionConfig::default(),
-        }
+            config: ExtractionConfig::default()}
     }
 
     /// Set the system prompt
@@ -71,8 +67,7 @@ pub struct ExtractionResult<T> {
     /// The raw response from the model
     pub raw_response: String,
     /// The number of tokens used
-    pub tokens_used: usize,
-}
+    pub tokens_used: usize}
 
 impl<T> ExtractionResult<T> {
     /// Create a new extraction result
@@ -80,7 +75,6 @@ impl<T> ExtractionResult<T> {
         Self {
             data,
             raw_response,
-            tokens_used,
-        }
+            tokens_used}
     }
 }

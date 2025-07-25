@@ -17,8 +17,7 @@ pub struct ExecutionTask {
     /// Programming language to use
     pub language: String,
     /// Code to execute
-    pub code: String,
-}
+    pub code: String}
 
 impl std::fmt::Display for ExecutionTask {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -34,15 +33,13 @@ pub struct ExecutionOutcome {
     /// Whether the execution was successful
     pub success: bool,
     /// Error message if execution failed
-    pub error: Option<String>,
-}
+    pub error: Option<String>}
 
 /// Manages a pool of worker threads for code execution
 pub struct ExecutionPool {
     task_sender: mpsc::Sender<ExecutionTask>,
     result_receiver: mpsc::Receiver<ExecutionOutcome>,
-    worker_count: usize,
-}
+    worker_count: usize}
 
 impl ExecutionPool {
     /// Creates a new execution pool with the specified number of workers
@@ -64,8 +61,7 @@ impl ExecutionPool {
         Self {
             task_sender: task_tx,
             result_receiver: result_rx,
-            worker_count,
-        }
+            worker_count}
     }
 
     /// Submits a new task for execution
@@ -138,15 +134,13 @@ impl ExecutionPool {
                 }
                 "js" => exec_js(&task.code, &config),
                 "bash" => exec_bash(&task.code, &config),
-                _ => Err(ExecError::UnsupportedLanguage(task.language.clone())),
-            };
+                _ => Err(ExecError::UnsupportedLanguage(task.language.clone()))};
 
             info!("Worker {} sending outcome for task {}", worker_id, task.id);
             let execution_outcome = ExecutionOutcome {
                 task_id: task.id,
                 success: outcome.is_ok(),
-                error: outcome.err().map(|e| e.to_string()),
-            };
+                error: outcome.err().map(|e| e.to_string())};
 
             if let Err(e) = result_tx.send(execution_outcome) {
                 error!("Worker {} failed to send outcome: {}", worker_id, e);

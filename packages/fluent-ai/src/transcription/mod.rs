@@ -12,8 +12,7 @@ use thiserror::Error;
 
 use crate::{
     json_util,
-    runtime::{self, AsyncTask, channel::bounded},
-};
+    runtime::{self, AsyncTask, channel::bounded}};
 
 // ---------------------------------------------------------------------------
 // 0. Authoritative error enum
@@ -40,8 +39,7 @@ pub enum TranscriptionError {
     InvalidFilename(String),
 
     #[error("provider: {0}")]
-    Provider(String),
-}
+    Provider(String)}
 
 // ---------------------------------------------------------------------------
 // 1. Request / response value objects
@@ -54,14 +52,12 @@ pub struct TranscriptionRequest {
     pub language: String,
     pub prompt: Option<String>,
     pub temperature: Option<f64>,
-    pub additional_params: Option<Value>,
-}
+    pub additional_params: Option<Value>}
 
 #[derive(Clone, Debug)]
 pub struct TranscriptionResponse<T> {
     pub text: String,
-    pub response: T,
-}
+    pub response: T}
 
 // ---------------------------------------------------------------------------
 // 2. Core model trait – implemented by provider SDK shims
@@ -92,8 +88,7 @@ pub struct TranscriptionRequestBuilder<M: TranscriptionModel> {
     language: String,
     prompt: Option<String>,
     temperature: Option<f64>,
-    additional_params: Option<Value>,
-}
+    additional_params: Option<Value>}
 
 impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
     #[inline(always)]
@@ -105,8 +100,7 @@ impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
             language: "en".to_owned(),
             prompt: None,
             temperature: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 
     // ---------- fluent setters ---------------------------------------------
@@ -122,8 +116,7 @@ impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
         let p = path.as_ref();
         let bytes = match fs::read(p) {
             Ok(data) => data,
-            Err(e) => return Err(TranscriptionError::FileNotFound(e.to_string())),
-        };
+            Err(e) => return Err(TranscriptionError::FileNotFound(e.to_string()))};
 
         let filename = match p.file_name() {
             Some(name) => match name.to_str() {
@@ -172,8 +165,7 @@ impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
     pub fn additional_params(mut self, v: Value) -> Self {
         self.additional_params = Some(match self.additional_params.take() {
             Some(prev) => json_util::merge(prev, v),
-            None => v,
-        });
+            None => v});
         self
     }
 
@@ -192,8 +184,7 @@ impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
             language: self.language,
             prompt: self.prompt,
             temperature: self.temperature,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 
     #[inline(always)]
@@ -233,8 +224,7 @@ where
         runtime::spawn_async(async move {
             let mapped = fut.await.map(|inner| TranscriptionResponse {
                 text: inner.text,
-                response: (),
-            });
+                response: ()});
 
             let _ = tx.send(mapped);
         });
@@ -245,16 +235,14 @@ where
     #[inline(always)]
     fn transcription_request(&self) -> TranscriptionRequestBuilder<TranscriptionModelHandle> {
         TranscriptionRequestBuilder::new(TranscriptionModelHandle {
-            inner: Arc::new(self.clone()),
-        })
+            inner: Arc::new(self.clone())})
     }
 }
 
 /// Cheap handle that erases the concrete model type.
 #[derive(Clone)]
 pub struct TranscriptionModelHandle {
-    inner: Arc<dyn TranscriptionModelDyn>,
-}
+    inner: Arc<dyn TranscriptionModelDyn>}
 
 impl TranscriptionModel for TranscriptionModelHandle {
     type Response = ();

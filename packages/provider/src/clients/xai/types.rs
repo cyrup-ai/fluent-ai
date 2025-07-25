@@ -36,8 +36,7 @@ pub use crate::openai::{
     OpenAIStreamingChoice as XAIStreamingChoice,
     OpenAIStreamingDelta as XAIStreamingDelta,
     OpenAIStreamingToolCall as XAIStreamingToolCall,
-    OpenAIStreamingFunction as XAIStreamingFunction,
-};
+    OpenAIStreamingFunction as XAIStreamingFunction};
 
 // ============================================================================
 // Chat Completions API (OpenAI-compatible with xAI extensions)
@@ -76,8 +75,7 @@ pub struct XAIChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub grok_context: Option<XAIGrokContext<'a>>,
-}
+    pub grok_context: Option<XAIGrokContext<'a>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIGrokContext<'a> {
@@ -86,8 +84,7 @@ pub struct XAIGrokContext<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub x_integration: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none", borrow)]
-    pub context_sources: Option<ArrayVec<&'a str, 8>>,
-}
+    pub context_sources: Option<ArrayVec<&'a str, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIChatResponse {
@@ -101,8 +98,7 @@ pub struct XAIChatResponse {
     pub system_fingerprint: Option<String>,
     // xAI-specific response fields
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub grok_metadata: Option<XAIGrokMetadata>,
-}
+    pub grok_metadata: Option<XAIGrokMetadata>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIChoice {
@@ -110,8 +106,7 @@ pub struct XAIChoice {
     pub message: XAIResponseMessage,
     pub finish_reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<XAILogprobs>,
-}
+    pub logprobs: Option<XAILogprobs>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIGrokMetadata {
@@ -120,8 +115,7 @@ pub struct XAIGrokMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub real_time_data: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub x_posts_referenced: Option<ArrayVec<String, 16>>,
-}
+    pub x_posts_referenced: Option<ArrayVec<String, 16>>}
 
 // ============================================================================
 // Models API
@@ -130,8 +124,7 @@ pub struct XAIGrokMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIModelsResponse {
     pub object: String,
-    pub data: ArrayVec<XAIModel, 32>,
-}
+    pub data: ArrayVec<XAIModel, 32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIModel {
@@ -143,8 +136,7 @@ pub struct XAIModel {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_window: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub capabilities: Option<ArrayVec<String, 8>>,
-}
+    pub capabilities: Option<ArrayVec<String, 8>>}
 
 // ============================================================================
 // Embeddings API
@@ -161,36 +153,31 @@ pub struct XAIEmbeddingRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dimensions: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user: Option<&'a str>,
-}
+    pub user: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum XAIEmbeddingInput<'a> {
     Single(&'a str),
-    Multiple(ArrayVec<&'a str, MAX_DOCUMENTS>),
-}
+    Multiple(ArrayVec<&'a str, MAX_DOCUMENTS>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIEmbeddingResponse {
     pub object: String,
     pub data: ArrayVec<XAIEmbeddingData, MAX_DOCUMENTS>,
     pub model: String,
-    pub usage: XAIEmbeddingUsage,
-}
+    pub usage: XAIEmbeddingUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIEmbeddingData {
     pub object: String,
     pub embedding: ArrayVec<f32, 1536>,
-    pub index: u32,
-}
+    pub index: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIEmbeddingUsage {
     pub prompt_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // ============================================================================
 // Text Completions API (Legacy)
@@ -227,8 +214,7 @@ pub struct XAICompletionRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logit_bias: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user: Option<&'a str>,
-}
+    pub user: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAICompletionResponse {
@@ -237,24 +223,21 @@ pub struct XAICompletionResponse {
     pub created: u64,
     pub model: String,
     pub choices: ArrayVec<XAICompletionChoice, 8>,
-    pub usage: XAIUsage,
-}
+    pub usage: XAIUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAICompletionChoice {
     pub text: String,
     pub index: u32,
     pub logprobs: Option<XAICompletionLogprobs>,
-    pub finish_reason: String,
-}
+    pub finish_reason: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAICompletionLogprobs {
     pub tokens: ArrayVec<String, 1024>,
     pub token_logprobs: ArrayVec<f32, 1024>,
     pub top_logprobs: ArrayVec<serde_json::Value, 1024>,
-    pub text_offset: ArrayVec<u32, 1024>,
-}
+    pub text_offset: ArrayVec<u32, 1024>}
 
 // ============================================================================
 // Common Structures
@@ -264,8 +247,7 @@ pub struct XAICompletionLogprobs {
 pub struct XAIUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // ============================================================================
 // Streaming Support with xAI Extensions
@@ -281,15 +263,13 @@ pub struct XAIStreamingChunkExtended {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_fingerprint: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub grok_metadata: Option<XAIGrokMetadata>,
-}
+    pub grok_metadata: Option<XAIGrokMetadata>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XAIStreamingChoiceExtended {
     pub index: u32,
     pub delta: XAIStreamingDelta,
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -314,8 +294,7 @@ impl<'a> XAIChatRequest<'a> {
             response_format: None,
             user: None,
             system_prompt: None,
-            grok_context: None,
-        }
+            grok_context: None}
     }
 
     #[inline(always)]
@@ -326,8 +305,7 @@ impl<'a> XAIChatRequest<'a> {
                 content: Some(content),
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -429,8 +407,7 @@ impl<'a> XAIChatRequest<'a> {
         let context = XAIGrokContext {
             real_time_info: Some(true),
             x_integration: None,
-            context_sources: None,
-        };
+            context_sources: None};
         self.grok_context = Some(context);
         self
     }
@@ -457,8 +434,7 @@ impl<'a> Default for XAIGrokContext<'a> {
         Self {
             real_time_info: None,
             x_integration: None,
-            context_sources: None,
-        }
+            context_sources: None}
     }
 }
 
@@ -469,8 +445,7 @@ impl<'a> XAIEmbeddingRequest<'a> {
             input: XAIEmbeddingInput::Single(input),
             encoding_format: None,
             dimensions: None,
-            user: None,
-        }
+            user: None}
     }
 
     pub fn new_multiple(model: &'a str, inputs: ArrayVec<&'a str, MAX_DOCUMENTS>) -> Self {
@@ -479,8 +454,7 @@ impl<'a> XAIEmbeddingRequest<'a> {
             input: XAIEmbeddingInput::Multiple(inputs),
             encoding_format: None,
             dimensions: None,
-            user: None,
-        }
+            user: None}
     }
 
     pub fn encoding_format(mut self, format: &'a str) -> Self {
@@ -516,8 +490,7 @@ impl<'a> XAICompletionRequest<'a> {
             frequency_penalty: None,
             best_of: None,
             logit_bias: None,
-            user: None,
-        }
+            user: None}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {

@@ -3,7 +3,6 @@
 //! Provides blazing-fast, zero-allocation types and constants optimized for SIMD operations
 //! with production-ready performance and ergonomic APIs.
 
-use arrayvec::ArrayVec;
 use thiserror::Error;
 
 /// Standard text processing dimensions optimized for SIMD
@@ -22,8 +21,7 @@ pub enum TokenType {
     Punctuation = 2,
     Whitespace = 3,
     Symbol = 4,
-    Unknown = 5,
-}
+    Unknown = 5}
 
 /// Zero-allocation token with stack-allocated content
 #[derive(Debug, Clone)]
@@ -31,8 +29,7 @@ pub struct Token {
     content: ArrayVec<u8, MAX_TOKEN_LENGTH>,
     token_type: TokenType,
     start_offset: usize,
-    end_offset: usize,
-}
+    end_offset: usize}
 
 impl Token {
     /// Create new token with zero allocation
@@ -56,8 +53,7 @@ impl Token {
             content: token_content,
             token_type,
             start_offset: start,
-            end_offset: end,
-        })
+            end_offset: end})
     }
 
     /// Get token content as string slice
@@ -106,8 +102,7 @@ pub struct TextStats {
     pub paragraph_count: usize,
     pub average_word_length: f32,
     pub reading_level: f32,
-    pub complexity_score: f32,
-}
+    pub complexity_score: f32}
 
 impl Default for TextStats {
     fn default() -> Self {
@@ -118,8 +113,7 @@ impl Default for TextStats {
             paragraph_count: 0,
             average_word_length: 0.0,
             reading_level: 0.0,
-            complexity_score: 0.0,
-        }
+            complexity_score: 0.0}
     }
 }
 
@@ -130,8 +124,7 @@ pub struct PatternMatch {
     pub start_offset: usize,
     pub end_offset: usize,
     pub matched_text: ArrayVec<u8, MAX_PATTERN_LENGTH>,
-    pub confidence: f32,
-}
+    pub confidence: f32}
 
 impl PatternMatch {
     /// Create new pattern match
@@ -157,8 +150,7 @@ impl PatternMatch {
             start_offset,
             end_offset,
             matched_text: text_content,
-            confidence,
-        })
+            confidence})
     }
 
     /// Get matched text as string
@@ -190,8 +182,7 @@ pub struct PerformanceStats {
     pub average_analysis_time_nanos: u64,
     pub simd_operations_count: u64,
     pub cache_hits: u64,
-    pub cache_misses: u64,
-}
+    pub cache_misses: u64}
 
 impl PerformanceStats {
     /// Calculate cache hit ratio
@@ -243,8 +234,7 @@ pub enum TextProcessingError {
     ResourceExhausted(String),
 
     #[error("Operation timeout after {0}ms")]
-    Timeout(u64),
-}
+    Timeout(u64)}
 
 /// Result type for text processing operations
 pub type TextProcessingResult<T> = Result<T, TextProcessingError>;
@@ -261,8 +251,7 @@ pub struct ProcessingConfig {
     /// Cache size for pattern matching
     pub cache_size: usize,
     /// Batch size for processing
-    pub batch_size: usize,
-}
+    pub batch_size: usize}
 
 impl Default for ProcessingConfig {
     fn default() -> Self {
@@ -271,8 +260,7 @@ impl Default for ProcessingConfig {
             timeout_ms: 5000,
             enable_metrics: true,
             cache_size: 1024,
-            batch_size: MAX_TOKENS_PER_BATCH,
-        }
+            batch_size: MAX_TOKENS_PER_BATCH}
     }
 }
 
@@ -284,8 +272,7 @@ pub struct ProcessingContext {
     /// Operation start time
     pub start_time: std::time::Instant,
     /// Current operation ID
-    pub operation_id: u64,
-}
+    pub operation_id: u64}
 
 impl ProcessingContext {
     /// Create new processing context
@@ -294,8 +281,7 @@ impl ProcessingContext {
         Self {
             config,
             start_time: std::time::Instant::now(),
-            operation_id,
-        }
+            operation_id}
     }
 
     /// Check if operation has timed out

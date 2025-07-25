@@ -15,8 +15,7 @@ use crate::{
     client::ProviderClient,
     completion::message::{AssistantContent, Message, ToolCall},
     runtime::{AsyncStream, AsyncTask},
-    streaming::{StreamingCompletionResponse, StreamingResult},
-};
+    streaming::{StreamingCompletionResponse, StreamingResult}};
 
 // ================================================================
 // Error types
@@ -33,8 +32,7 @@ pub enum CompletionError {
     #[error("provider returned error: {0}")]
     Provider(String),
     #[error("response parsing error: {0}")]
-    Response(String),
-}
+    Response(String)}
 
 // ================================================================
 // Core traits and types
@@ -72,14 +70,12 @@ pub struct CompletionRequest {
     pub tools: Vec<ToolCall>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
-    pub additional_params: serde_json::Value,
-}
+    pub additional_params: serde_json::Value}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct CompletionResponse<R: Clone> {
     pub choice: OneOrMany<AssistantContent>,
-    pub response: R,
-}
+    pub response: R}
 
 // ================================================================
 // Fluent Request Builder
@@ -95,8 +91,7 @@ pub struct CompletionRequestBuilder<'a, M: CompletionModel> {
     tools: Vec<ToolCall>,
     temperature: Option<f32>,
     max_tokens: Option<u32>,
-    additional_params: serde_json::Value,
-}
+    additional_params: serde_json::Value}
 
 impl<'a, M: CompletionModel> CompletionRequestBuilder<'a, M> {
     pub fn new(model: &'a M, prompt: impl Into<Message>) -> Self {
@@ -109,8 +104,7 @@ impl<'a, M: CompletionModel> CompletionRequestBuilder<'a, M> {
             tools: Vec::new(),
             temperature: None,
             max_tokens: None,
-            additional_params: serde_json::Value::Null,
-        }
+            additional_params: serde_json::Value::Null}
     }
 
     pub fn build(self) -> CompletionRequest {
@@ -121,8 +115,7 @@ impl<'a, M: CompletionModel> CompletionRequestBuilder<'a, M> {
             tools: self.tools,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 
     pub fn send(self) -> AsyncTask<Result<CompletionResponse<M::Response>, CompletionError>> {

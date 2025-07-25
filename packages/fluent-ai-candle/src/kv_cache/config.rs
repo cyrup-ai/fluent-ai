@@ -40,8 +40,7 @@ pub struct KVCacheConfig {
     flags: u16,
 
     /// Eviction strategy
-    eviction_strategy: EvictionStrategy,
-}
+    eviction_strategy: EvictionStrategy}
 
 impl KVCacheConfig {
     /// Create new configuration with safe defaults
@@ -54,8 +53,7 @@ impl KVCacheConfig {
             memory_pool_size: 1024,
             eviction_batch_size: 64,
             flags: 0b11100, // Enable statistics, memory pooling, and batch operations by default
-            eviction_strategy: EvictionStrategy::AdaptiveLRU,
-        }
+            eviction_strategy: EvictionStrategy::AdaptiveLRU}
     }
 
     /// Set number of attention heads
@@ -395,8 +393,7 @@ pub enum ConfigError {
     /// Invalid eviction batch size
     InvalidEvictionBatchSize,
     /// Configuration exceeds memory limits
-    MemoryLimitExceeded,
-}
+    MemoryLimitExceeded}
 
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -406,8 +403,7 @@ impl std::fmt::Display for ConfigError {
             ConfigError::InvalidSequenceLength => write!(f, "Invalid maximum sequence length"),
             ConfigError::InvalidMemoryPoolSize => write!(f, "Invalid memory pool size"),
             ConfigError::InvalidEvictionBatchSize => write!(f, "Invalid eviction batch size"),
-            ConfigError::MemoryLimitExceeded => write!(f, "Configuration exceeds memory limits"),
-        }
+            ConfigError::MemoryLimitExceeded => write!(f, "Configuration exceeds memory limits")}
     }
 }
 

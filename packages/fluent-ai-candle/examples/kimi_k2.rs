@@ -23,22 +23,17 @@ use fluent_ai_candle::{
         kimi_k2::{
             loader::{LoaderEvent, load_model},
             model::{KimiK2Config, KimiK2Model},
-            tokenizer::{ChatMessage, KimiK2Tokenizer},
-        },
-    },
+            tokenizer::{ChatMessage, KimiK2Tokenizer}}},
     model::{
         cache::{KVCacheConfig, KVCacheManager},
-        wrappers::{IntoKimiK2Wrapper, KimiK2Wrapper},
-    },
-    var_builder::CandleVarBuilder,
-};
+        wrappers::{IntoKimiK2Wrapper, KimiK2Wrapper}},
+    var_builder::CandleVarBuilder};
 
 /// Complete example of Kimi K2 model usage
 pub struct KimiK2Example {
     model: KimiK2Wrapper,
     tokenizer: KimiK2Tokenizer,
-    config: KimiK2Config,
-}
+    config: KimiK2Config}
 
 impl KimiK2Example {
     /// Create a new Kimi K2 example with model loading
@@ -47,8 +42,7 @@ impl KimiK2Example {
             // Configuration
             let config = match quant_format {
                 QuantFormat::Fp16 => KIMI_K2_FP16.clone(),
-                QuantFormat::Fp8 => KIMI_K2_FP8.clone(),
-            };
+                QuantFormat::Fp8 => KIMI_K2_FP8.clone()};
 
             // Load tokenizer
             y.yield_item(Ok("Loading tokenizer...".to_string()));
@@ -111,8 +105,7 @@ impl KimiK2Example {
             y.yield_item(Ok(Self {
                 model: model_wrapper,
                 tokenizer,
-                config: model_config,
-            }));
+                config: model_config}));
         })
     }
 
@@ -341,12 +334,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let messages = vec![
         ChatMessage {
             role: "system".to_string(),
-            content: "You are Kimi, an AI assistant created by Moonshot AI.".to_string(),
-        },
+            content: "You are Kimi, an AI assistant created by Moonshot AI.".to_string()},
         ChatMessage {
             role: "user".to_string(),
-            content: "What are the key features of the Kimi K2 model?".to_string(),
-        },
+            content: "What are the key features of the Kimi K2 model?".to_string()},
     ];
 
     println!("\n💬 Starting conversation...");
@@ -386,8 +377,7 @@ mod tests {
     fn test_chat_message_creation() {
         let message = ChatMessage {
             role: "user".to_string(),
-            content: "Hello, Kimi!".to_string(),
-        };
+            content: "Hello, Kimi!".to_string()};
 
         assert_eq!(message.role, "user");
         assert_eq!(message.content, "Hello, Kimi!");

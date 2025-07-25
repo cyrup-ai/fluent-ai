@@ -4,8 +4,6 @@
 //! relevance scoring, and zero-allocation patterns for blazing-fast performance.
 
 use std::sync::Arc;
-use std::collections::HashMap;
-
 use fluent_ai_async::{AsyncStream, emit, handle_error};
 
 use super::{
@@ -23,8 +21,7 @@ pub enum RankingAlgorithm {
     /// Simple relevance scoring
     Simple,
     /// Vector similarity
-    Vector,
-}
+    Vector}
 
 /// Result ranker for search results
 #[derive(Debug, Clone)]
@@ -32,24 +29,21 @@ pub struct ResultRanker {
     /// Ranking algorithm to use
     algorithm: RankingAlgorithm,
     /// Field boost weights for different message fields
-    field_boosts: HashMap<Arc<str>, f32>,
-}
+    field_boosts: HashMap<Arc<str>, f32>}
 
 impl ResultRanker {
     /// Create a new result ranker
     pub fn new() -> Self {
         Self {
             algorithm: RankingAlgorithm::Bm25,
-            field_boosts: HashMap::new(),
-        }
+            field_boosts: HashMap::new()}
     }
 
     /// Create ranker with specific algorithm
     pub fn with_algorithm(algorithm: RankingAlgorithm) -> Self {
         Self {
             algorithm,
-            field_boosts: HashMap::new(),
-        }
+            field_boosts: HashMap::new()}
     }
 
     /// Set field boost weights
@@ -289,8 +283,7 @@ impl ResultRanker {
                     start: actual_pos,
                     end: actual_pos + term.len(),
                     term: term.clone(),
-                    match_type: MatchType::Exact,
-                });
+                    match_type: MatchType::Exact});
                 start = actual_pos + 1;
             }
         }

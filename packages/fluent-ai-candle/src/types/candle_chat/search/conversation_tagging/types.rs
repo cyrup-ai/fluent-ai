@@ -3,7 +3,6 @@
 //! This module defines all tag-related types and their operations
 //! following zero-allocation, streaming-first architecture.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -33,8 +32,7 @@ pub struct ConversationTag {
     /// Associated keywords
     pub keywords: Vec<Arc<str>>,
     /// Tag metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// Tag category classification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,8 +52,7 @@ pub enum TagCategory {
     /// Temporal tag
     Temporal,
     /// Context tag
-    Context,
-}
+    Context}
 
 impl ConversationTag {
     /// Create a new conversation tag
@@ -71,8 +68,7 @@ impl ConversationTag {
             created_at: chrono::Utc::now(),
             usage_count: 0,
             keywords: Vec::new(),
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Create with confidence score
@@ -129,8 +125,7 @@ pub struct SentimentScore {
     /// Neutral sentiment score (0.0 to 1.0)
     pub neutral: f32,
     /// Overall sentiment (-1.0 to 1.0)
-    pub compound: f32,
-}
+    pub compound: f32}
 
 impl SentimentScore {
     /// Create new sentiment score
@@ -140,8 +135,7 @@ impl SentimentScore {
             positive,
             negative,
             neutral,
-            compound,
-        }
+            compound}
     }
 
     /// Get dominant sentiment
@@ -168,7 +162,6 @@ impl Default for SentimentScore {
             positive: 0.0,
             negative: 0.0,
             neutral: 1.0,
-            compound: 0.0,
-        }
+            compound: 0.0}
     }
 }

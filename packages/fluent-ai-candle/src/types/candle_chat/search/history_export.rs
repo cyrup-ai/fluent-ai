@@ -4,22 +4,14 @@
 //! multiple formats, filtering options, and streaming export operations.
 
 use std::collections::HashMap;
-use std::sync::Arc;
-
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::types::{SearchQuery, DateRange};
-use crate::types::CandleSearchChatMessage;
+use super::types::DateRange;
+use crate::types::candle_chat::message::SearchChatMessage as CandleSearchChatMessage;
 
-/// Handle errors in streaming context without panicking
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error);
-        // Continue processing instead of returning error
-    };
-}
+// Removed unused handle_error macro
 
 /// Export options for history export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,8 +47,7 @@ pub struct ExportOptions {
     /// Minimum message length
     pub min_length: Option<usize>,
     /// Maximum message length
-    pub max_length: Option<usize>,
-}
+    pub max_length: Option<usize>}
 
 /// Export format options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,8 +67,7 @@ pub enum ExportFormat {
     /// PDF format (future)
     Pdf,
     /// Custom format
-    Custom(String),
-}
+    Custom(String)}
 
 /// Compression options for export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,8 +79,7 @@ pub struct CompressionOptions {
     /// Compression level (1-9)
     pub level: u8,
     /// Archive format
-    pub archive_format: Option<ArchiveFormat>,
-}
+    pub archive_format: Option<ArchiveFormat>}
 
 /// Compression algorithm options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,8 +93,7 @@ pub enum CompressionAlgorithm {
     /// LZ4 compression
     Lz4,
     /// None (no compression)
-    None,
-}
+    None}
 
 /// Archive format options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,8 +103,7 @@ pub enum ArchiveFormat {
     /// TAR archive
     Tar,
     /// 7Z archive
-    SevenZ,
-}
+    SevenZ}
 
 /// Privacy options for export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,8 +119,7 @@ pub struct PrivacyOptions {
     /// Custom redaction patterns
     pub redaction_patterns: Vec<String>,
     /// Encryption options
-    pub encryption: Option<EncryptionOptions>,
-}
+    pub encryption: Option<EncryptionOptions>}
 
 /// Encryption options for export
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,10 +131,10 @@ pub struct EncryptionOptions {
     /// Salt for key derivation
     pub salt: Option<String>,
     /// Additional authenticated data
-    pub aad: Option<String>,
-}
+    pub aad: Option<String>}
 
 /// History exporter for chat data
+#[derive(Clone)]
 pub struct HistoryExporter {
     /// Export configuration
     pub config: ExportOptions,
@@ -157,8 +143,7 @@ pub struct HistoryExporter {
     /// Active exports
     pub active_exports: HashMap<Uuid, ExportJob>,
     /// Export history
-    pub export_history: Vec<ExportRecord>,
-}
+    pub export_history: Vec<ExportRecord>}
 
 /// Export job tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -180,8 +165,7 @@ pub struct ExportJob {
     /// Export options used
     pub options: ExportOptions,
     /// Error message if failed
-    pub error_message: Option<String>,
-}
+    pub error_message: Option<String>}
 
 /// Export status
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,8 +179,7 @@ pub enum ExportStatus {
     /// Export failed
     Failed,
     /// Export was cancelled
-    Cancelled,
-}
+    Cancelled}
 
 /// Export record for history tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -216,8 +199,7 @@ pub struct ExportRecord {
     /// Success flag
     pub success: bool,
     /// Export metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// Export statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,8 +221,7 @@ pub struct ExportStatistics {
     /// Export size statistics
     pub size_statistics: HashMap<String, usize>,
     /// Last export timestamp
-    pub last_export: Option<chrono::DateTime<chrono::Utc>>,
-}
+    pub last_export: Option<chrono::DateTime<chrono::Utc>>}
 
 impl HistoryExporter {
     /// Create a new history exporter
@@ -249,8 +230,7 @@ impl HistoryExporter {
             config,
             export_statistics: ExportStatistics::default(),
             active_exports: HashMap::new(),
-            export_history: Vec::new(),
-        }
+            export_history: Vec::new()}
     }
 
     /// Export messages with streaming (main export function)
@@ -269,8 +249,7 @@ impl HistoryExporter {
             messages_processed: 0,
             total_messages: messages.len(),
             options: config.clone(),
-            error_message: None,
-        };
+            error_message: None};
         self.active_exports.insert(job_id, job);
 
         AsyncStream::with_channel(move |sender| {
@@ -282,12 +261,12 @@ impl HistoryExporter {
             }
             
             if let Some(date_range) = &config.date_range {
-                if let Some(start) = date_range.start {
-                    filtered_messages.retain(|msg| msg.timestamp >= start);
-                }
-                if let Some(end) = date_range.end {
-                    filtered_messages.retain(|msg| msg.timestamp <= end);
-                }
+                filtered_messages.retain(|msg| {
+                    msg.timestamp.map(|t| t >= date_range.start).unwrap_or(false)
+                });
+                filtered_messages.retain(|msg| {
+                    msg.timestamp.map(|t| t <= date_range.end).unwrap_or(false)
+                });
             }
 
             // Apply length filters
@@ -325,13 +304,16 @@ impl HistoryExporter {
         for message in messages {
             let mut msg_data = serde_json::json!({
                 "id": message.id,
-                "role": message.role,
+                "role": message.role.as_str(),
                 "content": message.content,
-                "timestamp": message.timestamp,
-            });
+                "timestamp": message.timestamp.unwrap_or(0)});
 
             if config.include_metadata {
-                msg_data["metadata"] = serde_json::to_value(&message.metadata).unwrap_or_default();
+                if let Some(ref metadata) = message.metadata {
+                    msg_data["metadata"] = metadata.clone();
+                }
+                msg_data["relevance_score"] = serde_json::to_value(message.relevance_score).unwrap_or_default();
+                msg_data["search_timestamp"] = serde_json::to_value(message.search_timestamp).unwrap_or_default();
             }
 
             json_data.push(msg_data);
@@ -344,8 +326,7 @@ impl HistoryExporter {
             format: ExportFormat::Json,
             chunk_index: 0,
             total_chunks: 1,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Export as CSV format
@@ -356,9 +337,9 @@ impl HistoryExporter {
             csv_content.push_str(&format!(
                 "{},{},{},{}\n",
                 message.id,
-                format!("{:?}", message.role),
+                message.role.as_str(),
                 message.content.replace(',', ";").replace('\n', " "),
-                message.timestamp.format("%Y-%m-%d %H:%M:%S")
+                message.timestamp.unwrap_or(0)
             ));
         }
 
@@ -368,8 +349,7 @@ impl HistoryExporter {
             format: ExportFormat::Csv,
             chunk_index: 0,
             total_chunks: 1,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Export as plain text format
@@ -378,9 +358,9 @@ impl HistoryExporter {
         
         for message in messages {
             text_content.push_str(&format!(
-                "[{}] {:?}: {}\n\n",
-                message.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                message.role,
+                "[{}] {}: {}\n\n",
+                message.timestamp.unwrap_or(0),
+                message.role.as_str(),
                 message.content
             ));
         }
@@ -391,8 +371,7 @@ impl HistoryExporter {
             format: ExportFormat::Text,
             chunk_index: 0,
             total_chunks: 1,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Export as Markdown format
@@ -401,9 +380,9 @@ impl HistoryExporter {
         
         for message in messages {
             md_content.push_str(&format!(
-                "## {:?} - {}\n\n{}\n\n---\n\n",
-                message.role,
-                message.timestamp.format("%Y-%m-%d %H:%M:%S"),
+                "## {} - {}\n\n{}\n\n---\n\n",
+                message.role.as_str(),
+                message.timestamp.unwrap_or(0),
                 message.content
             ));
         }
@@ -414,8 +393,33 @@ impl HistoryExporter {
             format: ExportFormat::Markdown,
             chunk_index: 0,
             total_chunks: 1,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
+    }
+
+    /// Export conversation history with streaming (wrapper for compatibility)
+    pub fn export_history_stream(&self, messages: Vec<crate::types::CandleMessage>, _options: ExportOptions) -> AsyncStream<String> {
+        // Convert CandleMessage to CandleSearchChatMessage
+        let search_messages: Vec<CandleSearchChatMessage> = messages.into_iter()
+            .map(|msg| crate::types::candle_chat::message::SearchChatMessage::from(msg))
+            .collect();
+        
+        let mut exporter = self.clone();
+        let mut export_stream = exporter.export_messages(search_messages);
+        
+        AsyncStream::with_channel(move |sender| {
+            while let Some(chunk) = export_stream.try_next() {
+                let content = String::from_utf8(chunk.content).unwrap_or_default();
+                let _ = sender.send(content);
+            }
+        })
+    }
+
+    /// Get export statistics as stream (wrapper for compatibility)
+    pub fn get_statistics_stream(&self) -> AsyncStream<ExportStatistics> {
+        let stats = self.export_statistics.clone();
+        AsyncStream::with_channel(move |sender| {
+            let _ = sender.send(stats);
+        })
     }
 
     /// Get export statistics
@@ -454,8 +458,7 @@ pub struct ExportChunk {
     /// Total chunks
     pub total_chunks: usize,
     /// Chunk metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 impl Default for HistoryExporter {
     fn default() -> Self {
@@ -481,8 +484,7 @@ impl Default for ExportOptions {
             include_attachments: false,
             language_filter: None,
             min_length: None,
-            max_length: None,
-        }
+            max_length: None}
     }
 }
 
@@ -492,8 +494,7 @@ impl Default for CompressionOptions {
             enabled: false,
             algorithm: CompressionAlgorithm::None,
             level: 6,
-            archive_format: None,
-        }
+            archive_format: None}
     }
 }
 
@@ -505,8 +506,7 @@ impl Default for PrivacyOptions {
             hash_user_ids: false,
             remove_timestamps: false,
             redaction_patterns: Vec::new(),
-            encryption: None,
-        }
+            encryption: None}
     }
 }
 
@@ -521,7 +521,6 @@ impl Default for ExportStatistics {
             avg_export_time_ms: 0.0,
             most_popular_format: None,
             size_statistics: HashMap::new(),
-            last_export: None,
-        }
+            last_export: None}
     }
 }

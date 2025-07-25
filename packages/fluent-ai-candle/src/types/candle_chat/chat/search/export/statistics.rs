@@ -1,8 +1,5 @@
 //! Export statistics and progress tracking
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
-use atomic_counter::{AtomicCounter, ConsistentCounter};
 use serde::{Deserialize, Serialize};
 
 /// Statistics for export operations
@@ -23,8 +20,7 @@ pub struct ExportStatistics {
     /// Export start time
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Export end time
-    pub end_time: Option<chrono::DateTime<chrono::Utc>>,
-}
+    pub end_time: Option<chrono::DateTime<chrono::Utc>>}
 
 impl Default for ExportStatistics {
     fn default() -> Self {
@@ -36,8 +32,7 @@ impl Default for ExportStatistics {
             compression_ratio: None,
             error_count: 0,
             start_time: chrono::Utc::now(),
-            end_time: None,
-        }
+            end_time: None}
     }
 }
 

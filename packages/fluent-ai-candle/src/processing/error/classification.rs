@@ -13,8 +13,7 @@ pub enum ErrorCategory {
     External,
     ProcessorChain,
     Validation,
-    Internal,
-}
+    Internal}
 
 impl ErrorCategory {
     /// Get category name as string
@@ -28,8 +27,7 @@ impl ErrorCategory {
             Self::External => "external",
             Self::ProcessorChain => "processor_chain",
             Self::Validation => "validation",
-            Self::Internal => "internal",
-        }
+            Self::Internal => "internal"}
     }
 }
 
@@ -45,8 +43,7 @@ pub enum ErrorSeverity {
     Low = 1,
     Medium = 2,
     High = 3,
-    Critical = 4,
-}
+    Critical = 4}
 
 impl ErrorSeverity {
     /// Get severity name as string
@@ -56,8 +53,7 @@ impl ErrorSeverity {
             Self::Low => "low",
             Self::Medium => "medium",
             Self::High => "high",
-            Self::Critical => "critical",
-        }
+            Self::Critical => "critical"}
     }
 
     /// Get severity level as number

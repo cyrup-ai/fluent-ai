@@ -1,15 +1,14 @@
 //! Conversation tagger implementation
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
-use uuid::Uuid;
 
-use super::types::{ConversationTag, TagFilter, TagCategory};
 use super::statistics::TaggingStatistics;
+use super::types::{ConversationTag, TagFilter};
 
 /// Conversation tagger with lock-free operations
 pub struct ConversationTagger {
@@ -22,8 +21,7 @@ pub struct ConversationTagger {
     /// Operation statistics
     stats: Arc<std::sync::Mutex<TaggingStatistics>>,
     /// Tag creation counter
-    tag_counter: AtomicUsize,
-}
+    tag_counter: AtomicUsize}
 
 impl Default for ConversationTagger {
     fn default() -> Self {
@@ -39,53 +37,62 @@ impl ConversationTagger {
             conversation_tags: Arc::new(SkipMap::new()),
             usage_counter: ConsistentCounter::new(0),
             stats: Arc::new(std::sync::Mutex::new(TaggingStatistics::new())),
-            tag_counter: AtomicUsize::new(0),
-        }
+            tag_counter: AtomicUsize::new(0)}
     }
 
     /// Create a new tag
-    pub fn create_tag(&self, name: impl Into<Arc<str>>, description: impl Into<Arc<str>>) -> AsyncStream<ConversationTag> {
-        use fluent_ai_async::{emit, handle_error};
+    pub fn create_tag(
+        &self,
+        name: impl Into<Arc<str>>,
+        description: impl Into<Arc<str>>,
+    ) -> AsyncStream<ConversationTag> {
+        use fluent_ai_async::emit;
 
         let name: Arc<str> = name.into();
         let description: Arc<str> = description.into();
+        let tags = Arc::clone(&self.tags);
+        let stats = Arc::clone(&self.stats);
+        let tag_counter = Arc::new(AtomicUsize::new(self.tag_counter.load(Ordering::Relaxed)));
 
         AsyncStream::with_channel(move |sender| {
             let tag = ConversationTag::new(name.clone(), description);
-            
+
             // Store the tag
             let tag_id = tag.id.clone();
-            let tags = Arc::clone(&self.tags);
             tags.insert(tag_id, tag.clone());
 
             // Update statistics
-            if let Ok(mut stats) = self.stats.lock() {
+            if let Ok(mut stats) = stats.lock() {
                 stats.record_tag_created();
             }
 
-            self.tag_counter.fetch_add(1, Ordering::Relaxed);
+            // Update counter using the cloned Arc
+            tag_counter.fetch_add(1, Ordering::Relaxed);
 
             emit!(sender, tag);
         })
     }
 
     /// Apply tag to conversation
-    pub fn apply_tag(&self, conversation_id: impl Into<Arc<str>>, tag_id: impl Into<Arc<str>>) -> AsyncStream<bool> {
+    pub fn apply_tag(
+        &self,
+        conversation_id: impl Into<Arc<str>>,
+        tag_id: impl Into<Arc<str>>,
+    ) -> AsyncStream<bool> {
         use fluent_ai_async::{emit, handle_error};
 
         let conversation_id: Arc<str> = conversation_id.into();
         let tag_id: Arc<str> = tag_id.into();
+        let tags = Arc::clone(&self.tags);
+        let conversation_tags = Arc::clone(&self.conversation_tags);
+        let stats = Arc::clone(&self.stats);
 
         AsyncStream::with_channel(move |sender| {
             // Check if tag exists
-            if !self.tags.contains_key(&tag_id) {
+            if !tags.contains_key(&tag_id) {
                 handle_error!(format!("Tag {} not found", tag_id), "apply_tag");
-                emit!(sender, false);
-                return;
-            }
-
-            // Get or create conversation tag list
-            let conversation_tags = Arc::clone(&self.conversation_tags);
+            } else {
+                // Get or create conversation tag list
             let existing_tags = conversation_tags
                 .get(&conversation_id)
                 .map(|entry| entry.value().clone())
@@ -103,33 +110,36 @@ impl ConversationTagger {
             conversation_tags.insert(conversation_id, updated_tags);
 
             // Update tag usage
-            if let Some(entry) = self.tags.get(&tag_id) {
+            if let Some(entry) = tags.get(&tag_id) {
                 let mut tag = entry.value().clone();
                 tag.increment_usage();
-                self.tags.insert(tag_id.clone(), tag);
+                tags.insert(tag_id.clone(), tag);
             }
 
             // Update statistics
-            if let Ok(mut stats) = self.stats.lock() {
+            if let Ok(mut stats) = stats.lock() {
                 stats.record_tag_applied(&tag_id);
             }
 
-            self.usage_counter.inc();
-
             emit!(sender, true);
+            }
         })
     }
 
     /// Remove tag from conversation
-    pub fn remove_tag(&self, conversation_id: impl Into<Arc<str>>, tag_id: impl Into<Arc<str>>) -> AsyncStream<bool> {
-        use fluent_ai_async::{emit, handle_error};
+    pub fn remove_tag(
+        &self,
+        conversation_id: impl Into<Arc<str>>,
+        tag_id: impl Into<Arc<str>>,
+    ) -> AsyncStream<bool> {
+        use fluent_ai_async::emit;
 
         let conversation_id: Arc<str> = conversation_id.into();
         let tag_id: Arc<str> = tag_id.into();
+        let conversation_tags = Arc::clone(&self.conversation_tags);
+        let stats = Arc::clone(&self.stats);
 
         AsyncStream::with_channel(move |sender| {
-            let conversation_tags = Arc::clone(&self.conversation_tags);
-            
             // Get conversation tags
             let existing_tags = match conversation_tags.get(&conversation_id) {
                 Some(entry) => entry.value().clone(),
@@ -153,7 +163,7 @@ impl ConversationTagger {
             }
 
             // Update statistics
-            if let Ok(mut stats) = self.stats.lock() {
+            if let Ok(mut stats) = stats.lock() {
                 stats.record_tag_removed();
             }
 
@@ -164,8 +174,9 @@ impl ConversationTagger {
     /// Get tags for conversation
     pub fn get_conversation_tags(&self, conversation_id: &str) -> Vec<ConversationTag> {
         let conversation_id: Arc<str> = Arc::from(conversation_id);
-        
-        let tag_ids = self.conversation_tags
+
+        let tag_ids = self
+            .conversation_tags
             .get(&conversation_id)
             .map(|entry| entry.value().clone())
             .unwrap_or_else(Vec::new);
@@ -182,14 +193,14 @@ impl ConversationTagger {
 
     /// Search tags by filter
     pub fn search_tags(&self, filter: TagFilter) -> AsyncStream<ConversationTag> {
-        use fluent_ai_async::{emit, handle_error};
+        use fluent_ai_async::emit;
+
+        let tags = Arc::clone(&self.tags);
 
         AsyncStream::with_channel(move |sender| {
-            let tags = Arc::clone(&self.tags);
-            
             for entry in tags.iter() {
                 let tag = entry.value();
-                
+
                 if filter.matches(tag) {
                     emit!(sender, tag.clone());
                 }
@@ -213,23 +224,24 @@ impl ConversationTagger {
 
     /// Delete tag
     pub fn delete_tag(&self, tag_id: &str) -> AsyncStream<bool> {
-        use fluent_ai_async::{emit, handle_error};
+        use fluent_ai_async::emit;
 
         let tag_id: Arc<str> = Arc::from(tag_id);
+        let tags = Arc::clone(&self.tags);
+        let conversation_tags = Arc::clone(&self.conversation_tags);
 
         AsyncStream::with_channel(move |sender| {
             // Remove tag from storage
-            let removed = self.tags.remove(&tag_id).is_some();
+            let removed = tags.remove(&tag_id).is_some();
 
             if removed {
                 // Remove from all conversations
-                let conversation_tags = Arc::clone(&self.conversation_tags);
                 let mut conversations_to_update = Vec::new();
 
                 for entry in conversation_tags.iter() {
                     let conversation_id = entry.key().clone();
                     let mut tags = entry.value().clone();
-                    
+
                     if let Some(pos) = tags.iter().position(|id| *id == tag_id) {
                         tags.remove(pos);
                         conversations_to_update.push((conversation_id, tags));

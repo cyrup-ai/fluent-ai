@@ -20,8 +20,7 @@ use crate::{
     completion::{CompletionError, CompletionModel, ToolDefinition},
     domain::message::{AssistantContent, Message, ToolCall, ToolFunction},
     domain::tool::Tool,
-    runtime::{AsyncTask, spawn_async},
-};
+    runtime::{AsyncTask, spawn_async}};
 
 // -----------------------------------------------------------------------------
 // Public error enumeration
@@ -35,8 +34,7 @@ pub enum ExtractionError {
     Deserialization(serde_json::Error),
 
     #[error(transparent)]
-    Completion(#[from] CompletionError),
-}
+    Completion(#[from] CompletionError)}
 
 // -----------------------------------------------------------------------------
 // Extractor – thin wrapper around an Agent plus phantom target type
@@ -46,8 +44,7 @@ where
     M: CompletionModel,
 {
     agent: Agent<M>,
-    _t: PhantomData<fn() -> T>,
-}
+    _t: PhantomData<fn() -> T>}
 
 impl<M, T> Extractor<M, T>
 where
@@ -82,8 +79,7 @@ where
                             },
                         ..
                     }) if name == SUBMIT_TOOL_NAME => Some(arguments),
-                    _ => None,
-                })
+                    _ => None})
                 .last() // if >1 use the last; earlier ones are ignored
                 .ok_or(ExtractionError::NoData)?;
 
@@ -102,8 +98,7 @@ where
     M: CompletionModel,
 {
     agent_builder: AgentBuilder<M>,
-    _t: PhantomData<fn() -> T>,
-}
+    _t: PhantomData<fn() -> T>}
 
 impl<T, M> ExtractorBuilder<T, M>
 where
@@ -124,8 +119,7 @@ where
 
         Self {
             agent_builder,
-            _t: PhantomData,
-        }
+            _t: PhantomData}
     }
 
     /// Append additional instructions.
@@ -154,8 +148,7 @@ where
     pub fn build(self) -> Extractor<M, T> {
         Extractor {
             agent: self.agent_builder.build(),
-            _t: PhantomData,
-        }
+            _t: PhantomData}
     }
 }
 
@@ -169,8 +162,7 @@ struct SubmitTool<T>
 where
     T: JsonSchema + DeserializeOwned + Send + Sync + 'static,
 {
-    _t: PhantomData<fn() -> T>,
-}
+    _t: PhantomData<fn() -> T>}
 
 #[derive(Debug, thiserror::Error)]
 #[error("submit tool failed")]
@@ -190,8 +182,7 @@ where
         ToolDefinition {
             name: Self::NAME.into(),
             description: "Return the structured data extracted from the text.".into(),
-            parameters: json!(schema_for!(T)),
-        }
+            parameters: json!(schema_for!(T))}
     }
 
     async fn call(&self, data: Self::Args) -> Result<Self::Output, Self::Error> {

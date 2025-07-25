@@ -41,8 +41,8 @@ pub fn initialize_domain_with_config(
     })
 }
 
-/// Internal implementation
-async fn initialize_domain_impl(
+/// Internal implementation (planned feature)
+async fn _initialize_domain_impl(
     _config: PlaceholderMemoryConfig,
 ) -> Result<Arc<PlaceholderMemoryManager>, DomainInitError> {
     // Placeholder implementation

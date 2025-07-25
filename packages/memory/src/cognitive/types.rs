@@ -1,7 +1,5 @@
 //! Core cognitive types and structures
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -13,8 +11,7 @@ pub struct CognitiveState {
     pub temporal_context: TemporalContext,
     pub uncertainty: f32,
     pub confidence: f32,
-    pub meta_awareness: f32,
-}
+    pub meta_awareness: f32}
 
 impl Default for CognitiveState {
     fn default() -> Self {
@@ -24,8 +21,7 @@ impl Default for CognitiveState {
             temporal_context: TemporalContext::default(),
             uncertainty: 0.5,
             confidence: 0.5,
-            meta_awareness: 0.5,
-        }
+            meta_awareness: 0.5}
     }
 }
 
@@ -35,8 +31,7 @@ pub struct TemporalContext {
     pub history_embedding: Vec<f32>,
     pub prediction_horizon: Vec<f32>,
     pub causal_dependencies: Vec<CausalLink>,
-    pub temporal_decay: f32,
-}
+    pub temporal_decay: f32}
 
 impl Default for TemporalContext {
     fn default() -> Self {
@@ -44,8 +39,7 @@ impl Default for TemporalContext {
             history_embedding: Vec::new(),
             prediction_horizon: Vec::new(),
             causal_dependencies: Vec::new(),
-            temporal_decay: 0.1,
-        }
+            temporal_decay: 0.1}
     }
 }
 
@@ -67,8 +61,7 @@ pub struct QuantumSignature {
     pub collapse_probability: f32,
     pub entanglement_links: Vec<String>,
     pub quantum_entropy: f64,
-    pub creation_time: chrono::DateTime<chrono::Utc>,
-}
+    pub creation_time: chrono::DateTime<chrono::Utc>}
 
 impl Default for QuantumSignature {
     fn default() -> Self {
@@ -79,8 +72,7 @@ impl Default for QuantumSignature {
             collapse_probability: 0.0, // Start with 0% collapse probability
             entanglement_links: Vec::new(),
             quantum_entropy: 0.0, // Start with minimum entropy
-            creation_time: chrono::Utc::now(),
-        }
+            creation_time: chrono::Utc::now()}
     }
 }
 
@@ -92,8 +84,7 @@ pub struct CognitiveMemoryNode {
     pub quantum_signature: Option<QuantumSignature>,
     pub evolution_metadata: Option<EvolutionMetadata>,
     pub attention_weights: Vec<f32>,
-    pub semantic_relationships: Vec<String>,
-}
+    pub semantic_relationships: Vec<String>}
 
 impl CognitiveMemoryNode {
     /// Check if this memory node has enhanced cognitive capabilities
@@ -239,8 +230,7 @@ impl From<crate::memory::MemoryNode> for CognitiveMemoryNode {
             quantum_signature: None,
             evolution_metadata: None,
             attention_weights: Vec::new(),
-            semantic_relationships: Vec::new(),
-        }
+            semantic_relationships: Vec::new()}
     }
 }
 
@@ -257,8 +247,7 @@ pub struct CognitiveSettings {
     pub meta_awareness_level: f32,
     pub attention_heads: usize,
     pub quantum_coherence_time: f64,
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 impl Default for CognitiveSettings {
     fn default() -> Self {
@@ -273,8 +262,7 @@ impl Default for CognitiveSettings {
             meta_awareness_level: 0.7,
             attention_heads: 8,
             quantum_coherence_time: 0.1,
-            enabled: true,
-        }
+            enabled: true}
     }
 }
 
@@ -283,8 +271,7 @@ impl Default for CognitiveSettings {
 pub struct EntanglementBond {
     pub target_id: String,
     pub bond_strength: f32,
-    pub entanglement_type: EntanglementType,
-}
+    pub entanglement_type: EntanglementType}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EntanglementType {
@@ -295,8 +282,7 @@ pub enum EntanglementType {
     Werner,
     Weak,
     Bell,
-    BellPair,
-}
+    BellPair}
 
 /// Evolution metadata tracking system development
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,8 +291,7 @@ pub struct EvolutionMetadata {
     pub fitness_score: f32,
     pub mutation_history: Vec<MutationEvent>,
     pub specialization_domains: Vec<SpecializationDomain>,
-    pub adaptation_rate: f32,
-}
+    pub adaptation_rate: f32}
 
 impl EvolutionMetadata {
     /// Create new evolution metadata
@@ -316,8 +301,7 @@ impl EvolutionMetadata {
             fitness_score: 0.0,
             mutation_history: Vec::new(),
             specialization_domains: Vec::new(),
-            adaptation_rate: 0.1,
-        }
+            adaptation_rate: 0.1}
     }
 }
 
@@ -327,8 +311,7 @@ pub struct MutationEvent {
     pub timestamp: chrono::DateTime<chrono::Utc>,
     pub mutation_type: MutationType,
     pub impact_score: f32,
-    pub description: String,
-}
+    pub description: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MutationType {
@@ -336,8 +319,7 @@ pub enum MutationType {
     RoutingStrategyModification,
     ContextualUnderstandingEvolution,
     QuantumCoherenceOptimization,
-    EmergentPatternRecognition,
-}
+    EmergentPatternRecognition}
 
 /// Specialization domains for agent evolution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -348,8 +330,7 @@ pub enum SpecializationDomain {
     PatternRecognition,
     ContextualUnderstanding,
     PredictiveModeling,
-    MetaCognition,
-}
+    MetaCognition}
 
 /// Routing decision with confidence and alternatives
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -358,8 +339,7 @@ pub struct RoutingDecision {
     pub target_context: String,
     pub confidence: f32,
     pub alternatives: Vec<AlternativeRoute>,
-    pub reasoning: String,
-}
+    pub reasoning: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RoutingStrategy {
@@ -367,16 +347,14 @@ pub enum RoutingStrategy {
     Attention,
     Causal,
     Emergent,
-    Hybrid(Vec<RoutingStrategy>),
-}
+    Hybrid(Vec<RoutingStrategy>)}
 
 /// Alternative routing option
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlternativeRoute {
     pub strategy: RoutingStrategy,
     pub confidence: f32,
-    pub estimated_quality: f32,
-}
+    pub estimated_quality: f32}
 
 /// Enhanced query with cognitive understanding
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -389,8 +367,7 @@ pub struct EnhancedQuery {
     pub context_embedding: Vec<f32>,
     pub temporal_context: Option<TemporalContext>,
     pub cognitive_hints: Vec<String>,
-    pub expected_complexity: f32,
-}
+    pub expected_complexity: f32}
 
 impl Default for EnhancedQuery {
     fn default() -> Self {
@@ -415,8 +392,7 @@ pub enum QueryIntent {
     Prediction,
     Reasoning,
     Exploration,
-    Creation,
-}
+    Creation}
 
 /// Emergent pattern discovered by the system
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -426,8 +402,7 @@ pub struct EmergentPattern {
     pub strength: f32,
     pub affected_memories: Vec<String>,
     pub discovery_timestamp: chrono::DateTime<chrono::Utc>,
-    pub description: String,
-}
+    pub description: String}
 
 /// Impact factors for evaluation committee decisions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,8 +415,7 @@ pub struct ImpactFactors {
     pub potential_risks: Vec<String>,
     pub latency_factor: f64,
     pub memory_factor: f64,
-    pub relevance_factor: f64,
-}
+    pub relevance_factor: f64}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternType {
@@ -449,8 +423,7 @@ pub enum PatternType {
     Semantic,
     Causal,
     Behavioral,
-    Structural,
-}
+    Structural}
 
 /// Cognitive error types
 #[derive(Debug, thiserror::Error)]
@@ -518,8 +491,7 @@ pub enum CognitiveError {
     EvaluationFailed(String),
 
     #[error("Consensus failed: {0}")]
-    ConsensusFailed(String),
-}
+    ConsensusFailed(String)}
 
 impl From<crate::cognitive::quantum::router::QuantumRouterError> for CognitiveError {
     fn from(error: crate::cognitive::quantum::router::QuantumRouterError) -> Self {
@@ -564,8 +536,7 @@ pub struct OptimizationSpec {
     pub target_quality: f32,
     pub baseline_metrics: BaselineMetrics,
     pub content_type: ContentType,
-    pub evolution_rules: EvolutionRules,
-}
+    pub evolution_rules: EvolutionRules}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OptimizationType {
@@ -573,8 +544,7 @@ pub enum OptimizationType {
     Quality,
     Efficiency,
     Accuracy,
-    Custom(String),
-}
+    Custom(String)}
 
 /// Result of optimization operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -584,22 +554,18 @@ pub enum OptimizationOutcome {
         performance_gain: f32,
         quality_score: f32,
         metadata: HashMap<String, serde_json::Value>,
-        applied: bool,
-    },
+        applied: bool},
     PartialSuccess {
         improvements: Vec<String>,
         issues: Vec<String>,
         performance_gain: f32,
         quality_score: f32,
-        applied: bool,
-    },
+        applied: bool},
     Failure {
         errors: Vec<String>,
         root_cause: String,
         suggestions: Vec<String>,
-        applied: bool,
-    },
-}
+        applied: bool}}
 
 impl OptimizationOutcome {
     /// Get whether this optimization was applied
@@ -607,15 +573,13 @@ impl OptimizationOutcome {
         match self {
             OptimizationOutcome::Success { applied, .. } => *applied,
             OptimizationOutcome::PartialSuccess { applied, .. } => *applied,
-            OptimizationOutcome::Failure { applied, .. } => *applied,
-        }
+            OptimizationOutcome::Failure { applied, .. } => *applied}
     }
 }
 
 /// Async optimization result wrapper
 pub struct PendingOptimizationResult {
-    rx: tokio::sync::oneshot::Receiver<CognitiveResult<OptimizationOutcome>>,
-}
+    rx: tokio::sync::oneshot::Receiver<CognitiveResult<OptimizationOutcome>>}
 
 impl PendingOptimizationResult {
     pub fn new(rx: tokio::sync::oneshot::Receiver<CognitiveResult<OptimizationOutcome>>) -> Self {
@@ -630,8 +594,7 @@ pub struct ContentType {
     pub complexity: f32,
     pub processing_hints: Vec<String>,
     pub format: String,
-    pub restrictions: Restrictions,
-}
+    pub restrictions: Restrictions}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ContentCategory {
@@ -640,8 +603,7 @@ pub enum ContentCategory {
     Data,
     Media,
     Structured,
-    Unstructured,
-}
+    Unstructured}
 
 /// Restrictions for content processing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -654,8 +616,7 @@ pub struct Restrictions {
     pub compiler: String,
     pub max_latency_increase: f64,
     pub max_memory_increase: f64,
-    pub min_relevance_improvement: f64,
-}
+    pub min_relevance_improvement: f64}
 
 impl Default for Restrictions {
     fn default() -> Self {
@@ -678,8 +639,7 @@ pub enum SecurityLevel {
     Public,
     Internal,
     Confidential,
-    Restricted,
-}
+    Restricted}
 
 /// Constraints for optimization operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -690,15 +650,13 @@ pub struct Constraints {
     pub resource_constraints: Vec<ResourceConstraint>,
     pub size: usize,
     pub style: Vec<String>,
-    pub schemas: Vec<String>,
-}
+    pub schemas: Vec<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceConstraint {
     pub resource_type: String,
     pub max_usage: f32,
-    pub priority: f32,
-}
+    pub priority: f32}
 
 /// Evolution rules for cognitive development
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -713,8 +671,7 @@ pub struct EvolutionRules {
     pub new_axis_per_iteration: bool,
     pub max_cumulative_latency_increase: f64,
     pub min_action_diversity: f64,
-    pub validation_required: bool,
-}
+    pub validation_required: bool}
 
 /// Performance metrics for cognitive operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -724,8 +681,7 @@ pub struct PerformanceMetrics {
     pub response_latency: f64,
     pub cost_savings: f64,
     pub accuracy: f64,
-    pub relevance_gain: f64,
-}
+    pub relevance_gain: f64}
 
 /// Baseline performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -738,8 +694,7 @@ pub struct BaselineMetrics {
     pub quality_score: f32,
     pub latency: f64,
     pub memory: f64,
-    pub relevance: f64,
-}
+    pub relevance: f64}
 
 impl std::future::Future for PendingOptimizationResult {
     type Output = CognitiveResult<OptimizationOutcome>;
@@ -753,7 +708,6 @@ impl std::future::Future for PendingOptimizationResult {
             std::task::Poll::Ready(Err(_)) => std::task::Poll::Ready(Err(
                 CognitiveError::ContextProcessingError("Channel closed".to_string()),
             )),
-            std::task::Poll::Pending => std::task::Poll::Pending,
-        }
+            std::task::Poll::Pending => std::task::Poll::Pending}
     }
 }

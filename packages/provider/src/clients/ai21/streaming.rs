@@ -39,8 +39,7 @@ pub struct AI21Stream {
     /// Token counter for usage tracking
     token_counter: AtomicU32,
     /// Content buffer for delta accumulation
-    content_buffer: ArrayString<8192>,
-}
+    content_buffer: ArrayString<8192>}
 
 /// SSE parsing state for efficient processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,8 +54,7 @@ enum SseState {
     /// Processing JSON data
     ProcessingJson = 3,
     /// Event complete
-    EventComplete = 4,
-}
+    EventComplete = 4}
 
 /// Streaming chunk data with zero allocation
 #[derive(Debug, Clone)]
@@ -68,8 +66,7 @@ struct StreamingChunk {
     /// Usage information
     usage: Option<Usage>,
     /// Token count for this chunk
-    token_count: u32,
-}
+    token_count: u32}
 
 impl AI21Stream {
     /// Create new AI21 streaming handler
@@ -80,8 +77,7 @@ impl AI21Stream {
             model,
             event_counter: AtomicU32::new(0),
             token_counter: AtomicU32::new(0),
-            content_buffer: ArrayString::new(),
-        }
+            content_buffer: ArrayString::new()}
     }
     
     /// Convert to chunk stream for CompletionProvider integration
@@ -96,8 +92,7 @@ impl AI21Stream {
                     finish_reason: Some("error".to_string()),
                     usage: None,
                     model: Some(self.model.to_string()),
-                    delta: None,
-                };
+                    delta: None};
                 let _ = tx.send(error_chunk);
             }
         });
@@ -196,8 +191,7 @@ impl AI21Stream {
                 content: None,
                 finish_reason: None,
                 usage: None,
-                token_count: 0,
-            };
+                token_count: 0};
             
             // Extract delta content
             if let Some(delta) = choice.get("delta") {
@@ -239,8 +233,7 @@ impl AI21Stream {
             finish_reason: chunk.finish_reason,
             usage: chunk.usage,
             model: Some(self.model.to_string()),
-            delta: chunk.content.clone(),
-        })
+            delta: chunk.content.clone()})
     }
     
     /// Parse usage information from JSON
@@ -264,8 +257,7 @@ impl AI21Stream {
         Ok(Some(Usage {
             prompt_tokens,
             completion_tokens,
-            total_tokens,
-        }))
+            total_tokens}))
     }
     
     /// Estimate token count for content (approximate)
@@ -283,8 +275,7 @@ impl AI21Stream {
             events_processed: self.event_counter.load(Ordering::Relaxed),
             tokens_streamed: self.token_counter.load(Ordering::Relaxed),
             buffer_length: self.content_buffer.len(),
-            model: self.model,
-        }
+            model: self.model}
     }
 }
 
@@ -298,8 +289,7 @@ pub struct StreamingStats {
     /// Current buffer length
     pub buffer_length: usize,
     /// Model name
-    pub model: &'static str,
-}
+    pub model: &'static str}
 
 /// AsyncStream extension for receiver-based streaming
 impl AsyncStream<CompletionChunk> {

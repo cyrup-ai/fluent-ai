@@ -9,8 +9,7 @@ use fluent_ai_domain::{
     AsyncTask, ZeroOneOrMany,
     memory::{MemoryError, MemoryManager, MemoryNode, MemoryType},
     memory_ops::{self, Op},
-    spawn_async,
-};
+    spawn_async};
 use serde_json::Value;
 use tracing::{error, warn};
 
@@ -32,8 +31,7 @@ impl Default for WorkflowBuilder {
     fn default() -> Self {
         Self {
             ops: Vec::new(),
-            parallel_groups: Vec::new(),
-        }
+            parallel_groups: Vec::new()}
     }
 }
 
@@ -128,8 +126,7 @@ impl WorkflowBuilder {
 
 /// Zero-allocation executable workflow
 pub struct ExecutableWorkflow {
-    builder: WorkflowBuilder,
-}
+    builder: WorkflowBuilder}
 
 impl ExecutableWorkflow {
     /// Execute the workflow with the given input - EXACT syntax: .run(input)
@@ -149,8 +146,7 @@ pub enum WorkflowError {
     Prompt(String),
 
     #[error("Workflow error: {0}")]
-    Other(String),
-}
+    Other(String)}
 
 /// Define traits locally - no external dependencies
 pub trait Prompt: Clone {
@@ -163,8 +159,7 @@ pub trait Prompt: Clone {
 #[derive(Debug, thiserror::Error)]
 pub enum PromptError {
     #[error("Prompt error: {0}")]
-    Error(String),
-}
+    Error(String)}
 
 impl From<PromptError> for WorkflowError {
     fn from(error: PromptError) -> Self {
@@ -176,8 +171,7 @@ impl From<PromptError> for WorkflowError {
 #[allow(dead_code)]
 pub fn passthrough<T: Clone + Send + Sync + 'static>() -> impl Op<Input = T, Output = T> {
     struct PassthroughOp<T> {
-        _phantom: std::marker::PhantomData<T>,
-    }
+        _phantom: std::marker::PhantomData<T>}
 
     impl<T: Clone + Send + Sync + 'static> Op for PassthroughOp<T> {
         type Input = T;
@@ -189,8 +183,7 @@ pub fn passthrough<T: Clone + Send + Sync + 'static>() -> impl Op<Input = T, Out
     }
 
     PassthroughOp {
-        _phantom: std::marker::PhantomData,
-    }
+        _phantom: std::marker::PhantomData}
 }
 
 /// Zero-allocation tuple operation that runs two ops and returns a tuple
@@ -205,8 +198,7 @@ where
 {
     struct BothOp<Op1, Op2> {
         op1: Op1,
-        op2: Op2,
-    }
+        op2: Op2}
 
     impl<I, O1, O2, Op1, Op2> Op for BothOp<Op1, Op2>
     where
@@ -233,8 +225,7 @@ where
 struct MemoryWorkflowOp<M, P> {
     memory_manager: M,
     prompt_model: P,
-    context_limit: usize,
-}
+    context_limit: usize}
 
 impl<M, P> Op for MemoryWorkflowOp<M, P>
 where
@@ -318,8 +309,7 @@ where
 pub struct MemoryEnhancedWorkflow<M, P> {
     memory_manager: M,
     prompt_model: P,
-    context_limit: usize,
-}
+    context_limit: usize}
 
 impl<M, P> MemoryEnhancedWorkflow<M, P>
 where
@@ -331,8 +321,7 @@ where
         Self {
             memory_manager,
             prompt_model,
-            context_limit: 5,
-        }
+            context_limit: 5}
     }
 
     /// Set context limit - EXACT syntax: .with_context_limit(10)
@@ -351,8 +340,7 @@ where
         MemoryWorkflowOp {
             memory_manager,
             prompt_model,
-            context_limit,
-        }
+            context_limit}
     }
 }
 
@@ -373,8 +361,7 @@ where
 /// Create a learning workflow that adapts based on feedback
 pub struct AdaptiveWorkflow<M, B> {
     memory_manager: M,
-    base_op: B,
-}
+    base_op: B}
 
 impl<M, B> AdaptiveWorkflow<M, B>
 where
@@ -385,8 +372,7 @@ where
     pub fn new(memory_manager: M, base_op: B) -> Self {
         Self {
             memory_manager,
-            base_op,
-        }
+            base_op}
     }
 }
 
@@ -416,8 +402,7 @@ where
         let memory_content = serde_json::json!({
             "input": input,
             "output": output,
-            "timestamp": timestamp,
-        })
+            "timestamp": timestamp})
         .to_string();
 
         let memory = MemoryNode::new(memory_content, MemoryType::Episodic).with_importance(0.5); // Initial neutral importance
@@ -511,15 +496,13 @@ where
     RagWorkflowOp {
         memory_manager,
         prompt_model,
-        retrieval_limit,
-    }
+        retrieval_limit}
 }
 
 struct RagWorkflowOp<M, P> {
     memory_manager: M,
     prompt_model: P,
-    retrieval_limit: usize,
-}
+    retrieval_limit: usize}
 
 impl<M, P> Op for RagWorkflowOp<M, P>
 where

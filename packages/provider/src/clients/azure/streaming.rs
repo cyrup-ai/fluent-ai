@@ -20,8 +20,7 @@ use crate::clients::openai::{self, send_compatible_streaming_request};
 #[derive(Clone)]
 pub struct StreamingCompletionResponse {
     // Azure uses OpenAI compatibility, so we can just re-export
-    pub inner: openai::StreamingCompletionResponse,
-}
+    pub inner: openai::StreamingCompletionResponse}
 
 impl From<openai::StreamingCompletionResponse> for StreamingCompletionResponse {
     fn from(inner: openai::StreamingCompletionResponse) -> Self {

@@ -59,8 +59,7 @@ pub struct PerformanceMetric {
     /// Error occurred during operation
     pub error_occurred: bool,
     /// Memory usage delta in bytes
-    pub memory_delta_bytes: i64,
-}
+    pub memory_delta_bytes: i64}
 
 /// Latency histogram for efficient percentile calculations
 #[derive(Debug)]
@@ -76,8 +75,7 @@ pub struct LatencyHistogram {
     /// Minimum observed value
     min_value: CachePadded<AtomicU64>,
     /// Maximum observed value
-    max_value: CachePadded<AtomicU64>,
-}
+    max_value: CachePadded<AtomicU64>}
 
 impl LatencyHistogram {
     pub fn new() -> Self {
@@ -93,8 +91,7 @@ impl LatencyHistogram {
             total_count: CachePadded::new(AtomicU64::new(0)),
             total_sum: CachePadded::new(AtomicU64::new(0)),
             min_value: CachePadded::new(AtomicU64::new(u64::MAX)),
-            max_value: CachePadded::new(AtomicU64::new(0)),
-        }
+            max_value: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Record a latency measurement
@@ -122,8 +119,7 @@ impl LatencyHistogram {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(x) => current_min = x,
-            }
+                Err(x) => current_min = x}
         }
 
         let mut current_max = self.max_value.load(Ordering::Relaxed);
@@ -135,8 +131,7 @@ impl LatencyHistogram {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(x) => current_max = x,
-            }
+                Err(x) => current_max = x}
         }
     }
 
@@ -177,8 +172,7 @@ impl LatencyHistogram {
             p50: self.percentile(0.5),
             p90: self.percentile(0.9),
             p95: self.percentile(0.95),
-            p99: self.percentile(0.99),
-        }
+            p99: self.percentile(0.99)}
     }
 
     /// Reset all counters
@@ -203,8 +197,7 @@ pub struct LatencyStats {
     pub p50: u64,
     pub p90: u64,
     pub p95: u64,
-    pub p99: u64,
-}
+    pub p99: u64}
 
 /// Sliding window for throughput calculations
 #[derive(Debug)]
@@ -216,15 +209,13 @@ pub struct ThroughputWindow {
     /// Current throughput (requests per second)
     current_throughput: CachePadded<AtomicU64>,
     /// Current bandwidth (bytes per second)
-    current_bandwidth: CachePadded<AtomicU64>,
-}
+    current_bandwidth: CachePadded<AtomicU64>}
 
 #[derive(Debug, Clone)]
 struct ThroughputMeasurement {
     timestamp: u64,
     request_count: u64,
-    byte_count: u64,
-}
+    byte_count: u64}
 
 impl ThroughputWindow {
     pub fn new(window_size: usize) -> Self {
@@ -232,8 +223,7 @@ impl ThroughputWindow {
             measurements: Arc::new(RwLock::new(VecDeque::with_capacity(window_size))),
             window_size,
             current_throughput: CachePadded::new(AtomicU64::new(0)),
-            current_bandwidth: CachePadded::new(AtomicU64::new(0)),
-        }
+            current_bandwidth: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Record throughput measurement
@@ -246,8 +236,7 @@ impl ThroughputWindow {
         let measurement = ThroughputMeasurement {
             timestamp,
             request_count,
-            byte_count,
-        };
+            byte_count};
 
         let mut measurements = self.measurements.write().await;
 
@@ -306,8 +295,7 @@ pub struct CacheMetrics {
     /// Cache memory usage in bytes
     pub memory_usage_bytes: CachePadded<AtomicU64>,
     /// Cache entry count
-    pub entry_count: CachePadded<AtomicU64>,
-}
+    pub entry_count: CachePadded<AtomicU64>}
 
 impl CacheMetrics {
     pub fn new() -> Self {
@@ -317,8 +305,7 @@ impl CacheMetrics {
             cache_misses: CachePadded::new(AtomicU64::new(0)),
             cache_evictions: CachePadded::new(AtomicU64::new(0)),
             memory_usage_bytes: CachePadded::new(AtomicU64::new(0)),
-            entry_count: CachePadded::new(AtomicU64::new(0)),
-        }
+            entry_count: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Record cache hit
@@ -367,8 +354,7 @@ impl CacheMetrics {
             cache_evictions: self.cache_evictions.load(Ordering::Relaxed),
             memory_usage_bytes: self.memory_usage_bytes.load(Ordering::Relaxed),
             entry_count: self.entry_count.load(Ordering::Relaxed),
-            hit_ratio: self.hit_ratio(),
-        }
+            hit_ratio: self.hit_ratio()}
     }
 }
 
@@ -381,8 +367,7 @@ pub struct CacheStats {
     pub cache_evictions: u64,
     pub memory_usage_bytes: u64,
     pub entry_count: u64,
-    pub hit_ratio: f64,
-}
+    pub hit_ratio: f64}
 
 /// Resource utilization metrics
 #[derive(Debug)]
@@ -404,8 +389,7 @@ pub struct ResourceMetrics {
     /// Disk I/O bytes read
     pub disk_bytes_read: CachePadded<AtomicU64>,
     /// Disk I/O bytes written
-    pub disk_bytes_written: CachePadded<AtomicU64>,
-}
+    pub disk_bytes_written: CachePadded<AtomicU64>}
 
 impl ResourceMetrics {
     pub fn new() -> Self {
@@ -418,8 +402,7 @@ impl ResourceMetrics {
             network_bytes_sent: CachePadded::new(AtomicU64::new(0)),
             network_bytes_received: CachePadded::new(AtomicU64::new(0)),
             disk_bytes_read: CachePadded::new(AtomicU64::new(0)),
-            disk_bytes_written: CachePadded::new(AtomicU64::new(0)),
-        }
+            disk_bytes_written: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Update memory usage and track peak
@@ -436,8 +419,7 @@ impl ResourceMetrics {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(x) => current_peak = x,
-            }
+                Err(x) => current_peak = x}
         }
     }
 
@@ -468,8 +450,7 @@ impl ResourceMetrics {
             network_bytes_sent: self.network_bytes_sent.load(Ordering::Relaxed),
             network_bytes_received: self.network_bytes_received.load(Ordering::Relaxed),
             disk_bytes_read: self.disk_bytes_read.load(Ordering::Relaxed),
-            disk_bytes_written: self.disk_bytes_written.load(Ordering::Relaxed),
-        }
+            disk_bytes_written: self.disk_bytes_written.load(Ordering::Relaxed)}
     }
 }
 
@@ -484,8 +465,7 @@ pub struct ResourceStats {
     pub network_bytes_sent: u64,
     pub network_bytes_received: u64,
     pub disk_bytes_read: u64,
-    pub disk_bytes_written: u64,
-}
+    pub disk_bytes_written: u64}
 
 /// Performance alert severity levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -493,8 +473,7 @@ pub enum AlertSeverity {
     Info,
     Warning,
     Error,
-    Critical,
-}
+    Critical}
 
 /// Performance alert
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -508,8 +487,7 @@ pub struct PerformanceAlert {
     pub actual_value: f64,
     pub message: ArrayString<256>,
     pub resolved: bool,
-    pub resolution_timestamp: Option<u64>,
-}
+    pub resolution_timestamp: Option<u64>}
 
 /// Alert configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -518,8 +496,7 @@ pub struct AlertConfig {
     pub threshold_value: f64,
     pub severity: AlertSeverity,
     pub enabled: bool,
-    pub provider_specific: Option<ArrayString<32>>,
-}
+    pub provider_specific: Option<ArrayString<32>>}
 
 /// Performance monitoring errors
 #[derive(Debug, Error)]
@@ -537,8 +514,7 @@ pub enum PerformanceMonitorError {
     MetricCollectionFailed { error: String },
 
     #[error("Export failed: {error}")]
-    ExportFailed { error: String },
-}
+    ExportFailed { error: String }}
 
 /// Provider-specific performance metrics
 #[derive(Debug)]
@@ -556,8 +532,7 @@ pub struct ProviderMetrics {
     /// Total processing time
     pub total_processing_time: CachePadded<AtomicU64>,
     /// Last activity timestamp
-    pub last_activity: CachePadded<AtomicU64>,
-}
+    pub last_activity: CachePadded<AtomicU64>}
 
 impl ProviderMetrics {
     pub fn new(provider_id: ArrayString<32>) -> Self {
@@ -568,8 +543,7 @@ impl ProviderMetrics {
             request_count: CachePadded::new(AtomicU64::new(0)),
             error_count: CachePadded::new(AtomicU64::new(0)),
             total_processing_time: CachePadded::new(AtomicU64::new(0)),
-            last_activity: CachePadded::new(AtomicU64::new(0)),
-        }
+            last_activity: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Record performance metric
@@ -639,8 +613,7 @@ pub struct PerformanceMonitor {
     performance_watch: watch::Sender<GlobalMetrics>,
     performance_receiver: watch::Receiver<GlobalMetrics>,
     /// Anomaly detection state
-    anomaly_detector: Arc<AnomalyDetector>,
-}
+    anomaly_detector: Arc<AnomalyDetector>}
 
 /// Global metrics summary
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -654,8 +627,7 @@ pub struct GlobalMetrics {
     pub cache_stats: CacheStats,
     pub resource_stats: ResourceStats,
     pub active_providers: u32,
-    pub alert_count: u32,
-}
+    pub alert_count: u32}
 
 /// Anomaly detection for performance regression analysis
 #[derive(Debug)]
@@ -665,8 +637,7 @@ pub struct AnomalyDetector {
     /// Anomaly detection sensitivity (0.0 - 1.0)
     sensitivity: f64,
     /// Minimum samples required for baseline
-    min_baseline_samples: usize,
-}
+    min_baseline_samples: usize}
 
 #[derive(Debug, Clone)]
 struct PerformanceBaseline {
@@ -674,16 +645,14 @@ struct PerformanceBaseline {
     mean: f64,
     std_deviation: f64,
     sample_count: u64,
-    last_updated: u64,
-}
+    last_updated: u64}
 
 impl AnomalyDetector {
     pub fn new(sensitivity: f64, min_baseline_samples: usize) -> Self {
         Self {
             baselines: Arc::new(DashMap::new()),
             sensitivity,
-            min_baseline_samples,
-        }
+            min_baseline_samples}
     }
 
     /// Update baseline with new measurement
@@ -718,8 +687,7 @@ impl AnomalyDetector {
                 mean: value,
                 std_deviation: 0.0,
                 sample_count: 1,
-                last_updated: timestamp,
-            });
+                last_updated: timestamp});
     }
 
     /// Check if value is anomalous
@@ -762,8 +730,7 @@ impl PerformanceMonitor {
                 cache_evictions: 0,
                 memory_usage_bytes: 0,
                 entry_count: 0,
-                hit_ratio: 0.0,
-            },
+                hit_ratio: 0.0},
             resource_stats: ResourceStats {
                 cpu_usage_percent: 0,
                 memory_usage_bytes: 0,
@@ -773,11 +740,9 @@ impl PerformanceMonitor {
                 network_bytes_sent: 0,
                 network_bytes_received: 0,
                 disk_bytes_read: 0,
-                disk_bytes_written: 0,
-            },
+                disk_bytes_written: 0},
             active_providers: 0,
-            alert_count: 0,
-        });
+            alert_count: 0});
 
         Self {
             provider_metrics: Arc::new(DashMap::new()),
@@ -790,8 +755,7 @@ impl PerformanceMonitor {
             metrics_sender,
             performance_watch,
             performance_receiver,
-            anomaly_detector: Arc::new(AnomalyDetector::new(0.7, 100)),
-        }
+            anomaly_detector: Arc::new(AnomalyDetector::new(0.7, 100))}
     }
 
     /// Record performance metric
@@ -860,8 +824,7 @@ impl PerformanceMonitor {
             ))
             .unwrap_or_default(),
             resolved: false,
-            resolution_timestamp: None,
-        };
+            resolution_timestamp: None};
 
         self.active_alerts.insert(alert_id, alert.clone());
         let _ = self.alert_sender.send(alert);
@@ -901,8 +864,7 @@ impl PerformanceMonitor {
             AlertSeverity::Critical | AlertSeverity::Error => {
                 current_value > config.threshold_value
             }
-            AlertSeverity::Warning | AlertSeverity::Info => current_value > config.threshold_value,
-        };
+            AlertSeverity::Warning | AlertSeverity::Info => current_value > config.threshold_value};
 
         if threshold_exceeded {
             let alert_id = ArrayString::from(&format!(
@@ -933,8 +895,7 @@ impl PerformanceMonitor {
                     ))
                     .unwrap_or_default(),
                     resolved: false,
-                    resolution_timestamp: None,
-                };
+                    resolution_timestamp: None};
 
                 self.active_alerts.insert(alert_id, alert.clone());
                 let _ = self.alert_sender.send(alert);
@@ -994,8 +955,7 @@ impl PerformanceMonitor {
             cache_stats: self.cache_metrics.get_stats(),
             resource_stats: self.resource_metrics.get_stats(),
             active_providers: self.provider_metrics.len() as u32,
-            alert_count: self.active_alerts.len() as u32,
-        }
+            alert_count: self.active_alerts.len() as u32}
     }
 
     /// Get provider-specific metrics
@@ -1226,8 +1186,7 @@ impl Clone for PerformanceMonitor {
             metrics_sender: self.metrics_sender.clone(),
             performance_watch: self.performance_watch.clone(),
             performance_receiver: self.performance_receiver.clone(),
-            anomaly_detector: self.anomaly_detector.clone(),
-        }
+            anomaly_detector: self.anomaly_detector.clone()}
     }
 }
 
@@ -1241,8 +1200,7 @@ impl PerformanceMonitor {
             threshold_value: 0.05, // 5% error rate
             severity: AlertSeverity::Warning,
             enabled: true,
-            provider_specific: None,
-        });
+            provider_specific: None});
 
         // Critical error rate alert
         self.add_alert_config(AlertConfig {
@@ -1250,8 +1208,7 @@ impl PerformanceMonitor {
             threshold_value: 0.15, // 15% error rate
             severity: AlertSeverity::Critical,
             enabled: true,
-            provider_specific: None,
-        });
+            provider_specific: None});
 
         // Low cache hit ratio alert
         self.add_alert_config(AlertConfig {
@@ -1259,8 +1216,7 @@ impl PerformanceMonitor {
             threshold_value: 0.7, // Below 70% hit ratio
             severity: AlertSeverity::Warning,
             enabled: true,
-            provider_specific: None,
-        });
+            provider_specific: None});
 
         // High memory usage alert
         self.add_alert_config(AlertConfig {
@@ -1268,7 +1224,6 @@ impl PerformanceMonitor {
             threshold_value: 8_000_000_000.0, // 8GB
             severity: AlertSeverity::Warning,
             enabled: true,
-            provider_specific: None,
-        });
+            provider_specific: None});
     }
 }

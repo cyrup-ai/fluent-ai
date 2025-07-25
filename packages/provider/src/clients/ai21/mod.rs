@@ -102,7 +102,7 @@ pub mod config {
     pub const DEFAULT_TEMPERATURE: f32 = 0.7;
     
     /// API key validation regex pattern
-    pub const API_KEY_PATTERN: &str = r"^[a-zA-Z0-9_-]{32,}$";
+    pub const API_KEY_PATTERN: &str = r"^[a-zA-Z0-9_-]{32}$";
     
     /// Bearer token prefix for authentication
     pub const BEARER_PREFIX: &str = "Bearer ";
@@ -140,8 +140,7 @@ impl models {
         match model {
             models::JAMBA_1_5_LARGE | models::JAMBA_1_5_MINI => config::JAMBA_MAX_CONTEXT,
             models::J2_ULTRA | models::J2_MID => config::J2_MAX_CONTEXT,
-            _ => 0,
-        }
+            _ => 0}
     }
     
     /// Get model generation (Jamba or J2)
@@ -164,8 +163,7 @@ impl models {
             models::JAMBA_1_5_MINI => Some("mini"),
             models::J2_ULTRA => Some("ultra"),
             models::J2_MID => Some("mid"),
-            _ => None,
-        }
+            _ => None}
     }
     
     /// Check if model supports streaming
@@ -188,8 +186,7 @@ impl models {
         match model {
             models::JAMBA_1_5_LARGE | models::JAMBA_1_5_MINI => (0.0, 2.0),
             models::J2_ULTRA | models::J2_MID => (0.0, 1.0),
-            _ => (0.0, 1.0),
-        }
+            _ => (0.0, 1.0)}
     }
 }
 
@@ -250,8 +247,7 @@ pub mod utils {
         match model {
             models::JAMBA_1_5_LARGE | models::J2_ULTRA => 45_000, // Large models need more time
             models::JAMBA_1_5_MINI | models::J2_MID => 30_000,   // Smaller models are faster
-            _ => 30_000,
-        }
+            _ => 30_000}
     }
     
     /// Get model pricing tier for cost optimization
@@ -260,8 +256,7 @@ pub mod utils {
         match model {
             models::JAMBA_1_5_LARGE | models::J2_ULTRA => "premium",
             models::JAMBA_1_5_MINI | models::J2_MID => "standard",
-            _ => "unknown",
-        }
+            _ => "unknown"}
     }
 }
 

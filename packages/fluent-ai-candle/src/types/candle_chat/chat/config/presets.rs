@@ -3,22 +3,22 @@
 //! This module provides pre-configured chat configurations for common scenarios.
 
 use super::core::ChatConfig;
-use super::builder::ConfigurationBuilder;
+use super::config_builder::{ConfigurationBuilder, PersonalityConfigBuilder, BehaviorConfigBuilder, ModelConfigBuilder};
 
 /// Professional assistant configuration
 pub fn professional() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Professional Assistant")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("professional")
                 .response_style("detailed")
                 .tone("formal")
-                .formality_level(0.8)
-                .creativity_level(0.3)
-                .empathy_level(0.5)
-                .humor_level(0.1)
+                .formality(0.8)
+                .creativity(0.3)
+                .empathy(0.5)
+                .humor(0.1)
         })
-        .behavior(|b| {
+        .behavior_with(|b: BehaviorConfigBuilder| {
             b.content_filtering("strict")
                 .typing_speed_cps(75.0)
                 .response_delay_ms(800)
@@ -30,16 +30,16 @@ pub fn professional() -> ChatConfig {
 pub fn casual() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Casual Friend")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("casual")
                 .response_style("conversational")
                 .tone("friendly")
-                .formality_level(0.2)
-                .creativity_level(0.7)
-                .empathy_level(0.8)
-                .humor_level(0.6)
+                .formality(0.2)
+                .creativity(0.7)
+                .empathy(0.8)
+                .humor(0.6)
         })
-        .behavior(|b| {
+        .behavior_with(|b: BehaviorConfigBuilder| {
             b.content_filtering("basic")
                 .typing_speed_cps(60.0)
                 .response_delay_ms(300)
@@ -51,16 +51,16 @@ pub fn casual() -> ChatConfig {
 pub fn creative() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Creative Partner")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("creative")
                 .response_style("detailed")
                 .tone("enthusiastic")
-                .formality_level(0.3)
-                .creativity_level(0.9)
-                .empathy_level(0.7)
-                .humor_level(0.5)
+                .formality(0.3)
+                .creativity(0.9)
+                .empathy(0.7)
+                .humor(0.5)
         })
-        .model(|m| {
+        .model_with(|m: ModelConfigBuilder| {
             m.temperature(0.9)
                 .max_tokens(4096)
         })
@@ -71,16 +71,16 @@ pub fn creative() -> ChatConfig {
 pub fn technical() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Technical Expert")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("technical")
                 .response_style("detailed")
                 .tone("neutral")
-                .formality_level(0.6)
-                .creativity_level(0.4)
-                .empathy_level(0.5)
-                .humor_level(0.2)
+                .formality(0.6)
+                .creativity(0.4)
+                .empathy(0.5)
+                .humor(0.2)
         })
-        .model(|m| {
+        .model_with(|m: ModelConfigBuilder| {
             m.temperature(0.3)
                 .max_tokens(4096)
                 .system_prompt("You are a technical expert. Provide accurate, detailed, and well-structured technical information.")
@@ -92,16 +92,16 @@ pub fn technical() -> ChatConfig {
 pub fn customer_support() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Customer Support")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("professional")
                 .response_style("concise")
                 .tone("friendly")
-                .formality_level(0.5)
-                .creativity_level(0.3)
-                .empathy_level(0.9)
-                .humor_level(0.2)
+                .formality(0.5)
+                .creativity(0.3)
+                .empathy(0.9)
+                .humor(0.2)
         })
-        .behavior(|b| {
+        .behavior_with(|b: BehaviorConfigBuilder| {
             b.content_filtering("basic")
                 .response_delay_ms(200)
                 .enable_typing_indicators(true)
@@ -114,16 +114,16 @@ pub fn customer_support() -> ChatConfig {
 pub fn gaming_companion() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Gaming Buddy")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("casual")
                 .response_style("conversational")
                 .tone("enthusiastic")
-                .formality_level(0.1)
-                .creativity_level(0.8)
-                .empathy_level(0.6)
-                .humor_level(0.8)
+                .formality(0.1)
+                .creativity(0.8)
+                .empathy(0.6)
+                .humor(0.8)
         })
-        .behavior(|b| {
+        .behavior_with(|b: BehaviorConfigBuilder| {
             b.content_filtering("none")
                 .typing_speed_cps(90.0)
                 .response_delay_ms(100)
@@ -135,21 +135,21 @@ pub fn gaming_companion() -> ChatConfig {
 pub fn educational_tutor() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Educational Tutor")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("professional")
                 .response_style("detailed")
                 .tone("friendly")
-                .formality_level(0.4)
-                .creativity_level(0.6)
-                .empathy_level(0.8)
-                .humor_level(0.3)
+                .formality(0.4)
+                .creativity(0.6)
+                .empathy(0.8)
+                .humor(0.3)
         })
-        .model(|m| {
+        .model_with(|m: ModelConfigBuilder| {
             m.temperature(0.5)
                 .max_tokens(3000)
                 .system_prompt("You are an educational tutor. Explain concepts clearly, provide examples, and encourage learning.")
         })
-        .behavior(|b| {
+        .behavior_with(|b: BehaviorConfigBuilder| {
             b.content_filtering("strict")
                 .typing_speed_cps(65.0)
         })
@@ -160,20 +160,20 @@ pub fn educational_tutor() -> ChatConfig {
 pub fn therapy_assistant() -> ChatConfig {
     ConfigurationBuilder::new()
         .name("Therapy Assistant")
-        .personality(|p| {
+        .personality_with(|p: PersonalityConfigBuilder| {
             p.personality_type("professional")
                 .response_style("conversational")
                 .tone("neutral")
-                .formality_level(0.3)
-                .creativity_level(0.4)
-                .empathy_level(0.95)
-                .humor_level(0.1)
+                .formality(0.3)
+                .creativity(0.4)
+                .empathy(0.95)
+                .humor(0.1)
         })
-        .model(|m| {
+        .model_with(|m: ModelConfigBuilder| {
             m.temperature(0.6)
                 .system_prompt("You are a supportive assistant. Listen actively, ask thoughtful questions, and provide empathetic responses.")
         })
-        .behavior(|b| {
+        .behavior_with(|b: BehaviorConfigBuilder| {
             b.content_filtering("strict")
                 .typing_speed_cps(55.0)
                 .response_delay_ms(1000)

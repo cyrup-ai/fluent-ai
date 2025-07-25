@@ -103,10 +103,10 @@ unsafe fn neon_temperature_scale(logits: &mut [f32], temperature: f32) -> SimdRe
     let mut i = 0;
 
     while i + 4 <= len {
-        let ptr = logits.as_mut_ptr().add(i);
-        let val = vld1q_f32(ptr);
+        let ptr = unsafe { logits.as_mut_ptr().add(i) };
+        let val = unsafe { vld1q_f32(ptr) };
         let scaled = vmulq_f32(val, inv_temp);
-        vst1q_f32(ptr, scaled);
+        unsafe { vst1q_f32(ptr, scaled) };
         i += 4;
     }
 
@@ -160,6 +160,5 @@ fn create_temperature_dispatch() -> TemperatureDispatch {
         #[cfg(not(target_arch = "aarch64"))]
         neon: None,
 
-        scalar: scalar_temperature_scale,
-    }
+        scalar: scalar_temperature_scale}
 }

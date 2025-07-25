@@ -7,8 +7,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelType {
     /// Kimi K2 - 1T parameter MoE model with 32B activated parameters
-    KimiK2 = 0,
-}
+    KimiK2 = 0}
 
 impl ModelType {
     /// Get model type from string with blazing-fast inline parsing  

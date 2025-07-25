@@ -48,7 +48,7 @@ pub use processor::utils::{
 };
 
 // Keep perplexity types internal
-pub(crate) use perplexity::PerplexityState;
+// Removed unused import: PerplexityState
 
 #[cfg(test)]
 mod integration_tests {

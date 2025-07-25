@@ -13,8 +13,7 @@ pub struct Transcription {
     /// Confidence score (0.0 to 1.0)
     pub confidence: Option<f64>,
     /// Language detected (ISO 639-1)
-    pub language: Option<String>,
-}
+    pub language: Option<String>}
 
 /// Request for transcribing audio content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,8 +34,7 @@ pub struct TranscriptionRequest {
     pub temperature: Option<f64>,
 
     /// Additional provider-specific parameters
-    pub additional_params: Option<Value>,
-}
+    pub additional_params: Option<Value>}
 
 impl TranscriptionRequest {
     /// Create a new transcription request with required fields
@@ -47,8 +45,7 @@ impl TranscriptionRequest {
             language: language.into(),
             prompt: None,
             temperature: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 
     /// Set an optional prompt to guide the transcription
@@ -79,8 +76,7 @@ pub struct TranscriptionResponse<T> {
     pub text: String,
 
     /// The original provider response
-    pub response: T,
-}
+    pub response: T}
 
 impl<T> TranscriptionResponse<T> {
     /// Create a new transcription response
@@ -105,8 +101,7 @@ impl<T> TranscriptionResponse<T> {
     {
         TranscriptionResponse {
             text: self.text,
-            response: f(self.response),
-        }
+            response: f(self.response)}
     }
 }
 

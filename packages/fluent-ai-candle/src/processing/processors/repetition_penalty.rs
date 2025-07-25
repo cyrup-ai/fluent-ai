@@ -43,8 +43,7 @@ pub struct RepetitionPenaltyProcessor {
     overflow_frequencies: HashMap<u32, u32>,
 
     /// Cached identity state for optimization
-    is_identity: bool,
-}
+    is_identity: bool}
 
 impl RepetitionPenaltyProcessor {
     /// Create new repetition penalty processor
@@ -92,8 +91,7 @@ impl RepetitionPenaltyProcessor {
             context_window,
             token_frequencies: ArrayVec::new(),
             overflow_frequencies: HashMap::new(),
-            is_identity,
-        })
+            is_identity})
     }
 
     /// Create processor with only repetition penalty

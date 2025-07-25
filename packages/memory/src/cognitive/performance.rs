@@ -16,8 +16,7 @@ use crate::cognitive::types::{CognitiveError, OptimizationSpec};
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
     pub evaluations: Vec<StateEvaluation>,
-    pub timestamp: Instant,
-}
+    pub timestamp: Instant}
 
 /// Single state evaluation result
 #[derive(Debug, Clone)]
@@ -25,15 +24,13 @@ pub struct StateEvaluation {
     pub state: CodeState,
     pub impact_factors: ImpactFactors,
     pub objective_score: f64,
-    pub timestamp: Instant,
-}
+    pub timestamp: Instant}
 
 impl Default for PerformanceMetrics {
     fn default() -> Self {
         Self {
             evaluations: Vec::new(),
-            timestamp: Instant::now(),
-        }
+            timestamp: Instant::now()}
     }
 }
 
@@ -42,8 +39,7 @@ pub struct PerformanceAnalyzer {
     spec: Arc<OptimizationSpec>,
     metrics_history: Arc<RwLock<PerformanceMetrics>>,
     committee: Arc<EvaluationCommittee>,
-    user_objective: String,
-}
+    user_objective: String}
 
 impl PerformanceAnalyzer {
     pub async fn new(
@@ -55,8 +51,7 @@ impl PerformanceAnalyzer {
             spec,
             metrics_history: Arc::new(RwLock::new(PerformanceMetrics::default())),
             committee,
-            user_objective,
-        }
+            user_objective}
     }
 
     /// Estimate reward for a state using committee evaluation
@@ -83,8 +78,7 @@ impl PerformanceAnalyzer {
             state: state.clone(),
             impact_factors: impact_factors.clone(),
             objective_score: reward,
-            timestamp: Instant::now(),
-        };
+            timestamp: Instant::now()};
 
         self.metrics_history
             .write()
@@ -190,8 +184,7 @@ pub enum PerformanceTrend {
     Improving,
     Stable,
     Degrading,
-    Insufficient,
-}
+    Insufficient}
 
 #[cfg(test)]
 mod tests {
@@ -219,27 +212,21 @@ mod tests {
                     compiler: "rustc".to_string(),
                     max_latency_increase: 20.0,
                     max_memory_increase: 30.0,
-                    min_relevance_improvement: 40.0,
-                },
-            },
+                    min_relevance_improvement: 40.0}},
             constraints: crate::cognitive::types::Constraints {
                 size: "single function".to_string(),
                 style: "idiomatic".to_string(),
-                schemas: vec![],
-            },
+                schemas: vec![]},
             evolution_rules: crate::cognitive::types::EvolutionRules {
                 build_on_previous: true,
                 new_axis_per_iteration: true,
                 max_cumulative_latency_increase: 20.0,
                 min_action_diversity: 30.0,
-                validation_required: true,
-            },
+                validation_required: true},
             baseline_metrics: crate::cognitive::types::BaselineMetrics {
                 latency: 10.0,
                 memory: 100.0,
-                relevance: 50.0,
-            },
-        });
+                relevance: 50.0}});
 
         let (tx, _rx) = mpsc::channel(64);
         let committee = Arc::new(EvaluationCommittee::new(tx, 2).await.unwrap());
@@ -252,8 +239,7 @@ mod tests {
             code: "fn search() { /* optimized */ }".to_string(),
             latency: 8.0,
             memory: 90.0,
-            relevance: 75.0,
-        };
+            relevance: 75.0};
 
         match analyzer.estimate_reward(&state).await {
             Ok(reward) => {

@@ -18,7 +18,7 @@ use super::client::{CohereMetrics, RequestTimer};
 
 use fluent_ai_http3::{HttpClient, HttpRequest};
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -47,8 +47,7 @@ pub struct CohereEmbedding {
     max_batch_size: usize,
     
     /// Truncation mode for oversized texts
-    truncation: TruncationMode,
-}
+    truncation: TruncationMode}
 
 /// Embedding request structure for Cohere API
 #[derive(Debug, Clone, Serialize)]
@@ -69,8 +68,7 @@ pub struct EmbeddingRequest {
     
     /// Embedding types to return
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub embedding_types: Option<Vec<EmbeddingType>>,
-}
+    pub embedding_types: Option<Vec<EmbeddingType>>}
 
 /// Embedding response from Cohere API
 #[derive(Debug, Clone, Deserialize)]
@@ -82,8 +80,7 @@ pub struct EmbeddingResponse {
     pub meta: Option<ResponseMeta>,
     
     /// Response ID for tracking
-    pub id: Option<String>,
-}
+    pub id: Option<String>}
 
 /// Individual embedding vector with metadata
 #[derive(Debug, Clone, Deserialize)]
@@ -95,8 +92,7 @@ pub struct EmbeddingVector {
     pub index: Option<usize>,
     
     /// Input text (if requested)
-    pub text: Option<String>,
-}
+    pub text: Option<String>}
 
 /// Response metadata from Cohere
 #[derive(Debug, Clone, Deserialize)]
@@ -108,14 +104,12 @@ pub struct ResponseMeta {
     pub billed_units: Option<BilledUnits>,
     
     /// Warning messages
-    pub warnings: Option<Vec<String>>,
-}
+    pub warnings: Option<Vec<String>>}
 
 /// API version information
 #[derive(Debug, Clone, Deserialize)]
 pub struct ResponseApiVersion {
-    pub version: String,
-}
+    pub version: String}
 
 /// Billing units for the request
 #[derive(Debug, Clone, Deserialize)]
@@ -124,8 +118,7 @@ pub struct BilledUnits {
     pub input_tokens: Option<u64>,
     
     /// Number of search units billed
-    pub search_units: Option<u64>,
-}
+    pub search_units: Option<u64>}
 
 /// Input type for optimization hints to Cohere
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -141,8 +134,7 @@ pub enum InputType {
     Classification,
     
     /// Text for clustering tasks
-    Clustering,
-}
+    Clustering}
 
 /// Truncation mode for oversized texts
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -155,8 +147,7 @@ pub enum TruncationMode {
     Start,
     
     /// Truncate from the end
-    End,
-}
+    End}
 
 /// Embedding types to return
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -175,8 +166,7 @@ pub enum EmbeddingType {
     Binary,
     
     /// Unsigned binary embeddings
-    Ubinary,
-}
+    Ubinary}
 
 /// Batch processing result for multiple embedding requests
 #[derive(Debug, Clone)]
@@ -194,8 +184,7 @@ pub struct EmbeddingBatch {
     pub batch_count: usize,
     
     /// Success rate
-    pub success_rate: f64,
-}
+    pub success_rate: f64}
 
 impl CohereEmbedding {
     /// Create new Cohere embedding client
@@ -212,8 +201,7 @@ impl CohereEmbedding {
             metrics,
             timeout: Duration::from_secs(30),
             max_batch_size: config::MAX_EMBEDDING_BATCH_SIZE,
-            truncation: TruncationMode::End,
-        }
+            truncation: TruncationMode::End}
     }
     
     /// Set request timeout
@@ -294,8 +282,7 @@ impl CohereEmbedding {
                 model: model.to_string(),
                 input_type: None,
                 truncate: Some(self.truncation),
-                embedding_types: Some(vec![EmbeddingType::Float]),
-            };
+                embedding_types: Some(vec![EmbeddingType::Float])};
             
             match self.embed(request).await {
                 Ok(response) => {
@@ -346,8 +333,7 @@ impl CohereEmbedding {
             total_tokens,
             total_duration_ms,
             batch_count,
-            success_rate,
-        })
+            success_rate})
     }
     
     /// Execute embedding request
@@ -377,8 +363,7 @@ impl CohereEmbedding {
                     setting: ArrayString::from("http_request").unwrap_or_default(),
                     reason: ArrayString::from(&e.to_string()).unwrap_or_default(),
                     current_value: ArrayString::new(),
-                    valid_range: None,
-                }
+                    valid_range: None}
             })?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(self.timeout);
@@ -590,8 +575,7 @@ impl EmbeddingRequest {
             model,
             input_type: None,
             truncate: None,
-            embedding_types: None,
-        }
+            embedding_types: None}
     }
     
     /// Set input type for optimization

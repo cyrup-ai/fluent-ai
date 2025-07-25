@@ -17,8 +17,7 @@ pub struct SseEvent {
     /// Event ID for last-event-id tracking
     pub id: Option<String>,
     /// Retry interval in milliseconds
-    pub retry: Option<u64>,
-}
+    pub retry: Option<u64>}
 
 impl SseEvent {
     /// Create new SSE event with data
@@ -28,8 +27,7 @@ impl SseEvent {
             data: Some(data),
             event_type: None,
             id: None,
-            retry: None,
-        }
+            retry: None}
     }
 
     /// Create new SSE event with type and data
@@ -39,8 +37,7 @@ impl SseEvent {
             data: Some(data),
             event_type: Some(event_type),
             id: None,
-            retry: None,
-        }
+            retry: None}
     }
 }
 
@@ -49,8 +46,7 @@ impl SseEvent {
 #[derive(Debug)]
 pub struct JsonStream<T> {
     body: Vec<u8>,
-    _phantom: PhantomData<T>,
-}
+    _phantom: PhantomData<T>}
 
 impl<T: serde::de::DeserializeOwned> JsonStream<T> {
     /// Get JSON value - returns T directly (no futures)
@@ -71,8 +67,7 @@ impl<T: serde::de::DeserializeOwned> JsonStream<T> {
     pub fn collect_json(self) -> Vec<T> {
         match self.get() {
             Some(value) => vec![value],
-            None => Vec::new(),
-        }
+            None => Vec::new()}
     }
 }
 
@@ -105,8 +100,7 @@ where
 pub struct HttpResponse {
     status: StatusCode,
     headers: HashMap<String, String>,
-    body: Vec<u8>,
-}
+    body: Vec<u8>}
 
 impl HttpResponse {
     /// Create a new HTTP response
@@ -124,8 +118,7 @@ impl HttpResponse {
         Self {
             status,
             headers,
-            body,
-        }
+            body}
     }
 
     /// Create a response from cache data - zero-allocation constructor for blazing-fast performance
@@ -137,8 +130,7 @@ impl HttpResponse {
         Self {
             status,
             headers,
-            body: body.into(),
-        }
+            body: body.into()}
     }
 
     /// Get the status code
@@ -188,8 +180,7 @@ impl HttpResponse {
         if self.is_json_content() {
             Some(JsonStream {
                 body: self.body.clone(),
-                _phantom: std::marker::PhantomData,
-            })
+                _phantom: std::marker::PhantomData})
         } else {
             None
         }
@@ -232,8 +223,7 @@ impl HttpResponse {
             data: None,
             event_type: None,
             id: None,
-            retry: None,
-        };
+            retry: None};
         let mut data_lines = Vec::new();
 
         for line in body.lines() {
@@ -258,8 +248,7 @@ impl HttpResponse {
                         data: None,
                         event_type: None,
                         id: None,
-                        retry: None,
-                    };
+                        retry: None};
                     data_lines.clear();
                 }
                 continue;
@@ -464,8 +453,7 @@ impl HttpResponse {
                     self.status.as_u16(),
                     self.status.canonical_reason().unwrap_or("Unknown")
                 ),
-                body: String::from_utf8_lossy(&self.body).to_string(),
-            })
+                body: String::from_utf8_lossy(&self.body).to_string()})
         }
     }
 
@@ -475,8 +463,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::OK,
             headers: HashMap::new(),
-            body,
-        }
+            body}
     }
 
     /// Create a 404 Not Found response
@@ -485,8 +472,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::NOT_FOUND,
             headers: HashMap::new(),
-            body: b"Not Found".to_vec(),
-        }
+            body: b"Not Found".to_vec()}
     }
 
     /// Create a 500 Internal Server Error response
@@ -495,8 +481,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             headers: HashMap::new(),
-            body: b"Internal Server Error".to_vec(),
-        }
+            body: b"Internal Server Error".to_vec()}
     }
 
     /// Create a 400 Bad Request response
@@ -505,8 +490,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::BAD_REQUEST,
             headers: HashMap::new(),
-            body: b"Bad Request".to_vec(),
-        }
+            body: b"Bad Request".to_vec()}
     }
 
     /// Create a 401 Unauthorized response
@@ -515,8 +499,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::UNAUTHORIZED,
             headers: HashMap::new(),
-            body: b"Unauthorized".to_vec(),
-        }
+            body: b"Unauthorized".to_vec()}
     }
 
     /// Create a 403 Forbidden response
@@ -525,8 +508,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::FORBIDDEN,
             headers: HashMap::new(),
-            body: b"Forbidden".to_vec(),
-        }
+            body: b"Forbidden".to_vec()}
     }
 
     /// Create a 429 Too Many Requests response
@@ -535,8 +517,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::TOO_MANY_REQUESTS,
             headers: HashMap::new(),
-            body: b"Too Many Requests".to_vec(),
-        }
+            body: b"Too Many Requests".to_vec()}
     }
 
     /// Create a 502 Bad Gateway response
@@ -545,8 +526,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::BAD_GATEWAY,
             headers: HashMap::new(),
-            body: b"Bad Gateway".to_vec(),
-        }
+            body: b"Bad Gateway".to_vec()}
     }
 
     /// Create a 503 Service Unavailable response
@@ -555,8 +535,7 @@ impl HttpResponse {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
             headers: HashMap::new(),
-            body: b"Service Unavailable".to_vec(),
-        }
+            body: b"Service Unavailable".to_vec()}
     }
 
     /// Create a 504 Gateway Timeout response
@@ -565,7 +544,6 @@ impl HttpResponse {
         Self {
             status: StatusCode::GATEWAY_TIMEOUT,
             headers: HashMap::new(),
-            body: b"Gateway Timeout".to_vec(),
-        }
+            body: b"Gateway Timeout".to_vec()}
     }
 }

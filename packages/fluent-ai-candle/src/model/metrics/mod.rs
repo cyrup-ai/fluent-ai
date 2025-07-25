@@ -30,8 +30,7 @@ pub struct ModelPerformanceStats {
     /// Cache evictions performed
     pub cache_evictions: u64,
     /// Memory utilization (0.0-1.0)
-    pub memory_utilization: f32,
-}
+    pub memory_utilization: f32}
 
 impl Default for ModelPerformanceStats {
     fn default() -> Self {
@@ -45,8 +44,7 @@ impl Default for ModelPerformanceStats {
             cache_entries: 0,
             active_sequences: 0,
             cache_evictions: 0,
-            memory_utilization: 0.0,
-        }
+            memory_utilization: 0.0}
     }
 }
 
@@ -63,8 +61,7 @@ impl ModelPerformanceStats {
             cache_entries: cache_stats.total_entries,
             active_sequences: cache_stats.active_sequences,
             cache_evictions: cache_stats.eviction_count,
-            memory_utilization: cache_stats.memory_utilization,
-        }
+            memory_utilization: cache_stats.memory_utilization}
     }
 
     /// Update token generation statistics
@@ -110,8 +107,7 @@ pub struct GenerationMetrics {
     /// Current active sequence
     pub current_sequence: u64,
     /// Whether actively generating
-    pub is_actively_generating: bool,
-}
+    pub is_actively_generating: bool}
 
 impl Default for GenerationMetrics {
     fn default() -> Self {
@@ -120,8 +116,7 @@ impl Default for GenerationMetrics {
             total_tokens: 0,
             time_since_last_generation_nanos: 0,
             current_sequence: 0,
-            is_actively_generating: false,
-        }
+            is_actively_generating: false}
     }
 }
 
@@ -174,16 +169,14 @@ pub struct ModelMetrics {
     /// Generation metrics
     pub generation: GenerationMetrics,
     /// Cache statistics
-    pub cache_stats: Option<KVCacheStats>,
-}
+    pub cache_stats: Option<KVCacheStats>}
 
 impl Default for ModelMetrics {
     fn default() -> Self {
         Self {
             performance: ModelPerformanceStats::default(),
             generation: GenerationMetrics::default(),
-            cache_stats: None,
-        }
+            cache_stats: None}
     }
 }
 
@@ -193,8 +186,7 @@ impl ModelMetrics {
         Self {
             performance: ModelPerformanceStats::from_cache_stats(&cache_stats, model_memory_bytes),
             generation: GenerationMetrics::default(),
-            cache_stats: Some(cache_stats),
-        }
+            cache_stats: Some(cache_stats)}
     }
 
     /// Update all metrics

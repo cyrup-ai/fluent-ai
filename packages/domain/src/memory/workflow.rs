@@ -19,8 +19,7 @@ use crate::memory::primitives::MemoryError;
 pub struct MemoryWorkflowOp<M, P> {
     memory_manager: M,
     prompt_model: P,
-    context_limit: usize,
-}
+    context_limit: usize}
 
 impl<M, P> OpTrait for MemoryWorkflowOp<M, P>
 where
@@ -49,8 +48,7 @@ pub trait Prompt: Clone {
 #[allow(dead_code)]
 pub enum PromptError {
     #[error("Prompt error: {0}")]
-    Error(String),
-}
+    Error(String)}
 
 /// Error type for memory workflows
 #[derive(Debug, thiserror::Error)]
@@ -63,16 +61,14 @@ pub enum WorkflowError {
     Prompt(#[from] PromptError),
 
     #[error("Workflow error: {0}")]
-    Other(String),
-}
+    Other(String)}
 
 /// A memory-enhanced workflow that stores inputs, retrieves context, and generates responses
 #[allow(dead_code)] // TODO: Implement memory-enhanced workflow system
 pub struct MemoryEnhancedWorkflow<M, P> {
     memory_manager: M,
     prompt_model: P,
-    context_limit: usize,
-}
+    context_limit: usize}
 
 impl<M, P> MemoryEnhancedWorkflow<M, P>
 where
@@ -85,8 +81,7 @@ where
         Self {
             memory_manager,
             prompt_model,
-            context_limit: 10,
-        }
+            context_limit: 10}
     }
 
     #[allow(dead_code)] // TODO: Implement memory workflow context limit configuration
@@ -102,7 +97,6 @@ where
         MemoryWorkflowOp {
             memory_manager: self.memory_manager,
             prompt_model: self.prompt_model,
-            context_limit: self.context_limit,
-        }
+            context_limit: self.context_limit}
     }
 }

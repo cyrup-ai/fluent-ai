@@ -59,8 +59,7 @@ pub struct CohereChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub force_single_step: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub stream: Option<bool>,
-}
+    pub stream: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereChatMessage<'a> {
@@ -71,8 +70,7 @@ pub struct CohereChatMessage<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_name: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<CohereToolCall<'a>, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<CohereToolCall<'a>, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereConnector<'a> {
@@ -83,8 +81,7 @@ pub struct CohereConnector<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continue_on_failure: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereDocument<'a> {
@@ -95,8 +92,7 @@ pub struct CohereDocument<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<&'a str>,
-}
+    pub id: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereTool<'a> {
@@ -104,22 +100,19 @@ pub struct CohereTool<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub parameter_definitions: serde_json::Value,
-}
+    pub parameter_definitions: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereToolCall<'a> {
     #[serde(borrow)]
     pub name: &'a str,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereToolResult<'a> {
     #[serde(borrow)]
     pub call: CohereToolCall<'a>,
-    pub outputs: ArrayVec<serde_json::Value, 8>,
-}
+    pub outputs: ArrayVec<serde_json::Value, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereChatResponse {
@@ -146,22 +139,19 @@ pub struct CohereChatResponse {
     pub tool_calls: Option<ArrayVec<CohereResponseToolCall, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<String>,
-    pub meta: CohereMeta,
-}
+    pub meta: CohereMeta}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereChatlogEntry {
     pub role: String,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_name: Option<String>,
-}
+    pub user_name: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereSearchQuery {
     pub text: String,
-    pub generation_id: String,
-}
+    pub generation_id: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereSearchResult {
@@ -169,35 +159,30 @@ pub struct CohereSearchResult {
     pub connector: CohereSearchConnector,
     pub document_ids: ArrayVec<String, 16>,
     pub error_message: Option<String>,
-    pub continue_on_failure: bool,
-}
+    pub continue_on_failure: bool}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereSearchConnector {
-    pub id: String,
-}
+    pub id: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereDocumentReference {
     pub id: String,
     pub title: String,
     pub snippet: String,
-    pub url: String,
-}
+    pub url: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereCitation {
     pub start: u32,
     pub end: u32,
     pub text: String,
-    pub document_ids: ArrayVec<String, 8>,
-}
+    pub document_ids: ArrayVec<String, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereResponseToolCall {
     pub name: String,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 // ============================================================================
 // Generate API
@@ -238,16 +223,14 @@ pub struct CohereGenerateRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub return_likelihoods: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logit_bias: Option<serde_json::Value>,
-}
+    pub logit_bias: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereGenerateResponse {
     pub id: String,
     pub generations: ArrayVec<CohereGeneration, 8>,
     pub prompt: String,
-    pub meta: CohereMeta,
-}
+    pub meta: CohereMeta}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereGeneration {
@@ -258,14 +241,12 @@ pub struct CohereGeneration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub likelihood: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub token_likelihoods: Option<ArrayVec<CohereTokenLikelihood, 2048>>,
-}
+    pub token_likelihoods: Option<ArrayVec<CohereTokenLikelihood, 2048>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereTokenLikelihood {
     pub token: String,
-    pub likelihood: f32,
-}
+    pub likelihood: f32}
 
 // ============================================================================
 // Embed API
@@ -282,8 +263,7 @@ pub struct CohereEmbedRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub embedding_types: Option<ArrayVec<&'a str, 4>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub truncate: Option<&'a str>,
-}
+    pub truncate: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereEmbedResponse {
@@ -292,8 +272,7 @@ pub struct CohereEmbedResponse {
     pub texts: ArrayVec<String, MAX_DOCUMENTS>,
     pub meta: CohereMeta,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_type: Option<String>,
-}
+    pub response_type: Option<String>}
 
 // ============================================================================
 // Rerank API
@@ -312,8 +291,7 @@ pub struct CohereRerankRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub return_documents: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_chunks_per_doc: Option<u32>,
-}
+    pub max_chunks_per_doc: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -323,31 +301,26 @@ pub enum CohereRerankDocument<'a> {
         #[serde(borrow)]
         text: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
-        title: Option<&'a str>,
-    },
-}
+        title: Option<&'a str>}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereRerankResponse {
     pub id: String,
     pub results: ArrayVec<CohereRerankResult, MAX_DOCUMENTS>,
-    pub meta: CohereMeta,
-}
+    pub meta: CohereMeta}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereRerankResult {
     pub index: u32,
     pub relevance_score: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub document: Option<CohereRerankResultDocument>,
-}
+    pub document: Option<CohereRerankResultDocument>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereRerankResultDocument {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-}
+    pub title: Option<String>}
 
 // ============================================================================
 // Classify API
@@ -364,23 +337,20 @@ pub struct CohereClassifyRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preset: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub truncate: Option<&'a str>,
-}
+    pub truncate: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereClassifyExample<'a> {
     #[serde(borrow)]
     pub text: &'a str,
     #[serde(borrow)]
-    pub label: &'a str,
-}
+    pub label: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereClassifyResponse {
     pub id: String,
     pub classifications: ArrayVec<CohereClassification, 96>,
-    pub meta: CohereMeta,
-}
+    pub meta: CohereMeta}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereClassification {
@@ -390,14 +360,12 @@ pub struct CohereClassification {
     pub confidence: f32,
     pub confidences: ArrayVec<CohereClassificationConfidence, 32>,
     pub labels: serde_json::Value,
-    pub classification_type: String,
-}
+    pub classification_type: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereClassificationConfidence {
     pub option: String,
-    pub confidence: f32,
-}
+    pub confidence: f32}
 
 // ============================================================================
 // Detect Language API
@@ -406,21 +374,18 @@ pub struct CohereClassificationConfidence {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereDetectLanguageRequest<'a> {
     #[serde(borrow)]
-    pub texts: ArrayVec<&'a str, 96>,
-}
+    pub texts: ArrayVec<&'a str, 96>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereDetectLanguageResponse {
     pub id: String,
     pub results: ArrayVec<CohereLanguageDetection, 96>,
-    pub meta: CohereMeta,
-}
+    pub meta: CohereMeta}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereLanguageDetection {
     pub language_code: String,
-    pub language_name: String,
-}
+    pub language_name: String}
 
 // ============================================================================
 // Summarize API
@@ -441,15 +406,13 @@ pub struct CohereSummarizeRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub additional_command: Option<&'a str>,
-}
+    pub additional_command: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereSummarizeResponse {
     pub id: String,
     pub summary: String,
-    pub meta: CohereMeta,
-}
+    pub meta: CohereMeta}
 
 // ============================================================================
 // Common Structures
@@ -464,8 +427,7 @@ pub struct CohereMeta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tokens: Option<CohereTokens>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub warnings: Option<ArrayVec<String, 8>>,
-}
+    pub warnings: Option<ArrayVec<String, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereBilledUnits {
@@ -476,23 +438,20 @@ pub struct CohereBilledUnits {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub search_units: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub classifications: Option<u32>,
-}
+    pub classifications: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereTokens {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub output_tokens: Option<u32>,
-}
+    pub output_tokens: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CohereErrorResponse {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-}
+    pub code: Option<String>}
 
 // ============================================================================
 // Streaming Support
@@ -504,36 +463,28 @@ pub enum CohereStreamingEvent {
     #[serde(rename = "stream-start")]
     StreamStart {
         is_finished: bool,
-        generation_id: String,
-    },
+        generation_id: String},
     #[serde(rename = "text-generation")]
     TextGeneration {
         text: String,
-        is_finished: bool,
-    },
+        is_finished: bool},
     #[serde(rename = "citation-generation")]
     CitationGeneration {
-        citations: ArrayVec<CohereCitation, 64>,
-    },
+        citations: ArrayVec<CohereCitation, 64>},
     #[serde(rename = "search-queries-generation")]
     SearchQueriesGeneration {
-        search_queries: ArrayVec<CohereSearchQuery, 8>,
-    },
+        search_queries: ArrayVec<CohereSearchQuery, 8>},
     #[serde(rename = "search-results")]
     SearchResults {
-        search_results: ArrayVec<CohereSearchResult, 32>,
-    },
+        search_results: ArrayVec<CohereSearchResult, 32>},
     #[serde(rename = "tool-calls-generation")]
     ToolCallsGeneration {
-        tool_calls: ArrayVec<CohereResponseToolCall, MAX_TOOLS>,
-    },
+        tool_calls: ArrayVec<CohereResponseToolCall, MAX_TOOLS>},
     #[serde(rename = "stream-end")]
     StreamEnd {
         is_finished: bool,
         finish_reason: String,
-        response: CohereChatResponse,
-    },
-}
+        response: CohereChatResponse}}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -564,8 +515,7 @@ impl<'a> CohereChatRequest<'a> {
             tools: None,
             tool_results: None,
             force_single_step: None,
-            stream: None,
-        }
+            stream: None}
     }
 
     pub fn model(mut self, model: &'a str) -> Self {
@@ -628,8 +578,7 @@ impl<'a> CohereGenerateRequest<'a> {
             frequency_penalty: None,
             presence_penalty: None,
             return_likelihoods: None,
-            logit_bias: None,
-        }
+            logit_bias: None}
     }
 
     pub fn model(mut self, model: &'a str) -> Self {
@@ -665,8 +614,7 @@ impl<'a> CohereEmbedRequest<'a> {
             model: None,
             input_type: None,
             embedding_types: None,
-            truncate: None,
-        }
+            truncate: None}
     }
 
     pub fn model(mut self, model: &'a str) -> Self {
@@ -693,8 +641,7 @@ impl<'a> CohereRerankRequest<'a> {
             model: None,
             top_n: None,
             return_documents: None,
-            max_chunks_per_doc: None,
-        }
+            max_chunks_per_doc: None}
     }
 
     pub fn model(mut self, model: &'a str) -> Self {
@@ -720,8 +667,7 @@ impl<'a> CohereClassifyRequest<'a> {
             examples,
             model: None,
             preset: None,
-            truncate: None,
-        }
+            truncate: None}
     }
 
     pub fn model(mut self, model: &'a str) -> Self {
@@ -744,8 +690,7 @@ impl<'a> CohereSummarizeRequest<'a> {
             format: None,
             extractiveness: None,
             temperature: None,
-            additional_command: None,
-        }
+            additional_command: None}
     }
 
     pub fn model(mut self, model: &'a str) -> Self {

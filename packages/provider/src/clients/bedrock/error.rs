@@ -30,8 +30,7 @@ pub enum BedrockError {
     #[error("AWS authentication failed: {message}")]
     Auth {
         message: ArrayString<256>,
-        error_code: Option<ArrayString<32>>,
-    },
+        error_code: Option<ArrayString<32>>},
 
     /// AWS SigV4 signing errors
     #[error("AWS signature generation failed: {message}")]
@@ -45,23 +44,20 @@ pub enum BedrockError {
     ModelAccess {
         model: ArrayString<64>,
         region: ArrayString<32>,
-        reason: ModelAccessReason,
-    },
+        reason: ModelAccessReason},
 
     /// AWS region not supported for Bedrock
     #[error("Region not supported: {region}")]
     RegionNotSupported {
         region: ArrayString<32>,
-        supported_regions: &'static [&'static str],
-    },
+        supported_regions: &'static [&'static str]},
 
     /// AWS throttling and rate limiting
     #[error("Request throttled: {reason}, retry after {retry_after}s")]
     Throttled {
         reason: ThrottleReason,
         retry_after: u64,
-        request_id: Option<ArrayString<64>>,
-    },
+        request_id: Option<ArrayString<64>>},
 
     /// AWS quota and billing errors  
     #[error("Quota exceeded: {quota_type}, limit: {limit}")]
@@ -77,8 +73,7 @@ pub enum BedrockError {
     InputValidation {
         field: ArrayString<32>,
         message: ArrayString<128>,
-        model: ArrayString<64>,
-    },
+        model: ArrayString<64>},
 
     /// AWS service errors (500-level)
     #[error("AWS service error: {service} - {message}")]
@@ -86,45 +81,38 @@ pub enum BedrockError {
         service: ArrayString<32>,
         message: ArrayString<256>,
         error_code: Option<ArrayString<32>>,
-        request_id: Option<ArrayString<64>>,
-    },
+        request_id: Option<ArrayString<64>>},
 
     /// Configuration and setup errors
     #[error("Configuration error: {component} - {message}")]
     Config {
         component: ArrayString<32>,
-        message: ArrayString<256>,
-    },
+        message: ArrayString<256>},
 
     /// JSON serialization/deserialization errors
     #[error("JSON processing failed: {operation} - {context}")]
     Json {
         operation: JsonOperation,
-        context: ArrayString<128>,
-    },
+        context: ArrayString<128>},
 
     /// AWS credentials errors
     #[error("AWS credentials error: {message}")]
     Credentials {
         message: ArrayString<256>,
-        source: CredentialsSource,
-    },
+        source: CredentialsSource},
 
     /// Network timeout and connectivity
     #[error("Network timeout: {operation} after {timeout_ms}ms")]
     Timeout {
         operation: ArrayString<32>,
-        timeout_ms: u64,
-    },
+        timeout_ms: u64},
 
     /// Circuit breaker open state
     #[error("Circuit breaker open for {service}, failure rate: {failure_rate}%")]
     CircuitBreakerOpen {
         service: ArrayString<32>,
         failure_rate: f32,
-        last_failure: ArrayString<128>,
-    },
-}
+        last_failure: ArrayString<128>}}
 
 /// Model access failure reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,8 +126,7 @@ pub enum ModelAccessReason {
     /// Model requires additional provisioning
     NotProvisioned,
     /// Model in maintenance mode
-    Maintenance,
-}
+    Maintenance}
 
 impl fmt::Display for ModelAccessReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -148,8 +135,7 @@ impl fmt::Display for ModelAccessReason {
             Self::AccessDenied => write!(f, "access denied"),
             Self::Disabled => write!(f, "model disabled"),
             Self::NotProvisioned => write!(f, "model not provisioned"),
-            Self::Maintenance => write!(f, "model in maintenance"),
-        }
+            Self::Maintenance => write!(f, "model in maintenance")}
     }
 }
 
@@ -165,8 +151,7 @@ pub enum ThrottleReason {
     /// Model-specific throttling
     ModelThrottling,
     /// Account-level throttling
-    AccountThrottling,
-}
+    AccountThrottling}
 
 impl fmt::Display for ThrottleReason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -175,8 +160,7 @@ impl fmt::Display for ThrottleReason {
             Self::TokenRateLimit => write!(f, "token rate limit"),
             Self::ConcurrencyLimit => write!(f, "concurrency limit"),
             Self::ModelThrottling => write!(f, "model throttling"),
-            Self::AccountThrottling => write!(f, "account throttling"),
-        }
+            Self::AccountThrottling => write!(f, "account throttling")}
     }
 }
 
@@ -194,8 +178,7 @@ pub enum QuotaType {
     /// Concurrent requests quota
     ConcurrentRequests,
     /// Custom model training quota
-    CustomModelTraining,
-}
+    CustomModelTraining}
 
 impl fmt::Display for QuotaType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -205,8 +188,7 @@ impl fmt::Display for QuotaType {
             Self::HourlyTokens => write!(f, "hourly tokens"),
             Self::ModelInvocations => write!(f, "model invocations"),
             Self::ConcurrentRequests => write!(f, "concurrent requests"),
-            Self::CustomModelTraining => write!(f, "custom model training"),
-        }
+            Self::CustomModelTraining => write!(f, "custom model training")}
     }
 }
 
@@ -220,8 +202,7 @@ pub enum JsonOperation {
     /// Parsing streaming JSON chunks
     StreamParse,
     /// Validating JSON schema
-    Validate,
-}
+    Validate}
 
 impl fmt::Display for JsonOperation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -229,8 +210,7 @@ impl fmt::Display for JsonOperation {
             Self::Serialize => write!(f, "serialize"),
             Self::Deserialize => write!(f, "deserialize"),
             Self::StreamParse => write!(f, "stream parse"),
-            Self::Validate => write!(f, "validate"),
-        }
+            Self::Validate => write!(f, "validate")}
     }
 }
 
@@ -246,8 +226,7 @@ pub enum CredentialsSource {
     /// EC2 instance metadata
     InstanceMetadata,
     /// Explicit credentials
-    Explicit,
-}
+    Explicit}
 
 impl fmt::Display for CredentialsSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -256,8 +235,7 @@ impl fmt::Display for CredentialsSource {
             Self::Profile => write!(f, "AWS profile"),
             Self::Role => write!(f, "IAM role"),
             Self::InstanceMetadata => write!(f, "EC2 instance metadata"),
-            Self::Explicit => write!(f, "explicit credentials"),
-        }
+            Self::Explicit => write!(f, "explicit credentials")}
     }
 }
 
@@ -268,8 +246,7 @@ impl BedrockError {
         let _ = msg.try_push_str(message);
         Self::Auth {
             message: msg,
-            error_code: None,
-        }
+            error_code: None}
     }
 
     /// Create signature error with zero allocation
@@ -280,8 +257,7 @@ impl BedrockError {
         let _ = comp.try_push_str(component);
         Self::Signature {
             message: msg,
-            component: comp,
-        }
+            component: comp}
     }
 
     /// Create model access error with zero allocation
@@ -293,8 +269,7 @@ impl BedrockError {
         Self::ModelAccess {
             model: mod_name,
             region: reg_name,
-            reason,
-        }
+            reason}
     }
 
     /// Create configuration error with zero allocation
@@ -305,8 +280,7 @@ impl BedrockError {
         let _ = msg.try_push_str(message);
         Self::Config {
             component: comp,
-            message: msg,
-        }
+            message: msg}
     }
 
     /// Create credentials error with zero allocation
@@ -315,8 +289,7 @@ impl BedrockError {
         let _ = msg.try_push_str(message);
         Self::Credentials {
             message: msg,
-            source,
-        }
+            source}
     }
 
     /// Check if error is retryable
@@ -330,8 +303,7 @@ impl BedrockError {
                 // Retryable HTTP status codes
                 matches!(http_err, HttpError::StatusCode(code) if *code >= 500)
             }
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Get retry delay in seconds
@@ -340,8 +312,7 @@ impl BedrockError {
             Self::Throttled { retry_after, .. } => Some(*retry_after),
             Self::Service { .. } => Some(1), // 1 second for service errors
             Self::Timeout { .. } => Some(2), // 2 seconds for timeouts
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Extract AWS request ID if available
@@ -355,8 +326,7 @@ impl BedrockError {
                 request_id: Some(id),
                 ..
             } => Some(id.as_str()),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -367,34 +337,27 @@ impl From<u16> for BedrockError {
             400 => Self::InputValidation {
                 field: ArrayString::from("request").unwrap_or_default(),
                 message: ArrayString::from("bad request").unwrap_or_default(),
-                model: ArrayString::new(),
-            },
+                model: ArrayString::new()},
             401 => Self::Auth {
                 message: ArrayString::from("unauthorized").unwrap_or_default(),
-                error_code: None,
-            },
+                error_code: None},
             403 => Self::Auth {
                 message: ArrayString::from("forbidden").unwrap_or_default(),
-                error_code: None,
-            },
+                error_code: None},
             404 => Self::ModelAccess {
                 model: ArrayString::new(),
                 region: ArrayString::new(),
-                reason: ModelAccessReason::NotFound,
-            },
+                reason: ModelAccessReason::NotFound},
             429 => Self::Throttled {
                 reason: ThrottleReason::RateLimit,
                 retry_after: 60,
-                request_id: None,
-            },
+                request_id: None},
             500..=599 => Self::Service {
                 service: ArrayString::from("bedrock").unwrap_or_default(),
                 message: ArrayString::from("internal server error").unwrap_or_default(),
                 error_code: None,
-                request_id: None,
-            },
-            _ => Self::Http(HttpError::StatusCode(status)),
-        }
+                request_id: None},
+            _ => Self::Http(HttpError::StatusCode(status))}
     }
 }
 
@@ -408,8 +371,7 @@ impl From<BedrockError> for CompletionError {
             BedrockError::Throttled { .. } => Self::RateLimitError,
             BedrockError::Service { .. } => Self::ProviderError,
             BedrockError::Config { .. } => Self::ConfigError,
-            _ => Self::ProviderError,
-        }
+            _ => Self::ProviderError}
     }
 }
 
@@ -453,8 +415,7 @@ mod tests {
         let throttled = BedrockError::Throttled {
             reason: ThrottleReason::RateLimit,
             retry_after: 60,
-            request_id: None,
-        };
+            request_id: None};
         assert!(throttled.is_retryable());
         assert_eq!(throttled.retry_delay(), Some(60));
 

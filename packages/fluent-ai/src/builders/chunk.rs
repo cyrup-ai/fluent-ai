@@ -2,13 +2,11 @@
 //!
 //! Provides EXACT API syntax for chunk construction and streaming operations.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fluent_ai_domain::{
     chunk::{ChatMessageChunk, CompletionChunk, DocumentChunk, FinishReason, Usage},
-    message::MessageRole,
-};
+    message::MessageRole};
 use serde_json::Value;
 
 /// Zero-allocation document chunk builder with blazing-fast construction
@@ -16,8 +14,7 @@ pub struct DocumentChunkBuilder {
     content: String,
     path: Option<PathBuf>,
     byte_range: Option<(usize, usize)>,
-    metadata: HashMap<String, Value>,
-}
+    metadata: HashMap<String, Value>}
 
 impl DocumentChunkBuilder {
     /// Create new document chunk builder - EXACT syntax: DocumentChunkBuilder::new(content)
@@ -27,8 +24,7 @@ impl DocumentChunkBuilder {
             content: content.into(),
             path: None,
             byte_range: None,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Set file path - EXACT syntax: .with_path(path)
@@ -59,8 +55,7 @@ impl DocumentChunkBuilder {
             path: self.path,
             content: self.content,
             byte_range: self.byte_range,
-            metadata: self.metadata,
-        }
+            metadata: self.metadata}
     }
 }
 
@@ -69,8 +64,7 @@ pub struct ChatMessageChunkBuilder {
     content: String,
     role: MessageRole,
     is_final: bool,
-    metadata: HashMap<String, Value>,
-}
+    metadata: HashMap<String, Value>}
 
 impl ChatMessageChunkBuilder {
     /// Create new chat message chunk builder - EXACT syntax: ChatMessageChunkBuilder::new(content, role)
@@ -80,8 +74,7 @@ impl ChatMessageChunkBuilder {
             content: content.into(),
             role,
             is_final: false,
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Mark as final chunk - EXACT syntax: .final_chunk()
@@ -98,8 +91,7 @@ impl ChatMessageChunkBuilder {
             content: self.content,
             role: self.role,
             is_final: self.is_final,
-            metadata: self.metadata,
-        }
+            metadata: self.metadata}
     }
 }
 
@@ -107,8 +99,7 @@ impl ChatMessageChunkBuilder {
 pub struct CompletionChunkBuilder {
     text: String,
     finish_reason: Option<FinishReason>,
-    usage: Option<Usage>,
-}
+    usage: Option<Usage>}
 
 impl CompletionChunkBuilder {
     /// Create new completion chunk builder - EXACT syntax: CompletionChunkBuilder::new(text)
@@ -117,8 +108,7 @@ impl CompletionChunkBuilder {
         Self {
             text: text.into(),
             finish_reason: None,
-            usage: None,
-        }
+            usage: None}
     }
 
     /// Set finish reason - EXACT syntax: .finished(reason)
@@ -141,8 +131,7 @@ impl CompletionChunkBuilder {
         CompletionChunk {
             text: self.text,
             finish_reason: self.finish_reason,
-            usage: self.usage,
-        }
+            usage: self.usage}
     }
 }
 

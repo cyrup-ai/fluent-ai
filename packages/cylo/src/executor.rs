@@ -10,7 +10,6 @@
 //! - Load balancing and instance health monitoring
 //! ============================================================================
 
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 use crate::async_task::{AsyncTask, AsyncTaskBuilder};
@@ -41,8 +40,7 @@ pub struct CyloExecutor {
     platform_cache: PlatformCache,
     
     /// Execution statistics and metrics
-    metrics: Arc<RwLock<ExecutionMetrics>>,
-}
+    metrics: Arc<RwLock<ExecutionMetrics>>}
 
 /// Routing strategy for execution requests
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,8 +54,7 @@ pub enum RoutingStrategy {
     /// Use specific backend if available, fallback to balanced
     PreferBackend(String),
     /// Only use explicitly specified backends
-    ExplicitOnly,
-}
+    ExplicitOnly}
 
 /// Backend selection preferences and weights
 #[derive(Debug, Clone)]
@@ -69,8 +66,7 @@ pub struct BackendPreferences {
     /// Maximum concurrent executions per backend
     max_concurrent: HashMap<String, u32>,
     /// Backend exclusion list
-    excluded_backends: Vec<String>,
-}
+    excluded_backends: Vec<String>}
 
 /// Performance optimization configuration
 #[derive(Debug, Clone)]
@@ -84,8 +80,7 @@ pub struct OptimizationConfig {
     /// Enable load balancing across instances
     load_balancing: bool,
     /// Resource usage monitoring interval
-    monitoring_interval: Duration,
-}
+    monitoring_interval: Duration}
 
 /// Cached platform information for fast routing decisions
 #[derive(Debug, Clone)]
@@ -97,8 +92,7 @@ struct PlatformCache {
     /// Cache timestamp
     cached_at: SystemTime,
     /// Cache validity duration
-    cache_duration: Duration,
-}
+    cache_duration: Duration}
 
 /// Execution metrics and performance statistics
 #[derive(Debug, Clone, Default)]
@@ -112,8 +106,7 @@ pub struct ExecutionMetrics {
     /// Resource usage statistics
     resource_usage: HashMap<String, ResourceStats>,
     /// Last update timestamp
-    last_updated: Option<SystemTime>,
-}
+    last_updated: Option<SystemTime>}
 
 /// Resource usage statistics for a backend
 #[derive(Debug, Clone, Default)]
@@ -127,8 +120,7 @@ pub struct ResourceStats {
     /// Peak resource usage
     peak_memory: u64,
     /// Total resource usage over time
-    cumulative_cpu_time: u64,
-}
+    cumulative_cpu_time: u64}
 
 impl CyloExecutor {
     /// Create a new high-performance executor with optimal defaults
@@ -172,8 +164,7 @@ impl CyloExecutor {
             backend_preferences: BackendPreferences::default(),
             optimization_config: OptimizationConfig::default(),
             platform_cache,
-            metrics: Arc::new(RwLock::new(ExecutionMetrics::default())),
-        }
+            metrics: Arc::new(RwLock::new(ExecutionMetrics::default()))}
     }
     
     /// Execute code with intelligent backend routing
@@ -381,8 +372,7 @@ impl CyloExecutor {
                             "FireCracker" => 20.0,
                             "LandLock" => 15.0,
                             "Apple" => 10.0,
-                            _ => 0.0,
-                        };
+                            _ => 0.0};
                         let preference_multiplier = preferences.weight_multipliers
                             .get(name)
                             .copied()
@@ -465,8 +455,7 @@ impl CyloExecutor {
         match cylo {
             Cylo::Apple(_) => "Apple".to_string(),
             Cylo::LandLock(_) => "LandLock".to_string(),
-            Cylo::FireCracker(_) => "FireCracker".to_string(),
-        }
+            Cylo::FireCracker(_) => "FireCracker".to_string()}
     }
     
     /// Execute with specific backend and instance management
@@ -615,8 +604,7 @@ impl Default for BackendPreferences {
             ],
             weight_multipliers,
             max_concurrent,
-            excluded_backends: Vec::new(),
-        }
+            excluded_backends: Vec::new()}
     }
 }
 
@@ -627,8 +615,7 @@ impl Default for OptimizationConfig {
             instance_pool_size: 5,
             max_idle_time: Duration::from_secs(300),
             load_balancing: true,
-            monitoring_interval: Duration::from_secs(60),
-        }
+            monitoring_interval: Duration::from_secs(60)}
     }
 }
 

@@ -35,8 +35,7 @@ pub struct GenerationConfig {
     /// Length penalty for beam search
     pub length_penalty: f32,
     /// Do sample (vs greedy)
-    pub do_sample: bool,
-}
+    pub do_sample: bool}
 
 impl Default for GenerationConfig {
     #[inline(always)]
@@ -53,8 +52,7 @@ impl Default for GenerationConfig {
             early_stopping: true,
             num_beams: 1,
             length_penalty: 1.0,
-            do_sample: true,
-        }
+            do_sample: true}
     }
 }
 
@@ -73,8 +71,7 @@ pub struct GeneratedToken {
     /// Generation step
     pub step: u32,
     /// Is special token
-    pub is_special: bool,
-}
+    pub is_special: bool}
 
 impl GeneratedToken {
     /// Create a new generated token
@@ -96,8 +93,7 @@ impl GeneratedToken {
             log_prob,
             cumulative_log_prob,
             step,
-            is_special,
-        })
+            is_special})
     }
 
     /// Get token text as string
@@ -123,8 +119,7 @@ pub struct GenerationStats {
     /// Cache miss count
     pub cache_misses: AtomicU32,
     /// Memory usage in bytes
-    pub memory_usage: AtomicU64,
-}
+    pub memory_usage: AtomicU64}
 
 impl Clone for GenerationStats {
     fn clone(&self) -> Self {
@@ -134,8 +129,7 @@ impl Clone for GenerationStats {
             tokens_per_second: AtomicU32::new(self.tokens_per_second.load(Ordering::Relaxed)),
             cache_hits: AtomicU32::new(self.cache_hits.load(Ordering::Relaxed)),
             cache_misses: AtomicU32::new(self.cache_misses.load(Ordering::Relaxed)),
-            memory_usage: AtomicU64::new(self.memory_usage.load(Ordering::Relaxed)),
-        }
+            memory_usage: AtomicU64::new(self.memory_usage.load(Ordering::Relaxed))}
     }
 }
 
@@ -149,8 +143,7 @@ impl GenerationStats {
             tokens_per_second: AtomicU32::new(0),
             cache_hits: AtomicU32::new(0),
             cache_misses: AtomicU32::new(0),
-            memory_usage: AtomicU64::new(0),
-        }
+            memory_usage: AtomicU64::new(0)}
     }
 }
 
@@ -175,8 +168,7 @@ pub struct GenerationState {
     /// Stop reason
     pub stop_reason: parking_lot::Mutex<Option<StopReason>>,
     /// Generation statistics for performance tracking
-    pub stats: GenerationStats,
-}
+    pub stats: GenerationStats}
 
 impl Clone for GenerationState {
     fn clone(&self) -> Self {
@@ -186,8 +178,7 @@ impl Clone for GenerationState {
             position: self.position,
             is_complete: AtomicBool::new(self.is_complete.load(Ordering::Relaxed)),
             stop_reason: parking_lot::Mutex::new(self.stop_reason.lock().clone()),
-            stats: self.stats.clone(),
-        }
+            stats: self.stats.clone()}
     }
 }
 
@@ -201,8 +192,7 @@ impl GenerationState {
             position: 0,
             is_complete: AtomicBool::new(false),
             stop_reason: parking_lot::Mutex::new(None),
-            stats: GenerationStats::new(),
-        }
+            stats: GenerationStats::new()}
     }
 
     /// Add a generated token
@@ -261,5 +251,4 @@ pub enum StopReason {
     /// Error occurred
     Error = 4,
     /// Length limit reached
-    LengthLimit = 5,
-}
+    LengthLimit = 5}

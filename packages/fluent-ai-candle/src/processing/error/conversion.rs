@@ -76,8 +76,7 @@ mod tests {
             ProcessingError::InvalidConfiguration(msg) => {
                 assert!(msg.contains("Invalid temperature"));
             }
-            _ => panic!("Expected InvalidConfiguration error"),
-        }
+            _ => panic!("Expected InvalidConfiguration error")}
     }
 
     #[test]
@@ -89,7 +88,6 @@ mod tests {
             ProcessingError::ValidationError(msg) => {
                 assert_eq!(msg, "Empty vocabulary");
             }
-            _ => panic!("Expected ValidationError"),
-        }
+            _ => panic!("Expected ValidationError")}
     }
 }

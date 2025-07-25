@@ -18,8 +18,7 @@ pub struct MacroParser {
     /// Configuration for parsing behavior
     config: MacroParserConfig,
     /// Cache of parsed expressions for performance
-    expression_cache: HashMap<String, ParsedExpression>,
-}
+    expression_cache: HashMap<String, ParsedExpression>}
 
 /// Configuration for macro parser behavior
 #[derive(Debug, Clone)]
@@ -31,8 +30,7 @@ pub struct MacroParserConfig {
     /// Enable expression caching
     pub enable_caching: bool,
     /// Allow custom functions in expressions
-    pub allow_custom_functions: bool,
-}
+    pub allow_custom_functions: bool}
 
 /// Parsed expression for condition evaluation
 #[derive(Debug, Clone)]
@@ -49,19 +47,15 @@ pub enum ParsedExpression {
     BinaryOp {
         operator: BinaryOperator,
         left: Box<ParsedExpression>,
-        right: Box<ParsedExpression>,
-    },
+        right: Box<ParsedExpression>},
     /// Unary operation
     UnaryOp {
         operator: UnaryOperator,
-        operand: Box<ParsedExpression>,
-    },
+        operand: Box<ParsedExpression>},
     /// Function call
     FunctionCall {
         name: String,
-        args: Vec<ParsedExpression>,
-    },
-}
+        args: Vec<ParsedExpression>}}
 
 /// Binary operators for expressions
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,8 +87,7 @@ pub enum BinaryOperator {
     /// Multiplication
     Multiply,
     /// Division
-    Divide,
-}
+    Divide}
 
 /// Unary operators for expressions
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,8 +99,7 @@ pub enum UnaryOperator {
     /// Check if empty
     IsEmpty,
     /// Check if not empty
-    IsNotEmpty,
-}
+    IsNotEmpty}
 
 /// Result of parsing a macro definition
 #[derive(Debug, Clone)]
@@ -117,8 +109,7 @@ pub struct ParseResult {
     /// Parsing errors encountered
     pub errors: Vec<ParseError>,
     /// Warnings during parsing
-    pub warnings: Vec<ParseWarning>,
-}
+    pub warnings: Vec<ParseWarning>}
 
 /// Parsing error information
 #[derive(Debug, Clone)]
@@ -130,8 +121,7 @@ pub struct ParseError {
     /// Column number where error occurred
     pub column: usize,
     /// Error type classification
-    pub error_type: ParseErrorType,
-}
+    pub error_type: ParseErrorType}
 
 /// Types of parsing errors
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,8 +139,7 @@ pub enum ParseErrorType {
     /// Invalid parameter value
     InvalidParameter,
     /// Circular reference detected
-    CircularReference,
-}
+    CircularReference}
 
 /// Parsing warning information
 #[derive(Debug, Clone)]
@@ -162,8 +151,7 @@ pub struct ParseWarning {
     /// Column number where warning occurred
     pub column: usize,
     /// Warning type classification
-    pub warning_type: ParseWarningType,
-}
+    pub warning_type: ParseWarningType}
 
 /// Types of parsing warnings
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,30 +163,27 @@ pub enum ParseWarningType {
     /// Performance warning
     PerformanceWarning,
     /// Style recommendation
-    StyleRecommendation,
-}
+    StyleRecommendation}
 
 impl MacroParser {
     /// Create a new macro parser with default configuration
     pub fn new() -> Self {
         Self {
             config: MacroParserConfig::default(),
-            expression_cache: HashMap::new(),
-        }
+            expression_cache: HashMap::new()}
     }
 
     /// Create a new macro parser with custom configuration
     pub fn with_config(config: MacroParserConfig) -> Self {
         Self {
             config,
-            expression_cache: HashMap::new(),
-        }
+            expression_cache: HashMap::new()}
     }
 
     /// Parse a macro definition from text
     pub fn parse_macro(&mut self, definition: &str) -> ParseResult {
         let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let warnings = Vec::new();
         let mut actions = Vec::new();
 
         // Parse line by line
@@ -210,8 +195,7 @@ impl MacroParser {
 
             match self.parse_action_line(line, line_num + 1) {
                 Ok(action) => actions.push(action),
-                Err(error) => errors.push(error),
-            }
+                Err(error) => errors.push(error)}
         }
 
         let macro_def = if errors.is_empty() {
@@ -221,14 +205,18 @@ impl MacroParser {
                     name: Arc::from("Parsed Macro"),
                     description: None,
                     tags: Vec::new(),
-                    created_at: std::time::Instant::now(),
-                    modified_at: std::time::Instant::now(),
+                    created_at: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                    modified_at: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
                     author: None,
-                    version: 1,
-                },
+                    version: 1},
                 actions: actions.into(),
-                variables: HashMap::new(),
-            })
+                variables: HashMap::new()})
         } else {
             None
         };
@@ -236,8 +224,7 @@ impl MacroParser {
         ParseResult {
             macro_def,
             errors,
-            warnings,
-        }
+            warnings}
     }
 
     /// Parse a single action line
@@ -248,8 +235,7 @@ impl MacroParser {
                 message: "Empty action line".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::SyntaxError,
-            });
+                error_type: ParseErrorType::SyntaxError});
         }
 
         let action_type = parts[0].to_lowercase();
@@ -266,9 +252,7 @@ impl MacroParser {
                 message: format!("Unknown action type: {}", action_type),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::UnknownAction,
-            }),
-        }
+                error_type: ParseErrorType::UnknownAction})}
     }
 
     /// Parse a send message action
@@ -278,8 +262,7 @@ impl MacroParser {
                 message: "Send action requires message type and content".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::MissingParameter,
-            });
+                error_type: ParseErrorType::MissingParameter});
         }
 
         let message_type = Arc::from(parts[0]);
@@ -288,8 +271,7 @@ impl MacroParser {
         Ok(MacroAction::SendMessage {
             content,
             message_type,
-            timestamp,
-        })
+            timestamp})
     }
 
     /// Parse a wait action
@@ -299,8 +281,7 @@ impl MacroParser {
                 message: "Wait action requires duration".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::MissingParameter,
-            });
+                error_type: ParseErrorType::MissingParameter});
         }
 
         let duration_str = parts[0];
@@ -308,13 +289,11 @@ impl MacroParser {
             message: format!("Invalid duration format: {}", duration_str),
             line: line_num,
             column: 1,
-            error_type: ParseErrorType::InvalidParameter,
-        })?;
+            error_type: ParseErrorType::InvalidParameter})?;
 
         Ok(MacroAction::Wait {
             duration,
-            timestamp,
-        })
+            timestamp})
     }
 
     /// Parse a set variable action
@@ -324,8 +303,7 @@ impl MacroParser {
                 message: "Set action requires variable name and value".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::MissingParameter,
-            });
+                error_type: ParseErrorType::MissingParameter});
         }
 
         let name = Arc::from(parts[0]);
@@ -334,8 +312,7 @@ impl MacroParser {
         Ok(MacroAction::SetVariable {
             name,
             value,
-            timestamp,
-        })
+            timestamp})
     }
 
     /// Parse a conditional action
@@ -345,8 +322,7 @@ impl MacroParser {
                 message: "Conditional action requires condition".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::MissingParameter,
-            });
+                error_type: ParseErrorType::MissingParameter});
         }
 
         let condition = Arc::from(parts.join(" "));
@@ -358,8 +334,7 @@ impl MacroParser {
             condition,
             then_actions,
             else_actions,
-            timestamp,
-        })
+            timestamp})
     }
 
     /// Parse a loop action
@@ -369,24 +344,21 @@ impl MacroParser {
                 message: "Loop action requires iteration count".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::MissingParameter,
-            });
+                error_type: ParseErrorType::MissingParameter});
         }
 
         let iterations = parts[0].parse::<u32>().map_err(|_| ParseError {
             message: format!("Invalid iteration count: {}", parts[0]),
             line: line_num,
             column: 1,
-            error_type: ParseErrorType::InvalidParameter,
-        })?;
+            error_type: ParseErrorType::InvalidParameter})?;
 
         let actions = Arc::from([]); // Simplified: empty actions for now
 
         Ok(MacroAction::Loop {
             iterations,
             actions,
-            timestamp,
-        })
+            timestamp})
     }
 
     /// Parse an execute command action
@@ -396,8 +368,7 @@ impl MacroParser {
                 message: "Execute action requires command".to_string(),
                 line: line_num,
                 column: 1,
-                error_type: ParseErrorType::MissingParameter,
-            });
+                error_type: ParseErrorType::MissingParameter});
         }
 
         // Create a simple command (actual implementation would parse properly)
@@ -405,8 +376,7 @@ impl MacroParser {
 
         Ok(MacroAction::ExecuteCommand {
             command,
-            timestamp,
-        })
+            timestamp})
     }
 
     /// Parse a duration string (e.g., "5s", "1m", "100ms")
@@ -479,8 +449,7 @@ impl Default for MacroParserConfig {
             strict_validation: true,
             max_expression_length: 1024,
             enable_caching: true,
-            allow_custom_functions: false,
-        }
+            allow_custom_functions: false}
     }
 }
 
@@ -497,7 +466,6 @@ impl From<std::num::ParseIntError> for ParseError {
             message: error.to_string(),
             line: 0,
             column: 0,
-            error_type: ParseErrorType::InvalidParameter,
-        }
+            error_type: ParseErrorType::InvalidParameter}
     }
 }

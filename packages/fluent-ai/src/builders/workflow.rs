@@ -13,8 +13,7 @@ pub struct WorkflowBuilder {
     parallel_groups: Vec<ParallelGroup>,
     error_strategy: ErrorStrategy,
     timeout_ms: Option<u64>,
-    max_retries: u32,
-}
+    max_retries: u32}
 
 /// Parallel execution group with dependency management
 #[derive(Debug, Clone)]
@@ -34,8 +33,7 @@ pub enum ErrorStrategy {
     /// Retry failed operations up to max_retries
     RetryOnError,
     /// Use fallback operations for failed ones
-    UseFallback(Vec<Box<dyn Op<Input = Value, Output = Value> + Send + Sync>>),
-}
+    UseFallback(Vec<Box<dyn Op<Input = Value, Output = Value> + Send + Sync>>)}
 
 /// Strategy for merging parallel operation results
 #[derive(Debug, Clone)]
@@ -49,8 +47,7 @@ pub enum MergeStrategy {
     /// Merge results into an object using operation names as keys
     Object,
     /// Use custom merge function
-    Custom(Arc<dyn Fn(Vec<Value>) -> Value + Send + Sync>),
-}
+    Custom(Arc<dyn Fn(Vec<Value>) -> Value + Send + Sync>)}
 
 impl Default for WorkflowBuilder {
     #[inline(always)]
@@ -68,8 +65,7 @@ impl WorkflowBuilder {
             parallel_groups: Vec::new(),
             error_strategy: ErrorStrategy::FailFast,
             timeout_ms: None,
-            max_retries: 0,
-        }
+            max_retries: 0}
     }
 
     /// Add a sequential operation to the workflow
@@ -100,8 +96,7 @@ impl WorkflowBuilder {
             self.parallel_groups.push(ParallelGroup {
                 operation_indices: indices,
                 merge_strategy: MergeStrategy::Array,
-                dependencies: Vec::new(),
-            });
+                dependencies: Vec::new()});
         }
 
         self
@@ -125,8 +120,7 @@ impl WorkflowBuilder {
             self.parallel_groups.push(ParallelGroup {
                 operation_indices: indices,
                 merge_strategy,
-                dependencies: Vec::new(),
-            });
+                dependencies: Vec::new()});
         }
 
         self
@@ -166,8 +160,7 @@ impl WorkflowBuilder {
         let conditional_op = ConditionalOperation {
             condition: Arc::new(condition),
             true_branch: true_branch.build_executor(),
-            false_branch: false_branch.map(|b| b.build_executor()),
-        };
+            false_branch: false_branch.map(|b| b.build_executor())};
 
         self.operations.push(Box::new(conditional_op));
         self
@@ -186,8 +179,7 @@ impl WorkflowBuilder {
         let loop_op = LoopOperation {
             condition: Arc::new(condition),
             body: loop_body.build_executor(),
-            max_iterations: max_iterations.unwrap_or(1000),
-        };
+            max_iterations: max_iterations.unwrap_or(1000)};
 
         self.operations.push(Box::new(loop_op));
         self
@@ -197,8 +189,7 @@ impl WorkflowBuilder {
     #[inline(always)]
     pub fn build(self) -> ExecutableWorkflow {
         ExecutableWorkflow {
-            executor: self.build_executor(),
-        }
+            executor: self.build_executor()}
     }
 
     /// Build internal executor
@@ -208,8 +199,7 @@ impl WorkflowBuilder {
             parallel_groups: self.parallel_groups,
             error_strategy: self.error_strategy,
             timeout_ms: self.timeout_ms,
-            max_retries: self.max_retries,
-        }
+            max_retries: self.max_retries}
     }
 }
 
@@ -220,8 +210,7 @@ pub struct WorkflowExecutor {
     parallel_groups: Vec<ParallelGroup>,
     error_strategy: ErrorStrategy,
     timeout_ms: Option<u64>,
-    max_retries: u32,
-}
+    max_retries: u32}
 
 impl WorkflowExecutor {
     /// Execute the workflow with the given input
@@ -261,8 +250,7 @@ impl WorkflowExecutor {
                 context.current_value = self.execute_parallel_group(group, &context).await?;
                 operation_index = match group.operation_indices.iter().max().copied() {
                     Some(max_index) => max_index + 1,
-                    None => operation_index + 1,
-                };
+                    None => operation_index + 1};
             } else {
                 // Execute sequential operation
                 if let Some(operation) = self.operations.get(operation_index) {
@@ -307,8 +295,7 @@ impl WorkflowExecutor {
                 context.current_value = self.execute_parallel_group(group, &context).await?;
                 operation_index = match group.operation_indices.iter().max().copied() {
                     Some(max_index) => max_index + 1,
-                    None => operation_index + 1,
-                };
+                    None => operation_index + 1};
             } else {
                 // Execute sequential operation
                 if let Some(operation) = self.operations.get(operation_index) {
@@ -400,8 +387,7 @@ impl WorkflowExecutor {
         match &self.error_strategy {
             ErrorStrategy::FailFast => match last_error {
                 Some(error) => Err(error),
-                None => Err(WorkflowError::ExecutionFailed("Unknown error".to_string())),
-            },
+                None => Err(WorkflowError::ExecutionFailed("Unknown error".to_string()))},
             ErrorStrategy::ContinueOnError => {
                 Ok(Value::Null) // Continue with null value
             }
@@ -409,8 +395,7 @@ impl WorkflowExecutor {
                 Some(error) => Err(error),
                 None => Err(WorkflowError::ExecutionFailed(
                     "Max retries exceeded".to_string(),
-                )),
-            },
+                ))},
             ErrorStrategy::UseFallback(fallbacks) => {
                 // Execute fallback operations in sequence until one succeeds
                 for fallback_op in fallbacks {
@@ -427,8 +412,7 @@ impl WorkflowExecutor {
                     Some(error) => Err(error),
                     None => Err(WorkflowError::ExecutionFailed(
                         "All operations and fallbacks failed".to_string(),
-                    )),
-                }
+                    ))}
             }
         }
     }
@@ -445,8 +429,7 @@ impl WorkflowExecutor {
 
             match tokio::time::timeout(timeout_duration, operation.call(input)).await {
                 Ok(result) => Ok(result),
-                Err(_) => Err(WorkflowError::Timeout),
-            }
+                Err(_) => Err(WorkflowError::Timeout)}
         } else {
             Ok(operation.call(input).await)
         }
@@ -486,8 +469,7 @@ impl WorkflowExecutor {
                 }
                 Ok(Value::Object(object))
             }
-            MergeStrategy::Custom(merge_fn) => Ok(merge_fn(successful_results)),
-        }
+            MergeStrategy::Custom(merge_fn) => Ok(merge_fn(successful_results))}
     }
 }
 
@@ -498,8 +480,7 @@ struct ExecutionContext {
     timeout_ms: Option<u64>,
     max_retries: u32,
     error_strategy: ErrorStrategy,
-    start_time: std::time::Instant,
-}
+    start_time: std::time::Instant}
 
 impl ExecutionContext {
     #[inline(always)]
@@ -514,8 +495,7 @@ impl ExecutionContext {
             timeout_ms,
             max_retries,
             error_strategy: error_strategy.clone(),
-            start_time: std::time::Instant::now(),
-        }
+            start_time: std::time::Instant::now()}
     }
 }
 
@@ -523,8 +503,7 @@ impl ExecutionContext {
 struct ConditionalOperation {
     condition: Arc<dyn Fn(&Value) -> bool + Send + Sync>,
     true_branch: WorkflowExecutor,
-    false_branch: Option<WorkflowExecutor>,
-}
+    false_branch: Option<WorkflowExecutor>}
 
 impl std::fmt::Debug for ConditionalOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -540,13 +519,11 @@ impl Op for ConditionalOperation {
         if (self.condition)(&input) {
             match self.true_branch.execute(input).await {
                 Ok(result) => result,
-                Err(_) => Value::Null,
-            }
+                Err(_) => Value::Null}
         } else if let Some(false_branch) = &self.false_branch {
             match false_branch.execute(input).await {
                 Ok(result) => result,
-                Err(_) => Value::Null,
-            }
+                Err(_) => Value::Null}
         } else {
             input
         }
@@ -557,8 +534,7 @@ impl Op for ConditionalOperation {
 struct LoopOperation {
     condition: Arc<dyn Fn(&Value) -> bool + Send + Sync>,
     body: WorkflowExecutor,
-    max_iterations: u32,
-}
+    max_iterations: u32}
 
 impl std::fmt::Debug for LoopOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -578,8 +554,7 @@ impl Op for LoopOperation {
         while (self.condition)(&input) && iterations < self.max_iterations {
             match self.body.execute(input.clone()).await {
                 Ok(result) => input = result,
-                Err(_) => break,
-            }
+                Err(_) => break}
             iterations += 1;
         }
 
@@ -590,8 +565,7 @@ impl Op for LoopOperation {
 /// Executable workflow wrapper
 #[derive(Debug)]
 pub struct ExecutableWorkflow {
-    executor: WorkflowExecutor,
-}
+    executor: WorkflowExecutor}
 
 impl ExecutableWorkflow {
     /// Execute the workflow with the given input
@@ -637,8 +611,7 @@ impl ExecutableWorkflow {
         WorkflowStats {
             operation_count: self.executor.operations.len(),
             parallel_group_count: self.executor.parallel_groups.len(),
-            estimated_execution_time_ms: self.estimate_execution_time(),
-        }
+            estimated_execution_time_ms: self.estimate_execution_time()}
     }
 
     fn estimate_execution_time(&self) -> u64 {
@@ -652,5 +625,4 @@ impl ExecutableWorkflow {
 pub struct WorkflowStats {
     pub operation_count: usize,
     pub parallel_group_count: usize,
-    pub estimated_execution_time_ms: u64,
-}
+    pub estimated_execution_time_ms: u64}

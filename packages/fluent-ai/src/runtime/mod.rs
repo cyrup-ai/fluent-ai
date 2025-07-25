@@ -22,8 +22,7 @@ pub(crate) mod executor {
     static mut EXEC: Option<GlobalExecutor> = None;
 
     pub struct GlobalExecutor {
-        pool: ThreadPool,
-    }
+        pool: ThreadPool}
 
     /// Accessor that bootstraps lazily.
     pub(super) fn global() -> Option<&'static GlobalExecutor> {

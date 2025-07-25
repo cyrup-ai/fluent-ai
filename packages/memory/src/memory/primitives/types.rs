@@ -1,7 +1,6 @@
 // src/memory/memory_type.rs
 //! Memory type definitions and traits for the memory system.
 
-use std::collections::HashMap;
 use std::fmt::{self, Debug};
 
 use base64::Engine;
@@ -56,8 +55,7 @@ pub enum MemoryTypeEnum {
     /// Working memory (temporary storage)
     Working,
     /// Long-term memory (default)
-    LongTerm,
-}
+    LongTerm}
 
 impl MemoryTypeEnum {
     /// Convert from string to MemoryTypeEnum
@@ -68,8 +66,7 @@ impl MemoryTypeEnum {
             "procedural" => Ok(MemoryTypeEnum::Procedural),
             "working" => Ok(MemoryTypeEnum::Working),
             "long_term" => Ok(MemoryTypeEnum::LongTerm),
-            _ => Err(Error::InvalidInput(format!("Invalid memory type: {}", s))),
-        }
+            _ => Err(Error::InvalidInput(format!("Invalid memory type: {}", s)))}
     }
 }
 
@@ -80,8 +77,7 @@ impl fmt::Display for MemoryTypeEnum {
             MemoryTypeEnum::Episodic => write!(f, "episodic"),
             MemoryTypeEnum::Procedural => write!(f, "procedural"),
             MemoryTypeEnum::Working => write!(f, "working"),
-            MemoryTypeEnum::LongTerm => write!(f, "long_term"),
-        }
+            MemoryTypeEnum::LongTerm => write!(f, "long_term")}
     }
 }
 
@@ -131,8 +127,7 @@ pub struct MemoryContent {
     /// Video data (base64 encoded)
     pub video_data: Option<String>,
     /// Custom content fields
-    pub custom: HashMap<String, Value>,
-}
+    pub custom: HashMap<String, Value>}
 
 impl MemoryContent {
     /// Create new memory content
@@ -143,8 +138,7 @@ impl MemoryContent {
             image_data: None,
             audio_data: None,
             video_data: None,
-            custom: HashMap::new(),
-        }
+            custom: HashMap::new()}
     }
 
     /// Set embedding vector
@@ -167,8 +161,7 @@ impl MemoryContent {
             image_data: None,
             audio_data: None,
             video_data: None,
-            custom: HashMap::new(),
-        }
+            custom: HashMap::new()}
     }
 
     /// Create memory content from text
@@ -234,8 +227,7 @@ impl MemoryContent {
             image_data,
             audio_data,
             video_data,
-            custom,
-        })
+            custom})
     }
 }
 
@@ -253,8 +245,7 @@ pub struct BaseMemory {
     /// Metadata
     pub metadata: MemoryMetadata,
     /// Content
-    pub content: MemoryContent,
-}
+    pub content: MemoryContent}
 
 impl BaseMemory {
     /// Create a new base memory
@@ -271,8 +262,7 @@ impl BaseMemory {
             description: description.to_string(),
             updated_at: chrono::Utc::now(),
             metadata: MemoryMetadata::with_type(memory_type),
-            content,
-        }
+            content}
     }
 }
 
@@ -527,8 +517,7 @@ impl MemoryType for BaseMemory {
             description,
             updated_at,
             metadata,
-            content,
-        })
+            content})
     }
 }
 
@@ -555,8 +544,7 @@ pub enum RelationshipType {
     /// Association relationship
     AssociatedWith,
     /// Custom relationship type
-    Custom(String),
-}
+    Custom(String)}
 
 impl RelationshipType {
     /// Check if this relationship type is bidirectional
@@ -576,8 +564,7 @@ impl RelationshipType {
             Self::GeneralizationOf => Some(Self::SpecializationOf),
             Self::SpecializationOf => Some(Self::GeneralizationOf),
             Self::Supports => Some(Self::Custom("supported_by".to_string())),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -593,7 +580,6 @@ impl From<&str> for RelationshipType {
             "generalization_of" => Self::GeneralizationOf,
             "specialization_of" => Self::SpecializationOf,
             "associated_with" => Self::AssociatedWith,
-            _ => Self::Custom(s.to_string()),
-        }
+            _ => Self::Custom(s.to_string())}
     }
 }

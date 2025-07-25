@@ -4,16 +4,14 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::{
     HttpResult, client::HttpClient, operations::HttpOperation, request::HttpRequest,
-    stream::DownloadStream,
-};
+    stream::DownloadStream};
 
 /// Download operation with progress tracking and resume capability
 pub struct DownloadOperation {
     client: HttpClient,
     url: String,
     headers: HeaderMap,
-    resume_from: Option<u64>,
-}
+    resume_from: Option<u64>}
 
 impl DownloadOperation {
     /// Create a new download operation
@@ -23,8 +21,7 @@ impl DownloadOperation {
             client,
             url,
             headers: HeaderMap::new(),
-            resume_from: None,
-        }
+            resume_from: None}
     }
 
     /// Add custom header
@@ -97,7 +94,6 @@ impl Clone for DownloadOperation {
             client: self.client.clone(),
             url: self.url.clone(),
             headers: self.headers.clone(),
-            resume_from: self.resume_from,
-        }
+            resume_from: self.resume_from}
     }
 }

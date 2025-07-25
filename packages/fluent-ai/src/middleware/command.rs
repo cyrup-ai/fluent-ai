@@ -3,7 +3,6 @@
 //! Provides blazing-fast middleware system for cross-cutting concerns with zero-allocation patterns
 //! and production-ready performance monitoring, logging, and security.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -49,8 +48,7 @@ pub trait CommandMiddleware: Send + Sync + 'static {
 #[derive(Debug)]
 pub struct MiddlewareChain {
     /// Registered middleware (sorted by priority)
-    middleware: Vec<Arc<dyn CommandMiddleware>>,
-}
+    middleware: Vec<Arc<dyn CommandMiddleware>>}
 
 impl Default for MiddlewareChain {
     #[inline(always)]

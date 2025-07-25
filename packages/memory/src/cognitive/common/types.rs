@@ -1,8 +1,6 @@
 // src/cognitive/common/types.rs
 //! Defines common data structures for the cognitive evaluation committee.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use crate::cognitive::types::{ImpactFactors, OptimizationSpec, RoutingDecision};
@@ -17,8 +15,7 @@ pub struct ConsensusDecision {
     pub dissenting_opinions: Vec<String>,
     pub latency_factor: f64,
     pub memory_factor: f64,
-    pub relevance_factor: f64,
-}
+    pub relevance_factor: f64}
 
 impl From<ConsensusDecision> for ImpactFactors {
     fn from(decision: ConsensusDecision) -> Self {
@@ -31,8 +28,7 @@ impl From<ConsensusDecision> for ImpactFactors {
             potential_risks: decision.dissenting_opinions,
             latency_factor: decision.latency_factor,
             memory_factor: decision.memory_factor,
-            relevance_factor: decision.relevance_factor,
-        }
+            relevance_factor: decision.relevance_factor}
     }
 }
 
@@ -55,8 +51,7 @@ pub struct EvaluationRubric {
     pub objective: String,
     pub success_criteria: Vec<String>,
     pub constraints: Vec<String>,
-    pub scoring_guidelines: HashMap<String, String>,
-}
+    pub scoring_guidelines: HashMap<String, String>}
 
 impl EvaluationRubric {
     pub fn from_spec(spec: &OptimizationSpec, user_objective: &str) -> Self {
@@ -95,8 +90,7 @@ impl EvaluationRubric {
                 ),
             ],
             constraints: spec.constraints.clone(),
-            scoring_guidelines,
-        }
+            scoring_guidelines}
     }
 }
 
@@ -115,8 +109,7 @@ pub struct EvaluationRound {
     pub phase: EvaluationPhase,
     pub evaluations: Vec<AgentEvaluation>,
     pub consensus: Option<ConsensusDecision>,
-    pub steering_feedback: Option<String>,
-}
+    pub steering_feedback: Option<String>}
 
 /// Configuration for the evaluation committee
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,8 +118,7 @@ pub struct CommitteeConfig {
     pub concurrency: usize,
     pub consensus_threshold: f64,
     pub steering_strength: f64,
-    pub agent_perspectives: HashMap<String, String>,
-}
+    pub agent_perspectives: HashMap<String, String>}
 
 impl Default for CommitteeConfig {
     fn default() -> Self {
@@ -140,8 +132,7 @@ impl Default for CommitteeConfig {
             concurrency: 4,
             consensus_threshold: 0.7,
             steering_strength: 0.8,
-            agent_perspectives,
-        }
+            agent_perspectives}
     }
 }
 
@@ -151,20 +142,15 @@ pub enum CommitteeEvent {
     SteeringDecision(RoutingDecision),
     EvaluationStarted {
         action: String,
-        agent_count: usize,
-    },
+        agent_count: usize},
     RoundCompleted {
         round: usize,
-        consensus: Option<ConsensusDecision>,
-    },
+        consensus: Option<ConsensusDecision>},
     ConsensusReached {
         action: String,
         decision: ConsensusDecision,
         factors: ImpactFactors,
-        rounds_taken: usize,
-    },
+        rounds_taken: usize},
     ConsensusFailed {
         action: String,
-        rounds: usize,
-    },
-}
+        rounds: usize}}

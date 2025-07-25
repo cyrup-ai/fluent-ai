@@ -46,20 +46,17 @@ pub enum MigrationError {
     ValidationFailed(String),
 
     #[error("Unsupported format: {0}")]
-    UnsupportedFormat(String),
-}
+    UnsupportedFormat(String)}
 
 /// Migration direction
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MigrationDirection {
     Up,
-    Down,
-}
+    Down}
 
 /// A pending migration operation that can be awaited
 pub struct PendingMigration {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl PendingMigration {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -76,8 +73,7 @@ impl Future for PendingMigration {
             Poll::Ready(Err(_)) => Poll::Ready(Err(MigrationError::DatabaseError(
                 "Migration task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
@@ -98,8 +94,7 @@ pub trait Migration: Send + Sync {
 
 /// Migration manager
 pub struct MigrationManager {
-    migrations: Vec<Box<dyn Migration>>,
-}
+    migrations: Vec<Box<dyn Migration>>}
 
 impl Default for MigrationManager {
     fn default() -> Self {
@@ -111,8 +106,7 @@ impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {
         Self {
-            migrations: Vec::new(),
-        }
+            migrations: Vec::new()}
     }
 
     /// Add a migration

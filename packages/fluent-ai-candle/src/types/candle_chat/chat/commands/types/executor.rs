@@ -9,7 +9,7 @@ use crate::{AsyncStream, AsyncStreamSender};
 
 use super::command::ImmutableChatCommand;
 use super::core::CommandResult;
-use super::events::{CommandEvent, CommandExecutionResult};
+use super::events::CommandEvent;
 
 /// Streaming command executor with atomic state tracking
 pub struct StreamingCommandExecutor {
@@ -24,8 +24,7 @@ pub struct StreamingCommandExecutor {
     /// Failed executions (atomic)
     failed_executions: AtomicU64,
     /// Event stream sender
-    event_sender: Option<AsyncStreamSender<CommandEvent>>,
-}
+    event_sender: Option<AsyncStreamSender<CommandEvent>>}
 
 impl StreamingCommandExecutor {
     /// Create new streaming command executor
@@ -37,8 +36,7 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender: None,
-        }
+            event_sender: None}
     }
 
     /// Create executor with event streaming
@@ -64,8 +62,7 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender,
-        };
+            event_sender};
 
         (executor, stream)
     }
@@ -88,8 +85,7 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Started {
                 command: command.clone(),
                 execution_id,
-                timestamp_nanos: Self::current_timestamp_nanos(),
-            });
+                timestamp_nanos: Self::current_timestamp_nanos()});
         }
 
         // TODO: Implement actual command execution logic here
@@ -114,8 +110,7 @@ impl StreamingCommandExecutor {
             active_executions: self.active_executions.load(Ordering::Relaxed) as u64,
             total_executions: self.total_executions.load(Ordering::Relaxed),
             successful_executions: self.successful_executions.load(Ordering::Relaxed),
-            failed_executions: self.failed_executions.load(Ordering::Relaxed),
-        }
+            failed_executions: self.failed_executions.load(Ordering::Relaxed)}
     }
 
     /// Cancel command execution
@@ -124,8 +119,7 @@ impl StreamingCommandExecutor {
         if let Some(ref sender) = self.event_sender {
             let _ = sender.send(CommandEvent::Cancelled {
                 execution_id,
-                reason: reason.into(),
-            });
+                reason: reason.into()});
         }
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
     }
@@ -144,8 +138,7 @@ pub struct CommandExecutorStats {
     pub active_executions: u64,
     pub total_executions: u64,
     pub successful_executions: u64,
-    pub failed_executions: u64,
-}
+    pub failed_executions: u64}
 
 impl CommandExecutorStats {
     /// Calculate success rate as percentage

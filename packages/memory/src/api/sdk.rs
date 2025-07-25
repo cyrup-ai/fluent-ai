@@ -10,12 +10,10 @@ use crate::vector::vector_search::{VectorSearch, SearchOptions};
 use fluent_ai_domain::{
     completion::CompletionProvider,
     chat::Message,
-    error::CompletionError,
-};
+    error::CompletionError};
 use fluent_ai_provider::{
     openai::OpenAIClient,
-    anthropic::AnthropicClient,
-};
+    anthropic::AnthropicClient};
 use crate::utils::error::Result;
 use crate::schema::memory_schema::Memory;
 use crate::schema::relationship_schema::Relationship;
@@ -27,8 +25,7 @@ pub struct ContentAnalysis {
     pub key_concepts: Vec<String>,
     pub sentiment: Option<String>,
     pub topics: Vec<String>,
-    pub confidence: f64,
-}
+    pub confidence: f64}
 
 /// Relationship analysis result for backward compatibility
 #[derive(Debug, Clone)]
@@ -36,8 +33,7 @@ pub struct RelationshipAnalysis {
     pub relationship_type: String,
     pub strength: f64,
     pub description: String,
-    pub confidence: f64,
-}
+    pub confidence: f64}
 
 /// Memory SDK for interacting with mem0
 pub struct MemorySDK {
@@ -46,8 +42,7 @@ pub struct MemorySDK {
     /// Vector search
     vector_search: Arc<VectorSearch>,
     /// Completion provider
-    completion_provider: Arc<dyn CompletionProvider>,
-}
+    completion_provider: Arc<dyn CompletionProvider>}
 
 impl MemorySDK {
     /// Create a new MemorySDK
@@ -59,8 +54,7 @@ impl MemorySDK {
         Self {
             memory_manager,
             vector_search,
-            completion_provider,
-        }
+            completion_provider}
     }
     
     /// Create a memory
@@ -116,8 +110,7 @@ impl MemorySDK {
             min_similarity,
             filters: None,
             include_vectors: Some(false),
-            include_metadata: Some(true),
-        };
+            include_metadata: Some(true)};
         
         let search_results = self.vector_search.search_by_text(query, Some(search_options)).await?;
         
@@ -197,8 +190,7 @@ impl MemorySDK {
             key_concepts: vec!["concept1".to_string(), "concept2".to_string()], // Placeholder
             sentiment: Some("neutral".to_string()),
             topics: vec!["general".to_string()], // Placeholder  
-            confidence: 0.8,
-        })
+            confidence: 0.8})
     }
     
     /// Analyze relationship between contents using completion provider
@@ -229,8 +221,7 @@ impl MemorySDK {
             relationship_type: "related".to_string(),
             strength: 0.7,
             description: response.lines().take(1).collect::<Vec<_>>().join(""),
-            confidence: 0.8,
-        })
+            confidence: 0.8})
     }
     
     /// Generate completion using provider streaming interface
@@ -326,8 +317,7 @@ pub struct MemorySDKBuilder {
     /// Vector search
     vector_search: Option<Arc<VectorSearch>>,
     /// Completion provider
-    completion_provider: Option<Arc<dyn CompletionProvider>>,
-}
+    completion_provider: Option<Arc<dyn CompletionProvider>>}
 
 impl MemorySDKBuilder {
     /// Create a new MemorySDKBuilder
@@ -335,8 +325,7 @@ impl MemorySDKBuilder {
         Self {
             memory_manager: None,
             vector_search: None,
-            completion_provider: None,
-        }
+            completion_provider: None}
     }
     
     /// Set memory manager

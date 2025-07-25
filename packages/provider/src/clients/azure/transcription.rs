@@ -11,8 +11,6 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use fluent_ai_http3::{Http3, header};
 use tokio::{self as rt, task::spawn as AsyncTask};
-use std::collections::HashMap;
-
 use super::client::Client;
 use crate::{AsyncStream, AsyncStreamSender, channel, clients::openai::TranscriptionResponse};
 // Note: fluent_ai_domain::transcription doesn't exist - commenting out
@@ -22,15 +20,13 @@ use crate::{AsyncStream, AsyncStreamSender, channel, clients::openai::Transcript
 
 #[derive(Debug, serde::Deserialize)]
 struct ApiErrorResponse {
-    message: String,
-}
+    message: String}
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(untagged)]
 enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 // ───────────────────────────── provider model ────────────────────────────
 // TranscriptionModel is now imported from fluent_ai_domain::model
@@ -40,8 +36,7 @@ impl TranscriptionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -102,8 +97,7 @@ impl TranscriptionModel {
                     language: None,
                     duration: None,
                     words: None,
-                    segments: None,
-                }
+                    segments: None}
             });
 
         // Return TranscriptionChunkImpl immediately - pure streaming

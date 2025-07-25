@@ -5,15 +5,13 @@
 
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, Ordering as AtomicOrdering},
-};
+    atomic::{AtomicBool, Ordering as AtomicOrdering}};
 
 use crossbeam_channel::{Receiver, bounded};
 
 use super::{
     streaming_config::StreamingConfig, streaming_metrics::StreamingMetrics,
-    token_chunk::TokenChunk, token_sender::TokenStreamSender,
-};
+    token_chunk::TokenChunk, token_sender::TokenStreamSender};
 use crate::error::CandleResult;
 
 /// Create new token stream with configuration
@@ -46,8 +44,7 @@ pub struct TokenOutputStream {
     /// Stream metrics for monitoring
     metrics: Arc<StreamingMetrics>,
     /// Configuration for stream behavior
-    config: StreamingConfig,
-}
+    config: StreamingConfig}
 
 impl TokenOutputStream {
     /// Create new output stream
@@ -61,8 +58,7 @@ impl TokenOutputStream {
             receiver,
             terminated,
             metrics,
-            config,
-        }
+            config}
     }
 
     /// Get stream metrics for monitoring

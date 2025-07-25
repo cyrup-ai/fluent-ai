@@ -3,32 +3,21 @@
 //! Provides AsyncStream and AsyncStreamSender types that enforce the streams-only
 //! architecture. All operations are lock-free and zero-allocation in hot paths.
 
-use core::{
-    pin::Pin,
-    task::{Context, Poll},
-};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc,
-};
-
+    Arc};
 use crossbeam_queue::ArrayQueue;
-use futures_util::task::AtomicWaker;
-use futures_util::Stream;
 
 /// Zero-allocation async stream with const-generic capacity
 pub struct AsyncStream<T, const CAP: usize = 1024> {
-    inner: Arc<Inner<T, CAP>>,
-}
+    inner: Arc<Inner<T, CAP>>}
 
 /// Producer side of AsyncStream
 pub struct AsyncStreamSender<T, const CAP: usize = 1024> {
-    inner: Arc<Inner<T, CAP>>,
-}
+    inner: Arc<Inner<T, CAP>>}
 
 struct Inner<T, const CAP: usize> {
     q: ArrayQueue<T>,
-    waker: AtomicWaker,
     len: AtomicUsize, // Runtime metric for monitoring
 }
 
@@ -47,19 +36,16 @@ where
         stream
     }
 
-    /// Create a fresh `(sender, stream)` pair - internal use only
-    /// Use with_channel() for public API
+    /// Create a fresh `(sender, stream)` pair - for channel module use
+    /// Use with_channel() for ergonomic public API
     #[inline]
-    fn channel_internal() -> (AsyncStreamSender<T, CAP>, Self) {
+    pub(crate) fn channel_internal() -> (AsyncStreamSender<T, CAP>, Self) {
         let inner = Arc::new(Inner {
             q: ArrayQueue::new(CAP),
-            waker: AtomicWaker::new(),
-            len: AtomicUsize::new(0),
-        });
+            len: AtomicUsize::new(0)});
         (
             AsyncStreamSender {
-                inner: inner.clone(),
-            },
+                inner: inner.clone()},
             Self { inner },
         )
     }
@@ -151,10 +137,16 @@ where
         results
     }
 
-    /// Get the next item asynchronously (compatibility method)
-    pub async fn recv(&mut self) -> Option<T> {
-        use futures_util::StreamExt;
-        self.next().await
+    /// Get the next item (blocking, no futures) - replaces async recv()
+    pub fn recv_blocking(&mut self) -> Option<T> {
+        // Block until item is available, following NO FUTURES architecture
+        loop {
+            if let Some(item) = self.try_next() {
+                return Some(item);
+            }
+            // Small yield to prevent busy waiting
+            std::thread::yield_now();
+        }
     }
 }
 
@@ -165,7 +157,6 @@ impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
         match self.inner.q.push(val) {
             Ok(()) => {
                 self.inner.len.fetch_add(1, Ordering::Release);
-                self.inner.waker.wake();
                 Ok(())
             }
             Err(v) => Err(v), // Queue full → give caller its item back
@@ -216,36 +207,13 @@ where
     }
 }
 
-impl<T, const CAP: usize> Stream for AsyncStream<T, CAP> {
-    type Item = T;
-
-    #[inline]
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // Fast-path: try pop first
-        if let Some(v) = self.inner.q.pop() {
-            self.inner.len.fetch_sub(1, Ordering::AcqRel);
-            return Poll::Ready(Some(v));
-        }
-
-        // Register waker then re-check to avoid missed notifications
-        self.inner.waker.register(cx.waker());
-
-        match self.inner.q.pop() {
-            Some(v) => {
-                self.inner.len.fetch_sub(1, Ordering::AcqRel);
-                Poll::Ready(Some(v))
-            }
-            None => Poll::Pending,
-        }
-    }
-}
+// NO FUTURES! Stream trait removed per NO FUTURES architecture
 
 impl<T, const CAP: usize> Clone for AsyncStreamSender<T, CAP> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
-        }
+            inner: self.inner.clone()}
     }
 }
 

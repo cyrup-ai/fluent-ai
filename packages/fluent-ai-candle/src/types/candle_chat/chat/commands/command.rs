@@ -4,19 +4,18 @@
 //! and efficient command representation for the streaming command system.
 
 use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::{
     error::{CommandError, CommandResult},
-    parameter::ParameterInfo,
-};
+    parameter::ParameterInfo};
 
 // Import action enums that will be defined in events.rs
 use super::events::{
     TemplateAction, MacroAction, BranchAction, SessionAction, ToolAction, 
     StatsType, ThemeAction, DebugAction, HistoryAction, ImportType, SearchScope,
-    SettingsCategory,
-};
+    SettingsCategory};
 
 /// Command information for command registry with owned strings
 ///
@@ -37,8 +36,7 @@ pub struct CommandInfo {
     /// Command category for organization
     pub category: String,
     /// Usage examples
-    pub examples: Vec<String>,
-}
+    pub examples: Vec<String>}
 
 impl CommandInfo {
     /// Create a new command info
@@ -51,8 +49,7 @@ impl CommandInfo {
             parameters: Vec::new(),
             aliases: Vec::new(),
             category: "general".to_string(),
-            examples: Vec::new(),
-        }
+            examples: Vec::new()}
     }
 
     /// Set usage string
@@ -121,8 +118,7 @@ pub struct ResourceUsage {
     /// Number of network requests made
     pub network_requests: u32,
     /// Number of disk operations performed
-    pub disk_operations: u32,
-}
+    pub disk_operations: u32}
 
 impl ResourceUsage {
     /// Create empty resource usage
@@ -184,16 +180,14 @@ pub enum ImmutableChatCommand {
         /// Optional command to get help for
         command: Option<String>,
         /// Show extended help
-        extended: bool,
-    },
+        extended: bool},
     
     /// Clear chat history
     Clear {
         /// Confirm the action
         confirm: bool,
         /// Keep last N messages
-        keep_last: Option<usize>,
-    },
+        keep_last: Option<usize>},
     
     /// Export conversation
     Export {
@@ -202,8 +196,7 @@ pub enum ImmutableChatCommand {
         /// Output file path
         output: Option<String>,
         /// Include metadata
-        include_metadata: bool,
-    },
+        include_metadata: bool},
     
     /// Modify configuration
     Config {
@@ -214,8 +207,7 @@ pub enum ImmutableChatCommand {
         /// Show current configuration
         show: bool,
         /// Reset to defaults
-        reset: bool,
-    },
+        reset: bool},
     
     /// Template operations
     Template {
@@ -226,8 +218,7 @@ pub enum ImmutableChatCommand {
         /// Template content
         content: Option<String>,
         /// Template variables
-        variables: HashMap<String, String>,
-    },
+        variables: HashMap<String, String>},
     
     /// Macro operations
     Macro {
@@ -238,8 +229,7 @@ pub enum ImmutableChatCommand {
         /// Auto-execute macro
         auto_execute: bool,
         /// Commands to execute in macro
-        commands: Vec<String>,
-    },
+        commands: Vec<String>},
     
     /// Search chat history
     Search {
@@ -250,8 +240,7 @@ pub enum ImmutableChatCommand {
         /// Maximum results
         limit: Option<usize>,
         /// Include context
-        include_context: bool,
-    },
+        include_context: bool},
     
     /// Branch conversation
     Branch {
@@ -260,8 +249,7 @@ pub enum ImmutableChatCommand {
         /// Branch name
         name: Option<String>,
         /// Source branch for merging
-        source: Option<String>,
-    },
+        source: Option<String>},
     
     /// Session management
     Session {
@@ -270,8 +258,7 @@ pub enum ImmutableChatCommand {
         /// Session name
         name: Option<String>,
         /// Include configuration
-        include_config: bool,
-    },
+        include_config: bool},
     
     /// Tool integration
     Tool {
@@ -280,8 +267,7 @@ pub enum ImmutableChatCommand {
         /// Tool name
         name: Option<String>,
         /// Tool arguments
-        args: HashMap<String, String>,
-    },
+        args: HashMap<String, String>},
     
     /// Statistics and analytics
     Stats {
@@ -290,8 +276,7 @@ pub enum ImmutableChatCommand {
         /// Time period
         period: Option<String>,
         /// Show detailed breakdown
-        detailed: bool,
-    },
+        detailed: bool},
     
     /// Theme and appearance
     Theme {
@@ -300,8 +285,7 @@ pub enum ImmutableChatCommand {
         /// Theme name
         name: Option<String>,
         /// Theme properties
-        properties: HashMap<String, String>,
-    },
+        properties: HashMap<String, String>},
     
     /// Debugging and diagnostics
     Debug {
@@ -310,8 +294,7 @@ pub enum ImmutableChatCommand {
         /// Debug level
         level: Option<String>,
         /// Show system information
-        system_info: bool,
-    },
+        system_info: bool},
     
     /// Chat history operations
     History {
@@ -320,8 +303,7 @@ pub enum ImmutableChatCommand {
         /// Number of messages to show
         limit: Option<usize>,
         /// Filter criteria
-        filter: Option<String>,
-    },
+        filter: Option<String>},
     
     /// Save conversation state
     Save {
@@ -330,8 +312,7 @@ pub enum ImmutableChatCommand {
         /// Include configuration
         include_config: bool,
         /// Save location
-        location: Option<String>,
-    },
+        location: Option<String>},
     
     /// Load conversation state
     Load {
@@ -340,8 +321,7 @@ pub enum ImmutableChatCommand {
         /// Merge with current session
         merge: bool,
         /// Load location
-        location: Option<String>,
-    },
+        location: Option<String>},
     
     /// Import data or configuration
     Import {
@@ -350,8 +330,7 @@ pub enum ImmutableChatCommand {
         /// Source file or URL
         source: String,
         /// Import options
-        options: HashMap<String, String>,
-    },
+        options: HashMap<String, String>},
     
     /// Application settings
     Settings {
@@ -364,8 +343,7 @@ pub enum ImmutableChatCommand {
         /// Show current settings
         show: bool,
         /// Reset to defaults
-        reset: bool,
-    },
+        reset: bool},
     
     /// Custom command
     Custom {
@@ -374,9 +352,7 @@ pub enum ImmutableChatCommand {
         /// Command arguments
         args: HashMap<String, String>,
         /// Command metadata
-        metadata: Option<serde_json::Value>,
-    },
-}
+        metadata: Option<serde_json::Value>}}
 
 impl ImmutableChatCommand {
     /// Get command name as borrowed string (zero allocation)
@@ -401,8 +377,7 @@ impl ImmutableChatCommand {
             Self::Load { .. } => "load",
             Self::Import { .. } => "import",
             Self::Settings { .. } => "settings",
-            Self::Custom { .. } => "custom",
-        }
+            Self::Custom { .. } => "custom"}
     }
 
     /// Check if command requires confirmation

@@ -21,8 +21,7 @@ pub enum OutputFormat {
     /// Raw format with minimal overhead
     Raw,
     /// Custom format with user-defined structure
-    Custom(String),
-}
+    Custom(String)}
 
 impl fmt::Display for OutputFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -32,8 +31,7 @@ impl fmt::Display for OutputFormat {
             OutputFormat::WebSocket => write!(f, "websocket"),
             OutputFormat::PlainText => write!(f, "text"),
             OutputFormat::Raw => write!(f, "raw"),
-            OutputFormat::Custom(name) => write!(f, "custom:{}", name),
-        }
+            OutputFormat::Custom(name) => write!(f, "custom:{}", name)}
     }
 }
 
@@ -48,8 +46,7 @@ impl Default for OutputFormat {
 pub struct StreamingFormatter {
     pub(crate) format: OutputFormat,
     pub(crate) sequence_number: u64,
-    pub(crate) event_id_prefix: String,
-}
+    pub(crate) event_id_prefix: String}
 
 impl StreamingFormatter {
     /// Create a new formatter with specified output format
@@ -58,8 +55,7 @@ impl StreamingFormatter {
         Self {
             format,
             sequence_number: 0,
-            event_id_prefix: "token".to_string(),
-        }
+            event_id_prefix: "token".to_string()}
     }
 
     /// Set custom event ID prefix for SSE format
@@ -119,9 +115,7 @@ impl StreamingFormatter {
             OutputFormat::Custom(format_name) => match format_name.as_str() {
                 "minimal_json" => "application/json",
                 "csv" => "text/csv",
-                _ => "application/octet-stream",
-            },
-        }
+                _ => "application/octet-stream"}}
     }
 
     /// Increment sequence number (used by format implementations)
@@ -159,8 +153,7 @@ pub mod format_constants {
             OutputFormat::WebSocket => 1024,
             OutputFormat::PlainText => 512,
             OutputFormat::Raw => 256, // Minimal overhead
-            OutputFormat::Custom(_) => 1024,
-        }
+            OutputFormat::Custom(_) => 1024}
     }
 }
 

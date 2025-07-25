@@ -90,8 +90,7 @@ pub fn find_sample_index(cumulative_probs: &[f32], random_val: f32) -> usize {
         }
     }) {
         Ok(idx) => idx,
-        Err(idx) => idx.min(cumulative_probs.len().saturating_sub(1)),
-    }
+        Err(idx) => idx.min(cumulative_probs.len().saturating_sub(1))}
 }
 
 // AVX2/FMA3 implementations for x86_64

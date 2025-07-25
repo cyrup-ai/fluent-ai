@@ -46,8 +46,7 @@ pub struct KimiK2Config {
     pub rope_scaling: Option<RopeScaling>,
 
     // Dense layer replacement
-    pub first_k_dense_replace: usize,
-}
+    pub first_k_dense_replace: usize}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RopeScaling {
@@ -57,8 +56,7 @@ pub struct RopeScaling {
     pub beta_fast: f64,
     pub beta_slow: f64,
     pub mscale: f64,
-    pub mscale_all_dim: f64,
-}
+    pub mscale_all_dim: f64}
 
 impl Default for KimiK2Config {
     fn default() -> Self {
@@ -96,11 +94,9 @@ impl Default for KimiK2Config {
                 beta_fast: 1.0,
                 beta_slow: 1.0,
                 mscale: 1.0,
-                mscale_all_dim: 1.0,
-            }),
+                mscale_all_dim: 1.0}),
 
-            first_k_dense_replace: 1,
-        }
+            first_k_dense_replace: 1}
     }
 }
 
@@ -109,8 +105,7 @@ pub struct RotaryEmbedding {
     sin: Tensor,
     cos: Tensor,
     #[allow(dead_code)] // Used in YARN scaling calculations but flagged incorrectly
-    head_dim: usize,
-}
+    head_dim: usize}
 
 impl RotaryEmbedding {
     pub fn new(
@@ -178,8 +173,7 @@ pub struct KimiK2Attention {
     num_heads: usize,
     num_kv_heads: usize,
     head_dim: usize,
-    kv_lora_rank: usize,
-}
+    kv_lora_rank: usize}
 
 impl KimiK2Attention {
     pub fn new(config: &KimiK2Config, vb: VarBuilder, device: &Device) -> Result<Self> {
@@ -206,8 +200,7 @@ impl KimiK2Attention {
             num_heads,
             num_kv_heads,
             head_dim,
-            kv_lora_rank,
-        })
+            kv_lora_rank})
     }
 
     pub fn forward(&self, x: &Tensor, position: usize) -> Result<Tensor> {
@@ -267,8 +260,7 @@ pub struct KimiK2MoE {
     experts: Vec<KimiK2Expert>,
     shared_expert: Option<KimiK2Expert>,
     num_experts_per_tok: usize,
-    routed_scaling_factor: f64,
-}
+    routed_scaling_factor: f64}
 
 impl KimiK2MoE {
     pub fn new(config: &KimiK2Config, vb: VarBuilder) -> Result<Self> {
@@ -295,8 +287,7 @@ impl KimiK2MoE {
             experts,
             shared_expert,
             num_experts_per_tok,
-            routed_scaling_factor,
-        })
+            routed_scaling_factor})
     }
 
     pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
@@ -373,8 +364,7 @@ pub struct KimiK2Expert {
     gate_proj: Linear,
     up_proj: Linear,
     down_proj: Linear,
-    act_fn: Activation,
-}
+    act_fn: Activation}
 
 impl KimiK2Expert {
     pub fn new(config: &KimiK2Config, vb: VarBuilder) -> Result<Self> {
@@ -390,8 +380,7 @@ impl KimiK2Expert {
             gate_proj,
             up_proj,
             down_proj,
-            act_fn,
-        })
+            act_fn})
     }
 
     pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
@@ -409,8 +398,7 @@ pub struct KimiK2Block {
     moe: Option<KimiK2MoE>, // MoE layer for remaining layers
     input_layernorm: RmsNorm,
     post_attention_layernorm: RmsNorm,
-    is_moe_layer: bool,
-}
+    is_moe_layer: bool}
 
 impl KimiK2Block {
     pub fn new(
@@ -445,8 +433,7 @@ impl KimiK2Block {
             moe,
             input_layernorm,
             post_attention_layernorm,
-            is_moe_layer,
-        })
+            is_moe_layer})
     }
 
     pub fn forward(&self, x: &Tensor, position: usize) -> Result<Tensor> {
@@ -476,8 +463,7 @@ pub struct KimiK2Model {
     norm: RmsNorm,
     lm_head: Linear,
     #[allow(dead_code)] // Stored for future model introspection features
-    config: KimiK2Config,
-}
+    config: KimiK2Config}
 
 impl KimiK2Model {
     pub fn new(config: &KimiK2Config, vb: VarBuilder, device: &Device) -> Result<Self> {
@@ -505,8 +491,7 @@ impl KimiK2Model {
             layers,
             norm,
             lm_head,
-            config: config.clone(),
-        })
+            config: config.clone()})
     }
 
     pub fn forward(&self, input_ids: &Tensor, position: usize) -> Result<Tensor> {

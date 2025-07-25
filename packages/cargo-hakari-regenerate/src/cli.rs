@@ -52,8 +52,7 @@ pub struct Cli {
     
     /// Enable performance timing
     #[arg(long, global = true)]
-    pub timing: bool,
-}
+    pub timing: bool}
 
 /// Available commands
 #[derive(Subcommand)]
@@ -74,21 +73,18 @@ pub enum Commands {
         
         /// Show detailed progress information
         #[arg(long)]
-        progress: bool,
-    },
+        progress: bool},
     
     /// Verify existing workspace-hack
     Verify {
         /// Output detailed verification report
         #[arg(long)]
-        detailed: bool,
-    },
+        detailed: bool},
     
     /// Manage configuration
     Config {
         #[command(subcommand)]
-        action: ConfigAction,
-    },
+        action: ConfigAction},
     
     /// Show workspace information
     Info {
@@ -98,16 +94,13 @@ pub enum Commands {
         
         /// Show configuration details
         #[arg(long)]
-        config: bool,
-    },
+        config: bool},
     
     /// Clean up temporary files and backups
     Cleanup {
         /// Remove all backup files
         #[arg(long)]
-        all: bool,
-    },
-}
+        all: bool}}
 
 /// Configuration management actions
 #[derive(Subcommand)]
@@ -119,28 +112,23 @@ pub enum ConfigAction {
     Validate {
         /// Show detailed validation report
         #[arg(long)]
-        detailed: bool,
-    },
+        detailed: bool},
     
     /// Reset configuration to defaults
     Reset {
         /// Don't ask for confirmation
         #[arg(long)]
-        yes: bool,
-    },
+        yes: bool},
     
     /// Add omitted dependency
     AddOmitted {
         /// Dependency name to omit
-        name: String,
-    },
+        name: String},
     
     /// Remove omitted dependency
     RemoveOmitted {
         /// Dependency name to include
-        name: String,
-    },
-}
+        name: String}}
 
 /// Output format options
 #[derive(ValueEnum, Clone, Debug)]
@@ -150,15 +138,13 @@ pub enum OutputFormat {
     /// JSON output for machine processing
     Json,
     /// Compact output for CI/CD
-    Compact,
-}
+    Compact}
 
 /// CLI application runner
 pub struct CliRunner {
     args: Cli,
     term: Term,
-    start_time: std::time::Instant,
-}
+    start_time: std::time::Instant}
 
 impl CliRunner {
     /// Create new CLI runner
@@ -166,8 +152,7 @@ impl CliRunner {
         Self {
             args,
             term: Term::stdout(),
-            start_time: std::time::Instant::now(),
-        }
+            start_time: std::time::Instant::now()}
     }
     
     /// Initialize logging and tracing
@@ -222,8 +207,7 @@ impl CliRunner {
                 .map_err(|e| crate::error::HakariRegenerateError::Io(
                     crate::error::IoError::DirectoryOperation {
                         path: PathBuf::from("."),
-                        source: e,
-                    }
+                        source: e}
                 ))?;
             
             WorkspaceManager::find_workspace_root(&current_dir).await?
@@ -257,8 +241,7 @@ impl CliRunner {
             verbose: self.args.verbose,
             dry_run,
             skip_verification,
-            force_regenerate: force,
-        };
+            force_regenerate: force};
         
         if dry_run {
             self.output_message("Running in dry-run mode - no changes will be made", MessageType::Info);
@@ -470,8 +453,7 @@ impl CliRunner {
                     MessageType::Success => style(message).green(),
                     MessageType::Warning => style(message).yellow(),
                     MessageType::Error => style(message).red(),
-                    MessageType::Info => style(message).blue(),
-                };
+                    MessageType::Info => style(message).blue()};
                 
                 let _ = self.term.write_line(&styled_message.to_string());
             }
@@ -479,8 +461,7 @@ impl CliRunner {
                 let json_msg = json!({
                     "type": msg_type.to_string(),
                     "message": message,
-                    "timestamp": chrono::Utc::now().to_rfc3339(),
-                });
+                    "timestamp": chrono::Utc::now().to_rfc3339()});
                 println!("{}", json_msg);
             }
             OutputFormat::Compact => {
@@ -523,8 +504,7 @@ impl CliRunner {
                     "operations": result.operations_performed,
                     "warnings": result.warnings,
                     "duration_ms": result.duration.as_millis(),
-                    "timestamp": chrono::Utc::now().to_rfc3339(),
-                });
+                    "timestamp": chrono::Utc::now().to_rfc3339()});
                 println!("{}", serde_json::to_string_pretty(&json_result).unwrap());
             }
             OutputFormat::Compact => {
@@ -571,8 +551,7 @@ impl CliRunner {
                     "operations": result.operations_performed,
                     "warnings": result.warnings,
                     "duration_ms": result.duration.as_millis(),
-                    "timestamp": chrono::Utc::now().to_rfc3339(),
-                });
+                    "timestamp": chrono::Utc::now().to_rfc3339()});
                 println!("{}", serde_json::to_string_pretty(&json_result).unwrap());
             }
             OutputFormat::Compact => {
@@ -641,8 +620,7 @@ impl CliRunner {
                     "errors": report.errors,
                     "warnings": report.warnings,
                     "valid": report.is_valid(),
-                    "summary": report.summary(),
-                });
+                    "summary": report.summary()});
                 println!("{}", serde_json::to_string_pretty(&json_report).unwrap());
             }
             OutputFormat::Compact => {
@@ -671,8 +649,7 @@ impl CliRunner {
                 let json_info = json!({
                     "root": workspace_manager.config().root_path,
                     "packages": workspace_manager.packages().len(),
-                    "workspace_hack_path": workspace_manager.config().workspace_hack_path,
-                });
+                    "workspace_hack_path": workspace_manager.config().workspace_hack_path});
                 println!("{}", serde_json::to_string_pretty(&json_info).unwrap());
             }
             OutputFormat::Compact => {
@@ -728,13 +705,11 @@ impl CliRunner {
                     json!({
                         "name": p.name,
                         "path": p.path,
-                        "has_workspace_hack": p.has_workspace_hack_dep,
-                    })
+                        "has_workspace_hack": p.has_workspace_hack_dep})
                 }).collect();
                 
                 let json_info = json!({
-                    "packages": packages,
-                });
+                    "packages": packages});
                 println!("{}", serde_json::to_string_pretty(&json_info).unwrap());
             }
             OutputFormat::Compact => {
@@ -762,8 +737,7 @@ enum MessageType {
     Success,
     Warning,
     Error,
-    Info,
-}
+    Info}
 
 impl std::fmt::Display for MessageType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -771,7 +745,6 @@ impl std::fmt::Display for MessageType {
             MessageType::Success => write!(f, "success"),
             MessageType::Warning => write!(f, "warning"),
             MessageType::Error => write!(f, "error"),
-            MessageType::Info => write!(f, "info"),
-        }
+            MessageType::Info => write!(f, "info")}
     }
 }

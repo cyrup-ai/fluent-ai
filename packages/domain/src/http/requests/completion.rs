@@ -19,48 +19,47 @@
 //! Uses a trait-based design with a base [`CompletionRequest`] struct and provider-specific
 //! extensions. Zero-allocation patterns with `ArrayVec` for bounded collections and stack
 //! allocation for common use cases.
-//!
-//! # Usage Examples
-//!
-//! ```rust
-//! use fluent_ai_domain::http::requests::completion::{CompletionRequest, ProviderExtensions};
-//! use fluent_ai_domain::http::common::{BaseMessage, ModelParameters};
-//!
-//! // Basic completion request
-//! let request = CompletionRequest::new("gpt-4")
-//!     .with_message(BaseMessage::user("Hello, world!"))
-//!     .with_temperature(0.7)?
-//!     .with_max_tokens(1000)?
-//!     .with_streaming(true);
-//!
-//! // Provider-specific extensions
-//! let anthropic_request = request
-//!     .with_anthropic_cache_control(true)
-//!     .with_anthropic_system_message("You are helpful");
-//!
-//! let openai_request = request
-//!     .with_openai_response_format("json_object")
-//!     .with_openai_seed(42);
-//! ```
 
-#![warn(missing_docs)]
-#![forbid(unsafe_code)]
-#![deny(clippy::all)]
-#![deny(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
-
-use std::collections::HashMap;
+// # Usage Examples
+//
+// ```rust
+// use fluent_ai_domain::http::requests::completion::{CompletionRequest, ProviderExtensions};
+// use fluent_ai_domain::http::common::{BaseMessage, ModelParameters};
+//
+// // Basic completion request
+// let request = CompletionRequest::new("gpt-4")
+//     .with_message(BaseMessage::user("Hello, world!"))
+//     .with_temperature(0.7)?
+//     .with_max_tokens(1000)?
+//     .with_streaming(true);
+//
+// // Provider-specific extensions
+// let anthropic_request = request
+//     .with_anthropic_cache_control(true)
+//     .with_anthropic_system_message("You are helpful");
+//
+// let openai_request = request
+//     .with_openai_response_format("json_object")
+//     .with_openai_seed(42);
+// ```
+#[warn(missing_docs)]
+#[forbid(unsafe_code)]
+#[deny(clippy::all)]
+#[deny(clippy::pedantic)]
+#[allow(clippy::module_name_repetitions)]
+// Removed duplicate import
 use std::fmt;
 
 use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::http::common::{
-    BaseMessage, ModelParameters, ToolCall, ValidationError, MAX_MESSAGES, MAX_TOOLS,
-    MAX_STOP_SEQUENCES, MAX_STOP_SEQUENCE_LEN, MAX_IDENTIFIER_LEN,
-};
+use crate::HashMap;
 use crate::Provider;
+use crate::http::common::{
+    BaseMessage, MAX_IDENTIFIER_LEN, MAX_MESSAGES, MAX_STOP_SEQUENCE_LEN, MAX_STOP_SEQUENCES,
+    MAX_TOOLS, ModelParameters, ValidationError,
+};
 
 /// Maximum number of provider-specific parameters
 pub const MAX_PROVIDER_PARAMS: usize = 16;
@@ -75,65 +74,65 @@ pub const MAX_SAFETY_SETTINGS: usize = 8;
 pub const MAX_CACHE_ENTRIES: usize = 4;
 
 /// Universal completion request supporting all AI providers
-/// 
+///
 /// This struct provides a unified interface for completion requests across all providers
 /// while allowing provider-specific extensions through the `extensions` field.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionRequest {
     /// Model identifier (required)
     pub model: ArrayString<MAX_IDENTIFIER_LEN>,
-    
+
     /// Conversation messages with bounded capacity for zero allocation
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub messages: ArrayVec<BaseMessage, MAX_MESSAGES>,
-    
+
     /// System message/prompt (separate from messages for some providers)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system: Option<String>,
-    
+
     /// Temperature for randomness (0.0 to 2.0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
-    
+
     /// Maximum tokens to generate
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
-    
+
     /// Top-p nucleus sampling (0.0 to 1.0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_p: Option<f64>,
-    
+
     /// Top-k sampling (1 or higher)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<u32>,
-    
+
     /// Frequency penalty (-2.0 to 2.0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frequency_penalty: Option<f64>,
-    
+
     /// Presence penalty (-2.0 to 2.0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub presence_penalty: Option<f64>,
-    
+
     /// Stop sequences for completion termination
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub stop: ArrayVec<ArrayString<MAX_STOP_SEQUENCE_LEN>, MAX_STOP_SEQUENCES>,
-    
+
     /// Enable streaming response
     pub stream: bool,
-    
+
     /// Tools/functions available for the model to call
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
-    
+
     /// Tool choice strategy
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<ToolChoice>,
-    
+
     /// Provider-specific extensions
     #[serde(skip_serializing_if = "ProviderExtensions::is_empty")]
     pub extensions: ProviderExtensions,
-    
+
     /// User identifier for tracking and rate limiting
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<ArrayString<MAX_IDENTIFIER_LEN>>,
@@ -145,11 +144,11 @@ impl CompletionRequest {
     pub fn new(model: &str) -> Result<Self, CompletionRequestError> {
         let model_name = ArrayString::from(model)
             .map_err(|_| CompletionRequestError::ModelNameTooLong(model.len()))?;
-        
+
         if model.is_empty() {
             return Err(CompletionRequestError::EmptyModelName);
         }
-        
+
         Ok(Self {
             model: model_name,
             messages: ArrayVec::new(),
@@ -172,7 +171,8 @@ impl CompletionRequest {
     /// Add a message to the conversation
     #[inline]
     pub fn with_message(mut self, message: BaseMessage) -> Result<Self, CompletionRequestError> {
-        self.messages.try_push(message)
+        self.messages
+            .try_push(message)
             .map_err(|_| CompletionRequestError::TooManyMessages)?;
         Ok(self)
     }
@@ -184,7 +184,8 @@ impl CompletionRequest {
         I: IntoIterator<Item = BaseMessage>,
     {
         for message in messages {
-            self.messages.try_push(message)
+            self.messages
+                .try_push(message)
                 .map_err(|_| CompletionRequestError::TooManyMessages)?;
         }
         Ok(self)
@@ -266,13 +267,14 @@ impl CompletionRequest {
         if sequence.is_empty() {
             return Err(CompletionRequestError::EmptyStopSequence);
         }
-        
+
         let stop_seq = ArrayString::from(sequence)
             .map_err(|_| CompletionRequestError::StopSequenceTooLong(sequence.len()))?;
-        
-        self.stop.try_push(stop_seq)
+
+        self.stop
+            .try_push(stop_seq)
             .map_err(|_| CompletionRequestError::TooManyStopSequences)?;
-        
+
         Ok(self)
     }
 
@@ -286,7 +288,8 @@ impl CompletionRequest {
     /// Add a tool definition
     #[inline]
     pub fn with_tool(mut self, tool: ToolDefinition) -> Result<Self, CompletionRequestError> {
-        self.tools.try_push(tool)
+        self.tools
+            .try_push(tool)
             .map_err(|_| CompletionRequestError::TooManyTools)?;
         Ok(self)
     }
@@ -309,7 +312,10 @@ impl CompletionRequest {
 
     /// Apply model parameters from ModelParameters struct
     #[inline]
-    pub fn with_model_parameters(mut self, params: &ModelParameters) -> Result<Self, CompletionRequestError> {
+    pub fn with_model_parameters(
+        mut self,
+        params: &ModelParameters,
+    ) -> Result<Self, CompletionRequestError> {
         if let Some(temp) = params.temperature {
             self = self.with_temperature(temp)?;
         }
@@ -328,14 +334,14 @@ impl CompletionRequest {
         if let Some(pres_penalty) = params.presence_penalty {
             self = self.with_presence_penalty(pres_penalty)?;
         }
-        
+
         // Add stop sequences
         for stop_seq in &params.stop_sequences {
             self = self.with_stop_sequence(stop_seq.as_str())?;
         }
-        
+
         self.stream = params.stream;
-        
+
         Ok(self)
     }
 
@@ -378,7 +384,9 @@ impl CompletionRequest {
             Provider::Bedrock => self.to_bedrock_format(),
             Provider::Cohere => self.to_cohere_format(),
             Provider::Ollama => self.to_ollama_format(),
-            Provider::Groq | Provider::OpenRouter | Provider::Together => self.to_openai_compatible_format(),
+            Provider::Groq | Provider::OpenRouter | Provider::Together => {
+                self.to_openai_compatible_format()
+            }
             Provider::AI21 => self.to_ai21_format(),
             Provider::Mistral => self.to_mistral_format(),
             Provider::HuggingFace => self.to_huggingface_format(),
@@ -413,10 +421,16 @@ impl CompletionRequest {
             request["presence_penalty"] = pres_penalty.into();
         }
         if !self.stop.is_empty() {
-            request["stop"] = self.stop.iter().map(|s| s.as_str()).collect::<Vec<_>>().into();
+            request["stop"] = self
+                .stop
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .into();
         }
         if !self.tools.is_empty() {
-            request["tools"] = self.tools.iter().cloned().collect::<Vec<_>>().into();
+            request["tools"] = serde_json::to_value(&self.tools)
+                .map_err(|_| CompletionRequestError::SerializationError)?;
         }
         if let Some(ref tool_choice) = self.tool_choice {
             request["tool_choice"] = serde_json::to_value(tool_choice)
@@ -453,7 +467,7 @@ impl CompletionRequest {
         });
 
         if let Some(ref system) = self.system {
-            request["system"] = system.into();
+            request["system"] = system.as_str().into();
         }
         if let Some(temp) = self.temperature {
             request["temperature"] = temp.into();
@@ -465,10 +479,16 @@ impl CompletionRequest {
             request["top_k"] = top_k.into();
         }
         if !self.stop.is_empty() {
-            request["stop_sequences"] = self.stop.iter().map(|s| s.as_str()).collect::<Vec<_>>().into();
+            request["stop_sequences"] = self
+                .stop
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .into();
         }
         if !self.tools.is_empty() {
-            request["tools"] = self.tools.iter().cloned().collect::<Vec<_>>().into();
+            request["tools"] = serde_json::to_value(&self.tools)
+                .map_err(|_| CompletionRequestError::SerializationError)?;
         }
 
         // Add Anthropic-specific extensions
@@ -503,8 +523,14 @@ impl CompletionRequest {
             generation_config.insert("topK".to_string(), top_k.into());
         }
         if !self.stop.is_empty() {
-            generation_config.insert("stopSequences".to_string(), 
-                self.stop.iter().map(|s| s.as_str()).collect::<Vec<_>>().into());
+            generation_config.insert(
+                "stopSequences".to_string(),
+                self.stop
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .into(),
+            );
         }
 
         if !generation_config.is_empty() {
@@ -514,7 +540,9 @@ impl CompletionRequest {
         // Add Google-specific extensions
         if let Some(ref google_ext) = self.extensions.google {
             if !google_ext.safety_settings.is_empty() {
-                request["safetySettings"] = google_ext.safety_settings.clone();
+                // Convert ArrayVec to Vec, then to Value
+                let safety_vec: Vec<Value> = google_ext.safety_settings.iter().cloned().collect();
+                request["safetySettings"] = Value::Array(safety_vec);
             }
         }
 
@@ -540,8 +568,14 @@ impl CompletionRequest {
             inference_config.insert("topP".to_string(), top_p.into());
         }
         if !self.stop.is_empty() {
-            inference_config.insert("stopSequences".to_string(), 
-                self.stop.iter().map(|s| s.as_str()).collect::<Vec<_>>().into());
+            inference_config.insert(
+                "stopSequences".to_string(),
+                self.stop
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .into(),
+            );
         }
 
         if !inference_config.is_empty() {
@@ -568,7 +602,9 @@ impl CompletionRequest {
             if let Some(last_message) = self.messages.last() {
                 request["message"] = last_message.content.clone().into();
                 if self.messages.len() > 1 {
-                    request["chat_history"] = self.messages[..self.messages.len()-1].iter().cloned().collect::<Vec<_>>().into();
+                    request["chat_history"] = serde_json::to_value(
+                        &self.messages[..self.messages.len() - 1]
+                    ).unwrap_or_default();
                 }
             }
         }
@@ -599,7 +635,7 @@ impl CompletionRequest {
         });
 
         if let Some(ref system) = self.system {
-            request["system"] = system.into();
+            request["system"] = system.as_str().into();
         }
 
         let mut options = serde_json::Map::new();
@@ -717,7 +753,11 @@ pub struct ToolDefinition {
 impl ToolDefinition {
     /// Create a new function tool
     #[inline]
-    pub fn function(name: &str, description: &str, parameters: Value) -> Result<Self, CompletionRequestError> {
+    pub fn function(
+        name: &str,
+        description: &str,
+        parameters: Value,
+    ) -> Result<Self, CompletionRequestError> {
         let func_def = FunctionDefinition::new(name, description, parameters)?;
         Ok(Self {
             tool_type: ToolType::Function,
@@ -748,14 +788,18 @@ pub struct FunctionDefinition {
 impl FunctionDefinition {
     /// Create a new function definition
     #[inline]
-    pub fn new(name: &str, description: &str, parameters: Value) -> Result<Self, CompletionRequestError> {
+    pub fn new(
+        name: &str,
+        description: &str,
+        parameters: Value,
+    ) -> Result<Self, CompletionRequestError> {
         let func_name = ArrayString::from(name)
             .map_err(|_| CompletionRequestError::FunctionNameTooLong(name.len()))?;
-        
+
         if name.is_empty() {
             return Err(CompletionRequestError::EmptyFunctionName);
         }
-        
+
         Ok(Self {
             name: func_name,
             description: description.to_string(),
@@ -775,7 +819,7 @@ pub enum ToolChoice {
     /// Force a specific tool to be called
     Required { function: FunctionChoice },
     /// Force any tool to be called
-    Required_Any,
+    RequiredAny,
 }
 
 /// Specific function choice
@@ -786,7 +830,7 @@ pub struct FunctionChoice {
 }
 
 /// Provider-specific extensions for completion requests
-/// 
+///
 /// This struct contains provider-specific parameters that don't fit into
 /// the universal completion request structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -794,23 +838,23 @@ pub struct ProviderExtensions {
     /// OpenAI-specific extensions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub openai: Option<OpenAIExtensions>,
-    
+
     /// Anthropic-specific extensions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anthropic: Option<AnthropicExtensions>,
-    
+
     /// Google-specific extensions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub google: Option<GoogleExtensions>,
-    
+
     /// AWS Bedrock-specific extensions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bedrock: Option<BedrockExtensions>,
-    
+
     /// Cohere-specific extensions
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cohere: Option<CohereExtensions>,
-    
+
     /// Generic provider parameters for other providers
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub custom: HashMap<String, Value>,
@@ -826,7 +870,7 @@ impl ProviderExtensions {
     /// Check if extensions are empty
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.openai.is_none() 
+        self.openai.is_none()
             && self.anthropic.is_none()
             && self.google.is_none()
             && self.bedrock.is_none()
@@ -862,23 +906,23 @@ pub struct OpenAIExtensions {
     /// Response format (e.g., "json_object")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<String>,
-    
+
     /// Seed for deterministic generation
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seed: Option<i64>,
-    
+
     /// Logit bias for token probability modification
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logit_bias: Option<Value>,
-    
+
     /// Number of completions to generate
     #[serde(skip_serializing_if = "Option::is_none")]
     pub n: Option<u32>,
-    
+
     /// Whether to return log probabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logprobs: Option<bool>,
-    
+
     /// Number of most likely tokens to return log probabilities for
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_logprobs: Option<u32>,
@@ -890,12 +934,16 @@ impl OpenAIExtensions {
     pub fn validate(&self) -> Result<(), CompletionRequestError> {
         if let Some(n) = self.n {
             if n == 0 || n > 128 {
-                return Err(CompletionRequestError::InvalidParameterValue("n must be between 1 and 128"));
+                return Err(CompletionRequestError::InvalidParameterValue(
+                    "n must be between 1 and 128",
+                ));
             }
         }
         if let Some(top_logprobs) = self.top_logprobs {
             if top_logprobs > 20 {
-                return Err(CompletionRequestError::InvalidParameterValue("top_logprobs must be <= 20"));
+                return Err(CompletionRequestError::InvalidParameterValue(
+                    "top_logprobs must be <= 20",
+                ));
             }
         }
         Ok(())
@@ -907,7 +955,7 @@ impl OpenAIExtensions {
 pub struct AnthropicExtensions {
     /// Enable cache control
     pub cache_control: bool,
-    
+
     /// Anthropic beta features
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub anthropic_beta: ArrayVec<ArrayString<32>, 4>,
@@ -928,7 +976,7 @@ pub struct GoogleExtensions {
     /// Safety settings for content filtering
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub safety_settings: ArrayVec<Value, MAX_SAFETY_SETTINGS>,
-    
+
     /// Candidate count
     #[serde(skip_serializing_if = "Option::is_none")]
     pub candidate_count: Option<u32>,
@@ -940,7 +988,9 @@ impl GoogleExtensions {
     pub fn validate(&self) -> Result<(), CompletionRequestError> {
         if let Some(count) = self.candidate_count {
             if count == 0 || count > 8 {
-                return Err(CompletionRequestError::InvalidParameterValue("candidate_count must be between 1 and 8"));
+                return Err(CompletionRequestError::InvalidParameterValue(
+                    "candidate_count must be between 1 and 8",
+                ));
             }
         }
         Ok(())
@@ -953,7 +1003,7 @@ pub struct BedrockExtensions {
     /// Additional model parameters
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub additional_model_request_fields: HashMap<String, Value>,
-    
+
     /// Guardrail configuration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub guardrail_config: Option<Value>,
@@ -974,11 +1024,11 @@ pub struct CohereExtensions {
     /// Preamble override
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preamble_override: Option<String>,
-    
+
     /// Conversation ID for chat continuity
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conversation_id: Option<String>,
-    
+
     /// Prompt truncation setting
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt_truncation: Option<String>,
@@ -1048,26 +1098,60 @@ impl fmt::Display for CompletionRequestError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CompletionRequestError::EmptyModelName => write!(f, "Model name cannot be empty"),
-            CompletionRequestError::ModelNameTooLong(len) => write!(f, "Model name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"),
-            CompletionRequestError::TooManyMessages => write!(f, "Too many messages (max {MAX_MESSAGES})"),
-            CompletionRequestError::NoMessages => write!(f, "No messages or system prompt provided"),
-            CompletionRequestError::TemperatureOutOfRange(temp) => write!(f, "Temperature {temp} out of range (0.0 to 2.0)"),
+            CompletionRequestError::ModelNameTooLong(len) => write!(
+                f,
+                "Model name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+            ),
+            CompletionRequestError::TooManyMessages => {
+                write!(f, "Too many messages (max {MAX_MESSAGES})")
+            }
+            CompletionRequestError::NoMessages => {
+                write!(f, "No messages or system prompt provided")
+            }
+            CompletionRequestError::TemperatureOutOfRange(temp) => {
+                write!(f, "Temperature {temp} out of range (0.0 to 2.0)")
+            }
             CompletionRequestError::MaxTokensZero => write!(f, "Max tokens cannot be zero"),
-            CompletionRequestError::MaxTokensTooLarge(tokens) => write!(f, "Max tokens {tokens} too large (max 2,000,000)"),
-            CompletionRequestError::TopPOutOfRange(top_p) => write!(f, "Top-p {top_p} out of range (0.0 to 1.0)"),
+            CompletionRequestError::MaxTokensTooLarge(tokens) => {
+                write!(f, "Max tokens {tokens} too large (max 2,000,000)")
+            }
+            CompletionRequestError::TopPOutOfRange(top_p) => {
+                write!(f, "Top-p {top_p} out of range (0.0 to 1.0)")
+            }
             CompletionRequestError::TopKZero => write!(f, "Top-k cannot be zero"),
-            CompletionRequestError::FrequencyPenaltyOutOfRange(penalty) => write!(f, "Frequency penalty {penalty} out of range (-2.0 to 2.0)"),
-            CompletionRequestError::PresencePenaltyOutOfRange(penalty) => write!(f, "Presence penalty {penalty} out of range (-2.0 to 2.0)"),
+            CompletionRequestError::FrequencyPenaltyOutOfRange(penalty) => {
+                write!(f, "Frequency penalty {penalty} out of range (-2.0 to 2.0)")
+            }
+            CompletionRequestError::PresencePenaltyOutOfRange(penalty) => {
+                write!(f, "Presence penalty {penalty} out of range (-2.0 to 2.0)")
+            }
             CompletionRequestError::EmptyStopSequence => write!(f, "Stop sequence cannot be empty"),
-            CompletionRequestError::StopSequenceTooLong(len) => write!(f, "Stop sequence too long: {len} characters (max {MAX_STOP_SEQUENCE_LEN})"),
-            CompletionRequestError::TooManyStopSequences => write!(f, "Too many stop sequences (max {MAX_STOP_SEQUENCES})"),
+            CompletionRequestError::StopSequenceTooLong(len) => write!(
+                f,
+                "Stop sequence too long: {len} characters (max {MAX_STOP_SEQUENCE_LEN})"
+            ),
+            CompletionRequestError::TooManyStopSequences => {
+                write!(f, "Too many stop sequences (max {MAX_STOP_SEQUENCES})")
+            }
             CompletionRequestError::TooManyTools => write!(f, "Too many tools (max {MAX_TOOLS})"),
-            CompletionRequestError::ToolChoiceWithoutTools => write!(f, "Tool choice specified but no tools provided"),
+            CompletionRequestError::ToolChoiceWithoutTools => {
+                write!(f, "Tool choice specified but no tools provided")
+            }
             CompletionRequestError::EmptyFunctionName => write!(f, "Function name cannot be empty"),
-            CompletionRequestError::FunctionNameTooLong(len) => write!(f, "Function name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"),
-            CompletionRequestError::UserIdTooLong(len) => write!(f, "User ID too long: {len} characters (max {MAX_IDENTIFIER_LEN})"),
-            CompletionRequestError::ConflictingParameters => write!(f, "Conflicting parameters specified"),
-            CompletionRequestError::InvalidParameterValue(msg) => write!(f, "Invalid parameter value: {msg}"),
+            CompletionRequestError::FunctionNameTooLong(len) => write!(
+                f,
+                "Function name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+            ),
+            CompletionRequestError::UserIdTooLong(len) => write!(
+                f,
+                "User ID too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+            ),
+            CompletionRequestError::ConflictingParameters => {
+                write!(f, "Conflicting parameters specified")
+            }
+            CompletionRequestError::InvalidParameterValue(msg) => {
+                write!(f, "Invalid parameter value: {msg}")
+            }
             CompletionRequestError::SerializationError => write!(f, "Failed to serialize request"),
             CompletionRequestError::ValidationError(err) => write!(f, "Validation error: {err}"),
         }
@@ -1079,6 +1163,12 @@ impl std::error::Error for CompletionRequestError {}
 impl From<ValidationError> for CompletionRequestError {
     fn from(err: ValidationError) -> Self {
         CompletionRequestError::ValidationError(err)
+    }
+}
+
+impl From<serde_json::Error> for CompletionRequestError {
+    fn from(_err: serde_json::Error) -> Self {
+        CompletionRequestError::SerializationError
     }
 }
 
@@ -1103,7 +1193,7 @@ mod tests {
             .expect("Valid message")
             .with_message(BaseMessage::assistant("Hi there!"))
             .expect("Valid message");
-        
+
         assert_eq!(request.messages.len(), 2);
         assert_eq!(request.messages[0].content, "Hello");
         assert_eq!(request.messages[1].content, "Hi there!");
@@ -1119,7 +1209,7 @@ mod tests {
             .expect("Valid max tokens")
             .with_top_p(0.9)
             .expect("Valid top-p");
-        
+
         assert_eq!(request.temperature, Some(0.7));
         assert_eq!(request.max_tokens, Some(1000));
         assert_eq!(request.top_p, Some(0.9));
@@ -1157,11 +1247,15 @@ mod tests {
                     "location": {"type": "string"}
                 },
                 "required": ["location"]
-            })
-        ).expect("Valid tool definition");
-        
+            }),
+        )
+        .expect("Valid tool definition");
+
         assert_eq!(tool.function.name.as_str(), "get_weather");
-        assert_eq!(tool.function.description, "Get current weather for a location");
+        assert_eq!(
+            tool.function.description,
+            "Get current weather for a location"
+        );
     }
 
     #[test]
@@ -1173,16 +1267,23 @@ mod tests {
             .with_temperature(0.7)
             .expect("Valid temperature")
             .with_streaming(true);
-        
+
         // Test OpenAI format
-        let openai_format = request.to_provider_format(Provider::OpenAI).expect("Valid conversion");
+        let openai_format = request
+            .to_provider_format(Provider::OpenAI)
+            .expect("Valid conversion");
         assert!(openai_format.get("model").is_some());
         assert!(openai_format.get("messages").is_some());
         assert!(openai_format.get("temperature").is_some());
-        assert_eq!(openai_format.get("stream"), Some(&serde_json::Value::Bool(true)));
-        
+        assert_eq!(
+            openai_format.get("stream"),
+            Some(&serde_json::Value::Bool(true))
+        );
+
         // Test Anthropic format
-        let anthropic_format = request.to_provider_format(Provider::Anthropic).expect("Valid conversion");
+        let anthropic_format = request
+            .to_provider_format(Provider::Anthropic)
+            .expect("Valid conversion");
         assert!(anthropic_format.get("model").is_some());
         assert!(anthropic_format.get("messages").is_some());
         assert!(anthropic_format.get("max_tokens").is_some());
@@ -1196,11 +1297,11 @@ mod tests {
             .with_message(BaseMessage::user("Hello"))
             .expect("Valid message");
         assert!(valid_request.validate().is_ok());
-        
+
         // Invalid request - no messages
         let invalid_request = CompletionRequest::new("gpt-4").expect("Valid model");
         assert!(invalid_request.validate().is_err());
-        
+
         // Invalid request - tool choice without tools
         let mut invalid_tool_request = CompletionRequest::new("gpt-4")
             .expect("Valid model")
@@ -1213,7 +1314,7 @@ mod tests {
     #[test]
     fn test_provider_extensions() {
         let mut request = CompletionRequest::new("gpt-4").expect("Valid model");
-        
+
         // Add OpenAI extensions
         request.extensions.openai = Some(OpenAIExtensions {
             response_format: Some("json_object".to_string()),
@@ -1223,10 +1324,10 @@ mod tests {
             logprobs: Some(true),
             top_logprobs: Some(5),
         });
-        
+
         assert!(!request.extensions.is_empty());
         assert!(request.extensions.validate().is_ok());
-        
+
         // Test invalid extensions
         request.extensions.openai.as_mut().unwrap().n = Some(0);
         assert!(request.extensions.validate().is_err());
@@ -1240,7 +1341,7 @@ mod tests {
             .expect("Valid stop sequence")
             .with_stop_sequence("END")
             .expect("Valid stop sequence");
-        
+
         assert_eq!(request.stop.len(), 2);
         assert_eq!(request.stop[0].as_str(), "\\n");
         assert_eq!(request.stop[1].as_str(), "END");
@@ -1251,9 +1352,9 @@ mod tests {
         let request = CompletionRequest::new("gpt-4")
             .expect("Valid model")
             .with_streaming(true);
-        
+
         assert!(request.stream);
-        
+
         let non_streaming = request.with_streaming(false);
         assert!(!non_streaming.stream);
     }

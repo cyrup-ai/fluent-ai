@@ -28,8 +28,7 @@ pub enum DownloadError {
     /// File system I/O error
     IoError(std::io::Error),
     /// UTF-8 encoding error
-    Utf8Error(std::string::FromUtf8Error),
-}
+    Utf8Error(std::string::FromUtf8Error)}
 
 impl std::fmt::Display for DownloadError {
     #[inline(always)]
@@ -37,8 +36,7 @@ impl std::fmt::Display for DownloadError {
         match self {
             DownloadError::HttpError(msg) => write!(f, "HTTP request failed: {}", msg),
             DownloadError::IoError(err) => write!(f, "IO operation failed: {}", err),
-            DownloadError::Utf8Error(err) => write!(f, "Invalid UTF-8 in response: {}", err),
-        }
+            DownloadError::Utf8Error(err) => write!(f, "Invalid UTF-8 in response: {}", err)}
     }
 }
 
@@ -48,8 +46,7 @@ impl std::error::Error for DownloadError {
         match self {
             DownloadError::HttpError(_) => None,
             DownloadError::IoError(err) => Some(err),
-            DownloadError::Utf8Error(err) => Some(err),
-        }
+            DownloadError::Utf8Error(err) => Some(err)}
     }
 }
 

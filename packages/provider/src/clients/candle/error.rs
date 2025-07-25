@@ -24,8 +24,7 @@ pub enum ErrorCategory {
     IO = 6,
     Network = 7,
     Cache = 8,
-    Streaming = 9,
-}
+    Streaming = 9}
 
 /// Zero-allocation error context with stack-allocated strings
 #[derive(Debug, Clone)]
@@ -41,8 +40,7 @@ pub struct ErrorContext {
     /// Actual value or condition
     pub actual: ArrayString<128>,
     /// Timestamp when error occurred (milliseconds since epoch)
-    pub timestamp_ms: u64,
-}
+    pub timestamp_ms: u64}
 
 impl ErrorContext {
     /// Create new error context with validation
@@ -65,8 +63,7 @@ impl ErrorContext {
             operation: ArrayString::from(operation).unwrap_or_default(),
             expected: ArrayString::from(expected).unwrap_or_default(),
             actual: ArrayString::from(actual).unwrap_or_default(),
-            timestamp_ms,
-        }
+            timestamp_ms}
     }
 }
 
@@ -77,81 +74,70 @@ pub enum CandleError {
     Configuration {
         context: ErrorContext,
         parameter: ArrayString<64>,
-        constraint: ArrayString<128>,
-    },
+        constraint: ArrayString<128>},
 
     /// Model loading and management errors
     Model {
         context: ErrorContext,
         model: CandleModel,
         phase: ModelPhase,
-        details: ArrayString<256>,
-    },
+        details: ArrayString<256>},
 
     /// Device initialization and management errors
     Device {
         context: ErrorContext,
         device: CandleDevice,
         capability: ArrayString<64>,
-        available: SmallVec<[CandleDevice; 4]>,
-    },
+        available: SmallVec<[CandleDevice; 4]>},
 
     /// Tokenization and text processing errors
     Tokenizer {
         context: ErrorContext,
         input_length: u32,
         max_length: u32,
-        encoding: ArrayString<32>,
-    },
+        encoding: ArrayString<32>},
 
     /// Text generation and sampling errors
     Generation {
         context: ErrorContext,
         tokens_processed: u32,
         sequence_length: u32,
-        sampling_step: ArrayString<64>,
-    },
+        sampling_step: ArrayString<64>},
 
     /// Memory allocation and management errors
     Memory {
         context: ErrorContext,
         requested_bytes: u64,
         available_bytes: u64,
-        memory_type: MemoryType,
-    },
+        memory_type: MemoryType},
 
     /// File I/O and filesystem errors
     Io {
         context: ErrorContext,
         path: ArrayString<256>,
         operation: IoOperation,
-        os_error: Option<i32>,
-    },
+        os_error: Option<i32>},
 
     /// Network and download errors
     Network {
         context: ErrorContext,
         url: ArrayString<256>,
         status_code: Option<u16>,
-        retry_count: u8,
-    },
+        retry_count: u8},
 
     /// Cache management errors
     Cache {
         context: ErrorContext,
         cache_type: CacheType,
         key: ArrayString<128>,
-        size_bytes: u64,
-    },
+        size_bytes: u64},
 
     /// Streaming and async coordination errors
     Streaming {
         context: ErrorContext,
         stream_id: u64,
         chunk_index: u32,
-        buffer_size: u32,
-    },
-}
+        buffer_size: u32}}
 
 /// Model operation phases for detailed error reporting
 #[repr(u8)]
@@ -161,8 +147,7 @@ pub enum ModelPhase {
     Validation = 1,
     Loading = 2,
     Initialization = 3,
-    Inference = 4,
-}
+    Inference = 4}
 
 /// Memory type categories for memory errors
 #[repr(u8)]
@@ -171,8 +156,7 @@ pub enum MemoryType {
     System = 0,
     Gpu = 1,
     Cache = 2,
-    Buffer = 3,
-}
+    Buffer = 3}
 
 /// I/O operation types for file system errors
 #[repr(u8)]
@@ -183,8 +167,7 @@ pub enum IoOperation {
     Create = 2,
     Delete = 3,
     Move = 4,
-    Stat = 5,
-}
+    Stat = 5}
 
 /// Cache type categories for cache errors
 #[repr(u8)]
@@ -193,8 +176,7 @@ pub enum CacheType {
     Model = 0,
     Tokenizer = 1,
     KvCache = 2,
-    Embedding = 3,
-}
+    Embedding = 3}
 
 impl CandleError {
     /// Create configuration error with validation context
@@ -209,8 +191,7 @@ impl CandleError {
                 "invalid value",
             ),
             parameter: ArrayString::from(parameter).unwrap_or_default(),
-            constraint: ArrayString::from(constraint).unwrap_or_default(),
-        }
+            constraint: ArrayString::from(constraint).unwrap_or_default()}
     }
 
     /// Create model error with detailed context
@@ -226,8 +207,7 @@ impl CandleError {
             ),
             model,
             phase,
-            details: ArrayString::from(details).unwrap_or_default(),
-        }
+            details: ArrayString::from(details).unwrap_or_default()}
     }
 
     /// Create device error with available alternatives
@@ -248,8 +228,7 @@ impl CandleError {
             ),
             device,
             capability: ArrayString::from(capability).unwrap_or_default(),
-            available: available_vec,
-        }
+            available: available_vec}
     }
 
     /// Create tokenizer error with length information
@@ -265,8 +244,7 @@ impl CandleError {
             ),
             input_length,
             max_length,
-            encoding: ArrayString::from(encoding).unwrap_or_default(),
-        }
+            encoding: ArrayString::from(encoding).unwrap_or_default()}
     }
 
     /// Create generation error with sampling context
@@ -282,8 +260,7 @@ impl CandleError {
             ),
             tokens_processed,
             sequence_length,
-            sampling_step: ArrayString::from(sampling_step).unwrap_or_default(),
-        }
+            sampling_step: ArrayString::from(sampling_step).unwrap_or_default()}
     }
 
     /// Create memory error with allocation details
@@ -299,8 +276,7 @@ impl CandleError {
             ),
             requested_bytes,
             available_bytes,
-            memory_type,
-        }
+            memory_type}
     }
 
     /// Create I/O error with path and operation details
@@ -316,8 +292,7 @@ impl CandleError {
             ),
             path: ArrayString::from(path).unwrap_or_default(),
             operation,
-            os_error,
-        }
+            os_error}
     }
 
     /// Create network error with URL and status information
@@ -333,8 +308,7 @@ impl CandleError {
             ),
             url: ArrayString::from(url).unwrap_or_default(),
             status_code,
-            retry_count,
-        }
+            retry_count}
     }
 
     /// Create cache error with detailed context
@@ -350,8 +324,7 @@ impl CandleError {
             ),
             cache_type,
             key: ArrayString::from(key).unwrap_or_default(),
-            size_bytes,
-        }
+            size_bytes}
     }
 
     /// Create streaming error with stream context
@@ -367,8 +340,7 @@ impl CandleError {
             ),
             stream_id,
             chunk_index,
-            buffer_size,
-        }
+            buffer_size}
     }
 
     /// Get error category for fast filtering
@@ -384,8 +356,7 @@ impl CandleError {
             Self::Io { .. } => ErrorCategory::IO,
             Self::Network { .. } => ErrorCategory::Network,
             Self::Cache { .. } => ErrorCategory::Cache,
-            Self::Streaming { .. } => ErrorCategory::Streaming,
-        }
+            Self::Streaming { .. } => ErrorCategory::Streaming}
     }
 
     /// Get error context for detailed analysis
@@ -401,8 +372,7 @@ impl CandleError {
             Self::Io { context, .. } => context,
             Self::Network { context, .. } => context,
             Self::Cache { context, .. } => context,
-            Self::Streaming { context, .. } => context,
-        }
+            Self::Streaming { context, .. } => context}
     }
 
     /// Check if error is recoverable
@@ -442,8 +412,7 @@ impl CandleError {
             Self::Model { phase, .. } => match phase {
                 ModelPhase::Download => Some(1000), // Network delay
                 ModelPhase::Loading => Some(2000),  // Model loading delay
-                _ => Some(500),
-            },
+                _ => Some(500)},
             _ => Some(200), // Default retry delay
         }
     }
@@ -599,8 +568,7 @@ pub struct ErrorMetrics {
     /// Average error frequency (errors per second)
     error_frequency: AtomicU32,
     /// Last error timestamp
-    last_error_timestamp: AtomicU64,
-}
+    last_error_timestamp: AtomicU64}
 
 impl ErrorMetrics {
     /// Create new error metrics tracker
@@ -612,8 +580,7 @@ impl ErrorMetrics {
             non_recoverable_errors: AtomicU64::new(0),
             retry_attempts: AtomicU64::new(0),
             error_frequency: AtomicU32::new(0),
-            last_error_timestamp: AtomicU64::new(0),
-        }
+            last_error_timestamp: AtomicU64::new(0)}
     }
 
     /// Record an error occurrence
@@ -733,8 +700,7 @@ static GLOBAL_ERROR_METRICS: ErrorMetrics = ErrorMetrics {
     non_recoverable_errors: AtomicU64::new(0),
     retry_attempts: AtomicU64::new(0),
     error_frequency: AtomicU32::new(0),
-    last_error_timestamp: AtomicU64::new(0),
-};
+    last_error_timestamp: AtomicU64::new(0)};
 
 /// Get global error metrics for monitoring
 #[inline(always)]

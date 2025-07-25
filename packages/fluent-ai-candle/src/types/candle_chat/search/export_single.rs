@@ -9,7 +9,7 @@ use std::time::Instant;
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 use crate::chat::message::{MessageRole, SearchChatMessage};
 use super::types::{DateRange, StreamCollect, SearchError};
@@ -28,8 +28,7 @@ pub enum ExportFormat {
     /// XML format
     Xml,
     /// Plain text format
-    PlainText,
-}
+    PlainText}
 
 /// Export options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,8 +48,7 @@ pub struct ExportOptions {
     /// User filter
     pub user_filter: Option<Arc<str>>,
     /// Tag filter
-    pub tag_filter: Option<Vec<Arc<str>>>,
-}
+    pub tag_filter: Option<Vec<Arc<str>>>}
 
 impl Default for ExportOptions {
     fn default() -> Self {
@@ -62,8 +60,7 @@ impl Default for ExportOptions {
             compress: false,
             date_range: None,
             user_filter: None,
-            tag_filter: None,
-        }
+            tag_filter: None}
     }
 }
 
@@ -79,8 +76,7 @@ pub struct ExportStatistics {
     /// Average export time in milliseconds
     pub average_export_time: f64,
     /// Last export timestamp
-    pub last_export_time: u64,
-}
+    pub last_export_time: u64}
 
 impl ExportStatistics {
     /// Create new empty statistics
@@ -118,16 +114,14 @@ pub struct HistoryExporter {
     /// Export counter
     export_counter: Arc<ConsistentCounter>,
     /// Export statistics
-    export_statistics: Arc<RwLock<ExportStatistics>>,
-}
+    export_statistics: Arc<RwLock<ExportStatistics>>}
 
 impl HistoryExporter {
     /// Create a new history exporter
     pub fn new() -> Self {
         Self {
             export_counter: Arc::new(ConsistentCounter::new(0)),
-            export_statistics: Arc::new(RwLock::new(ExportStatistics::default())),
-        }
+            export_statistics: Arc::new(RwLock::new(ExportStatistics::default()))}
     }
 
     /// Export conversation history (streaming)
@@ -152,8 +146,7 @@ impl HistoryExporter {
                 ExportFormat::Markdown => self_clone.export_markdown(&filtered_messages, &options),
                 ExportFormat::Html => self_clone.export_html(&filtered_messages, &options),
                 ExportFormat::Xml => self_clone.export_xml(&filtered_messages, &options),
-                ExportFormat::PlainText => self_clone.export_plain_text(&filtered_messages, &options),
-            };
+                ExportFormat::PlainText => self_clone.export_plain_text(&filtered_messages, &options)};
 
             // Apply compression if requested
             let final_data = if options.compress {
@@ -195,8 +188,7 @@ impl HistoryExporter {
                         "user" => MessageRole::User,
                         "assistant" => MessageRole::Assistant,
                         "tool" => MessageRole::Tool,
-                        _ => MessageRole::User,
-                    };
+                        _ => MessageRole::User};
                     if message.message.role != role_filter {
                         return false;
                     }
@@ -215,8 +207,7 @@ impl HistoryExporter {
             let mut json_obj = serde_json::json!({
                 "role": format!("{:?}", message.message.role),
                 "content": message.message.content,
-                "relevance_score": message.relevance_score,
-            });
+                "relevance_score": message.relevance_score});
 
             if options.include_timestamps {
                 if let Some(timestamp) = message.message.timestamp {
@@ -239,8 +230,7 @@ impl HistoryExporter {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs(),
-                "total_messages": messages.len(),
-            }
+                "total_messages": messages.len()}
         });
 
         serde_json::to_string_pretty(&export_obj).unwrap_or_else(|_| "{}".to_string())
@@ -508,17 +498,14 @@ impl HistoryExporter {
         let compressed = base64::engine::general_purpose::STANDARD
             .decode(compressed_data)
             .map_err(|e| SearchError::ExportError {
-                reason: Arc::from(format!("Base64 decode failed: {}", e)),
-            })?;
+                reason: Arc::from(format!("Base64 decode failed: {}", e))})?;
 
         let decompressed = lz4::block::decompress(&compressed, None)
             .map_err(|e| SearchError::ExportError {
-                reason: Arc::from(format!("LZ4 decompress failed: {}", e)),
-            })?;
+                reason: Arc::from(format!("LZ4 decompress failed: {}", e))})?;
 
         String::from_utf8(decompressed).map_err(|e| SearchError::ExportError {
-            reason: Arc::from(format!("UTF-8 decode failed: {}", e)),
-        })
+            reason: Arc::from(format!("UTF-8 decode failed: {}", e))})
     }
 
     /// Get export statistics (streaming)

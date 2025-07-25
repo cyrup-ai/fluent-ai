@@ -29,20 +29,17 @@ pub const GEMINI_1_0_PRO: &str = "gemini-1.0-pro";
 
 use std::convert::TryFrom;
 
-use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest,
-};
+    self, CompletionCoreError as CompletionError, CompletionRequest};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use gemini_api_types::{
     Content, FunctionDeclaration, GenerateContentRequest, GenerateContentResponse,
-    GenerationConfig, Part, Role, Tool,
-};
+    GenerationConfig, Part, Role, Tool};
 use serde_json::{Map, Value};
 
 use self::gemini_api_types::Schema;
@@ -50,8 +47,7 @@ use super::Client;
 use super::streaming::StreamingCompletionResponse;
 use crate::{
     AsyncStream, OneOrMany,
-    completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
-};
+    completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo}};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -71,8 +67,7 @@ impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -116,8 +111,7 @@ impl completion::CompletionModel for CompletionModel {
                                             ),
                                             None => tracing::info!(target: "rig",
                                                 "Gemini completion token usage: n/a",
-                                            ),
-                                        }
+                                            )}
                                         tracing::debug!("Received response");
                                         completion::CompletionResponse::try_from(response)
                                     }
@@ -133,8 +127,7 @@ impl completion::CompletionModel for CompletionModel {
                                 ))
                             }
                         }
-                        Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                    };
+                        Err(e) => Err(CompletionError::RequestError(e.to_string()))};
 
                     tx.finish(result);
                 });
@@ -195,8 +188,7 @@ pub struct GeminiCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>,
-}
+    chunk_handler: Option<ChunkHandler>}
 
 impl CompletionProvider for GeminiCompletionBuilder {
     /// Create new Gemini completion builder with ModelInfo defaults
@@ -228,8 +220,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None,
-        })
+            chunk_handler: None})
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -403,8 +394,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
                             // Default env_logger behavior (zero allocation)
                             match &chunk_result {
                                 Ok(chunk) => log::debug!("Chunk: {:?}", chunk),
-                                Err(e) => log::error!("Chunk error: {}", e),
-                            }
+                                Err(e) => log::error!("Chunk error: {}", e)}
                         }
 
                         match chunk_result {
@@ -469,8 +459,7 @@ impl GeminiCompletionBuilder {
                 401 => crate::completion_provider::CompletionError::AuthError,
                 413 => crate::completion_provider::CompletionError::RequestTooLarge,
                 429 => crate::completion_provider::CompletionError::RateLimited,
-                _ => crate::completion_provider::CompletionError::HttpError,
-            });
+                _ => crate::completion_provider::CompletionError::HttpError});
         }
 
         let sse_stream = response.sse();
@@ -523,8 +512,7 @@ impl GeminiCompletionBuilder {
         for doc in &self.documents {
             contents.push(Content {
                 parts: OneOrMany::one(format!("Document: {}", doc.content()).into()),
-                role: Some(Role::User),
-            });
+                role: Some(Role::User)});
         }
 
         // Add chat history
@@ -535,14 +523,12 @@ impl GeminiCompletionBuilder {
         // Add user prompt
         contents.push(Content {
             parts: OneOrMany::one(prompt.to_string().into()),
-            role: Some(Role::User),
-        });
+            role: Some(Role::User)});
 
         let system_instruction = if !self.system_prompt.is_empty() {
             Some(Content {
                 parts: OneOrMany::one(self.system_prompt.clone().into()),
-                role: Some(Role::Model),
-            })
+                role: Some(Role::Model)})
         } else {
             None
         };
@@ -565,8 +551,7 @@ impl GeminiCompletionBuilder {
             safety_settings: None,
             tools,
             tool_config: None,
-            system_instruction,
-        })
+            system_instruction})
     }
 
     /// Convert domain Message to Gemini format
@@ -583,8 +568,7 @@ impl GeminiCompletionBuilder {
                     .ok_or(crate::completion_provider::CompletionError::ParseError)?;
                 Ok(Content {
                     parts: OneOrMany::one(content.to_string().into()),
-                    role: Some(Role::User),
-                })
+                    role: Some(Role::User)})
             }
             fluent_ai_domain::message::MessageRole::Assistant => {
                 let mut parts = Vec::new();
@@ -596,15 +580,13 @@ impl GeminiCompletionBuilder {
                 for tool_call in msg.tool_calls() {
                     parts.push(Part::FunctionCall(gemini_api_types::FunctionCall {
                         name: tool_call.function().name().to_string(),
-                        args: tool_call.function().arguments().clone(),
-                    }));
+                        args: tool_call.function().arguments().clone()}));
                 }
 
                 Ok(Content {
                     parts: OneOrMany::many(parts)
                         .map_err(|_| crate::completion_provider::CompletionError::ParseError)?,
-                    role: Some(Role::Model),
-                })
+                    role: Some(Role::Model)})
             }
             fluent_ai_domain::message::MessageRole::System => {
                 let content = msg
@@ -613,8 +595,7 @@ impl GeminiCompletionBuilder {
                     .ok_or(crate::completion_provider::CompletionError::ParseError)?;
                 Ok(Content {
                     parts: OneOrMany::one(content.to_string().into()),
-                    role: Some(Role::Model),
-                })
+                    role: Some(Role::Model)})
             }
         }
     }
@@ -643,10 +624,8 @@ impl GeminiCompletionBuilder {
                 function_declarations: FunctionDeclaration {
                     name: tool.name().to_string(),
                     description: tool.description().to_string(),
-                    parameters,
-                },
-                code_execution: None,
-            });
+                    parameters},
+                code_execution: None});
         }
 
         Ok(tools)
@@ -687,20 +666,17 @@ impl GeminiCompletionBuilder {
                 gemini_api_types::FinishReason::Stop => FinishReason::Stop,
                 gemini_api_types::FinishReason::MaxTokens => FinishReason::Length,
                 gemini_api_types::FinishReason::Safety => FinishReason::ContentFilter,
-                _ => FinishReason::Stop,
-            };
+                _ => FinishReason::Stop};
 
             let usage_info = response.usage_metadata.map(|u| Usage {
                 prompt_tokens: u.prompt_token_count as u32,
                 completion_tokens: u.candidates_token_count as u32,
-                total_tokens: u.total_token_count as u32,
-            });
+                total_tokens: u.total_token_count as u32});
 
             return Ok(CompletionChunk::Complete {
                 text: text_content,
                 finish_reason: Some(reason),
-                usage: usage_info,
-            });
+                usage: usage_info});
         }
 
         if has_tool_calls {
@@ -756,8 +732,7 @@ pub(crate) fn create_request_body(
 
     let system_instruction = completion_request.preamble.clone().map(|preamble| Content {
         parts: OneOrMany::one(preamble.into()),
-        role: Some(Role::Model),
-    });
+        role: Some(Role::Model)});
 
     let request = GenerateContentRequest {
         contents: full_history
@@ -777,8 +752,7 @@ pub(crate) fn create_request_body(
                 .collect::<Result<Vec<_>, _>>()?,
         ),
         tool_config: None,
-        system_instruction,
-    };
+        system_instruction};
 
     Ok(request)
 }
@@ -797,10 +771,8 @@ impl TryFrom<completion::ToolDefinition> for Tool {
             function_declarations: FunctionDeclaration {
                 name: tool.name,
                 description: tool.description,
-                parameters,
-            },
-            code_execution: None,
-        })
+                parameters},
+            code_execution: None})
     }
 }
 
@@ -841,8 +813,7 @@ impl TryFrom<GenerateContentResponse> for completion::CompletionResponse<Generat
 
         Ok(completion::CompletionResponse {
             choice,
-            raw_response: response,
-        })
+            raw_response: response})
     }
 }
 
@@ -875,8 +846,7 @@ pub mod gemini_api_types {
         pub prompt_feedback: Option<PromptFeedback>,
         /// Output only. Metadata on the generation requests' token usage.
         pub usage_metadata: Option<UsageMetadata>,
-        pub model_version: Option<String>,
-    }
+        pub model_version: Option<String>}
 
     /// A response candidate generated from the model.
     #[derive(Debug, Deserialize)]
@@ -901,8 +871,7 @@ pub mod gemini_api_types {
         /// Output only. Log-likelihood scores for the response tokens and top tokens
         pub logprobs_result: Option<LogprobsResult>,
         /// Output only. Index of the candidate in the list of response candidates.
-        pub index: Option<i32>,
-    }
+        pub index: Option<i32>}
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Content {
         /// Ordered Parts that constitute a single message. Parts may have different MIME types.
@@ -910,8 +879,7 @@ pub mod gemini_api_types {
         pub parts: OneOrMany<Part>,
         /// The producer of the content. Must be either 'user' or 'model'.
         /// Useful to set for multi-turn conversations, otherwise can be left blank or unset.
-        pub role: Option<Role>,
-    }
+        pub role: Option<Role>}
 
     impl TryFrom<message::Message> for Content {
         type Error = message::MessageError;
@@ -920,13 +888,10 @@ pub mod gemini_api_types {
             Ok(match msg {
                 message::Message::User { content } => Content {
                     parts: content.try_map(|c| c.try_into())?,
-                    role: Some(Role::User),
-                },
+                    role: Some(Role::User)},
                 message::Message::Assistant { content } => Content {
                     role: Some(Role::Model),
-                    parts: content.map(|content| content.into()),
-                },
-            })
+                    parts: content.map(|content| content.into())}})
         }
     }
 
@@ -979,8 +944,7 @@ pub mod gemini_api_types {
                                 )));
                             }
                         })
-                    })?,
-                }),
+                    })?}),
                 Some(Role::Model) => Ok(message::Message::Assistant {
                     content: content.parts.try_map(|part| {
                         Ok(match part {
@@ -994,9 +958,7 @@ pub mod gemini_api_types {
                                 )));
                             }
                         })
-                    })?,
-                }),
-            }
+                    })?})}
         }
     }
 
@@ -1004,8 +966,7 @@ pub mod gemini_api_types {
     #[serde(rename_all = "lowercase")]
     pub enum Role {
         User,
-        Model,
-    }
+        Model}
 
     /// A datatype containing media that is part of a multi-part [Content] message.
     /// A Part consists of data which has an associated datatype. A Part can only contain one of the accepted types in Part.data.
@@ -1019,8 +980,7 @@ pub mod gemini_api_types {
         FunctionResponse(FunctionResponse),
         FileData(FileData),
         ExecutableCode(ExecutableCode),
-        CodeExecutionResult(CodeExecutionResult),
-    }
+        CodeExecutionResult(CodeExecutionResult)}
 
     impl From<String> for Part {
         fn from(text: String) -> Self {
@@ -1063,8 +1023,7 @@ pub mod gemini_api_types {
                             message::MessageError::ConversionError(format!(
                                 "Failed to parse tool response: {e}"
                             ))
-                        })?),
-                    }))
+                        })?)}))
                 }
                 message::UserContent::Image(message::Image {
                     data, media_type, ..
@@ -1076,16 +1035,13 @@ pub mod gemini_api_types {
                         | message::ImageMediaType::HEIC
                         | message::ImageMediaType::HEIF => Ok(Self::InlineData(Blob {
                             mime_type: media_type.to_mime_type().to_owned(),
-                            data,
-                        })),
+                            data})),
                         _ => Err(message::MessageError::ConversionError(format!(
                             "Unsupported image media type {media_type:?}"
-                        ))),
-                    },
+                        )))},
                     None => Err(message::MessageError::ConversionError(
                         "Media type for image is required for Anthropic".to_string(),
-                    )),
-                },
+                    ))},
                 message::UserContent::Document(message::Document {
                     data, media_type, ..
                 }) => match media_type {
@@ -1099,28 +1055,22 @@ pub mod gemini_api_types {
                         | message::DocumentMediaType::CSV
                         | message::DocumentMediaType::XML => Ok(Self::InlineData(Blob {
                             mime_type: media_type.to_mime_type().to_owned(),
-                            data,
-                        })),
+                            data})),
                         _ => Err(message::MessageError::ConversionError(format!(
                             "Unsupported document media type {media_type:?}"
-                        ))),
-                    },
+                        )))},
                     None => Err(message::MessageError::ConversionError(
                         "Media type for document is required for Anthropic".to_string(),
-                    )),
-                },
+                    ))},
                 message::UserContent::Audio(message::Audio {
                     data, media_type, ..
                 }) => match media_type {
                     Some(media_type) => Ok(Self::InlineData(Blob {
                         mime_type: media_type.to_mime_type().to_owned(),
-                        data,
-                    })),
+                        data})),
                     None => Err(message::MessageError::ConversionError(
                         "Media type for audio is required for Anthropic".to_string(),
-                    )),
-                },
-            }
+                    ))}}
         }
     }
 
@@ -1128,8 +1078,7 @@ pub mod gemini_api_types {
         fn from(content: message::AssistantContent) -> Self {
             match content {
                 message::AssistantContent::Text(message::Text { text }) => text.into(),
-                message::AssistantContent::ToolCall(tool_call) => tool_call.into(),
-            }
+                message::AssistantContent::ToolCall(tool_call) => tool_call.into()}
         }
     }
 
@@ -1137,8 +1086,7 @@ pub mod gemini_api_types {
         fn from(tool_call: message::ToolCall) -> Self {
             Self::FunctionCall(FunctionCall {
                 name: tool_call.function.name,
-                args: tool_call.function.arguments,
-            })
+                args: tool_call.function.arguments})
         }
     }
 
@@ -1151,8 +1099,7 @@ pub mod gemini_api_types {
         /// If an unsupported MIME type is provided, an error will be returned.
         pub mime_type: String,
         /// Raw bytes for media formats. A base64-encoded string.
-        pub data: String,
-    }
+        pub data: String}
 
     /// A predicted FunctionCall returned from the model that contains a string representing the
     /// FunctionDeclaration.name with the arguments and their values.
@@ -1162,8 +1109,7 @@ pub mod gemini_api_types {
         /// and dashes, with a maximum length of 63.
         pub name: String,
         /// Optional. The function parameters and values in JSON object format.
-        pub args: serde_json::Value,
-    }
+        pub args: serde_json::Value}
 
     impl From<FunctionCall> for message::ToolCall {
         fn from(function_call: FunctionCall) -> Self {
@@ -1171,9 +1117,7 @@ pub mod gemini_api_types {
                 id: function_call.name.clone(),
                 function: message::ToolFunction {
                     name: function_call.name,
-                    arguments: function_call.args,
-                },
-            }
+                    arguments: function_call.args}}
         }
     }
 
@@ -1181,8 +1125,7 @@ pub mod gemini_api_types {
         fn from(tool_call: message::ToolCall) -> Self {
             Self {
                 name: tool_call.function.name,
-                args: tool_call.function.arguments,
-            }
+                args: tool_call.function.arguments}
         }
     }
 
@@ -1195,8 +1138,7 @@ pub mod gemini_api_types {
         /// with a maximum length of 63.
         pub name: String,
         /// The function response in JSON object format.
-        pub response: Option<HashMap<String, serde_json::Value>>,
-    }
+        pub response: Option<HashMap<String, serde_json::Value>>}
 
     /// URI based data.
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -1205,14 +1147,12 @@ pub mod gemini_api_types {
         /// Optional. The IANA standard MIME type of the source data.
         pub mime_type: Option<String>,
         /// Required. URI.
-        pub file_uri: String,
-    }
+        pub file_uri: String}
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub struct SafetyRating {
         pub category: HarmCategory,
-        pub probability: HarmProbability,
-    }
+        pub probability: HarmProbability}
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -1221,8 +1161,7 @@ pub mod gemini_api_types {
         Negligible,
         Low,
         Medium,
-        High,
-    }
+        High}
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -1238,8 +1177,7 @@ pub mod gemini_api_types {
         HarmCategoryHateSpeech,
         HarmCategorySexuallyExplicit,
         HarmCategoryDangerousContent,
-        HarmCategoryCivicIntegrity,
-    }
+        HarmCategoryCivicIntegrity}
 
     #[derive(Debug, Deserialize, Clone, Default)]
     #[serde(rename_all = "camelCase")]
@@ -1248,8 +1186,7 @@ pub mod gemini_api_types {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub cached_content_token_count: Option<i32>,
         pub candidates_token_count: i32,
-        pub total_token_count: i32,
-    }
+        pub total_token_count: i32}
 
     impl std::fmt::Display for UsageMetadata {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1259,8 +1196,7 @@ pub mod gemini_api_types {
                 self.prompt_token_count,
                 match self.cached_content_token_count {
                     Some(count) => count.to_string(),
-                    None => "n/a".to_string(),
-                },
+                    None => "n/a".to_string()},
                 self.candidates_token_count,
                 self.total_token_count
             )
@@ -1274,8 +1210,7 @@ pub mod gemini_api_types {
         /// Optional. If set, the prompt was blocked and no candidates are returned. Rephrase the prompt.
         pub block_reason: Option<BlockReason>,
         /// Ratings for safety of the prompt. There is at most one rating per category.
-        pub safety_ratings: Option<Vec<SafetyRating>>,
-    }
+        pub safety_ratings: Option<Vec<SafetyRating>>}
 
     /// Reason why a prompt was blocked by the model
     #[derive(Debug, Deserialize)]
@@ -1290,8 +1225,7 @@ pub mod gemini_api_types {
         /// Prompt was blocked due to the terms which are included from the terminology blocklist.
         Blocklist,
         /// Prompt was blocked due to prohibited content.
-        ProhibitedContent,
-    }
+        ProhibitedContent}
 
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -1317,14 +1251,12 @@ pub mod gemini_api_types {
         /// Token generation stopped because the content potentially contains Sensitive Personally Identifiable Information (SPII).
         Spii,
         /// The function call generated by the model is invalid.
-        MalformedFunctionCall,
-    }
+        MalformedFunctionCall}
 
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct CitationMetadata {
-        pub citation_sources: Vec<CitationSource>,
-    }
+        pub citation_sources: Vec<CitationSource>}
 
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -1336,28 +1268,24 @@ pub mod gemini_api_types {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub end_index: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub license: Option<String>,
-    }
+        pub license: Option<String>}
 
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct LogprobsResult {
         pub top_candidate: Vec<TopCandidate>,
-        pub chosen_candidate: Vec<LogProbCandidate>,
-    }
+        pub chosen_candidate: Vec<LogProbCandidate>}
 
     #[derive(Debug, Deserialize)]
     pub struct TopCandidate {
-        pub candidates: Vec<LogProbCandidate>,
-    }
+        pub candidates: Vec<LogProbCandidate>}
 
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct LogProbCandidate {
         pub token: String,
         pub token_id: String,
-        pub log_probability: f64,
-    }
+        pub log_probability: f64}
 
     /// Gemini API Configuration options for model generation and outputs. Not all parameters are
     /// configurable for every model. From [Gemini API Reference](https://ai.google.dev/api/generate-content#generationconfig)
@@ -1431,8 +1359,7 @@ pub mod gemini_api_types {
         /// Only valid if responseLogprobs=True. This sets the number of top logprobs to return at each decoding step in
         /// [Candidate.logprobs_result].
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub logprobs: Option<i32>,
-    }
+        pub logprobs: Option<i32>}
 
     impl Default for GenerationConfig {
         fn default() -> Self {
@@ -1448,8 +1375,7 @@ pub mod gemini_api_types {
                 presence_penalty: None,
                 frequency_penalty: None,
                 response_logprobs: None,
-                logprobs: None,
-            }
+                logprobs: None}
         }
     }
     /// The Schema object allows the definition of input and output data types. These types can be objects, but also
@@ -1475,8 +1401,7 @@ pub mod gemini_api_types {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub required: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub items: Option<Box<Schema>>,
-    }
+        pub items: Option<Box<Schema>>}
 
     impl TryFrom<Value> for Schema {
         type Error = CompletionError;
@@ -1544,8 +1469,7 @@ pub mod gemini_api_types {
                                     )
                                 })
                         })
-                        .transpose()?,
-                })
+                        .transpose()?})
             } else {
                 Err(CompletionError::ResponseError(
                     "Expected a JSON object for Schema".into(),
@@ -1586,8 +1510,7 @@ pub mod gemini_api_types {
     #[serde(rename_all = "camelCase")]
     pub struct Tool {
         pub function_declarations: FunctionDeclaration,
-        pub code_execution: Option<CodeExecution>,
-    }
+        pub code_execution: Option<CodeExecution>}
 
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -1595,14 +1518,12 @@ pub mod gemini_api_types {
         pub name: String,
         pub description: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub parameters: Option<Schema>,
-    }
+        pub parameters: Option<Schema>}
 
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct ToolConfig {
-        pub schema: Option<Schema>,
-    }
+        pub schema: Option<Schema>}
 
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -1612,8 +1533,7 @@ pub mod gemini_api_types {
     #[serde(rename_all = "camelCase")]
     pub struct SafetySetting {
         pub category: HarmCategory,
-        pub threshold: HarmBlockThreshold,
-    }
+        pub threshold: HarmBlockThreshold}
 
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -1623,8 +1543,7 @@ pub mod gemini_api_types {
         BlockMediumAndAbove,
         BlockOnlyHigh,
         BlockNone,
-        Off,
-    }
+        Off}
 }
 
 #[cfg(test)]
@@ -1790,13 +1709,10 @@ mod tests {
             id: "test_tool".to_string(),
             function: message::ToolFunction {
                 name: "test_function".to_string(),
-                arguments: json!({"arg1": "value1"}),
-            },
-        };
+                arguments: json!({"arg1": "value1"})}};
 
         let msg = message::Message::Assistant {
-            content: OneOrMany::one(message::AssistantContent::ToolCall(tool_call)),
-        };
+            content: OneOrMany::one(message::AssistantContent::ToolCall(tool_call))};
 
         let content: Content = msg
             .try_into()

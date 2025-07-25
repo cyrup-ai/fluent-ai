@@ -18,18 +18,15 @@ pub mod xai;
 
 // Re-export core provider types for convenience
 pub use anthropic::{
-    AnthropicClient, AnthropicCompletionRequest, AnthropicError, AnthropicProvider, AnthropicResult,
-};
+    AnthropicClient, AnthropicCompletionRequest, AnthropicError, AnthropicProvider, AnthropicResult};
 // Azure OpenAI client
 pub use azure::{AzureOpenAIAuth, Client as AzureClient, ClientBuilder as AzureClientBuilder};
 pub use bedrock::{
     AwsCredentials, BedrockClient, BedrockCompletionBuilder, BedrockError, BedrockProvider,
-    SigV4Signer,
-};
+    SigV4Signer};
 // Deepseek client
 pub use deepseek::{
-    DEEPSEEK_CHAT, DEEPSEEK_REASONER, DeepSeekClient as DeepseekClient, DeepSeekCompletionBuilder,
-};
+    DEEPSEEK_CHAT, DEEPSEEK_REASONER, DeepSeekClient as DeepseekClient, DeepSeekCompletionBuilder};
 // Gemini client
 pub use gemini::{Client as GeminiClient, GeminiCompletionBuilder};
 // Groq client
@@ -38,34 +35,28 @@ pub use groq::{
     GroqCompletionBuilder, LLAMA_3_1_8B_INSTANT, LLAMA_3_2_1B_PREVIEW, LLAMA_3_2_3B_PREVIEW,
     LLAMA_3_2_11B_VISION_PREVIEW, LLAMA_3_2_70B_SPECDEC, LLAMA_3_2_70B_VERSATILE,
     LLAMA_3_2_90B_VISION_PREVIEW, LLAMA_3_8B_8192, LLAMA_3_70B_8192, LLAMA_GUARD_3_8B,
-    MIXTRAL_8X7B_32768, WHISPER_LARGE_V3, WHISPER_LARGE_V3_TURBO,
-};
+    MIXTRAL_8X7B_32768, WHISPER_LARGE_V3, WHISPER_LARGE_V3_TURBO};
 // Huggingface client
 pub use huggingface::{
     Client as HuggingfaceClient, GEMMA_2, HuggingfaceCompletionBuilder, META_LLAMA_3_1, PHI_4,
-    QWEN_QVQ_PREVIEW, QWEN2_5, QWEN2_5_CODER, QWEN2_VL, SMALLTHINKER_PREVIEW, SubProvider,
-};
+    QWEN_QVQ_PREVIEW, QWEN2_5, QWEN2_5_CODER, QWEN2_VL, SMALLTHINKER_PREVIEW, SubProvider};
 // Mistral client
 pub use mistral::{
     CODESTRAL, CODESTRAL_MAMBA, Client as MistralClient, MINISTRAL_3B, MINISTRAL_8B, MISTRAL_EMBED,
     MISTRAL_LARGE, MISTRAL_NEMO, MISTRAL_SABA, MISTRAL_SMALL, MistralCompletionBuilder,
     NewMistralCompletionBuilder, PIXTRAL_LARGE, PIXTRAL_SMALL, available_mistral_models,
-    mistral_completion_builder,
-};
+    mistral_completion_builder};
 // Ollama client
 pub use ollama::{
     ALL_MINILM, Client as OllamaClient, LLAMA3_2, LLAVA, MISTRAL, MISTRAL_MAGISTRAR_SMALL,
-    NOMIC_EMBED_TEXT, OllamaCompletionBuilder,
-};
+    NOMIC_EMBED_TEXT, OllamaCompletionBuilder};
 pub use openai::{
     OpenAIClient, OpenAICompletionRequest, OpenAICompletionResponse, OpenAIError, OpenAIProvider,
-    OpenAIResult,
-};
+    OpenAIResult};
 // OpenRouter client
 pub use openrouter::{
     CLAUDE_3_7_SONNET, Client as OpenRouterClient, GEMINI_FLASH_2_0, GPT_4_1,
-    OpenRouterCompletionBuilder, PERPLEXITY_SONAR_PRO, QWEN_QWQ_32B,
-};
+    OpenRouterCompletionBuilder, PERPLEXITY_SONAR_PRO, QWEN_QWQ_32B};
 // Perplexity client
 pub use perplexity::{Client as PerplexityClient, PerplexityCompletionBuilder, SONAR, SONAR_PRO};
 // Together client
@@ -180,7 +171,6 @@ pub use together::{
     WIZARDLM_2_8X22B,
     WIZARDLM_13B_V1_2,
     YI_34B_CHAT,
-    ZEPHYR_7B_BETA,
-};
+    ZEPHYR_7B_BETA};
 // xAI client
 pub use xai::{Client as XAIClient, GROK_3, GROK_3_MINI, XAICompletionBuilder};

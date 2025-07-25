@@ -40,8 +40,7 @@ impl AdvancedSecondaryParser {
         Ok(ImmutableChatCommand::Session {
             action,
             name,
-            include_config: false,
-        })
+            include_config: false})
     }
 
     /// Parse tool command
@@ -76,8 +75,7 @@ impl AdvancedSecondaryParser {
         Ok(ImmutableChatCommand::Tool {
             action,
             name,
-            args: args_map,
-        })
+            args: args_map})
     }
 
     /// Parse stats command
@@ -110,8 +108,7 @@ impl AdvancedSecondaryParser {
         Ok(ImmutableChatCommand::Stats {
             stat_type,
             period,
-            detailed,
-        })
+            detailed})
     }
 
     /// Parse theme command
@@ -143,8 +140,7 @@ impl AdvancedSecondaryParser {
         Ok(ImmutableChatCommand::Theme {
             action,
             name,
-            properties,
-        })
+            properties})
     }
 
     /// Parse debug command
@@ -177,8 +173,7 @@ impl AdvancedSecondaryParser {
         Ok(ImmutableChatCommand::Debug {
             action,
             level,
-            system_info,
-        })
+            system_info})
     }
 
     /// Parse custom command
@@ -193,7 +188,6 @@ impl AdvancedSecondaryParser {
         Ok(ImmutableChatCommand::Custom {
             name: name.to_string(),
             args: args_map,
-            metadata: None,
-        })
+            metadata: None})
     }
 }

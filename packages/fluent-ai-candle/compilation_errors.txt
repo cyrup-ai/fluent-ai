@@ -1,0 +1,529 @@
+error[E0412]: cannot find type `AtomicConsistentCounter` in this scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/storage.rs:23:20
+    |
+23  |     macro_counter: AtomicConsistentCounter}
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `ConsistentCounter`
+    |
+--
+error[E0412]: cannot find type `AtomicConsistentCounter` in this scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/streaming.rs:40:29
+    |
+40  |     subscriber_counter: Arc<AtomicConsistentCounter>,
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/tokenizer/core.rs:208:34
+    |
+208 |         let bpe_model = BPE::new(vocab, merges);
+    |                         -------- ^^^^^ expected `AHashMap<String, u32>`, found `HashMap<String, u32>`
+    |                         |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/integrations/external.rs:306:13
+    |
+305 |             map.insert("x-api-key", token.as_ref());
+    |             ---        ----------- this argument has type `&str`...
+    |             |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/integrations/external.rs:340:13
+    |
+338 |             map.insert("user-agent", "external");
+    |             ---        ------------ this argument has type `&str`...
+    |             |
+--
+error[E0282]: type annotations needed for `Arc<_, _>`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/index.rs:111:21
+    |
+111 |                 let term = Arc::from(token.as_str());
+    |                     ^^^^
+...
+--
+error[E0609]: no field `message` on type `&types::candle_chat::message::SearchChatMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/formats.rs:35:86
+   |
+35 |             json_obj.insert("content".to_string(), serde_json::Value::String(message.message.content.to_string()));
+   |                                                                                      ^^^^^^^ unknown field
+   |
+--
+error[E0609]: no field `message` on type `&types::candle_chat::message::SearchChatMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/formats.rs:36:83
+   |
+36 |             json_obj.insert("role".to_string(), serde_json::Value::String(message.message.role.as_str()));
+   |                                                                                   ^^^^^^^ unknown field
+   |
+--
+error[E0609]: no field `message` on type `&types::candle_chat::message::SearchChatMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/formats.rs:81:43
+   |
+81 |             let content_escaped = message.message.content.replace("\"", "\"\"");
+   |                                           ^^^^^^^ unknown field
+   |
+--
+error[E0609]: no field `message` on type `&types::candle_chat::message::SearchChatMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/formats.rs:82:36
+   |
+82 |             let role_str = message.message.role.as_str();
+   |                                    ^^^^^^^ unknown field
+   |
+--
+error[E0609]: no field `message` on type `&types::candle_chat::message::SearchChatMessage`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/formats.rs:134:36
+    |
+134 |             let role_str = message.message.role.as_str();
+    |                                    ^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `message` on type `&types::candle_chat::message::SearchChatMessage`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/formats.rs:136:42
+    |
+136 |             md_content.push_str(&message.message.content);
+    |                                          ^^^^^^^ unknown field
+    |
+--
+error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/exporter.rs:21:5
+   |
+16 | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+...
+--
+error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/export/exporter.rs:23:5
+   |
+16 | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+...
+--
+error[E0560]: struct `types::candle_chat::message::SearchChatMessage` has no field named `message`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/manager.rs:90:21
+   |
+90 |                     message: crate::types::candle_chat::chat::message::Message {
+   |                     ^^^^^^^ `types::candle_chat::message::SearchChatMessage` does not have this field
+   |
+--
+error[E0308]: mismatched types
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/manager.rs:91:29
+   |
+91 |                         id: Some(Uuid::new_v4().to_string()),
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `Option<String>`
+   |
+--
+error[E0063]: missing fields `metadata` and `name` in initializer of `CandleMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/manager.rs:90:30
+   |
+90 |                     message: crate::types::candle_chat::chat::message::Message {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `metadata` and `name`
+
+error[E0560]: struct `types::candle_chat::message::SearchChatMessage` has no field named `highlights`
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/manager.rs:96:21
+   |
+96 |                     highlights: Vec::new()},
+   |                     ^^^^^^^^^^ `types::candle_chat::message::SearchChatMessage` does not have this field
+   |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/searcher.rs:163:29
+    |
+163 |                         id: Some(Uuid::new_v4().to_string()),
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `Option<String>`
+    |
+--
+error[E0063]: missing fields `metadata` and `name` in initializer of `CandleMessage`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/searcher.rs:162:30
+    |
+162 |                     message: CandleMessage {
+    |                              ^^^^^^^^^^^^^ missing `metadata` and `name`
+
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/searcher.rs:162:30
+    |
+162 |                       message: CandleMessage {
+    |  ______________________________^
+163 | |                         id: Some(Uuid::new_v4().to_string()),
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/ranking.rs:152:32
+    |
+152 |                 if timestamp < date_range.start || timestamp > date_range.end {
+    |                    ---------   ^^^^^^^^^^^^^^^^ expected `u64`, found `DateTime<Utc>`
+    |                    |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/ranking.rs:152:64
+    |
+152 |                 if timestamp < date_range.start || timestamp > date_range.end {
+    |                                                    ---------   ^^^^^^^^^^^^^^ expected `u64`, found `DateTime<Utc>`
+    |                                                    |
+--
+error[E0599]: no function or associated item named `custom` found for struct `serde_json::Error` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:65:48
+    |
+65  | ...                   serde_json::Error::custom("System time error")
+    |                                          ^^^^^^ function or associated item not found in `serde_json::Error`
+    |
+--
+error[E0308]: mismatched types
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:74:23
+   |
+74 |                 name: name.clone(),
+   |                       ^^^^^^^^^^^^ expected `Arc<str>`, found `String`
+   |
+--
+error[E0308]: mismatched types
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:75:17
+   |
+75 |                 description,
+   |                 ^^^^^^^^^^^ expected `Arc<str>`, found `String`
+   |
+--
+error[E0308]: mismatched types
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:80:25
+   |
+80 |                 author: "system".to_string(),
+   |                         ^^^^^^^^^^^^^^^^^^^^ expected `Arc<str>`, found `String`
+   |
+--
+error[E0308]: mismatched types
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:85:27
+   |
+85 |                 category: "user-defined".to_string(),
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Arc<str>`, found `String`
+   |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:150:63
+    |
+150 |                         recording_sessions.insert(session_id, session);
+    |                                            ------             ^^^^^^^ expected `MacroRecordingSession`, found `&MacroRecordingSession`
+    |                                            |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:184:63
+    |
+184 |                         recording_sessions.insert(session_id, session);
+    |                                            ------             ^^^^^^^ expected `MacroRecordingSession`, found `&MacroRecordingSession`
+    |                                            |
+--
+error[E0609]: no field `1` on type `Entry<'_, Uuid, MacroRecordingSession>`
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:215:49
+    |
+215 |                 let mut session = session_entry.1; // Extract value from removed entry
+    |                                                 ^ unknown field
+    |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/recording.rs:344:55
+    |
+344 |                 recording_sessions.insert(session_id, session);
+    |                                    ------             ^^^^^^^ expected `MacroRecordingSession`, found `&MacroRecordingSession`
+    |                                    |
+--
+error[E0599]: no method named `clone` found for struct `RwLock` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/playback.rs:43:56
+   |
+43 |         let playback_sessions = self.playback_sessions.clone();
+   |                                                        ^^^^^ method not found in `RwLock<HashMap<Uuid, MacroPlaybackSession>>`
+
+error[E0599]: no method named `clone` found for struct `RwLock` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/playback.rs:88:56
+   |
+88 |         let playback_sessions = self.playback_sessions.clone();
+   |                                                        ^^^^^ method not found in `RwLock<HashMap<Uuid, MacroPlaybackSession>>`
+
+error[E0433]: failed to resolve: use of undeclared type `AtomicConsistentCounter`
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/storage.rs:31:28
+   |
+31 |             macro_counter: AtomicConsistentCounter::new(0)}
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+   |                            |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/storage.rs:100:64
+    |
+100 |             .filter(|entry| entry.value().metadata.category == category)
+    |                             -------------------------------    ^^^^^^^^ expected `Arc<str>`, found `&str`
+    |                             |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/storage.rs:109:62
+    |
+109 |             .filter(|entry| entry.value().metadata.author == author)
+    |                             -----------------------------    ^^^^^^ expected `Arc<str>`, found `&str`
+    |                             |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/storage.rs:198:9
+    |
+192 |     fn get_category_counts(&self) -> HashMap<String, usize> {
+    |                                      ---------------------- expected `std::collections::HashMap<std::string::String, usize>` because of return type
+...
+--
+error[E0599]: no method named `start_recording_sync` found for struct `MacroRecorder` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:86:28
+   |
+86 |             match recorder.start_recording_sync(name, description) {
+   |                            ^^^^^^^^^^^^^^^^^^^^
+   |
+--
+error[E0599]: no method named `record_action_sync` found for struct `MacroRecorder` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:98:28
+   |
+98 |             match recorder.record_action_sync(session_id, action) {
+   |                            ^^^^^^^^^^^^^^^^^^
+   |
+--
+error[E0599]: no method named `stop_recording_sync` found for struct `MacroRecorder` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:110:28
+    |
+110 |             match recorder.stop_recording_sync(session_id) {
+    |                            ^^^^^^^^^^^^^^^^^^^
+    |
+--
+error[E0599]: no method named `clone` found for struct `MacroPlayer` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:121:34
+    |
+121 |         let player = self.player.clone();
+    |                                  ^^^^^ method not found in `MacroPlayer`
+    |
+--
+error[E0599]: no method named `clone` found for struct `MacroPlayer` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:133:34
+    |
+133 |         let player = self.player.clone();
+    |                                  ^^^^^ method not found in `MacroPlayer`
+    |
+--
+error[E0599]: no method named `clone` found for struct `std::sync::RwLock` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:170:40
+    |
+170 |         let variables = self.variables.clone();
+    |                                        ^^^^^ method not found in `std::sync::RwLock<VariableManager>`
+    |
+--
+error[E0599]: no method named `clone` found for struct `std::sync::RwLock` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:189:40
+    |
+189 |         let variables = self.variables.clone();
+    |                                        ^^^^^ method not found in `std::sync::RwLock<VariableManager>`
+    |
+--
+error[E0599]: no method named `clone` found for struct `std::sync::RwLock` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/mod.rs:207:40
+    |
+207 |         let variables = self.variables.clone();
+    |                                        ^^^^^ method not found in `std::sync::RwLock<VariableManager>`
+    |
+--
+error[E0277]: the trait bound `std::string::String: From<CandleMessageRole>` is not satisfied
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/live_updates.rs:197:21
+    |
+195 |                 message: CandleMessage::new(
+    |                          ------------------ required by a bound introduced by this call
+196 |                     message.user_id.len() as u64, // Use user_id length as ID for now
+--
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/live_updates.rs:195:26
+    |
+195 |                 message: CandleMessage::new(
+    |                          ^^^^^^^^^^^^^^^^^^
+196 |                     message.user_id.len() as u64, // Use user_id length as ID for now
+--
+error[E0433]: failed to resolve: use of undeclared type `AtomicConsistentCounter`
+  --> packages/fluent-ai-candle/src/types/candle_chat/realtime/streaming.rs:65:42
+   |
+65 |             subscriber_counter: Arc::new(AtomicConsistentCounter::new(0)),
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          |
+--
+error[E0277]: the trait bound `std::string::String: From<CandleMessageRole>` is not satisfied
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/streaming.rs:110:21
+    |
+108 |                 message: CandleMessage::new(
+    |                          ------------------ required by a bound introduced by this call
+109 |                     message.user_id.len() as u64,
+--
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/streaming.rs:108:26
+    |
+108 |                 message: CandleMessage::new(
+    |                          ^^^^^^^^^^^^^^^^^^
+109 |                     message.user_id.len() as u64,
+--
+error[E0599]: no method named `clone` found for struct `AtomicU64` in the current scope
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/streaming.rs:255:52
+    |
+255 |         let processing_rate = self.processing_rate.clone();
+    |                                                    ^^^^^ method not found in `AtomicU64`
+
+error[E0599]: no method named `start_processing` found for struct `Arc<live_updates::LiveUpdateSystem>` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/realtime/system.rs:91:33
+   |
+91 |         self.live_update_system.start_processing();
+   |                                 ^^^^^^^^^^^^^^^^ method not found in `Arc<live_updates::LiveUpdateSystem>`
+
+error[E0609]: no field `message` on type `types::candle_chat::message::SearchChatMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/indexing.rs:26:18
+   |
+26 |                 .message
+   |                  ^^^^^^^ unknown field
+   |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/index/indexing.rs:32:53
+    |
+32  |                 .insert(Arc::from(doc_id.as_str()), message.clone());
+    |                  ------                             ^^^^^^^^^^^^^^^ expected `CandleMessage`, found `SearchChatMessage`
+    |                  |
+--
+error[E0609]: no field `message` on type `types::candle_chat::message::SearchChatMessage`
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/indexing.rs:35:65
+   |
+35 |             let tokens = self_clone.tokenize_with_simd(&message.message.content);
+   |                                                                 ^^^^^^^ unknown field
+   |
+--
+error[E0282]: type annotations needed
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/query_engine.rs:86:48
+   |
+86 |                 let doc_id = result.message.id.as_ref().unwrap_or(&String::new()).clone();
+   |                                                ^^^^^^   --------- type must be known at this point
+   |
+--
+error[E0599]: no method named `unwrap_or_default` found for struct `std::string::String` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/search_ops.rs:74:56
+   |
+74 |                 excluded_docs.insert(result.message.id.unwrap_or_default());
+   |                                                        ^^^^^^^^^^^^^^^^^ method not found in `std::string::String`
+
+error[E0599]: no method named `unwrap_or_default` found for struct `std::string::String` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/utils.rs:35:43
+   |
+35 |             .map(|r| r.message.id.clone().unwrap_or_default())
+   |                                           ^^^^^^^^^^^^^^^^^ method not found in `std::string::String`
+
+error[E0599]: no method named `unwrap_or_default` found for struct `std::string::String` in the current scope
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/utils.rs:39:57
+   |
+39 |             if ids2.contains(&result.message.id.clone().unwrap_or_default()) {
+   |                                                         ^^^^^^^^^^^^^^^^^ method not found in `std::string::String`
+
+error[E0609]: no field `statistics` on type `&tags::ConversationTagger`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/tags.rs:176:37
+    |
+176 |         let statistics_clone = self.statistics.clone();
+    |                                     ^^^^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `statistics` on type `&tags::ConversationTagger`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/tags.rs:214:37
+    |
+214 |         let statistics_clone = self.statistics.clone();
+    |                                     ^^^^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `message` on type `types::candle_chat::message::SearchChatMessage`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/tagging.rs:256:31
+    |
+256 |         let content = message.message.content.to_lowercase();
+    |                               ^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `total_results` on type `&types::candle_chat::search::types::SearchStatistics`
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/export/csv.rs:60:59
+   |
+60 |         csv.push_str(&format!("total_results,{}\n", stats.total_results));
+   |                                                           ^^^^^^^^^^^^^ unknown field
+   |
+--
+error[E0609]: no field `cache_hit_rate` on type `&types::candle_chat::search::types::SearchStatistics`
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/export/csv.rs:62:60
+   |
+62 |         csv.push_str(&format!("cache_hit_rate,{}\n", stats.cache_hit_rate));
+   |                                                            ^^^^^^^^^^^^^^ unknown field
+   |
+--
+error[E0609]: no field `total_results` on type `&types::candle_chat::search::types::SearchStatistics`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/export/text_formats.rs:163:19
+    |
+163 |             stats.total_results,
+    |                   ^^^^^^^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `cache_hit_rate` on type `&types::candle_chat::search::types::SearchStatistics`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/export/text_formats.rs:165:19
+    |
+165 |             stats.cache_hit_rate * 100.0
+    |                   ^^^^^^^^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `total_results` on type `&types::candle_chat::search::types::SearchStatistics`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/export/text_formats.rs:174:19
+    |
+174 |             stats.total_results,
+    |                   ^^^^^^^^^^^^^ unknown field
+    |
+--
+error[E0609]: no field `cache_hit_rate` on type `&types::candle_chat::search::types::SearchStatistics`
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/export/text_formats.rs:176:19
+    |
+176 |             stats.cache_hit_rate * 100.0
+    |                   ^^^^^^^^^^^^^^ unknown field
+    |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/history_export.rs:264:24
+    |
+264 |                 if let Some(start) = date_range.start {
+    |                        ^^^^^^^^^^^   ---------------- this expression has type `u64`
+    |                        |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/history_export.rs:269:24
+    |
+269 |                 if let Some(end) = date_range.end {
+    |                        ^^^^^^^^^   -------------- this expression has type `u64`
+    |                        |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/mod.rs:180:78
+    |
+180 |             let mut export_stream = exporter.export_history_stream(messages, options);
+    |                                              ---------------------           ^^^^^^^ expected `history_export::ExportOptions`, found `ExportOptions`
+    |                                              |
+--
+error[E0308]: mismatched types
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/mod.rs:234:38
+    |
+234 |                 stats.export_stats = export_stats;
+    |                 ------------------   ^^^^^^^^^^^^ expected `ExportStatistics`, found `history_export::ExportStatistics`
+    |                 |
+--
+error[E0308]: mismatched types
+  --> packages/fluent-ai-candle/src/types/candle_chat/templates/engines.rs:44:24
+   |
+44 |                     if b {
+   |                        ^ expected `bool`, found `&bool`
+   |
+--
+error[E0596]: cannot borrow `session.actions` as mutable, as it is behind a `&` reference
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/system.rs:129:25
+    |
+127 |                 if let Some(session) = sessions.get(&session_id) {
+    |                             ------- consider changing this binding's type to be: `&mut types::candle_chat::chat::macros::types::MacroRecordingSession`
+128 |                     if session.state == MacroRecordingState::Recording {
+--
+error[E0521]: borrowed data escapes outside of method
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/tags.rs:247:9
+    |
+246 |       pub fn auto_tag_message_stream(&self, message: CandleMessage) -> AsyncStream<Arc<str>> {
+    |                                      -----
+    |                                      |
+--
+error[E0596]: cannot borrow `export_stream` as mutable, as it is not declared as mutable
+   --> packages/fluent-ai-candle/src/types/candle_chat/search/history_export.rs:414:37
+    |
+414 |             while let Some(chunk) = export_stream.try_next() {
+    |                                     ^^^^^^^^^^^^^ cannot borrow as mutable
+    |

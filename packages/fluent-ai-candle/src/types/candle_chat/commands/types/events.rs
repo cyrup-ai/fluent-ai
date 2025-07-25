@@ -15,35 +15,29 @@ pub enum CommandEvent {
     Started {
         command: ImmutableChatCommand,
         execution_id: u64,
-        timestamp_nanos: u64,
-    },
+        timestamp_nanos: u64},
     /// Command execution progress
     Progress {
         execution_id: u64,
         progress_percent: f32,
-        message: Option<String>,
-    },
+        message: Option<String>},
     /// Command produced output
     Output {
         execution_id: u64,
         output: String,
-        output_type: OutputType,
-    },
+        output_type: OutputType},
     /// Command completed successfully
     Completed {
         execution_id: u64,
         result: CommandExecutionResult,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     /// Command failed
     Failed {
         execution_id: u64,
         error: CommandError,
-        duration_nanos: u64,
-    },
+        duration_nanos: u64},
     /// Command was cancelled
-    Cancelled { execution_id: u64, reason: String },
-}
+    Cancelled { execution_id: u64, reason: String }}
 
 /// Command output type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,8 +46,7 @@ pub enum OutputType {
     Json,
     Html,
     Markdown,
-    Binary,
-}
+    Binary}
 
 /// Search-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,8 +54,7 @@ pub enum SearchScope {
     All,
     Current,
     Recent,
-    Bookmarked,
-}
+    Bookmarked}
 
 /// Template-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,8 +63,7 @@ pub enum TemplateAction {
     Create,
     Delete,
     Edit,
-    Use,
-}
+    Use}
 
 /// Macro-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,8 +72,7 @@ pub enum MacroAction {
     Create,
     Delete,
     Edit,
-    Execute,
-}
+    Execute}
 
 /// Branch-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -91,8 +81,7 @@ pub enum BranchAction {
     Create,
     Switch,
     Merge,
-    Delete,
-}
+    Delete}
 
 /// Session-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,8 +91,7 @@ pub enum SessionAction {
     Switch,
     Delete,
     Export,
-    Import,
-}
+    Import}
 
 /// Tool-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,8 +101,7 @@ pub enum ToolAction {
     Remove,
     Configure,
     Update,
-    Execute,
-}
+    Execute}
 
 /// Stats-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,8 +111,7 @@ pub enum StatsType {
     History,
     Tokens,
     Costs,
-    Errors,
-}
+    Errors}
 
 /// Theme-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,8 +121,7 @@ pub enum ThemeAction {
     Create,
     Export,
     Import,
-    Edit,
-}
+    Edit}
 
 /// Debug-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -146,8 +131,7 @@ pub enum DebugAction {
     Performance,
     Memory,
     Network,
-    Cache,
-}
+    Cache}
 
 /// History-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,8 +141,7 @@ pub enum HistoryAction {
     Clear,
     Export,
     Import,
-    Backup,
-}
+    Backup}
 
 /// Import-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -166,8 +149,7 @@ pub enum ImportType {
     Chat,
     Config,
     Templates,
-    Macros,
-}
+    Macros}
 
 /// Command execution result
 #[derive(Debug, Clone)]
@@ -180,8 +162,6 @@ pub enum CommandExecutionResult {
     File {
         path: String,
         size_bytes: u64,
-        mime_type: String,
-    },
+        mime_type: String},
     /// Multiple results
-    Multiple(Vec<CommandExecutionResult>),
-}
+    Multiple(Vec<CommandExecutionResult>)}

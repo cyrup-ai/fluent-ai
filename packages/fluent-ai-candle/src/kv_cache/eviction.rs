@@ -38,8 +38,7 @@ pub enum EvictionStrategy {
     Clock = 7,
 
     /// Second chance algorithm
-    SecondChance = 8,
-}
+    SecondChance = 8}
 
 impl Default for EvictionStrategy {
     #[inline(always)]
@@ -75,8 +74,7 @@ impl EvictionStrategy {
             Self::AdaptiveLFU => "AdaptiveLFU",
             Self::TTL => "TTL",
             Self::Clock => "Clock",
-            Self::SecondChance => "SecondChance",
-        }
+            Self::SecondChance => "SecondChance"}
     }
 
     /// Get strategy description
@@ -90,8 +88,7 @@ impl EvictionStrategy {
             Self::AdaptiveLFU => "LFU with recency consideration",
             Self::TTL => "Evicts items based on time-to-live",
             Self::Clock => "Clock algorithm approximating LRU",
-            Self::SecondChance => "FIFO with second chance for referenced items",
-        }
+            Self::SecondChance => "FIFO with second chance for referenced items"}
     }
 
     /// Check if strategy requires access tracking
@@ -100,8 +97,7 @@ impl EvictionStrategy {
         match self {
             Self::LRU | Self::LFU | Self::AdaptiveLRU | Self::AdaptiveLFU 
             | Self::Clock | Self::SecondChance => true,
-            Self::FIFO | Self::Random | Self::TTL => false,
-        }
+            Self::FIFO | Self::Random | Self::TTL => false}
     }
 
     /// Check if strategy is adaptive
@@ -115,8 +111,7 @@ impl EvictionStrategy {
         match self {
             Self::Random | Self::FIFO => EvictionComplexity::O1,
             Self::Clock | Self::SecondChance => EvictionComplexity::OLogN,
-            Self::LRU | Self::LFU | Self::AdaptiveLRU | Self::AdaptiveLFU | Self::TTL => EvictionComplexity::ON,
-        }
+            Self::LRU | Self::LFU | Self::AdaptiveLRU | Self::AdaptiveLFU | Self::TTL => EvictionComplexity::ON}
     }
 }
 
@@ -128,8 +123,7 @@ pub enum EvictionComplexity {
     /// Logarithmic time O(log n)
     OLogN,
     /// Linear time O(n)
-    ON,
-}
+    ON}
 
 impl std::fmt::Display for EvictionStrategy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -141,8 +135,7 @@ impl std::fmt::Display for EvictionStrategy {
 pub struct EvictionManager {
     strategy: EvictionStrategy,
     access_tracker: AccessTracker,
-    clock_hand: std::sync::atomic::AtomicUsize,
-}
+    clock_hand: std::sync::atomic::AtomicUsize}
 
 impl EvictionManager {
     /// Create new eviction manager
@@ -150,8 +143,7 @@ impl EvictionManager {
         Self {
             strategy,
             access_tracker: AccessTracker::new(),
-            clock_hand: std::sync::atomic::AtomicUsize::new(0),
-        }
+            clock_hand: std::sync::atomic::AtomicUsize::new(0)}
     }
 
     /// Record cache access
@@ -554,16 +546,14 @@ pub struct AccessTracker {
     total_accesses: std::sync::atomic::AtomicU64,
     
     /// Unique keys accessed
-    unique_keys: std::sync::atomic::AtomicU64,
-}
+    unique_keys: std::sync::atomic::AtomicU64}
 
 impl AccessTracker {
     /// Create new access tracker
     pub fn new() -> Self {
         Self {
             total_accesses: std::sync::atomic::AtomicU64::new(0),
-            unique_keys: std::sync::atomic::AtomicU64::new(0),
-        }
+            unique_keys: std::sync::atomic::AtomicU64::new(0)}
     }
 
     /// Record access for eviction algorithms
@@ -584,8 +574,7 @@ impl AccessTracker {
     pub fn stats(&self) -> AccessStats {
         AccessStats {
             total_accesses: self.total_accesses.load(std::sync::atomic::Ordering::Relaxed),
-            unique_keys: self.unique_keys.load(std::sync::atomic::Ordering::Relaxed),
-        }
+            unique_keys: self.unique_keys.load(std::sync::atomic::Ordering::Relaxed)}
     }
 }
 
@@ -601,8 +590,7 @@ pub struct AccessStats {
     /// Total accesses recorded
     pub total_accesses: u64,
     /// Number of unique keys accessed
-    pub unique_keys: u64,
-}
+    pub unique_keys: u64}
 
 impl AccessStats {
     /// Get average accesses per key

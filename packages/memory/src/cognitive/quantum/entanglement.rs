@@ -1,6 +1,6 @@
 //! Quantum entanglement graph management
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{VecDeque};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -8,8 +8,7 @@ use uuid::Uuid;
 
 use crate::cognitive::quantum::{
     Complex64,
-    types::{CognitiveError, CognitiveResult},
-};
+    types::{CognitiveError, CognitiveResult}};
 use crate::cognitive::types::EntanglementType;
 
 /// Comprehensive entanglement graph with quantum correlations
@@ -19,8 +18,7 @@ pub struct EntanglementGraph {
     pub edges: HashMap<(String, String), EntanglementEdge>,
     pub correlation_matrix: CorrelationMatrix,
     pub cluster_hierarchy: ClusterHierarchy,
-    pub entanglement_entropy: f64,
-}
+    pub entanglement_entropy: f64}
 
 /// Quantum node in the entanglement graph
 #[derive(Debug, Clone)]
@@ -30,8 +28,7 @@ pub struct QuantumNode {
     pub local_density_matrix: DensityMatrix,
     pub entanglement_degree: f64,
     pub coherence_lifetime: Duration,
-    pub measurement_basis: MeasurementBasis,
-}
+    pub measurement_basis: MeasurementBasis}
 
 /// Edge representing entanglement between nodes
 #[derive(Debug, Clone)]
@@ -44,8 +41,7 @@ pub struct EntanglementEdge {
     pub shared_information: f64,
     pub creation_time: Instant,
     pub decay_rate: f64,
-    pub bell_state_fidelity: f64,
-}
+    pub bell_state_fidelity: f64}
 
 /// Density matrix representation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,16 +49,14 @@ pub struct DensityMatrix {
     pub elements: Vec<Vec<Complex64>>,
     pub dimension: usize,
     pub purity: f64,
-    pub von_neumann_entropy: f64,
-}
+    pub von_neumann_entropy: f64}
 
 /// Measurement basis for quantum measurements
 #[derive(Debug, Clone)]
 pub struct MeasurementBasis {
     pub basis_vectors: Vec<Vec<Complex64>>,
     pub basis_type: BasisType,
-    pub measurement_operators: Vec<MeasurementOperator>,
-}
+    pub measurement_operators: Vec<MeasurementOperator>}
 
 /// Basis types for quantum measurements
 #[derive(Debug, Clone, PartialEq)]
@@ -70,16 +64,14 @@ pub enum BasisType {
     Computational,
     Hadamard,
     Bell,
-    Custom(String),
-}
+    Custom(String)}
 
 /// Measurement operator
 #[derive(Debug, Clone)]
 pub struct MeasurementOperator {
     pub matrix: Vec<Vec<Complex64>>,
     pub eigenvalues: Vec<f64>,
-    pub eigenvectors: Vec<Vec<Complex64>>,
-}
+    pub eigenvectors: Vec<Vec<Complex64>>}
 
 /// Correlation matrix for quantum entanglement analysis
 #[derive(Debug, Clone)]
@@ -88,16 +80,14 @@ pub struct CorrelationMatrix {
     pub eigenvalues: Vec<f64>,
     pub eigenvectors: Vec<Vec<f64>>,
     pub condition_number: f64,
-    pub determinant: f64,
-}
+    pub determinant: f64}
 
 /// Hierarchical clustering of entangled memories
 #[derive(Debug, Clone)]
 pub struct ClusterHierarchy {
     pub clusters: Vec<EntanglementCluster>,
     pub hierarchy_tree: ClusterTree,
-    pub similarity_threshold: f64,
-}
+    pub similarity_threshold: f64}
 
 /// Entanglement cluster
 #[derive(Debug, Clone)]
@@ -106,22 +96,18 @@ pub struct EntanglementCluster {
     pub members: Vec<String>,
     pub centroid: Vec<f64>,
     pub intra_cluster_correlation: f64,
-    pub cluster_coherence: f64,
-}
+    pub cluster_coherence: f64}
 
 /// Cluster tree structure
 #[derive(Debug, Clone)]
 pub enum ClusterTree {
     Leaf {
-        cluster_id: Uuid,
-    },
+        cluster_id: Uuid},
     Branch {
         left: Box<ClusterTree>,
         right: Box<ClusterTree>,
         merge_distance: f64,
-        merge_criteria: MergeCriteria,
-    },
-}
+        merge_criteria: MergeCriteria}}
 
 /// Merge criteria for clustering
 #[derive(Debug, Clone)]
@@ -130,8 +116,7 @@ pub enum MergeCriteria {
     CompleteLink,
     SingleLink,
     WardLink,
-    QuantumEntanglement,
-}
+    QuantumEntanglement}
 
 /// Entanglement link with full quantum properties
 #[derive(Debug, Clone)]
@@ -146,16 +131,14 @@ pub struct EntanglementLink {
     pub creation_timestamp: Instant,
     pub last_interaction: Instant,
     pub decoherence_rate: f64,
-    pub fidelity_history: VecDeque<FidelityMeasurement>,
-}
+    pub fidelity_history: VecDeque<FidelityMeasurement>}
 
 /// Fidelity measurement record
 #[derive(Debug, Clone)]
 pub struct FidelityMeasurement {
     pub timestamp: Instant,
     pub fidelity: f64,
-    pub measurement_type: String,
-}
+    pub measurement_type: String}
 
 impl EntanglementGraph {
     /// Create a new entanglement graph
@@ -165,8 +148,7 @@ impl EntanglementGraph {
             edges: HashMap::new(),
             correlation_matrix: CorrelationMatrix::new(0),
             cluster_hierarchy: ClusterHierarchy::new(),
-            entanglement_entropy: 0.0,
-        })
+            entanglement_entropy: 0.0})
     }
 
     /// Add a quantum node to the graph
@@ -198,8 +180,7 @@ impl EntanglementGraph {
             shared_information: bond_strength * 0.5,
             creation_time: Instant::now(),
             decay_rate: 0.01,
-            bell_state_fidelity: 0.9,
-        };
+            bell_state_fidelity: 0.9};
 
         self.edges
             .insert((source_id.to_string(), target_id.to_string()), edge);
@@ -244,8 +225,7 @@ impl EntanglementGraph {
                     local_density_matrix: DensityMatrix::new(1),
                     entanglement_degree: 0.0,
                     coherence_lifetime: Duration::from_secs(300),
-                    measurement_basis: MeasurementBasis::computational(),
-                };
+                    measurement_basis: MeasurementBasis::computational()};
                 self.add_node(node);
             }
 
@@ -291,8 +271,7 @@ impl EntanglementGraph {
             eigenvalues: Vec::new(), // Would compute eigenvalues here
             eigenvectors: Vec::new(),
             condition_number: 1.0,
-            determinant: 1.0,
-        };
+            determinant: 1.0};
     }
 
     /// Update entanglement entropy
@@ -370,8 +349,7 @@ impl CorrelationMatrix {
             eigenvalues: Vec::new(),
             eigenvectors: Vec::new(),
             condition_number: 1.0,
-            determinant: 1.0,
-        }
+            determinant: 1.0}
     }
 }
 
@@ -381,10 +359,8 @@ impl ClusterHierarchy {
         Self {
             clusters: Vec::new(),
             hierarchy_tree: ClusterTree::Leaf {
-                cluster_id: Uuid::new_v4(),
-            },
-            similarity_threshold: 0.7,
-        }
+                cluster_id: Uuid::new_v4()},
+            similarity_threshold: 0.7}
     }
 }
 
@@ -402,8 +378,7 @@ impl DensityMatrix {
             elements,
             dimension,
             purity: 1.0,
-            von_neumann_entropy: 0.0,
-        }
+            von_neumann_entropy: 0.0}
     }
 }
 
@@ -416,8 +391,7 @@ impl MeasurementBasis {
                 vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
             ],
             basis_type: BasisType::Computational,
-            measurement_operators: Vec::new(),
-        }
+            measurement_operators: Vec::new()}
     }
 }
 
@@ -440,8 +414,7 @@ impl EntanglementLink {
             creation_timestamp: Instant::now(),
             last_interaction: Instant::now(),
             decoherence_rate: 0.01,
-            fidelity_history: VecDeque::new(),
-        }
+            fidelity_history: VecDeque::new()}
     }
 
     /// Update interaction timestamp
@@ -454,8 +427,7 @@ impl EntanglementLink {
         self.fidelity_history.push_back(FidelityMeasurement {
             timestamp: Instant::now(),
             fidelity,
-            measurement_type,
-        });
+            measurement_type});
 
         // Keep only recent history
         if self.fidelity_history.len() > 100 {
@@ -482,8 +454,7 @@ mod tests {
             edges: HashMap::new(),
             correlation_matrix: CorrelationMatrix::new(0),
             cluster_hierarchy: ClusterHierarchy::new(),
-            entanglement_entropy: 0.0,
-        };
+            entanglement_entropy: 0.0};
 
         // Add nodes
         let node1 = QuantumNode {
@@ -492,8 +463,7 @@ mod tests {
             local_density_matrix: DensityMatrix::new(1),
             entanglement_degree: 0.0,
             coherence_lifetime: Duration::from_secs(100),
-            measurement_basis: MeasurementBasis::computational(),
-        };
+            measurement_basis: MeasurementBasis::computational()};
 
         let node2 = QuantumNode {
             id: "node2".to_string(),
@@ -501,8 +471,7 @@ mod tests {
             local_density_matrix: DensityMatrix::new(1),
             entanglement_degree: 0.0,
             coherence_lifetime: Duration::from_secs(100),
-            measurement_basis: MeasurementBasis::computational(),
-        };
+            measurement_basis: MeasurementBasis::computational()};
 
         graph.add_node(node1);
         graph.add_node(node2);
@@ -527,8 +496,7 @@ mod tests {
             edges: HashMap::new(),
             correlation_matrix: CorrelationMatrix::new(0),
             cluster_hierarchy: ClusterHierarchy::new(),
-            entanglement_entropy: 0.0,
-        };
+            entanglement_entropy: 0.0};
 
         // Create a simple graph: A -> B -> C
         for id in ["A", "B", "C"] {
@@ -538,8 +506,7 @@ mod tests {
                 local_density_matrix: DensityMatrix::new(1),
                 entanglement_degree: 0.0,
                 coherence_lifetime: Duration::from_secs(100),
-                measurement_basis: MeasurementBasis::computational(),
-            };
+                measurement_basis: MeasurementBasis::computational()};
             graph.add_node(node);
         }
 

@@ -17,8 +17,7 @@ use crossbeam_channel::{Receiver, unbounded};
 
 use crate::{
     client::{AsImageGeneration, ProviderClient},
-    image_generation::{ImageGenerationChunk, ImageGenerationError, ImageGenerationRequest},
-};
+    image_generation::{ImageGenerationChunk, ImageGenerationError, ImageGenerationRequest}};
 
 // -----------------------------------------------------------------------------
 // Stream wrapper – ergonomic alias
@@ -103,8 +102,7 @@ where
 // -----------------------------------------------------------------------------
 #[derive(Clone)]
 pub struct ImageGenerationModelHandle<'a> {
-    inner: Arc<dyn ImageGenerationModelDyn + 'a>,
-}
+    inner: Arc<dyn ImageGenerationModelDyn + 'a>}
 
 impl ImageGenerationModel for ImageGenerationModelHandle<'_> {
     #[inline]

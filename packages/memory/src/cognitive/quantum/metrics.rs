@@ -17,8 +17,7 @@ pub struct QuantumMetrics {
     pub error_correction_activations: u64,
     pub fidelity_measurements: Vec<f64>,
     pub performance_indicators: PerformanceIndicators,
-    pub history: MetricsHistory,
-}
+    pub history: MetricsHistory}
 
 /// Performance indicators
 #[derive(Clone, Debug, Default, Serialize)]
@@ -26,8 +25,7 @@ pub struct PerformanceIndicators {
     pub throughput: f64,
     pub latency_percentiles: LatencyPercentiles,
     pub resource_utilization: ResourceUtilization,
-    pub error_rates: ErrorRates,
-}
+    pub error_rates: ErrorRates}
 
 /// Latency percentiles
 #[derive(Clone, Debug, Default, Serialize)]
@@ -36,8 +34,7 @@ pub struct LatencyPercentiles {
     pub p90: Duration,
     pub p95: Duration,
     pub p99: Duration,
-    pub p999: Duration,
-}
+    pub p999: Duration}
 
 /// Resource utilization metrics
 #[derive(Clone, Debug, Default, Serialize)]
@@ -45,8 +42,7 @@ pub struct ResourceUtilization {
     pub cpu_usage: f64,
     pub memory_usage: f64,
     pub quantum_register_usage: f64,
-    pub entanglement_capacity_usage: f64,
-}
+    pub entanglement_capacity_usage: f64}
 
 /// Error rate tracking
 #[derive(Clone, Debug, Default, Serialize)]
@@ -54,8 +50,7 @@ pub struct ErrorRates {
     pub gate_error_rate: f64,
     pub readout_error_rate: f64,
     pub coherence_error_rate: f64,
-    pub entanglement_error_rate: f64,
-}
+    pub entanglement_error_rate: f64}
 
 /// Historical metrics tracking
 #[derive(Clone, Debug, Serialize)]
@@ -63,8 +58,7 @@ pub struct MetricsHistory {
     pub routing_history: VecDeque<RoutingMetric>,
     pub fidelity_history: VecDeque<FidelityMetric>,
     pub resource_history: VecDeque<ResourceMetric>,
-    pub max_history_size: usize,
-}
+    pub max_history_size: usize}
 
 /// Individual routing metric
 #[derive(Debug, Clone, Serialize)]
@@ -74,8 +68,7 @@ pub struct RoutingMetric {
     pub duration: Duration,
     pub success: bool,
     pub strategy: String,
-    pub confidence: f64,
-}
+    pub confidence: f64}
 
 /// Fidelity metric over time
 #[derive(Debug, Clone, Serialize)]
@@ -84,8 +77,7 @@ pub struct FidelityMetric {
     pub timestamp: Instant,
     pub fidelity: f64,
     pub measurement_type: String,
-    pub error_corrected: bool,
-}
+    pub error_corrected: bool}
 
 /// Resource usage metric
 #[derive(Debug, Clone, Serialize)]
@@ -95,8 +87,7 @@ pub struct ResourceMetric {
     pub cpu_usage: f64,
     pub memory_usage: f64,
     pub quantum_states: usize,
-    pub entanglement_links: usize,
-}
+    pub entanglement_links: usize}
 
 impl QuantumMetrics {
     /// Create new metrics tracker
@@ -135,8 +126,7 @@ impl QuantumMetrics {
             duration,
             success,
             strategy: strategy.to_string(),
-            confidence,
-        });
+            confidence});
 
         // Update latency percentiles
         self.update_latency_percentiles();
@@ -160,8 +150,7 @@ impl QuantumMetrics {
             timestamp: Instant::now(),
             fidelity,
             measurement_type: measurement_type.to_string(),
-            error_corrected,
-        });
+            error_corrected});
     }
 
     /// Record resource usage
@@ -182,8 +171,7 @@ impl QuantumMetrics {
             cpu_usage: cpu,
             memory_usage: memory,
             quantum_states,
-            entanglement_links,
-        });
+            entanglement_links});
     }
 
     /// Record a decoherence event
@@ -232,8 +220,7 @@ impl QuantumMetrics {
             p90: latencies[len * 90 / 100],
             p95: latencies[len * 95 / 100],
             p99: latencies[len * 99 / 100],
-            p999: latencies[(len * 999 / 1000).min(len - 1)],
-        };
+            p999: latencies[(len * 999 / 1000).min(len - 1)]};
     }
 
     /// Get average fidelity
@@ -267,8 +254,7 @@ impl QuantumMetrics {
             latency_p50_ms: f64,
             latency_p99_ms: f64,
             cpu_usage: f64,
-            memory_usage: f64,
-        }
+            memory_usage: f64}
 
         let export = ExportableMetrics {
             total_requests: self.total_routing_requests,
@@ -292,8 +278,7 @@ impl QuantumMetrics {
             memory_usage: self
                 .performance_indicators
                 .resource_utilization
-                .memory_usage,
-        };
+                .memory_usage};
 
         serde_json::to_string_pretty(&export)
     }
@@ -312,8 +297,7 @@ impl MetricsHistory {
             routing_history: VecDeque::with_capacity(max_size),
             fidelity_history: VecDeque::with_capacity(max_size),
             resource_history: VecDeque::with_capacity(max_size),
-            max_history_size: max_size,
-        }
+            max_history_size: max_size}
     }
 
     /// Add routing metric
@@ -368,8 +352,7 @@ impl MetricsHistory {
         MetricsWindow {
             routing,
             fidelity,
-            resource,
-        }
+            resource}
     }
 }
 
@@ -378,8 +361,7 @@ impl MetricsHistory {
 pub struct MetricsWindow {
     pub routing: Vec<RoutingMetric>,
     pub fidelity: Vec<FidelityMetric>,
-    pub resource: Vec<ResourceMetric>,
-}
+    pub resource: Vec<ResourceMetric>}
 
 impl MetricsWindow {
     /// Calculate average metrics in window
@@ -416,8 +398,7 @@ impl MetricsWindow {
             latency: avg_latency,
             fidelity: avg_fidelity,
             cpu_usage: avg_cpu,
-            memory_usage: avg_memory,
-        }
+            memory_usage: avg_memory}
     }
 }
 
@@ -427,8 +408,7 @@ pub struct WindowAverages {
     pub latency: Duration,
     pub fidelity: f64,
     pub cpu_usage: f64,
-    pub memory_usage: f64,
-}
+    pub memory_usage: f64}
 
 #[cfg(test)]
 mod tests {
@@ -472,8 +452,7 @@ mod tests {
                 duration: Duration::from_millis(10 + i),
                 success: true,
                 strategy: "quantum".to_string(),
-                confidence: 0.9,
-            });
+                confidence: 0.9});
 
             std::thread::sleep(Duration::from_millis(10));
         }

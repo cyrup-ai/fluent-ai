@@ -28,8 +28,8 @@ static COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
 
 /// Initialize global command executor - PURE SYNC (no futures)
-pub fn initialize_command_executor(context: CommandContext) {
-    let executor = CommandExecutor::with_context(&context);
+pub fn initialize_command_executor(context: &CommandContext) {
+    let executor = CommandExecutor::with_context(context);
     if let Ok(mut writer) = COMMAND_EXECUTOR.write() {
         *writer = Some(executor);
     }
@@ -49,8 +49,7 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
             .map_err(|e| CommandError::ParseError(e.to_string()))
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }
 
@@ -58,8 +57,8 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
 pub async fn execute_command_async(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.execute_streaming(1, command);
-        use futures_util::StreamExt;
-        if let Some(result) = result_stream.next().await {
+        // Use AsyncStream try_next method (NO FUTURES architecture)
+        if let Some(result) = result_stream.try_next() {
             return Ok(result);
         } else {
             return Err(CommandError::ExecutionFailed(
@@ -68,8 +67,7 @@ pub async fn execute_command_async(command: ImmutableChatCommand) -> CommandResu
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }
 
@@ -80,46 +78,42 @@ pub async fn execute_command_async(command: ImmutableChatCommand) -> CommandResu
 pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.execute_streaming(1, command);
-        use futures_util::StreamExt;
+        // Removed unused import: use futures_util::StreamExt;
 
         // Safe block_on approach: detect if we're in async context
         match tokio::runtime::Handle::try_current() {
             Ok(_handle) => {
                 // We're in async context - spawn blocking task to avoid deadlock
                 match std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().map_err(|_| {
+                    let _rt = tokio::runtime::Runtime::new().map_err(|_| {
                         CommandError::ExecutionFailed("Runtime creation failed".to_string())
                     })?;
-                    rt.block_on(async {
-                        result_stream.next().await.ok_or_else(|| {
-                            CommandError::ExecutionFailed(
-                                "Stream closed without result".to_string(),
-                            )
-                        })
+                    // Use AsyncStream try_next method (NO FUTURES architecture)
+                    result_stream.try_next().ok_or_else(|| {
+                        CommandError::ExecutionFailed(
+                            "Stream closed without result".to_string(),
+                        )
                     })
                 })
                 .join()
                 {
                     Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
-                }
+                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string()))}
             }
             Err(_) => {
                 // We're not in async context - safe to use new runtime
-                let rt = tokio::runtime::Runtime::new().map_err(|_| {
+                let _rt = tokio::runtime::Runtime::new().map_err(|_| {
                     CommandError::ExecutionFailed("Runtime creation failed".to_string())
                 })?;
-                rt.block_on(async {
-                    result_stream.next().await.ok_or_else(|| {
-                        CommandError::ExecutionFailed("Stream closed without result".to_string())
-                    })
+                // Use AsyncStream try_next method (NO FUTURES architecture)
+                result_stream.try_next().ok_or_else(|| {
+                    CommandError::ExecutionFailed("Stream closed without result".to_string())
                 })
             }
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }
 
@@ -127,8 +121,8 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
 pub async fn parse_and_execute_command_async(input: &str) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.parse_and_execute(input);
-        use futures_util::StreamExt;
-        if let Some(result) = result_stream.next().await {
+        // Use AsyncStream try_next method (NO FUTURES architecture)
+        if let Some(result) = result_stream.try_next() {
             return Ok(result);
         } else {
             return Err(CommandError::ExecutionFailed(
@@ -137,8 +131,7 @@ pub async fn parse_and_execute_command_async(input: &str) -> CommandResult<Comma
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }
 
@@ -149,45 +142,41 @@ pub async fn parse_and_execute_command_async(input: &str) -> CommandResult<Comma
 pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.parse_and_execute(input);
-        use futures_util::StreamExt;
+        // Removed unused import: use futures_util::StreamExt;
 
         // Safe block_on approach: detect if we're in async context
         match tokio::runtime::Handle::try_current() {
             Ok(_handle) => {
                 // We're in async context - spawn blocking task to avoid deadlock
                 match std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().map_err(|_| {
+                    let _rt = tokio::runtime::Runtime::new().map_err(|_| {
                         CommandError::ExecutionFailed("Runtime creation failed".to_string())
                     })?;
-                    rt.block_on(async {
-                        result_stream.next().await.ok_or_else(|| {
-                            CommandError::ExecutionFailed(
-                                "Stream closed without result".to_string(),
-                            )
-                        })
+                    // Use AsyncStream try_next method (NO FUTURES architecture)
+                    result_stream.try_next().ok_or_else(|| {
+                        CommandError::ExecutionFailed(
+                            "Stream closed without result".to_string(),
+                        )
                     })
                 })
                 .join()
                 {
                     Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
-                }
+                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string()))}
             }
             Err(_) => {
                 // We're not in async context - safe to use new runtime
-                let rt = tokio::runtime::Runtime::new().map_err(|_| {
+                let _rt = tokio::runtime::Runtime::new().map_err(|_| {
                     CommandError::ExecutionFailed("Runtime creation failed".to_string())
                 })?;
-                rt.block_on(async {
-                    result_stream.next().await.ok_or_else(|| {
-                        CommandError::ExecutionFailed("Stream closed without result".to_string())
-                    })
+                // Use AsyncStream try_next method (NO FUTURES architecture)
+                result_stream.try_next().ok_or_else(|| {
+                    CommandError::ExecutionFailed("Stream closed without result".to_string())
                 })
             }
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }

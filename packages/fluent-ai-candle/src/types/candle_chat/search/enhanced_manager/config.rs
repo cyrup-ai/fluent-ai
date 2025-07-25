@@ -27,8 +27,7 @@ pub struct ManagerConfig {
     /// Enable compression
     pub enable_compression: bool,
     /// Backup configuration
-    pub backup_config: BackupConfig,
-}
+    pub backup_config: BackupConfig}
 
 impl Default for ManagerConfig {
     fn default() -> Self {
@@ -42,8 +41,7 @@ impl Default for ManagerConfig {
             cleanup_interval_seconds: 300,
             memory_limit_bytes: 1024 * 1024 * 100, // 100MB
             enable_compression: false,
-            backup_config: BackupConfig::default(),
-        }
+            backup_config: BackupConfig::default()}
     }
 }
 
@@ -59,8 +57,7 @@ pub struct BackupConfig {
     /// Backup compression
     pub compress_backups: bool,
     /// Backup location
-    pub backup_path: Option<String>,
-}
+    pub backup_path: Option<String>}
 
 impl Default for BackupConfig {
     fn default() -> Self {
@@ -69,8 +66,7 @@ impl Default for BackupConfig {
             interval_hours: 24,
             max_backups: 7,
             compress_backups: true,
-            backup_path: None,
-        }
+            backup_path: None}
     }
 }
 
@@ -84,8 +80,7 @@ pub struct CleanupResult {
     /// Memory freed in bytes
     pub memory_freed: usize,
     /// Time taken for cleanup in milliseconds
-    pub cleanup_time_ms: u64,
-}
+    pub cleanup_time_ms: u64}
 
 /// Optimization result information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,21 +92,18 @@ pub struct OptimizationResult {
     /// Memory usage after optimization
     pub memory_after: usize,
     /// Time taken for optimization in milliseconds
-    pub optimization_time_ms: u64,
-}
+    pub optimization_time_ms: u64}
 
 /// Builder pattern for history manager configuration
 #[derive(Debug, Default)]
 pub struct HistoryManagerBuilder {
-    config: ManagerConfig,
-}
+    config: ManagerConfig}
 
 impl HistoryManagerBuilder {
     /// Create a new builder
     pub fn new() -> Self {
         Self {
-            config: ManagerConfig::default(),
-        }
+            config: ManagerConfig::default()}
     }
 
     /// Enable or disable caching

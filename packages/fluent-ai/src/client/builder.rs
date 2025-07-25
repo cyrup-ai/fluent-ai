@@ -12,13 +12,11 @@
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
-    sync::Arc,
-};
+    sync::Arc};
 
 use crossbeam::{
     channel::{Receiver, unbounded},
-    thread,
-};
+    thread};
 
 use crate::{
     agent::{Agent, AgentBuilder},
@@ -26,12 +24,10 @@ use crate::{
         ProviderClient,
         completion::{CompletionClientDyn, CompletionModelHandle},
         embeddings::EmbeddingsClientDyn,
-        transcription::TranscriptionClientDyn,
-    },
+        transcription::TranscriptionClientDyn},
     completion::CompletionModelDyn,
     embedding::embedding::EmbeddingModelDyn,
-    transcription::TranscriptionModelDyn,
-};
+    transcription::TranscriptionModelDyn};
 
 /// Thread-safe factory function signature using crossbeam channels
 type SafeFactoryFn =
@@ -57,23 +53,20 @@ pub enum BuildErr {
     #[error("unsupported feature {feature:?} for provider {provider:?}")]
     UnsupportedFeature {
         provider: String,
-        feature: &'static str,
-    },
+        feature: &'static str},
 
     #[error("factory error: {0}")]
     Factory(String),
 
     #[error("invalid provider:model id: {0}")]
-    InvalidId(String),
-}
+    InvalidId(String)}
 
 /// -------------------------------------------------------------------------
 /// DynClientBuilder – central registry (zero Arc / Mutex)
 /// -------------------------------------------------------------------------
 #[derive(Default)]
 pub struct DynClientBuilder {
-    registry: HashMap<&'static str, SafeFactoryFn>,
-}
+    registry: HashMap<&'static str, SafeFactoryFn>}
 
 impl DynClientBuilder {
     // ----- registration ----------------------------------------------------
@@ -132,8 +125,7 @@ impl DynClientBuilder {
             Ok(result) => result,
             Err(_) => Err(BuildErr::Factory(
                 "Channel closed without result".to_string(),
-            )),
-        }
+            ))}
     }
 
     // ----- high-level helpers ----------------------------------------------
@@ -150,8 +142,7 @@ impl DynClientBuilder {
                 .as_completion()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
-                    feature: "completion",
-                })?
+                    feature: "completion"})?
                 .completion_model(&model)
                 .pipe(Ok)
         })
@@ -169,8 +160,7 @@ impl DynClientBuilder {
                 .as_completion()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
-                    feature: "completion",
-                })?
+                    feature: "completion"})?
                 .agent(&model)
                 .pipe(Ok)
         })
@@ -188,8 +178,7 @@ impl DynClientBuilder {
                 .as_embeddings()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
-                    feature: "embeddings",
-                })?
+                    feature: "embeddings"})?
                 .embedding_model(&model)
                 .pipe(Ok)
         })
@@ -207,8 +196,7 @@ impl DynClientBuilder {
                 .as_transcription()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
-                    feature: "transcription",
-                })?
+                    feature: "transcription"})?
                 .transcription_model(&model)
                 .pipe(Ok)
         })
@@ -226,8 +214,7 @@ impl DynClientBuilder {
         Ok(ProviderModelId {
             builder: self,
             provider,
-            model,
-        })
+            model})
     }
 }
 
@@ -235,8 +222,7 @@ impl DynClientBuilder {
 pub struct ProviderModelId<'builder, 'id> {
     builder: &'builder DynClientBuilder,
     provider: &'id str,
-    model: &'id str,
-}
+    model: &'id str}
 
 impl<'b, 'i> ProviderModelId<'b, 'i> {
     pub fn completion(self) -> AsyncTask<Result<Box<dyn CompletionModelDyn + 'b>, BuildErr>> {

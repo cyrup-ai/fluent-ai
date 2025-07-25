@@ -56,15 +56,13 @@ where
 /// A compiled, reusable workflow that transforms In → Out
 pub struct Workflow<In, Out> {
     step: Arc<dyn WorkflowStep<In, Out>>,
-    _phantom: PhantomData<(In, Out)>,
-}
+    _phantom: PhantomData<(In, Out)>}
 
 impl<In, Out> Clone for Workflow<In, Out> {
     fn clone(&self) -> Self {
         Self {
             step: self.step.clone(),
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -156,8 +154,7 @@ where
 
         Workflow {
             step: Arc::new(composed),
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -291,8 +288,7 @@ impl<T: Op> Op for &T {
 // ================================================================
 pub struct Sequential<A, B> {
     a: A,
-    b: B,
-}
+    b: B}
 
 impl<A, B> Sequential<A, B> {
     #[inline(always)]
@@ -334,16 +330,14 @@ where
 // ================================================================
 pub struct Map<F, In> {
     f: F,
-    _pd: std::marker::PhantomData<In>,
-}
+    _pd: std::marker::PhantomData<In>}
 
 impl<F, In> Map<F, In> {
     #[inline(always)]
     fn new(f: F) -> Self {
         Self {
             f,
-            _pd: std::marker::PhantomData,
-        }
+            _pd: std::marker::PhantomData}
     }
 }
 
@@ -378,16 +372,14 @@ where
 
 pub struct Then<F, In> {
     f: F,
-    _pd: std::marker::PhantomData<In>,
-}
+    _pd: std::marker::PhantomData<In>}
 
 impl<F, In> Then<F, In> {
     #[inline(always)]
     fn new(f: F) -> Self {
         Self {
             f,
-            _pd: std::marker::PhantomData,
-        }
+            _pd: std::marker::PhantomData}
     }
 }
 
@@ -458,15 +450,13 @@ pub fn passthrough<T: Send + Sync>() -> Passthrough<T> {
 /// Builder for constructing workflows
 pub struct WorkflowBuilder<In, Out> {
     step: Arc<dyn WorkflowStep<In, Out>>,
-    _phantom: PhantomData<(In, Out)>,
-}
+    _phantom: PhantomData<(In, Out)>}
 
 /// Builder with error handler - exposes terminal methods
 pub struct WorkflowBuilderWithHandler<In, Out> {
     step: Arc<dyn WorkflowStep<In, Out>>,
     error_handler: Box<dyn FnMut(String) + Send + 'static>,
-    _phantom: PhantomData<(In, Out)>,
-}
+    _phantom: PhantomData<(In, Out)>}
 
 impl<In, Out> WorkflowBuilder<In, Out>
 where
@@ -476,8 +466,7 @@ where
     fn new<S: WorkflowStep<In, Out>>(step: S) -> Self {
         Self {
             step: Arc::new(step),
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 
     /// Chain another step sequentially
@@ -549,8 +538,7 @@ where
         WorkflowBuilderWithHandler {
             step: self.step,
             error_handler: Box::new(error_handler),
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -592,8 +580,7 @@ where
 
         Workflow {
             step: Arc::new(wrapped),
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 

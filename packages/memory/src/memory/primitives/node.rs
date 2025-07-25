@@ -25,8 +25,7 @@ pub struct MemoryNode {
     /// Embedding vector
     pub embedding: Option<Vec<f32>>,
     /// Metadata associated with the memory
-    pub metadata: MemoryMetadata,
-}
+    pub metadata: MemoryMetadata}
 
 impl MemoryNode {
     /// Create a new memory node
@@ -41,8 +40,7 @@ impl MemoryNode {
             created_at: now,
             updated_at: now,
             embedding: None,
-            metadata: MemoryMetadata::with_memory_type(memory_type),
-        }
+            metadata: MemoryMetadata::with_memory_type(memory_type)}
     }
 
     /// Create a new memory node with a specific ID
@@ -56,8 +54,7 @@ impl MemoryNode {
             created_at: now,
             updated_at: now,
             embedding: None,
-            metadata: MemoryMetadata::with_memory_type(memory_type),
-        }
+            metadata: MemoryMetadata::with_memory_type(memory_type)}
     }
 
     /// Set the embedding for this memory

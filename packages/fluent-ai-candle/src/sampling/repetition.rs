@@ -61,8 +61,7 @@ impl RepetitionPenaltyProcessor {
             penalty,
             context_size: capped_context,
             is_identity,
-            penalty_powers,
-        })
+            penalty_powers})
     }
 
     /// Get current penalty value
@@ -108,7 +107,6 @@ impl RepetitionPenaltyProcessor {
     /// - Empty history: No-op
     /// - Small vocabulary: Direct logits modification
     /// - Large vocabulary: Sparse penalty application
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn apply_repetition_penalty(
         &self,
@@ -139,7 +137,6 @@ impl RepetitionPenaltyProcessor {
     }
 
     /// Extract relevant context window from token history
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn get_context_window<'a>(&self, token_ids: &'a [u32], position: usize) -> &'a [u32] {
@@ -156,7 +153,6 @@ impl RepetitionPenaltyProcessor {
     }
 
     /// Count token frequencies in context window with efficient data structures
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn count_token_frequencies(&self, context_tokens: &[u32]) -> HashMap<u32, u32> {
@@ -170,7 +166,6 @@ impl RepetitionPenaltyProcessor {
     }
 
     /// Apply penalty to logits based on token frequencies
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn apply_penalty_to_logits(
@@ -209,7 +204,6 @@ impl RepetitionPenaltyProcessor {
     }
 
     /// Calculate penalty factor for given token count with optimization
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn calculate_penalty_factor(&self, count: u32) -> f64 {

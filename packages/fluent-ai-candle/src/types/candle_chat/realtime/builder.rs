@@ -7,9 +7,7 @@ use crate::types::candle_chat::realtime::{
     system::{RealTimeSystem, RealTimeSystemStatistics},
     typing::{TypingIndicator, TypingStatistics},
     live_updates::{LiveUpdateSystem, LiveUpdateStatistics},
-    connections::{ConnectionManager, ConnectionManagerStatistics},
-    events::RealTimeEvent,
-};
+    connections::{ConnectionManager, ConnectionManagerStatistics}};
 use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
 
@@ -21,8 +19,7 @@ pub struct RealTimeSystemBuilder {
     backpressure_threshold: usize,
     processing_rate: u64,
     heartbeat_timeout: u64,
-    health_check_interval: u64,
-}
+    health_check_interval: u64}
 
 impl RealTimeSystemBuilder {
     /// Create a new builder
@@ -34,8 +31,7 @@ impl RealTimeSystemBuilder {
             backpressure_threshold: 8000,
             processing_rate: 100,
             heartbeat_timeout: 60,
-            health_check_interval: 30,
-        }
+            health_check_interval: 30}
     }
 
     /// Set typing expiry duration
@@ -107,27 +103,22 @@ impl RealTimeSystemBuilder {
                     active_users: 0,
                     total_typing_events: 0,
                     expiry_duration: self.typing_expiry,
-                    cleanup_interval: self.typing_cleanup_interval,
-                },
+                    cleanup_interval: self.typing_cleanup_interval},
                 live_update_stats: LiveUpdateStatistics {
                     total_messages: 0,
                     active_subscribers: 0,
                     queue_size: 0,
                     backpressure_events: 0,
                     processing_rate: self.processing_rate as f64,
-                    last_update: 0,
-                },
+                    last_update: 0},
                 connection_stats: ConnectionManagerStatistics {
                     total_connections: 0,
                     total_heartbeats: 0,
                     failed_connections: 0,
                     heartbeat_timeout: self.heartbeat_timeout,
-                    health_check_interval: self.health_check_interval,
-                },
+                    health_check_interval: self.health_check_interval},
                 total_events: 0,
-                system_uptime: 0,
-            })),
-        }
+                system_uptime: 0}))}
     }
 }
 

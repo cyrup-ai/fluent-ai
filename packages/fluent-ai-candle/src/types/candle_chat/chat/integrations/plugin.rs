@@ -6,8 +6,7 @@
 use std::sync::Arc;
 
 use super::types::{
-    Plugin, PluginConfig, IntegrationResult, IntegrationError,
-};
+    Plugin, PluginConfig, IntegrationResult, IntegrationError};
 
 /// Plugin manager for handling plugin-based integrations
 #[derive(Debug)]
@@ -15,16 +14,14 @@ pub struct PluginManager {
     /// Loaded plugins
     plugins: std::collections::HashMap<Arc<str>, Arc<dyn Plugin>>,
     /// Plugin configurations
-    configs: std::collections::HashMap<Arc<str>, PluginConfig>,
-}
+    configs: std::collections::HashMap<Arc<str>, PluginConfig>}
 
 impl PluginManager {
     /// Create a new plugin manager
     pub fn new() -> Self {
         Self {
             plugins: std::collections::HashMap::new(),
-            configs: std::collections::HashMap::new(),
-        }
+            configs: std::collections::HashMap::new()}
     }
 
     /// Load a plugin
@@ -69,8 +66,7 @@ impl PluginManager {
     ) -> IntegrationResult<()> {
         if !self.plugins.contains_key(plugin_id) {
             return Err(IntegrationError::PluginError {
-                detail: Arc::from("Plugin not found"),
-            });
+                detail: Arc::from("Plugin not found")});
         }
 
         self.configs.insert(Arc::from(plugin_id), config);
@@ -100,8 +96,7 @@ impl PluginManager {
                 if let Some(plugin_mut) = Arc::get_mut(plugin) {
                     plugin_mut.initialize(config).map_err(|e| {
                         IntegrationError::PluginError {
-                            detail: Arc::from(format!("Failed to initialize plugin {}: {}", plugin_id, e)),
-                        }
+                            detail: Arc::from(format!("Failed to initialize plugin {}: {}", plugin_id, e))}
                     })?;
                 }
             }
@@ -115,8 +110,7 @@ impl PluginManager {
             if let Some(plugin_mut) = Arc::get_mut(plugin) {
                 plugin_mut.cleanup().map_err(|e| {
                     IntegrationError::PluginError {
-                        detail: Arc::from(format!("Failed to cleanup plugin {}: {}", plugin_id, e)),
-                    }
+                        detail: Arc::from(format!("Failed to cleanup plugin {}: {}", plugin_id, e))}
                 })?;
             }
         }

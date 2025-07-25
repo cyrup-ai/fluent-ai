@@ -17,8 +17,7 @@ pub enum SimilarityMetric {
     /// Dot product (unnormalized similarity)
     DotProduct,
     /// Jaccard similarity for sets
-    Jaccard,
-}
+    Jaccard}
 
 impl Default for SimilarityMetric {
     fn default() -> Self {
@@ -40,8 +39,7 @@ pub struct SimilarityResult {
     pub distance: Option<f32>,
 
     /// Metric used for the computation
-    pub metric: SimilarityMetric,
-}
+    pub metric: SimilarityMetric}
 
 impl SimilarityResult {
     /// Create a new similarity result
@@ -51,8 +49,7 @@ impl SimilarityResult {
             score,
             is_similar,
             distance: None,
-            metric,
-        }
+            metric}
     }
 
     /// Create a new similarity result with distance
@@ -67,8 +64,7 @@ impl SimilarityResult {
             score,
             is_similar,
             distance: Some(distance),
-            metric,
-        }
+            metric}
     }
 
     /// Check if the similarity meets the given threshold
@@ -80,8 +76,7 @@ impl SimilarityResult {
                 self.score >= threshold
             }
             // For distance metrics, lower is better
-            SimilarityMetric::Euclidean | SimilarityMetric::Manhattan => self.score <= threshold,
-        }
+            SimilarityMetric::Euclidean | SimilarityMetric::Manhattan => self.score <= threshold}
     }
 }
 

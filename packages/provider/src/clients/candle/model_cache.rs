@@ -5,12 +5,10 @@
 //! reference counting for optimal performance in concurrent environments.
 
 use std::sync::{Arc, atomic::{AtomicU64, AtomicUsize, Ordering}};
-use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::path::Path;
 
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::ArrayVec;
 use crossbeam::atomic::AtomicCell;
 use smallvec::SmallVec;
 use tokio::time::{interval, MissedTickBehavior};
@@ -39,8 +37,7 @@ pub enum MemoryPressure {
     Low = 0,
     Medium = 1,
     High = 2,
-    Critical = 3,
-}
+    Critical = 3}
 
 /// Loaded model wrapper with metadata and device information
 pub struct LoadedModel {
@@ -57,16 +54,14 @@ pub struct LoadedModel {
     /// Memory usage in bytes
     pub memory_usage_bytes: usize,
     /// Model loading timestamp
-    pub loaded_at: Instant,
-}
+    pub loaded_at: Instant}
 
 /// Model instance enum for different architectures
 pub enum ModelInstance {
     LLaMA(Box<Llama>),
     Mistral(Box<MistralModel>),
     Phi3(Box<dyn Phi3Model + Send + Sync>),
-    Gemma(Box<dyn GemmaModel + Send + Sync>),
-}
+    Gemma(Box<dyn GemmaModel + Send + Sync>)}
 
 /// Model configuration wrapper
 #[derive(Debug, Clone)]
@@ -78,8 +73,7 @@ pub struct ModelConfig {
     pub num_hidden_layers: usize,
     pub max_position_embeddings: usize,
     pub rope_theta: f32,
-    pub use_flash_attn: bool,
-}
+    pub use_flash_attn: bool}
 
 /// Trait for attention cache abstraction
 pub trait AttentionCache {
@@ -100,16 +94,14 @@ pub trait GemmaModel {
 /// LLaMA attention cache implementation
 pub struct LLaMaAttentionCache {
     cache: LlamaCache,
-    memory_usage: usize,
-}
+    memory_usage: usize}
 
 impl LLaMaAttentionCache {
     pub fn new(config: &LlamaConfig, device: &Device, dtype: DType) -> candle_core::Result<Self> {
         let cache = LlamaCache::new(true, dtype, config, device)?;
         Ok(Self {
             cache,
-            memory_usage: Self::calculate_memory_usage(config),
-        })
+            memory_usage: Self::calculate_memory_usage(config)})
     }
     
     fn calculate_memory_usage(config: &LlamaConfig) -> usize {
@@ -146,8 +138,7 @@ pub struct CachedModel {
     /// Last access timestamp (atomic for lock-free updates)
     pub last_access: AtomicU64,
     /// Access count for LRU ordering
-    pub access_count: AtomicU64,
-}
+    pub access_count: AtomicU64}
 
 impl CachedModel {
     /// Create new cached model entry
@@ -160,8 +151,7 @@ impl CachedModel {
         Self {
             model,
             last_access: AtomicU64::new(now),
-            access_count: AtomicU64::new(1),
-        }
+            access_count: AtomicU64::new(1)}
     }
     
     /// Update access timestamp and increment count
@@ -202,8 +192,7 @@ pub struct ModelCache {
     /// Background cleanup task handle
     cleanup_task: RwLock<Option<tokio::task::JoinHandle<()>>>,
     /// Cache statistics
-    stats: CacheStatistics,
-}
+    stats: CacheStatistics}
 
 /// Cache performance statistics
 #[derive(Debug)]
@@ -212,8 +201,7 @@ pub struct CacheStatistics {
     pub cache_misses: AtomicU64,
     pub evictions: AtomicU64,
     pub load_times_ms: AtomicU64,
-    pub memory_pressure_events: AtomicU64,
-}
+    pub memory_pressure_events: AtomicU64}
 
 impl CacheStatistics {
     pub fn new() -> Self {
@@ -222,8 +210,7 @@ impl CacheStatistics {
             cache_misses: AtomicU64::new(0),
             evictions: AtomicU64::new(0),
             load_times_ms: AtomicU64::new(0),
-            memory_pressure_events: AtomicU64::new(0),
-        }
+            memory_pressure_events: AtomicU64::new(0)}
     }
     
     /// Get cache hit ratio as percentage
@@ -249,8 +236,7 @@ impl ModelCache {
             memory_pressure: AtomicCell::new(MemoryPressure::Low),
             repository,
             cleanup_task: RwLock::new(None),
-            stats: CacheStatistics::new(),
-        };
+            stats: CacheStatistics::new()};
         
         cache
     }
@@ -335,8 +321,7 @@ impl ModelCache {
             ModelArchitecture::Mistral => self.load_mistral_model(model_files, device).await?,
             ModelArchitecture::Phi3 => self.load_phi3_model(model_files, device).await?,
             ModelArchitecture::Gemma => self.load_gemma_model(model_files, device).await?,
-            _ => return Err(ModelCacheError::UnsupportedArchitecture(metadata.architecture)),
-        };
+            _ => return Err(ModelCacheError::UnsupportedArchitecture(metadata.architecture))};
         
         let loaded_model = Arc::new(loaded_model);
         let cached_model = Arc::new(CachedModel::new(loaded_model.clone()));
@@ -442,8 +427,7 @@ impl ModelCache {
             num_hidden_layers: llama_config.num_hidden_layers,
             max_position_embeddings: llama_config.max_position_embeddings.unwrap_or(4096),
             rope_theta: llama_config.rope_theta.unwrap_or(10000.0),
-            use_flash_attn: false,
-        };
+            use_flash_attn: false};
         
         Ok(LoadedModel {
             model: ModelInstance::LLaMA(Box::new(model)),
@@ -452,8 +436,7 @@ impl ModelCache {
             config,
             kv_cache: Some(Box::new(kv_cache)),
             memory_usage_bytes: memory_usage,
-            loaded_at: Instant::now(),
-        })
+            loaded_at: Instant::now()})
     }
     
     /// Load Mistral model (simplified implementation)
@@ -491,8 +474,7 @@ impl ModelCache {
             DType::F16 => 2,
             DType::F32 => 4,
             DType::BF16 => 2,
-            _ => 4,
-        };
+            _ => 4};
         
         // Rough estimation: vocab_size * hidden_size + hidden_size^2 * num_layers * factor
         let vocab_embeddings = config.vocab_size * config.hidden_size * dtype_size;
@@ -562,8 +544,7 @@ impl ModelCache {
         let pressure = match current_usage_mb {
             0..=MEMORY_PRESSURE_WARNING_MB => MemoryPressure::Low,
             MEMORY_PRESSURE_WARNING_MB..=MEMORY_PRESSURE_CRITICAL_MB => MemoryPressure::Medium,
-            _ => MemoryPressure::Critical,
-        };
+            _ => MemoryPressure::Critical};
         
         let old_pressure = self.memory_pressure.load();
         if pressure as u8 > old_pressure as u8 {
@@ -654,5 +635,4 @@ pub enum ModelCacheError {
     LoadError(String),
     
     #[error("IO error: {0}")]
-    IoError(#[from] tokio::io::Error),
-}
+    IoError(#[from] tokio::io::Error)}

@@ -81,36 +81,32 @@ pub mod responses;  // Task #10 - Response Models - COMPLETED
 pub use {
     auth::{
         ApiKeyAuth, AwsSignatureAuth, BearerAuth, OAuth2Auth, OAuth2Token, SecureString,
-        ServiceAccountConfig, AuthError,
-    },
+        ServiceAccountConfig, AuthError},
     // builder::HttpRequestBuilder,
     // client::HttpClient,
     common::{
         BaseMessage, CommonUsage, FinishReason, HttpContentType, HttpMethod, ModelParameters,
         ProviderMetadata, StreamingMode, MessageRole, ToolCall, ToolCallType, FunctionCall,
-        ValidationError,
-    },
+        ValidationError},
     requests::{
         completion::{
             CompletionRequest, CompletionRequestError, ProviderExtensions,
             ToolDefinition, ToolChoice, FunctionDefinition, ToolType,
             OpenAIExtensions, AnthropicExtensions, GoogleExtensions,
-            BedrockExtensions, CohereExtensions,
-        },
+            BedrockExtensions, CohereExtensions},
         // embedding::{EmbeddingRequest, EmbeddingRequestError},
         // audio::{AudioRequest, AudioTranscriptionRequest, AudioTTSRequest},
-        // specialized::{ImageGenerationRequest, ModerationRequest, RerankRequest},
+        // specialized::{ImageGenerationRequest, ModerationRequest, RerankRequest}
     },
     responses::{
         completion::{
             CompletionResponse, CompletionChoice, CompletionChunk, ChunkChoice, ChunkDelta,
-            StreamingResponse, ProviderMetadata, CompletionResponseError, LogProbs, TokenLogProb,
+            StreamingResponse, CompletionResponseError, LogProbs, TokenLogProb,
             OpenAIMetadata, AnthropicMetadata, GoogleMetadata, BedrockMetadata, CohereMetadata,
-            SafetyRating, CitationMetadata, CitationSource, BedrockMetrics,
-        },
+            SafetyRating, CitationMetadata, CitationSource, BedrockMetrics}
         // embedding::EmbeddingResponse,
-        // error::{HttpError, ProviderError},
-    },
+        // error::{HttpError, ProviderError}
+    }
 };
 
 /// Global statistics for HTTP operations
@@ -128,8 +124,7 @@ pub struct HttpStats {
     /// Total bytes received in responses
     pub bytes_received: AtomicU64,
     /// Total time spent in HTTP operations (microseconds)
-    pub total_duration_micros: AtomicU64,
-}
+    pub total_duration_micros: AtomicU64}
 
 impl HttpStats {
     /// Create new HTTP statistics tracker
@@ -141,8 +136,7 @@ impl HttpStats {
             responses_error: AtomicU64::new(0),
             bytes_sent: AtomicU64::new(0),
             bytes_received: AtomicU64::new(0),
-            total_duration_micros: AtomicU64::new(0),
-        }
+            total_duration_micros: AtomicU64::new(0)}
     }
 
     /// Record a successful HTTP request
@@ -201,8 +195,7 @@ impl HttpStats {
             responses_error: self.responses_error.load(Ordering::Relaxed),
             bytes_sent: self.bytes_sent.load(Ordering::Relaxed),
             bytes_received: self.bytes_received.load(Ordering::Relaxed),
-            total_duration_micros: self.total_duration_micros.load(Ordering::Relaxed),
-        }
+            total_duration_micros: self.total_duration_micros.load(Ordering::Relaxed)}
     }
 }
 
@@ -221,8 +214,7 @@ pub struct HttpStatsSnapshot {
     /// Total bytes received in responses
     pub bytes_received: u64,
     /// Total time spent in HTTP operations (microseconds)
-    pub total_duration_micros: u64,
-}
+    pub total_duration_micros: u64}
 
 impl HttpStatsSnapshot {
     /// Calculate success rate from snapshot data
@@ -293,8 +285,7 @@ pub enum Provider {
     /// xAI (Grok models)
     XAI = 15,
     /// DeepSeek (Code and reasoning models)
-    DeepSeek = 16,
-}
+    DeepSeek = 16}
 
 impl Provider {
     /// Get provider name as string for logging and debugging
@@ -317,8 +308,7 @@ impl Provider {
             Provider::Perplexity => "perplexity",
             Provider::Together => "together",
             Provider::XAI => "xai",
-            Provider::DeepSeek => "deepseek",
-        }
+            Provider::DeepSeek => "deepseek"}
     }
 
     /// Get all supported providers as a slice
@@ -365,8 +355,7 @@ impl Provider {
             | Provider::Perplexity
             | Provider::Together
             | Provider::XAI
-            | Provider::DeepSeek => true,
-        }
+            | Provider::DeepSeek => true}
     }
 
     /// Check if provider supports function calling
@@ -389,8 +378,7 @@ impl Provider {
             | Provider::HuggingFace
             | Provider::OpenRouter
             | Provider::Perplexity
-            | Provider::DeepSeek => false,
-        }
+            | Provider::DeepSeek => false}
     }
 
     /// Get default base URL for provider
@@ -413,8 +401,7 @@ impl Provider {
             Provider::Perplexity => "https://api.perplexity.ai",
             Provider::Together => "https://api.together.xyz/v1",
             Provider::XAI => "https://api.x.ai/v1",
-            Provider::DeepSeek => "https://api.deepseek.com/v1",
-        }
+            Provider::DeepSeek => "https://api.deepseek.com/v1"}
     }
 }
 
@@ -446,8 +433,7 @@ impl std::str::FromStr for Provider {
             "together" => Ok(Provider::Together),
             "xai" => Ok(Provider::XAI),
             "deepseek" => Ok(Provider::DeepSeek),
-            _ => Err(format!("Unknown provider: {}", s)),
-        }
+            _ => Err(format!("Unknown provider: {}", s))}
     }
 }
 

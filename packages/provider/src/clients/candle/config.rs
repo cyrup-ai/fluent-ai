@@ -3,7 +3,6 @@
 //! This module provides comprehensive configuration management and real-time
 //! metrics collection for optimal performance monitoring and tuning.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -25,8 +24,7 @@ pub struct CandleGlobalConfig {
     /// Metrics collection settings
     pub metrics_config: MetricsConfig,
     /// Global performance settings
-    pub performance_config: PerformanceSettings,
-}
+    pub performance_config: PerformanceSettings}
 
 impl Default for CandleGlobalConfig {
     fn default() -> Self {
@@ -50,8 +48,7 @@ impl Default for CandleGlobalConfig {
             cache_config: CacheConfig::default(),
             compute_config: ComputeConfig::default(),
             metrics_config: MetricsConfig::default(),
-            performance_config: PerformanceSettings::default(),
-        }
+            performance_config: PerformanceSettings::default()}
     }
 }
 
@@ -161,8 +158,7 @@ pub struct ModelSpecificConfig {
     /// Recommended temperature range
     pub temperature_range: (f32, f32),
     /// Parallel processing configuration
-    pub parallel_config: ParallelConfig,
-}
+    pub parallel_config: ParallelConfig}
 
 impl ModelSpecificConfig {
     /// Create configuration for specific model
@@ -176,8 +172,7 @@ impl ModelSpecificConfig {
                     kv_cache_size_mb: 2048,                      // 2GB
                     context_window: 4096,
                     temperature_range: (0.1, 2.0),
-                    parallel_config: ParallelConfig::medium(),
-                }
+                    parallel_config: ParallelConfig::medium()}
             }
             CandleModel::Llama2_13B => {
                 Self {
@@ -187,8 +182,7 @@ impl ModelSpecificConfig {
                     kv_cache_size_mb: 4096,                      // 4GB
                     context_window: 4096,
                     temperature_range: (0.1, 1.5),
-                    parallel_config: ParallelConfig::high(),
-                }
+                    parallel_config: ParallelConfig::high()}
             }
             CandleModel::Phi3_Mini | CandleModel::Gemma_2B => {
                 Self {
@@ -198,8 +192,7 @@ impl ModelSpecificConfig {
                     kv_cache_size_mb: 1024,                     // 1GB
                     context_window: 4096,
                     temperature_range: (0.1, 2.0),
-                    parallel_config: ParallelConfig::low(),
-                }
+                    parallel_config: ParallelConfig::low()}
             }
             CandleModel::Gemma_7B => {
                 Self {
@@ -209,8 +202,7 @@ impl ModelSpecificConfig {
                     kv_cache_size_mb: 3072,                      // 3GB
                     context_window: 8192,
                     temperature_range: (0.1, 1.8),
-                    parallel_config: ParallelConfig::medium(),
-                }
+                    parallel_config: ParallelConfig::medium()}
             }
         }
     }
@@ -265,8 +257,7 @@ pub struct ParallelConfig {
     /// Enable NUMA-aware scheduling
     pub numa_aware: bool,
     /// Thread affinity settings
-    pub thread_affinity: ThreadAffinity,
-}
+    pub thread_affinity: ThreadAffinity}
 
 impl ParallelConfig {
     /// Low parallelism configuration
@@ -275,8 +266,7 @@ impl ParallelConfig {
             model_threads: 2,
             data_threads: 2,
             numa_aware: false,
-            thread_affinity: ThreadAffinity::None,
-        }
+            thread_affinity: ThreadAffinity::None}
     }
 
     /// Medium parallelism configuration
@@ -285,8 +275,7 @@ impl ParallelConfig {
             model_threads: 4,
             data_threads: 4,
             numa_aware: true,
-            thread_affinity: ThreadAffinity::Core,
-        }
+            thread_affinity: ThreadAffinity::Core}
     }
 
     /// High parallelism configuration
@@ -295,8 +284,7 @@ impl ParallelConfig {
             model_threads: 8,
             data_threads: 8,
             numa_aware: true,
-            thread_affinity: ThreadAffinity::Socket,
-        }
+            thread_affinity: ThreadAffinity::Socket}
     }
 
     /// Validate configuration
@@ -331,8 +319,7 @@ pub enum ThreadAffinity {
     /// Bind to socket/NUMA node
     Socket,
     /// Custom affinity mask
-    Custom(u64),
-}
+    Custom(u64)}
 
 /// Cache configuration for optimal performance
 #[derive(Debug, Clone)]
@@ -348,8 +335,7 @@ pub struct CacheConfig {
     /// Cache eviction policy
     pub eviction_policy: EvictionPolicy,
     /// Cache warming strategy
-    pub warming_strategy: WarmingStrategy,
-}
+    pub warming_strategy: WarmingStrategy}
 
 impl Default for CacheConfig {
     fn default() -> Self {
@@ -359,8 +345,7 @@ impl Default for CacheConfig {
             kv_cache_limit_mb: 2048, // 2GB for KV cache
             aggressive_caching: false,
             eviction_policy: EvictionPolicy::LRU,
-            warming_strategy: WarmingStrategy::Lazy,
-        }
+            warming_strategy: WarmingStrategy::Lazy}
     }
 }
 
@@ -373,8 +358,7 @@ impl CacheConfig {
             kv_cache_limit_mb: 4096, // 4GB
             aggressive_caching: true,
             eviction_policy: EvictionPolicy::LFU,
-            warming_strategy: WarmingStrategy::Eager,
-        }
+            warming_strategy: WarmingStrategy::Eager}
     }
 
     /// Development cache configuration
@@ -385,8 +369,7 @@ impl CacheConfig {
             kv_cache_limit_mb: 512,  // 512MB
             aggressive_caching: false,
             eviction_policy: EvictionPolicy::LRU,
-            warming_strategy: WarmingStrategy::Manual,
-        }
+            warming_strategy: WarmingStrategy::Manual}
     }
 
     /// Validate cache configuration
@@ -421,8 +404,7 @@ pub enum EvictionPolicy {
     /// First In, First Out
     FIFO,
     /// Random eviction
-    Random,
-}
+    Random}
 
 /// Cache warming strategies
 #[derive(Debug, Clone, Copy)]
@@ -432,8 +414,7 @@ pub enum WarmingStrategy {
     /// Pre-load common models
     Eager,
     /// Manual warming control
-    Manual,
-}
+    Manual}
 
 /// Compute configuration for optimization
 #[derive(Debug, Clone)]
@@ -449,8 +430,7 @@ pub struct ComputeConfig {
     /// Memory optimization level
     pub memory_optimization: MemoryOptimization,
     /// Compute precision
-    pub precision: ComputePrecision,
-}
+    pub precision: ComputePrecision}
 
 impl Default for ComputeConfig {
     fn default() -> Self {
@@ -460,8 +440,7 @@ impl Default for ComputeConfig {
             enable_gpu: true,
             gpu_device_id: None, // Auto-select
             memory_optimization: MemoryOptimization::Balanced,
-            precision: ComputePrecision::FP32,
-        }
+            precision: ComputePrecision::FP32}
     }
 }
 
@@ -474,8 +453,7 @@ impl ComputeConfig {
             enable_gpu: true,
             gpu_device_id: None,
             memory_optimization: MemoryOptimization::Aggressive,
-            precision: ComputePrecision::Mixed,
-        }
+            precision: ComputePrecision::Mixed}
     }
 
     /// Debug compute configuration
@@ -486,8 +464,7 @@ impl ComputeConfig {
             enable_gpu: false,
             gpu_device_id: None,
             memory_optimization: MemoryOptimization::Conservative,
-            precision: ComputePrecision::FP32,
-        }
+            precision: ComputePrecision::FP32}
     }
 
     /// Validate compute configuration
@@ -505,8 +482,7 @@ pub enum MemoryOptimization {
     /// Balanced memory/performance
     Balanced,
     /// Aggressive memory optimization
-    Aggressive,
-}
+    Aggressive}
 
 /// Compute precision options
 #[derive(Debug, Clone, Copy)]
@@ -518,8 +494,7 @@ pub enum ComputePrecision {
     /// Mixed precision (FP16 + FP32)
     Mixed,
     /// Brain floating point (bfloat16)
-    BF16,
-}
+    BF16}
 
 /// Metrics collection configuration
 #[derive(Debug, Clone)]
@@ -535,8 +510,7 @@ pub struct MetricsConfig {
     /// Metrics retention period
     pub retention_period: Duration,
     /// Enable real-time metrics
-    pub real_time: bool,
-}
+    pub real_time: bool}
 
 impl Default for MetricsConfig {
     fn default() -> Self {
@@ -546,8 +520,7 @@ impl Default for MetricsConfig {
             enable_errors: true,
             collection_interval: Duration::from_secs(1),
             retention_period: Duration::from_secs(3600), // 1 hour
-            real_time: false,
-        }
+            real_time: false}
     }
 }
 
@@ -560,8 +533,7 @@ impl MetricsConfig {
             enable_errors: true,
             collection_interval: Duration::from_secs(5),
             retention_period: Duration::from_secs(86400), // 24 hours
-            real_time: false,
-        }
+            real_time: false}
     }
 
     /// Verbose metrics for development
@@ -572,8 +544,7 @@ impl MetricsConfig {
             enable_errors: true,
             collection_interval: Duration::from_millis(100),
             retention_period: Duration::from_secs(1800), // 30 minutes
-            real_time: true,
-        }
+            real_time: true}
     }
 
     /// Validate metrics configuration
@@ -610,8 +581,7 @@ pub struct PerformanceSettings {
     /// Profile collection interval
     pub profile_interval: Duration,
     /// Adaptive optimization
-    pub adaptive_optimization: bool,
-}
+    pub adaptive_optimization: bool}
 
 impl Default for PerformanceSettings {
     fn default() -> Self {
@@ -620,8 +590,7 @@ impl Default for PerformanceSettings {
             optimization_level: 2,
             enable_profiling: false,
             profile_interval: Duration::from_secs(10),
-            adaptive_optimization: true,
-        }
+            adaptive_optimization: true}
     }
 }
 
@@ -633,8 +602,7 @@ impl PerformanceSettings {
             optimization_level: 3,
             enable_profiling: false,
             profile_interval: Duration::from_secs(5),
-            adaptive_optimization: true,
-        }
+            adaptive_optimization: true}
     }
 
     /// Conservative performance settings
@@ -644,8 +612,7 @@ impl PerformanceSettings {
             optimization_level: 1,
             enable_profiling: true,
             profile_interval: Duration::from_secs(30),
-            adaptive_optimization: false,
-        }
+            adaptive_optimization: false}
     }
 
     /// Validate performance settings
@@ -682,8 +649,7 @@ pub struct MetricsCollector {
     /// Error metrics
     error_metrics: ErrorMetrics,
     /// Collection timestamp
-    last_collection: AtomicCell<Instant>,
-}
+    last_collection: AtomicCell<Instant>}
 
 impl MetricsCollector {
     /// Create new metrics collector with simple enable/disable flag
@@ -697,8 +663,7 @@ impl MetricsCollector {
                 enable_errors: false,
                 collection_interval: Duration::from_secs(3600), // Large interval when disabled
                 retention_period: Duration::from_secs(60),
-                real_time: false,
-            }
+                real_time: false}
         };
 
         Self::with_config(config)
@@ -711,8 +676,7 @@ impl MetricsCollector {
             performance_metrics: PerformanceMetrics::default(),
             memory_metrics: MemoryMetrics::default(),
             error_metrics: ErrorMetrics::default(),
-            last_collection: AtomicCell::new(Instant::now()),
-        }
+            last_collection: AtomicCell::new(Instant::now())}
     }
 
     /// Record inference operation
@@ -789,16 +753,14 @@ pub struct PerformanceMetrics {
     /// Total inference time in nanoseconds
     total_inference_time: AtomicCell<u64>,
     /// Total tokens generated
-    total_tokens_generated: AtomicCell<u64>,
-}
+    total_tokens_generated: AtomicCell<u64>}
 
 impl Default for PerformanceMetrics {
     fn default() -> Self {
         Self {
             total_inferences: AtomicCell::new(0),
             total_inference_time: AtomicCell::new(0),
-            total_tokens_generated: AtomicCell::new(0),
-        }
+            total_tokens_generated: AtomicCell::new(0)}
     }
 }
 
@@ -834,15 +796,13 @@ pub struct MemoryMetrics {
     /// Current memory usage in bytes
     current_memory_usage: AtomicCell<u64>,
     /// Peak memory usage in bytes
-    peak_memory_usage: AtomicCell<u64>,
-}
+    peak_memory_usage: AtomicCell<u64>}
 
 impl Default for MemoryMetrics {
     fn default() -> Self {
         Self {
             current_memory_usage: AtomicCell::new(0),
-            peak_memory_usage: AtomicCell::new(0),
-        }
+            peak_memory_usage: AtomicCell::new(0)}
     }
 }
 
@@ -862,14 +822,12 @@ impl MemoryMetrics {
 #[derive(Debug, Clone)]
 pub struct ErrorMetrics {
     /// Total errors encountered
-    total_errors: AtomicCell<u64>,
-}
+    total_errors: AtomicCell<u64>}
 
 impl Default for ErrorMetrics {
     fn default() -> Self {
         Self {
-            total_errors: AtomicCell::new(0),
-        }
+            total_errors: AtomicCell::new(0)}
     }
 }
 

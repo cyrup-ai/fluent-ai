@@ -10,8 +10,7 @@ use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics
 
 /// NEON-optimized similarity implementation for ARM64
 pub struct NeonSimilarity {
-    metrics: Arc<SimilarityMetrics>,
-}
+    metrics: Arc<SimilarityMetrics>}
 
 impl Default for NeonSimilarity {
     fn default() -> Self {
@@ -24,8 +23,7 @@ impl NeonSimilarity {
     #[inline]
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(SimilarityMetrics::default()),
-        }
+            metrics: Arc::new(SimilarityMetrics::default())}
     }
 
     /// Process vectors using real ARM NEON SIMD instructions
@@ -47,8 +45,8 @@ impl NeonSimilarity {
             let offset = i * 4;
 
             // Load 4 consecutive f32 values from each vector
-            let a_vec = vld1q_f32(a.as_ptr().add(offset));
-            let b_vec = vld1q_f32(b.as_ptr().add(offset));
+            let a_vec = unsafe { vld1q_f32(a.as_ptr().add(offset)) };
+            let b_vec = unsafe { vld1q_f32(b.as_ptr().add(offset)) };
 
             // Fused multiply-add: dot_sum += a_vec * b_vec
             dot_sum = vfmaq_f32(dot_sum, a_vec, b_vec);
@@ -61,9 +59,9 @@ impl NeonSimilarity {
         }
 
         // Horizontal reduction of SIMD vectors to scalars
-        let dot_scalar = Self::horizontal_sum_neon(dot_sum);
-        let norm_a_scalar = Self::horizontal_sum_neon(norm_a_sum);
-        let norm_b_scalar = Self::horizontal_sum_neon(norm_b_sum);
+        let dot_scalar = unsafe { Self::horizontal_sum_neon(dot_sum) };
+        let norm_a_scalar = unsafe { Self::horizontal_sum_neon(norm_a_sum) };
+        let norm_b_scalar = unsafe { Self::horizontal_sum_neon(norm_b_sum) };
 
         // Process remainder elements with scalar operations
         let (dot_remainder, norm_a_remainder, norm_b_remainder) = if remainder > 0 {

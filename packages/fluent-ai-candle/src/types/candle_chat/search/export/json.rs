@@ -4,7 +4,7 @@
 //! zero-allocation patterns where possible.
 
 use super::super::types::{SearchResult, SearchStatistics};
-use super::formats::{ExportOptions, ExportFormat, ExportData, ExportMetadata, ExportError};
+use super::formats::{ExportOptions, ExportData, ExportMetadata, ExportError};
 
 /// JSON export implementation
 pub struct JsonExporter;
@@ -22,12 +22,10 @@ impl JsonExporter {
                         .as_secs(),
                     format: options.format.clone(),
                     total_results: results.len(),
-                    options: options.clone(),
-                })
+                    options: options.clone()})
             } else {
                 None
-            },
-        };
+            }};
 
         if options.pretty_print {
             serde_json::to_string_pretty(&export_data)

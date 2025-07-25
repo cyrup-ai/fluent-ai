@@ -34,8 +34,7 @@ pub mod format_utils {
             OutputFormat::WebSocket => 1024,
             OutputFormat::PlainText => 512,
             OutputFormat::Raw => 256, // Minimal overhead
-            OutputFormat::Custom(_) => 1024,
-        }
+            OutputFormat::Custom(_) => 1024}
     }
 
     /// Parse output format from string with case-insensitive matching
@@ -54,8 +53,7 @@ pub mod format_utils {
             _ => Err(StreamingError::FormatError(format!(
                 "Unknown output format: {}",
                 format_str
-            ))),
-        }
+            )))}
     }
 
     /// Get MIME type for HTTP Content-Type header
@@ -72,9 +70,7 @@ pub mod format_utils {
                 "csv" => "text/csv; charset=utf-8",
                 "xml" => "application/xml",
                 "yaml" | "yml" => "application/yaml",
-                _ => "application/octet-stream",
-            },
-        }
+                _ => "application/octet-stream"}}
     }
 
     /// Check if format supports real-time streaming
@@ -108,8 +104,7 @@ pub mod format_utils {
                 ("Expires", "0"),
             ],
             OutputFormat::Raw => vec![("Cache-Control", "no-cache")],
-            OutputFormat::Custom(_) => vec![("Cache-Control", "no-cache")],
-        }
+            OutputFormat::Custom(_) => vec![("Cache-Control", "no-cache")]}
     }
 }
 
@@ -121,8 +116,7 @@ pub mod buffer_utils {
     /// Pre-allocated buffer for string formatting
     pub struct FormatBuffer {
         buffer: Vec<u8>,
-        capacity: usize,
-    }
+        capacity: usize}
 
     impl FormatBuffer {
         /// Create new buffer with format-specific capacity
@@ -131,8 +125,7 @@ pub mod buffer_utils {
             let capacity = format_utils::optimal_buffer_size(format);
             Self {
                 buffer: Vec::with_capacity(capacity),
-                capacity,
-            }
+                capacity}
         }
 
         /// Write formatted data to buffer
@@ -218,8 +211,7 @@ pub mod perf_utils {
         pub format_time: Duration,
         pub buffer_size: usize,
         pub output_size: usize,
-        pub compression_ratio: f64,
-    }
+        pub compression_ratio: f64}
 
     impl FormatMetrics {
         /// Create new metrics instance
@@ -229,8 +221,7 @@ pub mod perf_utils {
                 format_time: Duration::default(),
                 buffer_size: 0,
                 output_size: 0,
-                compression_ratio: 1.0,
-            }
+                compression_ratio: 1.0}
         }
 
         /// Start timing a format operation

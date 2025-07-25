@@ -17,16 +17,14 @@ use crate::model::traits::Model;
 /// A type-erased model reference
 struct ModelHandle {
     model: Box<dyn Any + Send + Sync>,
-    info: &'static ModelInfo,
-}
+    info: &'static ModelInfo}
 
 impl ModelHandle {
     fn new<M: Model + 'static>(model: M) -> Self {
         let info = model.info();
         Self {
             model: Box::new(model),
-            info,
-        }
+            info}
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -49,15 +47,13 @@ struct ModelRegistryInner {
         DashMap<&'static str, DashMap<&'static str, Arc<ModelHandle>, RandomState>, RandomState>,
 
     // Maps model type to provider+name
-    type_registry: DashMap<TypeId, DashSet<(&'static str, &'static str), RandomState>, RandomState>,
-}
+    type_registry: DashMap<TypeId, DashSet<(&'static str, &'static str), RandomState>, RandomState>}
 
 impl Default for ModelRegistryInner {
     fn default() -> Self {
         Self {
             models: DashMap::with_hasher(RandomState::default()),
-            type_registry: DashMap::with_hasher(RandomState::default()),
-        }
+            type_registry: DashMap::with_hasher(RandomState::default())}
     }
 }
 
@@ -103,8 +99,7 @@ impl ModelRegistry {
         if provider_models.contains_key(model_name) {
             return Err(ModelError::ModelAlreadyExists {
                 provider: provider.into(),
-                name: model_name.into(),
-            });
+                name: model_name.into()});
         }
 
         // Register the model
@@ -122,8 +117,7 @@ impl ModelRegistry {
         // Return a registered model handle
         Ok(RegisteredModel {
             handle,
-            _marker: PhantomData,
-        })
+            _marker: PhantomData})
     }
 
     /// Get a model by provider and name
@@ -141,13 +135,11 @@ impl ModelRegistry {
     ) -> Result<Option<RegisteredModel<M>>> {
         let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
             Some(provider) => provider,
-            None => return Ok(None),
-        };
+            None => return Ok(None)};
 
         let handle = match provider_models.get(name) {
             Some(handle) => handle,
-            None => return Ok(None),
-        };
+            None => return Ok(None)};
 
         // Verify the model type
         if handle.as_any().downcast_ref::<M>().is_none() {
@@ -158,8 +150,7 @@ impl ModelRegistry {
 
         Ok(Some(RegisteredModel {
             handle: handle.clone(),
-            _marker: PhantomData,
-        }))
+            _marker: PhantomData}))
     }
 
     /// Get a model by provider and name, returning an error if not found
@@ -178,8 +169,7 @@ impl ModelRegistry {
         self.get(provider, name)?
             .ok_or_else(|| ModelError::ModelNotFound {
                 provider: provider.into(),
-                name: name.into(),
-            })
+                name: name.into()})
     }
 
     /// Find all models of a specific type
@@ -198,8 +188,7 @@ impl ModelRegistry {
                         if handle.as_any().downcast_ref::<M>().is_some() {
                             result.push(RegisteredModel {
                                 handle: handle.clone(),
-                                _marker: PhantomData,
-                            });
+                                _marker: PhantomData});
                         }
                     }
                 }
@@ -227,13 +216,11 @@ impl ModelRegistry {
     {
         let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
             Some(provider) => provider,
-            None => return Ok(None),
-        };
+            None => return Ok(None)};
 
         let handle = match provider_models.get(name) {
             Some(handle) => handle,
-            None => return Ok(None),
-        };
+            None => return Ok(None)};
 
         // Attempt to downcast the handle to the requested type
         match handle.as_any().downcast_ref::<T>() {
@@ -249,8 +236,7 @@ impl ModelRegistry {
                     name, provider
                 )
                 .into(),
-            )),
-        }
+            ))}
     }
 
     /// Get a model as a boxed trait object
@@ -271,13 +257,11 @@ impl ModelRegistry {
     {
         let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
             Some(provider) => provider,
-            None => return Ok(None),
-        };
+            None => return Ok(None)};
 
         let _handle = match provider_models.get(name) {
             Some(handle) => handle,
-            None => return Ok(None),
-        };
+            None => return Ok(None)};
 
         // Attempt to convert the handle to a boxed trait object
         // This is complex for ?Sized types and requires careful implementation
@@ -306,8 +290,7 @@ impl ModelRegistry {
         self.get_as(provider, name)?
             .ok_or_else(|| ModelError::ModelNotFound {
                 provider: provider.into(),
-                name: name.into(),
-            })
+                name: name.into()})
     }
 
     /// Get a model as a boxed trait object, returning an error if not found
@@ -329,8 +312,7 @@ impl ModelRegistry {
         self.get_boxed(provider, name)?
             .ok_or_else(|| ModelError::ModelNotFound {
                 provider: provider.into(),
-                name: name.into(),
-            })
+                name: name.into()})
     }
 }
 
@@ -340,15 +322,13 @@ impl ModelRegistry {
 /// proper cleanup when the last reference is dropped.
 pub struct RegisteredModel<M: Model + 'static> {
     handle: Arc<ModelHandle>,
-    _marker: PhantomData<M>,
-}
+    _marker: PhantomData<M>}
 
 impl<M: Model + 'static> Clone for RegisteredModel<M> {
     fn clone(&self) -> Self {
         Self {
             handle: self.handle.clone(),
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 }
 
@@ -397,8 +377,7 @@ impl<M: Model + 'static> Hash for RegisteredModel<M> {
 /// A builder for configuring and registering models
 pub struct ModelBuilder<M: Model + 'static> {
     provider: &'static str,
-    model: M,
-}
+    model: M}
 
 impl<M: Model + 'static> ModelBuilder<M> {
     /// Create a new model builder
@@ -418,8 +397,7 @@ mod tests {
     use crate::model::info::ModelInfoBuilder;
 
     struct TestModel {
-        info: &'static ModelInfo,
-    }
+        info: &'static ModelInfo}
 
     impl Model for TestModel {
         fn info(&self) -> &'static ModelInfo {
@@ -479,8 +457,7 @@ mod tests {
             result,
             Err(ModelError::ModelAlreadyExists {
                 provider: "test-provider",
-                name: "test-model",
-            })
+                name: "test-model"})
         ));
     }
 

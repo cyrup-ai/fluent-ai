@@ -24,8 +24,7 @@ pub struct InferenceMetrics {
     /// Current memory usage (MB)
     pub memory_usage_mb: f64,
     /// Peak memory usage (MB)
-    pub peak_memory_mb: f64,
-}
+    pub peak_memory_mb: f64}
 
 impl InferenceMetrics {
     /// Create new metrics instance
@@ -40,8 +39,7 @@ impl InferenceMetrics {
             total_operations: 0,
             failed_operations: 0,
             memory_usage_mb: 0.0,
-            peak_memory_mb: 0.0,
-        }
+            peak_memory_mb: 0.0}
     }
 
     /// Update metrics with new generation data
@@ -119,8 +117,7 @@ impl InferenceMetrics {
             avg_tokens_per_sec: self.avg_tokens_per_sec,
             peak_tokens_per_sec: self.peak_tokens_per_sec,
             total_tokens: self.total_tokens,
-            total_operations: self.total_operations,
-        }
+            total_operations: self.total_operations}
     }
 
     /// Get latency summary
@@ -128,8 +125,7 @@ impl InferenceMetrics {
         LatencySummary {
             avg_latency_ms: self.avg_latency_ms,
             peak_latency_ms: self.peak_latency_ms,
-            total_operations: self.total_operations,
-        }
+            total_operations: self.total_operations}
     }
 
     /// Get memory summary
@@ -137,8 +133,7 @@ impl InferenceMetrics {
         MemorySummary {
             current_mb: self.memory_usage_mb,
             peak_mb: self.peak_memory_mb,
-            efficiency_score: self.efficiency_score(),
-        }
+            efficiency_score: self.efficiency_score()}
     }
 }
 
@@ -154,21 +149,18 @@ pub struct ThroughputSummary {
     pub avg_tokens_per_sec: f64,
     pub peak_tokens_per_sec: f64,
     pub total_tokens: u64,
-    pub total_operations: u64,
-}
+    pub total_operations: u64}
 
 /// Latency metrics summary
 #[derive(Debug, Clone)]
 pub struct LatencySummary {
     pub avg_latency_ms: f64,
     pub peak_latency_ms: f64,
-    pub total_operations: u64,
-}
+    pub total_operations: u64}
 
 /// Memory usage summary
 #[derive(Debug, Clone)]
 pub struct MemorySummary {
     pub current_mb: f64,
     pub peak_mb: f64,
-    pub efficiency_score: f64,
-}
+    pub efficiency_score: f64}

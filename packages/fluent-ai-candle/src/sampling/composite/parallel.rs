@@ -16,8 +16,7 @@ pub struct ParallelCompositeProcessor {
     #[allow(dead_code)] // Reserved for future parallel processing implementation
     processors: Vec<Box<dyn LogitsProcessor>>,
     #[allow(dead_code)] // Reserved for future parallel merge strategy implementation
-    merge_strategy: MergeStrategy,
-}
+    merge_strategy: MergeStrategy}
 
 /// Strategy for merging results from parallel processors
 #[derive(Debug, Clone, Copy)]
@@ -29,8 +28,7 @@ pub enum MergeStrategy {
     /// Take minimum values (most restrictive)
     Minimum,
     /// Take maximum values (least restrictive)
-    Maximum,
-}
+    Maximum}
 
 impl ParallelCompositeProcessor {
     /// Create a new parallel composite processor
@@ -56,8 +54,7 @@ impl ParallelCompositeProcessor {
 
         Ok(Self {
             processors,
-            merge_strategy,
-        })
+            merge_strategy})
     }
 
     /// Get the number of parallel processors
@@ -103,8 +100,7 @@ impl ParallelCompositeProcessor {
 #[derive(Debug, Default)]
 pub struct ParallelCompositeProcessorBuilder {
     processors: Vec<Box<dyn LogitsProcessor>>,
-    merge_strategy: Option<MergeStrategy>,
-}
+    merge_strategy: Option<MergeStrategy>}
 
 impl ParallelCompositeProcessorBuilder {
     /// Create a new parallel builder
@@ -112,8 +108,7 @@ impl ParallelCompositeProcessorBuilder {
     pub fn new() -> Self {
         Self {
             processors: Vec::new(),
-            merge_strategy: None,
-        }
+            merge_strategy: None}
     }
 
     /// Add a processor to parallel execution

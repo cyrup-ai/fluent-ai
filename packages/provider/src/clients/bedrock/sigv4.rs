@@ -33,8 +33,7 @@ pub struct AwsCredentials {
     /// AWS region
     region: ArrayString<32>,
     /// Credentials source for error reporting
-    source: CredentialsSource,
-}
+    source: CredentialsSource}
 
 impl AwsCredentials {
     /// Create new AWS credentials with zero allocation validation
@@ -92,8 +91,7 @@ impl AwsCredentials {
             secret_access_key: secret_key,
             session_token: None,
             region: reg,
-            source: CredentialsSource::Explicit,
-        })
+            source: CredentialsSource::Explicit})
     }
 
     /// Create credentials with session token for temporary credentials
@@ -147,16 +145,14 @@ pub struct SigV4Signer {
     /// Hot-swappable credentials using arc_swap
     credentials: ArcSwap<AwsCredentials>,
     /// AWS service name (always "bedrock" for our use case)
-    service: &'static str,
-}
+    service: &'static str}
 
 impl SigV4Signer {
     /// Create new SigV4 signer with credentials
     pub fn new(credentials: AwsCredentials) -> Self {
         Self {
             credentials: ArcSwap::new(Arc::new(credentials)),
-            service: "bedrock",
-        }
+            service: "bedrock"}
     }
 
     /// Update credentials with hot-swapping (zero downtime)

@@ -27,64 +27,53 @@ pub enum RealTimeEvent {
     TypingStarted {
         user_id: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// User stopped typing
     TypingStopped {
         user_id: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// New message received
     MessageReceived {
         message: Message,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// Message updated
     MessageUpdated {
         message_id: String,
         content: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// Message deleted
     MessageDeleted {
         message_id: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// User joined session
     UserJoined {
         user_id: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// User left session
     UserLeft {
         user_id: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// Connection status changed
     ConnectionStatusChanged {
         user_id: String,
         status: ConnectionStatus,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// Heartbeat received
     HeartbeatReceived {
         user_id: String,
         session_id: String,
-        timestamp: u64,
-    },
+        timestamp: u64},
     /// System notification
     SystemNotification {
         message: String,
         level: NotificationLevel,
-        timestamp: u64,
-    },
-}
+        timestamp: u64}}
 
 /// Connection status enumeration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -104,8 +93,7 @@ pub enum ConnectionStatus {
     /// Idle (connected but inactive)
     Idle,
     /// Unstable connection
-    Unstable,
-}
+    Unstable}
 
 impl ConnectionStatus {
     /// Convert to atomic representation (u8)
@@ -119,8 +107,7 @@ impl ConnectionStatus {
             Self::Reconnecting => 4,
             Self::Failed => 5,
             Self::Idle => 6,
-            Self::Unstable => 7,
-        }
+            Self::Unstable => 7}
     }
 
     /// Convert from atomic representation (u8)
@@ -149,8 +136,7 @@ pub enum NotificationLevel {
     /// Error
     Error,
     /// Success
-    Success,
-}
+    Success}
 
 /// Typing indicator state with atomic operations
 #[derive(Debug)]
@@ -164,8 +150,7 @@ pub struct TypingState {
     /// Is currently typing
     pub is_typing: AtomicBool,
     /// Typing duration in seconds
-    pub typing_duration: AtomicU64,
-}
+    pub typing_duration: AtomicU64}
 
 impl TypingState {
     /// Create a new typing state
@@ -180,8 +165,7 @@ impl TypingState {
             session_id,
             last_activity: AtomicU64::new(now),
             is_typing: AtomicBool::new(false),
-            typing_duration: AtomicU64::new(0),
-        }
+            typing_duration: AtomicU64::new(0)}
     }
 
     /// Start typing
@@ -249,8 +233,7 @@ pub struct TypingIndicator {
     /// Total typing events counter
     typing_events: Arc<ConsistentCounter>,
     /// Cleanup task handle
-    cleanup_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>,
-}
+    cleanup_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>}
 
 impl TypingIndicator {
     /// Create a new typing indicator
@@ -264,8 +247,7 @@ impl TypingIndicator {
             event_broadcaster,
             active_users: Arc::new(ConsistentCounter::new(0)),
             typing_events: Arc::new(ConsistentCounter::new(0)),
-            cleanup_task: ArcSwap::new(Arc::new(None)),
-        }
+            cleanup_task: ArcSwap::new(Arc::new(None))}
     }
 
     /// Start typing indicator
@@ -291,8 +273,7 @@ impl TypingIndicator {
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
-        };
+                .as_secs()};
 
         let _ = self.event_broadcaster.send(event);
 
@@ -314,8 +295,7 @@ impl TypingIndicator {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs(),
-            };
+                    .as_secs()};
 
             let _ = self.event_broadcaster.send(event);
         }
@@ -370,8 +350,7 @@ impl TypingIndicator {
                                 timestamp: std::time::SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .unwrap_or_default()
-                                    .as_secs(),
-                            };
+                                    .as_secs()};
 
                             let _ = event_broadcaster.send(event);
                         }
@@ -407,8 +386,7 @@ impl TypingIndicator {
             active_users: self.active_users.get(),
             total_typing_events: self.typing_events.get(),
             expiry_duration: self.expiry_duration.load(Ordering::Relaxed),
-            cleanup_interval: self.cleanup_interval.load(Ordering::Relaxed),
-        }
+            cleanup_interval: self.cleanup_interval.load(Ordering::Relaxed)}
     }
 }
 
@@ -439,8 +417,7 @@ pub struct TypingStatistics {
     pub active_users: usize,
     pub total_typing_events: usize,
     pub expiry_duration: u64,
-    pub cleanup_interval: u64,
-}
+    pub cleanup_interval: u64}
 
 /// Live update message with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -460,8 +437,7 @@ pub struct LiveUpdateMessage {
     /// Priority level
     pub priority: MessagePriority,
     /// Metadata
-    pub metadata: Option<String>,
-}
+    pub metadata: Option<String>}
 
 /// Message priority levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -473,8 +449,7 @@ pub enum MessagePriority {
     /// High priority
     High,
     /// Critical priority
-    Critical,
-}
+    Critical}
 
 /// Live update system with message streaming and backpressure handling
 pub struct LiveUpdateSystem {
@@ -495,8 +470,7 @@ pub struct LiveUpdateSystem {
     /// Processing rate limiter
     rate_limiter: Arc<RwLock<tokio::time::Interval>>,
     /// System statistics
-    stats: Arc<RwLock<LiveUpdateStatistics>>,
-}
+    stats: Arc<RwLock<LiveUpdateStatistics>>}
 
 /// Live update statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -506,8 +480,7 @@ pub struct LiveUpdateStatistics {
     pub queue_size: usize,
     pub backpressure_events: usize,
     pub processing_rate: f64,
-    pub last_update: u64,
-}
+    pub last_update: u64}
 
 impl LiveUpdateSystem {
     /// Create a new live update system
@@ -536,9 +509,7 @@ impl LiveUpdateSystem {
                 queue_size: 0,
                 backpressure_events: 0,
                 processing_rate: processing_rate as f64,
-                last_update: 0,
-            })),
-        }
+                last_update: 0}))}
     }
 
     /// Send live update message
@@ -554,8 +525,7 @@ impl LiveUpdateSystem {
 
             return Err(RealTimeError::BackpressureExceeded {
                 current_size: current_queue_size,
-                limit: queue_limit,
-            });
+                limit: queue_limit});
         }
 
         // Add message to queue
@@ -570,8 +540,7 @@ impl LiveUpdateSystem {
                 message.content.as_bytes(),
             ),
             session_id: message.session_id.clone(),
-            timestamp: message.timestamp,
-        };
+            timestamp: message.timestamp};
 
         let _ = self.event_broadcaster.send(event);
 
@@ -735,8 +704,7 @@ pub struct ConnectionState {
     /// Reconnection attempts
     pub reconnection_attempts: AtomicU64,
     /// Is connection healthy
-    pub is_healthy: AtomicBool,
-}
+    pub is_healthy: AtomicBool}
 
 impl ConnectionState {
     /// Create a new connection state
@@ -754,8 +722,7 @@ impl ConnectionState {
             connected_at: AtomicU64::new(now),
             heartbeat_count: AtomicU64::new(0),
             reconnection_attempts: AtomicU64::new(0),
-            is_healthy: AtomicBool::new(true),
-        }
+            is_healthy: AtomicBool::new(true)}
     }
 
     /// Update heartbeat
@@ -822,8 +789,7 @@ impl ConnectionState {
             connection_duration,
             heartbeat_count: self.heartbeat_count.load(Ordering::Relaxed),
             reconnection_attempts: self.reconnection_attempts.load(Ordering::Relaxed),
-            is_healthy: self.is_healthy.load(Ordering::Relaxed),
-        }
+            is_healthy: self.is_healthy.load(Ordering::Relaxed)}
     }
 }
 
@@ -837,8 +803,7 @@ pub struct ConnectionStatistics {
     pub connection_duration: u64,
     pub heartbeat_count: u64,
     pub reconnection_attempts: u64,
-    pub is_healthy: bool,
-}
+    pub is_healthy: bool}
 
 /// Connection manager with heartbeat and health monitoring
 pub struct ConnectionManager {
@@ -857,8 +822,7 @@ pub struct ConnectionManager {
     /// Failed connection counter
     failed_connection_counter: Arc<ConsistentCounter>,
     /// Health check task handle
-    health_check_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>,
-}
+    health_check_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>}
 
 impl std::fmt::Debug for ConnectionManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -899,8 +863,7 @@ impl ConnectionManager {
             connection_counter: Arc::new(ConsistentCounter::new(0)),
             heartbeat_counter: Arc::new(ConsistentCounter::new(0)),
             failed_connection_counter: Arc::new(ConsistentCounter::new(0)),
-            health_check_task: ArcSwap::new(Arc::new(None)),
-        }
+            health_check_task: ArcSwap::new(Arc::new(None))}
     }
 
     /// Add connection
@@ -925,8 +888,7 @@ impl ConnectionManager {
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs(),
-        };
+                .as_secs()};
 
         let _ = self.event_broadcaster.send(event);
 
@@ -958,8 +920,7 @@ impl ConnectionManager {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs(),
-            };
+                    .as_secs()};
 
             let _ = self.event_broadcaster.send(event);
         }
@@ -986,8 +947,7 @@ impl ConnectionManager {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs(),
-            };
+                    .as_secs()};
 
             let _ = self.event_broadcaster.send(event);
         }
@@ -1030,8 +990,7 @@ impl ConnectionManager {
                             timestamp: std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap_or_default()
-                                .as_secs(),
-                        };
+                                .as_secs()};
 
                         let _ = event_broadcaster.send(event);
                     }
@@ -1056,8 +1015,7 @@ impl ConnectionManager {
                                 timestamp: std::time::SystemTime::now()
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .unwrap_or_default()
-                                    .as_secs(),
-                            };
+                                    .as_secs()};
 
                             let _ = event_broadcaster.send(event);
                         }
@@ -1102,8 +1060,7 @@ impl ConnectionManager {
             total_heartbeats: self.heartbeat_counter.get(),
             failed_connections: self.failed_connection_counter.get(),
             heartbeat_timeout: self.heartbeat_timeout.load(Ordering::Relaxed),
-            health_check_interval: self.health_check_interval.load(Ordering::Relaxed),
-        }
+            health_check_interval: self.health_check_interval.load(Ordering::Relaxed)}
     }
 }
 
@@ -1114,8 +1071,7 @@ pub struct ConnectionManagerStatistics {
     pub total_heartbeats: usize,
     pub failed_connections: usize,
     pub heartbeat_timeout: u64,
-    pub health_check_interval: u64,
-}
+    pub health_check_interval: u64}
 
 /// Real-time system combining all components
 pub struct RealTimeSystem {
@@ -1128,8 +1084,7 @@ pub struct RealTimeSystem {
     /// Global event broadcaster
     pub event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// System statistics
-    pub statistics: Arc<RwLock<RealTimeSystemStatistics>>,
-}
+    pub statistics: Arc<RwLock<RealTimeSystemStatistics>>}
 
 impl std::fmt::Debug for RealTimeSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1150,8 +1105,7 @@ pub struct RealTimeSystemStatistics {
     pub live_update_stats: LiveUpdateStatistics,
     pub connection_stats: ConnectionManagerStatistics,
     pub total_events: usize,
-    pub system_uptime: u64,
-}
+    pub system_uptime: u64}
 
 impl RealTimeSystem {
     /// Create a new real-time system
@@ -1171,27 +1125,22 @@ impl RealTimeSystem {
                     active_users: 0,
                     total_typing_events: 0,
                     expiry_duration: 30,
-                    cleanup_interval: 10,
-                },
+                    cleanup_interval: 10},
                 live_update_stats: LiveUpdateStatistics {
                     total_messages: 0,
                     active_subscribers: 0,
                     queue_size: 0,
                     backpressure_events: 0,
                     processing_rate: 100.0,
-                    last_update: 0,
-                },
+                    last_update: 0},
                 connection_stats: ConnectionManagerStatistics {
                     total_connections: 0,
                     total_heartbeats: 0,
                     failed_connections: 0,
                     heartbeat_timeout: 60,
-                    health_check_interval: 30,
-                },
+                    health_check_interval: 30},
                 total_events: 0,
-                system_uptime: 0,
-            })),
-        }
+                system_uptime: 0}))}
     }
 
     /// Start all real-time services
@@ -1270,8 +1219,7 @@ pub enum RealTimeError {
     #[error("Rate limit exceeded: {current_rate}/{limit}")]
     RateLimitExceeded { current_rate: usize, limit: usize },
     #[error("System overload: {resource}")]
-    SystemOverload { resource: String },
-}
+    SystemOverload { resource: String }}
 
 /// Real-time system builder for ergonomic configuration
 pub struct RealTimeSystemBuilder {
@@ -1281,8 +1229,7 @@ pub struct RealTimeSystemBuilder {
     backpressure_threshold: usize,
     processing_rate: u64,
     heartbeat_timeout: u64,
-    health_check_interval: u64,
-}
+    health_check_interval: u64}
 
 impl RealTimeSystemBuilder {
     /// Create a new builder
@@ -1294,8 +1241,7 @@ impl RealTimeSystemBuilder {
             backpressure_threshold: 8000,
             processing_rate: 100,
             heartbeat_timeout: 60,
-            health_check_interval: 30,
-        }
+            health_check_interval: 30}
     }
 
     /// Set typing expiry duration
@@ -1367,27 +1313,22 @@ impl RealTimeSystemBuilder {
                     active_users: 0,
                     total_typing_events: 0,
                     expiry_duration: self.typing_expiry,
-                    cleanup_interval: self.typing_cleanup_interval,
-                },
+                    cleanup_interval: self.typing_cleanup_interval},
                 live_update_stats: LiveUpdateStatistics {
                     total_messages: 0,
                     active_subscribers: 0,
                     queue_size: 0,
                     backpressure_events: 0,
                     processing_rate: self.processing_rate as f64,
-                    last_update: 0,
-                },
+                    last_update: 0},
                 connection_stats: ConnectionManagerStatistics {
                     total_connections: 0,
                     total_heartbeats: 0,
                     failed_connections: 0,
                     heartbeat_timeout: self.heartbeat_timeout,
-                    health_check_interval: self.health_check_interval,
-                },
+                    health_check_interval: self.health_check_interval},
                 total_events: 0,
-                system_uptime: 0,
-            })),
-        }
+                system_uptime: 0}))}
     }
 }
 
@@ -1445,8 +1386,7 @@ pub struct RealtimeConfig {
     /// Reconnection delay in milliseconds
     pub reconnect_delay_ms: u64,
     /// Maximum reconnection attempts
-    pub max_reconnect_attempts: u32,
-}
+    pub max_reconnect_attempts: u32}
 
 /// Real-time chat system for managing live chat interactions
 ///
@@ -1470,8 +1410,7 @@ pub struct RealtimeChat {
     /// Performance metrics
     metrics: Arc<RealtimeChatMetrics>,
     /// Connection manager task handle
-    connection_task: Option<tokio::task::JoinHandle<()>>,
-}
+    connection_task: Option<tokio::task::JoinHandle<()>>}
 
 impl std::fmt::Debug for RealtimeChat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1510,8 +1449,7 @@ pub struct RealtimeConnection {
     /// Typing status
     pub is_typing: AtomicBool,
     /// Presence status (atomic enum representation)
-    pub presence: AtomicU8,
-}
+    pub presence: AtomicU8}
 
 impl Clone for RealtimeConnection {
     fn clone(&self) -> Self {
@@ -1527,8 +1465,7 @@ impl Clone for RealtimeConnection {
             status: AtomicU8::new(self.status.load(std::sync::atomic::Ordering::Relaxed)),
             message_sender: self.message_sender.clone(),
             is_typing: AtomicBool::new(self.is_typing.load(std::sync::atomic::Ordering::Relaxed)),
-            presence: AtomicU8::new(self.presence.load(std::sync::atomic::Ordering::Relaxed)),
-        }
+            presence: AtomicU8::new(self.presence.load(std::sync::atomic::Ordering::Relaxed))}
     }
 }
 
@@ -1586,8 +1523,7 @@ pub struct RealtimeMessage {
     /// Message timestamp
     pub timestamp: u64,
     /// Message metadata
-    pub metadata: HashMap<String, serde_json::Value>,
-}
+    pub metadata: HashMap<String, serde_json::Value>}
 
 /// Real-time message types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -1603,8 +1539,7 @@ pub enum RealtimeMessageType {
     /// Connection status
     Connection,
     /// Error message
-    Error,
-}
+    Error}
 
 // Duplicate ConnectionStatus removed - already defined above
 
@@ -1620,8 +1555,7 @@ pub enum PresenceStatus {
     /// Offline
     Offline,
     /// Invisible
-    Invisible,
-}
+    Invisible}
 
 impl PresenceStatus {
     /// Convert to atomic representation (u8)
@@ -1632,8 +1566,7 @@ impl PresenceStatus {
             Self::Away => 1,
             Self::DoNotDisturb => 2,
             Self::Offline => 3,
-            Self::Invisible => 4,
-        }
+            Self::Invisible => 4}
     }
 
     /// Convert from atomic representation (u8)
@@ -1668,8 +1601,7 @@ pub enum RealtimeEventType {
     /// Presence changed
     PresenceChanged,
     /// Error occurred
-    Error,
-}
+    Error}
 
 /// Real-time event handler trait
 pub trait RealtimeEventHandler: Send + Sync + std::fmt::Debug {
@@ -1702,8 +1634,7 @@ pub struct RealtimeChatMetrics {
     /// Connection errors
     pub connection_errors: ConsistentCounter,
     /// Message delivery failures
-    pub delivery_failures: ConsistentCounter,
-}
+    pub delivery_failures: ConsistentCounter}
 
 impl Default for RealtimeConfig {
     fn default() -> Self {
@@ -1727,8 +1658,7 @@ impl Default for RealtimeConfig {
             connection_pool_size: 100,
             auto_reconnect: true,
             reconnect_delay_ms: 1000,
-            max_reconnect_attempts: 5,
-        }
+            max_reconnect_attempts: 5}
     }
 }
 
@@ -1750,8 +1680,7 @@ impl RealtimeChat {
             message_broadcaster,
             event_handlers: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(RealtimeChatMetrics::default()),
-            connection_task: None,
-        }
+            connection_task: None}
     }
 
     /// Start the real-time chat system
@@ -1847,8 +1776,7 @@ impl RealtimeChat {
             status: AtomicU8::new(ConnectionStatus::Connected.to_atomic()),
             message_sender,
             is_typing: AtomicBool::new(false),
-            presence: AtomicU8::new(PresenceStatus::Online.to_atomic()),
-        };
+            presence: AtomicU8::new(PresenceStatus::Online.to_atomic())};
 
         self.connections
             .insert(Arc::from(connection_id.as_str()), connection);

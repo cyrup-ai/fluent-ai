@@ -8,28 +8,21 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, LazyLock};
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+
 use candle_core::Device;
 use fluent_ai_async::{AsyncStream, emit, handle_error};
+use tokenizers::Tokenizer;
 
-use super::config::{CandleClientConfig, DeviceType, MAX_DOCUMENTS, MAX_MESSAGES, MAX_TOOLS};
+use super::config::{CandleClientConfig, DeviceType};
 use crate::error::{CandleError, CandleResult};
 use crate::generator::{CandleGenerator, GenerationConfig};
-use crate::hub::HubConfig;
-use crate::kv_cache::KVCacheConfig;
 use crate::model::CandleModel;
-use crate::sampling::Sampling;
-use crate::streaming::{StreamingConfig, TokenOutputStream, TokenStreamSender};
-use crate::tokenizer::{CandleTokenizer, TokenizerConfig};
-use crate::types::{
-    CandleCompletionError, CandleCompletionRequest, CandleCompletionResponse, CandleDocument,
-    CandleMessage, CandleStreamingResponse,
-};
-use crate::var_builder::VarBuilderConfig;
+use crate::tokenizer::config::TokenizerConfig;
 
-// Type aliases for local use
-type Message = CandleMessage;
-type Document = CandleDocument;
+
+use crate::tokenizer::CandleTokenizer;
+use crate::types::{
+    CandleCompletionError, CandleCompletionRequest, CandleCompletionResponse, CandleStreamingResponse};
 type CompletionRequest = CandleCompletionRequest;
 type CompletionResponse<'a> = CandleCompletionResponse<'a>;
 type StreamingResponse = CandleStreamingResponse;
@@ -43,8 +36,7 @@ pub struct CandleMetrics {
     pub concurrent_requests: AtomicUsize,
     pub total_tokens_processed: AtomicUsize,
     pub cache_hits: AtomicUsize,
-    pub cache_misses: AtomicUsize,
-}
+    pub cache_misses: AtomicUsize}
 
 impl CandleMetrics {
     /// Create new metrics instance
@@ -57,8 +49,7 @@ impl CandleMetrics {
             concurrent_requests: AtomicUsize::new(0),
             total_tokens_processed: AtomicUsize::new(0),
             cache_hits: AtomicUsize::new(0),
-            cache_misses: AtomicUsize::new(0),
-        }
+            cache_misses: AtomicUsize::new(0)}
     }
 }
 
@@ -82,8 +73,7 @@ pub struct CandleCompletionClient {
     /// Is client initialized
     is_initialized: AtomicBool,
     /// Maximum concurrent requests allowed
-    max_concurrent_requests: usize,
-}
+    max_concurrent_requests: usize}
 
 impl Clone for CandleCompletionClient {
     fn clone(&self) -> Self {
@@ -95,8 +85,7 @@ impl Clone for CandleCompletionClient {
             device: Arc::clone(&self.device),
             metrics: self.metrics,
             is_initialized: AtomicBool::new(self.is_initialized.load(Ordering::Acquire)),
-            max_concurrent_requests: self.max_concurrent_requests,
-        }
+            max_concurrent_requests: self.max_concurrent_requests}
     }
 }
 
@@ -105,7 +94,7 @@ impl CandleCompletionClient {
     #[inline(always)]
     pub fn new(config: CandleClientConfig) -> CandleResult<Self> {
         // Device selection with fallback
-        let device = Arc::new(match config.device_type {
+        let _device = Arc::new(match config.device_type {
             DeviceType::Auto => {
                 #[cfg(feature = "cuda")]
                 if let Ok(device) = Device::new_cuda(0) {
@@ -137,12 +126,25 @@ impl CandleCompletionClient {
             }
         });
 
-        // Create placeholder model and tokenizer (will be loaded during initialization)
-        let model = Arc::new(CandleModel::new(config.model_config.clone())?);
-        let tokenizer = Arc::new(CandleTokenizer::new(config.tokenizer_config.clone())?);
+        // Create model with proper initialization  
+        let device = Arc::new(crate::device::auto_device()?);
+        let model = Arc::new(CandleModel::new((*device).clone()));
+        
+        // Create a minimal working tokenizer - use default tokenizer for now
+        // This will be replaced during proper model loading
+        let base_tokenizer = Tokenizer::new(tokenizers::models::bpe::BPE::default());
+        
+        let tokenizer = Arc::new(crate::tokenizer::CandleTokenizer::new(
+            base_tokenizer,
+            config.tokenizer_config.clone()
+        )?);
+        
         let generator = ArcSwap::new(Arc::new(CandleGenerator::new(
+            model.clone(),
+            tokenizer.clone(), 
             GenerationConfig::default(),
-        )?));
+            (*device).clone(),
+        )));
 
         Ok(Self {
             max_concurrent_requests: config.max_concurrent_requests as usize,
@@ -150,10 +152,9 @@ impl CandleCompletionClient {
             model,
             tokenizer,
             generator,
-            device,
+            device: device.clone(),
             metrics: &CANDLE_METRICS,
-            is_initialized: AtomicBool::new(false),
-        })
+            is_initialized: AtomicBool::new(false)})
     }
 
     /// Initialize the client with model loading
@@ -221,14 +222,12 @@ impl CandleCompletionClient {
     ) -> AsyncStream<CompletionResponse<'static>> {
         let client = self.clone();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<CompletionResponse<'static>>| {
             // Check if client is initialized
             if !client.is_initialized() {
                 let error = CandleCompletionError::InvalidRequest {
-                    message: "Client not initialized".to_string(),
-                };
+                    message: "Client not initialized".to_string()};
                 handle_error!(error, "Client not initialized");
-                return;
             }
 
             // Check concurrent request limit
@@ -242,23 +241,24 @@ impl CandleCompletionClient {
                     .concurrent_requests
                     .fetch_sub(1, Ordering::Relaxed);
                 let error = CandleCompletionError::RateLimited {
+                    message: "Rate limit exceeded".to_string(),
                     retry_after: 1000, // 1 second
                 };
                 handle_error!(error, "Rate limit exceeded");
-                return;
             }
 
-            // Generate response using the generator
+            // Generate response using the generator AsyncStream
             let generator = client.generator.load();
-            match generator.generate(&request) {
-                Ok(response) => {
-                    client.record_request_stats(true, response.usage.total_tokens as usize, false);
-                    emit!(sender, response);
-                }
-                Err(e) => {
-                    client.record_request_stats(false, 0, false);
-                    handle_error!(e, "Completion generation failed");
-                }
+            let mut response_stream = generator.generate(&request);
+            
+            // Consume the AsyncStream - this is a simplified approach
+            // In production, would use proper stream composition
+            if let Some(response) = response_stream.try_next() {
+                client.record_request_stats(true, response.usage.map(|u| u.total_tokens as usize).unwrap_or(0), false);
+                emit!(sender, response);
+            } else {
+                client.record_request_stats(false, 0, false);
+                handle_error!(crate::error::CandleError::Msg("No response generated".to_string()), "Completion generation failed");
             }
 
             // Decrement concurrent counter
@@ -277,14 +277,12 @@ impl CandleCompletionClient {
     ) -> AsyncStream<StreamingResponse> {
         let client = self.clone();
 
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<StreamingResponse>| {
             // Check if client is initialized
             if !client.is_initialized() {
                 let error = CandleCompletionError::InvalidRequest {
-                    message: "Client not initialized".to_string(),
-                };
+                    message: "Client not initialized".to_string()};
                 handle_error!(error, "Client not initialized for streaming");
-                return;
             }
 
             // Check concurrent request limit
@@ -298,36 +296,28 @@ impl CandleCompletionClient {
                     .concurrent_requests
                     .fetch_sub(1, Ordering::Relaxed);
                 let error = CandleCompletionError::RateLimited {
-                    retry_after: 1000,
-                };
+                    message: "Rate limit exceeded for streaming".to_string(),
+                    retry_after: 1000};
                 handle_error!(error, "Rate limit exceeded for streaming");
-                return;
             }
 
-            // Generate streaming response
+            // Generate streaming response using AsyncStream
             let generator = client.generator.load();
-            match generator.generate_stream(&request) {
-                Ok(mut stream) => {
-                    let mut total_tokens = 0;
-                    while let Some(chunk) = stream.next() {
-                        match chunk {
-                            Ok(streaming_response) => {
-                                total_tokens += 1; // Approximate token count
-                                emit!(sender, streaming_response);
-                            }
-                            Err(e) => {
-                                client.record_request_stats(false, total_tokens, false);
-                                handle_error!(e, "Streaming generation failed");
-                                break;
-                            }
-                        }
-                    }
-                    client.record_request_stats(true, total_tokens, false);
-                }
-                Err(e) => {
-                    client.record_request_stats(false, 0, false);
-                    handle_error!(e, "Stream initialization failed");
-                }
+            let mut response_stream = generator.generate_stream(&request);
+            
+            // Consume streaming responses - simplified approach
+            // In production, would use proper stream composition
+            let mut total_tokens = 0;
+            while let Some(streaming_response) = response_stream.try_next() {
+                total_tokens += 1; // Approximate token count
+                emit!(sender, streaming_response);
+            }
+            
+            if total_tokens > 0 {
+                client.record_request_stats(true, total_tokens, false);
+            } else {
+                client.record_request_stats(false, 0, false);
+                handle_error!(crate::error::CandleError::Msg("No streaming responses generated".to_string()), "Streaming generation failed");
             }
 
             // Decrement concurrent counter
@@ -336,5 +326,44 @@ impl CandleCompletionClient {
                 .concurrent_requests
                 .fetch_sub(1, Ordering::Relaxed);
         })
+    }
+}
+
+impl Default for CandleCompletionClient {
+    /// Create a default completion client for testing and fallback scenarios
+    fn default() -> Self {
+        // Create default configuration
+        let config = CandleClientConfig::default();
+        
+        // Create default device (CPU)
+        let device = Arc::new(Device::Cpu);
+        
+        // Create placeholder model, tokenizer, and generator
+        // These would need to be properly initialized in production use
+        let model = Arc::new(CandleModel::new(Device::Cpu));
+        
+        // Create a minimal tokenizer for fallback
+        let base_tokenizer = Tokenizer::new(tokenizers::models::bpe::BPE::default());
+        let tokenizer = Arc::new(CandleTokenizer::new(
+            base_tokenizer,
+            TokenizerConfig::default(),
+        ).unwrap_or_else(|_| panic!("Failed to create fallback tokenizer")));
+        
+        let generator = ArcSwap::new(Arc::new(CandleGenerator::new(
+            model.clone(),
+            tokenizer.clone(),
+            GenerationConfig::default(),
+            Device::Cpu,
+        )));
+        
+        Self {
+            config,
+            model,
+            tokenizer,
+            generator,
+            device,
+            metrics: &CANDLE_METRICS,
+            is_initialized: AtomicBool::new(false),
+            max_concurrent_requests: 10}
     }
 }

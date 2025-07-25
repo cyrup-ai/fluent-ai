@@ -3,9 +3,8 @@
 //! Contains the CommandParser struct and core parsing functionality.
 
 use std::collections::HashMap;
-
 use super::errors::{ParseError, ParseResult};
-use super::registry::{CommandInfo, ParameterInfo, ParameterType};
+use super::registry::CommandInfo;
 use super::super::types::{ImmutableChatCommand, CommandError, SearchScope};
 
 /// Zero-allocation command parser with owned strings
@@ -16,8 +15,7 @@ pub struct CommandParser {
     /// Command aliases
     pub(super) aliases: HashMap<String, String>,
     /// Command history for auto-completion
-    pub(super) history: Vec<String>,
-}
+    pub(super) history: Vec<String>}
 
 impl Default for CommandParser {
     fn default() -> Self {
@@ -31,8 +29,7 @@ impl CommandParser {
         let mut parser = Self {
             commands: HashMap::new(),
             aliases: HashMap::new(),
-            history: Vec::new(),
-        };
+            history: Vec::new()};
         parser.register_builtin_commands();
         parser
     }
@@ -42,8 +39,7 @@ impl CommandParser {
         let input = input.trim();
         if input.is_empty() {
             return Err(CommandError::InvalidSyntax {
-                detail: "Empty command".to_string(),
-            });
+                detail: "Empty command".to_string()});
         }
 
         // Remove leading slash if present
@@ -57,8 +53,7 @@ impl CommandParser {
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
             return Err(CommandError::InvalidSyntax {
-                detail: "No command specified".to_string(),
-            });
+                detail: "No command specified".to_string()});
         }
 
         let command_name = parts[0].to_lowercase();
@@ -100,8 +95,7 @@ impl CommandParser {
                 Ok(ImmutableChatCommand::Export {
                     format,
                     output,
-                    include_metadata,
-                })
+                    include_metadata})
             }
             "config" => {
                 let show = args.contains(&"--show");
@@ -128,8 +122,7 @@ impl CommandParser {
                     key,
                     value,
                     show,
-                    reset,
-                })
+                    reset})
             }
             "search" => {
                 let query = args
@@ -156,13 +149,10 @@ impl CommandParser {
                     query,
                     scope,
                     limit,
-                    include_context,
-                })
+                    include_context})
             }
             _ => Err(CommandError::UnknownCommand {
-                command: command_name,
-            }),
-        }
+                command: command_name})}
     }
 
     /// Parse a command string with zero-allocation patterns
@@ -172,8 +162,7 @@ impl CommandParser {
         // Check if it's a command (starts with /)
         if !input.starts_with('/') {
             return Err(ParseError::InvalidSyntax {
-                detail: "Commands must start with '/'".to_string(),
-            });
+                detail: "Commands must start with '/'".to_string()});
         }
 
         // Remove the leading slash
@@ -183,8 +172,7 @@ impl CommandParser {
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
             return Err(ParseError::InvalidSyntax {
-                detail: "Empty command".to_string(),
-            });
+                detail: "Empty command".to_string()});
         }
 
         let command_name = parts[0];
@@ -205,9 +193,7 @@ impl CommandParser {
             "config" => self.parse_config_command(args),
             "search" => self.parse_search_command(args),
             _ => Err(ParseError::InvalidSyntax {
-                detail: format!("Unknown command: {}", command_name),
-            }),
-        }
+                detail: format!("Unknown command: {}", command_name)})}
     }
 
     /// Get command suggestions for auto-completion

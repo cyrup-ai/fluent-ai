@@ -11,7 +11,6 @@
 // - Zero-overhead sandboxing
 // ============================================================================
 
-use std::collections::HashMap;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -24,8 +23,7 @@ use crate::async_task::AsyncTaskBuilder;
 use crate::backends::AsyncTask;
 use crate::backends::{
     BackendConfig, BackendError, BackendResult, ExecutionBackend, ExecutionRequest,
-    ExecutionResult, HealthStatus, ResourceUsage,
-};
+    ExecutionResult, HealthStatus, ResourceUsage};
 
 /// LandLock backend for secure code execution
 ///
@@ -40,8 +38,7 @@ pub struct LandLockBackend {
     config: BackendConfig,
 
     /// Cached LandLock feature detection
-    landlock_features: LandLockFeatures,
-}
+    landlock_features: LandLockFeatures}
 
 /// LandLock feature detection and capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,8 +53,7 @@ struct LandLockFeatures {
     supported_access_fs: u64,
 
     /// Feature detection timestamp
-    detected_at: SystemTime,
-}
+    detected_at: SystemTime}
 
 impl LandLockBackend {
     /// Create a new LandLock backend instance
@@ -73,8 +69,7 @@ impl LandLockBackend {
         if !Self::is_platform_supported() {
             return Err(BackendError::NotAvailable {
                 backend: "LandLock",
-                reason: "LandLock is only available on Linux".to_string(),
-            });
+                reason: "LandLock is only available on Linux".to_string()});
         }
 
         let jail_path = PathBuf::from(jail_path);
@@ -88,8 +83,7 @@ impl LandLockBackend {
         Ok(Self {
             jail_path,
             config,
-            landlock_features,
-        })
+            landlock_features})
     }
 
     /// Check if platform supports LandLock
@@ -119,8 +113,7 @@ impl LandLockBackend {
         if !jail_path.is_absolute() {
             return Err(BackendError::InvalidConfig {
                 backend: "LandLock",
-                details: "Jail path must be absolute".to_string(),
-            });
+                details: "Jail path must be absolute".to_string()});
         }
 
         // Check if path exists or can be created
@@ -132,8 +125,7 @@ impl LandLockBackend {
                         "Cannot create jail directory {}: {}",
                         jail_path.display(),
                         e
-                    ),
-                });
+                    )});
             }
         }
 
@@ -141,8 +133,7 @@ impl LandLockBackend {
         if !jail_path.is_dir() {
             return Err(BackendError::InvalidConfig {
                 backend: "LandLock",
-                details: format!("Jail path {} is not a directory", jail_path.display()),
-            });
+                details: format!("Jail path {} is not a directory", jail_path.display())});
         }
 
         // Check permissions - must be writable
@@ -151,8 +142,7 @@ impl LandLockBackend {
             if permissions.mode() & 0o200 == 0 {
                 return Err(BackendError::InvalidConfig {
                     backend: "LandLock",
-                    details: "Jail directory is not writable".to_string(),
-                });
+                    details: "Jail directory is not writable".to_string()});
             }
         }
 
@@ -176,8 +166,7 @@ impl LandLockBackend {
                     available: false,
                     abi_version: 0,
                     supported_access_fs: 0,
-                    detected_at: SystemTime::now(),
-                });
+                    detected_at: SystemTime::now()});
             }
 
             // Read ABI version
@@ -187,8 +176,7 @@ impl LandLockBackend {
                     file.read_to_string(&mut content).unwrap_or_default();
                     content.trim().parse().unwrap_or(0)
                 }
-                Err(_) => 0,
-            };
+                Err(_) => 0};
 
             // Read supported filesystem access types
             let supported_access_fs = match File::open(landlock_dir.join("access_fs")) {
@@ -197,15 +185,13 @@ impl LandLockBackend {
                     file.read_to_string(&mut content).unwrap_or_default();
                     u64::from_str_radix(content.trim().trim_start_matches("0x"), 16).unwrap_or(0)
                 }
-                Err(_) => 0,
-            };
+                Err(_) => 0};
 
             Ok(LandLockFeatures {
                 available: abi_version > 0,
                 abi_version,
                 supported_access_fs,
-                detected_at: SystemTime::now(),
-            })
+                detected_at: SystemTime::now()})
         }
 
         #[cfg(not(target_os = "linux"))]
@@ -213,8 +199,7 @@ impl LandLockBackend {
             available: false,
             abi_version: 0,
             supported_access_fs: 0,
-            detected_at: SystemTime::now(),
-        })
+            detected_at: SystemTime::now()})
     }
 
     /// Setup jail environment for execution
@@ -235,22 +220,19 @@ impl LandLockBackend {
 
         // Create execution directory
         fs::create_dir_all(&exec_dir).map_err(|e| BackendError::FileSystemFailed {
-            details: format!("Failed to create execution directory: {}", e),
-        })?;
+            details: format!("Failed to create execution directory: {}", e)})?;
 
         // Set proper permissions (rwx for owner only)
         fs::set_permissions(&exec_dir, fs::Permissions::from_mode(0o700)).map_err(|e| {
             BackendError::FileSystemFailed {
-                details: format!("Failed to set directory permissions: {}", e),
-            }
+                details: format!("Failed to set directory permissions: {}", e)}
         })?;
 
         // Create working directory if specified
         if let Some(workdir) = &request.working_dir {
             let work_path = exec_dir.join(workdir.trim_start_matches('/'));
             fs::create_dir_all(&work_path).map_err(|e| BackendError::FileSystemFailed {
-                details: format!("Failed to create working directory: {}", e),
-            })?;
+                details: format!("Failed to create working directory: {}", e)})?;
         }
 
         // Create temporary files for code execution
@@ -259,32 +241,28 @@ impl LandLockBackend {
                 let code_file = exec_dir.join("main.py");
                 fs::write(&code_file, &request.code).map_err(|e| {
                     BackendError::FileSystemFailed {
-                        details: format!("Failed to write Python code file: {}", e),
-                    }
+                        details: format!("Failed to write Python code file: {}", e)}
                 })?;
             }
             "rust" => {
                 let code_file = exec_dir.join("main.rs");
                 fs::write(&code_file, &request.code).map_err(|e| {
                     BackendError::FileSystemFailed {
-                        details: format!("Failed to write Rust code file: {}", e),
-                    }
+                        details: format!("Failed to write Rust code file: {}", e)}
                 })?;
             }
             "javascript" | "js" | "node" => {
                 let code_file = exec_dir.join("main.js");
                 fs::write(&code_file, &request.code).map_err(|e| {
                     BackendError::FileSystemFailed {
-                        details: format!("Failed to write JavaScript code file: {}", e),
-                    }
+                        details: format!("Failed to write JavaScript code file: {}", e)}
                 })?;
             }
             "go" => {
                 let code_file = exec_dir.join("main.go");
                 fs::write(&code_file, &request.code).map_err(|e| {
                     BackendError::FileSystemFailed {
-                        details: format!("Failed to write Go code file: {}", e),
-                    }
+                        details: format!("Failed to write Go code file: {}", e)}
                 })?;
             }
             _ => {
@@ -292,16 +270,14 @@ impl LandLockBackend {
                 let code_file = exec_dir.join("code");
                 fs::write(&code_file, &request.code).map_err(|e| {
                     BackendError::FileSystemFailed {
-                        details: format!("Failed to write code file: {}", e),
-                    }
+                        details: format!("Failed to write code file: {}", e)}
                 })?;
 
                 // Make executable for shell scripts
                 if matches!(request.language.as_str(), "bash" | "sh") {
                     fs::set_permissions(&code_file, fs::Permissions::from_mode(0o755)).map_err(
                         |e| BackendError::FileSystemFailed {
-                            details: format!("Failed to set executable permissions: {}", e),
-                        },
+                            details: format!("Failed to set executable permissions: {}", e)},
                     )?;
                 }
             }
@@ -397,8 +373,7 @@ impl LandLockBackend {
 
             // Spawn the process
             let mut child = cmd.spawn().map_err(|e| BackendError::ProcessFailed {
-                details: format!("Failed to spawn sandboxed process: {}", e),
-            })?;
+                details: format!("Failed to spawn sandboxed process: {}", e)})?;
 
             // Write input if provided
             if let Some(input) = &request.input {
@@ -408,8 +383,7 @@ impl LandLockBackend {
                     stdin
                         .write_all(input.as_bytes())
                         .map_err(|e| BackendError::ProcessFailed {
-                            details: format!("Failed to write to process stdin: {}", e),
-                        })?;
+                            details: format!("Failed to write to process stdin: {}", e)})?;
                 }
             }
 
@@ -422,15 +396,13 @@ impl LandLockBackend {
                 Ok(Ok(output)) => output,
                 Ok(Err(e)) => {
                     return Err(BackendError::ProcessFailed {
-                        details: format!("Process execution failed: {}", e),
-                    });
+                        details: format!("Process execution failed: {}", e)});
                 }
                 Err(_) => {
                     // Kill the process on timeout
                     let _ = child.kill();
                     return Err(BackendError::ExecutionTimeout {
-                        seconds: timeout_duration.as_secs(),
-                    });
+                        seconds: timeout_duration.as_secs()});
                 }
             };
 
@@ -447,8 +419,7 @@ impl LandLockBackend {
                 disk_bytes_written: 0,
                 disk_bytes_read: 0,
                 network_bytes_sent: 0,
-                network_bytes_received: 0,
-            };
+                network_bytes_received: 0};
 
             Ok(ExecutionResult {
                 exit_code: output.status.code().unwrap_or(-1),
@@ -462,8 +433,7 @@ impl LandLockBackend {
                     meta.insert("jail_path".to_string(), jail_path.display().to_string());
                     meta.insert("exec_dir".to_string(), exec_dir.display().to_string());
                     meta
-                },
-            })
+                }})
         })
     }
 
@@ -499,9 +469,7 @@ impl LandLockBackend {
             )),
             _ => Err(BackendError::UnsupportedLanguage {
                 backend: "LandLock",
-                language: language.to_string(),
-            }),
-        }
+                language: language.to_string()})}
     }
 
     /// Check if bubblewrap is available for sandboxing
@@ -542,8 +510,7 @@ impl ExecutionBackend for LandLockBackend {
                 Err(e) => ExecutionResult::failure(
                     -1,
                     format!("{} execution failed: {}", backend_name, e),
-                ),
-            }
+                )}
         })
     }
 
@@ -600,8 +567,7 @@ impl ExecutionBackend for LandLockBackend {
                         )
                 }
                 Err(e) => HealthStatus::unhealthy(format!("Test environment setup failed: {}", e))
-                    .with_metric("test_setup", "failed"),
-            }
+                    .with_metric("test_setup", "failed")}
         })
     }
 

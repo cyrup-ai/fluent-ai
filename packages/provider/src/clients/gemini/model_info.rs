@@ -26,8 +26,7 @@ impl ModelInfo for Gemini25Pro {
         supports_vision: true,
         supports_audio: true,
         provider: "gemini",
-        model_name: "gemini-2.5-pro-preview-06-05",
-    };
+        model_name: "gemini-2.5-pro-preview-06-05"};
 }
 
 impl ModelPrompt for Gemini25Pro {
@@ -51,8 +50,7 @@ impl ModelInfo for Gemini25Flash {
         supports_vision: true,
         supports_audio: true,
         provider: "gemini",
-        model_name: "gemini-2.5-flash-preview-05-20",
-    };
+        model_name: "gemini-2.5-flash-preview-05-20"};
 }
 
 impl ModelPrompt for Gemini25Flash {
@@ -76,8 +74,7 @@ impl ModelInfo for Gemini20Flash {
         supports_vision: true,
         supports_audio: true,
         provider: "gemini",
-        model_name: "gemini-2.0-flash",
-    };
+        model_name: "gemini-2.0-flash"};
 }
 
 impl ModelPrompt for Gemini20Flash {
@@ -101,8 +98,7 @@ impl ModelInfo for Gemini15Pro {
         supports_vision: true,
         supports_audio: true,
         provider: "gemini",
-        model_name: "gemini-1.5-pro",
-    };
+        model_name: "gemini-1.5-pro"};
 }
 
 impl ModelPrompt for Gemini15Pro {
@@ -126,8 +122,7 @@ impl ModelInfo for Gemini15Flash {
         supports_vision: true,
         supports_audio: false,
         provider: "gemini",
-        model_name: "gemini-1.5-flash",
-    };
+        model_name: "gemini-1.5-flash"};
 }
 
 impl ModelPrompt for Gemini15Flash {
@@ -151,8 +146,7 @@ impl ModelInfo for Gemini15Pro8B {
         supports_vision: true,
         supports_audio: false,
         provider: "gemini",
-        model_name: "gemini-1.5-pro-8b",
-    };
+        model_name: "gemini-1.5-pro-8b"};
 }
 
 impl ModelPrompt for Gemini15Pro8B {
@@ -176,8 +170,7 @@ impl ModelInfo for Gemini10Pro {
         supports_vision: false,
         supports_audio: false,
         provider: "gemini",
-        model_name: "gemini-1.0-pro",
-    };
+        model_name: "gemini-1.0-pro"};
 }
 
 impl ModelPrompt for Gemini10Pro {

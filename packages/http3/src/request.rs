@@ -11,8 +11,7 @@ pub struct HttpRequest {
     url: String,
     headers: HeaderMap,
     body: Option<Vec<u8>>,
-    timeout: Option<Duration>,
-}
+    timeout: Option<Duration>}
 
 impl HttpRequest {
     /// Creates a new `HttpRequest`.
@@ -28,8 +27,7 @@ impl HttpRequest {
             url,
             headers: headers.unwrap_or_else(HeaderMap::new),
             body,
-            timeout,
-        }
+            timeout}
     }
 
     /// Returns the HTTP method.

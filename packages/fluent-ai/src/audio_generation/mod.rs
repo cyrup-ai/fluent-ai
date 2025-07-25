@@ -30,8 +30,7 @@ pub enum AudioGenerationError {
     #[error("request build error: {0}")]
     Build(String),
     #[error("provider error: {0}")]
-    Provider(String),
-}
+    Provider(String)}
 
 // ---------------------------------------------------------------------------
 // Stream item + final response
@@ -41,8 +40,7 @@ pub type AudioGenerationChunk = Vec<u8>;
 #[derive(Debug)]
 pub struct AudioGenerationResponse<T> {
     pub audio: Vec<u8>,
-    pub provider_response: T,
-}
+    pub provider_response: T}
 
 // ---------------------------------------------------------------------------
 // Streaming flow returned by every model
@@ -51,8 +49,7 @@ pub const STREAM_CAP: usize = 256;
 
 pub struct AudioGenerationFlow<R> {
     pub chunks: AsyncStream<AudioGenerationChunk, STREAM_CAP>,
-    pub done: AsyncTask<Result<AudioGenerationResponse<R>, AudioGenerationError>>,
-}
+    pub done: AsyncTask<Result<AudioGenerationResponse<R>, AudioGenerationError>>}
 
 // ---------------------------------------------------------------------------
 // Request payload
@@ -62,8 +59,7 @@ pub struct AudioGenerationRequest {
     pub text: String,
     pub voice: String,
     pub speed: f32,
-    pub additional_params: Option<Value>,
-}
+    pub additional_params: Option<Value>}
 
 // ---------------------------------------------------------------------------
 // Typestate builder  (ensures `text` *and* `voice` are set)
@@ -73,8 +69,7 @@ pub struct RequestBuilder<M, const HAS_TEXT: bool, const HAS_VOICE: bool> {
     text: Option<String>,
     voice: Option<String>,
     speed: f32,
-    additional_params: Option<Value>,
-}
+    additional_params: Option<Value>}
 
 impl<M: Clone> RequestBuilder<M, false, false> {
     #[inline(always)]
@@ -84,8 +79,7 @@ impl<M: Clone> RequestBuilder<M, false, false> {
             text: None,
             voice: None,
             speed: 1.0,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 }
 
@@ -127,8 +121,7 @@ impl<M: AudioGenerationModel> RequestBuilder<M, true, true> {
             text: self.text.unwrap_or_default(),
             voice: self.voice.unwrap_or_default(),
             speed: self.speed,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 
     /// One-shot API – resolves to the full audio buffer.
@@ -194,24 +187,20 @@ where
             done: flow.done.map(|r| {
                 r.map(|resp| AudioGenerationResponse {
                     audio: resp.audio,
-                    provider_response: (),
-                })
-            }),
-        }
+                    provider_response: ()})
+            })}
     }
 
     fn audio_generation_request(&self) -> RequestBuilder<AudioGenerationModelHandle, false, false> {
         RequestBuilder::new(AudioGenerationModelHandle {
-            inner: Arc::new(self.clone()),
-        })
+            inner: Arc::new(self.clone())})
     }
 }
 
 /// Cheap handle that hides the concrete model type.
 #[derive(Clone)]
 pub struct AudioGenerationModelHandle {
-    inner: Arc<dyn AudioGenerationModelDyn + 'static>,
-}
+    inner: Arc<dyn AudioGenerationModelDyn + 'static>}
 
 impl AudioGenerationModel for AudioGenerationModelHandle {
     type Response = ();

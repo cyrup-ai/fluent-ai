@@ -22,8 +22,7 @@ pub struct ResponseFormatter {
     /// Include execution metrics
     include_metrics: bool,
     /// Pretty print JSON
-    pretty_json: bool,
-}
+    pretty_json: bool}
 
 /// Response format options
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,8 +34,7 @@ pub enum ResponseFormat {
     /// Structured format with metadata
     Structured,
     /// Streaming format for real-time updates
-    Streaming,
-}
+    Streaming}
 
 impl Default for ResponseFormatter {
     fn default() -> Self {
@@ -51,8 +49,7 @@ impl ResponseFormatter {
             format: ResponseFormat::Text,
             include_timestamps: true,
             include_metrics: false,
-            pretty_json: true,
-        }
+            pretty_json: true}
     }
 
     /// Set response format
@@ -85,8 +82,7 @@ impl ResponseFormatter {
             ResponseFormat::Text => self.format_text(output),
             ResponseFormat::Json => self.format_json(output),
             ResponseFormat::Structured => self.format_structured(output),
-            ResponseFormat::Streaming => self.format_streaming(output),
-        }
+            ResponseFormat::Streaming => self.format_streaming(output)}
     }
 
     /// Format as plain text
@@ -169,8 +165,7 @@ impl ResponseFormatter {
             serde_json::to_string(&json_value)
         }
         .map_err(|e| ResponseError::SerializationError {
-            detail: Arc::from(e.to_string()),
-        })
+            detail: Arc::from(e.to_string())})
     }
 
     /// Format as structured response
@@ -194,8 +189,7 @@ impl ResponseFormatter {
             result.push_str("Data:\n");
             let data_str = serde_json::to_string_pretty(data).map_err(|e| {
                 ResponseError::SerializationError {
-                    detail: Arc::from(e.to_string()),
-                }
+                    detail: Arc::from(e.to_string())}
             })?;
             for line in data_str.lines() {
                 result.push_str(&format!("  {}\n", line));
@@ -250,8 +244,7 @@ impl ResponseFormatter {
 
         let json_value = Value::Object(json_output);
         serde_json::to_string(&json_value).map_err(|e| ResponseError::SerializationError {
-            detail: Arc::from(e.to_string()),
-        })
+            detail: Arc::from(e.to_string())})
     }
 
     /// Format error response
@@ -269,8 +262,7 @@ impl ResponseFormatter {
             success: false,
             message: error.to_string(),
             data: None,
-            resource_usage: None,
-        };
+            resource_usage: None};
 
         self.format_output(&output)
     }
@@ -279,8 +271,7 @@ impl ResponseFormatter {
     pub fn format_help(&self, commands: &[CommandInfo]) -> Result<String, ResponseError> {
         match self.format {
             ResponseFormat::Json => self.format_help_json(commands),
-            _ => self.format_help_text(commands),
-        }
+            _ => self.format_help_text(commands)}
     }
 
     /// Format help as text
@@ -367,8 +358,7 @@ impl ResponseFormatter {
             serde_json::to_string(&result)
         }
         .map_err(|e| ResponseError::SerializationError {
-            detail: Arc::from(e.to_string()),
-        })
+            detail: Arc::from(e.to_string())})
     }
 
     /// Create streaming response channel
@@ -381,8 +371,7 @@ impl ResponseFormatter {
 /// Streaming response sender
 #[derive(Debug)]
 pub struct StreamingSender {
-    sender: mpsc::UnboundedSender<StreamingMessage>,
-}
+    sender: mpsc::UnboundedSender<StreamingMessage>}
 
 impl StreamingSender {
     fn new(sender: mpsc::UnboundedSender<StreamingMessage>) -> Self {
@@ -394,8 +383,7 @@ impl StreamingSender {
         self.sender
             .send(message)
             .map_err(|_| ResponseError::StreamingError {
-                detail: Arc::from("Failed to send streaming message"),
-            })
+                detail: Arc::from("Failed to send streaming message")})
     }
 
     /// Send progress update
@@ -408,8 +396,7 @@ impl StreamingSender {
         self.send(StreamingMessage::Progress {
             current,
             total,
-            message: Arc::from(message),
-        })
+            message: Arc::from(message)})
     }
 
     /// Send partial result
@@ -426,8 +413,7 @@ impl StreamingSender {
 /// Streaming response receiver
 #[derive(Debug)]
 pub struct StreamingReceiver {
-    receiver: mpsc::UnboundedReceiver<StreamingMessage>,
-}
+    receiver: mpsc::UnboundedReceiver<StreamingMessage>}
 
 impl StreamingReceiver {
     fn new(receiver: mpsc::UnboundedReceiver<StreamingMessage>) -> Self {
@@ -462,13 +448,11 @@ pub enum StreamingMessage {
     Progress {
         current: u64,
         total: u64,
-        message: Arc<str>,
-    },
+        message: Arc<str>},
     /// Partial result
     PartialResult { data: Value },
     /// Command completion
-    Complete { output: CommandOutput },
-}
+    Complete { output: CommandOutput }}
 
 /// Response formatting errors
 #[derive(Debug, Clone, thiserror::Error)]
@@ -480,8 +464,7 @@ pub enum ResponseError {
     StreamingError { detail: Arc<str> },
 
     #[error("Format error: {detail}")]
-    FormatError { detail: Arc<str> },
-}
+    FormatError { detail: Arc<str> }}
 
 /// Global response formatter
 static GLOBAL_FORMATTER: once_cell::sync::Lazy<ResponseFormatter> =

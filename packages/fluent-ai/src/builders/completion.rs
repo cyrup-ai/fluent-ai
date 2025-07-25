@@ -16,8 +16,7 @@ pub struct CompletionRequestBuilder {
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     chunk_size: Option<usize>,
-    additional_params: Option<Value>,
-}
+    additional_params: Option<Value>}
 
 pub struct CompletionRequestBuilderWithHandler {
     model: Option<Models>,
@@ -32,8 +31,7 @@ pub struct CompletionRequestBuilderWithHandler {
     error_handler: Box<dyn Fn(String) + Send + Sync>,
     result_handler:
         Option<Box<dyn FnOnce(CompletionRequest) -> CompletionRequest + Send + 'static>>,
-    chunk_handler: Option<Box<dyn FnMut(CompletionRequest) -> CompletionRequest + Send + 'static>>,
-}
+    chunk_handler: Option<Box<dyn FnMut(CompletionRequest) -> CompletionRequest + Send + 'static>>}
 
 impl CompletionRequestBuilder {
     // Semantic entry point
@@ -47,8 +45,7 @@ impl CompletionRequestBuilder {
             temperature: None,
             max_tokens: None,
             chunk_size: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 
     // New method instead of duplicating impl block
@@ -149,8 +146,7 @@ impl CompletionRequestBuilder {
         let tool = ToolDefinition {
             name: name.into(),
             description: description.into(),
-            parameters,
-        };
+            parameters};
         self.tools = match self.tools {
             ZeroOneOrMany::None => ZeroOneOrMany::One(tool),
             ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, tool]),
@@ -209,8 +205,7 @@ impl CompletionRequestBuilder {
             additional_params: self.additional_params,
             error_handler: Box::new(handler),
             result_handler: None,
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_result<F>(self, handler: F) -> CompletionRequestBuilderWithHandler
@@ -229,8 +224,7 @@ impl CompletionRequestBuilder {
             additional_params: self.additional_params,
             error_handler: Box::new(|e| eprintln!("Completion error: {}", e)),
             result_handler: Some(Box::new(handler)),
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_chunk<F>(self, handler: F) -> CompletionRequestBuilderWithHandler
@@ -249,8 +243,7 @@ impl CompletionRequestBuilder {
             additional_params: self.additional_params,
             error_handler: Box::new(|e| eprintln!("Completion chunk error: {}", e)),
             result_handler: None,
-            chunk_handler: Some(Box::new(handler)),
-        }
+            chunk_handler: Some(Box::new(handler))}
     }
 }
 
@@ -265,8 +258,7 @@ impl CompletionRequestBuilderWithHandler {
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 
     // Terminal method - submits request and returns future
@@ -283,8 +275,7 @@ impl CompletionRequestBuilderWithHandler {
                 temperature: self.temperature,
                 max_tokens: self.max_tokens,
                 chunk_size: self.chunk_size,
-                additional_params: self.additional_params,
-            };
+                additional_params: self.additional_params};
 
             // TODO: Implement actual completion logic
             format!("Completion for: {}", request.system_prompt)

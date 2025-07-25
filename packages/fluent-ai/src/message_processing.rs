@@ -11,15 +11,13 @@ use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
 // Zero-allocation and lock-free dependencies
-use arrayvec::ArrayVec;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use crossbeam_deque::{Injector, Stealer, Worker};
 use crossbeam_queue::{ArrayQueue, SegQueue};
 use fluent_ai_domain::message::{Message, MessagePriority, MessageType};
 // Integration with memory operations
 use fluent_ai_memory::vector::{
-    generate_pooled_embedding, return_embedding_to_pool, simd_cosine_similarity,
-};
+    generate_pooled_embedding, return_embedding_to_pool, simd_cosine_similarity};
 use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 // SIMD integration
@@ -47,8 +45,7 @@ pub struct MessageProcessor {
     queue_depth: RelaxedCounter,
 
     // System configuration (ArcSwap for hot-reloading)
-    config: ArcSwap<MessageProcessorConfig>,
-}
+    config: ArcSwap<MessageProcessorConfig>}
 
 /// Configuration for the message processor
 #[derive(Debug, Clone)]
@@ -57,20 +54,17 @@ pub struct MessageProcessorConfig {
     pub queue_capacity: usize,
     pub batch_size: usize,
     pub processing_timeout: Duration,
-    pub text_processor: Arc<TextProcessor>,
-}
+    pub text_processor: Arc<TextProcessor>}
 
 /// Lock-free worker pool for message processing
 struct WorkerPool {
     workers: Vec<Arc<Worker<Message>>>,
     stealers: Vec<Stealer<Message>>,
-    injector: Arc<Injector<Message>>,
-}
+    injector: Arc<Injector<Message>>}
 
 /// Intelligent message router using SIMD-accelerated text analysis
 struct MessageRouter {
-    text_processor: Arc<TextProcessor>,
-}
+    text_processor: Arc<TextProcessor>}
 
 impl MessageRouter {
     /// Route message based on content analysis
@@ -131,8 +125,7 @@ pub enum MessageProcessingError {
     ConfigurationError(String),
 
     #[error("Resource exhausted: {0}")]
-    ResourceExhausted(String),
-}
+    ResourceExhausted(String)}
 
 /// Processing result with zero allocation
 #[derive(Debug, Clone)]
@@ -141,8 +134,7 @@ pub struct ProcessingResult {
     pub processing_time: Duration,
     pub result_type: ResultType,
     pub data: SmallVec<u8, 64>,
-    pub metadata: SmallVec<u8, 32>,
-}
+    pub metadata: SmallVec<u8, 32>}
 
 /// Result type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,8 +148,7 @@ pub enum ResultType {
     HealthOk,
     MetricsUpdated,
     Fallback,
-    Error,
-}
+    Error}
 
 /// Performance statistics for monitoring
 #[derive(Debug, Clone)]
@@ -167,8 +158,7 @@ pub struct ProcessingStats {
     pub current_queue_depth: usize,
     pub throughput_per_second: f64,
     pub routing_errors: usize,
-    pub worker_stats: SmallVec<WorkerStatsSnapshot, 16>,
-}
+    pub worker_stats: SmallVec<WorkerStatsSnapshot, 16>}
 
 /// Snapshot of worker statistics
 #[derive(Debug, Clone)]
@@ -176,8 +166,7 @@ pub struct WorkerStatsSnapshot {
     pub worker_id: usize,
     pub messages_processed: usize,
     pub steal_success_rate: f64,
-    pub processing_time_nanos: usize,
-}
+    pub processing_time_nanos: usize}
 
 impl MessageProcessor {
     /// Get comprehensive performance statistics

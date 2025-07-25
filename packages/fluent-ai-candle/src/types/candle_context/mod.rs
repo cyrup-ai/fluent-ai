@@ -21,4 +21,15 @@ pub use chunk::*;
 pub use document::*;
 pub use extraction::*;
 pub use loader::*;
-pub use provider::*;
+// Re-export non-deprecated provider types only
+pub use provider::{
+    ContextError, ProviderError, ValidationError,
+    ContextEvent,
+    MemoryNode, MemoryIntegration,
+    ImmutableEmbeddingModel, ImmutableMemoryManager,
+    EmbeddingModelInfo, MemoryManagerInfo,
+    StreamingContextProcessor, ContextProcessorStatistics,
+    Context, ContextSourceType,
+    File, Files, Directory, Github,
+    ImmutableFileContext, ImmutableFilesContext, 
+    ImmutableDirectoryContext, ImmutableGithubContext};

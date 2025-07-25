@@ -60,7 +60,6 @@ impl TopKProcessor {
     /// - Small k: Partial sort (quickselect-based)
     /// - Large k: Full sort with early termination
     /// - k >= vocab_size: No-op (identity)
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn apply_top_k_filtering(&self, logits: &Tensor) -> Result<Tensor, SamplingError> {
         let logits_vec = logits
@@ -89,7 +88,6 @@ impl TopKProcessor {
     ///
     /// Uses quickselect for O(n) expected time complexity when k is small,
     /// falls back to partial sort for larger k values.
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn find_kth_largest(&self, values: &[f32]) -> Result<f32, SamplingError> {
@@ -107,7 +105,6 @@ impl TopKProcessor {
         }
     }
 
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn quickselect_kth_largest(&self, values: &mut [f32]) -> Result<f32, SamplingError> {
@@ -126,7 +123,6 @@ impl TopKProcessor {
         Ok(values[k_index])
     }
 
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn partial_sort_kth_largest(&self, values: &mut [f32]) -> Result<f32, SamplingError> {
@@ -143,7 +139,6 @@ impl TopKProcessor {
     }
 
     /// Apply threshold mask to zero out tokens below k-th largest
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     #[inline(always)]
     fn apply_threshold_mask(

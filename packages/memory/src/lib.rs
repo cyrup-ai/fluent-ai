@@ -24,8 +24,7 @@ pub use api::APIServer;
 #[cfg(feature = "cognitive")]
 pub use cognitive::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
-    EvolutionMetadata, QuantumSignature,
-};
+    EvolutionMetadata, QuantumSignature};
 pub use memory::MemoryMetadata;
 pub use memory::MemoryNode;
 pub use memory::SurrealDBMemoryManager;
@@ -76,8 +75,7 @@ pub async fn initialize(config: &MemoryConfig) -> Result<SurrealMemoryManager, E
     if let (Some(user), Some(pass)) = (&config.database.username, &config.database.password) {
         db.signin(surrealdb::opt::auth::Root {
             username: user.as_str(),
-            password: pass.as_str(),
-        })
+            password: pass.as_str()})
         .await
         .map_err(|e| Error::Config(format!("Database sign-in failed: {e}")))?;
     }

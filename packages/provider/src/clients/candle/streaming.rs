@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
-use arrayvec::ArrayVec;
 use crossbeam::atomic::AtomicCell;
 use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded, unbounded};
 use smallvec::SmallVec;
@@ -35,8 +34,7 @@ pub enum FinishReason {
     /// Error occurred during generation
     Error,
     /// Timeout reached
-    Timeout,
-}
+    Timeout}
 
 impl FinishReason {
     /// Check if this represents a successful completion
@@ -60,8 +58,7 @@ impl FinishReason {
             FinishReason::StopToken => "stop_token",
             FinishReason::UserStopped => "user_stopped",
             FinishReason::Error => "error",
-            FinishReason::Timeout => "timeout",
-        }
+            FinishReason::Timeout => "timeout"}
     }
 }
 
@@ -83,8 +80,7 @@ pub struct StreamingChunk {
     /// Timestamp when chunk was created
     pub timestamp: Instant,
     /// Chunk sequence number for ordering
-    pub sequence_number: u64,
-}
+    pub sequence_number: u64}
 
 impl StreamingChunk {
     /// Create a new streaming chunk
@@ -151,8 +147,7 @@ pub struct StreamingConfig {
     /// Maximum batch size for responsiveness
     pub max_batch_size: usize,
     /// Enable streaming statistics collection
-    pub enable_statistics: bool,
-}
+    pub enable_statistics: bool}
 
 impl Default for StreamingConfig {
     fn default() -> Self {
@@ -164,8 +159,7 @@ impl Default for StreamingConfig {
             max_latency: Duration::from_millis(50),
             min_batch_size: 1,
             max_batch_size: 16,
-            enable_statistics: true,
-        }
+            enable_statistics: true}
     }
 }
 
@@ -180,8 +174,7 @@ impl StreamingConfig {
             max_latency: Duration::from_millis(5),
             min_batch_size: 1,
             max_batch_size: 4,
-            enable_statistics: true,
-        }
+            enable_statistics: true}
     }
 
     /// Create configuration optimized for high throughput
@@ -194,8 +187,7 @@ impl StreamingConfig {
             max_latency: Duration::from_millis(200),
             min_batch_size: 8,
             max_batch_size: 64,
-            enable_statistics: true,
-        }
+            enable_statistics: true}
     }
 
     /// Create configuration for balanced performance
@@ -273,8 +265,7 @@ struct StreamingSession {
     /// Whether session is active
     is_active: bool,
     /// Session finish reason (if completed)
-    finish_reason: Option<FinishReason>,
-}
+    finish_reason: Option<FinishReason>}
 
 impl Default for StreamingSession {
     fn default() -> Self {
@@ -285,8 +276,7 @@ impl Default for StreamingSession {
             chunks_sent: 0,
             bytes_sent: 0,
             is_active: false,
-            finish_reason: None,
-        }
+            finish_reason: None}
     }
 }
 
@@ -300,8 +290,7 @@ impl StreamingSession {
             chunks_sent: 0,
             bytes_sent: 0,
             is_active: true,
-            finish_reason: None,
-        }
+            finish_reason: None}
     }
 
     /// Get session duration
@@ -344,8 +333,7 @@ pub struct StreamingCoordinator {
     /// Streaming statistics
     stats: StreamingStatistics,
     /// Flow control state
-    flow_control: FlowControl,
-}
+    flow_control: FlowControl}
 
 /// Flow control state for backpressure management
 #[derive(Debug)]
@@ -357,8 +345,7 @@ struct FlowControl {
     /// Total chunks dropped due to backpressure
     chunks_dropped: AtomicCell<u64>,
     /// Last backpressure event time
-    last_backpressure: AtomicCell<Option<Instant>>,
-}
+    last_backpressure: AtomicCell<Option<Instant>>}
 
 impl Default for FlowControl {
     fn default() -> Self {
@@ -366,8 +353,7 @@ impl Default for FlowControl {
             buffer_level: AtomicCell::new(0),
             backpressure_active: AtomicCell::new(false),
             chunks_dropped: AtomicCell::new(0),
-            last_backpressure: AtomicCell::new(None),
-        }
+            last_backpressure: AtomicCell::new(None)}
     }
 }
 
@@ -387,8 +373,7 @@ impl StreamingCoordinator {
             chunk_sender: sender,
             chunk_receiver: receiver,
             stats: StreamingStatistics::default(),
-            flow_control: FlowControl::default(),
-        }
+            flow_control: FlowControl::default()}
     }
 
     /// Start a new streaming session
@@ -551,8 +536,7 @@ impl StreamingCoordinator {
                 bytes_sent: session.bytes_sent,
                 chunks_per_second: session.chunks_per_second(),
                 bytes_per_second: session.bytes_per_second(),
-                finish_reason: session.finish_reason,
-            })
+                finish_reason: session.finish_reason})
         } else {
             None
         }
@@ -590,8 +574,7 @@ impl StreamingCoordinator {
                 0
             },
             current_buffer_level: self.buffer_level(),
-            is_backpressure_active: self.is_backpressure_active(),
-        }
+            is_backpressure_active: self.is_backpressure_active()}
     }
 }
 
@@ -613,8 +596,7 @@ pub struct StreamingSessionInfo {
     /// Bandwidth in bytes per second
     pub bytes_per_second: f32,
     /// Finish reason (if completed)
-    pub finish_reason: Option<FinishReason>,
-}
+    pub finish_reason: Option<FinishReason>}
 
 /// Comprehensive streaming statistics
 #[derive(Debug, Clone)]
@@ -640,8 +622,7 @@ pub struct StreamingStatistics {
     /// Current buffer level
     current_buffer_level: AtomicCell<usize>,
     /// Whether backpressure is currently active
-    is_backpressure_active: AtomicCell<bool>,
-}
+    is_backpressure_active: AtomicCell<bool>}
 
 impl Default for StreamingStatistics {
     fn default() -> Self {
@@ -656,8 +637,7 @@ impl Default for StreamingStatistics {
             chunks_dropped: AtomicCell::new(0),
             backpressure_events: AtomicCell::new(0),
             current_buffer_level: AtomicCell::new(0),
-            is_backpressure_active: AtomicCell::new(false),
-        }
+            is_backpressure_active: AtomicCell::new(false)}
     }
 }
 
@@ -732,8 +712,7 @@ pub struct TextAccumulator {
     /// Chunk count
     pub chunk_count: usize,
     /// Total bytes received
-    pub bytes_received: usize,
-}
+    pub bytes_received: usize}
 
 impl TokenStreamer for TextAccumulator {
     fn handle_chunk(&mut self, chunk: StreamingChunk) -> CandleResult<()> {

@@ -25,8 +25,7 @@ pub struct AgentBuilder<const TOOLS_CAPACITY: usize = MAX_AGENT_TOOLS> {
     shared_memory: Option<Arc<Memory>>,
     tools: ArrayVec<McpToolData, TOOLS_CAPACITY>,
     temperature: Option<f64>,
-    max_tokens: Option<u64>,
-}
+    max_tokens: Option<u64>}
 
 impl<const TOOLS_CAPACITY: usize> Default for AgentBuilder<TOOLS_CAPACITY> {
     fn default() -> Self {
@@ -44,8 +43,7 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
             shared_memory: None,
             tools: ArrayVec::new(),
             temperature: None,
-            max_tokens: None,
-        }
+            max_tokens: None}
     }
 
     /// Set model with validation
@@ -128,13 +126,11 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
             // Convert comprehensive config to Memory::new() format
             let memory_config = MemoryConfig {
                 database_url: comprehensive_config.database.connection_string.to_string(),
-                embedding_dimension: comprehensive_config.vector_store.dimension,
-            };
+                embedding_dimension: comprehensive_config.vector_store.dimension};
             let mut memory_stream = Memory::new(memory_config);
 
-            // Use tokio_stream::StreamExt to get the first item from the stream
-            use tokio_stream::StreamExt;
-            let memory_instance = match memory_stream.next().await {
+            // Use AsyncStream's try_next method (NO FUTURES architecture)
+            let memory_instance = match memory_stream.try_next() {
                 Some(memory) => memory,
                 None => {
                     return Err(AgentError::InitializationError(
@@ -175,8 +171,7 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
             memory_tool: Some(memory_tool),
             temperature: self.temperature,
             max_tokens: self.max_tokens,
-            additional_params: None,
-        })
+            additional_params: None})
     }
 }
 

@@ -17,8 +17,7 @@ pub struct CacheConfig {
     /// Enable automatic cleanup of expired entries
     pub auto_cleanup: bool,
     /// Cleanup interval
-    pub cleanup_interval: Duration,
-}
+    pub cleanup_interval: Duration}
 
 impl Default for CacheConfig {
     fn default() -> Self {
@@ -40,8 +39,7 @@ impl CacheConfig {
             max_memory_bytes: 500 * 1024 * 1024,    // 500MB
             default_ttl: Duration::from_secs(3600), // 1 hour
             auto_cleanup: true,
-            cleanup_interval: Duration::from_secs(30),
-        }
+            cleanup_interval: Duration::from_secs(30)}
     }
 
     /// Create conservative caching configuration
@@ -62,7 +60,6 @@ impl CacheConfig {
             max_memory_bytes: 0,
             default_ttl: Duration::ZERO,
             auto_cleanup: false,
-            cleanup_interval: Duration::MAX,
-        }
+            cleanup_interval: Duration::MAX}
     }
 }

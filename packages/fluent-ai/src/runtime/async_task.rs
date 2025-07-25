@@ -1,16 +1,14 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
-};
+    task::{Context, Poll}};
 
 use crossbeam_channel::{Receiver, Sender, bounded};
 
 use super::executor::global;
 
 pub struct AsyncTask<T> {
-    rx: Receiver<T>,
-}
+    rx: Receiver<T>}
 
 impl<T> Future for AsyncTask<T> {
     type Output = T;

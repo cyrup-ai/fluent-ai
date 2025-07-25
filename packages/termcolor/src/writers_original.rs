@@ -13,16 +13,14 @@ enum StandardStreamType {
     Stdout,
     Stderr,
     StdoutBuffered,
-    StderrBuffered,
-}
+    StderrBuffered}
 
 #[derive(Debug)]
 enum IoStandardStream {
     Stdout(io::Stdout),
     Stderr(io::Stderr),
     StdoutBuffered(io::BufWriter<io::Stdout>),
-    StderrBuffered(io::BufWriter<io::Stderr>),
-}
+    StderrBuffered(io::BufWriter<io::Stderr>)}
 
 impl IoStandardStream {
     fn new(sty: StandardStreamType) -> IoStandardStream {
@@ -69,8 +67,7 @@ impl io::Write for IoStandardStream {
             IoStandardStream::Stdout(ref mut s) => s.write(b),
             IoStandardStream::Stderr(ref mut s) => s.write(b),
             IoStandardStream::StdoutBuffered(ref mut s) => s.write(b),
-            IoStandardStream::StderrBuffered(ref mut s) => s.write(b),
-        }
+            IoStandardStream::StderrBuffered(ref mut s) => s.write(b)}
     }
 
     #[inline(always)]
@@ -79,8 +76,7 @@ impl io::Write for IoStandardStream {
             IoStandardStream::Stdout(ref mut s) => s.flush(),
             IoStandardStream::Stderr(ref mut s) => s.flush(),
             IoStandardStream::StdoutBuffered(ref mut s) => s.flush(),
-            IoStandardStream::StderrBuffered(ref mut s) => s.flush(),
-        }
+            IoStandardStream::StderrBuffered(ref mut s) => s.flush()}
     }
 }
 
@@ -89,24 +85,21 @@ impl io::Write for IoStandardStream {
 #[derive(Debug)]
 enum IoStandardStreamLock<'a> {
     StdoutLock(io::StdoutLock<'a>),
-    StderrLock(io::StderrLock<'a>),
-}
+    StderrLock(io::StderrLock<'a>)}
 
 impl<'a> io::Write for IoStandardStreamLock<'a> {
     #[inline(always)]
     fn write(&mut self, b: &[u8]) -> io::Result<usize> {
         match *self {
             IoStandardStreamLock::StdoutLock(ref mut s) => s.write(b),
-            IoStandardStreamLock::StderrLock(ref mut s) => s.write(b),
-        }
+            IoStandardStreamLock::StderrLock(ref mut s) => s.write(b)}
     }
 
     #[inline(always)]
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             IoStandardStreamLock::StdoutLock(ref mut s) => s.flush(),
-            IoStandardStreamLock::StderrLock(ref mut s) => s.flush(),
-        }
+            IoStandardStreamLock::StderrLock(ref mut s) => s.flush()}
     }
 }
 
@@ -116,8 +109,7 @@ impl<'a> io::Write for IoStandardStreamLock<'a> {
 /// until either `flush` is called or the buffer is full.
 #[derive(Debug)]
 pub struct StandardStream {
-    wtr: LossyStandardStream<WriterInner<IoStandardStream>>,
-}
+    wtr: LossyStandardStream<WriterInner<IoStandardStream>>}
 
 /// `StandardStreamLock` is a locked reference to a `StandardStream`.
 ///
@@ -128,28 +120,24 @@ pub struct StandardStream {
 /// `StandardStream`.
 #[derive(Debug)]
 pub struct StandardStreamLock<'a> {
-    wtr: LossyStandardStream<WriterInnerLock<IoStandardStreamLock<'a>>>,
-}
+    wtr: LossyStandardStream<WriterInnerLock<IoStandardStreamLock<'a>>>}
 
 /// Like `StandardStream`, but does buffered writing.
 #[derive(Debug)]
 pub struct BufferedStandardStream {
-    wtr: LossyStandardStream<WriterInner<IoStandardStream>>,
-}
+    wtr: LossyStandardStream<WriterInner<IoStandardStream>>}
 
 /// WriterInner is a (limited) generic representation of a writer.
 #[derive(Debug)]
 enum WriterInner<W> {
     NoColor(NoColor<W>),
-    Ansi(Ansi<W>),
-}
+    Ansi(Ansi<W>)}
 
 /// WriterInnerLock is a (limited) generic representation of a writer.
 #[derive(Debug)]
 enum WriterInnerLock<W> {
     NoColor(NoColor<W>),
-    Ansi(Ansi<W>),
-}
+    Ansi(Ansi<W>)}
 
 impl StandardStream {
     /// Create a new `StandardStream` with the given color preferences that
@@ -389,16 +377,14 @@ impl<W: io::Write> io::Write for WriterInner<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             WriterInner::NoColor(ref mut wtr) => wtr.write(buf),
-            WriterInner::Ansi(ref mut wtr) => wtr.write(buf),
-        }
+            WriterInner::Ansi(ref mut wtr) => wtr.write(buf)}
     }
 
     #[inline(always)]
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             WriterInner::NoColor(ref mut wtr) => wtr.flush(),
-            WriterInner::Ansi(ref mut wtr) => wtr.flush(),
-        }
+            WriterInner::Ansi(ref mut wtr) => wtr.flush()}
     }
 }
 
@@ -406,36 +392,31 @@ impl<W: io::Write> WriteColor for WriterInner<W> {
     fn supports_color(&self) -> bool {
         match *self {
             WriterInner::NoColor(_) => false,
-            WriterInner::Ansi(_) => true,
-        }
+            WriterInner::Ansi(_) => true}
     }
 
     fn supports_hyperlinks(&self) -> bool {
         match *self {
             WriterInner::NoColor(_) => false,
-            WriterInner::Ansi(_) => true,
-        }
+            WriterInner::Ansi(_) => true}
     }
 
     fn set_color(&mut self, spec: &ColorSpec) -> io::Result<()> {
         match *self {
             WriterInner::NoColor(ref mut wtr) => wtr.set_color(spec),
-            WriterInner::Ansi(ref mut wtr) => wtr.set_color(spec),
-        }
+            WriterInner::Ansi(ref mut wtr) => wtr.set_color(spec)}
     }
 
     fn set_hyperlink(&mut self, link: &HyperlinkSpec) -> io::Result<()> {
         match *self {
             WriterInner::NoColor(ref mut wtr) => wtr.set_hyperlink(link),
-            WriterInner::Ansi(ref mut wtr) => wtr.set_hyperlink(link),
-        }
+            WriterInner::Ansi(ref mut wtr) => wtr.set_hyperlink(link)}
     }
 
     fn reset(&mut self) -> io::Result<()> {
         match *self {
             WriterInner::NoColor(ref mut wtr) => wtr.reset(),
-            WriterInner::Ansi(ref mut wtr) => wtr.reset(),
-        }
+            WriterInner::Ansi(ref mut wtr) => wtr.reset()}
     }
 }
 
@@ -443,15 +424,13 @@ impl<W: io::Write> io::Write for WriterInnerLock<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             WriterInnerLock::NoColor(ref mut wtr) => wtr.write(buf),
-            WriterInnerLock::Ansi(ref mut wtr) => wtr.write(buf),
-        }
+            WriterInnerLock::Ansi(ref mut wtr) => wtr.write(buf)}
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             WriterInnerLock::NoColor(ref mut wtr) => wtr.flush(),
-            WriterInnerLock::Ansi(ref mut wtr) => wtr.flush(),
-        }
+            WriterInnerLock::Ansi(ref mut wtr) => wtr.flush()}
     }
 }
 
@@ -459,36 +438,31 @@ impl<W: io::Write> WriteColor for WriterInnerLock<W> {
     fn supports_color(&self) -> bool {
         match *self {
             WriterInnerLock::NoColor(_) => false,
-            WriterInnerLock::Ansi(_) => true,
-        }
+            WriterInnerLock::Ansi(_) => true}
     }
 
     fn supports_hyperlinks(&self) -> bool {
         match *self {
             WriterInnerLock::NoColor(_) => false,
-            WriterInnerLock::Ansi(_) => true,
-        }
+            WriterInnerLock::Ansi(_) => true}
     }
 
     fn set_color(&mut self, spec: &ColorSpec) -> io::Result<()> {
         match *self {
             WriterInnerLock::NoColor(ref mut wtr) => wtr.set_color(spec),
-            WriterInnerLock::Ansi(ref mut wtr) => wtr.set_color(spec),
-        }
+            WriterInnerLock::Ansi(ref mut wtr) => wtr.set_color(spec)}
     }
 
     fn set_hyperlink(&mut self, link: &HyperlinkSpec) -> io::Result<()> {
         match *self {
             WriterInnerLock::NoColor(ref mut wtr) => wtr.set_hyperlink(link),
-            WriterInnerLock::Ansi(ref mut wtr) => wtr.set_hyperlink(link),
-        }
+            WriterInnerLock::Ansi(ref mut wtr) => wtr.set_hyperlink(link)}
     }
 
     fn reset(&mut self) -> io::Result<()> {
         match *self {
             WriterInnerLock::NoColor(ref mut wtr) => wtr.reset(),
-            WriterInnerLock::Ansi(ref mut wtr) => wtr.reset(),
-        }
+            WriterInnerLock::Ansi(ref mut wtr) => wtr.reset()}
     }
 }
 
@@ -505,8 +479,7 @@ pub struct BufferWriter {
     stream: LossyStandardStream<IoStandardStream>,
     printed: AtomicBool,
     separator: Option<Vec<u8>>,
-    use_color: bool,
-}
+    use_color: bool}
 
 impl BufferWriter {
     /// Create a new `BufferWriter` that writes to a standard stream with the
@@ -518,8 +491,7 @@ impl BufferWriter {
             stream: LossyStandardStream::new(IoStandardStream::new(sty)),
             printed: AtomicBool::new(false),
             separator: None,
-            use_color,
-        }
+            use_color}
     }
 
     #[cfg(windows)]
@@ -561,8 +533,7 @@ impl BufferWriter {
             stream,
             printed: AtomicBool::new(false),
             separator: None,
-            use_color,
-        }
+            use_color}
     }
 
     /// Create a new `BufferWriter` that writes to stdout with the given
@@ -611,8 +582,7 @@ impl BufferWriter {
         }
         match buf.0 {
             BufferInner::NoColor(ref b) => stream.write_all(&b.0)?,
-            BufferInner::Ansi(ref b) => stream.write_all(&b.0)?,
-        }
+            BufferInner::Ansi(ref b) => stream.write_all(&b.0)?}
         self.printed.store(true, Ordering::Relaxed);
         Ok(())
     }
@@ -639,8 +609,7 @@ enum BufferInner {
     /// directives.
     NoColor(NoColor<Vec<u8>>),
     /// Apply coloring using ANSI escape sequences embedded into the buffer.
-    Ansi(Ansi<Vec<u8>>),
-}
+    Ansi(Ansi<Vec<u8>>)}
 
 impl Buffer {
     /// Create a new buffer with the given color settings.
@@ -684,40 +653,35 @@ impl Buffer {
     pub fn len(&self) -> usize {
         match self.0 {
             BufferInner::NoColor(ref b) => b.0.len(),
-            BufferInner::Ansi(ref b) => b.0.len(),
-        }
+            BufferInner::Ansi(ref b) => b.0.len()}
     }
 
     /// Clears this buffer.
     pub fn clear(&mut self) {
         match self.0 {
             BufferInner::NoColor(ref mut b) => b.0.clear(),
-            BufferInner::Ansi(ref mut b) => b.0.clear(),
-        }
+            BufferInner::Ansi(ref mut b) => b.0.clear()}
     }
 
     /// Consume this buffer and return the underlying raw data.
     pub fn into_inner(self) -> Vec<u8> {
         match self.0 {
             BufferInner::NoColor(b) => b.0,
-            BufferInner::Ansi(b) => b.0,
-        }
+            BufferInner::Ansi(b) => b.0}
     }
 
     /// Return the underlying data of the buffer.
     pub fn as_slice(&self) -> &[u8] {
         match self.0 {
             BufferInner::NoColor(ref b) => &b.0,
-            BufferInner::Ansi(ref b) => &b.0,
-        }
+            BufferInner::Ansi(ref b) => &b.0}
     }
 
     /// Return the underlying data of the buffer as a mutable slice.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         match self.0 {
             BufferInner::NoColor(ref mut b) => &mut b.0,
-            BufferInner::Ansi(ref mut b) => &mut b.0,
-        }
+            BufferInner::Ansi(ref mut b) => &mut b.0}
     }
 }
 
@@ -726,16 +690,14 @@ impl io::Write for Buffer {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.write(buf),
-            BufferInner::Ansi(ref mut w) => w.write(buf),
-        }
+            BufferInner::Ansi(ref mut w) => w.write(buf)}
     }
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.flush(),
-            BufferInner::Ansi(ref mut w) => w.flush(),
-        }
+            BufferInner::Ansi(ref mut w) => w.flush()}
     }
 }
 
@@ -744,40 +706,35 @@ impl WriteColor for Buffer {
     fn supports_color(&self) -> bool {
         match self.0 {
             BufferInner::NoColor(_) => false,
-            BufferInner::Ansi(_) => true,
-        }
+            BufferInner::Ansi(_) => true}
     }
 
     #[inline]
     fn supports_hyperlinks(&self) -> bool {
         match self.0 {
             BufferInner::NoColor(_) => false,
-            BufferInner::Ansi(_) => true,
-        }
+            BufferInner::Ansi(_) => true}
     }
 
     #[inline]
     fn set_color(&mut self, spec: &ColorSpec) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.set_color(spec),
-            BufferInner::Ansi(ref mut w) => w.set_color(spec),
-        }
+            BufferInner::Ansi(ref mut w) => w.set_color(spec)}
     }
 
     #[inline]
     fn set_hyperlink(&mut self, link: &HyperlinkSpec) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.set_hyperlink(link),
-            BufferInner::Ansi(ref mut w) => w.set_hyperlink(link),
-        }
+            BufferInner::Ansi(ref mut w) => w.set_hyperlink(link)}
     }
 
     #[inline]
     fn reset(&mut self) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.reset(),
-            BufferInner::Ansi(ref mut w) => w.reset(),
-        }
+            BufferInner::Ansi(ref mut w) => w.reset()}
     }
 }
 
@@ -1047,8 +1004,7 @@ impl<W: io::Write> Ansi<W> {
                 Color::White => write_intense!("15"),
                 Color::Ansi256(c) => write_custom!(c),
                 Color::Rgb(r, g, b) => write_custom!(r, g, b),
-                Color::__Nonexhaustive => unreachable!(),
-            }
+                Color::__Nonexhaustive => unreachable!()}
         } else {
             match *c {
                 Color::Black => write_normal!("0"),
@@ -1061,8 +1017,7 @@ impl<W: io::Write> Ansi<W> {
                 Color::White => write_normal!("7"),
                 Color::Ansi256(c) => write_custom!(c),
                 Color::Rgb(r, g, b) => write_custom!(r, g, b),
-                Color::__Nonexhaustive => unreachable!(),
-            }
+                Color::__Nonexhaustive => unreachable!()}
         }
     }
 }
@@ -1093,8 +1048,7 @@ impl WriteColor for io::Sink {
 struct LossyStandardStream<W> {
     wtr: W,
     #[cfg(windows)]
-    is_console: bool,
-}
+    is_console: bool}
 
 impl<W: io::Write> LossyStandardStream<W> {
     #[cfg(not(windows))]
@@ -1168,8 +1122,7 @@ fn write_lossy_utf8<W: io::Write>(mut w: W, buf: &[u8]) -> io::Result<usize> {
             w.write(b"\xEF\xBF\xBD")?;
             Ok(1)
         }
-        Err(e) => w.write(&buf[..e.valid_up_to()]),
-    }
+        Err(e) => w.write(&buf[..e.valid_up_to()])}
 }
 
 impl WriteColor for Vec<u8> {
@@ -1206,8 +1159,7 @@ impl WriteColor for Vec<u8> {
 #[derive(Debug, Default)]
 pub struct StringWriter {
     /// The internal string buffer that collects written data.
-    pub inner: String,
-}
+    pub inner: String}
 
 impl StringWriter {
     /// Creates a new empty StringWriter.
@@ -1241,8 +1193,7 @@ impl io::Write for StringWriter {
             Err(_) => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid UTF-8",
-            )),
-        }
+            ))}
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -1347,8 +1298,7 @@ impl io::Write for TermString {
             Err(_) => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid UTF-8",
-            )),
-        }
+            ))}
     }
 
     fn flush(&mut self) -> io::Result<()> {

@@ -17,10 +17,8 @@ use crate::{
     embedding::{
         Embed, Embedding, EmbeddingError,
         builder::EmbeddingsBuilder,
-        embedding::{EmbeddingModel, EmbeddingModelDyn},
-    },
-    runtime::AsyncTask,
-};
+        embedding::{EmbeddingModel, EmbeddingModelDyn}},
+    runtime::AsyncTask};
 
 // -----------------------------------------------------------------------------
 // Provider trait implemented by concrete SDK wrappers
@@ -109,8 +107,7 @@ where
 // -----------------------------------------------------------------------------
 #[derive(Clone)]
 pub struct EmbeddingModelHandle<'a> {
-    inner: Arc<dyn EmbeddingModelDyn + 'a>,
-}
+    inner: Arc<dyn EmbeddingModelDyn + 'a>}
 
 impl EmbeddingModel for EmbeddingModelHandle<'_> {
     const MAX_DOCUMENTS: usize = usize::MAX;

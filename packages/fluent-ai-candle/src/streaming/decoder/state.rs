@@ -10,8 +10,7 @@ pub enum DecoderState {
     /// Waiting for more bytes to complete a multi-byte sequence
     Partial { pending_bytes: Vec<u8> },
     /// Error state requiring reset
-    Error { error: String },
-}
+    Error { error: String }}
 
 impl Default for DecoderState {
     fn default() -> Self {
@@ -29,8 +28,7 @@ impl fmt::Display for DecoderState {
                 pending_bytes.len(),
                 pending_bytes
             ),
-            Self::Error { error } => write!(f, "Error: {}", error),
-        }
+            Self::Error { error } => write!(f, "Error: {}", error)}
     }
 }
 
@@ -48,8 +46,7 @@ impl DecoderState {
     /// Create a new Error state with the given error message
     pub fn error<S: Into<String>>(error: S) -> Self {
         Self::Error {
-            error: error.into(),
-        }
+            error: error.into()}
     }
 
     /// Check if the state is Ready
@@ -71,16 +68,14 @@ impl DecoderState {
     pub fn pending_bytes(&self) -> Option<&[u8]> {
         match self {
             Self::Partial { pending_bytes } => Some(pending_bytes.as_slice()),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Get the error message if in Error state
     pub fn error_message(&self) -> Option<&str> {
         match self {
             Self::Error { error } => Some(error.as_str()),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Reset the state to Ready
@@ -99,8 +94,7 @@ impl DecoderState {
             }
             Err(e) => {
                 *self = Self::Error {
-                    error: e.to_string(),
-                };
+                    error: e.to_string()};
                 None
             }
         }

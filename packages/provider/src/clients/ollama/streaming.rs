@@ -12,8 +12,7 @@ use super::completion::{CompletionResponse, ProviderMessage};
 use crate::{
     completion::CompletionError,
     runtime::{self, AsyncStream},
-    streaming::{RawStreamingChoice, StreamingCompletionResponse},
-};
+    streaming::{RawStreamingChoice, StreamingCompletionResponse}};
 
 // ============================================================================
 // Streaming Response
@@ -26,8 +25,7 @@ pub struct OllamaStreamingResponse {
     pub prompt_eval_count: Option<u64>,
     pub prompt_eval_duration: Option<u64>,
     pub eval_count: Option<u64>,
-    pub eval_duration: Option<u64>,
-}
+    pub eval_duration: Option<u64>}
 
 /// Process Ollama streaming response using HTTP3 stream
 ///
@@ -127,8 +125,7 @@ fn process_ollama_chunk(chunk: &serde_json::Value) -> Result<RawStreamingChoice,
         index: 0,
         delta: ProviderMessage {
             role: "assistant".to_string(),
-            content: response_content.to_string(),
-        },
+            content: response_content.to_string()},
         finish_reason: if is_done {
             Some("stop".to_string())
         } else {
@@ -136,8 +133,7 @@ fn process_ollama_chunk(chunk: &serde_json::Value) -> Result<RawStreamingChoice,
         },
         model: model.to_string(),
         created_at: created_at.to_string(),
-        usage: extract_usage_info(chunk),
-    };
+        usage: extract_usage_info(chunk)};
 
     Ok(streaming_choice)
 }
@@ -187,8 +183,7 @@ fn extract_usage_info(chunk: &serde_json::Value) -> Option<crate::streaming::Usa
             prompt_eval_duration_ms: (prompt_eval_duration / 1_000_000) as u32, /* Convert nanoseconds to milliseconds */
             eval_duration_ms: (eval_duration / 1_000_000) as u32,
             total_duration_ms: (total_duration / 1_000_000) as u32,
-            load_duration_ms: (load_duration / 1_000_000) as u32,
-        })
+            load_duration_ms: (load_duration / 1_000_000) as u32})
     } else {
         None
     }

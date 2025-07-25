@@ -27,8 +27,7 @@ pub enum FormatError {
     #[error("Resource not found: {resource}")]
     ResourceNotFound { resource: String },
     #[error("Internal error: {detail}")]
-    InternalError { detail: String },
-}
+    InternalError { detail: String }}
 
 /// Result type for formatting operations
 pub type FormatResult<T> = Result<T, FormatError>;
@@ -37,50 +36,43 @@ impl FormatError {
     /// Create an invalid markdown error
     pub fn invalid_markdown(detail: impl Into<String>) -> Self {
         Self::InvalidMarkdown {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create an unsupported language error
     pub fn unsupported_language(language: impl Into<String>) -> Self {
         Self::UnsupportedLanguage {
-            language: language.into(),
-        }
+            language: language.into()}
     }
 
     /// Create a parse error
     pub fn parse_error(detail: impl Into<String>) -> Self {
         Self::ParseError {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create a render error
     pub fn render_error(detail: impl Into<String>) -> Self {
         Self::RenderError {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create an invalid content error
     pub fn invalid_content(detail: impl Into<String>) -> Self {
         Self::InvalidContent {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create a configuration error
     pub fn configuration_error(detail: impl Into<String>) -> Self {
         Self::ConfigurationError {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create an IO error
     pub fn io_error(detail: impl Into<String>) -> Self {
         Self::IoError {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Create a timeout error
@@ -91,15 +83,13 @@ impl FormatError {
     /// Create a resource not found error
     pub fn resource_not_found(resource: impl Into<String>) -> Self {
         Self::ResourceNotFound {
-            resource: resource.into(),
-        }
+            resource: resource.into()}
     }
 
     /// Create an internal error
     pub fn internal_error(detail: impl Into<String>) -> Self {
         Self::InternalError {
-            detail: detail.into(),
-        }
+            detail: detail.into()}
     }
 
     /// Check if error is recoverable
@@ -134,8 +124,7 @@ impl FormatError {
             Self::IoError { .. } => "io",
             Self::Timeout => "timeout",
             Self::ResourceNotFound { .. } => "resource",
-            Self::InternalError { .. } => "internal",
-        }
+            Self::InternalError { .. } => "internal"}
     }
 }
 
@@ -143,8 +132,7 @@ impl FormatError {
 impl From<std::io::Error> for FormatError {
     fn from(error: std::io::Error) -> Self {
         Self::IoError {
-            detail: error.to_string(),
-        }
+            detail: error.to_string()}
     }
 }
 
@@ -152,8 +140,7 @@ impl From<std::io::Error> for FormatError {
 impl From<std::fmt::Error> for FormatError {
     fn from(error: std::fmt::Error) -> Self {
         Self::RenderError {
-            detail: error.to_string(),
-        }
+            detail: error.to_string()}
     }
 }
 

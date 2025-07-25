@@ -4,33 +4,44 @@
 //! and maintaining inverted index structures.
 
 use std::collections::HashMap;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
+use atomic_counter::AtomicCounter;
 use fluent_ai_async::AsyncStream;
 
-use crate::types::candle_chat::message::types::CandleMessage;
-use super::core::{ChatSearchIndex, IndexEntry};
+use crate::types::candle_chat::message::CandleMessage;
+use crate::types::CandleSearchChatMessage as SearchChatMessage;
+
 use super::super::types::TermFrequency;
+use super::core::{ChatSearchIndex, IndexEntry};
+use crate::types::extensions::RoleExt;
 
 impl ChatSearchIndex {
     /// Add message to search index (streaming)
-    pub fn add_message_stream(&self, message: CandleMessage) -> AsyncStream<()> {
+    pub fn add_message_stream(&self, message: SearchChatMessage) -> AsyncStream<()> {
         let self_clone = self.clone();
 
         AsyncStream::with_channel(move |sender| {
             let index = self_clone.document_count.load(Ordering::Relaxed);
             let doc_id = message
-                .message
                 .id
-                .clone()
-                .unwrap_or_else(|| format!("msg_{}", index));
+                .clone();
+            // Convert SearchChatMessage to CandleMessage for storage
+            let candle_message = CandleMessage {
+                id: message.id.clone(),
+                role: message.role,
+                content: message.content.clone(),
+                name: message.name.clone(),
+                metadata: message.metadata.clone(),
+                timestamp: message.timestamp,
+            };
             self_clone
                 .document_store
-                .insert(Arc::from(doc_id.as_str()), message.clone());
+                .insert(Arc::from(doc_id.as_str()), candle_message);
 
             // Tokenize and index the content
-            let tokens = self_clone.tokenize_with_simd(&message.message.content);
+            let tokens = self_clone.tokenize_with_simd(&message.content);
             let total_tokens = tokens.len();
 
             // Calculate term frequencies
@@ -70,11 +81,11 @@ impl ChatSearchIndex {
                     .get(&term)
                     .map(|e| e.value().len() as u32)
                     .unwrap_or(1);
-                    
+
                 let total_docs = self_clone.document_count.load(Ordering::Relaxed) as u32 + 1;
                 let idf = (total_docs as f64 / doc_freq as f64).ln();
                 let tf_idf_score = tf as f64 * idf;
-                
+
                 let tf_entry = TermFrequency {
                     term: term.clone(),
                     frequency: count,

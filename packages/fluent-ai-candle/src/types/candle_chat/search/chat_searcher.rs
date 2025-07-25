@@ -1,6 +1,5 @@
 //! Chat searcher with caching and advanced search capabilities
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use fluent_ai_async::AsyncStream;
@@ -29,8 +28,7 @@ pub struct ChatSearcher {
     /// Search statistics
     pub stats: ChatSearcherStats,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 impl std::fmt::Debug for ChatSearcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,8 +46,7 @@ pub struct CachedSearchResult {
     pub cached_at: chrono::DateTime<chrono::Utc>,
     pub hit_count: usize,
     pub query_hash: String,
-    pub metadata: SearchResultMetadata,
-}
+    pub metadata: SearchResultMetadata}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchPosition {
@@ -61,8 +58,7 @@ pub struct MatchPosition {
     pub context_before: Option<String>,
     pub context_after: Option<String>,
     pub line_number: Option<usize>,
-    pub column_number: Option<usize>,
-}
+    pub column_number: Option<usize>}
 
 /// Search result metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,8 +74,7 @@ pub struct SearchResultMetadata {
     /// Result ranking algorithm used
     pub ranking_algorithm: String,
     /// Additional metadata
-    pub extra_metadata: HashMap<String, serde_json::Value>,
-}
+    pub extra_metadata: HashMap<String, serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatSearcherStats {
@@ -91,14 +86,12 @@ pub struct ChatSearcherStats {
     pub total_results_returned: usize,
     pub common_queries: Vec<(String, usize)>,
     pub performance_metrics: HashMap<String, f64>,
-    pub last_search: Option<chrono::DateTime<chrono::Utc>>,
-}
+    pub last_search: Option<chrono::DateTime<chrono::Utc>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryProcessor {
     pub config: HashMap<String, String>,
-    pub stats: HashMap<String, usize>,
-}
+    pub stats: HashMap<String, usize>}
 
 /// Result ranker for scoring and sorting
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,8 +99,7 @@ pub struct ResultRanker {
     /// Ranking configuration
     pub config: HashMap<String, f32>,
     /// Ranking statistics
-    pub stats: HashMap<String, f64>,
-}
+    pub stats: HashMap<String, f64>}
 
 // Default implementation removed - use SearchOptions::default() from types.rs
 
@@ -119,8 +111,7 @@ impl ChatSearcher {
             options,
             cache: HashMap::new(),
             stats: ChatSearcherStats::default(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 
     /// Perform search with caching (streaming)
@@ -165,8 +156,7 @@ impl ChatSearcher {
                     role: crate::types::CandleMessageRole::User,
                     content: format!("Search result for: {}", query_str),
                     timestamp: chrono::Utc::now(),
-                    metadata: HashMap::new(),
-                },
+                    metadata: HashMap::new()},
                 score: 0.85,
                 highlighted_content: Some(format!("<mark>{}</mark>", query_str)),
                 context: Vec::new(),
@@ -180,13 +170,11 @@ impl ChatSearcher {
                     context_before: None,
                     context_after: None,
                     line_number: Some(1),
-                    column_number: Some(0),
-                }],
+                    column_number: Some(0)}],
                 conversation_id: None,
                 tags: Vec::new(),
                 result_timestamp: chrono::Utc::now(),
-                extra_data: HashMap::new(),
-            };
+                extra_data: HashMap::new()};
 
             // Cache the result if caching is enabled
             if options.enable_caching {
@@ -201,9 +189,7 @@ impl ChatSearcher {
                         cache_hit: false,
                         query_complexity: 1.0,
                         ranking_algorithm: "default".to_string(),
-                        extra_metadata: HashMap::new(),
-                    },
-                };
+                        extra_metadata: HashMap::new()}};
                 cache.insert(query_hash, cached_result);
             }
 
@@ -272,7 +258,6 @@ impl Default for ChatSearcherStats {
             total_results_returned: 0,
             common_queries: Vec::new(),
             performance_metrics: HashMap::new(),
-            last_search: None,
-        }
+            last_search: None}
     }
 }

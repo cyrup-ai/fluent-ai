@@ -9,7 +9,7 @@
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use bytes::Bytes;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 use fluent_ai_domain::completion::{self, CompletionRequest, CompletionRequestBuilder};
@@ -22,15 +22,13 @@ use crate::completion_provider::{CompletionError, CompletionProvider};
 // Removed invalid imports - EmbeddingModel and TranscriptionModel are not exported from submodules
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
-    clients::azure::completion::{CompletionModel, GPT_4O},
-};
+    clients::azure::completion::{CompletionModel, GPT_4O}};
 
 /// Azure OpenAI authentication with zero-allocation patterns
 #[derive(Clone, Debug)]
 pub enum AzureOpenAIAuth {
     ApiKey(ArrayString<128>),
-    Token(ArrayString<256>),
-}
+    Token(ArrayString<256>)}
 
 impl AzureOpenAIAuth {
     /// Create API key authentication with zero allocation validation
@@ -40,8 +38,7 @@ impl AzureOpenAIAuth {
             return Err(AzureError::Configuration {
                 field: "api_key".to_string(),
                 message: "API key cannot be empty".to_string(),
-                suggestion: "Provide a valid Azure OpenAI API key".to_string(),
-            });
+                suggestion: "Provide a valid Azure OpenAI API key".to_string()});
         }
 
         ArrayString::from(key_str)
@@ -49,8 +46,7 @@ impl AzureOpenAIAuth {
             .map_err(|_| AzureError::Configuration {
                 field: "api_key".to_string(),
                 message: format!("API key too long: {} characters (max 128)", key_str.len()),
-                suggestion: "Use a valid Azure OpenAI API key".to_string(),
-            })
+                suggestion: "Use a valid Azure OpenAI API key".to_string()})
     }
 
     /// Create token authentication with zero allocation validation
@@ -60,8 +56,7 @@ impl AzureOpenAIAuth {
             return Err(AzureError::Configuration {
                 field: "token".to_string(),
                 message: "Token cannot be empty".to_string(),
-                suggestion: "Provide a valid Azure OpenAI token".to_string(),
-            });
+                suggestion: "Provide a valid Azure OpenAI token".to_string()});
         }
 
         ArrayString::from(token_str)
@@ -69,8 +64,7 @@ impl AzureOpenAIAuth {
             .map_err(|_| AzureError::Configuration {
                 field: "token".to_string(),
                 message: format!("Token too long: {} characters (max 256)", token_str.len()),
-                suggestion: "Use a valid Azure OpenAI token".to_string(),
-            })
+                suggestion: "Use a valid Azure OpenAI token".to_string()})
     }
 }
 
@@ -96,24 +90,19 @@ pub enum AzureError {
     Configuration {
         field: String,
         message: String,
-        suggestion: String,
-    },
+        suggestion: String},
     #[error("Authentication failed: {message}")]
     Authentication {
         message: String,
-        retry_after: Option<Duration>,
-    },
+        retry_after: Option<Duration>},
     #[error("Model not supported: {model}")]
     ModelNotSupported {
         model: String,
-        supported_models: Vec<String>,
-    },
+        supported_models: Vec<String>},
     #[error("Deployment not found: {deployment_id}")]
     DeploymentNotFound {
         deployment_id: String,
-        suggestion: String,
-    },
-}
+        suggestion: String}}
 
 pub type Result<T> = std::result::Result<T, AzureError>;
 
@@ -137,8 +126,7 @@ pub struct Client {
     /// Shared HTTP3 client with connection pooling
     pub(crate) http_client: HttpClient,
     /// Request timeout
-    timeout: Duration,
-}
+    timeout: Duration}
 
 impl Client {
     /// Creates a new Azure OpenAI client with HTTP3 and zero-allocation patterns.
@@ -157,8 +145,7 @@ impl Client {
             AzureError::Configuration {
                 field: "http_client".to_string(),
                 message: format!("Failed to create HTTP3 client: {}", e),
-                suggestion: "Check network configuration and try again".to_string(),
-            }
+                suggestion: "Check network configuration and try again".to_string()}
         })?;
 
         let auth = auth.into();
@@ -170,8 +157,7 @@ impl Client {
                     "API version too long: {} characters (max 32)",
                     api_version.len()
                 ),
-                suggestion: "Use a valid Azure API version string".to_string(),
-            })?;
+                suggestion: "Use a valid Azure API version string".to_string()})?;
 
         let endpoint_array =
             ArrayString::from(azure_endpoint).map_err(|_| AzureError::Configuration {
@@ -180,16 +166,14 @@ impl Client {
                     "Endpoint URL too long: {} characters (max 256)",
                     azure_endpoint.len()
                 ),
-                suggestion: "Use a valid Azure OpenAI endpoint URL".to_string(),
-            })?;
+                suggestion: "Use a valid Azure OpenAI endpoint URL".to_string()})?;
 
         Ok(Self {
             auth: ArcSwap::from_pointee(auth),
             api_version: api_version_array,
             azure_endpoint: endpoint_array,
             http_client,
-            timeout: Duration::from_secs(30),
-        })
+            timeout: Duration::from_secs(30)})
     }
 
     /// Creates a new Azure OpenAI client from an API key.
@@ -347,8 +331,7 @@ impl Client {
         } else {
             Err(AzureError::Authentication {
                 message: format!("Connection test failed with status: {}", response.status()),
-                retry_after: None,
-            })
+                retry_after: None})
         }
     }
 }
@@ -368,8 +351,7 @@ pub struct AzureCompletionBuilder<'a, S> {
     max_tokens: Option<u64>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ------------------------------------------------------------
 // Constructors
@@ -388,8 +370,7 @@ impl<'a> AzureCompletionBuilder<'a, NeedsPrompt> {
             max_tokens: None,
             additional_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 
     /// Convenience helper: all defaults for Azure OpenAI chat.
@@ -456,8 +437,7 @@ impl<'a> AzureCompletionBuilder<'a, NeedsPrompt> {
             max_tokens: self.max_tokens,
             additional_params: self.additional_params,
             prompt: self.prompt,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 }
 
@@ -496,8 +476,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     > {
         match self.build() {
             Ok(request) => request.send(),
-            Err(e) => AsyncTask::spawn(async move { Err(CompletionError::from(e)) }),
-        }
+            Err(e) => AsyncTask::spawn(async move { Err(CompletionError::from(e)) })}
     }
 
     /// Streaming variant → `AsyncTask<Result<StreamingCompletionResponse<…>>>`
@@ -514,8 +493,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     > {
         match self.build() {
             Ok(request) => request.stream(),
-            Err(e) => AsyncTask::spawn(async move { Err(CompletionError::from(e)) }),
-        }
+            Err(e) => AsyncTask::spawn(async move { Err(CompletionError::from(e)) })}
     }
 
     /// Convenience: run chat and get the **first chunk** as `String`.
@@ -523,8 +501,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     pub fn chat(self, prompt: impl Into<String>) -> AsyncTask<Result<String, PromptError>> {
         match self.prompt(prompt.into()).build() {
             Ok(req) => CompletionModel::new(self.client.clone(), self.model_name).prompt(req),
-            Err(e) => AsyncTask::spawn(async move { Err(PromptError::from(e)) }),
-        }
+            Err(e) => AsyncTask::spawn(async move { Err(PromptError::from(e)) })}
     }
 }
 
@@ -546,8 +523,7 @@ impl Client {
                 message: "Neither AZURE_API_KEY nor AZURE_TOKEN environment variable is set"
                     .to_string(),
                 suggestion: "Set either AZURE_API_KEY or AZURE_TOKEN environment variable"
-                    .to_string(),
-            });
+                    .to_string()});
         };
 
         let api_version =
@@ -556,15 +532,13 @@ impl Client {
                 message: "AZURE_API_VERSION environment variable not set".to_string(),
                 suggestion:
                     "Set AZURE_API_VERSION to your desired API version (e.g., '2024-10-21')"
-                        .to_string(),
-            })?;
+                        .to_string()})?;
 
         let azure_endpoint =
             std::env::var("AZURE_ENDPOINT").map_err(|_| AzureError::Configuration {
                 field: "AZURE_ENDPOINT".to_string(),
                 message: "AZURE_ENDPOINT environment variable not set".to_string(),
-                suggestion: "Set AZURE_ENDPOINT to your Azure OpenAI endpoint URL".to_string(),
-            })?;
+                suggestion: "Set AZURE_ENDPOINT to your Azure OpenAI endpoint URL".to_string()})?;
 
         Self::new(auth, &api_version, &azure_endpoint)
     }
@@ -632,8 +606,7 @@ impl EmbeddingsClient for Client {
             super::embedding::TEXT_EMBEDDING_3_SMALL | super::embedding::TEXT_EMBEDDING_ADA_002 => {
                 1536
             }
-            _ => 0,
-        };
+            _ => 0};
         EmbeddingModel::new(self.clone(), model, ndims)
     }
 

@@ -64,8 +64,7 @@ impl StreamingFormatter {
             _ => Err(StreamingError::FormatError(format!(
                 "Unknown custom format: {}",
                 format_name
-            ))),
-        }
+            )))}
     }
 
     /// Format JSON end marker
@@ -121,12 +120,11 @@ impl StreamingFormatter {
     pub fn format_custom_end_marker(&self, format_name: &str) -> Result<String, StreamingError> {
         match format_name {
             "minimal_json" => Ok(serde_json::json!({"end": true}).to_string()),
-            "csv" => Ok("END,,[END],0.0".to_string()),
+            "csv" => Ok("END,[END],0.0".to_string()),
             _ => Err(StreamingError::FormatError(format!(
                 "Unknown custom format for end marker: {}",
                 format_name
-            ))),
-        }
+            )))}
     }
 
     /// Format custom format error message
@@ -135,14 +133,13 @@ impl StreamingFormatter {
         match format_name {
             "minimal_json" => Ok(serde_json::json!({"error": error.to_string()}).to_string()),
             "csv" => Ok(format!(
-                "ERROR,,[ERROR: {}],0.0",
+                "ERROR,[ERROR: {}],0.0",
                 error.to_string().replace(',', "\\,")
             )),
             _ => Err(StreamingError::FormatError(format!(
                 "Unknown custom format for error: {}",
                 format_name
-            ))),
-        }
+            )))}
     }
 }
 
@@ -161,8 +158,7 @@ mod tests {
             probability: Some(0.95),
             alternatives: None,
             timing: TokenTiming::default(),
-            metadata: TokenMetadata::default(),
-        }
+            metadata: TokenMetadata::default()}
     }
 
     #[test]
@@ -272,7 +268,7 @@ mod tests {
         assert_eq!(minimal_end, serde_json::json!({"end": true}).to_string());
 
         let csv_end = formatter.format_custom_end_marker("csv").unwrap();
-        assert_eq!(csv_end, "END,,[END],0.0");
+        assert_eq!(csv_end, "END,[END],0.0");
     }
 
     #[test]
@@ -281,7 +277,7 @@ mod tests {
         let error = StreamingError::Utf8Error("test, error".to_string());
 
         let formatted = formatter.format_custom_error(&error, "csv").unwrap();
-        assert!(formatted.contains("ERROR,,"));
+        assert!(formatted.contains("ERROR,"));
         assert!(formatted.contains("test\\, error")); // Comma should be escaped
     }
 }

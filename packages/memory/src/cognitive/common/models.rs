@@ -19,8 +19,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Message {
     pub role: String,
-    pub content: String,
-}
+    pub content: String}
 
 /// Core completion error type
 #[derive(Debug, Clone, thiserror::Error)]
@@ -30,8 +29,7 @@ pub enum CompletionCoreError {
     #[error("Request failed: {0}")]
     RequestFailed(String),
     #[error("Parse error: {0}")]
-    ParseError(String),
-}
+    ParseError(String)}
 
 /// Model type for completion provider interactions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,8 +44,7 @@ pub enum ModelType {
     GeminiPro,
     Mixtral8x7B,
     Llama270B,
-    Llama3,
-}
+    Llama3}
 
 impl ModelType {
     pub fn display_name(&self) -> &'static str {
@@ -62,8 +59,7 @@ impl ModelType {
             ModelType::GeminiPro => "gemini-pro",
             ModelType::Mixtral8x7B => "mixtral-8x7b-instruct",
             ModelType::Llama270B => "llama-2-70b-chat",
-            ModelType::Llama3 => "llama-3",
-        }
+            ModelType::Llama3 => "llama-3"}
     }
 
     pub fn provider_name(&self) -> &'static str {
@@ -75,8 +71,7 @@ impl ModelType {
                 "anthropic"
             }
             ModelType::GeminiPro => "google",
-            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => "huggingface",
-        }
+            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => "huggingface"}
     }
 }
 
@@ -84,8 +79,7 @@ impl ModelType {
 #[derive(Debug, Clone)]
 pub struct Model {
     model_type: ModelType,
-    provider: Arc<dyn CompletionProvider>,
-}
+    provider: Arc<dyn CompletionProvider>}
 
 impl Model {
     pub async fn create(
@@ -119,8 +113,7 @@ impl Model {
 
         Ok(Self {
             model_type,
-            provider,
-        })
+            provider})
     }
 
     pub fn available_types() -> Vec<ModelType> {
@@ -212,16 +205,14 @@ impl Model {
 pub struct CompletionRequest {
     pub messages: Vec<Message>,
     pub temperature: Option<f64>,
-    pub max_tokens: Option<u32>,
-}
+    pub max_tokens: Option<u32>}
 
 impl CompletionRequest {
     pub fn new(messages: Vec<Message>) -> Self {
         Self {
             messages,
             temperature: None,
-            max_tokens: None,
-        }
+            max_tokens: None}
     }
 
     pub fn with_temperature(mut self, temperature: f64) -> Self {
@@ -242,8 +233,7 @@ pub struct Usage {
     pub completion_tokens: u32,
     pub total_tokens: u32,
     pub processing_time_ms: Option<u64>,
-    pub cache_hit_ratio: Option<f64>,
-}
+    pub cache_hit_ratio: Option<f64>}
 
 impl From<TokenUsage> for Usage {
     fn from(token_usage: TokenUsage) -> Self {
@@ -252,7 +242,6 @@ impl From<TokenUsage> for Usage {
             completion_tokens: token_usage.completion_tokens,
             total_tokens: token_usage.total_tokens,
             processing_time_ms: None,
-            cache_hit_ratio: None,
-        }
+            cache_hit_ratio: None}
     }
 }

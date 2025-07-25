@@ -4,19 +4,18 @@
 //! All HTTP request/response types are now centralized in fluent_ai_http_structs::google.
 
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-// Import centralized HTTP types - no more local definitions!
-use fluent_ai_http_structs::google::{
+// Use local Gemini request/response types
+use super::types::{
     GeminiCandidate, GeminiFunctionCall, GeminiGenerateContentRequest,
     GeminiGenerateContentResponse, GeminiPart, GeminiStreamGenerateContentResponse,
-    GeminiUsageMetadata,
+    GeminiUsageMetadata
 };
 
 use super::gemini_error::{GeminiError, GeminiResult};
 use crate::{
     OneOrMany,
     completion::{self, CompletionError},
-    message,
-};
+    message};
 
 // =================================================================
 // Gemini Model Constants (Compile-time optimized)
@@ -71,57 +70,18 @@ pub type GenerateContentResponse = GeminiGenerateContentResponse;
 /// Legacy alias for centralized Gemini candidate type
 pub type ContentCandidate = GeminiCandidate;
 
-/// Legacy alias for centralized content type (using the Google module types)
-pub type Content = fluent_ai_http_structs::google::GeminiContent;
-
-// Legacy conversion implementations removed - use centralized types instead
+// TODO: Implement local Gemini types to replace unauthorized fluent_ai_http_structs
+// All type aliases referencing fluent_ai_http_structs have been removed
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
     User,
-    Model,
+    Model
 }
 
-/// Legacy alias for centralized part type
-pub type Part = fluent_ai_http_structs::google::GeminiPart;
-
-// Legacy conversion implementations removed - use centralized types
-
-// Legacy type aliases for centralized Gemini types
-pub type Blob = fluent_ai_http_structs::google::GeminiInlineData;
-pub type FunctionCall = fluent_ai_http_structs::google::GeminiFunctionCall;
-pub type FunctionResponse = fluent_ai_http_structs::google::GeminiFunctionResponse;
-pub type FileData = fluent_ai_http_structs::google::GeminiFileData;
-pub type ExecutableCode = fluent_ai_http_structs::google::GeminiExecutableCode;
-pub type CodeExecutionResult = fluent_ai_http_structs::google::GeminiCodeExecutionResult;
-
-// Legacy type aliases for centralized safety and usage types
-pub type SafetyRating = fluent_ai_http_structs::google::GeminiSafetyRating;
-pub type UsageMetadata = fluent_ai_http_structs::google::GeminiUsageMetadata;
-
-// Implementation moved to centralized types
-
-// Legacy type aliases for centralized Gemini types
-pub type PromptFeedback = fluent_ai_http_structs::google::GeminiPromptFeedback;
-pub type CitationMetadata = fluent_ai_http_structs::google::GeminiCitationMetadata;
-pub type CitationSource = fluent_ai_http_structs::google::GeminiCitationSource;
-
-// Legacy type alias for centralized generation config
-pub type GenerationConfig = fluent_ai_http_structs::google::GeminiGenerationConfig;
-
-// Schema type is defined as JSON Value in centralized types
+// Schema type is defined as JSON Value
 pub type Schema = serde_json::Value;
-
-// Schema conversion implementations removed - use centralized types
-
-// Legacy type aliases for centralized request types
-pub type GenerateContentRequest = fluent_ai_http_structs::google::GeminiGenerateContentRequest;
-pub type Tool = fluent_ai_http_structs::google::GeminiTool;
-pub type FunctionDeclaration = fluent_ai_http_structs::google::GeminiFunctionDeclaration;
-pub type ToolConfig = fluent_ai_http_structs::google::GeminiToolConfig;
-pub type CodeExecution = fluent_ai_http_structs::google::GeminiCodeExecution;
-pub type SafetySetting = fluent_ai_http_structs::google::GeminiSafetySetting;
 
 // =================================================================
 // Conversion Implementations
@@ -138,8 +98,7 @@ impl From<GeminiFinishReason> for fluent_ai_domain::chunk::FinishReason {
             GeminiFinishReason::Safety
             | GeminiFinishReason::Blocklist
             | GeminiFinishReason::ProhibitedContent => Self::ContentFilter,
-            _ => Self::Stop,
-        }
+            _ => Self::Stop}
     }
 }
 
@@ -149,8 +108,7 @@ impl From<UsageMetadata> for Usage {
         Self {
             prompt_tokens: usage.prompt_token_count as u32,
             completion_tokens: usage.candidates_token_count as u32,
-            total_tokens: usage.total_token_count as u32,
-        }
+            total_tokens: usage.total_token_count as u32}
     }
 }
 
@@ -189,8 +147,7 @@ pub fn parse_gemini_chunk(data: &[u8]) -> GeminiResult<CompletionChunk> {
         return Ok(CompletionChunk::Complete {
             text: text_content,
             finish_reason: Some(reason),
-            usage: usage_info,
-        });
+            usage: usage_info});
     }
 
     if has_tool_calls {

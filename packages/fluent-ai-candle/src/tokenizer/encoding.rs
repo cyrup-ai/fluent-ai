@@ -12,30 +12,30 @@ impl CandleTokenizer {
     /// Encode text to token IDs with configuration support
     pub fn encode(&self, text: &str, add_special_tokens: bool) -> CandleResult<Vec<u32>> {
         let encoding = self
-            .tokenizer
+            .inner()
             .encode(text, add_special_tokens)
             .map_err(|e| CandleError::tokenization(format!("Encoding failed: {}", e)))?;
 
         let mut tokens = encoding.get_ids().to_vec();
 
         // Apply BOS token if configured
-        if self.config.add_bos_token && add_special_tokens {
+        if self.config().add_bos_token && add_special_tokens {
             if let Some(bos_id) = self.get_special_token_id("bos") {
                 tokens.insert(0, bos_id);
             }
         }
 
         // Apply EOS token if configured
-        if self.config.add_eos_token && add_special_tokens {
+        if self.config().add_eos_token && add_special_tokens {
             if let Some(eos_id) = self.get_special_token_id("eos") {
                 tokens.push(eos_id);
             }
         }
 
         // Apply truncation if configured
-        if self.config.truncation.enabled {
-            if tokens.len() > self.config.truncation.max_length {
-                tokens.truncate(self.config.truncation.max_length);
+        if self.config().truncation.enabled {
+            if tokens.len() > self.config().truncation.max_length {
+                tokens.truncate(self.config().truncation.max_length);
             }
         }
 

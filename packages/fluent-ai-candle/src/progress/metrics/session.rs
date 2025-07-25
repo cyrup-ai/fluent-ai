@@ -17,8 +17,7 @@ pub struct SessionInfo {
     /// Number of operations in this session
     pub operations_count: AtomicU64,
     /// Last activity timestamp
-    pub last_activity: parking_lot::RwLock<Instant>,
-}
+    pub last_activity: parking_lot::RwLock<Instant>}
 
 impl SessionInfo {
     /// Create new session info
@@ -30,8 +29,7 @@ impl SessionInfo {
             start_time: now,
             tokens_generated: AtomicU64::new(0),
             operations_count: AtomicU64::new(0),
-            last_activity: parking_lot::RwLock::new(now),
-        }
+            last_activity: parking_lot::RwLock::new(now)}
     }
 
     /// Get session duration
@@ -107,8 +105,7 @@ impl SessionInfo {
             operations_count: self.operations(),
             is_active: self.is_active(),
             avg_tokens_per_sec: self.avg_tokens_per_sec(),
-            operations_per_sec: self.operations_per_sec(),
-        }
+            operations_per_sec: self.operations_per_sec()}
     }
 }
 
@@ -122,8 +119,7 @@ pub struct SessionStatus {
     pub operations_count: u64,
     pub is_active: bool,
     pub avg_tokens_per_sec: f64,
-    pub operations_per_sec: f64,
-}
+    pub operations_per_sec: f64}
 
 impl SessionStatus {
     /// Check if session is high performance
@@ -156,8 +152,7 @@ pub enum PerformanceCategory {
     Excellent,
     Good,
     Average,
-    Poor,
-}
+    Poor}
 
 impl PerformanceCategory {
     /// Get category description
@@ -166,8 +161,7 @@ impl PerformanceCategory {
             Self::Excellent => "Excellent (>100 tok/s)",
             Self::Good => "Good (50-100 tok/s)",
             Self::Average => "Average (20-50 tok/s)",
-            Self::Poor => "Poor (<20 tok/s)",
-        }
+            Self::Poor => "Poor (<20 tok/s)"}
     }
 
     /// Get category color (for UI)
@@ -176,7 +170,6 @@ impl PerformanceCategory {
             Self::Excellent => "green",
             Self::Good => "blue",
             Self::Average => "yellow",
-            Self::Poor => "red",
-        }
+            Self::Poor => "red"}
     }
 }

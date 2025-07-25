@@ -8,12 +8,10 @@
 
 use core::{
     pin::Pin,
-    task::{Context, Poll},
-};
+    task::{Context, Poll}};
 use std::sync::{
     Arc,
-    atomic::{AtomicUsize, Ordering},
-};
+    atomic::{AtomicUsize, Ordering}};
 
 use crossbeam_queue::ArrayQueue;
 use futures_util::Stream;
@@ -21,13 +19,11 @@ use futures_util::task::AtomicWaker;
 
 /// Cyrup-agent's AsyncStream with const-generic capacity
 pub struct AsyncStream<T, const CAP: usize = 1024> {
-    inner: Arc<Inner<T, CAP>>,
-}
+    inner: Arc<Inner<T, CAP>>}
 
 /// Producer side of AsyncStream
 pub struct AsyncStreamSender<T, const CAP: usize = 1024> {
-    inner: Arc<Inner<T, CAP>>,
-}
+    inner: Arc<Inner<T, CAP>>}
 
 struct Inner<T, const CAP: usize> {
     q: ArrayQueue<T>,
@@ -42,12 +38,10 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
         let inner = Arc::new(Inner {
             q: ArrayQueue::new(CAP),
             waker: AtomicWaker::new(),
-            len: AtomicUsize::new(0),
-        });
+            len: AtomicUsize::new(0)});
         (
             AsyncStreamSender {
-                inner: inner.clone(),
-            },
+                inner: inner.clone()},
             Self { inner },
         )
     }
@@ -128,7 +122,6 @@ impl<T, const CAP: usize> Stream for AsyncStream<T, CAP> {
                 self.inner.len.fetch_sub(1, Ordering::AcqRel);
                 Poll::Ready(Some(v))
             }
-            None => Poll::Pending,
-        }
+            None => Poll::Pending}
     }
 }

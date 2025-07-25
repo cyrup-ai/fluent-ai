@@ -7,8 +7,7 @@
 
 use fluent_ai_domain::{
     McpToolTrait as Tool, SecureExecutionConfig, SecureMcpTool, SecureMcpToolBuilder,
-    set_secure_executor_config,
-};
+    set_secure_executor_config};
 use serde_json::json;
 
 #[tokio::main]
@@ -30,8 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match python_tool.execute(python_code).await {
         Ok(result) => println!("✅ Python execution result: {}", result),
-        Err(e) => println!("❌ Python execution error: {}", e),
-    }
+        Err(e) => println!("❌ Python execution error: {}", e)}
 
     // Example 2: Multi-language executor
     println!("\n🔧 Example 2: Multi-language Code Executor");
@@ -45,8 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match multi_tool.execute(js_code).await {
         Ok(result) => println!("✅ JavaScript execution result: {}", result),
-        Err(e) => println!("❌ JavaScript execution error: {}", e),
-    }
+        Err(e) => println!("❌ JavaScript execution error: {}", e)}
 
     // Example 3: Custom security configuration
     println!("\n🛡️  Example 3: Custom Security Configuration");
@@ -56,8 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         use_landlock: true,
         timeout_seconds: 10,
         memory_limit_mb: Some(256),
-        cpu_limit: Some(1),
-    };
+        cpu_limit: Some(1)};
 
     // Set global configuration (can only be done once)
     if let Err(_) = set_secure_executor_config(secure_config.clone()) {
@@ -86,8 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match custom_tool.execute(bash_code).await {
         Ok(result) => println!("✅ Bash execution result: {}", result),
-        Err(e) => println!("❌ Bash execution error: {}", e),
-    }
+        Err(e) => println!("❌ Bash execution error: {}", e)}
 
     // Example 4: Rust code execution
     println!("\n🦀 Example 4: Rust Code Execution");
@@ -107,8 +102,7 @@ fn main() {
 
     match rust_tool.execute(rust_code).await {
         Ok(result) => println!("✅ Rust execution result: {}", result),
-        Err(e) => println!("❌ Rust execution error: {}", e),
-    }
+        Err(e) => println!("❌ Rust execution error: {}", e)}
 
     // Example 5: Tool inspection
     println!("\n🔍 Example 5: Tool Inspection");

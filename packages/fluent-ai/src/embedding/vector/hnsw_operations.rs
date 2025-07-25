@@ -13,7 +13,6 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicU32, AtomicUsize, Ordering};
-use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::cmp::Ordering as CmpOrdering;
 
@@ -56,16 +55,14 @@ pub enum SIMDDistanceMetric {
     /// Manhattan distance with SIMD optimization
     Manhattan,
     /// Hamming distance for binary vectors
-    Hamming,
-}
+    Hamming}
 
 impl From<MemoryDistanceMetric> for SIMDDistanceMetric {
     fn from(metric: MemoryDistanceMetric) -> Self {
         match metric {
             MemoryDistanceMetric::Cosine => SIMDDistanceMetric::Cosine,
             MemoryDistanceMetric::Euclidean => SIMDDistanceMetric::Euclidean,
-            MemoryDistanceMetric::DotProduct => SIMDDistanceMetric::DotProduct,
-        }
+            MemoryDistanceMetric::DotProduct => SIMDDistanceMetric::DotProduct}
     }
 }
 
@@ -99,8 +96,7 @@ pub struct HNSWSearchConfig {
     /// Enable SIMD optimizations
     pub enable_simd: bool,
     /// Search timeout in milliseconds
-    pub timeout_ms: Option<u64>,
-}
+    pub timeout_ms: Option<u64>}
 
 impl Default for HNSWSearchConfig {
     fn default() -> Self {
@@ -131,8 +127,7 @@ pub struct BatchInsertConfig {
     /// Auto-optimize index parameters during insertion
     pub auto_optimize: bool,
     /// Progress callback interval
-    pub progress_interval: usize,
-}
+    pub progress_interval: usize}
 
 impl Default for BatchInsertConfig {
     fn default() -> Self {
@@ -143,8 +138,7 @@ impl Default for BatchInsertConfig {
                 .map(|p| p.get())
                 .unwrap_or(4),
             auto_optimize: true,
-            progress_interval: 1000,
-        }
+            progress_interval: 1000}
     }
 }
 
@@ -156,8 +150,7 @@ pub struct VectorEntry {
     /// Vector data
     pub vector: SmallVec<[f32; 1024]>, // Stack allocation for typical embedding sizes
     /// Optional metadata
-    pub metadata: Option<HashMap<String, String>>,
-}
+    pub metadata: Option<HashMap<String, String>>}
 
 /// Search result with enhanced information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,8 +166,7 @@ pub struct EnhancedSearchResult {
     /// Number of hops taken during search
     pub hops: u32,
     /// Search time for this result in microseconds
-    pub search_time_us: u64,
-}
+    pub search_time_us: u64}
 
 /// Batch search result
 #[derive(Debug, Clone)]
@@ -188,8 +180,7 @@ pub struct BatchSearchResult {
     /// Number of vectors evaluated
     pub vectors_evaluated: u64,
     /// Search quality score (0.0 - 1.0)
-    pub quality_score: f32,
-}
+    pub quality_score: f32}
 
 /// HNSW operations metrics
 #[derive(Debug)]
@@ -215,8 +206,7 @@ pub struct HNSWOperationsMetrics {
     /// Index optimization count
     pub optimizations_performed: CachePadded<AtomicU64>,
     /// Memory usage in bytes
-    pub memory_usage_bytes: CachePadded<AtomicU64>,
-}
+    pub memory_usage_bytes: CachePadded<AtomicU64>}
 
 impl HNSWOperationsMetrics {
     pub fn new() -> Self {
@@ -231,8 +221,7 @@ impl HNSWOperationsMetrics {
             total_search_time_us: CachePadded::new(AtomicU64::new(0)),
             total_insertion_time_us: CachePadded::new(AtomicU64::new(0)),
             optimizations_performed: CachePadded::new(AtomicU64::new(0)),
-            memory_usage_bytes: CachePadded::new(AtomicU64::new(0)),
-        }
+            memory_usage_bytes: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Get average search time
@@ -287,8 +276,7 @@ pub enum HNSWOperationsError {
     MemoryAllocationFailed { size: usize },
     
     #[error("Index operation failed: {error}")]
-    IndexOperationFailed { error: String },
-}
+    IndexOperationFailed { error: String }}
 
 /// Cache for search results and computed distances
 #[derive(Debug)]
@@ -301,8 +289,7 @@ pub struct SearchCache {
     max_entries: usize,
     /// Cache hit/miss counters
     hits: CachePadded<AtomicU64>,
-    misses: CachePadded<AtomicU64>,
-}
+    misses: CachePadded<AtomicU64>}
 
 impl SearchCache {
     pub fn new(max_entries: usize) -> Self {
@@ -311,8 +298,7 @@ impl SearchCache {
             result_cache: Arc::new(DashMap::new()),
             max_entries,
             hits: CachePadded::new(AtomicU64::new(0)),
-            misses: CachePadded::new(AtomicU64::new(0)),
-        }
+            misses: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Cache distance calculation
@@ -381,8 +367,7 @@ pub struct EnhancedHNSWOperations {
     /// Vector dimension
     dimensions: usize,
     /// Adaptive parameters
-    adaptive_params: Arc<dashmap::RwLock<AdaptiveParams>>,
-}
+    adaptive_params: Arc<dashmap::RwLock<AdaptiveParams>>}
 
 /// Adaptive parameters for index optimization
 #[derive(Debug, Clone)]
@@ -394,8 +379,7 @@ pub struct AdaptiveParams {
     /// Performance history for tuning
     performance_history: SmallVec<[f64; 100]>,
     /// Last optimization timestamp
-    last_optimization: u64,
-}
+    last_optimization: u64}
 
 impl AdaptiveParams {
     pub fn new() -> Self {
@@ -406,8 +390,7 @@ impl AdaptiveParams {
             last_optimization: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map(|d| d.as_secs())
-                .unwrap_or(0),
-        }
+                .unwrap_or(0)}
     }
 
     /// Update performance history and adapt parameters
@@ -455,8 +438,7 @@ impl EnhancedHNSWOperations {
             metric: distance_metric.into(),
             dimensions,
             index_type: IndexType::HNSW,
-            parameters: HashMap::new(),
-        };
+            parameters: HashMap::new()};
 
         Ok(Self {
             index: Arc::new(dashmap::RwLock::new(None)),
@@ -464,8 +446,7 @@ impl EnhancedHNSWOperations {
             metrics: Arc::new(HNSWOperationsMetrics::new()),
             cache: Arc::new(SearchCache::new(cache_size)),
             dimensions,
-            adaptive_params: Arc::new(dashmap::RwLock::new(AdaptiveParams::new())),
-        })
+            adaptive_params: Arc::new(dashmap::RwLock::new(AdaptiveParams::new()))})
     }
 
     /// Initialize or rebuild the HNSW index
@@ -475,8 +456,7 @@ impl EnhancedHNSWOperations {
         
         if let Err(e) = hnsw_index.build() {
             return Err(HNSWOperationsError::IndexOperationFailed {
-                error: e.to_string(),
-            });
+                error: e.to_string()});
         }
 
         *index_guard = Some(hnsw_index);
@@ -494,8 +474,7 @@ impl EnhancedHNSWOperations {
         if vector.len() != self.dimensions {
             return Err(HNSWOperationsError::InvalidDimensions {
                 expected: self.dimensions,
-                actual: vector.len(),
-            });
+                actual: vector.len()});
         }
 
         if vector.is_empty() {
@@ -506,8 +485,7 @@ impl EnhancedHNSWOperations {
         if let Some(ref mut index) = *index_guard {
             if let Err(e) = index.add(id.to_string(), vector.to_vec()) {
                 return Err(HNSWOperationsError::IndexOperationFailed {
-                    error: e.to_string(),
-                });
+                    error: e.to_string()});
             }
         } else {
             return Err(HNSWOperationsError::IndexNotInitialized);
@@ -538,8 +516,7 @@ impl EnhancedHNSWOperations {
             if entry.vector.len() != self.dimensions {
                 return Err(HNSWOperationsError::InvalidDimensions {
                     expected: self.dimensions,
-                    actual: entry.vector.len(),
-                });
+                    actual: entry.vector.len()});
             }
         }
 
@@ -558,15 +535,13 @@ impl EnhancedHNSWOperations {
                 .collect();
 
             results.map_err(|e| HNSWOperationsError::BatchOperationFailed {
-                error: e.to_string(),
-            })?;
+                error: e.to_string()})?;
         } else {
             // Sequential processing
             for (batch_idx, batch) in batches.iter().enumerate() {
                 self.process_batch(batch, batch_idx, total_batches, &config)
                     .map_err(|e| HNSWOperationsError::BatchOperationFailed {
-                        error: e.to_string(),
-                    })?;
+                        error: e.to_string()})?;
             }
         }
 
@@ -620,8 +595,7 @@ impl EnhancedHNSWOperations {
         if query.len() != self.dimensions {
             return Err(HNSWOperationsError::InvalidDimensions {
                 expected: self.dimensions,
-                actual: query.len(),
-            });
+                actual: query.len()});
         }
 
         if query.is_empty() {
@@ -673,8 +647,7 @@ impl EnhancedHNSWOperations {
             // Perform base search
             let base_results = index.search(query, config.k * config.expansion_factor)
                 .map_err(|e| HNSWOperationsError::IndexOperationFailed {
-                    error: e.to_string(),
-                })?;
+                    error: e.to_string()})?;
 
             // Parallel distance refinement with SIMD
             let enhanced_results: Vec<EnhancedSearchResult> = base_results
@@ -700,8 +673,7 @@ impl EnhancedHNSWOperations {
                         rank,
                         confidence,
                         hops: 1, // Simplified for this implementation
-                        search_time_us: search_time,
-                    }
+                        search_time_us: search_time}
                 })
                 .collect();
 
@@ -735,8 +707,7 @@ impl EnhancedHNSWOperations {
         if let Some(ref index) = *index_guard {
             let base_results = index.search(query, config.k)
                 .map_err(|e| HNSWOperationsError::IndexOperationFailed {
-                    error: e.to_string(),
-                })?;
+                    error: e.to_string()})?;
 
             let enhanced_results: Vec<EnhancedSearchResult> = base_results
                 .into_iter()
@@ -788,8 +759,7 @@ impl EnhancedHNSWOperations {
                         results: search_results,
                         total_time_us: query_time,
                         vectors_evaluated: config.k as u64,
-                        quality_score,
-                    })
+                        quality_score})
                 })
                 .collect()
         } else {
@@ -805,8 +775,7 @@ impl EnhancedHNSWOperations {
                     results: search_results,
                     total_time_us: query_time,
                     vectors_evaluated: config.k as u64,
-                    quality_score,
-                });
+                    quality_score});
             }
             Ok(batch_results)
         };
@@ -827,8 +796,7 @@ impl EnhancedHNSWOperations {
         if vec1.len() != vec2.len() {
             return Err(HNSWOperationsError::InvalidDimensions {
                 expected: vec1.len(),
-                actual: vec2.len(),
-            });
+                actual: vec2.len()});
         }
 
         self.metrics.simd_operations.fetch_add(1, Ordering::Relaxed);
@@ -839,8 +807,7 @@ impl EnhancedHNSWOperations {
             SIMDDistanceMetric::Euclidean => Ok(self.simd_euclidean_distance(vec1, vec2)),
             SIMDDistanceMetric::DotProduct => Ok(self.simd_dot_product(vec1, vec2)),
             SIMDDistanceMetric::Manhattan => Ok(self.simd_manhattan_distance(vec1, vec2)),
-            SIMDDistanceMetric::Hamming => Ok(self.simd_hamming_distance(vec1, vec2)),
-        }
+            SIMDDistanceMetric::Hamming => Ok(self.simd_hamming_distance(vec1, vec2))}
     }
 
     /// SIMD cosine distance calculation
@@ -979,8 +946,7 @@ impl EnhancedHNSWOperations {
         if let Some(ref mut index) = *index_guard {
             if let Err(e) = index.build() {
                 return Err(HNSWOperationsError::IndexOperationFailed {
-                    error: e.to_string(),
-                });
+                    error: e.to_string()});
             }
             self.metrics.optimizations_performed.fetch_add(1, Ordering::Relaxed);
         }
@@ -1025,8 +991,7 @@ impl EnhancedHNSWOperations {
             average_search_time_us: self.metrics.average_search_time_us(),
             cache_hit_ratio: hit_ratio,
             memory_usage_bytes: self.metrics.memory_usage_bytes.load(Ordering::Relaxed),
-            optimizations_performed: self.metrics.optimizations_performed.load(Ordering::Relaxed),
-        }
+            optimizations_performed: self.metrics.optimizations_performed.load(Ordering::Relaxed)}
     }
 }
 
@@ -1040,8 +1005,7 @@ pub struct IndexStats {
     pub average_search_time_us: f64,
     pub cache_hit_ratio: f64,
     pub memory_usage_bytes: u64,
-    pub optimizations_performed: u64,
-}
+    pub optimizations_performed: u64}
 
 #[cfg(test)]
 mod tests {
@@ -1076,13 +1040,11 @@ mod tests {
             VectorEntry {
                 id: ArrayString::from("vec1").unwrap(),
                 vector: SmallVec::from_slice(&[1.0, 0.0, 0.0]),
-                metadata: None,
-            },
+                metadata: None},
             VectorEntry {
                 id: ArrayString::from("vec2").unwrap(),
                 vector: SmallVec::from_slice(&[0.0, 1.0, 0.0]),
-                metadata: None,
-            },
+                metadata: None},
         ];
         
         let config = BatchInsertConfig::default();
@@ -1101,13 +1063,11 @@ mod tests {
             VectorEntry {
                 id: ArrayString::from("vec1").unwrap(),
                 vector: SmallVec::from_slice(&[1.0, 0.0, 0.0]),
-                metadata: None,
-            },
+                metadata: None},
             VectorEntry {
                 id: ArrayString::from("vec2").unwrap(),
                 vector: SmallVec::from_slice(&[0.0, 1.0, 0.0]),
-                metadata: None,
-            },
+                metadata: None},
         ];
         
         ops.batch_insert_vectors(vectors, BatchInsertConfig::default()).await.unwrap();

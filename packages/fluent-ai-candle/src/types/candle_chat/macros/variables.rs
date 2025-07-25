@@ -94,15 +94,13 @@ pub fn evaluate_condition_static(condition: &str, variables: &HashMap<String, St
 
 /// Variable manager for macro contexts
 pub struct VariableManager {
-    variables: HashMap<String, String>,
-}
+    variables: HashMap<String, String>}
 
 impl VariableManager {
     /// Create new variable manager
     pub fn new() -> Self {
         Self {
-            variables: HashMap::new(),
-        }
+            variables: HashMap::new()}
     }
 
     /// Create with initial variables
@@ -214,8 +212,7 @@ impl Default for VariableManager {
 impl Clone for VariableManager {
     fn clone(&self) -> Self {
         Self {
-            variables: self.variables.clone(),
-        }
+            variables: self.variables.clone()}
     }
 }
 

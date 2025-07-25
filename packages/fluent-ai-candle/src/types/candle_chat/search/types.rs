@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use fluent_ai_async::AsyncStream;
-use crate::types::candle_chat::message::types::CandleMessage;
+use crate::types::CandleMessage;
 
 /// Search query with advanced filtering options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,8 +32,7 @@ pub struct SearchQuery {
     /// Result offset for pagination
     pub offset: usize,
     /// Sort order
-    pub sort_order: SortOrder,
-}
+    pub sort_order: SortOrder}
 
 /// Query operator enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,8 +46,7 @@ pub enum QueryOperator {
     /// Exact phrase match
     Phrase,
     /// Proximity search
-    Proximity { distance: u32 },
-}
+    Proximity { distance: u32 }}
 
 /// Date range filter
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,8 +54,7 @@ pub struct DateRange {
     /// Start timestamp
     pub start: u64,
     /// End timestamp
-    pub end: u64,
-}
+    pub end: u64}
 
 /// Sort order enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,8 +68,7 @@ pub enum SortOrder {
     /// Sort by user alphabetically
     UserAscending,
     /// Sort by user reverse alphabetically
-    UserDescending,
-}
+    UserDescending}
 
 /// Search result with relevance scoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,8 +88,7 @@ pub struct SearchResult {
     /// Match positions in the content
     pub match_positions: Vec<MatchPosition>,
     /// Search metadata
-    pub metadata: Option<SearchResultMetadata>,
-}
+    pub metadata: Option<SearchResultMetadata>}
 
 /// Search statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -109,8 +104,7 @@ pub struct SearchStatistics {
     /// Index size in bytes
     pub index_size: usize,
     /// Last index update timestamp
-    pub last_index_update: u64,
-}
+    pub last_index_update: u64}
 
 /// Match position in content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,8 +114,7 @@ pub struct MatchPosition {
     /// End position in content
     pub end: usize,
     /// Match type
-    pub match_type: MatchType,
-}
+    pub match_type: MatchType}
 
 /// Type of match found
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,8 +126,7 @@ pub enum MatchType {
     /// Phrase match
     Phrase,
     /// Proximity match
-    Proximity,
-}
+    Proximity}
 
 /// Search result metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,8 +138,7 @@ pub struct SearchResultMetadata {
     /// Index version used
     pub index_version: u64,
     /// Search algorithm used
-    pub algorithm: String,
-}
+    pub algorithm: String}
 
 /// Search options for fine-tuning behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,8 +158,7 @@ pub struct SearchOptions {
     /// Enable fuzzy matching
     pub enable_fuzzy: bool,
     /// Fuzzy matching threshold (0.0-1.0)
-    pub fuzzy_threshold: f32,
-}
+    pub fuzzy_threshold: f32}
 
 impl Default for SearchOptions {
     fn default() -> Self {
@@ -180,8 +170,7 @@ impl Default for SearchOptions {
             enable_highlighting: true,
             max_highlights: 10,
             enable_fuzzy: false,
-            fuzzy_threshold: 0.8,
-        }
+            fuzzy_threshold: 0.8}
     }
 }
 
@@ -197,8 +186,7 @@ pub enum SearchScope {
     /// Search specific time range
     TimeRange { start: u64, end: u64 },
     /// Search messages with specific tags
-    Tagged(Vec<Arc<str>>),
-}
+    Tagged(Vec<Arc<str>>)}
 
 /// Term frequency data structure for TF-IDF calculations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,8 +198,7 @@ pub struct TermFrequency {
     /// Document frequency
     pub document_frequency: u32,
     /// TF-IDF score
-    pub tf_idf_score: f64,
-}
+    pub tf_idf_score: f64}
 
 impl TermFrequency {
     /// Calculate TF-IDF score

@@ -29,8 +29,7 @@ pub struct GumbelSoftmaxProcessor {
     inv_temperature: f32,
     /// Device for tensor operations
     #[allow(dead_code)] // Reserved for future device-specific Gumbel noise generation
-    device: Device,
-}
+    device: Device}
 
 impl GumbelSoftmaxProcessor {
     /// Minimum temperature to prevent numerical instability
@@ -74,8 +73,7 @@ impl GumbelSoftmaxProcessor {
             rng,
             hard,
             inv_temperature,
-            device,
-        })
+            device})
     }
 
     /// Create with default settings for soft sampling
@@ -92,7 +90,6 @@ impl GumbelSoftmaxProcessor {
     ///
     /// Generates Gumbel(0,1) distributed noise using the inverse CDF method:
     /// G = -ln(-ln(U)) where U ~ Uniform(0,1)
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn generate_gumbel_noise(&self, shape: &candle_core::Shape) -> Result<Tensor, SamplingError> {
         let mut rng_guard = self.rng.lock().map_err(|_| {
@@ -119,7 +116,6 @@ impl GumbelSoftmaxProcessor {
     }
 
     /// Apply Gumbel-Softmax transformation
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn apply_gumbel_softmax(&self, logits: &Tensor) -> Result<Tensor, SamplingError> {
         let shape = logits.shape();
@@ -153,7 +149,6 @@ impl GumbelSoftmaxProcessor {
     ///
     /// Creates a hard one-hot sample while maintaining gradients through
     /// the soft sample using the straight-through estimator.
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn apply_straight_through(
         &self,
@@ -178,15 +173,13 @@ impl GumbelSoftmaxProcessor {
             .map_err(|e| SamplingError::TensorError(e.to_string()))
         {
             Ok(result) => result.detach(),
-            Err(e) => return Err(e),
-        };
+            Err(e) => return Err(e)};
 
         let result = match (soft_sample + &straight_through)
             .map_err(|e| SamplingError::TensorError(e.to_string()))
         {
             Ok(result) => result,
-            Err(e) => return Err(e),
-        };
+            Err(e) => return Err(e)};
 
         // Use scaled_logits for temperature information in gradient computation
         let temperature_adjusted = match scaled_logits
@@ -194,14 +187,12 @@ impl GumbelSoftmaxProcessor {
             .map_err(|e| SamplingError::TensorError(e.to_string()))
         {
             Ok(result) => result,
-            Err(e) => return Err(e),
-        };
+            Err(e) => return Err(e)};
 
         Ok(temperature_adjusted)
     }
 
     /// Create one-hot encoding from indices
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn create_one_hot(&self, indices: &Tensor, vocab_size: usize) -> Result<Tensor, SamplingError> {
         let batch_shape = indices.shape();
@@ -341,8 +332,7 @@ pub struct GumbelSoftmaxBuilder {
     temperature: Option<f32>,
     hard: bool,
     seed: u64,
-    device: Option<Device>,
-}
+    device: Option<Device>}
 
 impl GumbelSoftmaxBuilder {
     /// Create new builder
@@ -352,8 +342,7 @@ impl GumbelSoftmaxBuilder {
             temperature: None,
             hard: false,
             seed: 42,
-            device: None,
-        }
+            device: None}
     }
 
     /// Set temperature

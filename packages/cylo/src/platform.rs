@@ -10,10 +10,10 @@
 // - Performance optimization hints
 // ============================================================================
 
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::OnceLock;
 use std::time::SystemTime;
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -44,8 +44,7 @@ pub struct PlatformInfo {
     pub performance: PerformanceHints,
 
     /// Detection timestamp
-    pub detected_at: SystemTime,
-}
+    pub detected_at: SystemTime}
 
 /// Operating system enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -55,24 +54,19 @@ pub enum OperatingSystem {
         /// Distribution name (e.g., "Ubuntu", "Alpine")
         distribution: Option<String>,
         /// Kernel version
-        kernel_version: Option<String>,
-    },
+        kernel_version: Option<String>},
     /// macOS
     MacOS {
         /// macOS version (e.g., "14.0")
-        version: Option<String>,
-    },
+        version: Option<String>},
     /// Windows
     Windows {
         /// Windows version
-        version: Option<String>,
-    },
+        version: Option<String>},
     /// Unknown/other OS
     Unknown {
         /// OS name if detectable
-        name: String,
-    },
-}
+        name: String}}
 
 /// CPU architecture enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,8 +80,7 @@ pub enum Architecture {
     /// x86 32-bit
     X86,
     /// Unknown architecture
-    Unknown(String),
-}
+    Unknown(String)}
 
 /// Backend availability information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,8 +98,7 @@ pub struct BackendAvailability {
     pub capabilities: HashMap<String, String>,
 
     /// Performance rating (0-100)
-    pub performance_rating: u8,
-}
+    pub performance_rating: u8}
 
 /// Platform capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,8 +116,7 @@ pub struct PlatformCapabilities {
     pub network: NetworkCapabilities,
 
     /// File system features
-    pub filesystem: FilesystemFeatures,
-}
+    pub filesystem: FilesystemFeatures}
 
 /// Virtualization support details
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,8 +134,7 @@ pub struct VirtualizationSupport {
     pub hypervisor_framework: bool,
 
     /// Nested virtualization support
-    pub nested_virtualization: bool,
-}
+    pub nested_virtualization: bool}
 
 /// Container runtime support
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,8 +149,7 @@ pub struct ContainerSupport {
     pub apple_containers: bool,
 
     /// Native language runtimes available
-    pub native_runtimes: Vec<String>,
-}
+    pub native_runtimes: Vec<String>}
 
 /// Security features available
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -178,8 +167,7 @@ pub struct SecurityFeatures {
     pub app_sandbox: bool,
 
     /// Secure Enclave (macOS)
-    pub secure_enclave: bool,
-}
+    pub secure_enclave: bool}
 
 /// Network capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,8 +182,7 @@ pub struct NetworkCapabilities {
     pub firewall_enabled: bool,
 
     /// DNS resolution performance (ms)
-    pub dns_resolution_ms: u32,
-}
+    pub dns_resolution_ms: u32}
 
 /// Filesystem features
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -213,8 +200,7 @@ pub struct FilesystemFeatures {
     pub copy_on_write: bool,
 
     /// Encryption support (e.g., FileVault)
-    pub encryption_enabled: bool,
-}
+    pub encryption_enabled: bool}
 
 /// Performance optimization hints
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,8 +218,7 @@ pub struct PerformanceHints {
     pub tmpdir_performance: TmpDirPerformance,
 
     /// I/O characteristics
-    pub io_characteristics: IOCharacteristics,
-}
+    pub io_characteristics: IOCharacteristics}
 
 /// Temporary directory performance characteristics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -245,8 +230,7 @@ pub struct TmpDirPerformance {
     pub in_memory: bool,
 
     /// Estimated throughput in MB/s
-    pub estimated_throughput: u32,
-}
+    pub estimated_throughput: u32}
 
 /// I/O performance characteristics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -261,8 +245,7 @@ pub struct IOCharacteristics {
     pub sequential_write_mbps: u32,
 
     /// Random I/O operations per second
-    pub random_iops: u32,
-}
+    pub random_iops: u32}
 
 /// Platform-specific ramdisk operations trait
 ///
@@ -328,8 +311,7 @@ impl PlatformInfo {
             capabilities,
             available_backends,
             performance: Self::detect_performance_hints(),
-            detected_at: SystemTime::now(),
-        }
+            detected_at: SystemTime::now()}
     }
 
     /// Detect operating system
@@ -340,8 +322,7 @@ impl PlatformInfo {
             let kernel_version = Self::detect_kernel_version();
             OperatingSystem::Linux {
                 distribution,
-                kernel_version,
-            }
+                kernel_version}
         }
 
         #[cfg(target_os = "macos")]
@@ -359,8 +340,7 @@ impl PlatformInfo {
         #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
         {
             OperatingSystem::Unknown {
-                name: std::env::consts::OS.to_string(),
-            }
+                name: std::env::consts::OS.to_string()}
         }
     }
 
@@ -371,8 +351,7 @@ impl PlatformInfo {
             "x86_64" => Architecture::X86_64,
             "arm" => Architecture::Arm,
             "x86" => Architecture::X86,
-            other => Architecture::Unknown(other.to_string()),
-        }
+            other => Architecture::Unknown(other.to_string())}
     }
 
     /// Detect platform capabilities
@@ -382,8 +361,7 @@ impl PlatformInfo {
             containers: Self::detect_container_support(os),
             security: Self::detect_security_features(os),
             network: Self::detect_network_capabilities(),
-            filesystem: Self::detect_filesystem_features(),
-        }
+            filesystem: Self::detect_filesystem_features()}
     }
 
     /// Detect available backends
@@ -401,8 +379,7 @@ impl PlatformInfo {
                 available: true,
                 reason: "Running on macOS with Apple Silicon".to_string(),
                 capabilities: HashMap::new(),
-                performance_rating: 95,
-            });
+                performance_rating: 95});
         }
 
         // LandLock backend
@@ -412,8 +389,7 @@ impl PlatformInfo {
                 available: true,
                 reason: "LandLock is supported by the kernel".to_string(),
                 capabilities: HashMap::new(),
-                performance_rating: 85,
-            });
+                performance_rating: 85});
         }
 
         // FireCracker backend
@@ -423,8 +399,7 @@ impl PlatformInfo {
                 available: true,
                 reason: "KVM is available for hardware virtualization".to_string(),
                 capabilities: HashMap::new(),
-                performance_rating: 90,
-            });
+                performance_rating: 90});
         }
 
         backends
@@ -437,8 +412,7 @@ impl PlatformInfo {
             available_memory: Self::detect_available_memory(),
             recommended_backend: None, // Logic to determine this would be complex
             tmpdir_performance: Self::detect_tmpdir_performance(),
-            io_characteristics: Self::detect_io_characteristics(),
-        }
+            io_characteristics: Self::detect_io_characteristics()}
     }
 
     #[cfg(target_os = "macos")]
@@ -479,8 +453,7 @@ impl PlatformInfo {
             podman_available: Self::is_command_available("podman"),
             apple_containers: Self::is_command_available("container")
                 && matches!(os, OperatingSystem::MacOS { .. }),
-            native_runtimes: Self::detect_native_runtimes(),
-        }
+            native_runtimes: Self::detect_native_runtimes()}
     }
 
     fn detect_security_features(os: &OperatingSystem) -> SecurityFeatures {
@@ -490,8 +463,7 @@ impl PlatformInfo {
             apparmor: Self::has_apparmor_support(),
             app_sandbox: matches!(os, OperatingSystem::MacOS { .. }),
             secure_enclave: matches!(os, OperatingSystem::MacOS { .. })
-                && Self::has_secure_enclave(),
-        }
+                && Self::has_secure_enclave()}
     }
 
     fn detect_network_capabilities() -> NetworkCapabilities {
@@ -511,8 +483,7 @@ impl PlatformInfo {
             case_sensitive: cfg!(not(target_os = "windows")),
             journaling_enabled: true,
             copy_on_write: false,
-            encryption_enabled: false,
-        }
+            encryption_enabled: false}
     }
 
     // --- Private helper functions for capability detection ---
@@ -621,8 +592,7 @@ impl PlatformInfo {
         TmpDirPerformance {
             path,
             in_memory,
-            estimated_throughput,
-        }
+            estimated_throughput}
     }
 
     fn detect_io_characteristics() -> IOCharacteristics {
@@ -632,8 +602,7 @@ impl PlatformInfo {
             disk_type: "SSD".to_string(),
             sequential_read_mbps: 500,
             sequential_write_mbps: 400,
-            random_iops: 50000,
-        }
+            random_iops: 50000}
     }
 }
 

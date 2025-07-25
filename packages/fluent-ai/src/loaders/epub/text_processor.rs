@@ -51,8 +51,7 @@ pub enum StripXmlError {
     #[error("utf-8: {0}")]
     Utf8(#[from] std::string::FromUtf8Error),
     #[error("unescape: {0}")]
-    Unescape(#[from] quick_xml::events::attributes::AttrError),
-}
+    Unescape(#[from] quick_xml::events::attributes::AttrError)}
 
 impl TextProcessor for StripXmlProcessor {
     type Error = StripXmlError;
@@ -78,8 +77,7 @@ impl TextProcessor for StripXmlProcessor {
                     }
                 }
                 Event::Eof => break,
-                _ => last_was_txt = false,
-            }
+                _ => last_was_txt = false}
         }
         Ok(out)
     }

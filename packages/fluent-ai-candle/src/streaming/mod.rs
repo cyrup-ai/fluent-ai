@@ -33,8 +33,7 @@ pub use flow_utils::{
     aggressive_flow_controller, burst_tolerant_rate_limiter, conservative_flow_controller,
     disabled_flow_controller, high_throughput_flow_controller, low_latency_flow_controller,
     rate_limited_flow_controller, streaming_rate_limiter, validate_flow_config,
-    validate_rate_limit,
-};
+    validate_rate_limit};
 pub use formats::*;
 pub use rate_limiter::TokenRateLimiter;
 pub use streaming_config::{FlushPolicy, StreamingConfig};

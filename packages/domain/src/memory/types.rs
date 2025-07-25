@@ -9,8 +9,7 @@ use fluent_ai_async::AsyncStream;
 pub enum VectorStoreError {
     NotFound,
     ConnectionError(String),
-    InvalidQuery(String),
-}
+    InvalidQuery(String)}
 
 impl std::fmt::Display for VectorStoreError {
     #[cold]
@@ -18,8 +17,7 @@ impl std::fmt::Display for VectorStoreError {
         match self {
             VectorStoreError::NotFound => write!(f, "Vector store item not found"),
             VectorStoreError::ConnectionError(msg) => write!(f, "Connection error: {}", msg),
-            VectorStoreError::InvalidQuery(msg) => write!(f, "Invalid query: {}", msg),
-        }
+            VectorStoreError::InvalidQuery(msg) => write!(f, "Invalid query: {}", msg)}
     }
 }
 
@@ -32,8 +30,7 @@ pub enum MemoryError {
     NotFound,
     StorageError(String),
     ValidationError(String),
-    NetworkError(String),
-}
+    NetworkError(String)}
 
 impl std::fmt::Display for MemoryError {
     #[cold]
@@ -42,8 +39,7 @@ impl std::fmt::Display for MemoryError {
             MemoryError::NotFound => write!(f, "Memory not found"),
             MemoryError::StorageError(msg) => write!(f, "Storage error: {}", msg),
             MemoryError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
-            MemoryError::NetworkError(msg) => write!(f, "Network error: {}", msg),
-        }
+            MemoryError::NetworkError(msg) => write!(f, "Network error: {}", msg)}
     }
 }
 
@@ -56,8 +52,7 @@ impl From<MemoryError> for VectorStoreError {
             MemoryError::NotFound => VectorStoreError::NotFound,
             MemoryError::StorageError(msg) => VectorStoreError::ConnectionError(msg),
             MemoryError::ValidationError(msg) => VectorStoreError::InvalidQuery(msg),
-            MemoryError::NetworkError(msg) => VectorStoreError::ConnectionError(msg),
-        }
+            MemoryError::NetworkError(msg) => VectorStoreError::ConnectionError(msg)}
     }
 }
 
@@ -66,8 +61,7 @@ pub enum MemoryType {
     ShortTerm,
     LongTerm,
     Semantic,
-    Episodic,
-}
+    Episodic}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ImportanceContext {
@@ -76,8 +70,7 @@ pub enum ImportanceContext {
     SuccessfulExecution,
     ErrorCondition,
     BackgroundProcess,
-    CriticalOperation,
-}
+    CriticalOperation}
 
 impl MemoryType {
     /// Calculate base importance for memory type with zero allocation
@@ -147,23 +140,20 @@ pub struct MemoryNode {
     pub content: String,
     pub memory_type: MemoryType,
     pub metadata: MemoryMetadata,
-    pub embedding: Option<Vec<f32>>,
-}
+    pub embedding: Option<Vec<f32>>}
 
 #[derive(Debug, Clone)]
 pub struct MemoryMetadata {
     pub importance: f32,
     pub last_accessed: SystemTime,
-    pub creation_time: SystemTime,
-}
+    pub creation_time: SystemTime}
 
 #[derive(Debug, Clone)]
 pub struct MemoryRelationship {
     pub id: u64,
     pub from_id: u64,
     pub to_id: u64,
-    pub relationship_type: String,
-}
+    pub relationship_type: String}
 
 pub trait VectorStoreIndexDyn: Send + Sync {
     fn top_n(
@@ -179,15 +169,13 @@ pub trait VectorStoreIndexDyn: Send + Sync {
 }
 
 pub struct VectorStoreIndex {
-    pub backend: Box<dyn VectorStoreIndexDyn>,
-}
+    pub backend: Box<dyn VectorStoreIndexDyn>}
 
 impl VectorStoreIndex {
     // Direct creation from backend
     pub fn with_backend<B: VectorStoreIndexDyn + 'static>(backend: B) -> Self {
         VectorStoreIndex {
-            backend: Box::new(backend),
-        }
+            backend: Box::new(backend)}
     }
 
     // VectorQueryBuilder moved to fluent_ai/src/builders/memory.rs

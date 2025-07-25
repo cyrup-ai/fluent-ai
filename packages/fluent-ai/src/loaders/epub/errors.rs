@@ -27,5 +27,4 @@ pub enum EpubLoaderError {
 
     /// Post-processing transformer failed (e.g. XML stripping).
     #[error("text-processor: {0}")]
-    TextProcessor(#[from] Box<dyn Error + Send + Sync>),
-}
+    TextProcessor(#[from] Box<dyn Error + Send + Sync>)}

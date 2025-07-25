@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 // Note: Using conditional compilation to handle optional cylo dependency
 use serde_json::Value;
 
-use crate::HashMap;
+use hashbrown::HashMap;
 
 /// Placeholder type for Cylo execution environment instances
 /// This will be replaced with the actual CyloInstance type when cylo is implemented
@@ -19,8 +19,7 @@ use crate::HashMap;
 #[derive(Debug, Clone)]
 pub struct CyloInstance {
     /// Placeholder field - will be replaced with actual implementation
-    _placeholder: (),
-}
+    _placeholder: ()}
 
 #[cfg(feature = "cylo")]
 impl CyloInstance {
@@ -54,8 +53,7 @@ impl ToolSet {
 #[derive(Debug)]
 pub enum ToolDefinition {
     Typed(Box<dyn std::any::Any + Send + Sync>),
-    Named(NamedTool),
-}
+    Named(NamedTool)}
 
 impl Clone for ToolDefinition {
     fn clone(&self) -> Self {
@@ -64,8 +62,7 @@ impl Clone for ToolDefinition {
                 // Can't clone Box<dyn Any>, so create a new empty one
                 ToolDefinition::Typed(Box::new(()))
             }
-            ToolDefinition::Named(named) => ToolDefinition::Named(named.clone()),
-        }
+            ToolDefinition::Named(named) => ToolDefinition::Named(named.clone())}
     }
 }
 
@@ -81,8 +78,7 @@ pub struct Tool<T> {
     cylo_instance: Option<CyloInstance>,
     #[cfg(not(feature = "cylo"))]
     #[allow(dead_code)]
-    cylo_instance: Option<()>,
-}
+    cylo_instance: Option<()>}
 
 impl<T> Tool<T> {
     /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
@@ -113,8 +109,7 @@ impl<T> Tool<T> {
         Self {
             _phantom: PhantomData,
             config: map,
-            cylo_instance: None,
-        }
+            cylo_instance: None}
     }
 
     /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
@@ -175,8 +170,7 @@ pub struct NamedTool {
     cylo_instance: Option<CyloInstance>,
     #[cfg(not(feature = "cylo"))]
     #[allow(dead_code)]
-    cylo_instance: Option<()>,
-}
+    cylo_instance: Option<()>}
 
 impl Tool<()> {
     /// Create named tool - EXACT syntax: Tool::named("cargo")
@@ -185,8 +179,7 @@ impl Tool<()> {
             name: name.into(),
             bin_path: None,
             description: None,
-            cylo_instance: None,
-        }
+            cylo_instance: None}
     }
 }
 

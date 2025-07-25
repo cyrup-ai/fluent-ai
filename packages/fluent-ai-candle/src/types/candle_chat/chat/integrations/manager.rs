@@ -5,9 +5,10 @@
 
 use std::sync::Arc;
 
+use fluent_ai_async::AsyncStream;
+
 use super::types::{
-    IntegrationConfig, IntegrationType, IntegrationError, IntegrationResult,
-};
+    IntegrationConfig, IntegrationType, IntegrationError, IntegrationResult};
 
 /// Integration manager for handling external connections
 #[derive(Debug, Clone)]
@@ -15,15 +16,13 @@ pub struct IntegrationManager {
     /// Active integrations
     pub integrations: Vec<IntegrationConfig>,
     /// Default timeout
-    pub default_timeout: u32,
-}
+    pub default_timeout: u32}
 
 impl Default for IntegrationManager {
     fn default() -> Self {
         Self {
             integrations: Vec::new(),
-            default_timeout: 30,
-        }
+            default_timeout: 30}
     }
 }
 
@@ -37,14 +36,12 @@ impl IntegrationManager {
     pub fn add_integration(&mut self, config: IntegrationConfig) -> IntegrationResult<()> {
         if config.name.is_empty() {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration name cannot be empty"),
-            });
+                detail: Arc::from("Integration name cannot be empty")});
         }
 
         if config.endpoint.is_empty() {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration endpoint cannot be empty"),
-            });
+                detail: Arc::from("Integration endpoint cannot be empty")});
         }
 
         self.integrations.push(config);
@@ -59,8 +56,7 @@ impl IntegrationManager {
 
         if self.integrations.len() == initial_len {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration not found"),
-            });
+                detail: Arc::from("Integration not found")});
         }
 
         Ok(())
@@ -99,8 +95,7 @@ impl IntegrationManager {
                 None => {
                     handle_error!(
                         IntegrationError::ConfigurationError {
-                            detail: Arc::from("Integration not found"),
-                        },
+                            detail: Arc::from("Integration not found")},
                         "integration lookup failed"
                     );
                 }
@@ -109,8 +104,7 @@ impl IntegrationManager {
             if !integration.enabled {
                 handle_error!(
                     IntegrationError::ConfigurationError {
-                        detail: Arc::from("Integration is disabled"),
-                    },
+                        detail: Arc::from("Integration is disabled")},
                     "integration disabled"
                 );
             }
@@ -124,7 +118,7 @@ impl IntegrationManager {
                 }
             };
             
-            result_stream.on_chunk(|response| {
+            result_stream.on_chunk(move |response| {
                 emit!(sender, response);
             });
         })

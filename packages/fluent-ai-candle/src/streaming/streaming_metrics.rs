@@ -5,8 +5,7 @@
 
 use std::{
     sync::atomic::{AtomicU64, Ordering as AtomicOrdering},
-    time::{SystemTime, UNIX_EPOCH},
-};
+    time::{SystemTime, UNIX_EPOCH}};
 
 /// Streaming performance metrics with atomic operations
 #[derive(Debug)]
@@ -26,8 +25,7 @@ pub struct StreamingMetrics {
     /// Peak buffer usage observed
     pub peak_buffer_usage: AtomicU64,
     /// Stream start timestamp
-    pub stream_start_nanos: AtomicU64,
-}
+    pub stream_start_nanos: AtomicU64}
 
 impl Default for StreamingMetrics {
     #[inline(always)]
@@ -45,8 +43,7 @@ impl Default for StreamingMetrics {
             dropped_chunks: AtomicU64::new(0),
             total_latency_nanos: AtomicU64::new(0),
             peak_buffer_usage: AtomicU64::new(0),
-            stream_start_nanos: AtomicU64::new(now_nanos),
-        }
+            stream_start_nanos: AtomicU64::new(now_nanos)}
     }
 }
 
@@ -101,8 +98,7 @@ impl StreamingMetrics {
                 AtomicOrdering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(actual) => peak = actual,
-            }
+                Err(actual) => peak = actual}
         }
     }
 

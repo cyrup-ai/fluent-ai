@@ -10,8 +10,7 @@ pub struct McpClientBuilder<T: Transport> {
     client: Arc<Client<T>>,
     name: Option<String>,
     description: Option<String>,
-    input_schema: Option<Value>,
-}
+    input_schema: Option<Value>}
 
 impl<T: Transport> McpClient<T> {
     #[inline]
@@ -20,8 +19,7 @@ impl<T: Transport> McpClient<T> {
             client: Arc::new(client),
             name: Some(name.into()),
             description: None,
-            input_schema: None,
-        }
+            input_schema: None}
     }
 }
 
@@ -54,10 +52,8 @@ impl<T: Transport> McpClientBuilder<T> {
                     .unwrap_or_else(|| "No description provided".to_string()),
                 input_schema: self
                     .input_schema
-                    .unwrap_or(Value::Object(Default::default())),
-            },
-            client: self.client,
-        }
+                    .unwrap_or(Value::Object(Default::default()))},
+            client: self.client}
     }
 
     #[inline]
@@ -86,8 +82,7 @@ impl<T: Transport> McpClientBuilder<T> {
                     Value::String(format!("Authentication failed: {}", msg))
                 }
                 Err(McpError::ResourceNotFound) => Value::String("Resource not found".to_string()),
-                Err(McpError::Internal(msg)) => Value::String(format!("Internal error: {}", msg)),
-            }
+                Err(McpError::Internal(msg)) => Value::String(format!("Internal error: {}", msg))}
         })
     }
 }

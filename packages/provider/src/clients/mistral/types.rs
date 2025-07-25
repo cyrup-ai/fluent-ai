@@ -35,8 +35,7 @@ pub struct MistralChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<MistralToolChoice<'a>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_format: Option<MistralResponseFormat<'a>>,
-}
+    pub response_format: Option<MistralResponseFormat<'a>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralMessage<'a> {
@@ -49,15 +48,13 @@ pub struct MistralMessage<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<ArrayVec<MistralToolCall<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_call_id: Option<&'a str>,
-}
+    pub tool_call_id: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MistralContent<'a> {
     Text(&'a str),
-    Array(ArrayVec<MistralContentPart<'a>, MAX_IMAGES>),
-}
+    Array(ArrayVec<MistralContentPart<'a>, MAX_IMAGES>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -65,29 +62,24 @@ pub enum MistralContentPart<'a> {
     #[serde(rename = "text")]
     Text {
         #[serde(borrow)]
-        text: &'a str,
-    },
+        text: &'a str},
     #[serde(rename = "image_url")]
     ImageUrl {
-        image_url: MistralImageUrl<'a>,
-    },
-}
+        image_url: MistralImageUrl<'a>}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralImageUrl<'a> {
     #[serde(borrow)]
     pub url: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub detail: Option<&'a str>,
-}
+    pub detail: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralTool<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub tool_type: &'a str,
-    pub function: MistralFunction<'a>,
-}
+    pub function: MistralFunction<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFunction<'a> {
@@ -95,8 +87,7 @@ pub struct MistralFunction<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralToolCall<'a> {
@@ -105,16 +96,14 @@ pub struct MistralToolCall<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub call_type: &'a str,
-    pub function: MistralFunctionCall<'a>,
-}
+    pub function: MistralFunctionCall<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFunctionCall<'a> {
     #[serde(borrow)]
     pub name: &'a str,
     #[serde(borrow)]
-    pub arguments: &'a str,
-}
+    pub arguments: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -124,15 +113,12 @@ pub enum MistralToolChoice<'a> {
         #[serde(rename = "type")]
         #[serde(borrow)]
         choice_type: &'a str,
-        function: MistralToolChoiceFunction<'a>,
-    },
-}
+        function: MistralToolChoiceFunction<'a>}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralToolChoiceFunction<'a> {
     #[serde(borrow)]
-    pub name: &'a str,
-}
+    pub name: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseFormat<'a> {
@@ -148,37 +134,32 @@ pub struct MistralChatResponse {
     pub created: u64,
     pub model: String,
     pub choices: ArrayVec<MistralChoice, 8>,
-    pub usage: MistralUsage,
-}
+    pub usage: MistralUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralChoice {
     pub index: u32,
     pub message: MistralResponseMessage,
-    pub finish_reason: String,
-}
+    pub finish_reason: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseMessage {
     pub role: String,
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<MistralResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<MistralResponseToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
-    pub function: MistralResponseFunction,
-}
+    pub function: MistralResponseFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseFunction {
     pub name: String,
-    pub arguments: String,
-}
+    pub arguments: String}
 
 // ============================================================================
 // Embeddings API
@@ -191,15 +172,13 @@ pub struct MistralEmbeddingRequest<'a> {
     #[serde(borrow)]
     pub input: MistralEmbeddingInput<'a>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub encoding_format: Option<&'a str>,
-}
+    pub encoding_format: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MistralEmbeddingInput<'a> {
     Single(&'a str),
-    Multiple(ArrayVec<&'a str, MAX_DOCUMENTS>),
-}
+    Multiple(ArrayVec<&'a str, MAX_DOCUMENTS>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralEmbeddingResponse {
@@ -207,21 +186,18 @@ pub struct MistralEmbeddingResponse {
     pub object: String,
     pub data: ArrayVec<MistralEmbeddingData, MAX_DOCUMENTS>,
     pub model: String,
-    pub usage: MistralEmbeddingUsage,
-}
+    pub usage: MistralEmbeddingUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralEmbeddingData {
     pub object: String,
     pub embedding: ArrayVec<f32, 1024>,
-    pub index: u32,
-}
+    pub index: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralEmbeddingUsage {
     pub prompt_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // ============================================================================
 // Models API
@@ -230,8 +206,7 @@ pub struct MistralEmbeddingUsage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralModelsResponse {
     pub object: String,
-    pub data: ArrayVec<MistralModel, 64>,
-}
+    pub data: ArrayVec<MistralModel, 64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralModel {
@@ -241,8 +216,7 @@ pub struct MistralModel {
     pub owned_by: String,
     pub root: Option<String>,
     pub parent: Option<String>,
-    pub permission: ArrayVec<MistralPermission, 8>,
-}
+    pub permission: ArrayVec<MistralPermission, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralPermission {
@@ -257,8 +231,7 @@ pub struct MistralPermission {
     pub allow_fine_tuning: bool,
     pub organization: String,
     pub group: Option<String>,
-    pub is_blocking: bool,
-}
+    pub is_blocking: bool}
 
 // ============================================================================
 // Fine-tuning API
@@ -277,8 +250,7 @@ pub struct MistralFineTuningRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub integrations: Option<ArrayVec<MistralIntegration<'a>, 8>>,
-}
+    pub integrations: Option<ArrayVec<MistralIntegration<'a>, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralHyperparameters {
@@ -291,8 +263,7 @@ pub struct MistralHyperparameters {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub warmup_fraction: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub epochs: Option<f32>,
-}
+    pub epochs: Option<f32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralIntegration<'a> {
@@ -301,8 +272,7 @@ pub struct MistralIntegration<'a> {
     pub integration_type: &'a str,
     pub project: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<&'a str>,
-}
+    pub name: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFineTuningJob {
@@ -319,8 +289,7 @@ pub struct MistralFineTuningJob {
     pub result_files: ArrayVec<String, 16>,
     pub hyperparameters: MistralHyperparameters,
     pub integrations: ArrayVec<MistralResponseIntegration, 8>,
-    pub events: ArrayVec<MistralFineTuningEvent, 256>,
-}
+    pub events: ArrayVec<MistralFineTuningEvent, 256>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseIntegration {
@@ -328,8 +297,7 @@ pub struct MistralResponseIntegration {
     pub integration_type: String,
     pub project: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-}
+    pub name: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFineTuningEvent {
@@ -340,15 +308,13 @@ pub struct MistralFineTuningEvent {
     pub message: String,
     #[serde(rename = "type")]
     pub event_type: String,
-    pub data: Option<serde_json::Value>,
-}
+    pub data: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFineTuningJobList {
     pub object: String,
     pub data: ArrayVec<MistralFineTuningJob, 64>,
-    pub has_more: bool,
-}
+    pub has_more: bool}
 
 // ============================================================================
 // Files API
@@ -359,8 +325,7 @@ pub struct MistralFileUploadRequest<'a> {
     #[serde(borrow)]
     pub file: &'a [u8],
     #[serde(borrow)]
-    pub purpose: &'a str,
-}
+    pub purpose: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFile {
@@ -375,14 +340,12 @@ pub struct MistralFile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub num_lines: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source: Option<String>,
-}
+    pub source: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralFileList {
     pub object: String,
-    pub data: ArrayVec<MistralFile, 256>,
-}
+    pub data: ArrayVec<MistralFile, 256>}
 
 // ============================================================================
 // Agents API (Experimental)
@@ -401,8 +364,7 @@ pub struct MistralAgentRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ArrayVec<MistralTool<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<serde_json::Value>,
-}
+    pub metadata: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralAgent {
@@ -414,22 +376,19 @@ pub struct MistralAgent {
     pub model: String,
     pub instructions: Option<String>,
     pub tools: ArrayVec<MistralResponseTool, MAX_TOOLS>,
-    pub metadata: Option<serde_json::Value>,
-}
+    pub metadata: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseTool {
     #[serde(rename = "type")]
     pub tool_type: String,
-    pub function: MistralResponseToolFunction,
-}
+    pub function: MistralResponseToolFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralResponseToolFunction {
     pub name: String,
     pub description: String,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralAgentList {
@@ -437,8 +396,7 @@ pub struct MistralAgentList {
     pub data: ArrayVec<MistralAgent, 64>,
     pub first_id: String,
     pub last_id: String,
-    pub has_more: bool,
-}
+    pub has_more: bool}
 
 // ============================================================================
 // Common Structures
@@ -448,13 +406,11 @@ pub struct MistralAgentList {
 pub struct MistralUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralErrorResponse {
-    pub error: MistralError,
-}
+    pub error: MistralError}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralError {
@@ -464,8 +420,7 @@ pub struct MistralError {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub param: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-}
+    pub code: Option<String>}
 
 // ============================================================================
 // Streaming Support
@@ -477,15 +432,13 @@ pub struct MistralStreamingChunk {
     pub object: String,
     pub created: u64,
     pub model: String,
-    pub choices: ArrayVec<MistralStreamingChoice, 8>,
-}
+    pub choices: ArrayVec<MistralStreamingChoice, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralStreamingChoice {
     pub index: u32,
     pub delta: MistralStreamingDelta,
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralStreamingDelta {
@@ -494,8 +447,7 @@ pub struct MistralStreamingDelta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<MistralStreamingToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<MistralStreamingToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralStreamingToolCall {
@@ -506,16 +458,14 @@ pub struct MistralStreamingToolCall {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub call_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function: Option<MistralStreamingFunction>,
-}
+    pub function: Option<MistralStreamingFunction>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistralStreamingFunction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<String>,
-}
+    pub arguments: Option<String>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -534,8 +484,7 @@ impl<'a> MistralChatRequest<'a> {
             random_seed: None,
             tools: None,
             tool_choice: None,
-            response_format: None,
-        }
+            response_format: None}
     }
 
     pub fn add_message(mut self, role: &'a str, content: MistralContent<'a>) -> Self {
@@ -545,8 +494,7 @@ impl<'a> MistralChatRequest<'a> {
                 content,
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -597,8 +545,7 @@ impl<'a> MistralChatRequest<'a> {
 
     pub fn response_format_json(mut self) -> Self {
         self.response_format = Some(MistralResponseFormat {
-            format_type: "json_object",
-        });
+            format_type: "json_object"});
         self
     }
 }
@@ -608,16 +555,14 @@ impl<'a> MistralEmbeddingRequest<'a> {
         Self {
             model,
             input: MistralEmbeddingInput::Single(input),
-            encoding_format: None,
-        }
+            encoding_format: None}
     }
 
     pub fn new_multiple(model: &'a str, inputs: ArrayVec<&'a str, MAX_DOCUMENTS>) -> Self {
         Self {
             model,
             input: MistralEmbeddingInput::Multiple(inputs),
-            encoding_format: None,
-        }
+            encoding_format: None}
     }
 
     pub fn encoding_format(mut self, format: &'a str) -> Self {
@@ -634,8 +579,7 @@ impl<'a> MistralFineTuningRequest<'a> {
             validation_files: None,
             hyperparameters: None,
             suffix: None,
-            integrations: None,
-        }
+            integrations: None}
     }
 
     pub fn with_validation_files(mut self, files: ArrayVec<&'a str, 16>) -> Self {
@@ -666,8 +610,7 @@ impl MistralHyperparameters {
             learning_rate: None,
             weight_decay: None,
             warmup_fraction: None,
-            epochs: None,
-        }
+            epochs: None}
     }
 
     pub fn training_steps(mut self, steps: u32) -> Self {
@@ -699,8 +642,7 @@ impl<'a> MistralAgentRequest<'a> {
             model,
             instructions: None,
             tools: None,
-            metadata: None,
-        }
+            metadata: None}
     }
 
     pub fn instructions(mut self, instructions: &'a str) -> Self {

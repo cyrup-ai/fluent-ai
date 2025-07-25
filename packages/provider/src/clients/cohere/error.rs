@@ -30,16 +30,14 @@ pub enum CohereError {
         endpoint: ArrayString<32>,
         message: ArrayString<256>,
         error_code: AuthErrorCode,
-        retry_possible: bool,
-    },
+        retry_possible: bool},
     
     /// API key validation errors
     #[error("Invalid API key: {reason}")]
     InvalidApiKey {
         reason: ArrayString<128>,
         key_length: usize,
-        format_valid: bool,
-    },
+        format_valid: bool},
     
     /// Model validation and capability errors
     #[error("Model {model} not supported for {operation}")]
@@ -47,16 +45,14 @@ pub enum CohereError {
         model: ArrayString<64>,
         operation: CohereOperation,
         suggested_models: SmallVec<[&'static str; 4]>,
-        endpoint: ArrayString<32>,
-    },
+        endpoint: ArrayString<32>},
     
     /// Model capability validation failures
     #[error("Model {model} does not support {capability}")]
     CapabilityNotSupported {
         model: ArrayString<64>,
         capability: ModelCapability,
-        available_capabilities: SmallVec<[ModelCapability; 8]>,
-    },
+        available_capabilities: SmallVec<[ModelCapability; 8]>},
     
     /// Rate limiting errors with retry information
     #[error("Rate limit exceeded for {endpoint}: retry after {retry_after_ms}ms")]
@@ -65,8 +61,7 @@ pub enum CohereError {
         retry_after_ms: u64,
         current_rpm: u32,
         limit_rpm: u32,
-        reset_time: u64,
-    },
+        reset_time: u64},
     
     /// Quota and billing errors
     #[error("Quota exceeded for {resource}: {details}")]
@@ -75,8 +70,7 @@ pub enum CohereError {
         details: ArrayString<256>,
         current_usage: u64,
         limit: u64,
-        reset_date: Option<ArrayString<32>>,
-    },
+        reset_date: Option<ArrayString<32>>},
     
     /// Chat completion specific errors
     #[error("Chat completion failed: {reason}")]
@@ -84,8 +78,7 @@ pub enum CohereError {
         reason: ChatErrorReason,
         model: ArrayString<64>,
         context: ArrayString<512>,
-        recoverable: bool,
-    },
+        recoverable: bool},
     
     /// Embedding specific errors
     #[error("Embedding operation failed: {reason}")]
@@ -94,8 +87,7 @@ pub enum CohereError {
         model: ArrayString<64>,
         text_count: usize,
         batch_size: usize,
-        failed_texts: SmallVec<[usize; 16]>,
-    },
+        failed_texts: SmallVec<[usize; 16]>},
     
     /// Reranking specific errors
     #[error("Reranking operation failed: {reason}")]
@@ -104,8 +96,7 @@ pub enum CohereError {
         model: ArrayString<64>,
         query_length: usize,
         document_count: usize,
-        failed_documents: SmallVec<[usize; 16]>,
-    },
+        failed_documents: SmallVec<[usize; 16]>},
     
     /// JSON processing errors
     #[error("JSON processing failed at {operation}: {details}")]
@@ -113,8 +104,7 @@ pub enum CohereError {
         operation: JsonOperation,
         details: ArrayString<256>,
         position: Option<usize>,
-        recovery_possible: bool,
-    },
+        recovery_possible: bool},
     
     /// Streaming errors
     #[error("Streaming failed for {endpoint}: {reason}")]
@@ -123,8 +113,7 @@ pub enum CohereError {
         reason: StreamingErrorReason,
         chunk_count: u32,
         last_successful_chunk: Option<u32>,
-        reconnect_possible: bool,
-    },
+        reconnect_possible: bool},
     
     /// Request validation errors
     #[error("Request validation failed: {field} - {reason}")]
@@ -133,8 +122,7 @@ pub enum CohereError {
         reason: ArrayString<256>,
         provided_value: ArrayString<128>,
         expected_format: ArrayString<128>,
-        correction_hint: Option<ArrayString<256>>,
-    },
+        correction_hint: Option<ArrayString<256>>},
     
     /// Response parsing errors
     #[error("Response parsing failed for {endpoint}: {reason}")]
@@ -143,8 +131,7 @@ pub enum CohereError {
         reason: ArrayString<256>,
         content_type: ArrayString<64>,
         content_length: usize,
-        partial_data: Option<ArrayString<512>>,
-    },
+        partial_data: Option<ArrayString<512>>},
     
     /// Circuit breaker errors
     #[error("Circuit breaker {state} for {endpoint}")]
@@ -153,8 +140,7 @@ pub enum CohereError {
         state: CircuitBreakerState,
         failure_count: u32,
         success_count: u32,
-        next_retry_ms: u64,
-    },
+        next_retry_ms: u64},
     
     /// Configuration errors
     #[error("Configuration error: {setting} - {reason}")]
@@ -162,8 +148,7 @@ pub enum CohereError {
         setting: ArrayString<64>,
         reason: ArrayString<256>,
         current_value: ArrayString<128>,
-        valid_range: Option<ArrayString<64>>,
-    },
+        valid_range: Option<ArrayString<64>>},
     
     /// Timeout errors with context
     #[error("Operation timed out after {duration_ms}ms for {operation}")]
@@ -172,8 +157,7 @@ pub enum CohereError {
         duration_ms: u64,
         expected_duration_ms: u64,
         stage: OperationStage,
-        partial_result: bool,
-    },
+        partial_result: bool},
     
     /// Network connectivity errors
     #[error("Network error for {endpoint}: {reason}")]
@@ -182,8 +166,7 @@ pub enum CohereError {
         reason: NetworkErrorReason,
         retry_count: u8,
         last_attempt_ms: u64,
-        dns_resolution: bool,
-    },
+        dns_resolution: bool},
     
     /// Server errors with status codes
     #[error("Server error {status_code}: {message}")]
@@ -192,9 +175,7 @@ pub enum CohereError {
         message: ArrayString<256>,
         endpoint: ArrayString<32>,
         request_id: Option<ArrayString<64>>,
-        retry_recommended: bool,
-    },
-}
+        retry_recommended: bool}}
 
 /// Authentication error codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,8 +185,7 @@ pub enum AuthErrorCode {
     InsufficientPermissions,
     AccountSuspended,
     RegionRestricted,
-    UnknownAuthError,
-}
+    UnknownAuthError}
 
 /// Cohere operation types for error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -214,8 +194,7 @@ pub enum CohereOperation {
     Embedding,
     Reranking,
     ModelValidation,
-    Authentication,
-}
+    Authentication}
 
 /// Model capabilities for validation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -225,8 +204,7 @@ pub enum ModelCapability {
     Vision,
     LongContext,
     BatchProcessing,
-    FineTuning,
-}
+    FineTuning}
 
 /// Quota resource types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -236,8 +214,7 @@ pub enum QuotaResource {
     ConcurrentRequests,
     EmbeddingDimensions,
     RerankingDocuments,
-    StorageGB,
-}
+    StorageGB}
 
 /// Chat completion error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,8 +226,7 @@ pub enum ChatErrorReason {
     ToolCallFailed,
     ModelOverloaded,
     ContentFiltered,
-    UnknownChatError,
-}
+    UnknownChatError}
 
 /// Embedding operation error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -261,8 +237,7 @@ pub enum EmbeddingErrorReason {
     InvalidEncoding,
     DimensionMismatch,
     ModelOverloaded,
-    UnknownEmbeddingError,
-}
+    UnknownEmbeddingError}
 
 /// Reranking operation error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -274,8 +249,7 @@ pub enum RerankingErrorReason {
     EmptyDocuments,
     InvalidRelevanceThreshold,
     ModelOverloaded,
-    UnknownRerankingError,
-}
+    UnknownRerankingError}
 
 /// JSON operation types for error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -285,8 +259,7 @@ pub enum JsonOperation {
     StreamingParse,
     ToolCallParse,
     EmbeddingParse,
-    RerankingParse,
-}
+    RerankingParse}
 
 /// Streaming error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -297,16 +270,14 @@ pub enum StreamingErrorReason {
     MalformedChunk,
     StreamTimeout,
     BufferOverflow,
-    UnknownStreamingError,
-}
+    UnknownStreamingError}
 
 /// Circuit breaker states
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitBreakerState {
     Closed,
     Open,
-    HalfOpen,
-}
+    HalfOpen}
 
 /// Operation stages for timeout context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -317,8 +288,7 @@ pub enum OperationStage {
     ServerProcessing,
     ResponseReceiving,
     ResponseParsing,
-    PostProcessing,
-}
+    PostProcessing}
 
 /// Network error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -329,8 +299,7 @@ pub enum NetworkErrorReason {
     SSLHandshakeFailed,
     NetworkUnreachable,
     ProxyError,
-    UnknownNetworkError,
-}
+    UnknownNetworkError}
 
 impl CohereError {
     /// Create authentication error with context
@@ -345,8 +314,7 @@ impl CohereError {
             endpoint: ArrayString::from(endpoint).unwrap_or_default(),
             message: ArrayString::from(message).unwrap_or_default(),
             error_code,
-            retry_possible,
-        }
+            retry_possible}
     }
     
     /// Create model not supported error with suggestions
@@ -366,8 +334,7 @@ impl CohereError {
             model: ArrayString::from(model).unwrap_or_default(),
             operation,
             suggested_models: suggestions,
-            endpoint: ArrayString::from(endpoint).unwrap_or_default(),
-        }
+            endpoint: ArrayString::from(endpoint).unwrap_or_default()}
     }
     
     /// Create rate limit error with retry information
@@ -384,8 +351,7 @@ impl CohereError {
             retry_after_ms,
             current_rpm,
             limit_rpm,
-            reset_time,
-        }
+            reset_time}
     }
     
     /// Create chat completion error
@@ -400,8 +366,7 @@ impl CohereError {
             reason,
             model: ArrayString::from(model).unwrap_or_default(),
             context: ArrayString::from(context).unwrap_or_default(),
-            recoverable,
-        }
+            recoverable}
     }
     
     /// Create embedding error with batch context
@@ -423,8 +388,7 @@ impl CohereError {
             model: ArrayString::from(model).unwrap_or_default(),
             text_count,
             batch_size,
-            failed_texts,
-        }
+            failed_texts}
     }
     
     /// Create reranking error with document context
@@ -446,8 +410,7 @@ impl CohereError {
             model: ArrayString::from(model).unwrap_or_default(),
             query_length,
             document_count,
-            failed_documents: failed_docs,
-        }
+            failed_documents: failed_docs}
     }
     
     /// Create JSON processing error
@@ -462,8 +425,7 @@ impl CohereError {
             operation,
             details: ArrayString::from(details).unwrap_or_default(),
             position,
-            recovery_possible,
-        }
+            recovery_possible}
     }
     
     /// Create streaming error
@@ -480,8 +442,7 @@ impl CohereError {
             reason,
             chunk_count,
             last_successful_chunk,
-            reconnect_possible,
-        }
+            reconnect_possible}
     }
     
     /// Create request validation error
@@ -498,8 +459,7 @@ impl CohereError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             provided_value: ArrayString::from(provided_value).unwrap_or_default(),
             expected_format: ArrayString::from(expected_format).unwrap_or_default(),
-            correction_hint: correction_hint.map(|h| ArrayString::from(h).unwrap_or_default()),
-        }
+            correction_hint: correction_hint.map(|h| ArrayString::from(h).unwrap_or_default())}
     }
     
     /// Create timeout error
@@ -516,8 +476,7 @@ impl CohereError {
             duration_ms,
             expected_duration_ms,
             stage,
-            partial_result,
-        }
+            partial_result}
     }
     
     /// Check if error is retryable
@@ -531,8 +490,7 @@ impl CohereError {
             Self::Timeout { .. } => true,
             Self::CircuitBreaker { state, .. } => matches!(state, CircuitBreakerState::HalfOpen),
             Self::Streaming { reconnect_possible, .. } => *reconnect_possible,
-            _ => false,
-        }
+            _ => false}
     }
     
     /// Get retry delay in milliseconds
@@ -550,11 +508,9 @@ impl CohereError {
                 match *status_code {
                     429 => Some(1000), // Rate limited
                     500..=599 => Some(2000), // Server error
-                    _ => None,
-                }
+                    _ => None}
             }
-            _ => None,
-        }
+            _ => None}
     }
     
     /// Get error severity for logging and monitoring
@@ -571,8 +527,7 @@ impl CohereError {
             Self::Timeout { .. } => ErrorSeverity::Medium,
             Self::Network { .. } => ErrorSeverity::Low,
             Self::Streaming { .. } => ErrorSeverity::Low,
-            _ => ErrorSeverity::Medium,
-        }
+            _ => ErrorSeverity::Medium}
     }
 }
 
@@ -582,8 +537,7 @@ pub enum ErrorSeverity {
     Low,
     Medium,
     High,
-    Critical,
-}
+    Critical}
 
 /// HTTP status code to CohereError conversion
 impl From<u16> for CohereError {
@@ -600,16 +554,14 @@ impl From<u16> for CohereError {
             502 => ("Bad Gateway", true),
             503 => ("Service Unavailable", true),
             504 => ("Gateway Timeout", true),
-            _ => ("Unknown HTTP error", false),
-        };
+            _ => ("Unknown HTTP error", false)};
         
         Self::Server {
             status_code,
             message: ArrayString::from(message).unwrap_or_default(),
             endpoint: ArrayString::new(),
             request_id: None,
-            retry_recommended,
-        }
+            retry_recommended}
     }
 }
 

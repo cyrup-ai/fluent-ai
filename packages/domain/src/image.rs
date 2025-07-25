@@ -5,15 +5,13 @@ pub struct Image {
     pub data: String,
     pub format: Option<ContentFormat>,
     pub media_type: Option<ImageMediaType>,
-    pub detail: Option<ImageDetail>,
-}
+    pub detail: Option<ImageDetail>}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ContentFormat {
     Base64,
     Url,
-    Raw,
-}
+    Raw}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ImageMediaType {
@@ -21,15 +19,13 @@ pub enum ImageMediaType {
     JPEG,
     GIF,
     WEBP,
-    SVG,
-}
+    SVG}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageDetail {
     Low,
     High,
-    Auto,
-}
+    Auto}
 
 // Builder implementations moved to fluent_ai/src/builders/image.rs

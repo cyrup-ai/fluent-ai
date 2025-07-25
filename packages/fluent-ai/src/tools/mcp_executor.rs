@@ -30,8 +30,7 @@ mod cylo_integration {
         // Execute in secure sandbox
         match execute_in_sandbox(name, args).await {
             Ok(result) => Ok(result),
-            Err(e) => Err(format!("Secure execution failed: {}", e)),
-        }
+            Err(e) => Err(format!("Secure execution failed: {}", e))}
     }
 
     /// Check if tool is in the security allowlist
@@ -100,8 +99,7 @@ mod cylo_integration {
             match tokio::time::timeout(std::time::Duration::from_secs(30), cmd.output()).await {
                 Ok(Ok(output)) => output,
                 Ok(Err(e)) => return Err(format!("Failed to execute cylo: {}", e)),
-                Err(_) => return Err("Tool execution timed out".to_string()),
-            };
+                Err(_) => return Err("Tool execution timed out".to_string())};
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -112,8 +110,7 @@ mod cylo_integration {
         let stdout = String::from_utf8_lossy(&output.stdout);
         match serde_json::from_str(&stdout) {
             Ok(result) => Ok(result),
-            Err(e) => Err(format!("Failed to parse tool result: {}", e)),
-        }
+            Err(e) => Err(format!("Failed to parse tool result: {}", e))}
     }
 }
 use std::future::Future;
@@ -122,15 +119,13 @@ use std::pin::Pin;
 /// Production implementation of MCP Tool with secure execution
 #[derive(Debug, Clone)]
 pub struct McpToolImpl {
-    data: McpToolData,
-}
+    data: McpToolData}
 
 impl McpToolImpl {
     /// Create a new MCP tool implementation
     pub fn new(name: impl Into<String>, description: impl Into<String>, parameters: Value) -> Self {
         Self {
-            data: McpToolData::new(name, description, parameters),
-        }
+            data: McpToolData::new(name, description, parameters)}
     }
 
     /// Create a new MCP tool with server identifier
@@ -141,8 +136,7 @@ impl McpToolImpl {
         server: impl Into<String>,
     ) -> Self {
         Self {
-            data: McpToolData::with_server(name, description, parameters, server),
-        }
+            data: McpToolData::with_server(name, description, parameters, server)}
     }
 
     /// Create a new MCP tool with parameter map
@@ -153,8 +147,7 @@ impl McpToolImpl {
         let params = f();
         let json_params: serde_json::Map<String, Value> = params.into_iter().collect();
         Self {
-            data: McpToolData::new(name, description, Value::Object(json_params)),
-        }
+            data: McpToolData::new(name, description, Value::Object(json_params))}
     }
 }
 

@@ -24,8 +24,7 @@ pub enum ExecError {
     SystemError(#[from] anyhow::Error),
 
     #[error("Storage error: {0}")]
-    Storage(#[from] StorageError),
-}
+    Storage(#[from] StorageError)}
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -54,8 +53,7 @@ pub enum StorageError {
     PartialFailure(String),
 
     #[error("{0}")]
-    Other(#[from] anyhow::Error),
-}
+    Other(#[from] anyhow::Error)}
 
 /// Comprehensive error types for sandbox operations with zero-allocation string sharing
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -78,8 +76,7 @@ pub enum SandboxError {
     #[error("IO error ({kind:?}): {detail}")]
     IoError {
         kind: io::ErrorKind,
-        detail: Arc<str>,
-    },
+        detail: Arc<str>},
 
     #[error("Command not found: {command}")]
     CommandNotFound { command: Arc<str> },
@@ -91,8 +88,7 @@ pub enum SandboxError {
     PathInvalid { detail: Arc<str> },
 
     #[error("Runtime not found: {runtime}")]
-    RuntimeNotFound { runtime: Arc<str> },
-}
+    RuntimeNotFound { runtime: Arc<str> }}
 
 /// Zero-allocation error conversion from std::io::Error
 impl From<io::Error> for SandboxError {
@@ -100,8 +96,7 @@ impl From<io::Error> for SandboxError {
     fn from(error: io::Error) -> Self {
         SandboxError::IoError {
             kind: error.kind(),
-            detail: Arc::from(error.to_string()),
-        }
+            detail: Arc::from(error.to_string())}
     }
 }
 

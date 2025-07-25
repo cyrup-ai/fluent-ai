@@ -25,7 +25,7 @@ pub trait EmbeddingModel: Send + Sync + Clone {
         F: Fn(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + Sync + 'static,
     {
         // Get embedding task and process result through handler using streaming
-        let mut embedding_task = self.embed(text);
+        let embedding_task = self.embed(text);
 
         crate::AsyncStream::with_channel(move |sender| {
             // Use proper streams-only pattern with blocking collect (safe in thread context)
@@ -39,8 +39,7 @@ pub trait EmbeddingModel: Send + Sync + Clone {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Embedding {
     pub document: String,
-    pub vec: ZeroOneOrMany<f64>,
-}
+    pub vec: ZeroOneOrMany<f64>}
 
 /// Response format for embedding operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,8 +50,7 @@ pub struct EmbeddingResponse {
     /// The model used to generate the embeddings
     pub model: String,
     /// Token usage statistics
-    pub usage: Option<Usage>,
-}
+    pub usage: Option<Usage>}
 /// Individual embedding data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingData {
@@ -61,8 +59,7 @@ pub struct EmbeddingData {
     /// Index of the embedding in the input batch
     pub index: usize,
     /// Optional object type (e.g., "embedding")
-    pub object: Option<String>,
-}
+    pub object: Option<String>}
 
 impl EmbeddingResponse {
     /// Create a new embedding response
@@ -74,15 +71,13 @@ impl EmbeddingResponse {
             .map(|(idx, embedding)| EmbeddingData {
                 embedding,
                 index: idx,
-                object: Some("embedding".to_string()),
-            })
+                object: Some("embedding".to_string())})
             .collect();
 
         Self {
             data,
             model: model.into(),
-            usage: None,
-        }
+            usage: None}
     }
 
     /// Create a new embedding response with usage statistics

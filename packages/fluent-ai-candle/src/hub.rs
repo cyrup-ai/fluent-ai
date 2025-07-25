@@ -9,8 +9,7 @@ use std::path::PathBuf;
 pub use progresshub_client_selector::{Backend, Client, DownloadConfig};
 pub use progresshub_config::ConfigTrait as ProgressHubConfig;
 pub use progresshub_progress::{
-    DownloadProgress, DownloadResult, ProgressData, ProgressHandler, create_progress_channel,
-};
+    DownloadProgress, DownloadResult, ProgressData, ProgressHandler, create_progress_channel};
 
 use crate::error::{CandleError, CandleResult};
 
@@ -30,8 +29,7 @@ pub fn create_download_config(cache_dir: PathBuf) -> DownloadConfig {
     DownloadConfig {
         destination: cache_dir,
         show_progress: false, // We handle progress via channels
-        use_cache: true,
-    }
+        use_cache: true}
 }
 
 /// Legacy type alias for backward compatibility during transition
@@ -49,8 +47,7 @@ pub struct HubConfig {
     /// Whether to show download progress
     pub show_progress: bool,
     /// Whether to use local cache
-    pub use_cache: bool,
-}
+    pub use_cache: bool}
 
 impl Default for HubConfig {
     fn default() -> Self {
@@ -63,7 +60,6 @@ impl Default for HubConfig {
                 .unwrap_or_else(|_| "/tmp/huggingface".to_string())
                 .into(),
             show_progress: false,
-            use_cache: true,
-        }
+            use_cache: true}
     }
 }

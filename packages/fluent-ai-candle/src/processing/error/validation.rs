@@ -108,8 +108,7 @@ pub mod utils {
             ErrorCategory::External => Some(std::time::Duration::from_millis(50)),
             ErrorCategory::Numerical => Some(std::time::Duration::from_millis(10)),
             ErrorCategory::Context => Some(std::time::Duration::from_millis(1)),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Validate probability value (0.0 to 1.0)

@@ -43,8 +43,7 @@ pub struct MemoryConfig {
     pub security: MemorySecurityConfig,
 
     /// Monitoring and observability configuration
-    pub monitoring: MemoryMonitoringConfig,
-}
+    pub monitoring: MemoryMonitoringConfig}
 
 /// Memory system performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,8 +67,7 @@ pub struct MemoryPerformanceConfig {
     pub enable_prefetching: bool,
 
     /// Memory access optimization level (0-3)
-    pub optimization_level: u8,
-}
+    pub optimization_level: u8}
 
 /// Memory retention and cleanup configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,8 +91,7 @@ pub struct MemoryRetentionConfig {
     pub max_active_memories: usize,
 
     /// Memory importance threshold for retention decisions
-    pub importance_threshold: f32,
-}
+    pub importance_threshold: f32}
 
 /// Memory security and access control configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,8 +115,7 @@ pub struct MemorySecurityConfig {
     pub enable_integrity_checks: bool,
 
     /// Memory access permissions
-    pub access_permissions: MemoryAccessPermissions,
-}
+    pub access_permissions: MemoryAccessPermissions}
 
 /// Memory monitoring and observability configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,8 +139,7 @@ pub struct MemoryMonitoringConfig {
     pub enable_health_checks: bool,
 
     /// Health check interval in seconds
-    pub health_check_interval_seconds: u64,
-}
+    pub health_check_interval_seconds: u64}
 
 /// Key derivation methods for memory encryption
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,8 +149,7 @@ pub enum KeyDerivationMethod {
     /// Argon2id (recommended)
     Argon2id,
     /// scrypt
-    Scrypt,
-}
+    Scrypt}
 
 /// Memory access permissions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,8 +163,7 @@ pub struct MemoryAccessPermissions {
     /// Allow admin access
     pub admin: bool,
     /// Allowed user roles
-    pub allowed_roles: Vec<String>,
-}
+    pub allowed_roles: Vec<String>}
 
 impl Default for MemoryConfig {
     fn default() -> Self {
@@ -183,8 +176,7 @@ impl Default for MemoryConfig {
             performance: MemoryPerformanceConfig::default(),
             retention: MemoryRetentionConfig::default(),
             security: MemorySecurityConfig::default(),
-            monitoring: MemoryMonitoringConfig::default(),
-        }
+            monitoring: MemoryMonitoringConfig::default()}
     }
 }
 
@@ -197,8 +189,7 @@ impl Default for MemoryPerformanceConfig {
             enable_compression: true,
             batch_size: 100,
             enable_prefetching: true,
-            optimization_level: 2,
-        }
+            optimization_level: 2}
     }
 }
 
@@ -211,8 +202,7 @@ impl Default for MemoryRetentionConfig {
             enable_archiving: true,
             archive_threshold_seconds: 86400 * 90, // 90 days
             max_active_memories: 100000,
-            importance_threshold: 0.5,
-        }
+            importance_threshold: 0.5}
     }
 }
 
@@ -225,8 +215,7 @@ impl Default for MemorySecurityConfig {
             max_failed_attempts: 5,
             lockout_duration_seconds: 300, // 5 minutes
             enable_integrity_checks: true,
-            access_permissions: MemoryAccessPermissions::default(),
-        }
+            access_permissions: MemoryAccessPermissions::default()}
     }
 }
 
@@ -251,8 +240,7 @@ impl Default for MemoryAccessPermissions {
             write: true,
             delete: false,
             admin: false,
-            allowed_roles: vec!["user".to_string()],
-        }
+            allowed_roles: vec!["user".to_string()]}
     }
 }
 

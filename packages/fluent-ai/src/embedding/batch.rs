@@ -3,7 +3,6 @@
 //! High-performance batch operations with optimal memory management,
 //! parallel processing, and configurable chunking strategies.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -24,9 +23,7 @@ pub enum EmbeddingBatch {
     /// Mixed text and image inputs
     Mixed {
         texts: Vec<String>,
-        images: Vec<Vec<u8>>,
-    },
-}
+        images: Vec<Vec<u8>>}}
 
 /// Configuration for batch processing operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,8 +39,7 @@ pub struct BatchConfig {
     /// Timeout configuration
     pub timeout_seconds: u64,
     /// Whether to preserve input order in results
-    pub preserve_order: bool,
-}
+    pub preserve_order: bool}
 
 /// Retry configuration for failed batch operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,8 +51,7 @@ pub struct RetryConfig {
     /// Backoff multiplier for exponential backoff
     pub backoff_multiplier: f64,
     /// Maximum delay between retries in milliseconds
-    pub max_delay_ms: u64,
-}
+    pub max_delay_ms: u64}
 
 impl Default for BatchConfig {
     fn default() -> Self {
@@ -66,8 +61,7 @@ impl Default for BatchConfig {
             normalization: NormalizationMethod::L2,
             retry_config: RetryConfig::default(),
             timeout_seconds: 60,
-            preserve_order: true,
-        }
+            preserve_order: true}
     }
 }
 
@@ -77,8 +71,7 @@ impl Default for RetryConfig {
             max_retries: 3,
             initial_delay_ms: 100,
             backoff_multiplier: 2.0,
-            max_delay_ms: 5000,
-        }
+            max_delay_ms: 5000}
     }
 }
 
@@ -90,8 +83,7 @@ pub struct BatchResult {
     /// Failed items with error messages
     pub failures: Vec<BatchFailure>,
     /// Processing statistics
-    pub stats: BatchStats,
-}
+    pub stats: BatchStats}
 
 /// Information about a failed batch item
 #[derive(Debug, Clone)]
@@ -101,8 +93,7 @@ pub struct BatchFailure {
     /// Error message
     pub error: String,
     /// Number of retry attempts made
-    pub retry_count: usize,
-}
+    pub retry_count: usize}
 
 /// Statistics for batch processing operations
 #[derive(Debug, Clone)]
@@ -118,15 +109,13 @@ pub struct BatchStats {
     /// Average time per item in milliseconds
     pub avg_time_per_item_ms: f64,
     /// Number of batches processed
-    pub batch_count: usize,
-}
+    pub batch_count: usize}
 
 /// High-performance batch processor for embeddings
 pub struct BatchProcessor<T> {
     embedding_provider: T,
     config: BatchConfig,
-    semaphore: Arc<Semaphore>,
-}
+    semaphore: Arc<Semaphore>}
 
 impl<T> BatchProcessor<T>
 where
@@ -140,8 +129,7 @@ where
         Self {
             embedding_provider,
             config,
-            semaphore,
-        }
+            semaphore}
     }
 
     /// Create batch processor with default configuration
@@ -168,9 +156,7 @@ where
                         failed_items: 0,
                         processing_time_ms: 0,
                         avg_time_per_item_ms: 0.0,
-                        batch_count: 0,
-                    },
-                };
+                        batch_count: 0}};
             }
 
             let mut all_embeddings = Vec::with_capacity(total_items);
@@ -237,9 +223,7 @@ where
                     } else {
                         0.0
                     },
-                    batch_count,
-                },
-            }
+                    batch_count}}
         })
     }
 
@@ -282,8 +266,7 @@ where
                             let chunk = EmbeddingChunk {
                                 embeddings: crate::ZeroOneOrMany::from_vec(embedding),
                                 index: base_index + idx,
-                                metadata: HashMap::new(),
-                            };
+                                metadata: HashMap::new()};
 
                             if tx.send(chunk).is_err() {
                                 break;
@@ -303,8 +286,7 @@ where
                             let error_chunk = EmbeddingChunk {
                                 embeddings: crate::ZeroOneOrMany::from_vec(Vec::new()),
                                 index: failure.index,
-                                metadata,
-                            };
+                                metadata};
 
                             if tx.send(error_chunk).is_err() {
                                 break;
@@ -343,8 +325,7 @@ where
                     let vec_embedding = match single_embedding {
                         ZeroOneOrMany::None => Vec::new(),
                         ZeroOneOrMany::One(val) => vec![val],
-                        ZeroOneOrMany::Many(vals) => vals,
-                    };
+                        ZeroOneOrMany::Many(vals) => vals};
                     vec![vec_embedding]
                 }
                 ZeroOneOrMany::Many(embeddings) => embeddings
@@ -352,10 +333,8 @@ where
                     .map(|emb| match emb {
                         ZeroOneOrMany::None => Vec::new(),
                         ZeroOneOrMany::One(val) => vec![val],
-                        ZeroOneOrMany::Many(vals) => vals,
-                    })
-                    .collect(),
-            };
+                        ZeroOneOrMany::Many(vals) => vals})
+                    .collect()};
 
             // Check if we got valid embeddings
             if !result_vec.is_empty() && result_vec.len() == texts.len() {
@@ -378,8 +357,7 @@ where
                     .map(|(idx, _)| BatchFailure {
                         index: base_index + idx,
                         error: "Failed to generate embedding after retries".to_string(),
-                        retry_count: attempt - 1,
-                    })
+                        retry_count: attempt - 1})
                     .collect();
 
                 return Err(failures);
@@ -401,8 +379,7 @@ where
         Self {
             embedding_provider: self.embedding_provider.clone(),
             config: self.config.clone(),
-            semaphore: self.semaphore.clone(),
-        }
+            semaphore: self.semaphore.clone()}
     }
 }
 
@@ -490,8 +467,7 @@ pub mod utils {
             normalization: NormalizationMethod::L2,
             retry_config: RetryConfig::default(),
             timeout_seconds: 120, // Longer timeout for large batches
-            preserve_order: true,
-        }
+            preserve_order: true}
     }
 
     /// Validate batch configuration for consistency

@@ -7,8 +7,7 @@
 mod tests {
     use super::*;
     use crate::types::candle_chat::commands::types::{
-        CommandParser, ImmutableChatCommand, SearchScope, StreamingCommandExecutor,
-    };
+        CommandParser, ImmutableChatCommand, SearchScope, StreamingCommandExecutor};
 
     #[test]
     fn test_command_parsing() {
@@ -28,16 +27,14 @@ mod tests {
             query: "test".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false,
-        };
+            include_context: false};
         assert!(cmd.validate().is_ok());
 
         let cmd = ImmutableChatCommand::Search {
             query: "".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false,
-        };
+            include_context: false};
         assert!(cmd.validate().is_err());
     }
 

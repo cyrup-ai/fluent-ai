@@ -47,8 +47,7 @@ pub trait StreamingCompletionResponse: Send + Sync {
                         content.push_str(text);
                     }
                 }
-                Err(e) => return Err(e),
-            }
+                Err(e) => return Err(e)}
         }
 
         Ok(content)
@@ -61,8 +60,7 @@ pub trait StreamingCompletionResponse: Send + Sync {
 /// Uses static string patterns and inline parsing for maximum performance.
 pub struct SseParser {
     buffer: Vec<u8>,
-    last_event_id: Option<String>,
-}
+    last_event_id: Option<String>}
 
 impl SseParser {
     /// Create a new SSE parser with zero allocations
@@ -70,8 +68,7 @@ impl SseParser {
     pub fn new() -> Self {
         Self {
             buffer: Vec::with_capacity(8192), // Pre-allocate reasonable buffer
-            last_event_id: None,
-        }
+            last_event_id: None}
     }
 
     /// Parse SSE chunk with zero allocations for common cases
@@ -164,8 +161,7 @@ pub struct SseEvent {
     /// Event ID (optional)
     pub id: Option<String>,
     /// Retry timeout in milliseconds (optional)
-    pub retry: Option<u64>,
-}
+    pub retry: Option<u64>}
 
 impl SseEvent {
     /// Check if this is a data event with content
@@ -201,8 +197,7 @@ impl SseEvent {
 /// for common cases, using inline parsing and zero-copy string operations.
 pub struct JsonLinesParser {
     buffer: Vec<u8>,
-    line_buffer: String,
-}
+    line_buffer: String}
 
 impl JsonLinesParser {
     /// Create a new JSON Lines parser
@@ -210,8 +205,7 @@ impl JsonLinesParser {
     pub fn new() -> Self {
         Self {
             buffer: Vec::with_capacity(4096),
-            line_buffer: String::with_capacity(1024),
-        }
+            line_buffer: String::with_capacity(1024)}
     }
 
     /// Parse JSON Lines chunk
@@ -272,8 +266,7 @@ impl JsonLinesParser {
 pub struct DefaultStreamingResponse<T> {
     pub raw_response: T,
     pub stream: UnboundedReceiverStream<Result<CompletionChunk, CompletionError>>,
-    pub metadata: ResponseMetadata,
-}
+    pub metadata: ResponseMetadata}
 
 impl<T> DefaultStreamingResponse<T>
 where
@@ -288,8 +281,7 @@ where
         Self {
             raw_response,
             stream,
-            metadata: ResponseMetadata::default(),
-        }
+            metadata: ResponseMetadata::default()}
     }
 
     /// Add metadata

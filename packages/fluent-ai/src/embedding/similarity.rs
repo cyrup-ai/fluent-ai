@@ -23,8 +23,7 @@ pub enum SimilarityMetric {
     /// Jaccard similarity for sparse vectors
     Jaccard,
     /// Pearson correlation coefficient
-    Pearson,
-}
+    Pearson}
 
 impl Default for SimilarityMetric {
     fn default() -> Self {
@@ -42,8 +41,7 @@ pub struct SimilarityConfig {
     /// Whether to normalize vectors before comparison
     pub normalize: bool,
     /// Tolerance for floating point comparisons
-    pub tolerance: f32,
-}
+    pub tolerance: f32}
 
 impl Default for SimilarityConfig {
     fn default() -> Self {
@@ -51,8 +49,7 @@ impl Default for SimilarityConfig {
             metric: SimilarityMetric::Cosine,
             threshold: 0.8,
             normalize: true,
-            tolerance: 1e-6,
-        }
+            tolerance: 1e-6}
     }
 }
 
@@ -66,8 +63,7 @@ pub struct SimilarityResult {
     /// Distance (for distance-based metrics)
     pub distance: Option<f32>,
     /// Metric used for computation
-    pub metric: SimilarityMetric,
-}
+    pub metric: SimilarityMetric}
 
 /// Calculate cosine similarity between two vectors
 ///
@@ -226,21 +222,18 @@ pub fn compute_similarity(a: &[f32], b: &[f32], config: &SimilarityConfig) -> Si
         }
         SimilarityMetric::DotProduct => dot_product_similarity(a, b),
         SimilarityMetric::Jaccard => jaccard_similarity(a, b, config.tolerance),
-        SimilarityMetric::Pearson => pearson_correlation(a, b),
-    };
+        SimilarityMetric::Pearson => pearson_correlation(a, b)};
 
     let distance = match config.metric {
         SimilarityMetric::Euclidean => Some(euclidean_distance(a, b)),
         SimilarityMetric::Manhattan => Some(manhattan_distance(a, b)),
-        _ => None,
-    };
+        _ => None};
 
     SimilarityResult {
         score,
         is_similar: score >= config.threshold,
         distance,
-        metric: config.metric,
-    }
+        metric: config.metric}
 }
 
 /// Find the most similar vector from a collection
@@ -326,8 +319,7 @@ pub fn find_similar_above_threshold(
 
 /// Batch similarity computation for multiple queries
 pub struct BatchSimilarityComputer {
-    config: SimilarityConfig,
-}
+    config: SimilarityConfig}
 
 impl BatchSimilarityComputer {
     /// Create new batch similarity computer

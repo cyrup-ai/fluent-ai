@@ -88,8 +88,7 @@ pub struct ModelConfig {
     /// Retry configuration
     pub retry_config: ModelRetryConfig,
     /// Performance settings
-    pub performance: ModelPerformanceConfig,
-}
+    pub performance: ModelPerformanceConfig}
 
 /// Model retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,8 +102,7 @@ pub struct ModelRetryConfig {
     /// Exponential backoff multiplier
     pub backoff_multiplier: f32,
     /// Enable jitter to avoid thundering herd
-    pub enable_jitter: bool,
-}
+    pub enable_jitter: bool}
 
 /// Model performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,8 +123,7 @@ pub struct ModelPerformanceConfig {
     /// Cache TTL in seconds
     pub cache_ttl_secs: u64,
     /// Maximum cache size in MB
-    pub max_cache_size_mb: u64,
-}
+    pub max_cache_size_mb: u64}
 
 impl Default for ModelConfig {
     fn default() -> Self {
@@ -147,8 +144,7 @@ impl Default for ModelConfig {
             custom_parameters: HashMap::new(),
             timeout_ms: 30000, // 30 seconds
             retry_config: ModelRetryConfig::default(),
-            performance: ModelPerformanceConfig::default(),
-        }
+            performance: ModelPerformanceConfig::default()}
     }
 }
 
@@ -159,8 +155,7 @@ impl Default for ModelRetryConfig {
             base_delay_ms: 1000,
             max_delay_ms: 30000,
             backoff_multiplier: 2.0,
-            enable_jitter: true,
-        }
+            enable_jitter: true}
     }
 }
 
@@ -174,8 +169,7 @@ impl Default for ModelPerformanceConfig {
             keep_alive_timeout: Duration::from_secs(30),
             enable_caching: true,
             cache_ttl_secs: 300, // 5 minutes
-            max_cache_size_mb: 100,
-        }
+            max_cache_size_mb: 100}
     }
 }
 
@@ -304,8 +298,7 @@ impl ModelConfig {
             "anthropic" => 50000,
             "mistral" => 40000,
             "gemini" => 45000,
-            _ => 30000,
-        };
+            _ => 30000};
 
         // Adjust based on temperature (higher temp = slower)
         let temp_adjustment = 1.0 - (self.temperature * 0.2);

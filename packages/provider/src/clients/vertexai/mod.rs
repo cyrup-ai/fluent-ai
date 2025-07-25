@@ -35,15 +35,14 @@ pub use client::{VertexAIClient, VertexAIProvider};
 pub use completion::{
     VertexAICompletionBuilder,
     CompletionRequest, CompletionResponse, CompletionChunk,
-    GenerationConfig, SafetySettings, Content, Part,
-};
+    GenerationConfig, SafetySettings, Content, Part};
 pub use config::VertexAIConfig;
 pub use error::{VertexAIError, VertexAIResult};
 pub use models::{ModelConfig, ModelCapabilities, VertexAIModels};
 pub use streaming::{VertexAIStream, StreamEvent};
 
 // Re-export commonly used types from dependencies
-pub use arrayvec::{ArrayString, ArrayVec};
+pub use arrayvec::{ArrayString};
 pub use smallvec::{SmallVec, smallvec};
 
 /// Type alias for zero-allocation header collections

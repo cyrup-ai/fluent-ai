@@ -6,17 +6,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Handle errors in streaming context without panicking
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error);
-        // Continue processing instead of returning error
-    };
-}
+// Removed unused handle_error macro
 
 /// Configuration for external integrations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,8 +41,7 @@ pub struct IntegrationConfig {
     /// Created timestamp
     pub created_at: chrono::DateTime<chrono::Utc>,
     /// Last updated timestamp
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
+    pub updated_at: chrono::DateTime<chrono::Utc>}
 
 /// Type of integration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,8 +61,7 @@ pub enum IntegrationType {
     /// File system integration
     FileSystem,
     /// Custom integration
-    Custom(String),
-}
+    Custom(String)}
 
 /// Authentication configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,8 +75,7 @@ pub struct AuthConfig {
     /// Authentication scope
     pub scope: Vec<String>,
     /// Custom auth parameters
-    pub custom_params: HashMap<String, String>,
-}
+    pub custom_params: HashMap<String, String>}
 
 /// Authentication type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,8 +93,7 @@ pub enum AuthType {
     /// JWT authentication
     JWT,
     /// Custom authentication
-    Custom(String),
-}
+    Custom(String)}
 
 /// Token refresh configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,8 +107,7 @@ pub struct TokenRefreshConfig {
     /// Token expiry buffer in seconds
     pub expiry_buffer_seconds: u64,
     /// Auto-refresh enabled
-    pub auto_refresh: bool,
-}
+    pub auto_refresh: bool}
 
 /// Rate limiting configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,8 +121,7 @@ pub struct RateLimitConfig {
     /// Rate limit strategy
     pub strategy: RateLimitStrategy,
     /// Custom rate limit rules
-    pub custom_rules: Vec<RateLimitRule>,
-}
+    pub custom_rules: Vec<RateLimitRule>}
 
 /// Rate limiting strategy
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,8 +133,7 @@ pub enum RateLimitStrategy {
     /// Fixed window algorithm
     FixedWindow,
     /// Leaky bucket algorithm
-    LeakyBucket,
-}
+    LeakyBucket}
 
 /// Custom rate limit rule
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,8 +145,7 @@ pub struct RateLimitRule {
     /// Rate limit for this rule
     pub limit: f64,
     /// Rule priority
-    pub priority: i32,
-}
+    pub priority: i32}
 
 /// Timeout configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,8 +159,7 @@ pub struct TimeoutConfig {
     /// Write timeout in seconds
     pub write_timeout_seconds: u64,
     /// Keep-alive timeout in seconds
-    pub keep_alive_timeout_seconds: u64,
-}
+    pub keep_alive_timeout_seconds: u64}
 
 /// Retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -193,8 +177,7 @@ pub struct RetryConfig {
     /// Retry on specific HTTP status codes
     pub retry_on_status_codes: Vec<u16>,
     /// Retry on timeout
-    pub retry_on_timeout: bool,
-}
+    pub retry_on_timeout: bool}
 
 /// Integration request structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,8 +201,7 @@ pub struct IntegrationRequest {
     /// Request timeout
     pub timeout_seconds: Option<u64>,
     /// Request metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// HTTP method enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -237,8 +219,7 @@ pub enum HttpMethod {
     /// HEAD method
     HEAD,
     /// OPTIONS method
-    OPTIONS,
-}
+    OPTIONS}
 
 /// Integration response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -264,8 +245,7 @@ pub struct IntegrationResponse {
     /// Error message if failed
     pub error_message: Option<String>,
     /// Response metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// Integration statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -289,8 +269,7 @@ pub struct IntegrationStats {
     /// Requests per minute
     pub requests_per_minute: f64,
     /// Performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 /// External integration definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -308,8 +287,7 @@ pub struct ExternalIntegration {
     /// Integration capabilities
     pub capabilities: Vec<IntegrationCapability>,
     /// Custom properties
-    pub custom_properties: HashMap<String, serde_json::Value>,
-}
+    pub custom_properties: HashMap<String, serde_json::Value>}
 
 /// Integration status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -325,8 +303,7 @@ pub enum IntegrationStatus {
     /// Integration is being initialized
     Initializing,
     /// Integration is being updated
-    Updating,
-}
+    Updating}
 
 /// Integration capability
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -346,8 +323,7 @@ pub enum IntegrationCapability {
     /// Can cache responses
     Cache,
     /// Custom capability
-    Custom(String),
-}
+    Custom(String)}
 
 impl Default for IntegrationConfig {
     fn default() -> Self {
@@ -365,8 +341,7 @@ impl Default for IntegrationConfig {
             custom_headers: HashMap::new(),
             metadata: HashMap::new(),
             created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        }
+            updated_at: chrono::Utc::now()}
     }
 }
 
@@ -377,8 +352,7 @@ impl Default for AuthConfig {
             credentials: HashMap::new(),
             token_refresh: None,
             scope: Vec::new(),
-            custom_params: HashMap::new(),
-        }
+            custom_params: HashMap::new()}
     }
 }
 
@@ -389,8 +363,7 @@ impl Default for RateLimitConfig {
             burst_limit: 20,
             window_seconds: 60,
             strategy: RateLimitStrategy::TokenBucket,
-            custom_rules: Vec::new(),
-        }
+            custom_rules: Vec::new()}
     }
 }
 
@@ -401,8 +374,7 @@ impl Default for TimeoutConfig {
             request_timeout_seconds: 30,
             read_timeout_seconds: 30,
             write_timeout_seconds: 30,
-            keep_alive_timeout_seconds: 60,
-        }
+            keep_alive_timeout_seconds: 60}
     }
 }
 
@@ -415,8 +387,7 @@ impl Default for RetryConfig {
             backoff_multiplier: 2.0,
             enable_jitter: true,
             retry_on_status_codes: vec![429, 500, 502, 503, 504],
-            retry_on_timeout: true,
-        }
+            retry_on_timeout: true}
     }
 }
 
@@ -432,8 +403,7 @@ impl Default for IntegrationStats {
             last_request: None,
             error_rate: 0.0,
             requests_per_minute: 0.0,
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 }
 
@@ -446,7 +416,6 @@ impl Default for ExternalIntegration {
             last_health_check: None,
             health_check_interval_seconds: 300,
             capabilities: vec![IntegrationCapability::Send, IntegrationCapability::Receive],
-            custom_properties: HashMap::new(),
-        }
+            custom_properties: HashMap::new()}
     }
 }

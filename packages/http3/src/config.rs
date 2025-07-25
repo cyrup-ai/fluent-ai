@@ -117,8 +117,7 @@ pub struct HttpConfig {
     pub connection_reuse: ConnectionReuse,
 
     /// Retry policy
-    pub retry_policy: RetryPolicy,
-}
+    pub retry_policy: RetryPolicy}
 
 /// Connection reuse strategy
 #[derive(Debug, Clone)]
@@ -128,8 +127,7 @@ pub enum ConnectionReuse {
     /// Reuse connections conservatively
     Conservative,
     /// Disable connection reuse
-    Disabled,
-}
+    Disabled}
 
 /// Retry policy configuration
 #[derive(Debug, Clone)]
@@ -153,8 +151,7 @@ pub struct RetryPolicy {
     pub retry_on_status: Vec<u16>,
 
     /// Retry on specific errors
-    pub retry_on_errors: Vec<RetryableError>,
-}
+    pub retry_on_errors: Vec<RetryableError>}
 
 /// Retryable error types
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -168,8 +165,7 @@ pub enum RetryableError {
     /// DNS errors
     Dns,
     /// TLS errors
-    Tls,
-}
+    Tls}
 
 impl Default for HttpConfig {
     fn default() -> Self {
@@ -211,8 +207,7 @@ impl Default for HttpConfig {
             metrics_enabled: true,
             tracing_enabled: false,
             connection_reuse: ConnectionReuse::Aggressive,
-            retry_policy: RetryPolicy::default(),
-        }
+            retry_policy: RetryPolicy::default()}
     }
 }
 
@@ -230,8 +225,7 @@ impl Default for RetryPolicy {
                 RetryableError::Timeout,
                 RetryableError::Connection,
                 RetryableError::Dns,
-            ],
-        }
+            ]}
     }
 }
 
@@ -289,9 +283,7 @@ impl HttpConfig {
                     RetryableError::Connection,
                     RetryableError::Dns,
                     RetryableError::Tls,
-                ],
-            },
-        }
+                ]}}
     }
 
     /// Create a new configuration optimized for streaming

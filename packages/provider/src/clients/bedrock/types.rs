@@ -27,15 +27,13 @@ pub struct BedrockClaudeRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_sequences: Option<ArrayVec<&'a str, 4>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub anthropic_version: Option<&'a str>,
-}
+    pub anthropic_version: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockClaudeResponse {
     pub completion: String,
     pub stop_reason: Option<String>,
-    pub stop_sequence: Option<String>,
-}
+    pub stop_sequence: Option<String>}
 
 // ============================================================================
 // Claude Messages API (newer format)
@@ -60,22 +58,19 @@ pub struct BedrockClaudeMessagesRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ArrayVec<BedrockTool<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub anthropic_version: Option<&'a str>,
-}
+    pub anthropic_version: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockClaudeMessage<'a> {
     #[serde(borrow)]
     pub role: &'a str,
-    pub content: BedrockClaudeContent<'a>,
-}
+    pub content: BedrockClaudeContent<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum BedrockClaudeContent<'a> {
     Text(&'a str),
-    Array(ArrayVec<BedrockClaudeContentBlock<'a>, MAX_IMAGES>),
-}
+    Array(ArrayVec<BedrockClaudeContentBlock<'a>, MAX_IMAGES>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -95,8 +90,7 @@ pub enum BedrockClaudeContentBlock<'a> {
         id: &'a str,
         #[serde(borrow)]
         name: &'a str,
-        input: serde_json::Value,
-    },
+        input: serde_json::Value},
     #[serde(rename = "tool_result")]
     ToolResult {
         #[serde(borrow)]
@@ -104,9 +98,7 @@ pub enum BedrockClaudeContentBlock<'a> {
         #[serde(borrow)]
         content: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
-        is_error: Option<bool>,
-    },
-}
+        is_error: Option<bool>}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockImageSource<'a> {
@@ -115,8 +107,7 @@ pub struct BedrockImageSource<'a> {
     #[serde(borrow)]
     pub media_type: &'a str,
     #[serde(borrow)]
-    pub data: &'a str,
-}
+    pub data: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTool<'a> {
@@ -124,8 +115,7 @@ pub struct BedrockTool<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub input_schema: serde_json::Value,
-}
+    pub input_schema: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockClaudeMessagesResponse {
@@ -137,8 +127,7 @@ pub struct BedrockClaudeMessagesResponse {
     pub model: String,
     pub stop_reason: Option<String>,
     pub stop_sequence: Option<String>,
-    pub usage: BedrockUsage,
-}
+    pub usage: BedrockUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -149,9 +138,7 @@ pub enum BedrockClaudeResponseBlock {
     ToolUse {
         id: String,
         name: String,
-        input: serde_json::Value,
-    },
-}
+        input: serde_json::Value}}
 
 // ============================================================================
 // Titan Models (Amazon)
@@ -162,8 +149,7 @@ pub struct BedrockTitanRequest<'a> {
     #[serde(borrow)]
     pub inputText: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub textGenerationConfig: Option<BedrockTitanConfig>,
-}
+    pub textGenerationConfig: Option<BedrockTitanConfig>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTitanConfig {
@@ -174,21 +160,18 @@ pub struct BedrockTitanConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub topP: Option<f32>,
-}
+    pub topP: Option<f32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTitanResponse {
     pub inputTextTokenCount: u32,
-    pub results: ArrayVec<BedrockTitanResult, 8>,
-}
+    pub results: ArrayVec<BedrockTitanResult, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTitanResult {
     pub tokenCount: u32,
     pub outputText: String,
-    pub completionReason: String,
-}
+    pub completionReason: String}
 
 // ============================================================================
 // Titan Embeddings
@@ -201,14 +184,12 @@ pub struct BedrockTitanEmbeddingRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dimensions: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub normalize: Option<bool>,
-}
+    pub normalize: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTitanEmbeddingResponse {
     pub embedding: ArrayVec<f32, 1536>,
-    pub inputTextTokenCount: u32,
-}
+    pub inputTextTokenCount: u32}
 
 // ============================================================================
 // Jurassic Models (AI21)
@@ -231,8 +212,7 @@ pub struct BedrockJurassicRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub presencePenalty: Option<BedrockPenalty>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub frequencyPenalty: Option<BedrockPenalty>,
-}
+    pub frequencyPenalty: Option<BedrockPenalty>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockPenalty {
@@ -246,67 +226,57 @@ pub struct BedrockPenalty {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applyToStopwords: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub applyToEmojis: Option<bool>,
-}
+    pub applyToEmojis: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockJurassicResponse {
     pub id: String,
     pub prompt: BedrockPromptInfo,
-    pub completions: ArrayVec<BedrockJurassicCompletion, 8>,
-}
+    pub completions: ArrayVec<BedrockJurassicCompletion, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockPromptInfo {
     pub text: String,
-    pub tokens: ArrayVec<BedrockToken, 2048>,
-}
+    pub tokens: ArrayVec<BedrockToken, 2048>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockToken {
     pub generatedToken: BedrockGeneratedToken,
     pub topTokens: Option<ArrayVec<BedrockTopToken, 10>>,
-    pub textRange: BedrockTextRange,
-}
+    pub textRange: BedrockTextRange}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockGeneratedToken {
     pub token: String,
     pub logprob: f32,
-    pub raw_logprob: f32,
-}
+    pub raw_logprob: f32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTopToken {
     pub token: String,
     pub logprob: f32,
-    pub raw_logprob: f32,
-}
+    pub raw_logprob: f32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTextRange {
     pub start: u32,
-    pub end: u32,
-}
+    pub end: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockJurassicCompletion {
     pub data: BedrockCompletionData,
-    pub finishReason: BedrockFinishReason,
-}
+    pub finishReason: BedrockFinishReason}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockCompletionData {
     pub text: String,
-    pub tokens: ArrayVec<BedrockToken, 2048>,
-}
+    pub tokens: ArrayVec<BedrockToken, 2048>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockFinishReason {
     pub reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub length: Option<u32>,
-}
+    pub length: Option<u32>}
 
 // ============================================================================
 // Command Models (Cohere on Bedrock)
@@ -335,16 +305,14 @@ pub struct BedrockCommandRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logit_bias: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub truncate: Option<&'a str>,
-}
+    pub truncate: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockCommandResponse {
     pub generations: ArrayVec<BedrockGeneration, 8>,
     pub prompt: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
+    pub id: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockGeneration {
@@ -354,14 +322,12 @@ pub struct BedrockGeneration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub likelihood: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub token_likelihoods: Option<ArrayVec<BedrockTokenLikelihood, 2048>>,
-}
+    pub token_likelihoods: Option<ArrayVec<BedrockTokenLikelihood, 2048>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockTokenLikelihood {
     pub token: String,
-    pub likelihood: f32,
-}
+    pub likelihood: f32}
 
 // ============================================================================
 // Llama Models (Meta on Bedrock)  
@@ -376,16 +342,14 @@ pub struct BedrockLlamaRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub top_p: Option<f32>,
-}
+    pub top_p: Option<f32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockLlamaResponse {
     pub generation: String,
     pub prompt_token_count: u32,
     pub generation_token_count: u32,
-    pub stop_reason: String,
-}
+    pub stop_reason: String}
 
 // ============================================================================
 // Common Structures
@@ -394,15 +358,13 @@ pub struct BedrockLlamaResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockUsage {
     pub input_tokens: u32,
-    pub output_tokens: u32,
-}
+    pub output_tokens: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockErrorResponse {
     pub message: String,
     #[serde(rename = "type")]
-    pub error_type: String,
-}
+    pub error_type: String}
 
 // ============================================================================
 // Streaming Support
@@ -413,32 +375,26 @@ pub struct BedrockErrorResponse {
 pub enum BedrockStreamingChunk {
     #[serde(rename = "message_start")]
     MessageStart {
-        message: BedrockStreamingMessage,
-    },
+        message: BedrockStreamingMessage},
     #[serde(rename = "content_block_start")]
     ContentBlockStart {
         index: u32,
-        content_block: BedrockStreamingContentBlock,
-    },
+        content_block: BedrockStreamingContentBlock},
     #[serde(rename = "ping")]
     Ping,
     #[serde(rename = "content_block_delta")]
     ContentBlockDelta {
         index: u32,
-        delta: BedrockStreamingDelta,
-    },
+        delta: BedrockStreamingDelta},
     #[serde(rename = "content_block_stop")]
     ContentBlockStop {
-        index: u32,
-    },
+        index: u32},
     #[serde(rename = "message_delta")]
     MessageDelta {
         delta: BedrockMessageDelta,
-        usage: BedrockUsage,
-    },
+        usage: BedrockUsage},
     #[serde(rename = "message_stop")]
-    MessageStop,
-}
+    MessageStop}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockStreamingMessage {
@@ -450,8 +406,7 @@ pub struct BedrockStreamingMessage {
     pub model: String,
     pub stop_reason: Option<String>,
     pub stop_sequence: Option<String>,
-    pub usage: BedrockUsage,
-}
+    pub usage: BedrockUsage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -462,9 +417,7 @@ pub enum BedrockStreamingContentBlock {
     ToolUse {
         id: String,
         name: String,
-        input: serde_json::Value,
-    },
-}
+        input: serde_json::Value}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -472,14 +425,12 @@ pub enum BedrockStreamingDelta {
     #[serde(rename = "text_delta")]
     TextDelta { text: String },
     #[serde(rename = "input_json_delta")]
-    InputJsonDelta { partial_json: String },
-}
+    InputJsonDelta { partial_json: String }}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BedrockMessageDelta {
     pub stop_reason: String,
-    pub stop_sequence: Option<String>,
-}
+    pub stop_sequence: Option<String>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -494,8 +445,7 @@ impl<'a> BedrockClaudeRequest<'a> {
             top_p: None,
             top_k: None,
             stop_sequences: None,
-            anthropic_version: Some("bedrock-2023-05-31"),
-        }
+            anthropic_version: Some("bedrock-2023-05-31")}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {
@@ -525,8 +475,7 @@ impl<'a> BedrockClaudeMessagesRequest<'a> {
             stop_sequences: None,
             system: None,
             tools: None,
-            anthropic_version: Some("bedrock-2023-05-31"),
-        }
+            anthropic_version: Some("bedrock-2023-05-31")}
     }
 
     pub fn add_message(mut self, role: &'a str, content: BedrockClaudeContent<'a>) -> Self {
@@ -556,8 +505,7 @@ impl<'a> BedrockTitanRequest<'a> {
     pub fn new(input_text: &'a str) -> Self {
         Self {
             inputText: input_text,
-            textGenerationConfig: None,
-        }
+            textGenerationConfig: None}
     }
 
     pub fn with_config(mut self, config: BedrockTitanConfig) -> Self {
@@ -572,8 +520,7 @@ impl BedrockTitanConfig {
             maxTokenCount: None,
             stopSequences: None,
             temperature: None,
-            topP: None,
-        }
+            topP: None}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {
@@ -597,8 +544,7 @@ impl<'a> BedrockJurassicRequest<'a> {
             stopSequences: None,
             countPenalty: None,
             presencePenalty: None,
-            frequencyPenalty: None,
-        }
+            frequencyPenalty: None}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {
@@ -625,8 +571,7 @@ impl<'a> BedrockCommandRequest<'a> {
             stream: None,
             num_generations: None,
             logit_bias: None,
-            truncate: None,
-        }
+            truncate: None}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {
@@ -651,8 +596,7 @@ impl<'a> BedrockLlamaRequest<'a> {
             prompt,
             max_gen_len: None,
             temperature: None,
-            top_p: None,
-        }
+            top_p: None}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {

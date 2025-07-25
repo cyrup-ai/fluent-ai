@@ -37,18 +37,15 @@ pub use common::models::{Model, ModelType};
 pub use common::types::{CommitteeConfig, ConsensusDecision};
 pub use evolution::{
     CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, Innovation,
-    InnovationType, PerformanceMetrics,
-};
+    InnovationType, PerformanceMetrics};
 pub use manager::CognitiveMemoryManager;
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;
 pub use quantum_mcts::{
-    AtomicQuantumMetrics, QuantumMCTS, QuantumMCTSNode, QuantumNodeState, QuantumTreeStatistics,
-};
+    AtomicQuantumMetrics, QuantumMCTS, QuantumMCTSNode, QuantumNodeState, QuantumTreeStatistics};
 pub use quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator, RecursiveState};
 pub use state::CognitiveState;
 pub use types::{
     CognitiveError, CognitiveMemoryNode, CognitiveSettings, EvolutionMetadata, ImpactFactors,
     OptimizationOutcome, OptimizationSpec, OptimizationType, PendingOptimizationResult,
-    QuantumSignature,
-};
+    QuantumSignature};

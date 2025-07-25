@@ -279,21 +279,18 @@ impl LinuxRamdisk {
                         .output()
                     {
                         Ok(output) => String::from_utf8_lossy(&output.stdout).trim().to_string(),
-                        Err(_) => format!("{}", uid),
-                    };
+                        Err(_) => format!("{}", uid)};
 
                     let groupname = match std::process::Command::new("id")
                         .args(["-ng", &gid.to_string()])
                         .output()
                     {
                         Ok(output) => String::from_utf8_lossy(&output.stdout).trim().to_string(),
-                        Err(_) => format!("{}", gid),
-                    };
+                        Err(_) => format!("{}", gid)};
 
                     (username, groupname)
                 }
-                Err(_) => ("$USER".to_string(), "$GROUP".to_string()),
-            };
+                Err(_) => ("$USER".to_string(), "$GROUP".to_string())};
 
             // Try to create the directories ourselves with sudo
             info!("\nSecure code execution requires creating an isolated ramdisk environment.");
@@ -399,8 +396,7 @@ impl LinuxRamdisk {
                                 Ok(output) => {
                                     String::from_utf8_lossy(&output.stdout).trim().to_string()
                                 }
-                                Err(_) => format!("{}", uid),
-                            };
+                                Err(_) => format!("{}", uid)};
 
                             let groupname = match std::process::Command::new("id")
                                 .args(["-ng", &gid.to_string()])
@@ -409,13 +405,11 @@ impl LinuxRamdisk {
                                 Ok(output) => {
                                     String::from_utf8_lossy(&output.stdout).trim().to_string()
                                 }
-                                Err(_) => format!("{}", gid),
-                            };
+                                Err(_) => format!("{}", gid)};
 
                             (username, groupname)
                         }
-                        Err(_) => ("$USER".to_string(), "$GROUP".to_string()),
-                    };
+                        Err(_) => ("$USER".to_string(), "$GROUP".to_string())};
 
                     // Try to create the directory ourselves with sudo
                     info!("\nSecure code execution requires creating an isolated ramdisk environment.");
@@ -586,21 +580,18 @@ impl LinuxRamdisk {
                         .output()
                     {
                         Ok(output) => String::from_utf8_lossy(&output.stdout).trim().to_string(),
-                        Err(_) => format!("{}", uid),
-                    };
+                        Err(_) => format!("{}", uid)};
 
                     let groupname = match std::process::Command::new("id")
                         .args(["-ng", &gid.to_string()])
                         .output()
                     {
                         Ok(output) => String::from_utf8_lossy(&output.stdout).trim().to_string(),
-                        Err(_) => format!("{}", gid),
-                    };
+                        Err(_) => format!("{}", gid)};
 
                     (username, groupname)
                 }
-                Err(_) => ("$USER".to_string(), "$GROUP".to_string()),
-            };
+                Err(_) => ("$USER".to_string(), "$GROUP".to_string())};
 
             // Try to create the directories ourselves with sudo
             info!("\nSecure code execution requires creating an isolated ramdisk environment.");
@@ -769,8 +760,7 @@ impl LinuxRamdisk {
                     false
                 }
             }
-            Err(_) => false,
-        }
+            Err(_) => false}
     }
 
     // Keep these helper functions from the old code
@@ -823,8 +813,7 @@ impl crate::platform::RamdiskPlatform for LinuxRamdisk {
 
         let unmount_success = match status {
             Ok(status) => status.success(),
-            Err(_) => false,
-        };
+            Err(_) => false};
 
         // If that fails, try with sudo
         if !unmount_success {

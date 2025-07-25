@@ -6,21 +6,17 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::HashMap;
-
 use super::client::Client;
 use super::streaming;
 use crate::{
     OneOrMany,
     completion::{
-        self, AssistantContent, CompletionError, CompletionRequest, Message as CompletionMessage,
-    },
+        self, AssistantContent, CompletionError, CompletionRequest, Message as CompletionMessage},
     embeddings::{self, Embedding, EmbeddingError, EmbeddingModel as EmbeddingModelTrait},
     json_util,
     message::{self, Message, MessageError, Text, ToolResultContent, UserContent},
     runtime::{self, AsyncTask},
-    streaming::StreamingCompletionResponse,
-};
+    streaming::StreamingCompletionResponse};
 use fluent_ai_http3::{Http3, HttpStreamExt, header};
 
 // ============================================================================
@@ -40,15 +36,13 @@ pub const NOMIC_EMBED_TEXT: &str = "nomic-embed-text";
 // ============================================================================
 #[derive(Debug, Deserialize)]
 struct ApiErrorResponse {
-    message: String,
-}
+    message: String}
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 // ============================================================================
 // Completion Response
@@ -72,8 +66,7 @@ pub struct CompletionResponse {
     #[serde(default)]
     pub eval_count: Option<u64>,
     #[serde(default)]
-    pub eval_duration: Option<u64>,
-}
+    pub eval_duration: Option<u64>}
 
 impl TryFrom<CompletionResponse> for completion::CompletionResponse {
     type Error = CompletionError;
@@ -118,18 +111,14 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
                         content,
                         images: None,
                         name: None,
-                        tool_calls,
-                    },
-                };
+                        tool_calls}};
                 Ok(completion::CompletionResponse {
                     choice,
-                    raw_response,
-                })
+                    raw_response})
             }
             _ => Err(CompletionError::ResponseError(
                 "Chat response does not include an assistant message".into(),
-            )),
-        }
+            ))}
     }
 }
 
@@ -141,8 +130,7 @@ impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_owned(),
-        }
+            model: model.to_owned()}
     }
 
     pub(crate) fn create_completion_request(
@@ -185,8 +173,7 @@ impl CompletionModel {
             "model": self.model,
             "messages": full_history,
             "options": options,
-            "stream": false,
-        });
+            "stream": false});
         if !completion_request.tools.is_empty() {
             request_payload["tools"] = json!(
                 completion_request
@@ -284,16 +271,14 @@ impl completion::CompletionModel for CompletionModel {
 pub struct OllamaEmbeddingModel {
     client: Client,
     model: String,
-    ndims: usize,
-}
+    ndims: usize}
 
 impl EmbeddingModel {
     pub fn new(client: Client, model: &str, ndims: usize) -> Self {
         Self {
             client,
             model: model.to_owned(),
-            ndims,
-        }
+            ndims}
     }
 }
 
@@ -306,8 +291,7 @@ pub struct EmbeddingResponse {
     #[serde(default)]
     pub load_duration: Option<u64>,
     #[serde(default)]
-    pub prompt_eval_count: Option<u64>,
-}
+    pub prompt_eval_count: Option<u64>}
 
 impl From<ApiErrorResponse> for EmbeddingError {
     fn from(err: ApiErrorResponse) -> Self {
@@ -319,8 +303,7 @@ impl From<ApiResponse<EmbeddingResponse>> for Result<EmbeddingResponse, Embeddin
     fn from(value: ApiResponse<EmbeddingResponse>) -> Self {
         match value {
             ApiResponse::Ok(response) => Ok(response),
-            ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
-        }
+            ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message))}
     }
 }
 
@@ -343,8 +326,7 @@ impl EmbeddingModelTrait for EmbeddingModel {
         runtime::spawn_async(async move {
             let payload = json!({
                 "model": model,
-                "input": docs.clone(),
-            });
+                "input": docs.clone()});
 
             let response = client.post("api/embed").json(&payload).send().await;
 
@@ -366,17 +348,14 @@ impl EmbeddingModelTrait for EmbeddingModel {
                                         .collect())
                                 }
                             }
-                            Err(e) => Err(EmbeddingError::ProviderError(e.to_string())),
-                        }
+                            Err(e) => Err(EmbeddingError::ProviderError(e.to_string()))}
                     } else {
                         match response.text().await {
                             Ok(text) => Err(EmbeddingError::ProviderError(text)),
-                            Err(e) => Err(EmbeddingError::ProviderError(e.to_string())),
-                        }
+                            Err(e) => Err(EmbeddingError::ProviderError(e.to_string()))}
                     }
                 }
-                Err(e) => Err(EmbeddingError::ProviderError(e.to_string())),
-            };
+                Err(e) => Err(EmbeddingError::ProviderError(e.to_string()))};
 
             tx.finish(result);
         });
@@ -394,8 +373,7 @@ impl EmbeddingModelTrait for EmbeddingModel {
 pub struct ToolDefinition {
     #[serde(rename = "type")]
     pub type_field: String, // Fixed as "function"
-    pub function: completion::ToolDefinition,
-}
+    pub function: completion::ToolDefinition}
 
 /// Convert internal ToolDefinition (from the completion module) into Ollama's tool definition.
 impl From<completion::ToolDefinition> for ToolDefinition {
@@ -405,9 +383,7 @@ impl From<completion::ToolDefinition> for ToolDefinition {
             function: completion::ToolDefinition {
                 name: tool.name,
                 description: tool.description,
-                parameters: tool.parameters,
-            },
-        }
+                parameters: tool.parameters}}
     }
 }
 
@@ -416,21 +392,18 @@ pub struct ToolCall {
     // pub id: String,
     #[serde(default, rename = "type")]
     pub r#type: ToolType,
-    pub function: Function,
-}
+    pub function: Function}
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolType {
     #[default]
-    Function,
-}
+    Function}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Function {
     pub name: String,
-    pub arguments: Value,
-}
+    pub arguments: Value}
 
 // ============================================================================
 // Provider Message Definition
@@ -443,8 +416,7 @@ pub enum ProviderMessage {
         #[serde(skip_serializing_if = "Option::is_none")]
         images: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        name: Option<String>,
-    },
+        name: Option<String>},
     Assistant {
         #[serde(default)]
         content: String,
@@ -453,18 +425,15 @@ pub enum ProviderMessage {
         #[serde(skip_serializing_if = "Option::is_none")]
         name: Option<String>,
         #[serde(default, deserialize_with = "json_util::null_or_vec")]
-        tool_calls: Vec<ToolCall>,
-    },
+        tool_calls: Vec<ToolCall>},
     System {
         content: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         images: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        name: Option<String>,
-    },
+        name: Option<String>},
     #[serde(rename = "tool")]
-    ToolResult { name: String, content: String },
-}
+    ToolResult { name: String, content: String }}
 
 /// Conversion from an internal Rig message (fluent_ai_domain::message::Message) to a provider Message.
 /// (Only User and Assistant variants are supported.)
@@ -495,8 +464,7 @@ impl TryFrom<Message> for ProviderMessage {
 
                             return Ok(ProviderMessage::ToolResult {
                                 name: result.id,
-                                content: content.first().text,
-                            });
+                                content: content.first().text});
                         }
                         _ => {} // Audio variant removed since Ollama API does not support it.
                     }
@@ -510,8 +478,7 @@ impl TryFrom<Message> for ProviderMessage {
                 Ok(ProviderMessage::User {
                     content: content_str,
                     images: images_opt,
-                    name: None,
-                })
+                    name: None})
             }
             Message::Assistant { content, .. } => {
                 let mut texts = Vec::new();
@@ -524,9 +491,7 @@ impl TryFrom<Message> for ProviderMessage {
                                 r#type: ToolType::Function, // Assuming internal tool call provides these fields
                                 function: Function {
                                     name: tc.function.name,
-                                    arguments: tc.function.arguments,
-                                },
-                            });
+                                    arguments: tc.function.arguments}});
                         }
                     }
                 }
@@ -535,8 +500,7 @@ impl TryFrom<Message> for ProviderMessage {
                     content: content_str,
                     images: None,
                     name: None,
-                    tool_calls,
-                })
+                    tool_calls})
             }
         }
     }
@@ -548,8 +512,7 @@ impl From<ProviderMessage> for CompletionMessage {
     fn from(msg: ProviderMessage) -> Self {
         match msg {
             ProviderMessage::User { content, .. } => CompletionMessage::User {
-                content: OneOrMany::one(message::UserContent::Text(Text { text: content })),
-            },
+                content: OneOrMany::one(message::UserContent::Text(Text { text: content }))},
             ProviderMessage::Assistant {
                 content,
                 tool_calls,
@@ -570,20 +533,16 @@ impl From<ProviderMessage> for CompletionMessage {
                             "Failed to create assistant content: {}",
                             e
                         ))
-                    })?,
-                }
+                    })?}
             }
             // System and ToolResult are converted to User message as needed.
             ProviderMessage::System { content, .. } => CompletionMessage::User {
-                content: OneOrMany::one(message::UserContent::Text(Text { text: content })),
-            },
+                content: OneOrMany::one(message::UserContent::Text(Text { text: content }))},
             ProviderMessage::ToolResult { name, content } => CompletionMessage::User {
                 content: OneOrMany::one(message::UserContent::tool_result(
                     name,
                     OneOrMany::one(message::ToolResultContent::Text(Text { text: content })),
-                )),
-            },
-        }
+                ))}}
     }
 }
 
@@ -593,8 +552,7 @@ impl ProviderMessage {
         ProviderMessage::System {
             content: content.to_owned(),
             images: None,
-            name: None,
-        }
+            name: None}
     }
 }
 
@@ -603,8 +561,7 @@ impl ProviderMessage {
 // ============================================================================
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OllamaToolResultContent {
-    text: String,
-}
+    text: String}
 
 impl TryFrom<ToolResultContent> for OllamaToolResultContent {
     type Error = MessageError;

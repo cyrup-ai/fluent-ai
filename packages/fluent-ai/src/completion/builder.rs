@@ -16,11 +16,9 @@ use serde_json::json;
 use crate::{
     completion::message::Message,
     completion::{
-        CompletionError, CompletionRequest, CompletionRequestBuilder, PromptError, ToolDefinition,
-    },
+        CompletionError, CompletionRequest, CompletionRequestBuilder, PromptError, ToolDefinition},
     runtime::{self, AsyncTask},
-    streaming,
-};
+    streaming};
 
 /// ------------------------------------------------------------
 /// Typestate markers
@@ -45,8 +43,7 @@ pub struct CompletionBuilder<M, S> {
     prompt_enhancements: Vec<&'static str>,
     extra_params: serde_json::Value,
     prompt: Option<Message>,
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ---------------------------------------------------------------------
 // 1. Bare-bones constructor + default_builder with sensible switches
@@ -67,8 +64,7 @@ impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
             prompt_enhancements: Vec::new(),
             extra_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 }
 
@@ -157,8 +153,7 @@ impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
             cache_control: self.cache_control,
             prompt_enhancements: self.prompt_enhancements,
             extra_params: self.extra_params,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 }
 

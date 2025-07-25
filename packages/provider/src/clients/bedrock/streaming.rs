@@ -33,8 +33,7 @@ pub struct BedrockStream {
     /// Finish reason when stream ends
     finish_reason: Option<String>,
     /// Whether stream has finished
-    finished: bool,
-}
+    finished: bool}
 
 impl BedrockStream {
     /// Create new Bedrock stream from HTTP response
@@ -46,8 +45,7 @@ impl BedrockStream {
             delta_buffer: String::new(),
             usage: None,
             finish_reason: None,
-            finished: false,
-        }
+            finished: false}
     }
 
     /// Convert to async stream of completion chunks
@@ -76,8 +74,7 @@ impl BedrockStream {
                             finish_reason: Some("error".to_string()),
                             usage: self.usage.clone(),
                             model: Some(self.model.to_string()),
-                            delta: None,
-                        };
+                            delta: None};
                         chunks.push_back(error_chunk);
                         break;
                     }
@@ -95,8 +92,7 @@ impl BedrockStream {
                     finish_reason: self.finish_reason.or_else(|| Some("stop".to_string())),
                     usage: self.usage,
                     model: Some(self.model.to_string()),
-                    delta: None,
-                };
+                    delta: None};
                 chunks.push_back(final_chunk);
             }
 
@@ -154,8 +150,7 @@ impl BedrockStream {
                 finish_reason: None,
                 usage: None,
                 model: Some(self.model.to_string()),
-                delta: Some(text.to_string()),
-            });
+                delta: Some(text.to_string())});
         }
 
         None
@@ -175,8 +170,7 @@ impl BedrockStream {
                 finish_reason: None,
                 usage: None,
                 model: Some(self.model.to_string()),
-                delta: None,
-            });
+                delta: None});
         }
 
         None
@@ -198,8 +192,7 @@ impl BedrockStream {
                 finish_reason: None,
                 usage: None,
                 model: Some(self.model.to_string()),
-                delta: Some(text.to_string()),
-            });
+                delta: Some(text.to_string())});
         }
 
         None
@@ -225,8 +218,7 @@ impl BedrockStream {
             finish_reason: Some(finish_reason.to_string()),
             usage: self.usage.clone(),
             model: Some(self.model.to_string()),
-            delta: None,
-        })
+            delta: None})
     }
 
     /// Process metadata event (usage statistics)
@@ -248,16 +240,14 @@ impl BedrockStream {
             self.usage = Some(Usage {
                 prompt_tokens: input_tokens,
                 completion_tokens: output_tokens,
-                total_tokens,
-            });
+                total_tokens});
 
             return Some(CompletionChunk {
                 content: None,
                 finish_reason: None,
                 usage: self.usage.clone(),
                 model: Some(self.model.to_string()),
-                delta: None,
-            });
+                delta: None});
         }
 
         None
@@ -298,8 +288,7 @@ impl BedrockStream {
                             finish_reason: None,
                             usage: None,
                             model: Some(self.model.to_string()),
-                            delta: Some(text.to_string()),
-                        });
+                            delta: Some(text.to_string())});
                     }
                 }
             }
@@ -321,8 +310,7 @@ impl BedrockStream {
                     finish_reason: Some(reason.to_string()),
                     usage: self.usage.clone(),
                     model: Some(self.model.to_string()),
-                    delta: None,
-                });
+                    delta: None});
             }
         }
 
@@ -356,8 +344,7 @@ mod tests {
             delta_buffer: String::new(),
             usage: None,
             finish_reason: None,
-            finished: false,
-        };
+            finished: false};
 
         let test_json = br#"{"delta": {"text": "Hello"}}"#;
         let parsed = stream.parse_event_data(test_json);

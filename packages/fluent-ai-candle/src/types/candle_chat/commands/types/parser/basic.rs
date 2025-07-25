@@ -28,9 +28,7 @@ impl BasicCommandParser {
             "load" => Self::parse_load_command(args),
             "import" => Self::parse_import_command(args),
             _ => Err(CommandError::UnknownCommand {
-                command: command_name.to_string(),
-            }),
-        }
+                command: command_name.to_string()})}
     }
 
     /// Parse help command
@@ -81,8 +79,7 @@ impl BasicCommandParser {
         Ok(ImmutableChatCommand::Export {
             format,
             output,
-            include_metadata,
-        })
+            include_metadata})
     }
 
     /// Parse config command
@@ -103,8 +100,7 @@ impl BasicCommandParser {
             key,
             value,
             show,
-            reset,
-        })
+            reset})
     }
 
     /// Parse settings command
@@ -126,8 +122,7 @@ impl BasicCommandParser {
             key,
             value,
             show,
-            reset,
-        })
+            reset})
     }
 
     /// Parse history command
@@ -160,8 +155,7 @@ impl BasicCommandParser {
         Ok(ImmutableChatCommand::History {
             action,
             limit,
-            filter,
-        })
+            filter})
     }
 
     /// Parse save command
@@ -183,8 +177,7 @@ impl BasicCommandParser {
         Ok(ImmutableChatCommand::Save {
             name,
             include_config,
-            location,
-        })
+            location})
     }
 
     /// Parse load command
@@ -207,8 +200,7 @@ impl BasicCommandParser {
         Ok(ImmutableChatCommand::Load {
             name,
             merge,
-            location,
-        })
+            location})
     }
 
     /// Parse import command
@@ -237,7 +229,6 @@ impl BasicCommandParser {
         Ok(ImmutableChatCommand::Import {
             import_type,
             source,
-            options,
-        })
+            options})
     }
 }

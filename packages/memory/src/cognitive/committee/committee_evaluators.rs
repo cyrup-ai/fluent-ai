@@ -4,19 +4,16 @@
 //! completion providers to perform assessment tasks. Each evaluator manages a single
 //! model instance and handles prompt generation, response parsing, and error recovery.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use arrayvec::ArrayVec;
 // AtomicCounter trait no longer needed since we use local RelaxedCounter
 use crossbeam_queue::SegQueue;
 // Use domain types for traits and models
 use fluent_ai_domain::{
     chat::Message,
-    completion::{CompletionError, CompletionProvider},
-};
+    completion::{CompletionError, CompletionProvider}};
 // Use provider clients for completion services
 use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
 use tokio::sync::{RwLock, Semaphore};
@@ -24,12 +21,10 @@ use uuid::Uuid;
 
 pub use super::committee_types::{
     CommitteeError, CommitteeEvaluation, CommitteeResult, EvaluationPrompt, HealthStatus,
-    MAX_COMMITTEE_SIZE, Model, ModelMetrics, ModelType, QualityTier,
-};
+    MAX_COMMITTEE_SIZE, Model, ModelMetrics, ModelType, QualityTier};
 // Import additional types for zero allocation patterns
 pub use crate::cognitive::committee::committee_evaluators_extension::{
-    EvaluationSessionMetrics, EvaluationTask, EvaluatorPoolMetrics,
-};
+    EvaluationSessionMetrics, EvaluationTask, EvaluatorPoolMetrics};
 use crate::cognitive::types::OptimizationSpec;
 
 /// Individual provider evaluator managing a single model instance
@@ -44,8 +39,7 @@ pub struct ProviderEvaluator {
     /// Performance tracking
     metrics: Arc<RwLock<ModelMetrics>>,
     /// Health monitoring
-    health_status: Arc<RwLock<HealthStatus>>,
-}
+    health_status: Arc<RwLock<HealthStatus>>}
 
 impl ProviderEvaluator {
     /// Create a new provider evaluator instance
@@ -63,8 +57,7 @@ impl ProviderEvaluator {
         let provider = Self::create_provider(&model_type).await.map_err(|e| {
             CommitteeError::ProviderError {
                 model_type: model_type.clone(),
-                source: e,
-            }
+                source: e}
         })?;
 
         let model = Model {
@@ -76,8 +69,7 @@ impl ProviderEvaluator {
             rate_limit_per_minute: 60,
             provider,
             health_status: Arc::new(RwLock::new(HealthStatus::default())),
-            metrics: Arc::new(RwLock::new(ModelMetrics::default())),
-        };
+            metrics: Arc::new(RwLock::new(ModelMetrics::default()))};
 
         let evaluator_id = format!(
             "{}-{}",
@@ -90,8 +82,7 @@ impl ProviderEvaluator {
             evaluator_id,
             request_limiter: Arc::new(Semaphore::new(max_concurrent_requests)),
             metrics: Arc::new(RwLock::new(ModelMetrics::default())),
-            health_status: Arc::new(RwLock::new(HealthStatus::default())),
-        })
+            health_status: Arc::new(RwLock::new(HealthStatus::default()))})
     }
 
     /// Perform evaluation of an optimization proposal
@@ -119,16 +110,14 @@ impl ProviderEvaluator {
                 .acquire()
                 .await
                 .map_err(|_| CommitteeError::ModelUnavailable {
-                    model_type: self.model.model_type.clone(),
-                })?;
+                    model_type: self.model.model_type.clone()})?;
 
         // Check health status
         {
             let health = self.health_status.read().await;
             if !health.is_available {
                 return Err(CommitteeError::ModelUnavailable {
-                    model_type: self.model.model_type.clone(),
-                });
+                    model_type: self.model.model_type.clone()});
             }
         }
 
@@ -159,8 +148,7 @@ impl ProviderEvaluator {
             Err(_) => {
                 self.update_error_metrics().await;
                 Err(CommitteeError::EvaluationTimeout {
-                    timeout_ms: timeout.as_millis() as u64,
-                })
+                    timeout_ms: timeout.as_millis() as u64})
             }
         }
     }
@@ -245,8 +233,7 @@ impl ProviderEvaluator {
                 model_type: self.model.model_type.clone(),
                 source: Box::new(CompletionError::ProviderUnavailable(
                     "Empty response from provider".to_string(),
-                )),
-            })
+                ))})
         } else {
             Ok(result)
         }
@@ -284,8 +271,7 @@ impl ProviderEvaluator {
             implementation_quality,
             risk_assessment,
             makes_progress,
-            evaluation_time: evaluation_time.as_micros() as u64,
-        })
+            evaluation_time: evaluation_time.as_micros() as u64})
     }
 
     /// Extract evaluation components from response text
@@ -394,8 +380,7 @@ impl ProviderEvaluator {
             QualityTier::Premium => 0.9,
             QualityTier::Basic => 0.65,
             QualityTier::Standard => 0.75,
-            QualityTier::Experimental => 0.55,
-        };
+            QualityTier::Experimental => 0.55};
 
         // Adjust based on response length and detail
         if reasoning.len() > 100 {
@@ -460,8 +445,7 @@ pub struct EvaluatorPool {
     /// Lock-free task queue for evaluator distribution (TODO: Implement distributed task system)
     _task_queue: SegQueue<EvaluationTask>,
     /// Pool metrics with atomic counters
-    metrics: EvaluatorPoolMetrics,
-}
+    metrics: EvaluatorPoolMetrics}
 
 impl EvaluatorPool {
     /// Create a new evaluator pool with zero allocation
@@ -471,8 +455,7 @@ impl EvaluatorPool {
             evaluators: HashMap::new(),
             round_robin_indices: HashMap::new(),
             _task_queue: SegQueue::new(),
-            metrics: EvaluatorPoolMetrics::new(),
-        }
+            metrics: EvaluatorPoolMetrics::new()}
     }
 
     /// Add evaluator to the pool with zero allocation
@@ -489,8 +472,7 @@ impl EvaluatorPool {
             .or_insert_with(ArrayVec::new);
         if evaluators.is_full() {
             return Err(CommitteeError::ResourceExhausted {
-                resource: "evaluator pool capacity".into(),
-            });
+                resource: "evaluator pool capacity".into()});
         }
         evaluators.push(evaluator);
 
@@ -556,8 +538,7 @@ pub struct EvaluationSession {
     /// Session timeout
     timeout: Duration,
     /// Session metrics with atomic counters
-    metrics: EvaluationSessionMetrics,
-}
+    metrics: EvaluationSessionMetrics}
 
 impl EvaluationSession {
     /// Create a new evaluation session with zero allocation
@@ -569,16 +550,14 @@ impl EvaluationSession {
         if evaluators.is_empty() {
             return Err(CommitteeError::InsufficientMembers {
                 available: 0,
-                required: 1,
-            });
+                required: 1});
         }
 
         Ok(Self {
             evaluators,
             start_time: Instant::now(),
             timeout,
-            metrics: EvaluationSessionMetrics::new(),
-        })
+            metrics: EvaluationSessionMetrics::new()})
     }
 
     /// Run evaluation across all session evaluators with zero allocation

@@ -1,7 +1,5 @@
 //! Metrics collection and export
 
-use std::collections::HashMap;
-
 use prometheus::{self, Counter, Gauge, Histogram, HistogramOpts, Registry};
 
 /// Metric types
@@ -9,29 +7,25 @@ use prometheus::{self, Counter, Gauge, Histogram, HistogramOpts, Registry};
 pub enum MetricType {
     Counter,
     Gauge,
-    Histogram,
-}
+    Histogram}
 
 /// Metric value
 #[derive(Debug, Clone)]
 pub enum MetricValue {
     Counter(f64),
     Gauge(f64),
-    Histogram(f64),
-}
+    Histogram(f64)}
 
 /// Metrics collector
 pub struct MetricsCollector {
     /// Registered metrics
-    metrics: HashMap<String, Box<dyn Metric>>,
-}
+    metrics: HashMap<String, Box<dyn Metric>>}
 
 impl MetricsCollector {
     /// Create a new collector
     pub fn new() -> Self {
         Self {
-            metrics: HashMap::new(),
-        }
+            metrics: HashMap::new()}
     }
 
     /// Register a metric
@@ -77,8 +71,7 @@ pub trait Metric: Send + Sync {
 pub struct CounterMetric {
     counter: Counter,
     #[allow(dead_code)]
-    registry: Registry,
-}
+    registry: Registry}
 
 impl CounterMetric {
     pub fn new(name: &str, help: &str) -> Self {
@@ -134,8 +127,7 @@ impl Metric for CounterMetric {
 pub struct GaugeMetric {
     gauge: Gauge,
     #[allow(dead_code)]
-    registry: Registry,
-}
+    registry: Registry}
 
 impl GaugeMetric {
     pub fn new(name: &str, help: &str) -> Self {
@@ -191,8 +183,7 @@ impl Metric for GaugeMetric {
 pub struct HistogramMetric {
     histogram: Histogram,
     #[allow(dead_code)]
-    registry: Registry,
-}
+    registry: Registry}
 
 impl HistogramMetric {
     pub fn new(name: &str, help: &str) -> Self {
@@ -232,8 +223,7 @@ impl HistogramMetric {
 
         Self {
             histogram,
-            registry,
-        }
+            registry}
     }
 }
 
@@ -269,8 +259,7 @@ mod tests {
         let value = counter.value();
         match value {
             MetricValue::Counter(val) => assert!(val >= 0.0),
-            _ => panic!("Expected Counter value"),
-        }
+            _ => panic!("Expected Counter value")}
     }
 
     #[test]
@@ -286,8 +275,7 @@ mod tests {
         let value = gauge.value();
         match value {
             MetricValue::Gauge(_) => {} // Value can be any float
-            _ => panic!("Expected Gauge value"),
-        }
+            _ => panic!("Expected Gauge value")}
     }
 
     #[test]
@@ -304,8 +292,7 @@ mod tests {
         let value = histogram.value();
         match value {
             MetricValue::Histogram(val) => assert!(val >= 0.0),
-            _ => panic!("Expected Histogram value"),
-        }
+            _ => panic!("Expected Histogram value")}
     }
 
     #[test]

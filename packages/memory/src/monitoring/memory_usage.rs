@@ -23,8 +23,7 @@ pub struct MemoryUsageStats {
     pub total_storage_size: u64,
 
     /// Cache statistics
-    pub cache_stats: CacheStats,
-}
+    pub cache_stats: CacheStats}
 
 /// Cache statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,15 +41,13 @@ pub struct CacheStats {
     pub size_bytes: u64,
 
     /// Number of entries
-    pub entry_count: u64,
-}
+    pub entry_count: u64}
 
 /// Memory usage monitor
 pub struct MemoryUsageMonitor {
     start_time: Instant,
     cache_hits: u64,
-    cache_misses: u64,
-}
+    cache_misses: u64}
 
 impl MemoryUsageMonitor {
     /// Create a new monitor
@@ -58,8 +55,7 @@ impl MemoryUsageMonitor {
         Self {
             start_time: Instant::now(),
             cache_hits: 0,
-            cache_misses: 0,
-        }
+            cache_misses: 0}
     }
 
     /// Record a cache hit

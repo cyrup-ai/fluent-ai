@@ -6,7 +6,7 @@
 use crate::clients::vertexai::{VertexAIError, VertexAIResult};
 use crate::models::Models;
 use crate::providers::Providers;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use crossbeam_skiplist::SkipMap;
 use cyrup_sugars::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
@@ -50,8 +50,7 @@ pub struct ModelCapabilities {
     pub supports_json_mode: bool,
     
     /// Supports reasoning/thinking
-    pub supports_thinking: bool,
-}
+    pub supports_thinking: bool}
 
 /// Model configuration with zero allocation storage
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,8 +113,7 @@ pub struct ModelConfig {
     pub deprecated: bool,
     
     /// Recommended thinking budget for reasoning models
-    pub optimal_thinking_budget: Option<u32>,
-}
+    pub optimal_thinking_budget: Option<u32>}
 
 /// VertexAI models registry and utilities
 pub struct VertexAIModels;
@@ -135,8 +133,7 @@ impl VertexAIModels {
     pub fn validate_model(model_name: &str) -> VertexAIResult<()> {
         if Self::get_config(model_name).is_none() {
             return Err(VertexAIError::ModelNotFound {
-                model: model_name.to_string(),
-            });
+                model: model_name.to_string()});
         }
         Ok(())
     }
@@ -144,8 +141,7 @@ impl VertexAIModels {
     /// Check if model supports specific capability
     pub fn supports_capability(model_name: &str, capability: &str) -> VertexAIResult<bool> {
         let config = Self::get_config(model_name).ok_or_else(|| VertexAIError::ModelNotFound {
-            model: model_name.to_string(),
-        })?;
+            model: model_name.to_string()})?;
         
         let supports = match capability {
             "tools" | "function_calling" => config.capabilities.supports_tools,
@@ -156,8 +152,7 @@ impl VertexAIModels {
             "streaming" => config.capabilities.supports_streaming,
             "json_mode" => config.capabilities.supports_json_mode,
             "thinking" | "reasoning" => config.capabilities.supports_thinking,
-            _ => false,
-        };
+            _ => false};
         
         Ok(supports)
     }
@@ -171,8 +166,7 @@ impl VertexAIModels {
         max_tokens: Option<u32>,
     ) -> VertexAIResult<()> {
         let config = Self::get_config(model_name).ok_or_else(|| VertexAIError::ModelNotFound {
-            model: model_name.to_string(),
-        })?;
+            model: model_name.to_string()})?;
         
         // Validate temperature
         if let Some(temp) = temperature {
@@ -182,8 +176,7 @@ impl VertexAIModels {
                     reason: format!(
                         "Temperature {} out of range [{}, {}]",
                         temp, config.temperature_range.0, config.temperature_range.1
-                    ),
-                });
+                    )});
             }
         }
         
@@ -195,8 +188,7 @@ impl VertexAIModels {
                     reason: format!(
                         "Top-p {} out of range [{}, {}]",
                         p, config.top_p_range.0, config.top_p_range.1
-                    ),
-                });
+                    )});
             }
         }
         
@@ -208,8 +200,7 @@ impl VertexAIModels {
                     reason: format!(
                         "Top-k {} out of range [{}, {}]",
                         k, config.top_k_range.0, config.top_k_range.1
-                    ),
-                });
+                    )});
             }
         }
         
@@ -221,14 +212,12 @@ impl VertexAIModels {
                     reason: format!(
                         "Max tokens {} exceeds model limit {}",
                         tokens, config.max_output_tokens
-                    ),
-                });
+                    )});
             }
         } else if config.requires_max_tokens {
             return Err(VertexAIError::RequestValidation {
                 field: "max_tokens".to_string(),
-                reason: "Max tokens parameter is required for this model".to_string(),
-            });
+                reason: "Max tokens parameter is required for this model".to_string()});
         }
         
         Ok(())
@@ -237,8 +226,7 @@ impl VertexAIModels {
     /// Get endpoint URL for model
     pub fn get_endpoint_url(model_name: &str, project_id: &str, region: &str) -> VertexAIResult<String> {
         let config = Self::get_config(model_name).ok_or_else(|| VertexAIError::ModelNotFound {
-            model: model_name.to_string(),
-        })?;
+            model: model_name.to_string()})?;
         
         let url = config.endpoint_template
             .replace("{project}", project_id)
@@ -255,8 +243,7 @@ impl VertexAIModels {
         output_tokens: u32,
     ) -> VertexAIResult<f64> {
         let config = Self::get_config(model_name).ok_or_else(|| VertexAIError::ModelNotFound {
-            model: model_name.to_string(),
-        })?;
+            model: model_name.to_string()})?;
         
         let input_cost = (input_tokens as f64 / 1_000_000.0) * config.cost_per_million_input_tokens;
         let output_cost = (output_tokens as f64 / 1_000_000.0) * config.cost_per_million_output_tokens;
@@ -319,8 +306,7 @@ fn add_model_config(registry: &SkipMap<&'static str, ModelConfig>, model: Models
         "claude" => create_claude_config(model_name, &model_info),
         "mistral" => create_mistral_config(model_name, &model_info),
         "embedding" => create_embedding_config(model_name, &model_info),
-        _ => create_default_config(model_name, &model_info),
-    };
+        _ => create_default_config(model_name, &model_info)};
     
     registry.insert(model_name, config);
 }
@@ -352,8 +338,7 @@ fn create_gemini_config(model_name: &str, model_info: &crate::model_info::ModelI
         supports_system: true,
         supports_streaming: true,
         supports_json_mode: true,
-        supports_thinking: model_info.supports_thinking.unwrap_or(false),
-    };
+        supports_thinking: model_info.supports_thinking.unwrap_or(false)};
     
     ModelConfig {
         name: model_name,
@@ -375,8 +360,7 @@ fn create_gemini_config(model_name: &str, model_info: &crate::model_info::ModelI
         endpoint_template: "https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/google/models/{model}:generateContent",
         requires_max_tokens: false,
         deprecated: false,
-        optimal_thinking_budget: model_info.optimal_thinking_budget,
-    }
+        optimal_thinking_budget: model_info.optimal_thinking_budget}
 }
 
 /// Create Claude model configuration
@@ -389,8 +373,7 @@ fn create_claude_config(model_name: &str, model_info: &crate::model_info::ModelI
         supports_system: true,
         supports_streaming: true,
         supports_json_mode: false,
-        supports_thinking: model_info.supports_thinking.unwrap_or(false),
-    };
+        supports_thinking: model_info.supports_thinking.unwrap_or(false)};
     
     ModelConfig {
         name: model_name,
@@ -412,8 +395,7 @@ fn create_claude_config(model_name: &str, model_info: &crate::model_info::ModelI
         endpoint_template: "https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/anthropic/models/{model}:generateContent",
         requires_max_tokens: true,
         deprecated: false,
-        optimal_thinking_budget: model_info.optimal_thinking_budget,
-    }
+        optimal_thinking_budget: model_info.optimal_thinking_budget}
 }
 
 /// Create Mistral model configuration
@@ -426,8 +408,7 @@ fn create_mistral_config(model_name: &str, model_info: &crate::model_info::Model
         supports_system: true,
         supports_streaming: true,
         supports_json_mode: true,
-        supports_thinking: false,
-    };
+        supports_thinking: false};
     
     ModelConfig {
         name: model_name,
@@ -449,8 +430,7 @@ fn create_mistral_config(model_name: &str, model_info: &crate::model_info::Model
         endpoint_template: "https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/mistralai/models/{model}:generateContent",
         requires_max_tokens: false,
         deprecated: false,
-        optimal_thinking_budget: None,
-    }
+        optimal_thinking_budget: None}
 }
 
 /// Create embedding model configuration
@@ -463,8 +443,7 @@ fn create_embedding_config(model_name: &str, model_info: &crate::model_info::Mod
         supports_system: false,
         supports_streaming: false,
         supports_json_mode: false,
-        supports_thinking: false,
-    };
+        supports_thinking: false};
     
     ModelConfig {
         name: model_name,
@@ -486,8 +465,7 @@ fn create_embedding_config(model_name: &str, model_info: &crate::model_info::Mod
         endpoint_template: "https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/google/models/{model}:predict",
         requires_max_tokens: false,
         deprecated: false,
-        optimal_thinking_budget: None,
-    }
+        optimal_thinking_budget: None}
 }
 
 /// Create default model configuration
@@ -500,8 +478,7 @@ fn create_default_config(model_name: &str, model_info: &crate::model_info::Model
         supports_system: true,
         supports_streaming: true,
         supports_json_mode: false,
-        supports_thinking: model_info.supports_thinking.unwrap_or(false),
-    };
+        supports_thinking: model_info.supports_thinking.unwrap_or(false)};
     
     ModelConfig {
         name: model_name,
@@ -523,6 +500,5 @@ fn create_default_config(model_name: &str, model_info: &crate::model_info::Model
         endpoint_template: "https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/endpoints/{model}:predict",
         requires_max_tokens: false,
         deprecated: false,
-        optimal_thinking_budget: model_info.optimal_thinking_budget,
-    }
+        optimal_thinking_budget: model_info.optimal_thinking_budget}
 }

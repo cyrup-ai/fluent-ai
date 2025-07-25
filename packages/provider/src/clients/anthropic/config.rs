@@ -37,8 +37,7 @@ pub struct AnthropicConfig {
     /// API version header
     pub(crate) api_version: String,
     /// User agent string
-    pub(crate) user_agent: String,
-}
+    pub(crate) user_agent: String}
 
 impl AnthropicConfig {
     /// Create a new configuration with the given API key
@@ -53,8 +52,7 @@ impl AnthropicConfig {
             timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
             max_retries: DEFAULT_MAX_RETRIES,
             api_version: DEFAULT_API_VERSION.to_string(),
-            user_agent: DEFAULT_USER_AGENT.to_string(),
-        })
+            user_agent: DEFAULT_USER_AGENT.to_string()})
     }
 
     /// Create a configuration builder
@@ -104,14 +102,12 @@ impl AnthropicConfig {
     fn validate_api_key(api_key: &str) -> AnthropicResult<()> {
         if api_key.is_empty() {
             return Err(AnthropicError::ConfigurationError {
-                message: "API key cannot be empty".to_string(),
-            });
+                message: "API key cannot be empty".to_string()});
         }
 
         if api_key.len() < 10 {
             return Err(AnthropicError::ConfigurationError {
-                message: "API key appears to be too short".to_string(),
-            });
+                message: "API key appears to be too short".to_string()});
         }
 
         if !api_key
@@ -119,8 +115,7 @@ impl AnthropicConfig {
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
         {
             return Err(AnthropicError::ConfigurationError {
-                message: "API key contains invalid characters".to_string(),
-            });
+                message: "API key contains invalid characters".to_string()});
         }
 
         Ok(())
@@ -131,14 +126,12 @@ impl AnthropicConfig {
     fn validate_base_url(url: &str) -> AnthropicResult<()> {
         if url.is_empty() {
             return Err(AnthropicError::ConfigurationError {
-                message: "Base URL cannot be empty".to_string(),
-            });
+                message: "Base URL cannot be empty".to_string()});
         }
 
         if !url.starts_with("https://") && !url.starts_with("http://") {
             return Err(AnthropicError::ConfigurationError {
-                message: "Base URL must start with http:// or https://".to_string(),
-            });
+                message: "Base URL must start with http:// or https://".to_string()});
         }
 
         Ok(())
@@ -149,14 +142,12 @@ impl AnthropicConfig {
     fn validate_timeout(timeout: u64) -> AnthropicResult<()> {
         if timeout == 0 {
             return Err(AnthropicError::ConfigurationError {
-                message: "Timeout cannot be zero".to_string(),
-            });
+                message: "Timeout cannot be zero".to_string()});
         }
 
         if timeout > 3600 {
             return Err(AnthropicError::ConfigurationError {
-                message: "Timeout cannot exceed 1 hour (3600 seconds)".to_string(),
-            });
+                message: "Timeout cannot exceed 1 hour (3600 seconds)".to_string()});
         }
 
         Ok(())
@@ -167,8 +158,7 @@ impl AnthropicConfig {
     fn validate_retries(retries: u32) -> AnthropicResult<()> {
         if retries > 10 {
             return Err(AnthropicError::ConfigurationError {
-                message: "Maximum retries cannot exceed 10".to_string(),
-            });
+                message: "Maximum retries cannot exceed 10".to_string()});
         }
 
         Ok(())
@@ -187,8 +177,7 @@ impl Default for AnthropicConfig {
                 timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
                 max_retries: DEFAULT_MAX_RETRIES,
                 api_version: DEFAULT_API_VERSION.to_string(),
-                user_agent: DEFAULT_USER_AGENT.to_string(),
-            }
+                user_agent: DEFAULT_USER_AGENT.to_string()}
         })
     }
 }
@@ -201,8 +190,7 @@ pub struct AnthropicConfigBuilder {
     timeout_seconds: Option<u64>,
     max_retries: Option<u32>,
     api_version: Option<String>,
-    user_agent: Option<String>,
-}
+    user_agent: Option<String>}
 
 impl AnthropicConfigBuilder {
     /// Create a new builder with the required API key
@@ -214,8 +202,7 @@ impl AnthropicConfigBuilder {
             timeout_seconds: None,
             max_retries: None,
             api_version: None,
-            user_agent: None,
-        }
+            user_agent: None}
     }
 
     /// Set the base URL
@@ -264,8 +251,7 @@ impl AnthropicConfigBuilder {
                 AnthropicConfig::validate_base_url(&url)?;
                 url
             }
-            None => DEFAULT_BASE_URL.to_string(),
-        };
+            None => DEFAULT_BASE_URL.to_string()};
 
         // Handle timeout
         let timeout_seconds = match self.timeout_seconds {
@@ -273,8 +259,7 @@ impl AnthropicConfigBuilder {
                 AnthropicConfig::validate_timeout(timeout)?;
                 timeout
             }
-            None => DEFAULT_TIMEOUT_SECONDS,
-        };
+            None => DEFAULT_TIMEOUT_SECONDS};
 
         // Handle retries
         let max_retries = match self.max_retries {
@@ -282,8 +267,7 @@ impl AnthropicConfigBuilder {
                 AnthropicConfig::validate_retries(retries)?;
                 retries
             }
-            None => DEFAULT_MAX_RETRIES,
-        };
+            None => DEFAULT_MAX_RETRIES};
 
         // Handle API version
         let api_version = self
@@ -301,8 +285,7 @@ impl AnthropicConfigBuilder {
             timeout_seconds,
             max_retries,
             api_version,
-            user_agent,
-        })
+            user_agent})
     }
 }
 
@@ -310,8 +293,7 @@ impl AnthropicConfigBuilder {
 pub fn from_env() -> AnthropicResult<AnthropicConfig> {
     let api_key =
         std::env::var("ANTHROPIC_API_KEY").map_err(|_| AnthropicError::ConfigurationError {
-            message: "ANTHROPIC_API_KEY environment variable not set".to_string(),
-        })?;
+            message: "ANTHROPIC_API_KEY environment variable not set".to_string()})?;
 
     let mut builder = AnthropicConfig::builder(api_key);
 
@@ -324,8 +306,7 @@ pub fn from_env() -> AnthropicResult<AnthropicConfig> {
         let timeout: u64 = timeout
             .parse()
             .map_err(|_| AnthropicError::ConfigurationError {
-                message: "Invalid ANTHROPIC_TIMEOUT_SECONDS value".to_string(),
-            })?;
+                message: "Invalid ANTHROPIC_TIMEOUT_SECONDS value".to_string()})?;
         builder = builder.timeout_seconds(timeout);
     }
 
@@ -333,8 +314,7 @@ pub fn from_env() -> AnthropicResult<AnthropicConfig> {
         let retries: u32 = retries
             .parse()
             .map_err(|_| AnthropicError::ConfigurationError {
-                message: "Invalid ANTHROPIC_MAX_RETRIES value".to_string(),
-            })?;
+                message: "Invalid ANTHROPIC_MAX_RETRIES value".to_string()})?;
         builder = builder.max_retries(retries);
     }
 

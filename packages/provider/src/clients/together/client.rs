@@ -7,26 +7,24 @@
 use std::sync::LazyLock;
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-use fluent_ai_domain::{AsyncTask, channel, spawn_async};
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_async::channel;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 
 use super::{
     completion::{CompletionModel, LLAMA_3_2_11B_VISION_INSTRUCT_TURBO},
-    embedding::{EmbeddingModel, M2_BERT_80M_8K_RETRIEVAL},
-};
+    embedding::{EmbeddingModel, M2_BERT_80M_8K_RETRIEVAL}};
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient},
     completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
+        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError},
     json_util,
-    message::Message,
-};
+    message::Message};
 
 // ============================================================================
 // Together AI API Client with HTTP3 and dual-endpoint optimization
@@ -53,8 +51,7 @@ pub struct TogetherMetrics {
     pub failed_requests: RelaxedCounter,
     pub concurrent_requests: RelaxedCounter,
     pub chat_requests: RelaxedCounter,
-    pub embedding_requests: RelaxedCounter,
-}
+    pub embedding_requests: RelaxedCounter}
 
 impl TogetherMetrics {
     #[inline]
@@ -65,8 +62,7 @@ impl TogetherMetrics {
             failed_requests: RelaxedCounter::new(0),
             concurrent_requests: RelaxedCounter::new(0),
             chat_requests: RelaxedCounter::new(0),
-            embedding_requests: RelaxedCounter::new(0),
-        }
+            embedding_requests: RelaxedCounter::new(0)}
     }
 }
 
@@ -81,8 +77,7 @@ pub struct Client {
     chat_client: &'static HttpClient,
     embed_client: &'static HttpClient,
     /// Performance metrics
-    metrics: &'static TogetherMetrics,
-}
+    metrics: &'static TogetherMetrics}
 
 impl Client {
     /// Create a new Together AI client with zero-allocation API key validation
@@ -102,8 +97,7 @@ impl Client {
             base_url: TOGETHER_AI_BASE_URL,
             chat_client: &CHAT_HTTP_CLIENT,
             embed_client: &EMBED_HTTP_CLIENT,
-            metrics: &TOGETHER_METRICS,
-        })
+            metrics: &TOGETHER_METRICS})
     }
 
     /// Environment variable names to search for Together API keys (ordered by priority)
@@ -222,8 +216,7 @@ impl Client {
 
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
-            Err(_) => self.metrics.failed_requests.inc(),
-        }
+            Err(_) => self.metrics.failed_requests.inc()}
 
         response
     }
@@ -257,8 +250,7 @@ impl Client {
     pub fn embedding_model(&self, model: &str) -> EmbeddingModel {
         let ndims = match model {
             M2_BERT_80M_8K_RETRIEVAL => 8192,
-            _ => 0,
-        };
+            _ => 0};
         EmbeddingModel::new(self.clone(), model, ndims)
     }
 
@@ -303,8 +295,7 @@ impl EmbeddingsClient for Client {
     fn embedding_model(&self, model: &str) -> Self::Model {
         let ndims = match model {
             M2_BERT_80M_8K_RETRIEVAL => 8192,
-            _ => 0,
-        };
+            _ => 0};
         Ok(EmbeddingModel::new(self.clone(), model, ndims))
     }
 
@@ -360,8 +351,7 @@ pub struct TogetherCompletionBuilder<'a, S> {
     tools: Vec<completion::ToolDefinition>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ============================================================================
 // Constructors
@@ -384,8 +374,7 @@ impl<'a> TogetherCompletionBuilder<'a, NeedsPrompt> {
             tools: Vec::new(),
             additional_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 
     /// Convenience helper: sensible defaults for chat
@@ -491,8 +480,7 @@ impl<'a> TogetherCompletionBuilder<'a, NeedsPrompt> {
             tools: self.tools,
             additional_params: self.additional_params,
             prompt: self.prompt,
-            _state: std::marker::PhantomData::<HasPrompt>,
-        }
+            _state: std::marker::PhantomData::<HasPrompt>}
     }
 }
 
@@ -632,8 +620,7 @@ pub mod together_ai_api_types {
     #[derive(Debug, Deserialize)]
     pub struct ApiErrorResponse {
         pub error: String,
-        pub code: String,
-    }
+        pub code: String}
 
     impl ApiErrorResponse {
         pub fn message(&self) -> String {
@@ -645,6 +632,5 @@ pub mod together_ai_api_types {
     #[serde(untagged)]
     pub enum ApiResponse<T> {
         Ok(T),
-        Error(ApiErrorResponse),
-    }
+        Error(ApiErrorResponse)}
 }

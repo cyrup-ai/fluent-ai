@@ -13,8 +13,7 @@ use clap::{Parser, Subcommand};
 #[command(long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
-}
+    command: Commands}
 
 #[derive(Subcommand)]
 enum Commands {
@@ -30,15 +29,13 @@ enum Commands {
 
         /// Dry run - show what would be done without making changes
         #[arg(long)]
-        dry_run: bool,
-    },
+        dry_run: bool},
 
     /// Verify existing workspace-hack
     Verify {
         /// Show detailed verification output
         #[arg(long)]
-        detailed: bool,
-    },
+        detailed: bool},
 
     /// Show information about workspace and configuration
     Info {
@@ -48,22 +45,18 @@ enum Commands {
 
         /// Show configuration
         #[arg(long)]
-        config: bool,
-    },
+        config: bool},
 
     /// Clean up temporary files and backups
     Cleanup {
         /// Clean all temporary files
         #[arg(long)]
-        all: bool,
-    },
+        all: bool},
 
     /// Configuration management
     Config {
         #[command(subcommand)]
-        action: ConfigAction,
-    },
-}
+        action: ConfigAction}}
 
 #[derive(Subcommand)]
 enum ConfigAction {
@@ -71,16 +64,13 @@ enum ConfigAction {
     Validate {
         /// Show detailed validation output
         #[arg(long)]
-        detailed: bool,
-    },
+        detailed: bool},
 
     /// Reset configuration to defaults
     Reset {
         /// Skip confirmation prompt
         #[arg(long)]
-        yes: bool,
-    },
-}
+        yes: bool}}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -90,8 +80,7 @@ async fn main() -> Result<()> {
         Commands::Regenerate {
             progress,
             force,
-            dry_run,
-        } => {
+            dry_run} => {
             regenerate_workspace_hack(progress, force, dry_run).await?;
         }
 
@@ -114,8 +103,7 @@ async fn main() -> Result<()> {
             ConfigAction::Reset { yes } => {
                 reset_config(yes).await?;
             }
-        },
-    }
+        }}
 
     Ok(())
 }

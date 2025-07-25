@@ -3,10 +3,11 @@
 //! This module provides functionality for quantizing and dequantizing
 //! model weights to reduce memory usage and improve inference speed.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+// Removed unused import: Arc
 
-use candle_core::{DType, Device, Module, Result as CandleResult, Tensor};
+use std::collections::HashMap;
+
+use candle_core::{DType, Device, Result as CandleResult, Tensor};
 use serde::{Deserialize, Serialize};
 
 /// Supported quantization types
@@ -40,9 +41,7 @@ pub enum QuantizationType {
         /// Whether to use symmetric quantization
         symmetric: bool,
         /// Whether to group weights for quantization
-        group_size: Option<usize>,
-    },
-}
+        group_size: Option<usize>}}
 
 impl Default for QuantizationType {
     fn default() -> Self {
@@ -63,8 +62,7 @@ pub struct QuantizationConfig {
     pub keep_original: bool,
     
     /// Custom quantization parameters
-    pub params: HashMap<String, String>,
-}
+    pub params: HashMap<String, String>}
 
 impl Default for QuantizationConfig {
     fn default() -> Self {
@@ -72,8 +70,7 @@ impl Default for QuantizationConfig {
             quant_type: QuantizationType::None,
             in_place: true,
             keep_original: false,
-            params: HashMap::new(),
-        }
+            params: HashMap::new()}
     }
 }
 
@@ -92,8 +89,7 @@ pub struct QuantizedTensor {
     pub original_dtype: DType,
     
     /// The quantization type used
-    pub quant_type: QuantizationType,
-}
+    pub quant_type: QuantizationType}
 
 /// Quantize a tensor with the specified configuration
 pub fn quantize_tensor(
@@ -107,8 +103,7 @@ pub fn quantize_tensor(
                 scales: None,
                 zero_points: None,
                 original_dtype: tensor.dtype(),
-                quant_type: QuantizationType::None,
-            })
+                quant_type: QuantizationType::None})
         }
         QuantizationType::Int8 => quantize_int8(tensor, config),
         QuantizationType::Int4 => quantize_int4(tensor, config),
@@ -135,8 +130,7 @@ pub fn dequantize_tensor(
         QuantizationType::Binary => dequantize_binary(quantized, device),
         QuantizationType::Float8E5M2 => dequantize_float8_e5m2(quantized, device),
         QuantizationType::Float8E4M3 => dequantize_float8_e4m3(quantized, device),
-        QuantizationType::Custom { .. } => dequantize_custom(quantized, device),
-    }
+        QuantizationType::Custom { .. } => dequantize_custom(quantized, device)}
 }
 
 // Implementation of specific quantization methods
@@ -145,26 +139,27 @@ fn quantize_int8(
     tensor: &Tensor,
     _config: &QuantizationConfig,
 ) -> CandleResult<QuantizedTensor> {
-    let min = tensor.min()?;
-    let max = tensor.max()?;
+    let min = tensor.min(0)?; // Zero-allocation min along first dimension
+    let max = tensor.max(0)?; // Zero-allocation max along first dimension
     let scale = (max - &min)? / 255.0f64;
-    let zero_point = (0.0f64 - min.to_scalar::<f64>()?) / scale.to_scalar::<f64>()?;
+    let min_scalar = min.to_scalar::<f64>()?;
+    let scale_scalar = scale?.to_scalar::<f64>()?;
+    let zero_point = (0.0f64 - min_scalar) / scale_scalar;
     
-    let zero_point = zero_point.round() as i8;
-    let scale = scale.to_scalar::<f64>()? as f32;
+    let zero_point = zero_point.round() as u8;
+    let scale = scale_scalar as f32;
     
     let quantized = tensor
-        .affine(1.0 / scale, -zero_point as f64 / scale)?
-        .to_dtype(DType::I8)?
-        .clamp(-128, 127)?;
+        .affine(1.0 / scale as f64, -(zero_point as f64) / scale as f64)?
+        .to_dtype(DType::U8)? // Use U8 as candle doesn't have I8 variant
+        .clamp(0u8, 255u8)?; // Adjust clamp range for U8
     
     Ok(QuantizedTensor {
         data: quantized,
         scales: Some(Tensor::new(scale, &tensor.device())?),
-        zero_points: Some(Tensor::new(zero_point, &tensor.device())?),
+        zero_points: Some(Tensor::new(zero_point as f32, &tensor.device())?), // Cast to f32 for tensor compatibility
         original_dtype: tensor.dtype(),
-        quant_type: QuantizationType::Int8,
-    })
+        quant_type: QuantizationType::Int8})
 }
 
 fn dequantize_int8(
@@ -172,7 +167,7 @@ fn dequantize_int8(
     _device: &Device,
 ) -> CandleResult<Tensor> {
     let scale = quantized.scales.as_ref().unwrap().to_scalar::<f32>()? as f64;
-    let zero_point = quantized.zero_points.as_ref().unwrap().to_scalar::<i8>()? as f64;
+    let zero_point = quantized.zero_points.as_ref().unwrap().to_scalar::<u8>()? as i8 as f64;
     
     quantized.data.to_dtype(DType::F64)?.affine(scale, zero_point * scale)
 }

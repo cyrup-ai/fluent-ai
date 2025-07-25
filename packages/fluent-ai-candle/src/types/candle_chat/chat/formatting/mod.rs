@@ -30,17 +30,6 @@ pub use themes::{ImmutableColorScheme, OutputFormat, SyntaxTheme};
 pub use streaming::{FormattingEvent, FormatterStats, StreamingMessageFormatter};
 pub use styles::{FormatStyle, ImmutableCustomFormatRule, StyleType};
 
-// Legacy compatibility re-exports (deprecated)
-#[deprecated(note = "Use ImmutableMessageContent instead for zero-allocation streaming")]
-pub use content::MessageContent;
+// Legacy compatibility re-exports removed - use Immutable* versions instead
 
-// FormatOptions deprecated - use options::ImmutableFormatOptions instead
-
-#[deprecated(note = "Use ImmutableColorScheme instead for zero-allocation streaming")]
-pub use themes::ColorScheme;
-
-#[deprecated(note = "Use ImmutableCustomFormatRule instead for zero-allocation streaming")]
-pub use styles::CustomFormatRule;
-
-#[deprecated(note = "Use StreamingMessageFormatter instead for zero-allocation streaming")]
-pub use streaming::MessageFormatter;
+// MessageFormatter deprecated - use StreamingMessageFormatter instead

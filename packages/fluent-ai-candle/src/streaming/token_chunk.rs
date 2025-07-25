@@ -21,8 +21,7 @@ pub struct TokenChunk {
     /// Generation timestamp for latency tracking
     pub timestamp: u64,
     /// Sequence position for ordering
-    pub sequence_id: u64,
-}
+    pub sequence_id: u64}
 
 impl TokenChunk {
     /// Create new token chunk with current timestamp
@@ -40,8 +39,7 @@ impl TokenChunk {
             text: text_array,
             metadata,
             timestamp,
-            sequence_id,
-        })
+            sequence_id})
     }
 
     /// Create empty chunk for graceful termination
@@ -69,8 +67,7 @@ impl TokenChunk {
                     logits_vec.iter().copied().fold(f32::NEG_INFINITY, f32::max)
                 }
             }
-            Err(_) => 0.0,
-        };
+            Err(_) => 0.0};
 
         let processing_latency_nanos = processing_start.elapsed().as_nanos() as u64;
 
@@ -81,8 +78,7 @@ impl TokenChunk {
             processing_latency_nanos,
             temperature: 1.0,
             top_p: None,
-            top_k: None,
-        };
+            top_k: None};
 
         Self::new(text, metadata, sequence_id)
     }

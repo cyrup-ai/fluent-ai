@@ -3,10 +3,7 @@
 //! This module provides blazing-fast request building and execution with zero allocations
 //! after initial setup and no locking requirements.
 
-use std::collections::HashMap;
-
-use bytes::Bytes;
-use fluent_ai_http3::{Http3, HttpError};
+use fluent_ai_http3::Http3;
 
 use super::completion::AnthropicCompletionRequest;
 use super::config::AnthropicConfig;
@@ -32,8 +29,7 @@ const ENDPOINT_MESSAGES: &str = "/v1/messages";
 #[derive(Debug)]
 pub struct AnthropicRequestBuilder<'a> {
     config: &'a AnthropicConfig,
-    http_client: &'a HttpClient,
-}
+    http_client: &'a HttpClient}
 
 impl<'a> AnthropicRequestBuilder<'a> {
     /// Create a new request builder
@@ -41,8 +37,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
     pub fn new(config: &'a AnthropicConfig, http_client: &'a HttpClient) -> Self {
         Self {
             config,
-            http_client,
-        }
+            http_client}
     }
 
     /// Build common headers for all requests
@@ -114,8 +109,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
             .collect::<serde_json::Value>() // Collect to JSON response
             .await
             .map_err(|e| AnthropicError::NetworkError {
-                message: format!("Failed to execute completion request: {}", e),
-            })?;
+                message: format!("Failed to execute completion request: {}", e)})?;
 
         Ok(response)
     }
@@ -134,8 +128,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
         // Serialize request body
         let body = serde_json::to_vec(&streaming_request).map_err(|e| {
             AnthropicError::SerializationError {
-                message: format!("Failed to serialize streaming request: {}", e),
-            }
+                message: format!("Failed to serialize streaming request: {}", e)}
         })?;
 
         // Build HTTP request
@@ -148,23 +141,20 @@ impl<'a> AnthropicRequestBuilder<'a> {
                 http_request
                     .header(&name, &value)
                     .map_err(|e| AnthropicError::NetworkError {
-                        message: format!("Failed to add header {}: {}", name, e),
-                    })?;
+                        message: format!("Failed to add header {}: {}", name, e)})?;
         }
 
         // Execute request
         let response = self.http_client.execute(http_request).await.map_err(|e| {
             AnthropicError::NetworkError {
-                message: format!("Failed to execute streaming request: {}", e),
-            }
+                message: format!("Failed to execute streaming request: {}", e)}
         })?;
 
         // Check for HTTP errors
         if !response.status.is_success() {
             return Err(AnthropicError::HttpStatus {
                 status: response.status.as_u16(),
-                message: String::from_utf8_lossy(&response.body).to_string(),
-            });
+                message: String::from_utf8_lossy(&response.body).to_string()});
         }
 
         Ok(response)
@@ -180,8 +170,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
             max_tokens: 10,
             messages: vec![crate::clients::anthropic::messages::AnthropicMessage {
                 role: "user".to_string(),
-                content: "Hi".to_string(),
-            }],
+                content: "Hi".to_string()}],
             system: None,
             temperature: None,
             top_p: None,
@@ -189,14 +178,12 @@ impl<'a> AnthropicRequestBuilder<'a> {
             stop_sequences: None,
             stream: None,
             tools: None,
-            tool_choice: None,
-        };
+            tool_choice: None};
 
         // Serialize request body
         let body =
             serde_json::to_vec(&test_request).map_err(|e| AnthropicError::SerializationError {
-                message: format!("Failed to serialize test request: {}", e),
-            })?;
+                message: format!("Failed to serialize test request: {}", e)})?;
 
         // Build HTTP request
         let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string()).with_body(body);
@@ -208,23 +195,20 @@ impl<'a> AnthropicRequestBuilder<'a> {
                 http_request
                     .header(&name, &value)
                     .map_err(|e| AnthropicError::NetworkError {
-                        message: format!("Failed to add header {}: {}", name, e),
-                    })?;
+                        message: format!("Failed to add header {}: {}", name, e)})?;
         }
 
         // Execute request
         let response = self.http_client.execute(http_request).await.map_err(|e| {
             AnthropicError::NetworkError {
-                message: format!("Connection test failed: {}", e),
-            }
+                message: format!("Connection test failed: {}", e)}
         })?;
 
         // Check for HTTP errors
         if !response.status.is_success() {
             return Err(AnthropicError::HttpStatus {
                 status: response.status.as_u16(),
-                message: String::from_utf8_lossy(&response.body).to_string(),
-            });
+                message: String::from_utf8_lossy(&response.body).to_string()});
         }
 
         Ok(response)
@@ -268,34 +252,29 @@ pub async fn test_connection_request(
 pub fn validate_completion_request(request: &AnthropicCompletionRequest) -> AnthropicResult<()> {
     if request.model.is_empty() {
         return Err(AnthropicError::ValidationError {
-            message: "Model name cannot be empty".to_string(),
-        });
+            message: "Model name cannot be empty".to_string()});
     }
 
     if request.max_tokens == 0 {
         return Err(AnthropicError::ValidationError {
-            message: "max_tokens must be greater than 0".to_string(),
-        });
+            message: "max_tokens must be greater than 0".to_string()});
     }
 
     if request.max_tokens > 4096 {
         return Err(AnthropicError::ValidationError {
-            message: "max_tokens cannot exceed 4096".to_string(),
-        });
+            message: "max_tokens cannot exceed 4096".to_string()});
     }
 
     if request.messages.is_empty() {
         return Err(AnthropicError::ValidationError {
-            message: "Messages cannot be empty".to_string(),
-        });
+            message: "Messages cannot be empty".to_string()});
     }
 
     // Validate temperature if provided
     if let Some(temp) = request.temperature {
         if temp < 0.0 || temp > 1.0 {
             return Err(AnthropicError::ValidationError {
-                message: "Temperature must be between 0.0 and 1.0".to_string(),
-            });
+                message: "Temperature must be between 0.0 and 1.0".to_string()});
         }
     }
 
@@ -303,8 +282,7 @@ pub fn validate_completion_request(request: &AnthropicCompletionRequest) -> Anth
     if let Some(top_p) = request.top_p {
         if top_p < 0.0 || top_p > 1.0 {
             return Err(AnthropicError::ValidationError {
-                message: "top_p must be between 0.0 and 1.0".to_string(),
-            });
+                message: "top_p must be between 0.0 and 1.0".to_string()});
         }
     }
 
@@ -312,8 +290,7 @@ pub fn validate_completion_request(request: &AnthropicCompletionRequest) -> Anth
     if let Some(top_k) = request.top_k {
         if top_k <= 0 {
             return Err(AnthropicError::ValidationError {
-                message: "top_k must be greater than 0".to_string(),
-            });
+                message: "top_k must be greater than 0".to_string()});
         }
     }
 

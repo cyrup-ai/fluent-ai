@@ -23,8 +23,7 @@
 //!
 //! ```rust
 //! use fluent_ai_domain::http::common::{BaseMessage, ModelParameters, MessageRole};
-//! use arrayvec::ArrayVec;
-//!
+//! //!
 //! // Create messages with zero allocation for small collections
 //! let mut messages = ArrayVec::<BaseMessage, 128>::new();
 //! messages.push(BaseMessage::user("Hello, assistant!"));
@@ -80,8 +79,7 @@ pub struct BaseMessage {
     pub tool_call_id: Option<ArrayString<MAX_IDENTIFIER_LEN>>,
     /// Tool calls made by the assistant
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
-    pub tool_calls: ArrayVec<ToolCall, MAX_TOOLS>,
-}
+    pub tool_calls: ArrayVec<ToolCall, MAX_TOOLS>}
 
 impl BaseMessage {
     /// Create a user message
@@ -92,8 +90,7 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: None,
-            tool_calls: ArrayVec::new(),
-        }
+            tool_calls: ArrayVec::new()}
     }
 
     /// Create an assistant message
@@ -104,8 +101,7 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: None,
-            tool_calls: ArrayVec::new(),
-        }
+            tool_calls: ArrayVec::new()}
     }
 
     /// Create a system message
@@ -116,8 +112,7 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: None,
-            tool_calls: ArrayVec::new(),
-        }
+            tool_calls: ArrayVec::new()}
     }
 
     /// Create a tool result message
@@ -131,8 +126,7 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: Some(id),
-            tool_calls: ArrayVec::new(),
-        })
+            tool_calls: ArrayVec::new()})
     }
 
     /// Add a tool call to this message
@@ -175,8 +169,7 @@ pub enum MessageRole {
     /// System instruction message
     System,
     /// Tool execution result message
-    Tool,
-}
+    Tool}
 
 impl fmt::Display for MessageRole {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -184,9 +177,20 @@ impl fmt::Display for MessageRole {
             MessageRole::User => "user",
             MessageRole::Assistant => "assistant",
             MessageRole::System => "system",
-            MessageRole::Tool => "tool",
-        };
+            MessageRole::Tool => "tool"};
         write!(f, "{s}")
+    }
+}
+
+impl From<&str> for MessageRole {
+    fn from(s: &str) -> Self {
+        match s {
+            "user" => MessageRole::User,
+            "assistant" => MessageRole::Assistant,
+            "system" => MessageRole::System,
+            "tool" => MessageRole::Tool,
+            _ => MessageRole::User, // Default fallback
+        }
     }
 }
 
@@ -199,8 +203,7 @@ pub struct ToolCall {
     #[serde(rename = "type")]
     pub tool_type: ToolCallType,
     /// Function details
-    pub function: FunctionCall,
-}
+    pub function: FunctionCall}
 
 impl ToolCall {
     /// Create a new function tool call
@@ -216,9 +219,7 @@ impl ToolCall {
             tool_type: ToolCallType::Function,
             function: FunctionCall {
                 name: func_name,
-                arguments: arguments.to_string(),
-            },
-        })
+                arguments: arguments.to_string()}})
     }
 }
 
@@ -227,8 +228,7 @@ impl ToolCall {
 #[serde(rename_all = "lowercase")]
 pub enum ToolCallType {
     /// Function call
-    Function,
-}
+    Function}
 
 /// Function call details
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -236,8 +236,7 @@ pub struct FunctionCall {
     /// Function name
     pub name: ArrayString<MAX_IDENTIFIER_LEN>,
     /// Function arguments as JSON string
-    pub arguments: String,
-}
+    pub arguments: String}
 
 /// Standardized token usage tracking across all providers
 /// 
@@ -250,8 +249,7 @@ pub struct CommonUsage {
     /// Tokens generated in the output/completion
     pub output_tokens: u32,
     /// Total tokens used (input + output)
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 impl CommonUsage {
     /// Create new usage tracking
@@ -260,8 +258,7 @@ impl CommonUsage {
         Self {
             input_tokens,
             output_tokens,
-            total_tokens: input_tokens + output_tokens,
-        }
+            total_tokens: input_tokens + output_tokens}
     }
 
     /// Create from OpenAI-style field names
@@ -270,8 +267,7 @@ impl CommonUsage {
         Self {
             input_tokens: prompt_tokens,
             output_tokens: completion_tokens,
-            total_tokens,
-        }
+            total_tokens}
     }
 
     /// Create from Anthropic-style field names
@@ -309,8 +305,7 @@ pub enum FinishReason {
     /// Provider-specific error or timeout
     Error,
     /// Unknown or unrecognized finish reason
-    Unknown,
-}
+    Unknown}
 
 impl FinishReason {
     /// Create from OpenAI finish reason string
@@ -321,8 +316,7 @@ impl FinishReason {
             "length" => Self::Length,
             "content_filter" => Self::ContentFilter,
             "tool_calls" => Self::ToolCalls,
-            _ => Self::Unknown,
-        }
+            _ => Self::Unknown}
     }
 
     /// Create from Anthropic stop reason string
@@ -332,8 +326,7 @@ impl FinishReason {
             "end_turn" | "stop_sequence" => Self::Stop,
             "max_tokens" => Self::Length,
             "tool_use" => Self::ToolCalls,
-            _ => Self::Unknown,
-        }
+            _ => Self::Unknown}
     }
 
     /// Create from generic string (attempts intelligent mapping)
@@ -345,8 +338,7 @@ impl FinishReason {
             "content_filter" | "safety" | "filtered" => Self::ContentFilter,
             "tool_calls" | "tool_use" | "function_call" => Self::ToolCalls,
             "error" | "timeout" | "failed" => Self::Error,
-            _ => Self::Unknown,
-        }
+            _ => Self::Unknown}
     }
 }
 
@@ -359,9 +351,22 @@ impl fmt::Display for FinishReason {
             FinishReason::ToolCalls => "tool_calls",
             FinishReason::StopSequence => "stop_sequence",
             FinishReason::Error => "error",
-            FinishReason::Unknown => "unknown",
-        };
+            FinishReason::Unknown => "unknown"};
         write!(f, "{s}")
+    }
+}
+
+impl From<&str> for FinishReason {
+    fn from(s: &str) -> Self {
+        match s {
+            "stop" => FinishReason::Stop,
+            "length" => FinishReason::Length,
+            "content_filter" => FinishReason::ContentFilter,
+            "tool_calls" => FinishReason::ToolCalls,
+            "stop_sequence" => FinishReason::StopSequence,
+            "error" => FinishReason::Error,
+            _ => FinishReason::Unknown, // Default fallback
+        }
     }
 }
 
@@ -395,8 +400,7 @@ pub struct ModelParameters {
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub stop_sequences: ArrayVec<ArrayString<MAX_STOP_SEQUENCE_LEN>, MAX_STOP_SEQUENCES>,
     /// Enable streaming response
-    pub stream: bool,
-}
+    pub stream: bool}
 
 impl ModelParameters {
     /// Create new model parameters with defaults
@@ -414,8 +418,7 @@ impl ModelParameters {
             frequency_penalty: None,
             presence_penalty: None,
             stop_sequences: ArrayVec::new(),
-            stream: false,
-        })
+            stream: false})
     }
 
     /// Set temperature with validation (0.0 to 2.0)
@@ -531,8 +534,7 @@ pub enum HttpContentType {
     /// text/plain
     TextPlain,
     /// application/octet-stream
-    ApplicationOctetStream,
-}
+    ApplicationOctetStream}
 
 impl HttpContentType {
     /// Get the MIME type string
@@ -542,8 +544,7 @@ impl HttpContentType {
             HttpContentType::ApplicationJson => "application/json",
             HttpContentType::MultipartFormData => "multipart/form-data",
             HttpContentType::TextPlain => "text/plain",
-            HttpContentType::ApplicationOctetStream => "application/octet-stream",
-        }
+            HttpContentType::ApplicationOctetStream => "application/octet-stream"}
     }
 }
 
@@ -565,8 +566,7 @@ pub enum HttpMethod {
     /// PATCH method
     Patch,
     /// DELETE method
-    Delete,
-}
+    Delete}
 
 impl HttpMethod {
     /// Get the method string
@@ -577,8 +577,7 @@ impl HttpMethod {
             HttpMethod::Post => "POST",
             HttpMethod::Put => "PUT",
             HttpMethod::Patch => "PATCH",
-            HttpMethod::Delete => "DELETE",
-        }
+            HttpMethod::Delete => "DELETE"}
     }
 }
 
@@ -607,8 +606,7 @@ pub struct ProviderMetadata {
     /// Whether vision/image input is supported
     pub supports_vision: bool,
     /// Default timeout for requests (in milliseconds)
-    pub default_timeout_ms: u64,
-}
+    pub default_timeout_ms: u64}
 
 impl ProviderMetadata {
     /// Create new provider metadata
@@ -659,8 +657,7 @@ pub enum StreamingMode {
     /// JSON Lines streaming
     JsonLines,
     /// Provider-specific streaming format
-    ProviderSpecific,
-}
+    ProviderSpecific}
 
 impl StreamingMode {
     /// Check if streaming is enabled
@@ -676,8 +673,7 @@ impl StreamingMode {
             StreamingMode::None => HttpContentType::ApplicationJson,
             StreamingMode::ServerSentEvents => HttpContentType::TextPlain,
             StreamingMode::JsonLines => HttpContentType::ApplicationJson,
-            StreamingMode::ProviderSpecific => HttpContentType::ApplicationJson,
-        }
+            StreamingMode::ProviderSpecific => HttpContentType::ApplicationJson}
     }
 }
 
@@ -715,8 +711,7 @@ pub enum ValidationError {
     /// Too many tools in request
     TooManyTools,
     /// Conflicting parameters specified
-    ConflictingParameters,
-}
+    ConflictingParameters}
 
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

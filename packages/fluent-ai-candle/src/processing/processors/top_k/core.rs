@@ -7,8 +7,7 @@ use arrayvec::ArrayVec;
 use crate::processing::traits::{
     LogitsProcessor, NumericallyStableProcessor, ProcessingResult,
     ZeroAllocationProcessor,
-    utils::{clamp_for_stability, validate_logits},
-};
+    utils::{clamp_for_stability, validate_logits}};
 use crate::processing::{ProcessingContext, ProcessingError};
 
 use super::algorithms::SelectionAlgorithms;
@@ -32,8 +31,7 @@ pub struct TopKProcessor {
     /// Number of top tokens to keep
     pub(super) k: usize,
     /// Cached identity status for optimization
-    pub(super) is_identity: bool,
-}
+    pub(super) is_identity: bool}
 
 impl TopKProcessor {
     /// Create a new top-k processor

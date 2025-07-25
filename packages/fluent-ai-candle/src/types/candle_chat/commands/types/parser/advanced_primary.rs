@@ -46,8 +46,7 @@ impl AdvancedPrimaryParser {
             query,
             scope,
             limit,
-            include_context,
-        })
+            include_context})
     }
 
     /// Parse template command
@@ -80,8 +79,7 @@ impl AdvancedPrimaryParser {
             action,
             name,
             content,
-            variables: HashMap::new(),
-        })
+            variables: HashMap::new()})
     }
 
     /// Parse macro command
@@ -114,8 +112,7 @@ impl AdvancedPrimaryParser {
             action,
             name,
             auto_execute: false,
-            commands,
-        })
+            commands})
     }
 
     /// Parse branch command
@@ -147,7 +144,6 @@ impl AdvancedPrimaryParser {
         Ok(ImmutableChatCommand::Branch {
             action,
             name,
-            source,
-        })
+            source})
     }
 }

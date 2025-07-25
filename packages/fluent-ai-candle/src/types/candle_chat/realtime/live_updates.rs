@@ -37,8 +37,7 @@ pub struct LiveUpdateMessage {
     /// Priority level
     pub priority: MessagePriority,
     /// Metadata
-    pub metadata: Option<String>,
-}
+    pub metadata: Option<String>}
 
 impl LiveUpdateMessage {
     /// Create a new live update message
@@ -61,8 +60,7 @@ impl LiveUpdateMessage {
                 .unwrap_or_default()
                 .as_secs(),
             priority,
-            metadata: None,
-        }
+            metadata: None}
     }
 
     /// Set metadata
@@ -87,8 +85,7 @@ pub enum MessagePriority {
     /// High priority
     High,
     /// Critical priority
-    Critical,
-}
+    Critical}
 
 impl MessagePriority {
     /// Get numeric priority value
@@ -97,8 +94,7 @@ impl MessagePriority {
             Self::Low => 0,
             Self::Normal => 1,
             Self::High => 2,
-            Self::Critical => 3,
-        }
+            Self::Critical => 3}
     }
 
     /// Check if priority is urgent
@@ -134,8 +130,7 @@ pub struct LiveUpdateSystem {
     /// Rate limiter for processing
     rate_limiter: Arc<RwLock<tokio::time::Interval>>,
     /// Processing rate limit
-    processing_rate: AtomicU64,
-}
+    processing_rate: AtomicU64}
 
 impl LiveUpdateSystem {
     /// Create a new live update system
@@ -162,12 +157,10 @@ impl LiveUpdateSystem {
                 queue_size: 0,
                 backpressure_events: 0,
                 processing_rate: processing_rate as f64,
-                last_update: 0,
-            })),
+                last_update: 0})),
             event_broadcaster,
             rate_limiter,
-            processing_rate: AtomicU64::new(processing_rate),
-        }
+            processing_rate: AtomicU64::new(processing_rate)}
     }
 
     /// Send live update message using AsyncStream architecture
@@ -189,10 +182,8 @@ impl LiveUpdateSystem {
 
                 let error = RealTimeError::BackpressureExceeded {
                     current_size: current_queue_size,
-                    limit: queue_size_limit,
-                };
+                    limit: queue_size_limit};
                 handle_error!(error, "Backpressure exceeded in send_message");
-                return;
             }
 
             // Add message to queue
@@ -202,13 +193,11 @@ impl LiveUpdateSystem {
             // Broadcast real-time event
             let event = RealTimeEvent::MessageReceived {
                 message: CandleMessage::new(
-                    message.user_id.len() as u64, // Use user_id length as ID for now
                     crate::types::CandleMessageRole::Assistant,
-                    message.content.as_bytes(),
+                    message.content.clone(),
                 ),
                 session_id: message.session_id.clone(),
-                timestamp: message.timestamp,
-            };
+                timestamp: message.timestamp};
 
             let _ = event_broadcaster.send(event);
 
@@ -328,8 +317,7 @@ pub struct LiveUpdateStatistics {
     pub queue_size: usize,
     pub backpressure_events: usize,
     pub processing_rate: f64,
-    pub last_update: u64,
-}
+    pub last_update: u64}
 
 impl Default for LiveUpdateStatistics {
     fn default() -> Self {
@@ -339,7 +327,6 @@ impl Default for LiveUpdateStatistics {
             queue_size: 0,
             backpressure_events: 0,
             processing_rate: 60.0,
-            last_update: 0,
-        }
+            last_update: 0}
     }
 }

@@ -28,8 +28,7 @@ pub enum VoiceError {
 
     /// Other errors
     #[error("Voice processing error: {0}")]
-    Other(String),
-}
+    Other(String)}
 
 /// Type alias for voice processing results
 pub type Result<T> = std::result::Result<T, VoiceError>;
@@ -61,8 +60,7 @@ pub struct VoiceInfo {
     /// Gender of the voice (if applicable)
     pub gender: Option<String>,
     /// Additional metadata
-    pub metadata: std::collections::HashMap<String, String>,
-}
+    pub metadata: std::collections::HashMap<String, String>}
 
 #[cfg(test)]
 mod tests {

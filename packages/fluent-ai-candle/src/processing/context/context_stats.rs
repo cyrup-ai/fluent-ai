@@ -13,8 +13,7 @@ pub enum RepetitionPenaltyType {
     /// Exponential penalty: penalty = exp(frequency)
     Exponential,
     /// Square root penalty: penalty = sqrt(frequency)
-    SquareRoot,
-}
+    SquareRoot}
 
 /// Sequence statistics for advanced processing strategies
 #[derive(Debug, Clone)]
@@ -26,8 +25,7 @@ pub struct SequenceStats {
     /// Most frequent token and its count
     most_frequent: Option<(u32, u32)>,
     /// Entropy estimate of token distribution
-    entropy_estimate: f32,
-}
+    entropy_estimate: f32}
 
 impl SequenceStats {
     /// Create new sequence statistics
@@ -37,8 +35,7 @@ impl SequenceStats {
             total_tokens: 0,
             avg_frequency: 0.0,
             most_frequent: None,
-            entropy_estimate: 0.0,
-        }
+            entropy_estimate: 0.0}
     }
 
     /// Add token to statistics

@@ -31,8 +31,7 @@ pub struct SearchPerformanceMetrics {
     /// Index operations per second
     pub index_ops_per_second: f64,
     /// Cache hit rate (0.0 to 1.0)
-    pub cache_hit_rate: f64,
-}
+    pub cache_hit_rate: f64}
 
 /// Search statistics tracker with atomic counters
 #[derive(Debug)]
@@ -54,8 +53,7 @@ pub struct SearchStatsTracker {
     /// Start time for rate calculations
     start_time: Instant,
     /// Query time samples for percentile calculations (simplified)
-    query_times: Arc<parking_lot::Mutex<Vec<u64>>>,
-}
+    query_times: Arc<parking_lot::Mutex<Vec<u64>>>}
 
 impl SearchStatsTracker {
     /// Create a new statistics tracker
@@ -69,8 +67,7 @@ impl SearchStatsTracker {
             min_query_time_us: CachePadded::new(AtomicU64::new(u64::MAX)),
             max_query_time_us: CachePadded::new(AtomicU64::new(0)),
             start_time: Instant::now(),
-            query_times: Arc::new(parking_lot::Mutex::new(Vec::new())),
-        }
+            query_times: Arc::new(parking_lot::Mutex::new(Vec::new()))}
     }
 
     /// Record a search query with timing
@@ -137,8 +134,7 @@ impl SearchStatsTracker {
                 search_operations: total_queries,
                 index_operations: total_index_ops,
                 cache_hits,
-                cache_misses,
-            };
+                cache_misses};
 
             emit!(sender, stats);
         })
@@ -196,8 +192,7 @@ impl SearchStatsTracker {
                 p99_query_time_us: p99,
                 queries_per_second,
                 index_ops_per_second,
-                cache_hit_rate,
-            };
+                cache_hit_rate};
 
             emit!(sender, metrics);
         })
@@ -229,8 +224,7 @@ impl SearchStatsTracker {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(actual) => current = actual,
-            }
+                Err(actual) => current = actual}
         }
     }
 
@@ -245,8 +239,7 @@ impl SearchStatsTracker {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(actual) => current = actual,
-            }
+                Err(actual) => current = actual}
         }
     }
 

@@ -19,8 +19,7 @@ pub struct TokenRateLimiter {
     /// Window duration in nanoseconds
     window_duration_ns: u64,
     /// Enable rate limiting
-    enabled: bool,
-}
+    enabled: bool}
 
 impl TokenRateLimiter {
     /// Create new rate limiter
@@ -31,8 +30,7 @@ impl TokenRateLimiter {
             current_window_tokens: AtomicUsize::new(0),
             window_start: AtomicU64::new(0),
             window_duration_ns: 1_000_000_000, // 1 second
-            enabled: max_tokens_per_second > 0.0,
-        }
+            enabled: max_tokens_per_second > 0.0}
     }
 
     /// Create unlimited rate limiter (no rate limiting)
@@ -49,8 +47,7 @@ impl TokenRateLimiter {
             current_window_tokens: AtomicUsize::new(0),
             window_start: AtomicU64::new(0),
             window_duration_ns: window_duration_ms * 1_000_000, // Convert ms to ns
-            enabled: max_tokens_per_second > 0.0,
-        }
+            enabled: max_tokens_per_second > 0.0}
     }
 
     /// Check if token generation should be allowed

@@ -42,8 +42,7 @@ pub fn default_stream_error_handler<T: BadAppleChunk>(error: &str) -> T {
 /// Performance: No heap allocation, compile-time function resolution
 pub struct ErrorHandlerWrapper<F, T, E> {
     handler: F,
-    _phantom: PhantomData<(T, E)>,
-}
+    _phantom: PhantomData<(T, E)>}
 
 impl<F, T, E> ErrorHandlerWrapper<F, T, E>
 where
@@ -55,8 +54,7 @@ where
     pub const fn new(handler: F) -> Self {
         Self {
             handler,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 
     /// Handle error with zero allocation
@@ -71,8 +69,7 @@ where
 /// Performance: No heap allocation, compile-time function resolution
 pub struct ResultHandlerWrapper<F, T, E> {
     handler: F,
-    _phantom: PhantomData<(T, E)>,
-}
+    _phantom: PhantomData<(T, E)>}
 
 impl<F, T, E> ResultHandlerWrapper<F, T, E>
 where
@@ -84,8 +81,7 @@ where
     pub const fn new(handler: F) -> Self {
         Self {
             handler,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 
     /// Handle result with zero allocation
@@ -100,8 +96,7 @@ where
 /// Performance: No heap allocation, compile-time function resolution
 pub struct ChunkHandlerWrapper<F, T, E> {
     handler: F,
-    _phantom: PhantomData<(T, E)>,
-}
+    _phantom: PhantomData<(T, E)>}
 
 impl<F, T, E> ChunkHandlerWrapper<F, T, E>
 where
@@ -113,8 +108,7 @@ where
     pub const fn new(handler: F) -> Self {
         Self {
             handler,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 
     /// Handle chunk with zero allocation
@@ -234,8 +228,7 @@ impl<T: Send + Sync> Copy for DefaultChunkHandler<T> {}
 /// Performance: Static dispatch, inlined closures
 pub struct ClosureErrorHandler<F, T> {
     closure: F,
-    _phantom: PhantomData<T>,
-}
+    _phantom: PhantomData<T>}
 
 impl<F, T> ClosureErrorHandler<F, T>
 where
@@ -245,8 +238,7 @@ where
     pub const fn new(closure: F) -> Self {
         Self {
             closure,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -265,8 +257,7 @@ where
 /// Performance: Static dispatch, inlined closures
 pub struct ClosureResultHandler<F, T> {
     closure: F,
-    _phantom: PhantomData<T>,
-}
+    _phantom: PhantomData<T>}
 
 impl<F, T> ClosureResultHandler<F, T>
 where
@@ -276,8 +267,7 @@ where
     pub const fn new(closure: F) -> Self {
         Self {
             closure,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -296,8 +286,7 @@ where
 /// Performance: Static dispatch, inlined closures
 pub struct ClosureChunkHandler<F, T> {
     closure: F,
-    _phantom: PhantomData<T>,
-}
+    _phantom: PhantomData<T>}
 
 impl<F, T> ClosureChunkHandler<F, T>
 where
@@ -307,8 +296,7 @@ where
     pub const fn new(closure: F) -> Self {
         Self {
             closure,
-            _phantom: PhantomData,
-        }
+            _phantom: PhantomData}
     }
 }
 
@@ -333,8 +321,7 @@ where
 {
     match result {
         Ok(value) => value,
-        Err(error) => handler.handle_error(&error.to_string()),
-    }
+        Err(error) => handler.handle_error(&error.to_string())}
 }
 
 /// Unwrap Result<T, E> using result handler with zero allocation
@@ -348,8 +335,7 @@ where
 {
     match result {
         Ok(value) => handler.handle_result(value),
-        Err(error) => T::bad_impl(&error.to_string()),
-    }
+        Err(error) => T::bad_impl(&error.to_string())}
 }
 
 /// Process chunk with handler using zero allocation

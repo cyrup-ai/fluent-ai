@@ -4,6 +4,7 @@
 //! Provides lock-free perplexity calculations for Mirostat algorithm stability.
 
 use std::sync::atomic::{AtomicU64, Ordering};
+
 use arrayvec::ArrayVec;
 
 /// Maximum perplexity history for moving average (stack allocated)
@@ -23,8 +24,7 @@ pub(crate) struct PerplexityState {
     /// Exponential moving average parameter (alpha)
     pub(crate) ema_alpha: f32,
     /// Current EMA value
-    pub(crate) current_ema: f32,
-}
+    pub(crate) current_ema: f32}
 
 impl PerplexityState {
     /// Create new perplexity state with EMA parameter
@@ -36,8 +36,7 @@ impl PerplexityState {
             surprise_accumulator: 0.0,
             sample_count: 0,
             ema_alpha: ema_alpha.clamp(0.01, 0.5), // Reasonable bounds for stability
-            current_ema: 0.0,
-        }
+            current_ema: 0.0}
     }
 
     /// Add new perplexity sample with exponential moving average

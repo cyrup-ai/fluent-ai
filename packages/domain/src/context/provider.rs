@@ -53,8 +53,7 @@ pub enum ContextError {
     #[error("Performance threshold exceeded: {0}")]
     PerformanceThresholdExceeded(String),
     #[error("Provider unavailable: {0}")]
-    ProviderUnavailable(String),
-}
+    ProviderUnavailable(String)}
 
 /// Provider-specific error types
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
@@ -66,8 +65,7 @@ pub enum ProviderError {
     #[error("GitHub provider error: {0}")]
     GithubProvider(String),
     #[error("Embedding provider error: {0}")]
-    EmbeddingProvider(String),
-}
+    EmbeddingProvider(String)}
 
 /// Validation error types with semantic meaning
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
@@ -79,8 +77,7 @@ pub enum ValidationError {
     #[error("Pattern validation failed: {0}")]
     PatternValidation(String),
     #[error("Size limit exceeded: {0}")]
-    SizeLimitExceeded(String),
-}
+    SizeLimitExceeded(String)}
 
 /// Context events for real-time streaming monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,62 +86,52 @@ pub enum ContextEvent {
     ProviderStarted {
         provider_type: String,
         provider_id: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     ProviderStopped {
         provider_type: String,
         provider_id: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Operation events
     ContextLoadStarted {
         context_type: String,
         source: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     ContextLoadCompleted {
         context_type: String,
         source: String,
         documents_loaded: usize,
         duration_nanos: u64,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     ContextLoadFailed {
         context_type: String,
         source: String,
         error: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Memory integration events
     MemoryCreated {
         memory_id: String,
         content_hash: String,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
     MemorySearchCompleted {
         query: String,
         results_count: usize,
         duration_nanos: u64,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Performance events
     PerformanceThresholdBreached {
         metric: String,
         threshold: f64,
         actual: f64,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Validation events
     ValidationFailed {
         validation_type: String,
         error: String,
-        timestamp: SystemTime,
-    },
-}
+        timestamp: SystemTime}}
 
 /// Memory node representation with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,8 +140,7 @@ pub struct MemoryNode {
     pub content: String,
     pub metadata: HashMap<String, String>,
     pub embedding: Option<Vec<f32>>,
-    pub timestamp: SystemTime,
-}
+    pub timestamp: SystemTime}
 
 /// Immutable file context with owned strings and atomic tracking
 #[derive(Debug, Clone)]
@@ -168,8 +154,7 @@ pub struct ImmutableFileContext {
     /// Last modified timestamp
     pub modified: SystemTime,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 /// Immutable files context with owned strings
 #[derive(Debug, Clone)]
@@ -181,8 +166,7 @@ pub struct ImmutableFilesContext {
     /// Total files count
     pub total_files: usize,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 /// Immutable directory context with owned strings
 #[derive(Debug, Clone)]
@@ -196,8 +180,7 @@ pub struct ImmutableDirectoryContext {
     /// Maximum depth for traversal
     pub max_depth: Option<usize>,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 /// Immutable GitHub context with owned strings
 #[derive(Debug, Clone)]
@@ -211,8 +194,7 @@ pub struct ImmutableGithubContext {
     /// Authentication token (if needed)
     pub auth_token: Option<String>,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 /// Memory integration layer with atomic operations
 #[derive(Debug)]
@@ -227,8 +209,7 @@ pub struct MemoryIntegration {
     pub memory_requests: AtomicU64,
     pub successful_operations: AtomicU64,
     pub failed_operations: AtomicU64,
-    pub total_processing_time_nanos: AtomicU64,
-}
+    pub total_processing_time_nanos: AtomicU64}
 
 impl Clone for MemoryIntegration {
     fn clone(&self) -> Self {
@@ -251,8 +232,7 @@ impl Clone for MemoryIntegration {
             total_processing_time_nanos: AtomicU64::new(
                 self.total_processing_time_nanos
                     .load(std::sync::atomic::Ordering::Relaxed),
-            ),
-        }
+            )}
     }
 }
 
@@ -267,8 +247,7 @@ impl MemoryIntegration {
             memory_requests: AtomicU64::new(0),
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
-            total_processing_time_nanos: AtomicU64::new(0),
-        }
+            total_processing_time_nanos: AtomicU64::new(0)}
     }
 
     /// Record successful operation
@@ -330,8 +309,7 @@ pub struct EmbeddingModelInfo {
     pub version: String,
     pub vector_dimension: usize,
     pub max_input_length: usize,
-    pub supported_languages: Vec<String>,
-}
+    pub supported_languages: Vec<String>}
 
 /// Immutable memory manager with streaming operations
 pub trait ImmutableMemoryManager: Send + Sync + 'static {
@@ -361,8 +339,7 @@ pub struct MemoryManagerInfo {
     pub version: String,
     pub storage_type: String,
     pub max_memory_nodes: Option<usize>,
-    pub supported_operations: Vec<String>,
-}
+    pub supported_operations: Vec<String>}
 
 /// Streaming context processor with atomic state tracking
 pub struct StreamingContextProcessor {
@@ -382,10 +359,9 @@ pub struct StreamingContextProcessor {
     event_sender: Option<AsyncStreamSender<ContextEvent>>,
 
     /// Performance thresholds
-    max_processing_time_ms: u64,
-    max_documents_per_context: usize,
-    max_concurrent_contexts: usize,
-}
+    _max_processing_time_ms: u64,
+    _max_documents_per_context: usize,
+    _max_concurrent_contexts: usize}
 
 impl StreamingContextProcessor {
     /// Create new streaming context processor
@@ -401,10 +377,9 @@ impl StreamingContextProcessor {
             total_documents_loaded: AtomicU64::new(0),
             total_processing_time_nanos: AtomicU64::new(0),
             event_sender: None,
-            max_processing_time_ms: 30000, // 30 seconds default
-            max_documents_per_context: 10000,
-            max_concurrent_contexts: 100,
-        }
+            _max_processing_time_ms: 30000, // 30 seconds default
+            _max_documents_per_context: 10000,
+            _max_concurrent_contexts: 100}
     }
 
     /// Create processor with event streaming
@@ -432,8 +407,7 @@ impl StreamingContextProcessor {
                 let _ = events.send(ContextEvent::ContextLoadStarted {
                     context_type: "File".to_string(),
                     source: context.path.clone(),
-                    timestamp: start_time,
-                });
+                    timestamp: start_time});
             }
 
             // Validate input
@@ -445,8 +419,7 @@ impl StreamingContextProcessor {
                     let _ = events.send(ContextEvent::ValidationFailed {
                         validation_type: "FileContext".to_string(),
                         error: error.to_string(),
-                        timestamp: SystemTime::now(),
-                    });
+                        timestamp: SystemTime::now()});
                 }
                 
                 fluent_ai_async::handle_error!(error, "File context validation failed");
@@ -465,8 +438,7 @@ impl StreamingContextProcessor {
                             source: context.path.clone(),
                             documents_loaded: 1,
                             duration_nanos: duration.as_nanos() as u64,
-                            timestamp: SystemTime::now(),
-                        });
+                            timestamp: SystemTime::now()});
                     }
                 }
                 Err(error) => {
@@ -476,8 +448,7 @@ impl StreamingContextProcessor {
                             context_type: "File".to_string(),
                             source: context.path.clone(),
                             error: error.to_string(),
-                            timestamp: SystemTime::now(),
-                        });
+                            timestamp: SystemTime::now()});
                     }
                     
                     fluent_ai_async::handle_error!(error, "File document loading failed");
@@ -532,8 +503,7 @@ impl StreamingContextProcessor {
                     serde_json::Value::String(context.content_hash.clone()),
                 );
                 props
-            },
-        })
+            }})
     }
 
     /// Get processor statistics
@@ -548,8 +518,7 @@ impl StreamingContextProcessor {
             failed_contexts: self.failed_contexts.load(Ordering::Relaxed),
             total_documents_loaded: self.total_documents_loaded.load(Ordering::Relaxed),
             success_rate: self.success_rate(),
-            average_processing_time_nanos: self.average_processing_time_nanos(),
-        }
+            average_processing_time_nanos: self.average_processing_time_nanos()}
     }
 
     /// Calculate success rate
@@ -589,15 +558,13 @@ pub struct ContextProcessorStatistics {
     pub failed_contexts: u64,
     pub total_documents_loaded: u64,
     pub success_rate: f64,
-    pub average_processing_time_nanos: u64,
-}
+    pub average_processing_time_nanos: u64}
 
 /// Context wrapper with zero Arc usage
 pub struct Context<T> {
     source: ContextSourceType,
     processor: StreamingContextProcessor,
-    _marker: PhantomData<T>,
-}
+    _marker: PhantomData<T>}
 
 /// Context source types with immutable implementations
 #[derive(Debug, Clone)]
@@ -605,8 +572,7 @@ pub enum ContextSourceType {
     File(ImmutableFileContext),
     Files(ImmutableFilesContext),
     Directory(ImmutableDirectoryContext),
-    Github(ImmutableGithubContext),
-}
+    Github(ImmutableGithubContext)}
 
 impl<T> Context<T> {
     /// Create new context with streaming processor
@@ -617,8 +583,7 @@ impl<T> Context<T> {
         Self {
             source,
             processor,
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 
     /// Create context with event streaming
@@ -629,8 +594,7 @@ impl<T> Context<T> {
         let context = Self {
             source,
             processor,
-            _marker: PhantomData,
-        };
+            _marker: PhantomData};
         (context, stream)
     }
 }
@@ -646,8 +610,7 @@ impl Context<File> {
             content_hash: String::new(), // Would be computed from file content
             size_bytes: 0,               // Would be read from file metadata
             modified: SystemTime::now(),
-            memory_integration: None,
-        };
+            memory_integration: None};
         Self::new(ContextSourceType::File(file_context))
     }
 
@@ -663,8 +626,7 @@ impl Context<File> {
                     ContextError::ContextNotFound("Invalid context type".to_string()),
                     "Invalid context type for file loading"
                 );
-            }),
-        }
+            })}
     }
 }
 
@@ -678,8 +640,7 @@ impl Context<Files> {
             paths: Vec::new(), // Would be populated by glob expansion
             pattern: pattern_str,
             total_files: 0,
-            memory_integration: None,
-        };
+            memory_integration: None};
         Self::new(ContextSourceType::Files(files_context))
     }
 
@@ -717,16 +678,14 @@ impl Context<Files> {
                                                     ),
                                                 );
                                                 props
-                                            },
-                                        };
+                                            }};
                                         documents.push(document);
                                     }
                                 }
                                 let result = match documents.len() {
                                     0 => ZeroOneOrMany::None,
                                     1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                    _ => ZeroOneOrMany::Many(documents),
-                                };
+                                    _ => ZeroOneOrMany::Many(documents)};
                                 let _ = sender.send(result);
                             }
                             Err(e) => {
@@ -763,8 +722,7 @@ impl Context<Directory> {
             recursive: true,
             extensions: Vec::new(),
             max_depth: None,
-            memory_integration: None,
-        };
+            memory_integration: None};
         Self::new(ContextSourceType::Directory(directory_context))
     }
 
@@ -829,8 +787,7 @@ impl Context<Directory> {
                                                         ),
                                                     );
                                                     props
-                                                },
-                                            };
+                                                }};
                                             documents.push(document);
                                         }
                                     }
@@ -862,8 +819,7 @@ impl Context<Directory> {
                                 let result = match documents.len() {
                                     0 => ZeroOneOrMany::None,
                                     1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                    _ => ZeroOneOrMany::Many(documents),
-                                };
+                                    _ => ZeroOneOrMany::Many(documents)};
                                 let _ = sender.send(result);
                             }
                             Err(e) => {
@@ -900,15 +856,14 @@ impl Context<Github> {
             branch: "main".to_string(),
             pattern: pattern_str,
             auth_token: None,
-            memory_integration: None,
-        };
+            memory_integration: None};
         Self::new(ContextSourceType::Github(github_context))
     }
 
     /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |_sender| {
             spawn_task(move || {
                 match self.source {
                     ContextSourceType::Github(github_context) => {

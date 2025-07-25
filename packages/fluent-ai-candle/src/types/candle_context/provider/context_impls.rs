@@ -36,8 +36,7 @@ impl Context<File> {
                     "Invalid context type"
                 );
                 let _ = sender; // Prevent unused variable warning
-            }),
-        }
+            })}
     }
 }
 
@@ -71,7 +70,7 @@ impl Context<Files> {
                                             crate::types::candle_context::DocumentMediaType::TXT,
                                         ),
                                         additional_props: {
-                                            let mut props = HashMap::new();
+                                            let mut props = std::collections::HashMap::new();
                                             props.insert(
                                                 "id".to_string(),
                                                 serde_json::Value::String(
@@ -85,16 +84,14 @@ impl Context<Files> {
                                                 ),
                                             );
                                             props
-                                        },
-                                    };
+                                        }};
                                         documents.push(document);
                                     }
                                 }
                                 let result = match documents.len() {
                                     0 => ZeroOneOrMany::None,
                                     1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                    _ => ZeroOneOrMany::Many(documents),
-                                };
+                                    _ => ZeroOneOrMany::Many(documents)};
                                 let _ = sender.send(result);
                             }
                             Err(e) => {
@@ -177,7 +174,7 @@ impl Context<Directory> {
                                                 crate::types::candle_context::DocumentMediaType::TXT,
                                             ),
                                             additional_props: {
-                                                let mut props = HashMap::new();
+                                                let mut props = std::collections::HashMap::new();
                                                 props.insert(
                                                     "id".to_string(),
                                                     serde_json::Value::String(
@@ -191,8 +188,7 @@ impl Context<Directory> {
                                                     ),
                                                 );
                                                 props
-                                            },
-                                        };
+                                            }};
                                             documents.push(document);
                                         }
                                     }
@@ -224,8 +220,7 @@ impl Context<Directory> {
                                 let result = match documents.len() {
                                     0 => ZeroOneOrMany::None,
                                     1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                    _ => ZeroOneOrMany::Many(documents),
-                                };
+                                    _ => ZeroOneOrMany::Many(documents)};
                                 let _ = sender.send(result);
                             }
                             Err(e) => {

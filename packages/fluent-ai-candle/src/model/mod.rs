@@ -29,14 +29,12 @@ pub use error::{ModelError, ModelResult, ValidationError, ValidationResult};
 pub use info::HasModelInfo;
 // ModelInfo moved to types module - use CandleModelInfo instead
 pub use loading::{
-    LoadingStage, ModelLoader, ModelMetadata, ProgressCallback, RecoveryStrategy, TensorInfo,
-};
+    LoadingStage, ModelLoader, ModelMetadata, ProgressCallback, RecoveryStrategy, TensorInfo};
 pub use metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats};
 pub use model_trait::Model;
 pub use registry::{
     ModelRegistry, RegistryError, get_model, global_registry, list_models, model_exists,
-    register_model,
-};
+    register_model};
 // All model traits are now defined in the canonical types module with Candle prefix:
 // - CandleLoadableModel (was LoadableModel)
 // - CandleUsageTrackingModel (was UsageTrackingModel)

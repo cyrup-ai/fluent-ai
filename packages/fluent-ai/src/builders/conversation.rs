@@ -11,8 +11,7 @@ use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 #[derive(Debug, Clone)]
 pub struct ConversationImpl {
     messages: Vec<String>,
-    latest_user_message: String,
-}
+    latest_user_message: String}
 
 impl Conversation for ConversationImpl {
     fn latest_user_message(&self) -> &str {
@@ -39,8 +38,7 @@ impl Conversation for ConversationImpl {
                     ZeroOneOrMany::None
                 }
             }
-            _ => ZeroOneOrMany::many(self.messages.clone()),
-        }
+            _ => ZeroOneOrMany::many(self.messages.clone())}
     }
 
     fn message_count(&self) -> usize {
@@ -51,32 +49,28 @@ impl Conversation for ConversationImpl {
         let message = user_message.into();
         Self {
             messages: vec![message.clone()],
-            latest_user_message: message,
-        }
+            latest_user_message: message}
     }
 }
 
 /// Builder for creating and configuring conversations
 pub struct ConversationBuilder {
     initial_message: Option<String>,
-    error_handler: Option<Box<dyn FnMut(String) + Send + 'static>>,
-}
+    error_handler: Option<Box<dyn FnMut(String) + Send + 'static>>}
 
 /// Builder with error handler - exposes terminal methods
 pub struct ConversationBuilderWithHandler {
     initial_message: Option<String>,
     error_handler: Box<dyn FnMut(String) + Send + 'static>,
     result_handler: Option<Box<dyn FnOnce(ConversationImpl) -> ConversationImpl + Send + 'static>>,
-    chunk_handler: Option<Box<dyn FnMut(ConversationImpl) -> ConversationImpl + Send + 'static>>,
-}
+    chunk_handler: Option<Box<dyn FnMut(ConversationImpl) -> ConversationImpl + Send + 'static>>}
 
 impl ConversationBuilder {
     /// Create a new conversation builder
     pub fn new() -> Self {
         Self {
             initial_message: None,
-            error_handler: None,
-        }
+            error_handler: None}
     }
 
     /// Set the initial message for the conversation
@@ -94,8 +88,7 @@ impl ConversationBuilder {
             initial_message: self.initial_message,
             error_handler: Box::new(handler),
             result_handler: None,
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 }
 

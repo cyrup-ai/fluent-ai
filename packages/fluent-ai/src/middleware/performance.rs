@@ -24,8 +24,7 @@ pub struct PerformanceMetrics {
     /// Number of failed executions
     pub failed_executions: CachePadded<AtomicU64>,
     /// Average execution time in nanoseconds
-    pub avg_execution_time_ns: CachePadded<AtomicU64>,
-}
+    pub avg_execution_time_ns: CachePadded<AtomicU64>}
 
 impl PerformanceMetrics {
     /// Create new performance metrics
@@ -82,16 +81,14 @@ pub struct PerformanceMiddleware {
     /// Performance metrics
     metrics: Arc<PerformanceMetrics>,
     /// Middleware name
-    name: String,
-}
+    name: String}
 
 impl PerformanceMiddleware {
     /// Create new performance middleware
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(PerformanceMetrics::new()),
-            name: "performance".to_string(),
-        }
+            name: "performance".to_string()}
     }
 
     /// Get performance metrics
@@ -139,8 +136,7 @@ impl CommandMiddleware for PerformanceMiddleware {
 
             match &result {
                 Ok(_) => metrics.record_success(duration_ns),
-                Err(_) => metrics.record_failure(duration_ns),
-            }
+                Err(_) => metrics.record_failure(duration_ns)}
 
             let _ = tx.send(Ok(()));
         });

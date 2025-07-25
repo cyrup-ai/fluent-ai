@@ -4,7 +4,6 @@
 //! Episodic memory stores sequences of events with temporal information,
 //! allowing for time-based queries and context-aware retrieval.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -35,8 +34,7 @@ pub struct EpisodicContext {
     pub value: String,
 
     /// Additional metadata for the context
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 impl EpisodicContext {
     /// Create a new episodic context
@@ -45,8 +43,7 @@ impl EpisodicContext {
             id: id.to_string(),
             context_type: context_type.to_string(),
             value: value.to_string(),
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Add metadata to the context
@@ -88,8 +85,7 @@ pub struct EpisodicEvent {
     pub context: Vec<EpisodicContext>,
 
     /// Additional metadata for the event
-    pub metadata: HashMap<String, Value>,
-}
+    pub metadata: HashMap<String, Value>}
 
 impl EpisodicEvent {
     /// Create a new episodic event
@@ -99,8 +95,7 @@ impl EpisodicEvent {
             timestamp: Utc::now(),
             content,
             context: Vec::new(),
-            metadata: HashMap::new(),
-        }
+            metadata: HashMap::new()}
     }
 
     /// Add a context to the event
@@ -123,8 +118,7 @@ pub struct EpisodicMemory {
     pub base: BaseMemory,
 
     /// Collection of events, indexed by timestamp for fast temporal queries
-    pub events: Arc<ArcSwap<SkipMap<DateTime<Utc>, EpisodicEvent>>>,
-}
+    pub events: Arc<ArcSwap<SkipMap<DateTime<Utc>, EpisodicEvent>>>}
 
 impl MemoryType for EpisodicMemory {
     fn new(id: &str, name: &str, description: &str) -> Self {
@@ -138,10 +132,8 @@ impl MemoryType for EpisodicMemory {
                 description: description.to_string(),
                 updated_at: Utc::now(),
                 metadata,
-                content: MemoryContent::None,
-            },
-            events: Arc::new(ArcSwap::new(Arc::new(SkipMap::new()))),
-        }
+                content: MemoryContent::None},
+            events: Arc::new(ArcSwap::new(Arc::new(SkipMap::new())))}
     }
 
     fn from_memory(memory: &BaseMemory) -> Result<Self> {
@@ -157,8 +149,7 @@ impl MemoryType for EpisodicMemory {
 
         Ok(Self {
             base: memory.clone(),
-            events: Arc::new(ArcSwap::new(Arc::new(events))),
-        })
+            events: Arc::new(ArcSwap::new(Arc::new(events)))})
     }
 
     fn to_memory(&self) -> Result<BaseMemory> {
@@ -258,8 +249,7 @@ impl EpisodicMemory {
                     created_at: episodic.base.metadata.created_at,
                     updated_at: episodic.base.updated_at,
                     embedding: None,
-                    metadata,
-                };
+                    metadata};
 
                 // Lock-free create operation
                 let created_memory = memory_repo.create(&id_string, &memory_node)?;
@@ -274,8 +264,7 @@ impl EpisodicMemory {
                     description: description_string.clone(),
                     updated_at: created_memory.updated_at,
                     metadata,
-                    content: MemoryContent::text(&created_memory.content),
-                };
+                    content: MemoryContent::text(&created_memory.content)};
                 let created_episodic = EpisodicMemory::from_memory(&base_memory)?;
 
                 Ok(created_episodic)

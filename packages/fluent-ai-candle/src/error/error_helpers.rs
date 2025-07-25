@@ -150,8 +150,7 @@ impl CandleError {
             Self::DeviceAllocation(_) => true,
             Self::TokenizationError(_) => true,
             Self::CacheOverflow => true,
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Get suggested retry delay in seconds
@@ -162,7 +161,6 @@ impl CandleError {
             Self::DeviceAllocation(_) => Some(1),
             Self::TokenizationError(_) => Some(2),
             Self::CacheOverflow => Some(1),
-            _ => None,
-        }
+            _ => None}
     }
 }

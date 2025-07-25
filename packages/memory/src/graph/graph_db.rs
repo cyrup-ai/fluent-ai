@@ -1,6 +1,5 @@
 //! Graph database abstraction
 
-use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -31,8 +30,7 @@ pub enum GraphError {
     ConversionError(String),
 
     #[error("Other error: {0}")]
-    Other(String),
-}
+    Other(String)}
 
 /// Node ID type
 pub type NodeId = String;
@@ -42,8 +40,7 @@ pub type NodeProperties = HashMap<String, serde_json::Value>;
 
 /// A pending node creation operation that can be awaited
 pub struct PendingNode {
-    rx: oneshot::Receiver<Result<NodeId>>,
-}
+    rx: oneshot::Receiver<Result<NodeId>>}
 
 impl PendingNode {
     pub fn new(rx: oneshot::Receiver<Result<NodeId>>) -> Self {
@@ -60,15 +57,13 @@ impl Future for PendingNode {
             Poll::Ready(Err(_)) => {
                 Poll::Ready(Err(GraphError::DatabaseError("Channel closed".into())))
             }
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending node query operation
 pub struct NodeQuery {
-    rx: oneshot::Receiver<Result<Option<Node>>>,
-}
+    rx: oneshot::Receiver<Result<Option<Node>>>}
 
 impl NodeQuery {
     pub fn new(rx: oneshot::Receiver<Result<Option<Node>>>) -> Self {
@@ -85,15 +80,13 @@ impl Future for NodeQuery {
             Poll::Ready(Err(_)) => {
                 Poll::Ready(Err(GraphError::DatabaseError("Channel closed".into())))
             }
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A pending node update operation
 pub struct NodeUpdate {
-    rx: oneshot::Receiver<Result<()>>,
-}
+    rx: oneshot::Receiver<Result<()>>}
 
 impl NodeUpdate {
     pub fn new(rx: oneshot::Receiver<Result<()>>) -> Self {
@@ -110,15 +103,13 @@ impl Future for NodeUpdate {
             Poll::Ready(Err(_)) => {
                 Poll::Ready(Err(GraphError::DatabaseError("Channel closed".into())))
             }
-            Poll::Pending => Poll::Pending,
-        }
+            Poll::Pending => Poll::Pending}
     }
 }
 
 /// A stream of nodes from a query
 pub struct NodeStream {
-    rx: tokio::sync::mpsc::Receiver<Result<Node>>,
-}
+    rx: tokio::sync::mpsc::Receiver<Result<Node>>}
 
 impl NodeStream {
     pub fn new(rx: tokio::sync::mpsc::Receiver<Result<Node>>) -> Self {
@@ -165,8 +156,7 @@ pub struct Node {
     pub properties: NodeProperties,
 
     /// Node labels
-    pub labels: Vec<String>,
-}
+    pub labels: Vec<String>}
 
 impl Node {
     /// Create a new node
@@ -174,8 +164,7 @@ impl Node {
         Self {
             id,
             properties: HashMap::new(),
-            labels: vec![label.to_string()],
-        }
+            labels: vec![label.to_string()]}
     }
 
     /// Add a property to the node
@@ -195,8 +184,7 @@ pub struct GraphQueryOptions {
     pub offset: Option<usize>,
 
     /// Additional filters
-    pub filters: HashMap<String, serde_json::Value>,
-}
+    pub filters: HashMap<String, serde_json::Value>}
 
 impl GraphQueryOptions {
     /// Create new query options
@@ -204,8 +192,7 @@ impl GraphQueryOptions {
         Self {
             limit: None,
             offset: None,
-            filters: HashMap::new(),
-        }
+            filters: HashMap::new()}
     }
 
     /// Set limit

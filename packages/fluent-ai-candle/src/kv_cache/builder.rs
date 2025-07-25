@@ -13,16 +13,14 @@ use super::types::KVCache;
 
 /// Fluent builder for KV cache configuration
 pub struct KVCacheBuilder {
-    config: KVCacheConfig,
-}
+    config: KVCacheConfig}
 
 impl KVCacheBuilder {
     /// Create new builder with default configuration
     #[inline(always)]
     pub const fn new() -> Self {
         Self {
-            config: KVCacheConfig::new(),
-        }
+            config: KVCacheConfig::new()}
     }
 
     /// Create builder from existing configuration
@@ -428,8 +426,7 @@ pub struct ConfigWizard {
     model_size: Option<ModelSize>,
     workload_type: Option<WorkloadType>,
     memory_constraint: Option<usize>,
-    performance_priority: Option<PerformancePriority>,
-}
+    performance_priority: Option<PerformancePriority>}
 
 impl ConfigWizard {
     /// Start configuration wizard
@@ -438,8 +435,7 @@ impl ConfigWizard {
             model_size: None,
             workload_type: None,
             memory_constraint: None,
-            performance_priority: None,
-        }
+            performance_priority: None}
     }
 
     /// Set model size category
@@ -475,8 +471,7 @@ impl ConfigWizard {
             builder = match size {
                 ModelSize::Small => builder.small_model(),
                 ModelSize::Medium => builder.medium_model(),
-                ModelSize::Large => builder.large_model(),
-            };
+                ModelSize::Large => builder.large_model()};
         }
 
         // Apply workload type recommendations
@@ -485,8 +480,7 @@ impl ConfigWizard {
                 WorkloadType::Inference => builder.inference_optimized(),
                 WorkloadType::Training => builder.training_optimized(),
                 WorkloadType::Serving => builder.high_throughput(),
-                WorkloadType::Development => builder.enable_all_optimizations(),
-            };
+                WorkloadType::Development => builder.enable_all_optimizations()};
         }
 
         // Apply memory constraints
@@ -510,8 +504,7 @@ impl ConfigWizard {
                     .enable_statistics()
                     .eviction_strategy(EvictionStrategy::AdaptiveLFU),
                 PerformancePriority::Balanced => builder
-                    .eviction_strategy(EvictionStrategy::AdaptiveLRU),
-            };
+                    .eviction_strategy(EvictionStrategy::AdaptiveLRU)};
         }
 
         builder
@@ -532,8 +525,7 @@ pub enum ModelSize {
     /// Medium models (1B-10B parameters)
     Medium,
     /// Large models (> 10B parameters)
-    Large,
-}
+    Large}
 
 /// Workload type categories
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -545,8 +537,7 @@ pub enum WorkloadType {
     /// High-throughput serving
     Serving,
     /// Development and debugging
-    Development,
-}
+    Development}
 
 /// Performance priority categories
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -558,5 +549,4 @@ pub enum PerformancePriority {
     /// Optimize for cache quality/hit rate
     Quality,
     /// Balanced optimization
-    Balanced,
-}
+    Balanced}

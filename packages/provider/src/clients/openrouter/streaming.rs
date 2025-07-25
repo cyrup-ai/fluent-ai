@@ -19,7 +19,7 @@ use std::task::{Context, Poll};
 use std::time::{Duration, Instant, SystemTime};
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use async_stream::stream;
 use atomic_counter::RelaxedCounter;
 use crossbeam_skiplist::SkipMap;
@@ -48,18 +48,15 @@ pub enum RawStreamingChoice {
     ToolCallBuffer {
         name: ArrayString<256>,
         id: ArrayString<64>,
-        arguments: serde_json::Value,
-    },
+        arguments: serde_json::Value},
     /// Final response
-    FinalResponse(FinalCompletionResponse),
-}
+    FinalResponse(FinalCompletionResponse)}
 
 /// Streaming completion response wrapper
 #[derive(Debug)]
 pub struct StreamingCompletionResponse<T> {
     stream: Pin<Box<dyn Stream<Item = Result<RawStreamingChoice, CompletionError>> + Send>>,
-    _phantom: std::marker::PhantomData<T>,
-}
+    _phantom: std::marker::PhantomData<T>}
 
 impl<T> StreamingCompletionResponse<T> {
     pub fn new(
@@ -67,8 +64,7 @@ impl<T> StreamingCompletionResponse<T> {
     ) -> Self {
         Self {
             stream,
-            _phantom: std::marker::PhantomData,
-        }
+            _phantom: std::marker::PhantomData}
     }
 }
 
@@ -93,28 +89,23 @@ pub enum ToolCallState {
     Waiting,
     InitiatingName {
         buffer: ArrayString<256>,
-        start_offset: u16,
-    },
+        start_offset: u16},
     AccumulatingArgs {
         name: ArrayString<256>,
         args_buffer: ArrayString<8192>, // Optimized for 99% of tool calls
         brace_depth: u8,
         quote_depth: u8,
         escape_active: bool,
-        json_valid: bool,
-    },
+        json_valid: bool},
     Complete {
         name: ArrayString<256>,
         arguments: ArrayString<8192>,
         call_id: ArrayString<64>,
-        duration_ns: u64,
-    },
+        duration_ns: u64},
     Error {
         message: ArrayString<512>,
         error_code: ToolCallErrorCode,
-        recovery_action: RecoveryAction,
-    },
-}
+        recovery_action: RecoveryAction}}
 
 /// Error codes for tool call processing
 #[derive(Debug, Clone, Copy)]
@@ -125,8 +116,7 @@ pub enum ToolCallErrorCode {
     ConcurrencyLimitExceeded,
     TimeoutExceeded,
     SIMDProcessingFailed,
-    CircuitBreakerOpen,
-}
+    CircuitBreakerOpen}
 
 /// Recovery actions for error handling
 #[derive(Debug, Clone, Copy)]
@@ -135,8 +125,7 @@ pub enum RecoveryAction {
     FallbackParser,
     PartialRecovery,
     GracefulDegradation,
-    NoRecovery,
-}
+    NoRecovery}
 
 /// High-performance bounded concurrent tool call parser
 pub struct ToolCallParser {
@@ -144,8 +133,7 @@ pub struct ToolCallParser {
     call_id_sequence: AtomicU32,
     performance_counters: &'static ToolCallMetrics,
     json_validator: SIMDJsonValidator,
-    memory_pool: StackMemoryPool<8192>,
-}
+    memory_pool: StackMemoryPool<8192>}
 
 /// SIMD-optimized JSON validation using AVX2/AVX-512
 struct SIMDJsonValidator {
@@ -158,8 +146,7 @@ struct SIMDJsonValidator {
 struct StackMemoryPool<const SIZE: usize> {
     buffers: ArrayVec<[u8; SIZE], 32>,
     allocation_counter: AtomicU16,
-    reuse_counter: AtomicU16,
-}
+    reuse_counter: AtomicU16}
 
 // ================================================================================================
 // Comprehensive Error Handling
@@ -173,54 +160,46 @@ pub enum ToolCallError {
         position: usize,
         error_type: JsonErrorType,
         recovery_strategy: RecoveryStrategy,
-        context_buffer: ArrayString<256>,
-    },
+        context_buffer: ArrayString<256>},
     #[error("Tool call state transition error: {from:?} -> {to:?}")]
     StateTransition {
         from: ToolCallState,
         to: ToolCallState,
         reason: StateTransitionError,
-        recovery_action: AutoRecoveryAction,
-    },
+        recovery_action: AutoRecoveryAction},
     #[error("Buffer overflow: attempted {size} bytes, limit {limit}")]
     BufferOverflow {
         size: usize,
         limit: usize,
         buffer_type: BufferType,
-        optimization_suggestion: BufferOptimization,
-    },
+        optimization_suggestion: BufferOptimization},
     #[error("Concurrent tool call limit exceeded: {current}/{max}")]
     ConcurrencyLimit {
         current: u8,
         max: u8,
         queue_depth: usize,
-        estimated_wait_time_ms: u64,
-    },
+        estimated_wait_time_ms: u64},
     #[error("Tool call timeout after {duration_ms}ms")]
     Timeout {
         duration_ms: u64,
         stage: ToolCallStage,
         partial_data: Option<ArrayString<1024>>,
-        recovery_feasible: bool,
-    },
+        recovery_feasible: bool},
     #[error("SIMD processing error: {operation:?}")]
     SIMDProcessing {
         operation: SIMDOperation,
         cpu_features: CpuFeatures,
-        fallback_available: bool,
-    },
+        fallback_available: bool},
     #[error("Circuit breaker {name} is {state:?}")]
     CircuitBreakerOpen {
         name: ArrayString<64>,
         state: CircuitBreakerState,
         failure_count: u32,
-        next_retry_ms: u64,
-    },
+        next_retry_ms: u64},
     #[error("HTTP error: {0}")]
     Http(#[from] HttpError),
     #[error("Completion error: {0}")]
-    Completion(#[from] CompletionError),
-}
+    Completion(#[from] CompletionError)}
 
 #[derive(Debug, Clone, Copy)]
 pub enum JsonErrorType {
@@ -228,39 +207,34 @@ pub enum JsonErrorType {
     UnexpectedEof,
     InvalidEscape,
     InvalidNumber,
-    InvalidString,
-}
+    InvalidString}
 
 #[derive(Debug, Clone, Copy)]
 pub enum StateTransitionError {
     InvalidSequence,
     MissingData,
-    CorruptedState,
-}
+    CorruptedState}
 
 #[derive(Debug, Clone, Copy)]
 pub enum AutoRecoveryAction {
     ResetState,
     RetryTransition,
     SkipToNext,
-    AbortCall,
-}
+    AbortCall}
 
 #[derive(Debug, Clone, Copy)]
 pub enum BufferType {
     ArgumentBuffer,
     NameBuffer,
     MessageBuffer,
-    MetadataBuffer,
-}
+    MetadataBuffer}
 
 #[derive(Debug, Clone, Copy)]
 pub enum BufferOptimization {
     IncreaseSize,
     UseCompression,
     StreamingMode,
-    ChunkedProcessing,
-}
+    ChunkedProcessing}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ToolCallStage {
@@ -268,30 +242,26 @@ pub enum ToolCallStage {
     NameParsing,
     ArgumentAccumulation,
     Validation,
-    Completion,
-}
+    Completion}
 
 #[derive(Debug, Clone, Copy)]
 pub enum SIMDOperation {
     BraceMatching,
     QuoteDetection,
     EscapeProcessing,
-    Validation,
-}
+    Validation}
 
 #[derive(Debug, Clone, Copy)]
 pub struct CpuFeatures {
     pub avx2: bool,
     pub avx512: bool,
-    pub sse42: bool,
-}
+    pub sse42: bool}
 
 #[derive(Debug, Clone, Copy)]
 pub enum CircuitBreakerState {
     Closed,
     Open,
-    HalfOpen,
-}
+    HalfOpen}
 
 /// Intelligent error recovery strategies
 #[derive(Debug, Clone)]
@@ -300,8 +270,7 @@ pub enum RecoveryStrategy {
     FallbackParser,
     PartialRecovery,
     GracefulDegradation,
-    NoRecovery,
-}
+    NoRecovery}
 
 // ================================================================================================
 // SIMD-Optimized Incremental JSON Parser
@@ -315,8 +284,7 @@ pub struct IncrementalJsonParser {
     escape_state: AtomicBool,
     validation_cache: ArrayVec<JsonValidationCheckpoint, 64>,
     simd_accelerator: SIMDJsonAccelerator,
-    performance_monitor: JsonParsingMetrics,
-}
+    performance_monitor: JsonParsingMetrics}
 
 /// SIMD-accelerated JSON processing using packed SIMD operations
 struct SIMDJsonAccelerator {
@@ -326,78 +294,66 @@ struct SIMDJsonAccelerator {
 
     // Performance optimization state
     chunk_size_optimizer: AdaptiveChunkSizer,
-    pattern_predictor: JsonPatternPredictor,
-}
+    pattern_predictor: JsonPatternPredictor}
 
 #[derive(Debug, Clone)]
 struct JsonValidationCheckpoint {
     position: u16,
     brace_depth: u8,
     quote_state: bool,
-    is_valid: bool,
-}
+    is_valid: bool}
 
 #[derive(Debug)]
 struct JsonParsingMetrics {
     chunks_processed: AtomicU64,
     bytes_processed: AtomicU64,
     parsing_time_ns: AtomicU64,
-    validation_failures: AtomicU32,
-}
+    validation_failures: AtomicU32}
 
 /// Adaptive chunk size optimization based on historical patterns
 struct AdaptiveChunkSizer {
     historical_sizes: ArrayVec<u16, 32>,
     optimal_size_cache: AtomicU16,
-    efficiency_metrics: ChunkEfficiencyMetrics,
-}
+    efficiency_metrics: ChunkEfficiencyMetrics}
 
 #[derive(Debug)]
 struct ChunkEfficiencyMetrics {
     average_processing_time: AtomicU64,
     cache_hit_rate: AtomicU32,
-    optimization_count: AtomicU32,
-}
+    optimization_count: AtomicU32}
 
 /// JSON pattern prediction for optimized parsing paths
 struct JsonPatternPredictor {
     common_patterns: &'static SkipMap<&'static str, JsonPattern>,
     prediction_cache: ArrayVec<PredictionEntry, 128>,
-    accuracy_metrics: PredictionAccuracyMetrics,
-}
+    accuracy_metrics: PredictionAccuracyMetrics}
 
 #[derive(Debug, Clone)]
 struct JsonPattern {
     pattern_hash: u64,
     expected_size: u16,
-    complexity_score: u8,
-}
+    complexity_score: u8}
 
 #[derive(Debug, Clone)]
 struct PredictionEntry {
     pattern_hash: u64,
     prediction_confidence: f32,
-    actual_result: Option<JsonChunkResult>,
-}
+    actual_result: Option<JsonChunkResult>}
 
 #[derive(Debug)]
 struct PredictionAccuracyMetrics {
     total_predictions: AtomicU32,
     correct_predictions: AtomicU32,
-    accuracy_percentage: AtomicU32,
-}
+    accuracy_percentage: AtomicU32}
 
 #[derive(Debug)]
 pub enum JsonChunkResult {
     Incomplete,
     Complete {
-        value: serde_json::Value,
-    },
+        value: serde_json::Value},
     Invalid {
         error: JsonErrorType,
-        position: usize,
-    },
-}
+        position: usize}}
 
 impl IncrementalJsonParser {
     pub fn new() -> Self {
@@ -408,8 +364,7 @@ impl IncrementalJsonParser {
             escape_state: AtomicBool::new(false),
             validation_cache: ArrayVec::new(),
             simd_accelerator: SIMDJsonAccelerator::new(),
-            performance_monitor: JsonParsingMetrics::new(),
-        }
+            performance_monitor: JsonParsingMetrics::new()}
     }
 
     #[inline(always)]
@@ -449,17 +404,13 @@ impl IncrementalJsonParser {
                 // Parse JSON with zero additional allocations
                 let parsed_value = self.parse_json_zero_alloc()?;
                 Ok(JsonChunkResult::Complete {
-                    value: parsed_value,
-                })
+                    value: parsed_value})
             }
             JsonValidation::Invalid {
                 error_position,
-                error_type,
-            } => Ok(JsonChunkResult::Invalid {
+                error_type} => Ok(JsonChunkResult::Invalid {
                 error: error_type,
-                position: error_position,
-            }),
-        }
+                position: error_position})}
     }
 
     #[inline(always)]
@@ -468,8 +419,7 @@ impl IncrementalJsonParser {
             position: 0,
             error_type: JsonErrorType::InvalidSyntax,
             recovery_strategy: RecoveryStrategy::FallbackParser,
-            context_buffer: ArrayString::new(),
-        })
+            context_buffer: ArrayString::new()})
     }
 
     #[inline(always)]
@@ -499,8 +449,7 @@ impl IncrementalJsonParser {
                     size: result.processed_content.len(),
                     limit: self.buffer.remaining_capacity(),
                     buffer_type: BufferType::ArgumentBuffer,
-                    optimization_suggestion: BufferOptimization::IncreaseSize,
-                })?;
+                    optimization_suggestion: BufferOptimization::IncreaseSize})?;
         }
 
         Ok(())
@@ -529,17 +478,14 @@ struct SIMDProcessingResult {
     in_quote: bool,
     escape_active: bool,
     processed_content: String,
-    validation_passed: bool,
-}
+    validation_passed: bool}
 
 #[derive(Debug)]
 enum JsonValidation {
     Valid,
     Invalid {
         error_position: usize,
-        error_type: JsonErrorType,
-    },
-}
+        error_type: JsonErrorType}}
 
 impl SIMDJsonAccelerator {
     fn new() -> Self {
@@ -547,8 +493,7 @@ impl SIMDJsonAccelerator {
             char_class_table: Self::build_char_class_table(),
             escape_sequence_table: Self::build_escape_table(),
             chunk_size_optimizer: AdaptiveChunkSizer::new(),
-            pattern_predictor: JsonPatternPredictor::new(),
-        }
+            pattern_predictor: JsonPatternPredictor::new()}
     }
 
     fn build_char_class_table() -> [u8; 256] {
@@ -625,8 +570,7 @@ impl SIMDJsonAccelerator {
             in_quote,
             escape_active,
             processed_content: processed,
-            validation_passed: true,
-        })
+            validation_passed: true})
     }
 
     fn validate_json_structure(&self, buffer: &str) -> JsonValidation {
@@ -635,9 +579,7 @@ impl SIMDJsonAccelerator {
             Ok(_) => JsonValidation::Valid,
             Err(_) => JsonValidation::Invalid {
                 error_position: 0,
-                error_type: JsonErrorType::InvalidSyntax,
-            },
-        }
+                error_type: JsonErrorType::InvalidSyntax}}
     }
 }
 
@@ -646,8 +588,7 @@ impl AdaptiveChunkSizer {
         Self {
             historical_sizes: ArrayVec::new(),
             optimal_size_cache: AtomicU16::new(1024),
-            efficiency_metrics: ChunkEfficiencyMetrics::new(),
-        }
+            efficiency_metrics: ChunkEfficiencyMetrics::new()}
     }
 }
 
@@ -656,8 +597,7 @@ impl ChunkEfficiencyMetrics {
         Self {
             average_processing_time: AtomicU64::new(0),
             cache_hit_rate: AtomicU32::new(0),
-            optimization_count: AtomicU32::new(0),
-        }
+            optimization_count: AtomicU32::new(0)}
     }
 }
 
@@ -666,8 +606,7 @@ impl JsonPatternPredictor {
         Self {
             common_patterns: &COMMON_JSON_PATTERNS,
             prediction_cache: ArrayVec::new(),
-            accuracy_metrics: PredictionAccuracyMetrics::new(),
-        }
+            accuracy_metrics: PredictionAccuracyMetrics::new()}
     }
 }
 
@@ -676,8 +615,7 @@ impl PredictionAccuracyMetrics {
         Self {
             total_predictions: AtomicU32::new(0),
             correct_predictions: AtomicU32::new(0),
-            accuracy_percentage: AtomicU32::new(0),
-        }
+            accuracy_percentage: AtomicU32::new(0)}
     }
 }
 
@@ -687,8 +625,7 @@ impl JsonParsingMetrics {
             chunks_processed: AtomicU64::new(0),
             bytes_processed: AtomicU64::new(0),
             parsing_time_ns: AtomicU64::new(0),
-            validation_failures: AtomicU32::new(0),
-        }
+            validation_failures: AtomicU32::new(0)}
     }
 
     fn update_metrics(&self, bytes: usize, time_ns: u64) {
@@ -708,8 +645,7 @@ pub struct ToolCallPerformanceMonitor {
     metrics_collector: LockFreeMetricsCollector,
     histogram_manager: AtomicHistogramManager,
     bottleneck_detector: RealTimeBottleneckDetector,
-    optimization_engine: PerformanceOptimizationEngine,
-}
+    optimization_engine: PerformanceOptimizationEngine}
 
 /// Lock-free metrics collection using atomic operations
 struct LockFreeMetricsCollector {
@@ -735,16 +671,14 @@ struct LockFreeMetricsCollector {
     // Circuit breaker metrics
     circuit_breaker_trips: AtomicU32,
     circuit_breaker_recoveries: AtomicU32,
-    circuit_breaker_half_open_tests: AtomicU32,
-}
+    circuit_breaker_half_open_tests: AtomicU32}
 
 /// Atomic histogram implementation for latency distribution
 struct AtomicHistogramManager {
     latency_buckets: [AtomicU64; 32], // Exponential buckets for latency
     throughput_buckets: [AtomicU64; 16], // Linear buckets for throughput
     percentile_cache: ArcSwap<PercentileCache>,
-    bucket_boundaries: &'static [u64],
-}
+    bucket_boundaries: &'static [u64]}
 
 #[derive(Debug, Clone)]
 struct PercentileCache {
@@ -752,16 +686,14 @@ struct PercentileCache {
     p90: u64,
     p95: u64,
     p99: u64,
-    last_updated: u64,
-}
+    last_updated: u64}
 
 /// Real-time bottleneck detection using statistical analysis
 struct RealTimeBottleneckDetector {
     measurement_windows: ArrayVec<MeasurementWindow, 64>,
     current_window: AtomicUsize,
     bottleneck_patterns: ArrayVec<BottleneckPattern, 16>,
-    detection_thresholds: BottleneckThresholds,
-}
+    detection_thresholds: BottleneckThresholds}
 
 #[derive(Debug, Clone)]
 struct MeasurementWindow {
@@ -769,15 +701,13 @@ struct MeasurementWindow {
     end_time: u64,
     sample_count: u32,
     average_latency: u64,
-    error_rate: f32,
-}
+    error_rate: f32}
 
 #[derive(Debug, Clone)]
 struct BottleneckPattern {
     pattern_type: BottleneckType,
     confidence: f32,
-    mitigation_strategy: MitigationStrategy,
-}
+    mitigation_strategy: MitigationStrategy}
 
 #[derive(Debug, Clone)]
 enum BottleneckType {
@@ -785,8 +715,7 @@ enum BottleneckType {
     StateTransition,
     MemoryAllocation,
     NetworkLatency,
-    ConcurrencyLimit,
-}
+    ConcurrencyLimit}
 
 #[derive(Debug, Clone)]
 enum MitigationStrategy {
@@ -794,32 +723,28 @@ enum MitigationStrategy {
     EnableSIMD,
     ReduceConcurrency,
     OptimizeParser,
-    AddCaching,
-}
+    AddCaching}
 
 #[derive(Debug)]
 struct BottleneckThresholds {
     latency_p95_threshold_ns: u64,
     error_rate_threshold: f32,
     throughput_min_threshold: u64,
-    memory_pressure_threshold: f32,
-}
+    memory_pressure_threshold: f32}
 
 /// Real-time performance optimization engine
 struct PerformanceOptimizationEngine {
     optimization_strategies: &'static [OptimizationStrategy],
     current_optimizations: ArrayVec<ActiveOptimization, 8>,
     effectiveness_tracker: OptimizationEffectivenessTracker,
-    adaptive_parameters: AdaptiveOptimizationParameters,
-}
+    adaptive_parameters: AdaptiveOptimizationParameters}
 
 #[derive(Debug, Clone)]
 struct OptimizationStrategy {
     strategy_type: OptimizationType,
     trigger_conditions: TriggerConditions,
     expected_improvement: f32,
-    cost_score: u8,
-}
+    cost_score: u8}
 
 #[derive(Debug, Clone)]
 enum OptimizationType {
@@ -827,30 +752,26 @@ enum OptimizationType {
     SIMDAcceleration,
     CachingOptimization,
     ConcurrencyTuning,
-    MemoryPooling,
-}
+    MemoryPooling}
 
 #[derive(Debug, Clone)]
 struct TriggerConditions {
     min_latency_ms: u64,
     min_error_rate: f32,
-    min_throughput: u64,
-}
+    min_throughput: u64}
 
 #[derive(Debug, Clone)]
 struct ActiveOptimization {
     strategy: OptimizationType,
     start_time: u64,
     expected_duration: u64,
-    progress: f32,
-}
+    progress: f32}
 
 #[derive(Debug)]
 struct OptimizationEffectivenessTracker {
     optimization_history: ArrayVec<OptimizationResult, 32>,
     success_rates: ArrayVec<f32, 16>,
-    improvement_metrics: ImprovementMetrics,
-}
+    improvement_metrics: ImprovementMetrics}
 
 #[derive(Debug, Clone)]
 struct OptimizationResult {
@@ -858,16 +779,14 @@ struct OptimizationResult {
     before_metrics: PerformanceSnapshot,
     after_metrics: PerformanceSnapshot,
     improvement_percentage: f32,
-    success: bool,
-}
+    success: bool}
 
 #[derive(Debug, Clone)]
 struct PerformanceSnapshot {
     average_latency_ns: u64,
     throughput_ops_per_sec: u64,
     error_rate: f32,
-    memory_usage_bytes: usize,
-}
+    memory_usage_bytes: usize}
 
 #[derive(Debug)]
 struct ImprovementMetrics {
@@ -881,16 +800,14 @@ struct AdaptiveOptimizationParameters {
     learning_rate: f32,
     exploration_rate: f32,
     convergence_threshold: f32,
-    optimization_interval_ms: u64,
-}
+    optimization_interval_ms: u64}
 
 /// Zero-allocation performance tracker
 pub struct PerformanceTracker {
     start_time: u64,
     context_hash: u64,
     simd_enabled: bool,
-    monitor: &'static ToolCallPerformanceMonitor,
-}
+    monitor: &'static ToolCallPerformanceMonitor}
 
 /// Static performance monitor instance
 static PERFORMANCE_MONITOR: ToolCallPerformanceMonitor = ToolCallPerformanceMonitor::new();
@@ -905,8 +822,7 @@ pub struct ToolCallMetrics {
     successful_calls: RelaxedCounter,
     failed_calls: RelaxedCounter,
     processing_time_ns: RelaxedCounter,
-    bytes_processed: RelaxedCounter,
-}
+    bytes_processed: RelaxedCounter}
 
 impl ToolCallMetrics {
     const fn new() -> Self {
@@ -915,8 +831,7 @@ impl ToolCallMetrics {
             successful_calls: RelaxedCounter::new(0),
             failed_calls: RelaxedCounter::new(0),
             processing_time_ns: RelaxedCounter::new(0),
-            bytes_processed: RelaxedCounter::new(0),
-        }
+            bytes_processed: RelaxedCounter::new(0)}
     }
 }
 
@@ -926,8 +841,7 @@ impl ToolCallPerformanceMonitor {
             metrics_collector: LockFreeMetricsCollector::new(),
             histogram_manager: AtomicHistogramManager::new(),
             bottleneck_detector: RealTimeBottleneckDetector::new(),
-            optimization_engine: PerformanceOptimizationEngine::new(),
-        }
+            optimization_engine: PerformanceOptimizationEngine::new()}
     }
 
     #[inline(always)]
@@ -952,8 +866,7 @@ impl ToolCallPerformanceMonitor {
             start_time,
             context_hash: context.compute_hash(),
             simd_enabled: context.simd_capabilities.available(),
-            monitor: &PERFORMANCE_MONITOR,
-        }
+            monitor: &PERFORMANCE_MONITOR}
     }
 
     #[inline(always)]
@@ -1075,8 +988,7 @@ impl ToolCallPerformanceMonitor {
                 .compare_exchange_weak(peak, current, Ordering::Relaxed, Ordering::Relaxed)
             {
                 Ok(_) => break,
-                Err(actual) => peak = actual,
-            }
+                Err(actual) => peak = actual}
         }
     }
 
@@ -1113,8 +1025,7 @@ impl LockFreeMetricsCollector {
             buffer_overflow_errors: AtomicU32::new(0),
             circuit_breaker_trips: AtomicU32::new(0),
             circuit_breaker_recoveries: AtomicU32::new(0),
-            circuit_breaker_half_open_tests: AtomicU32::new(0),
-        }
+            circuit_breaker_half_open_tests: AtomicU32::new(0)}
     }
 }
 
@@ -1178,8 +1089,7 @@ impl AtomicHistogramManager {
             latency_buckets: LATENCY_BUCKETS,
             throughput_buckets: THROUGHPUT_BUCKETS,
             percentile_cache: ArcSwap::from_pointee(PercentileCache::default()),
-            bucket_boundaries: &LATENCY_BUCKET_BOUNDARIES,
-        }
+            bucket_boundaries: &LATENCY_BUCKET_BOUNDARIES}
     }
 
     fn record_latency(&self, latency_ns: u64) {
@@ -1219,8 +1129,7 @@ impl Default for PercentileCache {
             p90: 0,
             p95: 0,
             p99: 0,
-            last_updated: 0,
-        }
+            last_updated: 0}
     }
 }
 
@@ -1235,8 +1144,7 @@ impl RealTimeBottleneckDetector {
                 error_rate_threshold: 0.05,           // 5%
                 throughput_min_threshold: 1000,       // ops/sec
                 memory_pressure_threshold: 0.8,       // 80%
-            },
-        }
+            }}
     }
 
     fn analyze_performance(&self, duration_ns: u64, tracker: &PerformanceTracker) {
@@ -1258,8 +1166,7 @@ impl PerformanceOptimizationEngine {
                 exploration_rate: 0.05,
                 convergence_threshold: 0.01,
                 optimization_interval_ms: 30000, // 30 seconds
-            },
-        }
+            }}
     }
 
     fn trigger_performance_optimization(&self) {
@@ -1275,9 +1182,7 @@ impl OptimizationEffectivenessTracker {
             improvement_metrics: ImprovementMetrics {
                 total_optimizations: AtomicU32::new(0),
                 successful_optimizations: AtomicU32::new(0),
-                average_improvement: AtomicU32::new(0),
-            },
-        }
+                average_improvement: AtomicU32::new(0)}}
     }
 }
 
@@ -1292,23 +1197,20 @@ pub struct ToolCallContext {
     pub function_name: ArrayString<256>,
     pub provider_model: ArrayString<128>,
     pub simd_capabilities: SIMDCapabilities,
-    pub performance_settings: PerformanceSettings,
-}
+    pub performance_settings: PerformanceSettings}
 
 #[derive(Debug, Clone)]
 pub struct SIMDCapabilities {
     pub avx2_available: bool,
     pub avx512_available: bool,
-    pub sse42_available: bool,
-}
+    pub sse42_available: bool}
 
 #[derive(Debug, Clone)]
 pub struct PerformanceSettings {
     pub max_concurrent_calls: u8,
     pub timeout_ms: u64,
     pub buffer_size_hint: usize,
-    pub enable_optimizations: bool,
-}
+    pub enable_optimizations: bool}
 
 impl ToolCallContext {
     pub fn compute_hash(&self) -> u64 {
@@ -1344,8 +1246,7 @@ impl SIMDCapabilities {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             sse42_available: is_x86_feature_detected!("sse4.2"),
             #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-            sse42_available: false,
-        }
+            sse42_available: false}
     }
 }
 
@@ -1370,8 +1271,7 @@ pub struct OpenRouterStream {
     chunk_builder: OptimizedChunkBuilder,
     performance_monitor: &'static ToolCallPerformanceMonitor,
     active_tool_calls: ArrayVec<ActiveToolCall, 16>,
-    buffer: ArrayString<16384>,
-}
+    buffer: ArrayString<16384>}
 
 #[derive(Debug, Clone)]
 struct ActiveToolCall {
@@ -1379,22 +1279,19 @@ struct ActiveToolCall {
     function_name: ArrayString<256>,
     accumulated_args: ArrayString<8192>,
     start_time: u64,
-    state: ToolCallState,
-}
+    state: ToolCallState}
 
 /// Zero-allocation chunk builder with optimized domain type integration
 pub struct OptimizedChunkBuilder {
     chunk_template: CompletionChunk,
     tool_call_buffer: ArrayVec<ToolCall, 16>,
-    serialization_cache: SerializationCache,
-}
+    serialization_cache: SerializationCache}
 
 /// String interning cache for memory efficiency
 struct SerializationCache {
     interned_strings: SkipMap<String, Arc<str>>,
     cache_size: AtomicUsize,
-    hit_rate: AtomicU32,
-}
+    hit_rate: AtomicU32}
 
 impl OpenRouterStream {
     pub fn new() -> Self {
@@ -1403,8 +1300,7 @@ impl OpenRouterStream {
             chunk_builder: OptimizedChunkBuilder::new(),
             performance_monitor: &PERFORMANCE_MONITOR,
             active_tool_calls: ArrayVec::new(),
-            buffer: ArrayString::new(),
-        }
+            buffer: ArrayString::new()}
     }
 
     pub async fn process_sse_chunk(
@@ -1418,8 +1314,7 @@ impl OpenRouterStream {
             position: 0,
             error_type: JsonErrorType::InvalidSyntax,
             recovery_strategy: RecoveryStrategy::NoRecovery,
-            context_buffer: ArrayString::new(),
-        })?;
+            context_buffer: ArrayString::new()})?;
 
         // Process each line in the chunk
         for line in chunk_str.lines() {
@@ -1454,8 +1349,7 @@ impl OpenRouterStream {
                 position: 0,
                 error_type: JsonErrorType::InvalidSyntax,
                 recovery_strategy: RecoveryStrategy::FallbackParser,
-                context_buffer: ArrayString::new(),
-            })?;
+                context_buffer: ArrayString::new()})?;
 
         // Process the parsed data
         self.process_streaming_data(&data).await
@@ -1473,8 +1367,7 @@ impl OpenRouterStream {
                 position: 0,
                 error_type: JsonErrorType::InvalidSyntax,
                 recovery_strategy: RecoveryStrategy::NoRecovery,
-                context_buffer: ArrayString::new(),
-            })?;
+                context_buffer: ArrayString::new()})?;
 
         if let Some(choice) = choices.first() {
             // Handle delta format (streaming)
@@ -1527,8 +1420,7 @@ impl OpenRouterStream {
                 function_name: ArrayString::new(),
                 accumulated_args: ArrayString::new(),
                 start_time: self.performance_monitor.get_high_precision_timestamp(),
-                state: ToolCallState::Waiting,
-            })?;
+                state: ToolCallState::Waiting})?;
         }
 
         let active_call = &mut self.active_tool_calls[index];
@@ -1544,8 +1436,7 @@ impl OpenRouterStream {
                         size: id.len(),
                         limit: active_call.id.capacity(),
                         buffer_type: BufferType::NameBuffer,
-                        optimization_suggestion: BufferOptimization::IncreaseSize,
-                    })?;
+                        optimization_suggestion: BufferOptimization::IncreaseSize})?;
             }
         }
 
@@ -1559,8 +1450,7 @@ impl OpenRouterStream {
                             size: name.len(),
                             limit: active_call.function_name.capacity(),
                             buffer_type: BufferType::NameBuffer,
-                            optimization_suggestion: BufferOptimization::IncreaseSize,
-                        }
+                            optimization_suggestion: BufferOptimization::IncreaseSize}
                     })?;
                 }
             }
@@ -1574,8 +1464,7 @@ impl OpenRouterStream {
                         size: args.len(),
                         limit: active_call.accumulated_args.remaining_capacity(),
                         buffer_type: BufferType::ArgumentBuffer,
-                        optimization_suggestion: BufferOptimization::StreamingMode,
-                    })?;
+                        optimization_suggestion: BufferOptimization::StreamingMode})?;
 
                 // Check if arguments are complete JSON
                 if self.is_complete_json(&active_call.accumulated_args) {
@@ -1586,8 +1475,7 @@ impl OpenRouterStream {
                         duration_ns: self
                             .performance_monitor
                             .get_high_precision_timestamp()
-                            .saturating_sub(active_call.start_time),
-                    };
+                            .saturating_sub(active_call.start_time)};
                 } else {
                     active_call.state = ToolCallState::AccumulatingArgs {
                         name: active_call.function_name.clone(),
@@ -1595,8 +1483,7 @@ impl OpenRouterStream {
                         brace_depth: self.count_braces(&active_call.accumulated_args),
                         quote_depth: 0,
                         escape_active: false,
-                        json_valid: false,
-                    };
+                        json_valid: false};
                 }
             }
         }
@@ -1642,8 +1529,7 @@ impl OpenRouterStream {
                 position: 0,
                 error_type: JsonErrorType::InvalidSyntax,
                 recovery_strategy: RecoveryStrategy::NoRecovery,
-                context_buffer: ArrayString::new(),
-            })?;
+                context_buffer: ArrayString::new()})?;
 
         let name = function
             .get("name")
@@ -1654,15 +1540,13 @@ impl OpenRouterStream {
             .get("arguments")
             .and_then(|a| match a {
                 serde_json::Value::String(s) => serde_json::from_str(s).ok(),
-                other => Some(other.clone()),
-            })
+                other => Some(other.clone())})
             .unwrap_or(serde_json::Value::Null);
 
         Ok(Some(RawStreamingChoice::ToolCall {
             name: name.to_string(),
             id: id.to_string(),
-            arguments,
-        }))
+            arguments}))
     }
 
     fn is_complete_json(&self, json_str: &str) -> bool {
@@ -1735,8 +1619,7 @@ impl OpenRouterStream {
                 results.push(RawStreamingChoice::ToolCall {
                     name: active_call.function_name.to_string(),
                     id: active_call.id.to_string(),
-                    arguments,
-                });
+                    arguments});
             }
         }
 
@@ -1749,8 +1632,7 @@ impl OptimizedChunkBuilder {
         Self {
             chunk_template: CompletionChunk::new(),
             tool_call_buffer: ArrayVec::new(),
-            serialization_cache: SerializationCache::new(),
-        }
+            serialization_cache: SerializationCache::new()}
     }
 }
 
@@ -1759,8 +1641,7 @@ impl SerializationCache {
         Self {
             interned_strings: SkipMap::new(),
             cache_size: AtomicUsize::new(0),
-            hit_rate: AtomicU32::new(0),
-        }
+            hit_rate: AtomicU32::new(0)}
     }
 }
 
@@ -1837,8 +1718,7 @@ impl super::CompletionModel {
 
             // Emit final response
             yield Ok(RawStreamingChoice::FinalResponse(FinalCompletionResponse {
-                usage: final_usage.unwrap_or_default(),
-            }));
+                usage: final_usage.unwrap_or_default()}));
         };
 
         Ok(StreamingCompletionResponse::new(Box::pin(stream)))
@@ -1847,15 +1727,13 @@ impl super::CompletionModel {
 
 #[derive(Clone)]
 pub struct FinalCompletionResponse {
-    pub usage: ResponseUsage,
-}
+    pub usage: ResponseUsage}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ResponseUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 // ================================================================================================
 // Static Data and Constants
@@ -1904,51 +1782,41 @@ static OPTIMIZATION_STRATEGIES: [OptimizationStrategy; 5] = [
         trigger_conditions: TriggerConditions {
             min_latency_ms: 10,
             min_error_rate: 0.01,
-            min_throughput: 100,
-        },
+            min_throughput: 100},
         expected_improvement: 0.15,
-        cost_score: 2,
-    },
+        cost_score: 2},
     OptimizationStrategy {
         strategy_type: OptimizationType::SIMDAcceleration,
         trigger_conditions: TriggerConditions {
             min_latency_ms: 5,
             min_error_rate: 0.0,
-            min_throughput: 1000,
-        },
+            min_throughput: 1000},
         expected_improvement: 0.40,
-        cost_score: 4,
-    },
+        cost_score: 4},
     OptimizationStrategy {
         strategy_type: OptimizationType::CachingOptimization,
         trigger_conditions: TriggerConditions {
             min_latency_ms: 20,
             min_error_rate: 0.0,
-            min_throughput: 50,
-        },
+            min_throughput: 50},
         expected_improvement: 0.25,
-        cost_score: 3,
-    },
+        cost_score: 3},
     OptimizationStrategy {
         strategy_type: OptimizationType::ConcurrencyTuning,
         trigger_conditions: TriggerConditions {
             min_latency_ms: 50,
             min_error_rate: 0.05,
-            min_throughput: 10,
-        },
+            min_throughput: 10},
         expected_improvement: 0.20,
-        cost_score: 2,
-    },
+        cost_score: 2},
     OptimizationStrategy {
         strategy_type: OptimizationType::MemoryPooling,
         trigger_conditions: TriggerConditions {
             min_latency_ms: 15,
             min_error_rate: 0.02,
-            min_throughput: 200,
-        },
+            min_throughput: 200},
         expected_improvement: 0.30,
-        cost_score: 3,
-    },
+        cost_score: 3},
 ];
 
 use serde::{Deserialize, Serialize};

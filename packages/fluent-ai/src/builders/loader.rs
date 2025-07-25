@@ -12,8 +12,7 @@ use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 pub struct LoaderBuilder<T: Send + Sync + fmt::Debug + Clone + 'static> {
     pattern: Option<String>,
     recursive: bool,
-    iterator: Option<Box<dyn Iterator<Item = T> + Send + Sync>>,
-}
+    iterator: Option<Box<dyn Iterator<Item = T> + Send + Sync>>}
 
 /// Builder with error handler for polymorphic error handling
 pub struct LoaderBuilderWithHandler<T: Send + Sync + fmt::Debug + Clone + 'static> {
@@ -28,8 +27,7 @@ pub struct LoaderBuilderWithHandler<T: Send + Sync + fmt::Debug + Clone + 'stati
     #[allow(dead_code)] // TODO: Use for loading result processing and transformation
     result_handler: Option<Box<dyn FnOnce(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static>>,
     #[allow(dead_code)] // TODO: Use for streaming loading chunk processing
-    chunk_handler: Option<Box<dyn FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static>>,
-}
+    chunk_handler: Option<Box<dyn FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static>>}
 
 impl LoaderImpl<PathBuf> {
     // Semantic entry point
@@ -37,8 +35,7 @@ impl LoaderImpl<PathBuf> {
         LoaderBuilder {
             pattern: Some(pattern.to_string()),
             recursive: false,
-            iterator: None,
-        }
+            iterator: None}
     }
 }
 
@@ -80,8 +77,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilder<T> {
             iterator: self.iterator,
             error_handler: Box::new(handler),
             result_handler: None,
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_result<F>(self, handler: F) -> LoaderBuilderWithHandler<T>
@@ -94,8 +90,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilder<T> {
             iterator: self.iterator,
             error_handler: Box::new(|e| eprintln!("Loader error: {}", e)),
             result_handler: Some(Box::new(handler)),
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 
     pub fn on_chunk<F>(self, handler: F) -> LoaderBuilderWithHandler<T>
@@ -108,8 +103,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilder<T> {
             iterator: self.iterator,
             error_handler: Box::new(|e| eprintln!("Loader chunk error: {}", e)),
             result_handler: None,
-            chunk_handler: Some(Box::new(handler)),
-        }
+            chunk_handler: Some(Box::new(handler))}
     }
 }
 
@@ -123,8 +117,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> 
             pattern: self.pattern,
             recursive: self.recursive,
             iterator: self.iterator,
-            filter_fn: None,
-        }
+            filter_fn: None}
     }
 
     // Terminal method - async build

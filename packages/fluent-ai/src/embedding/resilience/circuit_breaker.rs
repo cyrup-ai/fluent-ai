@@ -53,8 +53,7 @@ pub enum CircuitState {
     /// Circuit is half-open, testing recovery
     HalfOpen,
     /// Circuit is forced open (manual intervention)
-    ForcedOpen,
-}
+    ForcedOpen}
 
 impl CircuitState {
     /// Check if requests should be allowed
@@ -76,8 +75,7 @@ pub enum FailureType {
     /// Provider-level failures (high error rate, latency)
     ProviderLevel,
     /// System-level failures (resource exhaustion)
-    SystemLevel,
-}
+    SystemLevel}
 
 /// Error category for classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,8 +95,7 @@ pub enum ErrorCategory {
     /// Resource exhaustion
     ResourceExhaustion,
     /// Unknown/other errors
-    Unknown,
-}
+    Unknown}
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,8 +119,7 @@ pub struct CircuitBreakerConfig {
     /// Failure types that trigger circuit opening
     pub trigger_failure_types: SmallVec<[FailureType; 3]>,
     /// Error categories that count as failures
-    pub failure_error_categories: SmallVec<[ErrorCategory; 8]>,
-}
+    pub failure_error_categories: SmallVec<[ErrorCategory; 8]>}
 
 impl Default for CircuitBreakerConfig {
     fn default() -> Self {
@@ -147,8 +143,7 @@ impl Default for CircuitBreakerConfig {
                 ErrorCategory::NetworkError,
                 ErrorCategory::RateLimited,
                 ErrorCategory::ResourceExhaustion,
-            ]),
-        }
+            ])}
     }
 }
 
@@ -166,8 +161,7 @@ pub struct ErrorEntry {
     /// Request duration in microseconds
     pub duration_us: u64,
     /// Provider that failed
-    pub provider: ArrayString<32>,
-}
+    pub provider: ArrayString<32>}
 
 /// Circuit breaker metrics
 #[derive(Debug)]
@@ -195,8 +189,7 @@ pub struct CircuitBreakerMetrics {
     /// Last state change timestamp
     pub last_state_change: CachePadded<AtomicU64>,
     /// Error rate (0-100)
-    pub error_rate_percent: CachePadded<AtomicU32>,
-}
+    pub error_rate_percent: CachePadded<AtomicU32>}
 
 impl CircuitBreakerMetrics {
     pub fn new() -> Self {
@@ -212,8 +205,7 @@ impl CircuitBreakerMetrics {
             failed_recoveries: CachePadded::new(AtomicU64::new(0)),
             current_backoff_ms: CachePadded::new(AtomicU64::new(0)),
             last_state_change: CachePadded::new(AtomicU64::new(0)),
-            error_rate_percent: CachePadded::new(AtomicU32::new(0)),
-        }
+            error_rate_percent: CachePadded::new(AtomicU32::new(0))}
     }
 
     /// Calculate current error rate
@@ -256,8 +248,7 @@ pub struct CircuitBreaker {
     /// Adaptive threshold calculator
     adaptive_calculator: Arc<AdaptiveThresholdCalculator>,
     /// Resource isolation semaphore
-    resource_semaphore: Arc<Semaphore>,
-}
+    resource_semaphore: Arc<Semaphore>}
 
 /// Circuit state change notification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -267,8 +258,7 @@ pub struct CircuitStateChange {
     pub new_state: CircuitState,
     pub timestamp: u64,
     pub trigger_reason: ArrayString<128>,
-    pub metrics_snapshot: CircuitMetricsSnapshot,
-}
+    pub metrics_snapshot: CircuitMetricsSnapshot}
 
 /// Metrics snapshot for state changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -277,8 +267,7 @@ pub struct CircuitMetricsSnapshot {
     pub total_failures: u64,
     pub consecutive_failures: u64,
     pub error_rate_percent: u32,
-    pub current_backoff_ms: u64,
-}
+    pub current_backoff_ms: u64}
 
 /// Adaptive threshold calculator
 #[derive(Debug)]
@@ -288,16 +277,14 @@ pub struct AdaptiveThresholdCalculator {
     /// Window size for calculation
     window_size: usize,
     /// Sensitivity factor for threshold adjustment
-    sensitivity: f64,
-}
+    sensitivity: f64}
 
 impl AdaptiveThresholdCalculator {
     pub fn new(window_size: usize, sensitivity: f64) -> Self {
         Self {
             historical_error_rates: Arc::new(RwLock::new(VecDeque::with_capacity(window_size))),
             window_size,
-            sensitivity,
-        }
+            sensitivity}
     }
 
     /// Update with new error rate and calculate adaptive threshold
@@ -357,8 +344,7 @@ pub enum CircuitBreakerError {
     StateTransitionError { error: String },
 
     #[error("Resource exhaustion: {resource}")]
-    ResourceExhaustion { resource: String },
-}
+    ResourceExhaustion { resource: String }}
 
 impl CircuitBreaker {
     /// Create new circuit breaker
@@ -383,8 +369,7 @@ impl CircuitBreaker {
             state_change_sender,
             last_failure_time: CachePadded::new(AtomicU64::new(0)),
             adaptive_calculator: Arc::new(AdaptiveThresholdCalculator::new(100, 0.3)),
-            resource_semaphore: Arc::new(Semaphore::new(resource_permits as usize)),
-        })
+            resource_semaphore: Arc::new(Semaphore::new(resource_permits as usize))})
     }
 
     /// Execute request with circuit breaker protection
@@ -399,15 +384,13 @@ impl CircuitBreaker {
                 .rejected_requests
                 .fetch_add(1, Ordering::Relaxed);
             return Err(CircuitBreakerError::CircuitOpen {
-                reason: format!("Circuit breaker {} is open", self.id),
-            });
+                reason: format!("Circuit breaker {} is open", self.id)});
         }
 
         // Acquire resource permit
         let _permit = self.resource_semaphore.acquire().await.map_err(|_| {
             CircuitBreakerError::ResourceExhaustion {
-                resource: "circuit_breaker_permits".to_string(),
-            }
+                resource: "circuit_breaker_permits".to_string()}
         })?;
 
         // Execute operation
@@ -430,8 +413,7 @@ impl CircuitBreaker {
                 .await;
 
                 Err(CircuitBreakerError::RequestRejected {
-                    reason: error.to_string(),
-                })
+                    reason: error.to_string()})
             }
         }
     }
@@ -521,8 +503,7 @@ impl CircuitBreaker {
             failure_type,
             error_message: ArrayString::from(error_message).unwrap_or_default(),
             duration_us: duration.as_micros() as u64,
-            provider: ArrayString::from("unknown").unwrap_or_default(),
-        };
+            provider: ArrayString::from("unknown").unwrap_or_default()};
 
         let mut history = self.error_history.write().await;
         if history.len() >= ERROR_HISTORY_SIZE {
@@ -721,9 +702,7 @@ impl CircuitBreaker {
                 total_failures: self.metrics.total_failures.load(Ordering::Relaxed),
                 consecutive_failures: self.metrics.consecutive_failures.load(Ordering::Relaxed),
                 error_rate_percent: self.metrics.error_rate_percent.load(Ordering::Relaxed),
-                current_backoff_ms: self.metrics.current_backoff_ms.load(Ordering::Relaxed),
-            },
-        };
+                current_backoff_ms: self.metrics.current_backoff_ms.load(Ordering::Relaxed)}};
 
         let _ = self.state_change_sender.send(state_change);
     }
@@ -768,8 +747,7 @@ impl CircuitBreaker {
             total_failures: self.metrics.total_failures.load(Ordering::Relaxed),
             consecutive_failures: self.metrics.consecutive_failures.load(Ordering::Relaxed),
             error_rate_percent: self.metrics.error_rate_percent.load(Ordering::Relaxed),
-            current_backoff_ms: self.metrics.current_backoff_ms.load(Ordering::Relaxed),
-        }
+            current_backoff_ms: self.metrics.current_backoff_ms.load(Ordering::Relaxed)}
     }
 
     /// Get error history
@@ -809,8 +787,7 @@ pub struct CircuitBreakerRegistry {
     /// Global state change notifications
     global_state_sender: broadcast::Sender<CircuitStateChange>,
     /// Default configuration
-    default_config: CircuitBreakerConfig,
-}
+    default_config: CircuitBreakerConfig}
 
 impl CircuitBreakerRegistry {
     /// Create new registry
@@ -820,8 +797,7 @@ impl CircuitBreakerRegistry {
         Self {
             circuit_breakers: Arc::new(DashMap::new()),
             global_state_sender,
-            default_config,
-        }
+            default_config}
     }
 
     /// Get or create circuit breaker
@@ -915,8 +891,7 @@ impl CircuitBreakerRegistry {
                 CircuitState::Closed => closed_count += 1,
                 CircuitState::Open => open_count += 1,
                 CircuitState::HalfOpen => half_open_count += 1,
-                CircuitState::ForcedOpen => forced_open_count += 1,
-            }
+                CircuitState::ForcedOpen => forced_open_count += 1}
 
             total_requests += metrics.total_requests;
             total_failures += metrics.total_failures;
@@ -934,8 +909,7 @@ impl CircuitBreakerRegistry {
                 (total_failures as f64 / total_requests as f64) * 100.0
             } else {
                 0.0
-            },
-        }
+            }}
     }
 }
 
@@ -949,8 +923,7 @@ pub struct RegistryStats {
     pub forced_open_count: u32,
     pub total_requests: u64,
     pub total_failures: u64,
-    pub global_error_rate: f64,
-}
+    pub global_error_rate: f64}
 
 #[cfg(test)]
 mod tests {

@@ -10,8 +10,7 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
-};
+    task::{Context, Poll}};
 
 use futures_util::{Stream, StreamExt};
 use serde_json::Value;
@@ -21,11 +20,9 @@ use crate::{
     agent::Agent,
     completion::{
         CompletionError, CompletionModel, CompletionRequestBuilder, CompletionResponse, Message,
-        message::{AssistantContent, ToolCall, ToolFunction},
-    },
+        message::{AssistantContent, ToolCall, ToolFunction}},
     runtime::async_stream::AsyncStream,
-    runtime::{AsyncTask, spawn_async},
-};
+    runtime::{AsyncTask, spawn_async}};
 
 // ============================================================================
 // 0.  Low-level ring stream (imported from runtime)
@@ -54,10 +51,8 @@ pub enum RawStreamingChoice<R: Clone> {
     ToolCall {
         id: String,
         name: String,
-        arguments: Value,
-    },
-    FinalResponse(R),
-}
+        arguments: Value},
+    FinalResponse(R)}
 
 pub type StreamingResult<R> =
     AsyncStream<Result<RawStreamingChoice<R>, CompletionError>, STREAM_CAP>;
@@ -71,8 +66,7 @@ pub struct StreamingCompletionResponse<R: Clone + Unpin> {
     text_buf: String,
     tool_buf: Vec<ToolCall>,
     pub choice: OneOrMany<AssistantContent>,
-    pub response: Option<R>,
-}
+    pub response: Option<R>}
 
 impl<R: Clone + Unpin> StreamingCompletionResponse<R> {
     #[inline]
@@ -82,8 +76,7 @@ impl<R: Clone + Unpin> StreamingCompletionResponse<R> {
             text_buf: String::new(),
             tool_buf: Vec::new(),
             choice: OneOrMany::one(AssistantContent::text("")),
-            response: None,
-        }
+            response: None}
     }
 }
 
@@ -91,8 +84,7 @@ impl<R: Clone + Unpin> From<StreamingCompletionResponse<R>> for CompletionRespon
     fn from(v: StreamingCompletionResponse<R>) -> Self {
         CompletionResponse {
             choice: v.choice,
-            raw_response: v.response,
-        }
+            raw_response: v.response}
     }
 }
 
@@ -118,8 +110,7 @@ impl<R: Clone + Unpin> Stream for StreamingCompletionResponse<R> {
                     }
                     me.choice = match OneOrMany::many(aggregated) {
                         Ok(messages) => messages,
-                        Err(_) => OneOrMany::One(AssistantContent::Text("".into())),
-                    };
+                        Err(_) => OneOrMany::One(AssistantContent::Text("".into()))};
                 }
                 Poll::Pending
             }
@@ -132,12 +123,10 @@ impl<R: Clone + Unpin> Stream for StreamingCompletionResponse<R> {
                 RawStreamingChoice::ToolCall {
                     id,
                     name,
-                    arguments,
-                } => {
+                    arguments} => {
                     let call = ToolCall {
                         id: id.clone(),
-                        function: ToolFunction { name, arguments },
-                    };
+                        function: ToolFunction { name, arguments }};
                     me.tool_buf.push(call.clone());
                     Poll::Ready(Some(Ok(AssistantContent::ToolCall(call))))
                 }
@@ -145,15 +134,13 @@ impl<R: Clone + Unpin> Stream for StreamingCompletionResponse<R> {
                     me.response = Some(r);
                     Poll::Pending
                 }
-            },
-        }
+            }}
     }
 }
 
 // dyn-erased helper used by CompletionModelHandle
 pub(crate) struct StreamingResultDyn<R: Clone + Unpin> {
-    inner: StreamingResult<R>,
-}
+    inner: StreamingResult<R>}
 
 impl<R: Clone + Unpin> From<StreamingResult<R>> for StreamingResultDyn<R> {
     #[inline(always)]
@@ -179,14 +166,11 @@ impl<R: Clone + Unpin> Stream for StreamingResultDyn<R> {
             Poll::Ready(Some(Ok(RawStreamingChoice::ToolCall {
                 id,
                 name,
-                arguments,
-            }))) => Poll::Ready(Some(Ok(RawStreamingChoice::ToolCall {
+                arguments}))) => Poll::Ready(Some(Ok(RawStreamingChoice::ToolCall {
                 id,
                 name,
-                arguments,
-            }))),
-            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
-        }
+                arguments}))),
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e)))}
     }
 }
 

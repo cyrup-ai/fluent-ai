@@ -1,15 +1,13 @@
 //! Middleware for the memory API
 //! This module contains middleware functions for authentication, logging, etc.
 
-use std::collections::HashMap;
 use std::time::Instant;
 
 use axum::{
     body::Body,
     http::{HeaderValue, Request, StatusCode},
     middleware::Next,
-    response::{IntoResponse, Response},
-};
+    response::{IntoResponse, Response}};
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use once_cell::sync::Lazy;
@@ -35,16 +33,14 @@ pub enum SecurityConfigError {
     #[error("Security config file error: {0}")]
     ConfigFileError(#[from] std::io::Error),
     #[error("JSON parsing error: {0}")]
-    JsonError(#[from] serde_json::Error),
-}
+    JsonError(#[from] serde_json::Error)}
 
 /// Secure JWT configuration
 #[derive(Debug, Clone)]
 pub struct JwtConfig {
     secret: String,
     algorithm: Algorithm,
-    expiration_hours: u64,
-}
+    expiration_hours: u64}
 
 impl JwtConfig {
     /// Create JWT config from environment variables with validation
@@ -76,8 +72,7 @@ impl JwtConfig {
         Ok(Self {
             secret,
             algorithm,
-            expiration_hours,
-        })
+            expiration_hours})
     }
 
     pub fn secret(&self) -> &str {
@@ -98,8 +93,7 @@ impl JwtConfig {
 pub struct ApiKeyConfig {
     pub key_id: String,
     pub key_hash: String, // Store hash, not plaintext
-    pub user_context: UserContext,
-}
+    pub user_context: UserContext}
 
 /// Secure API key manager
 pub struct ApiKeyManager {
@@ -168,8 +162,7 @@ impl ApiKeyManager {
             email: "dev@localhost".to_string(),
             roles: vec!["developer".to_string()],
             permissions: vec!["read".to_string(), "write".to_string()],
-            expires_at: None,
-        };
+            expires_at: None};
 
         keys.insert(dev_key.clone(), user_context);
         key_hashes.insert(key_hash, dev_key);
@@ -237,8 +230,7 @@ pub struct UserContext {
     pub email: String,
     pub roles: Vec<String>,
     pub permissions: Vec<String>,
-    pub expires_at: Option<DateTime<Utc>>,
-}
+    pub expires_at: Option<DateTime<Utc>>}
 
 /// JWT claims structure
 #[derive(Debug, Serialize, Deserialize)]
@@ -258,8 +250,7 @@ pub enum AuthError {
     ExpiredToken,
     InvalidApiKey,
     MissingCredentials,
-    InsufficientPermissions,
-}
+    InsufficientPermissions}
 
 /// Add CORS middleware
 pub fn cors_middleware() -> CorsLayer {
@@ -378,8 +369,7 @@ async fn validate_jwt_token(auth_header: &str) -> Result<UserContext, AuthError>
                 email: claims.email,
                 roles: claims.roles,
                 permissions: claims.permissions,
-                expires_at: DateTime::from_timestamp(claims.exp, 0),
-            })
+                expires_at: DateTime::from_timestamp(claims.exp, 0)})
         }
         Err(e) => {
             tracing::warn!("JWT decode error: {}", e);

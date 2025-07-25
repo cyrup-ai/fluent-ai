@@ -35,8 +35,7 @@ pub enum PdfLoaderError {
 
     /// `lopdf` crate surfaced an I/O or parsing failure.
     #[error("lopdf: {0}")]
-    Pdf(#[from] LopdfError),
-}
+    Pdf(#[from] LopdfError)}
 
 // ---------------------------------------------------------------------------
 // 1. Internal helper trait: uniformly turn a *path-ish* value into a Document.
@@ -74,8 +73,7 @@ impl<T: Loadable> Loadable for Result<T, PdfLoaderError> {
 // 2. Public façade – perfectly mirrors the EPUB loader generics/flow.
 // ---------------------------------------------------------------------------
 pub struct PdfFileLoader<'a, T> {
-    iterator: Box<dyn Iterator<Item = T> + 'a>,
-}
+    iterator: Box<dyn Iterator<Item = T> + 'a>}
 
 // -------------------------------------------------------------------------
 // Constructor helpers – glob / dir.
@@ -89,8 +87,7 @@ impl PdfFileLoader<'_, Result<PathBuf, FileLoaderError>> {
         Ok(Self {
             iterator: Box::new(
                 paths.map(|res| res.map_err(FileLoaderError::GlobError).map_err(Into::into)),
-            ),
-        })
+            )})
     }
 
     /// Build a loader from every entry inside a directory (non-recursive).
@@ -102,8 +99,7 @@ impl PdfFileLoader<'_, Result<PathBuf, FileLoaderError>> {
                 fs::read_dir(dir)
                     .map_err(FileLoaderError::IoError)?
                     .map(|e| Ok(e.map_err(FileLoaderError::IoError)?.path())),
-            ),
-        })
+            )})
     }
 }
 
@@ -114,15 +110,13 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     #[inline(always)]
     pub fn load(self) -> PdfFileLoader<'a, Result<Document, PdfLoaderError>> {
         PdfFileLoader {
-            iterator: Box::new(self.iterator.map(Loadable::load)),
-        }
+            iterator: Box::new(self.iterator.map(Loadable::load))}
     }
 
     #[inline(always)]
     pub fn load_with_path(self) -> PdfFileLoader<'a, Result<(PathBuf, Document), PdfLoaderError>> {
         PdfFileLoader {
-            iterator: Box::new(self.iterator.map(Loadable::load_with_path)),
-        }
+            iterator: Box::new(self.iterator.map(Loadable::load_with_path))}
     }
 }
 
@@ -135,8 +129,7 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
             iterator: Box::new(self.iterator.map(|res| {
                 let doc = res.load()?;
                 extract_all_pages(&doc)
-            })),
-        }
+            }))}
     }
 
     pub fn read_with_path(self) -> PdfFileLoader<'a, Result<(PathBuf, String), PdfLoaderError>> {
@@ -144,8 +137,7 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
             iterator: Box::new(self.iterator.map(|res| {
                 let (path, doc) = res.load_with_path()?;
                 Ok((path, extract_all_pages(&doc)?))
-            })),
-        }
+            }))}
     }
 }
 
@@ -159,8 +151,7 @@ impl<'a> PdfFileLoader<'a, Document> {
             iterator: Box::new(self.iterator.flat_map(|doc| {
                 (0..doc.get_pages().len())
                     .map(move |idx| doc.extract_text(&[idx as u32 + 1]).map_err(Into::into))
-            })),
-        }
+            }))}
     }
 }
 
@@ -175,8 +166,7 @@ impl<'a> PdfFileLoader<'a, (PathBuf, Document)> {
                     .map(|idx| (idx, doc.extract_text(&[idx as u32 + 1]).map_err(Into::into)))
                     .collect();
                 (path, pages)
-            })),
-        }
+            }))}
     }
 }
 
@@ -187,8 +177,7 @@ impl<'a, T> PdfFileLoader<'a, Result<T, PdfLoaderError>> {
     #[inline(always)]
     pub fn ignore_errors(self) -> PdfFileLoader<'a, T> {
         PdfFileLoader {
-            iterator: Box::new(self.iterator.filter_map(Result::ok)),
-        }
+            iterator: Box::new(self.iterator.filter_map(Result::ok))}
     }
 }
 
@@ -204,8 +193,7 @@ impl<'a> PdfFileLoader<'a, ByPage> {
                         .filter_map(|(idx, res)| res.ok().map(|txt| (idx, txt)))
                         .collect(),
                 )
-            })),
-        }
+            }))}
     }
 }
 
@@ -213,8 +201,7 @@ impl<'a> PdfFileLoader<'a, ByPage> {
 // Iterator plumbing – zero-cost abstraction.
 // ----------------------------------------------------------------------
 pub struct LoaderIter<'a, T> {
-    inner: Box<dyn Iterator<Item = T> + 'a>,
-}
+    inner: Box<dyn Iterator<Item = T> + 'a>}
 
 impl<'a, T> IntoIterator for PdfFileLoader<'a, T> {
     type Item = T;
@@ -222,8 +209,7 @@ impl<'a, T> IntoIterator for PdfFileLoader<'a, T> {
     #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         LoaderIter {
-            inner: self.iterator,
-        }
+            inner: self.iterator}
     }
 }
 

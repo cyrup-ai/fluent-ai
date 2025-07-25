@@ -249,8 +249,7 @@ impl ResponseFormatter {
 
         let json_value = Value::Object(json_output);
         serde_json::to_string(&json_value).map_err(|e| ResponseError::SerializationError {
-            detail: Arc::from(e.to_string()),
-        })
+            detail: Arc::from(e.to_string())})
     }
 
     /// Format error response
@@ -380,6 +379,7 @@ impl ResponseFormatter {
 /// Streaming response sender
 #[derive(Debug)]
 pub struct StreamingSender {
+    /// The underlying sender for streaming messages
     sender: mpsc::UnboundedSender<StreamingMessage>,
 }
 
@@ -425,6 +425,7 @@ impl StreamingSender {
 /// Streaming response receiver
 #[derive(Debug)]
 pub struct StreamingReceiver {
+    /// The underlying receiver for streaming messages
     receiver: mpsc::UnboundedReceiver<StreamingMessage>,
 }
 
@@ -444,27 +445,48 @@ impl StreamingReceiver {
 pub enum StreamingMessage {
     /// Progress update
     Progress {
+        /// Current progress count
         current: u64,
+        /// Total progress count
         total: u64,
+        /// Progress message
         message: Arc<str>,
     },
     /// Partial result
-    PartialResult { data: Value },
+    PartialResult {
+        /// Partial result data
+        data: Value,
+    },
     /// Command completion
-    Complete { output: CommandOutput },
+    Complete {
+        /// Final command output
+        output: CommandOutput,
+    },
 }
 
 /// Response formatting errors
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ResponseError {
+    /// Serialization error occurred
     #[error("Serialization error: {detail}")]
-    SerializationError { detail: Arc<str> },
+    SerializationError {
+        /// Error detail message
+        detail: Arc<str>,
+    },
 
+    /// Streaming error occurred
     #[error("Streaming error: {detail}")]
-    StreamingError { detail: Arc<str> },
+    StreamingError {
+        /// Error detail message
+        detail: Arc<str>,
+    },
 
+    /// Format error occurred
     #[error("Format error: {detail}")]
-    FormatError { detail: Arc<str> },
+    FormatError {
+        /// Error detail message
+        detail: Arc<str>,
+    },
 }
 
 /// Global response formatter

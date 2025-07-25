@@ -52,8 +52,7 @@ pub enum EngineError {
     ServiceUnavailable,
 
     #[error("Internal error: {0}")]
-    InternalError(String),
-}
+    InternalError(String)}
 
 /// Result type for engine operations
 pub type EngineResult<T> = Result<T, EngineError>;
@@ -83,8 +82,7 @@ pub struct EngineConfig {
     /// Whether to enable streaming responses
     pub enable_streaming: bool,
     /// Custom endpoint URL override
-    pub endpoint_url: Option<String>,
-}
+    pub endpoint_url: Option<String>}
 
 impl Default for EngineConfig {
     #[inline]
@@ -97,8 +95,7 @@ impl Default for EngineConfig {
             max_tokens: Some(4096),
             temperature: Some(0.7),
             enable_streaming: false,
-            endpoint_url: None,
-        }
+            endpoint_url: None}
     }
 }
 
@@ -199,8 +196,7 @@ pub struct Engine {
     active_requests: AtomicU64,
     successful_requests: AtomicU64,
     failed_requests: AtomicU64,
-    is_healthy: AtomicBool,
-}
+    is_healthy: AtomicBool}
 
 impl Engine {
     /// Create a new engine with the given configuration
@@ -214,8 +210,7 @@ impl Engine {
             active_requests: AtomicU64::new(0),
             successful_requests: AtomicU64::new(0),
             failed_requests: AtomicU64::new(0),
-            is_healthy: AtomicBool::new(true),
-        })
+            is_healthy: AtomicBool::new(true)})
     }
 
     /// Get immutable reference to configuration
@@ -291,13 +286,11 @@ impl Engine {
         let history: Vec<String> = match &request.chat_history {
             ZeroOneOrMany::None => Vec::new(),
             ZeroOneOrMany::One(msg) => vec![msg.content.clone()],
-            ZeroOneOrMany::Many(msgs) => msgs.iter().map(|m| m.content.clone()).collect(),
-        };
+            ZeroOneOrMany::Many(msgs) => msgs.iter().map(|m| m.content.clone()).collect()};
         let tools: Vec<String> = match &request.tools {
             ZeroOneOrMany::None => Vec::new(),
             ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], /* ToolDefinition doesn't have Display */
-            ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect(),
-        };
+            ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect()};
         let metadata = request.additional_params.as_ref().map(|v| v.to_string());
 
         // We'll update metrics after the task completes, not during
@@ -392,13 +385,11 @@ impl Engine {
         let history: Vec<String> = match &request.chat_history {
             ZeroOneOrMany::None => Vec::new(),
             ZeroOneOrMany::One(msg) => vec![msg.content.clone()],
-            ZeroOneOrMany::Many(msgs) => msgs.iter().map(|m| m.content.clone()).collect(),
-        };
+            ZeroOneOrMany::Many(msgs) => msgs.iter().map(|m| m.content.clone()).collect()};
         let tools: Vec<String> = match &request.tools {
             ZeroOneOrMany::None => Vec::new(),
             ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], /* ToolDefinition doesn't have Display */
-            ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect(),
-        };
+            ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect()};
         let metadata = request.additional_params.as_ref().map(|v| v.to_string());
 
         AsyncStream::with_channel(move |sender| {
@@ -443,8 +434,7 @@ impl Engine {
             active_requests: self.active_requests.load(Ordering::Relaxed),
             successful_requests: self.successful_requests.load(Ordering::Relaxed),
             failed_requests: self.failed_requests.load(Ordering::Relaxed),
-            is_healthy: self.is_healthy.load(Ordering::Relaxed),
-        }
+            is_healthy: self.is_healthy.load(Ordering::Relaxed)}
     }
 
     /// Reset all metrics (atomic operations)
@@ -464,8 +454,7 @@ pub struct EngineStats {
     pub active_requests: u64,
     pub successful_requests: u64,
     pub failed_requests: u64,
-    pub is_healthy: bool,
-}
+    pub is_healthy: bool}
 
 impl EngineStats {
     /// Calculate success rate as a percentage

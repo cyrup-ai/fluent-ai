@@ -20,8 +20,7 @@ impl EmbeddingModel {
         Self {
             client,
             model: model.to_string(),
-            ndims,
-        }
+            ndims}
     }
 }
 
@@ -40,8 +39,7 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
 
         let request_body = serde_json::to_vec(&json!({
             "model": self.model,
-            "input": documents,
-        }))
+            "input": documents}))
         .map_err(|e| {
             EmbeddingError::ProviderError(format!("Failed to serialize request: {}", e))
         })?;
@@ -80,12 +78,10 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
                         .zip(documents.into_iter())
                         .map(|(embedding, document)| embeddings::Embedding {
                             document,
-                            vec: embedding.embedding,
-                        })
+                            vec: embedding.embedding})
                         .collect())
                 }
-                ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
-            }
+                ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message))}
         } else {
             let error_body = String::from_utf8_lossy(response.body());
             Err(EmbeddingError::ProviderError(error_body.to_string()))
@@ -99,12 +95,10 @@ pub struct EmbeddingResponse {
     pub object: String,
     pub model: String,
     pub usage: Usage,
-    pub data: Vec<EmbeddingData>,
-}
+    pub data: Vec<EmbeddingData>}
 
 #[derive(Debug, Deserialize)]
 pub struct EmbeddingData {
     pub object: String,
     pub embedding: Vec<f64>,
-    pub index: usize,
-}
+    pub index: usize}

@@ -17,7 +17,7 @@ use super::client::{CohereMetrics, RequestTimer};
 
 use fluent_ai_http3::{HttpClient, HttpRequest};
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
@@ -57,8 +57,7 @@ pub struct CohereReranker {
     top_k: Option<usize>,
     
     /// Return document snippets in response
-    return_documents: bool,
-}
+    return_documents: bool}
 
 /// Reranking request structure for Cohere API
 #[derive(Debug, Clone, Serialize)]
@@ -86,8 +85,7 @@ pub struct RerankRequest {
     
     /// Relevance threshold for filtering
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub relevance_threshold: Option<f64>,
-}
+    pub relevance_threshold: Option<f64>}
 
 /// Document structure for reranking
 #[derive(Debug, Clone, Serialize)]
@@ -115,9 +113,7 @@ pub enum RerankDocument {
         
         /// Optional metadata
         #[serde(skip_serializing_if = "Option::is_none")]
-        metadata: Option<Map<String, Value>>,
-    },
-}
+        metadata: Option<Map<String, Value>>}}
 
 /// Reranking response from Cohere API
 #[derive(Debug, Clone, Deserialize)]
@@ -129,8 +125,7 @@ pub struct RerankResponse {
     pub meta: Option<RerankMeta>,
     
     /// Response ID for tracking
-    pub id: Option<String>,
-}
+    pub id: Option<String>}
 
 /// Individual reranking result
 #[derive(Debug, Clone, Deserialize)]
@@ -142,8 +137,7 @@ pub struct RerankResult {
     pub index: usize,
     
     /// Document content (if return_documents=true)
-    pub document: Option<RerankDocument>,
-}
+    pub document: Option<RerankDocument>}
 
 /// Reranking response metadata
 #[derive(Debug, Clone, Deserialize)]
@@ -155,21 +149,18 @@ pub struct RerankMeta {
     pub billed_units: Option<BilledUnits>,
     
     /// Warning messages
-    pub warnings: Option<Vec<String>>,
-}
+    pub warnings: Option<Vec<String>>}
 
 /// API version information
 #[derive(Debug, Clone, Deserialize)]
 pub struct ResponseApiVersion {
-    pub version: String,
-}
+    pub version: String}
 
 /// Billing units for reranking
 #[derive(Debug, Clone, Deserialize)]
 pub struct BilledUnits {
     /// Number of search units billed
-    pub search_units: Option<u64>,
-}
+    pub search_units: Option<u64>}
 
 /// Batch reranking result for large document collections
 #[derive(Debug, Clone)]
@@ -193,8 +184,7 @@ pub struct RerankBatch {
     pub success_rate: f64,
     
     /// Average relevance score
-    pub average_relevance: f64,
-}
+    pub average_relevance: f64}
 
 /// Reranking configuration for fine-tuned control
 #[derive(Debug, Clone)]
@@ -218,8 +208,7 @@ pub struct RerankConfig {
     pub max_chunks_per_doc: Option<usize>,
     
     /// Enable relevance score caching
-    pub enable_caching: bool,
-}
+    pub enable_caching: bool}
 
 impl CohereReranker {
     /// Create new Cohere reranker client
@@ -238,8 +227,7 @@ impl CohereReranker {
             max_documents: config::MAX_RERANK_DOCUMENTS,
             relevance_threshold: None,
             top_k: None,
-            return_documents: false,
-        }
+            return_documents: false}
     }
     
     /// Set request timeout
@@ -339,8 +327,7 @@ impl CohereReranker {
                 top_n: config.top_k,
                 return_documents: Some(config.return_documents),
                 max_chunks_per_doc: config.max_chunks_per_doc,
-                relevance_threshold: config.relevance_threshold,
-            };
+                relevance_threshold: config.relevance_threshold};
             
             match self.rerank(request).await {
                 Ok(response) => {
@@ -414,8 +401,7 @@ impl CohereReranker {
             total_duration_ms,
             batch_count,
             success_rate,
-            average_relevance,
-        })
+            average_relevance})
     }
     
     /// Execute reranking request
@@ -452,8 +438,7 @@ impl CohereReranker {
                     setting: ArrayString::from("http_request").unwrap_or_default(),
                     reason: ArrayString::from(&e.to_string()).unwrap_or_default(),
                     current_value: ArrayString::new(),
-                    valid_range: None,
-                }
+                    valid_range: None}
             })?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(self.timeout);
@@ -585,8 +570,7 @@ impl CohereReranker {
         for (i, doc) in request.documents.iter().enumerate().take(10) {
             match doc {
                 RerankDocument::Text(text) => text.hash(&mut hasher),
-                RerankDocument::Structured { text, .. } => text.hash(&mut hasher),
-            }
+                RerankDocument::Structured { text, .. } => text.hash(&mut hasher)}
         }
         
         format!("rerank:{}:{}", request.model, hasher.finish())
@@ -617,8 +601,7 @@ impl RerankRequest {
             top_n: None,
             return_documents: None,
             max_chunks_per_doc: None,
-            relevance_threshold: None,
-        }
+            relevance_threshold: None}
     }
     
     /// Set top-n limit
@@ -659,16 +642,14 @@ impl RerankDocument {
             title: None,
             url: None,
             id: None,
-            metadata: None,
-        }
+            metadata: None}
     }
     
     /// Get document text content
     pub fn text_content(&self) -> &str {
         match self {
             Self::Text(text) => text,
-            Self::Structured { text, .. } => text,
-        }
+            Self::Structured { text, .. } => text}
     }
 }
 
@@ -678,8 +659,7 @@ pub struct StructuredDocumentBuilder {
     title: Option<String>,
     url: Option<String>,
     id: Option<String>,
-    metadata: Option<Map<String, Value>>,
-}
+    metadata: Option<Map<String, Value>>}
 
 impl StructuredDocumentBuilder {
     pub fn title(mut self, title: impl Into<String>) -> Self {
@@ -708,8 +688,7 @@ impl StructuredDocumentBuilder {
             title: self.title,
             url: self.url,
             id: self.id,
-            metadata: self.metadata,
-        }
+            metadata: self.metadata}
     }
 }
 
@@ -722,7 +701,6 @@ impl Default for RerankConfig {
             top_k: None,
             return_documents: false,
             max_chunks_per_doc: None,
-            enable_caching: true,
-        }
+            enable_caching: true}
     }
 }

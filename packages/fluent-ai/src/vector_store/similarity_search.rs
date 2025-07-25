@@ -3,7 +3,7 @@
 //! Implements various search algorithms including exact search, approximate search,
 //! multi-vector queries, and search result optimization techniques.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::sync::Arc;
 
 use parking_lot::RwLock;
@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::EmbeddingChunk;
 use crate::embedding::similarity::{
-    SimilarityMetric, cosine_similarity, euclidean_distance, manhattan_distance,
-};
+    SimilarityMetric, cosine_similarity, euclidean_distance, manhattan_distance};
 use crate::vector_store::in_memory::{InMemoryVectorStore, SearchResult};
 use crate::vector_store::index::VectorIndex;
 
@@ -37,8 +36,7 @@ pub struct SearchConfig {
     /// Enable result filtering based on metadata
     pub enable_metadata_filtering: bool,
     /// Metadata filters
-    pub metadata_filters: HashMap<String, serde_json::Value>,
-}
+    pub metadata_filters: HashMap<String, serde_json::Value>}
 
 impl Default for SearchConfig {
     fn default() -> Self {
@@ -51,8 +49,7 @@ impl Default for SearchConfig {
             enable_reranking: false,
             reranking_weights: HashMap::new(),
             enable_metadata_filtering: false,
-            metadata_filters: HashMap::new(),
-        }
+            metadata_filters: HashMap::new()}
     }
 }
 
@@ -64,8 +61,7 @@ pub struct MultiVectorQuery {
     /// Additional query vectors with weights
     pub secondary_vectors: Vec<(Vec<f32>, f32)>,
     /// Combination strategy
-    pub combination_strategy: CombinationStrategy,
-}
+    pub combination_strategy: CombinationStrategy}
 
 /// Strategy for combining multiple vector similarities
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -79,8 +75,7 @@ pub enum CombinationStrategy {
     /// Product of all similarities
     Product,
     /// Custom combination function
-    Custom,
-}
+    Custom}
 
 /// Search result with enhanced metadata
 #[derive(Debug, Clone)]
@@ -94,8 +89,7 @@ pub struct EnhancedSearchResult {
     /// Re-ranking score
     pub reranking_score: Option<f32>,
     /// Distance to query in embedding space
-    pub embedding_distance: f32,
-}
+    pub embedding_distance: f32}
 
 /// Batch search query for processing multiple queries efficiently
 #[derive(Debug, Clone)]
@@ -105,8 +99,7 @@ pub struct BatchSearchQuery {
     /// Per-query configurations (optional)
     pub configs: Option<Vec<SearchConfig>>,
     /// Global configuration (used if per-query configs not provided)
-    pub global_config: SearchConfig,
-}
+    pub global_config: SearchConfig}
 
 /// Advanced similarity search engine
 pub struct SimilaritySearchEngine {
@@ -117,8 +110,7 @@ pub struct SimilaritySearchEngine {
     /// Default search configuration
     default_config: SearchConfig,
     /// Search performance statistics
-    stats: Arc<RwLock<SearchStats>>,
-}
+    stats: Arc<RwLock<SearchStats>>}
 
 /// Search performance statistics
 #[derive(Debug, Clone, Default)]
@@ -132,8 +124,7 @@ pub struct SearchStats {
     /// Index usage rate
     pub index_usage_rate: f32,
     /// Result accuracy (for approximate searches)
-    pub result_accuracy: f32,
-}
+    pub result_accuracy: f32}
 
 impl SimilaritySearchEngine {
     /// Create new similarity search engine
@@ -143,8 +134,7 @@ impl SimilaritySearchEngine {
             store,
             index: Arc::new(RwLock::new(None)),
             default_config: SearchConfig::default(),
-            stats: Arc::new(RwLock::new(SearchStats::default())),
-        }
+            stats: Arc::new(RwLock::new(SearchStats::default()))}
     }
 
     /// Create search engine with custom configuration
@@ -154,8 +144,7 @@ impl SimilaritySearchEngine {
             store,
             index: Arc::new(RwLock::new(None)),
             default_config: config,
-            stats: Arc::new(RwLock::new(SearchStats::default())),
-        }
+            stats: Arc::new(RwLock::new(SearchStats::default()))}
     }
 
     /// Set custom index for approximate search
@@ -256,8 +245,7 @@ impl SimilaritySearchEngine {
                             score: combined_score as f64,
                             id: entry.id,
                             metadata: entry.metadata,
-                            content: entry.content,
-                        });
+                            content: entry.content});
                     }
                 }
             }
@@ -338,8 +326,7 @@ impl SimilaritySearchEngine {
                 let chunk = EmbeddingChunk {
                     embeddings: crate::ZeroOneOrMany::from_vec(Vec::new()), /* Would contain the result vector if needed */
                     index,
-                    metadata,
-                };
+                    metadata};
 
                 if tx.send(chunk).is_err() {
                     break;
@@ -380,8 +367,7 @@ impl SimilaritySearchEngine {
                         score: score as f64,
                         id: entry.id,
                         metadata: entry.metadata,
-                        content: entry.content,
-                    });
+                        content: entry.content});
                 }
             }
             results
@@ -444,8 +430,7 @@ impl SimilaritySearchEngine {
                             let distance = manhattan_distance(query_vector, &entry.vector);
                             1.0 / (1.0 + distance)
                         }
-                        _ => result.score as f32,
-                    };
+                        _ => result.score as f32};
 
                     rerank_score += score * weight;
                     total_weight += weight;
@@ -559,8 +544,7 @@ impl SimilaritySearchEngine {
                     } else {
                         None
                     },
-                    result,
-                }
+                    result}
             })
             .collect()
     }
@@ -628,8 +612,7 @@ impl Clone for SimilaritySearchEngine {
             store: self.store.clone(),
             index: self.index.clone(),
             default_config: self.default_config.clone(),
-            stats: self.stats.clone(),
-        }
+            stats: self.stats.clone()}
     }
 }
 
@@ -654,8 +637,7 @@ pub mod utils {
                 weights
             },
             enable_metadata_filtering: false,
-            metadata_filters: HashMap::new(),
-        }
+            metadata_filters: HashMap::new()}
     }
 
     /// Create configuration optimized for document retrieval
@@ -670,8 +652,7 @@ pub mod utils {
             enable_reranking: false,
             reranking_weights: HashMap::new(),
             enable_metadata_filtering: true,
-            metadata_filters: HashMap::new(),
-        }
+            metadata_filters: HashMap::new()}
     }
 
     /// Create configuration for high-precision search
@@ -691,7 +672,6 @@ pub mod utils {
                 weights
             },
             enable_metadata_filtering: false,
-            metadata_filters: HashMap::new(),
-        }
+            metadata_filters: HashMap::new()}
     }
 }

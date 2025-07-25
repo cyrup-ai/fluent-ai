@@ -10,8 +10,7 @@ use serde_json::Value;
 use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use crate::domain::{
-    Message as DomainMessage, MessageRole, ToolCall as DomainToolCall, ToolFunction,
-};
+    Message as DomainMessage, MessageRole, ToolCall as DomainToolCall, ToolFunction};
 
 /// OpenAI message structure for chat completions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,16 +25,14 @@ pub struct OpenAIMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<OpenAIFunctionCall>,
-}
+    pub function_call: Option<OpenAIFunctionCall>}
 
 /// OpenAI content types (text, image, audio)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OpenAIContent {
     Text(String),
-    Array(Vec<OpenAIContentPart>),
-}
+    Array(Vec<OpenAIContentPart>)}
 
 /// Individual content part for multimodal messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,8 +44,7 @@ pub struct OpenAIContentPart {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_url: Option<OpenAIImageUrl>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub audio: Option<OpenAIAudioContent>,
-}
+    pub audio: Option<OpenAIAudioContent>}
 
 /// Image URL content for vision models
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,8 +67,7 @@ pub struct OpenAIToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
-    pub function: OpenAIFunctionCall,
-}
+    pub function: OpenAIFunctionCall}
 
 /// OpenAI function call structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,8 +80,7 @@ pub struct OpenAIFunctionCall {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIToolResult {
     pub tool_call_id: String,
-    pub output: String,
-}
+    pub output: String}
 
 impl OpenAIMessage {
     /// Create system message with zero allocations
@@ -98,8 +92,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: None,
             tool_call_id: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create user message with text content
@@ -111,8 +104,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: None,
             tool_call_id: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create assistant message with text content
@@ -124,8 +116,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: None,
             tool_call_id: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create user message with image URL (for vision models)
@@ -140,17 +131,14 @@ impl OpenAIMessage {
                 content_type: "text".to_string(),
                 text: Some(text.into()),
                 image_url: None,
-                audio: None,
-            },
+                audio: None},
             OpenAIContentPart {
                 content_type: "image_url".to_string(),
                 text: None,
                 image_url: Some(OpenAIImageUrl {
                     url: image_url.into(),
-                    detail,
-                }),
-                audio: None,
-            },
+                    detail}),
+                audio: None},
         ];
 
         Self {
@@ -159,8 +147,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: None,
             tool_call_id: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create user message with base64 image data
@@ -191,17 +178,14 @@ impl OpenAIMessage {
                 content_type: "text".to_string(),
                 text: Some(text.into()),
                 image_url: None,
-                audio: None,
-            },
+                audio: None},
             OpenAIContentPart {
                 content_type: "audio".to_string(),
                 text: None,
                 image_url: None,
                 audio: Some(OpenAIAudioContent {
                     data: base64_audio,
-                    format: format.into(),
-                }),
-            },
+                    format: format.into()})},
         ];
 
         Self {
@@ -210,8 +194,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: None,
             tool_call_id: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create assistant message with tool calls
@@ -226,8 +209,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: Some(tool_calls),
             tool_call_id: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create tool result message
@@ -239,8 +221,7 @@ impl OpenAIMessage {
             name: None,
             tool_calls: None,
             tool_call_id: Some(tool_call_id.into()),
-            function_call: None,
-        }
+            function_call: None}
     }
 
     /// Create message with custom name (for user identification)
@@ -257,8 +238,7 @@ impl OpenAIMessage {
             Some(OpenAIContent::Array(parts)) => {
                 parts.iter().any(|part| part.content_type == "image_url")
             }
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Check if message contains audio
@@ -268,8 +248,7 @@ impl OpenAIMessage {
             Some(OpenAIContent::Array(parts)) => {
                 parts.iter().any(|part| part.content_type == "audio")
             }
-            _ => false,
-        }
+            _ => false}
     }
 
     /// Get text content from message
@@ -289,8 +268,7 @@ impl OpenAIMessage {
                     Some(text_parts.join(" "))
                 }
             }
-            None => None,
-        }
+            None => None}
     }
 
     /// Extract tool calls from message
@@ -308,9 +286,7 @@ fn convert_tool_call(tool_call: &DomainToolCall) -> OpenAIResult<OpenAIToolCall>
         call_type: "function".to_string(), // OpenAI uses "function" as the type
         function: OpenAIFunctionCall {
             name: tool_call.function.name.clone(),
-            arguments: tool_call.function.parameters.to_string(),
-        },
-    })
+            arguments: tool_call.function.parameters.to_string()}})
 }
 
 /// Extract tool calls from message content if present in structured format
@@ -343,8 +319,7 @@ pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
         MessageRole::System => "system",
         MessageRole::User => "user",
         MessageRole::Assistant => "assistant",
-        MessageRole::Tool => "tool",
-    };
+        MessageRole::Tool => "tool"};
 
     // Extract tool calls from content if present
     let (content, tool_calls) = if message.content.is_empty() {
@@ -387,8 +362,7 @@ pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
         name: message.name.clone(),
         tool_calls,
         tool_call_id: None,
-        function_call: None,
-    })
+        function_call: None})
 }
 
 /// Convert multiple messages with batch optimization
@@ -426,24 +400,21 @@ pub fn validate_message_for_model(message: &OpenAIMessage, model: &str) -> OpenA
     if message.has_images() && !is_vision_model(model) {
         return Err(OpenAIError::FeatureNotSupported {
             feature: "vision".to_string(),
-            model: model.to_string(),
-        });
+            model: model.to_string()});
     }
 
     // Check if model supports audio features
     if message.has_audio() && !is_audio_model(model) {
         return Err(OpenAIError::FeatureNotSupported {
             feature: "audio".to_string(),
-            model: model.to_string(),
-        });
+            model: model.to_string()});
     }
 
     // Check if model supports tool calls
     if !message.get_tool_calls().is_empty() && !is_tool_calling_model(model) {
         return Err(OpenAIError::FeatureNotSupported {
             feature: "tool_calling".to_string(),
-            model: model.to_string(),
-        });
+            model: model.to_string()});
     }
 
     Ok(())

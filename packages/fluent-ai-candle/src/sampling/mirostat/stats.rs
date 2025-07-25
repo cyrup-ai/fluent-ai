@@ -19,8 +19,7 @@ pub struct MirostatStats {
     /// Perplexity variance (stability measure)
     pub perplexity_variance: f32,
     /// Algorithm configuration
-    pub config: MirostatConfig,
-}
+    pub config: MirostatConfig}
 
 impl MirostatStats {
     /// Check if perplexity is stable (low variance)
@@ -100,8 +99,7 @@ impl MirostatStats {
             current_tau: 5.0,
             current_perplexity: 1.0,
             perplexity_variance: 0.0,
-            config: MirostatConfig::default(),
-        }
+            config: MirostatConfig::default()}
     }
 }
 
@@ -113,8 +111,7 @@ impl Default for MirostatStats {
             current_tau: 5.0,
             current_perplexity: 1.0,
             perplexity_variance: 0.0,
-            config: MirostatConfig::default(),
-        }
+            config: MirostatConfig::default()}
     }
 }
 

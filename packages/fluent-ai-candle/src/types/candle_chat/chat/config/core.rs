@@ -2,13 +2,14 @@
 //!
 //! This module defines the main chat configuration structure and related types.
 
+use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::model::ModelConfig;
+use super::config_core::{BehaviorConfig, UIConfig};
 
 /// Core chat configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,8 +29,7 @@ pub struct ChatConfig {
     /// User interface configuration
     pub ui: UIConfig,
     /// Integration configuration
-    pub integrations: IntegrationConfig,
-}
+    pub integrations: IntegrationConfig}
 
 /// Personality configuration for AI behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,32 +54,13 @@ pub struct PersonalityConfig {
     pub custom_traits: Vec<Arc<str>>,
     /// Personality prompt additions
     pub personality_prompt: Option<Arc<str>>,
-}
+    /// Expertise level ("beginner", "intermediate", "advanced", "expert")
+    pub expertise_level: Arc<str>,
+    /// Verbosity level ("concise", "balanced", "detailed")
+    pub verbosity: Arc<str>}
 
-/// Behavior configuration for chat system
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BehaviorConfig {
-    /// Enable conversation memory
-    pub enable_memory: bool,
-    /// Memory retention duration
-    pub memory_duration: Duration,
-    /// Maximum conversation length
-    pub max_conversation_length: u32,
-    /// Auto-save conversations
-    pub auto_save_conversations: bool,
-    /// Response delay simulation in milliseconds
-    pub response_delay_ms: u64,
-    /// Enable typing indicators
-    pub enable_typing_indicators: bool,
-    /// Typing speed (characters per second)
-    pub typing_speed_cps: f32,
-    /// Enable message reactions
-    pub enable_reactions: bool,
-    /// Content filtering level ("none", "basic", "strict")
-    pub content_filtering: Arc<str>,
-    /// Language detection and handling
-    pub language_handling: LanguageHandlingConfig,
-}
+// BehaviorConfig moved to config_core.rs - use that version instead
+// This duplicate has been eliminated to resolve "Legacy" confusion
 
 /// Language handling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,27 +72,10 @@ pub struct LanguageHandlingConfig {
     /// Fallback language
     pub fallback_language: Arc<str>,
     /// Enable translation for unsupported languages
-    pub enable_translation: bool,
-}
+    pub enable_translation: bool}
 
-/// User interface configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UIConfig {
-    /// Theme ("light", "dark", "auto")
-    pub theme: Arc<str>,
-    /// Font size multiplier
-    pub font_size_multiplier: f32,
-    /// Enable animations
-    pub enable_animations: bool,
-    /// Animation speed multiplier
-    pub animation_speed: f32,
-    /// Enable sound effects
-    pub enable_sound_effects: bool,
-    /// Sound volume (0.0 to 1.0)
-    pub sound_volume: f32,
-    /// Display options
-    pub display: DisplayConfig,
-}
+// UIConfig moved to config_core.rs - use that version instead
+// This duplicate has been eliminated to resolve field mismatch issues
 
 /// Display configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,8 +91,7 @@ pub struct DisplayConfig {
     /// Enable markdown rendering
     pub enable_markdown: bool,
     /// Enable code syntax highlighting
-    pub enable_syntax_highlighting: bool,
-}
+    pub enable_syntax_highlighting: bool}
 
 /// Integration configuration for external services
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,8 +103,7 @@ pub struct IntegrationConfig {
     /// API integrations
     pub api_integrations: Vec<ApiIntegrationConfig>,
     /// Plugin configurations
-    pub plugins: Vec<PluginConfig>,
-}
+    pub plugins: Vec<PluginConfig>}
 
 /// API integration configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,10 +117,9 @@ pub struct ApiIntegrationConfig {
     /// API key (if applicable)
     pub api_key: Option<Arc<str>>,
     /// Custom headers
-    pub headers: std::collections::HashMap<Arc<str>, Arc<str>>,
+    pub headers: HashMap<Arc<str>, Arc<str>>,
     /// Request timeout in milliseconds
-    pub timeout_ms: u64,
-}
+    pub timeout_ms: u64}
 
 /// Plugin configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,8 +131,7 @@ pub struct PluginConfig {
     /// Enable plugin
     pub enabled: bool,
     /// Plugin settings
-    pub settings: std::collections::HashMap<Arc<str>, serde_json::Value>,
-}
+    pub settings: HashMap<Arc<str>, serde_json::Value>}
 
 impl Default for PersonalityConfig {
     fn default() -> Self {
@@ -186,26 +146,12 @@ impl Default for PersonalityConfig {
             humor_level: 0.3,
             custom_traits: Vec::new(),
             personality_prompt: None,
-        }
+            expertise_level: Arc::from("intermediate"),
+            verbosity: Arc::from("balanced")}
     }
 }
 
-impl Default for BehaviorConfig {
-    fn default() -> Self {
-        Self {
-            enable_memory: true,
-            memory_duration: Duration::from_secs(3600), // 1 hour
-            max_conversation_length: 100,
-            auto_save_conversations: true,
-            response_delay_ms: 500,
-            enable_typing_indicators: true,
-            typing_speed_cps: 50.0,
-            enable_reactions: true,
-            content_filtering: Arc::from("basic"),
-            language_handling: LanguageHandlingConfig::default(),
-        }
-    }
-}
+// BehaviorConfig Default implementation moved to config_core.rs to avoid duplication
 
 impl Default for LanguageHandlingConfig {
     fn default() -> Self {
@@ -213,24 +159,11 @@ impl Default for LanguageHandlingConfig {
             auto_detect: true,
             preferred_language: Arc::from("en"),
             fallback_language: Arc::from("en"),
-            enable_translation: false,
-        }
+            enable_translation: false}
     }
 }
 
-impl Default for UIConfig {
-    fn default() -> Self {
-        Self {
-            theme: Arc::from("auto"),
-            font_size_multiplier: 1.0,
-            enable_animations: true,
-            animation_speed: 1.0,
-            enable_sound_effects: false,
-            sound_volume: 0.5,
-            display: DisplayConfig::default(),
-        }
-    }
-}
+// Default implementation already exists in config_core.rs
 
 impl Default for DisplayConfig {
     fn default() -> Self {
@@ -240,8 +173,7 @@ impl Default for DisplayConfig {
             show_typing_indicators: true,
             message_bubble_style: Arc::from("modern"),
             enable_markdown: true,
-            enable_syntax_highlighting: true,
-        }
+            enable_syntax_highlighting: true}
     }
 }
 
@@ -251,8 +183,7 @@ impl Default for IntegrationConfig {
             enable_webhooks: false,
             webhook_urls: Vec::new(),
             api_integrations: Vec::new(),
-            plugins: Vec::new(),
-        }
+            plugins: Vec::new()}
     }
 }
 
@@ -266,7 +197,6 @@ impl Default for ChatConfig {
             personality: PersonalityConfig::default(),
             behavior: BehaviorConfig::default(),
             ui: UIConfig::default(),
-            integrations: IntegrationConfig::default(),
-        }
+            integrations: IntegrationConfig::default()}
     }
 }

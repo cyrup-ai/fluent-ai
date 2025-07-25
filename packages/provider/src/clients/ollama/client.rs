@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
@@ -19,13 +19,11 @@ use super::completion::{CompletionModel, EmbeddingModel, MISTRAL_MAGISTRAR_SMALL
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient},
     completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
+        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError},
     embeddings::{Embed, Embedding, EmbeddingBuilder},
     json_util,
     message::Message,
-    runtime::{self, AsyncTask},
-};
+    runtime::{self, AsyncTask}};
 
 // ============================================================================
 // Ollama API Client with HTTP3 and zero-allocation patterns
@@ -46,8 +44,7 @@ pub struct OllamaMetrics {
     pub total_requests: RelaxedCounter,
     pub successful_requests: RelaxedCounter,
     pub failed_requests: RelaxedCounter,
-    pub concurrent_requests: RelaxedCounter,
-}
+    pub concurrent_requests: RelaxedCounter}
 
 impl OllamaMetrics {
     #[inline]
@@ -56,8 +53,7 @@ impl OllamaMetrics {
             total_requests: RelaxedCounter::new(0),
             successful_requests: RelaxedCounter::new(0),
             failed_requests: RelaxedCounter::new(0),
-            concurrent_requests: RelaxedCounter::new(0),
-        }
+            concurrent_requests: RelaxedCounter::new(0)}
     }
 }
 
@@ -70,16 +66,13 @@ pub enum OllamaError {
     Configuration {
         field: String,
         message: String,
-        suggestion: String,
-    },
+        suggestion: String},
     #[error("Model not found: {model}")]
     ModelNotFound { model: String, suggestion: String },
     #[error("Connection failed: {message}")]
     Connection {
         message: String,
-        retry_after: Option<Duration>,
-    },
-}
+        retry_after: Option<Duration>}}
 
 pub type Result<T> = std::result::Result<T, OllamaError>;
 
@@ -93,8 +86,7 @@ pub struct Client {
     /// Performance metrics
     metrics: &'static OllamaMetrics,
     /// Request timeout
-    timeout: Duration,
-}
+    timeout: Duration}
 
 impl Default for Client {
     fn default() -> Self {
@@ -119,15 +111,13 @@ impl Client {
             ArrayString::from(base_url).map_err(|_| OllamaError::Configuration {
                 field: "base_url".to_string(),
                 message: format!("Base URL too long: {} characters (max 256)", base_url.len()),
-                suggestion: "Use a valid Ollama API base URL".to_string(),
-            })?;
+                suggestion: "Use a valid Ollama API base URL".to_string()})?;
 
         Ok(Self {
             base_url: base_url_array,
             http_client: &HTTP_CLIENT,
             metrics: &OLLAMA_METRICS,
-            timeout: Duration::from_secs(30),
-        })
+            timeout: Duration::from_secs(30)})
     }
 
     /// Create from environment (Ollama defaults to localhost)
@@ -171,8 +161,7 @@ impl Client {
 
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
-            Err(_) => self.metrics.failed_requests.inc(),
-        }
+            Err(_) => self.metrics.failed_requests.inc()}
 
         response.map_err(OllamaError::Http)
     }
@@ -192,8 +181,7 @@ impl Client {
         } else {
             Err(OllamaError::Connection {
                 message: format!("Connection test failed with status: {}", response.status()),
-                retry_after: None,
-            })
+                retry_after: None})
         }
     }
 
@@ -253,8 +241,7 @@ pub struct OllamaCompletionBuilder<'a, S> {
     tools: Vec<completion::ToolDefinition>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ============================================================================
 // Constructors
@@ -277,8 +264,7 @@ impl<'a> OllamaCompletionBuilder<'a, NeedsPrompt> {
             tools: Vec::new(),
             additional_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 
     /// Convenience helper: sensible defaults for chat
@@ -384,8 +370,7 @@ impl<'a> OllamaCompletionBuilder<'a, NeedsPrompt> {
             tools: self.tools,
             additional_params: self.additional_params,
             prompt: self.prompt,
-            _state: std::marker::PhantomData::<HasPrompt>,
-        }
+            _state: std::marker::PhantomData::<HasPrompt>}
     }
 }
 

@@ -7,45 +7,48 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::config_core::{
-    ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig,
-    ModelConfig, ModelRetryConfig, ModelPerformanceConfig,
-};
+use super::core::{PersonalityConfig, IntegrationConfig, ChatConfig};
+use super::config_core::{BehaviorConfig, UIConfig};
+use super::model::ModelConfig;
 
 /// Configuration builder for ergonomic configuration creation
 pub struct ConfigurationBuilder {
-    config: ChatConfig,
-}
+    config: ChatConfig}
 
 impl ConfigurationBuilder {
     /// Create a new configuration builder
     pub fn new() -> Self {
         Self {
-            config: ChatConfig::default(),
-        }
+            config: ChatConfig::default()}
     }
 
-    /// Set maximum message length
-    pub fn max_message_length(mut self, length: usize) -> Self {
-        self.config.max_message_length = length;
+    /// Set configuration name
+    pub fn name(mut self, name: impl Into<Arc<str>>) -> Self {
+        self.config.name = name.into();
         self
     }
 
-    /// Enable or disable message history
-    pub fn enable_history(mut self, enable: bool) -> Self {
-        self.config.enable_history = enable;
+    /// Set maximum conversation length
+    pub fn max_conversation_length(mut self, length: u32) -> Self {
+        self.config.behavior.max_conversation_length = length;
         self
     }
 
-    /// Set history retention period
-    pub fn history_retention(mut self, duration: Duration) -> Self {
-        self.config.history_retention = duration;
+    /// Enable or disable conversation memory
+    pub fn enable_memory(mut self, enable: bool) -> Self {
+        self.config.behavior.enable_memory = enable;
         self
     }
 
-    /// Enable or disable streaming responses
-    pub fn enable_streaming(mut self, enable: bool) -> Self {
-        self.config.enable_streaming = enable;
+    /// Set memory retention period
+    pub fn memory_duration(mut self, duration: Duration) -> Self {
+        self.config.behavior.memory_duration = duration;
+        self
+    }
+
+    /// Set response delay in milliseconds
+    pub fn response_delay_ms(mut self, delay: u64) -> Self {
+        self.config.behavior.response_delay_ms = delay;
         self
     }
 
@@ -55,9 +58,27 @@ impl ConfigurationBuilder {
         self
     }
 
+    /// Configure personality with a closure
+    pub fn personality_with<F>(mut self, f: F) -> Self 
+    where F: FnOnce(PersonalityConfigBuilder) -> PersonalityConfigBuilder
+    {
+        let builder = PersonalityConfigBuilder::new();
+        self.config.personality = f(builder).build();
+        self
+    }
+
     /// Set behavior configuration
     pub fn behavior(mut self, behavior: BehaviorConfig) -> Self {
         self.config.behavior = behavior;
+        self
+    }
+
+    /// Configure behavior with a closure
+    pub fn behavior_with<F>(mut self, f: F) -> Self 
+    where F: FnOnce(BehaviorConfigBuilder) -> BehaviorConfigBuilder
+    {
+        let builder = BehaviorConfigBuilder::new();
+        self.config.behavior = f(builder).build();
         self
     }
 
@@ -67,9 +88,42 @@ impl ConfigurationBuilder {
         self
     }
 
+    /// Configure UI with a closure
+    pub fn ui_with<F>(mut self, f: F) -> Self 
+    where F: FnOnce(UIConfigBuilder) -> UIConfigBuilder
+    {
+        let builder = UIConfigBuilder::new();
+        self.config.ui = f(builder).build();
+        self
+    }
+
     /// Set integration configuration
     pub fn integration(mut self, integration: IntegrationConfig) -> Self {
-        self.config.integration = integration;
+        self.config.integrations = integration;
+        self
+    }
+
+    /// Configure integrations with a closure
+    pub fn integration_with<F>(mut self, f: F) -> Self 
+    where F: FnOnce(IntegrationConfigBuilder) -> IntegrationConfigBuilder
+    {
+        let builder = IntegrationConfigBuilder::new();
+        self.config.integrations = f(builder).build();
+        self
+    }
+
+    /// Set model configuration
+    pub fn model(mut self, model: ModelConfig) -> Self {
+        self.config.model = model;
+        self
+    }
+
+    /// Configure model with a closure
+    pub fn model_with<F>(mut self, f: F) -> Self 
+    where F: FnOnce(ModelConfigBuilder) -> ModelConfigBuilder
+    {
+        let builder = ModelConfigBuilder::new();
+        self.config.model = f(builder).build();
         self
     }
 
@@ -87,15 +141,13 @@ impl Default for ConfigurationBuilder {
 
 /// Personality configuration builder
 pub struct PersonalityConfigBuilder {
-    config: PersonalityConfig,
-}
+    config: PersonalityConfig}
 
 impl PersonalityConfigBuilder {
     /// Create a new personality configuration builder
     pub fn new() -> Self {
         Self {
-            config: PersonalityConfig::default(),
-        }
+            config: PersonalityConfig::default()}
     }
 
     /// Set personality type
@@ -116,58 +168,46 @@ impl PersonalityConfigBuilder {
         self
     }
 
-    /// Set custom instructions
+    /// Set personality prompt
     pub fn custom_instructions(mut self, instructions: impl Into<Arc<str>>) -> Self {
-        self.config.custom_instructions = Some(instructions.into());
+        self.config.personality_prompt = Some(instructions.into());
         self
     }
 
     /// Set creativity level (0.0-1.0)
-    pub fn creativity(mut self, creativity: f64) -> Self {
-        self.config.creativity = creativity.clamp(0.0, 1.0);
+    pub fn creativity(mut self, creativity: f32) -> Self {
+        self.config.creativity_level = creativity.clamp(0.0, 1.0);
         self
     }
 
     /// Set formality level (0.0-1.0)
-    pub fn formality(mut self, formality: f64) -> Self {
-        self.config.formality = formality.clamp(0.0, 1.0);
+    pub fn formality(mut self, formality: f32) -> Self {
+        self.config.formality_level = formality.clamp(0.0, 1.0);
         self
     }
 
     /// Set humor level (0.0-1.0)
-    pub fn humor(mut self, humor: f64) -> Self {
-        self.config.humor = humor.clamp(0.0, 1.0);
+    pub fn humor(mut self, humor: f32) -> Self {
+        self.config.humor_level = humor.clamp(0.0, 1.0);
         self
     }
 
     /// Set empathy level (0.0-1.0)
-    pub fn empathy(mut self, empathy: f64) -> Self {
-        self.config.empathy = empathy.clamp(0.0, 1.0);
-        self
-    }
-
-    /// Set expertise level
-    pub fn expertise(mut self, expertise: impl Into<Arc<str>>) -> Self {
-        self.config.expertise_level = expertise.into();
-        self
-    }
-
-    /// Set verbosity level
-    pub fn verbosity(mut self, verbosity: impl Into<Arc<str>>) -> Self {
-        self.config.verbosity = verbosity.into();
+    pub fn empathy(mut self, empathy: f32) -> Self {
+        self.config.empathy_level = empathy.clamp(0.0, 1.0);
         self
     }
 
     /// Add personality trait
     pub fn trait_name(mut self, trait_name: impl Into<Arc<str>>) -> Self {
-        self.config.traits.push(trait_name.into());
+        self.config.custom_traits.push(trait_name.into());
         self
     }
 
     /// Add multiple traits
     pub fn traits(mut self, traits: Vec<impl Into<Arc<str>>>) -> Self {
         for trait_name in traits {
-            self.config.traits.push(trait_name.into());
+            self.config.custom_traits.push(trait_name.into());
         }
         self
     }
@@ -186,15 +226,13 @@ impl Default for PersonalityConfigBuilder {
 
 /// Behavior configuration builder
 pub struct BehaviorConfigBuilder {
-    config: BehaviorConfig,
-}
+    config: BehaviorConfig}
 
 impl BehaviorConfigBuilder {
     /// Create a new behavior configuration builder
     pub fn new() -> Self {
         Self {
-            config: BehaviorConfig::default(),
-        }
+            config: BehaviorConfig::default()}
     }
 
     /// Set response delay in milliseconds
@@ -209,27 +247,45 @@ impl BehaviorConfigBuilder {
         self
     }
 
-    /// Enable or disable auto-correction
-    pub fn enable_auto_correction(mut self, enable: bool) -> Self {
-        self.config.enable_auto_correction = enable;
+    /// Enable or disable memory
+    pub fn enable_memory(mut self, enable: bool) -> Self {
+        self.config.enable_memory = enable;
         self
     }
 
-    /// Set context awareness level (0.0-1.0)
-    pub fn context_awareness(mut self, level: f64) -> Self {
-        self.config.context_awareness = level.clamp(0.0, 1.0);
+    /// Set memory duration
+    pub fn memory_duration(mut self, duration: std::time::Duration) -> Self {
+        self.config.memory_duration = duration;
         self
     }
 
-    /// Set proactivity level (0.0-1.0)
-    pub fn proactivity(mut self, level: f64) -> Self {
-        self.config.proactivity = level.clamp(0.0, 1.0);
+    /// Set maximum conversation length
+    pub fn max_conversation_length(mut self, length: u32) -> Self {
+        self.config.max_conversation_length = length;
         self
     }
 
-    /// Set conversation flow type
-    pub fn conversation_flow(mut self, flow: impl Into<Arc<str>>) -> Self {
-        self.config.conversation_flow = flow.into();
+    /// Enable auto-save conversations
+    pub fn auto_save_conversations(mut self, enable: bool) -> Self {
+        self.config.auto_save_conversations = enable;
+        self
+    }
+
+    /// Set typing speed (characters per second)
+    pub fn typing_speed_cps(mut self, speed: f32) -> Self {
+        self.config.typing_speed_cps = speed;
+        self
+    }
+
+    /// Enable message reactions
+    pub fn enable_reactions(mut self, enable: bool) -> Self {
+        self.config.enable_reactions = enable;
+        self
+    }
+
+    /// Set content filtering level
+    pub fn content_filtering(mut self, level: impl Into<Arc<str>>) -> Self {
+        self.config.content_filtering = level.into();
         self
     }
 
@@ -247,15 +303,13 @@ impl Default for BehaviorConfigBuilder {
 
 /// UI configuration builder
 pub struct UIConfigBuilder {
-    config: UIConfig,
-}
+    config: UIConfig}
 
 impl UIConfigBuilder {
     /// Create a new UI configuration builder
     pub fn new() -> Self {
         Self {
-            config: UIConfig::default(),
-        }
+            config: UIConfig::default()}
     }
 
     /// Set theme
@@ -308,27 +362,13 @@ impl Default for UIConfigBuilder {
 
 /// Integration configuration builder
 pub struct IntegrationConfigBuilder {
-    config: IntegrationConfig,
-}
+    config: IntegrationConfig}
 
 impl IntegrationConfigBuilder {
     /// Create a new integration configuration builder
     pub fn new() -> Self {
         Self {
-            config: IntegrationConfig::default(),
-        }
-    }
-
-    /// Enable or disable plugins
-    pub fn enable_plugins(mut self, enable: bool) -> Self {
-        self.config.enable_plugins = enable;
-        self
-    }
-
-    /// Set plugin directory
-    pub fn plugin_directory(mut self, directory: impl Into<Arc<str>>) -> Self {
-        self.config.plugin_directory = Some(directory.into());
-        self
+            config: IntegrationConfig::default()}
     }
 
     /// Enable or disable webhooks
@@ -337,21 +377,21 @@ impl IntegrationConfigBuilder {
         self
     }
 
-    /// Set webhook URL
+    /// Add webhook URL
     pub fn webhook_url(mut self, url: impl Into<Arc<str>>) -> Self {
-        self.config.webhook_url = Some(url.into());
+        self.config.webhook_urls.push(url.into());
         self
     }
 
-    /// Set API rate limit
-    pub fn api_rate_limit(mut self, limit: u32) -> Self {
-        self.config.api_rate_limit = limit;
+    /// Add API integration
+    pub fn api_integration(mut self, api_integration: super::core::ApiIntegrationConfig) -> Self {
+        self.config.api_integrations.push(api_integration);
         self
     }
 
-    /// Add external service
-    pub fn external_service(mut self, service: impl Into<Arc<str>>) -> Self {
-        self.config.external_services.push(service.into());
+    /// Add plugin
+    pub fn plugin(mut self, plugin: super::core::PluginConfig) -> Self {
+        self.config.plugins.push(plugin);
         self
     }
 
@@ -369,15 +409,13 @@ impl Default for IntegrationConfigBuilder {
 
 /// Model configuration builder
 pub struct ModelConfigBuilder {
-    config: ModelConfig,
-}
+    config: ModelConfig}
 
 impl ModelConfigBuilder {
     /// Create a new model configuration builder
     pub fn new() -> Self {
         Self {
-            config: ModelConfig::default(),
-        }
+            config: ModelConfig::default()}
     }
 
     /// Set provider and model

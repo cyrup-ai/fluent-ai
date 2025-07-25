@@ -16,9 +16,7 @@ use crate::{
     runtime::AsyncTask,
     transcription::{
         TranscriptionError, TranscriptionModel, TranscriptionModelDyn, TranscriptionRequest,
-        TranscriptionResponse,
-    },
-};
+        TranscriptionResponse}};
 
 // -----------------------------------------------------------------------------
 // Provider-side trait to be implemented by concrete SDK wrappers
@@ -73,8 +71,7 @@ where
 // -----------------------------------------------------------------------------
 #[derive(Clone)]
 pub struct TranscriptionModelHandle<'a> {
-    inner: Arc<dyn TranscriptionModelDyn + 'a>,
-}
+    inner: Arc<dyn TranscriptionModelDyn + 'a>}
 
 impl TranscriptionModel for TranscriptionModelHandle<'_> {
     type Response = ();

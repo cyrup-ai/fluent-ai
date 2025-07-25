@@ -26,8 +26,7 @@ pub struct CandleStreamingResponse {
     pub usage: Option<crate::types::CandleUsage>,
 
     /// System fingerprint for reproducibility
-    pub system_fingerprint: Option<String>,
-}
+    pub system_fingerprint: Option<String>}
 
 /// Individual choice in a streaming response
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -42,8 +41,7 @@ pub struct CandleStreamingChoice {
     pub finish_reason: Option<CandleFinishReason>,
 
     /// Log probabilities for the tokens (if requested)
-    pub logprobs: Option<CandleLogProbs>,
-}
+    pub logprobs: Option<CandleLogProbs>}
 
 /// Delta containing incremental content in streaming response
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -58,8 +56,7 @@ pub struct CandleStreamingDelta {
     pub tool_calls: Option<Vec<CandleToolCallDelta>>,
 
     /// Function call (deprecated, use tool_calls)
-    pub function_call: Option<CandleFunctionCallDelta>,
-}
+    pub function_call: Option<CandleFunctionCallDelta>}
 
 /// Tool call delta in streaming response
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -75,8 +72,7 @@ pub struct CandleToolCallDelta {
     pub tool_type: Option<String>,
 
     /// Function call details
-    pub function: Option<CandleFunctionCallDelta>,
-}
+    pub function: Option<CandleFunctionCallDelta>}
 
 /// Function call delta in streaming response
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -85,8 +81,7 @@ pub struct CandleFunctionCallDelta {
     pub name: Option<String>,
 
     /// Incremental arguments as JSON string
-    pub arguments: Option<String>,
-}
+    pub arguments: Option<String>}
 
 /// Reason why the completion finished
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -103,15 +98,13 @@ pub enum CandleFinishReason {
     /// Content filtered
     ContentFilter,
     /// Model error
-    Error,
-}
+    Error}
 
 /// Log probabilities for tokens
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CandleLogProbs {
     /// Content log probabilities
-    pub content: Option<Vec<CandleTokenLogProb>>,
-}
+    pub content: Option<Vec<CandleTokenLogProb>>}
 
 /// Log probability for a single token
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -126,8 +119,7 @@ pub struct CandleTokenLogProb {
     pub bytes: Option<Vec<u8>>,
 
     /// Top alternative tokens with their log probabilities
-    pub top_logprobs: Vec<CandleTopLogProb>,
-}
+    pub top_logprobs: Vec<CandleTopLogProb>}
 
 /// Top alternative token with log probability
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -139,8 +131,7 @@ pub struct CandleTopLogProb {
     pub logprob: f64,
 
     /// Raw bytes of the token (if available)
-    pub bytes: Option<Vec<u8>>,
-}
+    pub bytes: Option<Vec<u8>>}
 
 impl CandleStreamingResponse {
     /// Create a new streaming response
@@ -152,8 +143,7 @@ impl CandleStreamingResponse {
             model,
             choices: Vec::new(),
             usage: None,
-            system_fingerprint: None,
-        }
+            system_fingerprint: None}
     }
 
     /// Add a choice to the response
@@ -188,8 +178,7 @@ impl Default for CandleStreamingResponse {
             model: String::new(),
             choices: Vec::new(),
             usage: None,
-            system_fingerprint: None,
-        }
+            system_fingerprint: None}
     }
 }
 
@@ -202,11 +191,9 @@ impl CandleStreamingChoice {
                 role: None,
                 content: Some(content),
                 tool_calls: None,
-                function_call: None,
-            },
+                function_call: None},
             finish_reason: None,
-            logprobs: None,
-        }
+            logprobs: None}
     }
 
     /// Create a new streaming choice with role
@@ -217,11 +204,9 @@ impl CandleStreamingChoice {
                 role: Some(role),
                 content: None,
                 tool_calls: None,
-                function_call: None,
-            },
+                function_call: None},
             finish_reason: None,
-            logprobs: None,
-        }
+            logprobs: None}
     }
 
     /// Set the finish reason
@@ -237,7 +222,6 @@ impl Default for CandleStreamingDelta {
             role: None,
             content: None,
             tool_calls: None,
-            function_call: None,
-        }
+            function_call: None}
     }
 }

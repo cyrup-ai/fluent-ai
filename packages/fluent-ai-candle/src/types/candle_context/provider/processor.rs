@@ -2,7 +2,8 @@
 //!
 //! Zero-allocation context processing with atomic performance counters and streaming operations.
 
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::collections::HashMap;
+use std::sync::{Arc, atomic::{AtomicU64, AtomicUsize, Ordering}};
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -17,14 +18,14 @@ pub struct StreamingContextProcessor {
     /// Unique processor identifier
     processor_id: String,
 
-    /// Atomic performance counters
-    context_requests: AtomicU64,
-    active_contexts: AtomicUsize,
-    total_contexts_processed: AtomicU64,
-    successful_contexts: AtomicU64,
-    failed_contexts: AtomicU64,
-    total_documents_loaded: AtomicU64,
-    total_processing_time_nanos: AtomicU64,
+    /// Atomic performance counters (Arc-wrapped for cloning into closures)
+    context_requests: Arc<AtomicU64>,
+    active_contexts: Arc<AtomicUsize>,
+    total_contexts_processed: Arc<AtomicU64>,
+    successful_contexts: Arc<AtomicU64>,
+    failed_contexts: Arc<AtomicU64>,
+    total_documents_loaded: Arc<AtomicU64>,
+    total_processing_time_nanos: Arc<AtomicU64>,
 
     /// Event streaming
     event_sender: Option<AsyncStreamSender<ContextEvent>>,
@@ -32,8 +33,7 @@ pub struct StreamingContextProcessor {
     /// Performance thresholds
     max_processing_time_ms: u64,
     max_documents_per_context: usize,
-    max_concurrent_contexts: usize,
-}
+    max_concurrent_contexts: usize}
 
 impl StreamingContextProcessor {
     /// Create new streaming context processor
@@ -41,18 +41,17 @@ impl StreamingContextProcessor {
     pub fn new(processor_id: String) -> Self {
         Self {
             processor_id,
-            context_requests: AtomicU64::new(0),
-            active_contexts: AtomicUsize::new(0),
-            total_contexts_processed: AtomicU64::new(0),
-            successful_contexts: AtomicU64::new(0),
-            failed_contexts: AtomicU64::new(0),
-            total_documents_loaded: AtomicU64::new(0),
-            total_processing_time_nanos: AtomicU64::new(0),
+            context_requests: Arc::new(AtomicU64::new(0)),
+            active_contexts: Arc::new(AtomicUsize::new(0)),
+            total_contexts_processed: Arc::new(AtomicU64::new(0)),
+            successful_contexts: Arc::new(AtomicU64::new(0)),
+            failed_contexts: Arc::new(AtomicU64::new(0)),
+            total_documents_loaded: Arc::new(AtomicU64::new(0)),
+            total_processing_time_nanos: Arc::new(AtomicU64::new(0)),
             event_sender: None,
             max_processing_time_ms: 30000, // 30 seconds default
             max_documents_per_context: 10000,
-            max_concurrent_contexts: 100,
-        }
+            max_concurrent_contexts: 100}
     }
 
     /// Create processor with event streaming
@@ -156,16 +155,14 @@ impl StreamingContextProcessor {
 
     /// Load file document
     fn load_file_document(context: &ImmutableFileContext) -> Result<CandleDocument, ContextError> {
-        use std::collections::HashMap;
-        
-        // Implementation would read file and create CandleDocument
+                // Implementation would read file and create CandleDocument
         // For now, create a basic document structure
         Ok(CandleDocument {
             data: format!("Content from file: {}", context.path),
             format: Some(crate::types::candle_context::ContentFormat::Text),
             media_type: Some(crate::types::candle_context::DocumentMediaType::TXT),
             additional_props: {
-                let mut props = HashMap::new();
+                let mut props = std::collections::HashMap::new();
                 props.insert(
                     "id".to_string(),
                     serde_json::Value::String(Uuid::new_v4().to_string()),
@@ -183,8 +180,7 @@ impl StreamingContextProcessor {
                     serde_json::Value::String(context.content_hash.clone()),
                 );
                 props
-            },
-        })
+            }})
     }
 
     /// Get processor statistics
@@ -199,8 +195,7 @@ impl StreamingContextProcessor {
             failed_contexts: self.failed_contexts.load(Ordering::Relaxed),
             total_documents_loaded: self.total_documents_loaded.load(Ordering::Relaxed),
             success_rate: self.success_rate(),
-            average_processing_time_nanos: self.average_processing_time_nanos(),
-        }
+            average_processing_time_nanos: self.average_processing_time_nanos()}
     }
 
     /// Calculate success rate
@@ -240,5 +235,4 @@ pub struct ContextProcessorStatistics {
     pub failed_contexts: u64,
     pub total_documents_loaded: u64,
     pub success_rate: f64,
-    pub average_processing_time_nanos: u64,
-}
+    pub average_processing_time_nanos: u64}

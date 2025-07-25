@@ -10,8 +10,7 @@ use fluent_ai_domain::{Document, Message, chunk::CompletionChunk, tool::ToolDefi
 use fluent_ai_provider::{
     AsyncStream,
     clients::openai::{Gpt4o, Gpt4oMini, OpenAICompletionBuilder},
-    completion_provider::{CompletionError, CompletionProvider, ModelPrompt},
-};
+    completion_provider::{CompletionError, CompletionProvider, ModelPrompt}};
 use futures_util::StreamExt;
 use serde_json::json;
 
@@ -33,8 +32,7 @@ async fn example_direct_prompting() -> Result<(), CompletionError> {
             CompletionChunk::Complete {
                 text,
                 finish_reason,
-                usage,
-            } => {
+                usage} => {
                 println!("\n✅ Complete: {}", text);
                 if let Some(reason) = finish_reason {
                     println!("🏁 Finish reason: {:?}", reason);
@@ -186,8 +184,7 @@ async fn example_advanced_builder() -> Result<(), CompletionError> {
             CompletionChunk::Complete {
                 text,
                 finish_reason,
-                usage,
-            } => {
+                usage} => {
                 println!("\n\n🎯 Final completion summary:");
                 println!(
                     "📝 Total accumulated text length: {} characters",
@@ -277,8 +274,7 @@ async fn example_api_key_patterns() -> Result<(), CompletionError> {
                 Err(CompletionError::RequestTooLarge) => {
                     println!("✅ Correctly rejected oversized request");
                 }
-                Err(e) => println!("❌ Unexpected error: {}", e),
-            }
+                Err(e) => println!("❌ Unexpected error: {}", e)}
         }
         Err(e) => {
             println!("❌ Builder creation failed: {}", e);
@@ -471,18 +467,15 @@ mod tests {
         // Verify no Optional types used
         match none {
             ZeroOneOrMany::None => assert!(true),
-            _ => panic!("Should be None variant"),
-        }
+            _ => panic!("Should be None variant")}
 
         match one {
             ZeroOneOrMany::One(value) => assert_eq!(value, "single"),
-            _ => panic!("Should be One variant"),
-        }
+            _ => panic!("Should be One variant")}
 
         match many {
             ZeroOneOrMany::Many(values) => assert_eq!(values.len(), 2),
-            _ => panic!("Should be Many variant"),
-        }
+            _ => panic!("Should be Many variant")}
     }
 
     #[tokio::test]
@@ -497,8 +490,7 @@ mod tests {
                 CompletionChunk::Error { message, .. } => {
                     assert!(message.contains("Missing API key"));
                 }
-                _ => panic!("Should return error chunk"),
-            }
+                _ => panic!("Should return error chunk")}
         }
     }
 }

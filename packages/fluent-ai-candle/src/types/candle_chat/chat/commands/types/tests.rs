@@ -28,16 +28,14 @@ mod tests {
             query: "test".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false,
-        };
+            include_context: false};
         assert!(cmd.validate().is_ok());
 
         let cmd = ImmutableChatCommand::Search {
             query: "".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false,
-        };
+            include_context: false};
         assert!(cmd.validate().is_err());
     }
 
@@ -53,14 +51,12 @@ mod tests {
     fn test_command_names() {
         let help_cmd = ImmutableChatCommand::Help {
             command: None,
-            extended: false,
-        };
+            extended: false};
         assert_eq!(help_cmd.command_name(), "help");
 
         let clear_cmd = ImmutableChatCommand::Clear {
             confirm: true,
-            keep_last: None,
-        };
+            keep_last: None};
         assert_eq!(clear_cmd.command_name(), "clear");
     }
 
@@ -68,14 +64,12 @@ mod tests {
     fn test_command_mutation_check() {
         let help_cmd = ImmutableChatCommand::Help {
             command: None,
-            extended: false,
-        };
+            extended: false};
         assert!(!help_cmd.is_mutating());
 
         let clear_cmd = ImmutableChatCommand::Clear {
             confirm: true,
-            keep_last: None,
-        };
+            keep_last: None};
         assert!(clear_cmd.is_mutating());
     }
 }

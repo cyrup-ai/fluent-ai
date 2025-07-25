@@ -13,16 +13,14 @@ pub struct RepoConfig {
     /// Whether to initialize git if not already initialized
     pub init_git: bool,
     /// Whether to set up git filters
-    pub setup_filters: bool,
-}
+    pub setup_filters: bool}
 
 impl Default for RepoConfig {
     fn default() -> Self {
         Self {
             path: PathBuf::from("."),
             init_git: true,
-            setup_filters: true,
-        }
+            setup_filters: true}
     }
 }
 
@@ -145,8 +143,7 @@ mod tests {
         let config = RepoConfig {
             path: temp_dir.path().to_path_buf(),
             init_git: true,
-            setup_filters: true,
-        };
+            setup_filters: true};
 
         assert!(init_repository(&config).is_ok());
         assert!(temp_dir.path().join(".parallm").exists());

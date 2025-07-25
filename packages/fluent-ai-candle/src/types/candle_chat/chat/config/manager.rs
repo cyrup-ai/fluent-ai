@@ -5,13 +5,13 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use arc_swap::ArcSwap;
 use crossbeam_queue::SegQueue;
 use fluent_ai_async::AsyncStream;
 use tokio::sync::{RwLock, broadcast};
-use uuid::Uuid;
+// Removed unused import: Uuid
 
 use super::core::ChatConfig;
 use super::events::{ConfigurationChangeEvent, ConfigurationChangeType, ConfigurationPersistence};
@@ -32,8 +32,7 @@ pub struct ConfigurationManager {
     /// Configuration version counter
     version_counter: AtomicUsize,
     /// Statistics
-    stats: ConfigurationStatistics,
-}
+    stats: ConfigurationStatistics}
 
 impl Clone for ConfigurationManager {
     fn clone(&self) -> Self {
@@ -50,8 +49,7 @@ impl Clone for ConfigurationManager {
                     .unwrap_or_default()
             )),
             version_counter: AtomicUsize::new(self.version_counter.load(Ordering::Relaxed)),
-            stats: ConfigurationStatistics::default(),
-        }
+            stats: ConfigurationStatistics::default()}
     }
 }
 
@@ -60,7 +58,15 @@ impl Clone for ConfigurationManager {
 pub struct ConfigurationStatistics {
     pub total_changes: AtomicUsize,
     pub validation_errors: AtomicUsize,
-    pub last_change_time: ArcSwap<Option<Instant>>,
+    pub last_change_time: ArcSwap<Option<u64>>}
+
+impl Clone for ConfigurationStatistics {
+    fn clone(&self) -> Self {
+        Self {
+            total_changes: AtomicUsize::new(self.total_changes.load(Ordering::Relaxed)),
+            validation_errors: AtomicUsize::new(self.validation_errors.load(Ordering::Relaxed)),
+            last_change_time: ArcSwap::new(Arc::new(*self.last_change_time.load().as_ref()))}
+    }
 }
 
 impl ConfigurationManager {
@@ -74,8 +80,7 @@ impl ConfigurationManager {
             change_notifier: tx,
             persistence: Arc::new(RwLock::new(ConfigurationPersistence::default())),
             version_counter: AtomicUsize::new(1),
-            stats: ConfigurationStatistics::default(),
-        }
+            stats: ConfigurationStatistics::default()}
     }
 
     /// Create with initial configuration
@@ -88,54 +93,56 @@ impl ConfigurationManager {
             change_notifier: tx,
             persistence: Arc::new(RwLock::new(ConfigurationPersistence::default())),
             version_counter: AtomicUsize::new(1),
-            stats: ConfigurationStatistics::default(),
-        }
+            stats: ConfigurationStatistics::default()}
     }
 
     /// Get current configuration (zero-allocation clone of Arc)
     pub fn get_config(&self) -> Arc<ChatConfig> {
-        self.current_config.load()
+        self.current_config.load_full()
     }
 
     /// Update configuration atomically with validation
     pub fn update_config(&self, new_config: ChatConfig) -> AsyncStream<Result<(), Vec<String>>> {
-        let current_config = self.current_config.load();
-        let change_notifier = self.change_notifier.clone();
-        let change_events = &self.change_events;
-        let version_counter = &self.version_counter;
-        let stats = &self.stats;
-        
-        AsyncStream::with_channel(move |sender| {
-            // Validate configuration
-            if let Err(validation_errors) = Self::validate_full_config(&new_config) {
-                stats.validation_errors.fetch_add(1, Ordering::Relaxed);
+        // Validate configuration first
+        if let Err(validation_errors) = Self::validate_full_config(&new_config) {
+            self.stats.validation_errors.fetch_add(1, Ordering::Relaxed);
+            return AsyncStream::with_channel(move |sender| {
                 fluent_ai_async::emit!(sender, Err(validation_errors));
-                return;
-            }
+            });
+        }
 
-            // Create change event
-            let change_event = ConfigurationChangeEvent::new(
-                new_config.id,
-                ConfigurationChangeType::Updated,
-                "configuration",
-                Some(serde_json::to_value(&**current_config).unwrap_or_default()),
-                serde_json::to_value(&new_config).unwrap_or_default(),
-                None,
-                "manager",
-            );
+        // Get current config for change event
+        let current_config = self.current_config.load_full();
+        
+        // Create change event
+        let change_event = ConfigurationChangeEvent::new(
+            new_config.id,
+            ConfigurationChangeType::Updated,
+            "configuration",
+            Some(serde_json::to_value(current_config.as_ref()).unwrap_or_default()),
+            serde_json::to_value(&new_config).unwrap_or_default(),
+            None,
+            "manager",
+        );
 
-            // Update configuration atomically
-            self.current_config.store(Arc::new(new_config));
-            version_counter.fetch_add(1, Ordering::Relaxed);
-            stats.total_changes.fetch_add(1, Ordering::Relaxed);
-            stats.last_change_time.store(Arc::new(Some(Instant::now())));
+        // Update configuration atomically
+        self.current_config.store(Arc::new(new_config));
+        self.version_counter.fetch_add(1, Ordering::Relaxed);
+        self.stats.total_changes.fetch_add(1, Ordering::Relaxed);
+        self.stats.last_change_time.store(Arc::new(Some(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+        )));
 
-            // Queue change event
-            change_events.push(change_event.clone());
+        // Queue change event
+        self.change_events.push(change_event.clone());
 
-            // Notify subscribers (ignore if no subscribers)
-            let _ = change_notifier.send(change_event);
+        // Notify subscribers (ignore if no subscribers)
+        let _ = self.change_notifier.send(change_event);
 
+        AsyncStream::with_channel(move |sender| {
             fluent_ai_async::emit!(sender, Ok(()));
         })
     }
@@ -172,8 +179,7 @@ impl ConfigurationManager {
         ConfigurationStatistics {
             total_changes: AtomicUsize::new(self.stats.total_changes.load(Ordering::Relaxed)),
             validation_errors: AtomicUsize::new(self.stats.validation_errors.load(Ordering::Relaxed)),
-            last_change_time: ArcSwap::new(self.stats.last_change_time.load().as_ref().clone()),
-        }
+            last_change_time: ArcSwap::new((*self.stats.last_change_time.load()).clone())}
     }
 
     /// Reset configuration to defaults
@@ -188,32 +194,32 @@ impl ConfigurationManager {
 
         // Validate model configuration
         let model_validator = ModelValidator;
-        if let Err(errors) = model_validator.validate(&config.model) {
-            all_errors.extend(errors.into_iter().map(|e| e.description()));
+        if let Err(error) = model_validator.validate(&config.model) {
+            all_errors.push(error);
         }
 
         // Validate personality configuration
         let personality_validator = PersonalityValidator;
-        if let Err(errors) = personality_validator.validate(&config.personality) {
-            all_errors.extend(errors.into_iter().map(|e| e.description()));
+        if let Err(error) = personality_validator.validate(config) {
+            all_errors.push(error.to_string());
         }
 
         // Validate behavior configuration
         let behavior_validator = BehaviorValidator;
-        if let Err(errors) = behavior_validator.validate(&config.behavior) {
-            all_errors.extend(errors.into_iter().map(|e| e.description()));
+        if let Err(error) = behavior_validator.validate(config) {
+            all_errors.push(error.to_string());
         }
 
         // Validate UI configuration
         let ui_validator = UIValidator;
-        if let Err(errors) = ui_validator.validate(&config.ui) {
-            all_errors.extend(errors.into_iter().map(|e| e.description()));
+        if let Err(error) = ui_validator.validate(config) {
+            all_errors.push(error.to_string());
         }
 
         // Validate integration configuration
         let integration_validator = IntegrationValidator;
-        if let Err(errors) = integration_validator.validate(&config.integrations) {
-            all_errors.extend(errors.into_iter().map(|e| e.description()));
+        if let Err(error) = integration_validator.validate(config) {
+            all_errors.push(error.to_string());
         }
 
         if all_errors.is_empty() {

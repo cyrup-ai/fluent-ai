@@ -10,7 +10,6 @@ use std::arch::aarch64::*;
 use std::arch::x86_64::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use arrayvec::ArrayVec;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use crossbeam_queue::ArrayQueue;
 use fluent_ai_domain::memory::ops::{CpuArchitecture, CpuFeatures, SIMD_WIDTH};
@@ -26,8 +25,7 @@ pub struct SIMDTokenizer {
     // Performance counters
     tokens_processed: RelaxedCounter,
     simd_operations: RelaxedCounter,
-    tokenization_time_nanos: RelaxedCounter,
-}
+    tokenization_time_nanos: RelaxedCounter}
 
 impl Default for SIMDTokenizer {
     fn default() -> Self {
@@ -48,8 +46,7 @@ impl SIMDTokenizer {
                 content: ArrayVec::new(),
                 token_type: TokenType::Unknown,
                 start_offset: 0,
-                end_offset: 0,
-            };
+                end_offset: 0};
             let _ = token_pool.push(token);
         }
 
@@ -57,8 +54,7 @@ impl SIMDTokenizer {
             token_pool,
             tokens_processed: RelaxedCounter::new(0),
             simd_operations: RelaxedCounter::new(0),
-            tokenization_time_nanos: RelaxedCounter::new(0),
-        }
+            tokenization_time_nanos: RelaxedCounter::new(0)}
     }
 
     /// Tokenize text with SIMD optimization
@@ -83,8 +79,7 @@ impl SIMDTokenizer {
                 CpuArchitecture::AArch64 if CPU_FEATURES.features.neon => {
                     self.tokenize_simd_neon(text.as_bytes())
                 }
-                _ => self.tokenize_scalar(text.as_bytes()),
-            }
+                _ => self.tokenize_scalar(text.as_bytes())}
         };
 
         // Update performance counters
@@ -428,8 +423,7 @@ impl SIMDTokenizer {
             average_analysis_time_nanos: 0,
             simd_operations_count: self.simd_operations.get() as u64,
             cache_hits: 0,
-            cache_misses: 0,
-        }
+            cache_misses: 0}
     }
 
     /// Reset performance counters

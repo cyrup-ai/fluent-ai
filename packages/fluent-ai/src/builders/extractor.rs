@@ -19,8 +19,7 @@ pub struct ExtractorBuilder<
 > {
     model: M,
     system_prompt: Option<String>,
-    _marker: PhantomData<T>,
-}
+    _marker: PhantomData<T>}
 
 /// Builder with error handler for polymorphic error handling
 pub struct ExtractorBuilderWithHandler<
@@ -39,8 +38,7 @@ pub struct ExtractorBuilderWithHandler<
     #[allow(dead_code)] // TODO: Use for streaming extraction chunk processing
     chunk_handler: Option<Box<dyn FnMut(T) -> T + Send + 'static>>,
     #[allow(dead_code)] // TODO: Use for type-level extraction target specification
-    _marker: PhantomData<T>,
-}
+    _marker: PhantomData<T>}
 
 impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> ExtractorImpl<T> {
     // Semantic entry point
@@ -48,8 +46,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         ExtractorBuilder {
             model,
             system_prompt: None,
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 }
 
@@ -77,8 +74,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: Comple
             error_handler: Box::new(handler),
             result_handler: None,
             chunk_handler: None,
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 
     pub fn on_result<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
@@ -91,8 +87,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: Comple
             error_handler: Box::new(|e| eprintln!("Extractor error: {}", e)),
             result_handler: Some(Box::new(handler)),
             chunk_handler: None,
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 
     pub fn on_chunk<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
@@ -105,8 +100,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: Comple
             error_handler: Box::new(|e| eprintln!("Extractor chunk error: {}", e)),
             result_handler: None,
             chunk_handler: Some(Box::new(handler)),
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 }
 

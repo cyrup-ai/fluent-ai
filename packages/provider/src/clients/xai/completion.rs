@@ -9,9 +9,9 @@ pub use fluent_ai_domain::completion::CompletionModel;
 use fluent_ai_domain::completion::{self, CompletionRequest};
 use super::types::{
     XaiChatRequest, XaiChatResponse, XaiChoice, XaiContent, XaiFunction, XaiMessage,
-    XaiResponseMessage, XaiStreamingChunk, XaiTool, XaiUsage,
-};
+    XaiResponseMessage, XaiStreamingChunk, XaiTool, XaiUsage};
 use fluent_ai_http3::{Http3, HttpResult};
+use crate::utils::{HttpUtils, Provider};
 use serde_json::{Value, json};
 
 use super::client::Client;
@@ -36,8 +36,7 @@ pub const GROK_2_IMAGE_1212: &str = "grok-2-image-1212";
 #[derive(Clone)]
 pub struct XaiCompletionModel {
     client: Client,
-    model: String,
-}
+    model: String}
 
 impl XaiCompletionModel {
     pub(crate) fn create_completion_request(
@@ -109,9 +108,7 @@ impl XaiCompletionModel {
                         function: XaiFunction {
                             name: tool.name(),
                             description: tool.description(),
-                            parameters: tool.parameters().clone(),
-                        },
-                    };
+                            parameters: tool.parameters().clone()}};
                     let _ = xai_tools.push(xai_tool);
                 }
             }
@@ -124,14 +121,12 @@ impl XaiCompletionModel {
             Err(e) => Err(CompletionError::RequestError(format!(
                 "Request building failed: {}",
                 e
-            ))),
-        }
+            )))}
     }
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string(),
-        }
+            model: model.to_string()}
     }
 }
 
@@ -179,8 +174,7 @@ impl completion::CompletionModel for XaiCompletionModel {
                 raw_response: completion_response.clone(),
                 content: completion_response.try_into()?,
                 token_usage: None, // Token usage is in the raw_response
-                metadata: Default::default(),
-            })
+                metadata: Default::default()})
         } else {
             let error_body = String::from_utf8_lossy(response.body());
             Err(CompletionError::ProviderError(error_body.to_string()))
@@ -248,9 +242,5 @@ impl TryFrom<XaiChatResponse> for crate::completion_provider::ZeroOneOrMany<Stri
     }
 }
 
-// Legacy type aliases for centralized XAI types
-pub type CompletionResponse = fluent_ai_http_structs::xai::XaiChatResponse;
-pub type ToolDefinition = fluent_ai_http_structs::xai::XaiTool;
-pub type Function = fluent_ai_http_structs::xai::XaiFunction;
-pub type Choice = fluent_ai_http_structs::xai::XaiChoice;
-pub type Usage = fluent_ai_http_structs::xai::XaiUsage;
+// TODO: Implement local XAI types to replace unauthorized fluent_ai_http_structs
+// All type aliases referencing fluent_ai_http_structs have been removed

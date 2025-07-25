@@ -88,31 +88,25 @@ pub use types::{
     MAX_ATTENTION_HEADS, MAX_CACHE_ENTRIES_PER_HEAD, MAX_SEQUENCE_LENGTH,
     CACHE_LINE_SIZE, MEMORY_POOL_BLOCK_SIZE, MAX_MEMORY_POOLS,
     ERR_CACHE_FULL, ERR_INVALID_HEAD, ERR_INVALID_POSITION, 
-    ERR_TENSOR_MISMATCH, ERR_DEVICE_MISMATCH,
-};
+    ERR_TENSOR_MISMATCH, ERR_DEVICE_MISMATCH};
 
 pub use config::{
-    KVCacheConfig, ConfigError, ConfigPresets,
-};
+    KVCacheConfig, ConfigError, ConfigPresets};
 
 pub use stats::{
-    CacheStats, StatsSummary, StatsBenchmark, BenchmarkResult,
-};
+    CacheStats, StatsSummary, StatsBenchmark, BenchmarkResult};
 
 pub use eviction::{
     EvictionStrategy, EvictionManager, EvictionComplexity,
-    AccessTracker, AccessStats,
-};
+    AccessTracker, AccessStats};
 
 pub use memory::{
     MemoryPool, MemoryPoolStats, MemoryPoolCollection, 
-    PoolCollectionStats, PoolHealth,
-};
+    PoolCollectionStats, PoolHealth};
 
 pub use builder::{
     KVCacheBuilder, BuilderPresets, ConfigWizard,
-    ModelSize, WorkloadType, PerformancePriority,
-};
+    ModelSize, WorkloadType, PerformancePriority};
 
 /// Version information
 pub const KV_CACHE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -205,8 +199,7 @@ pub mod utils {
             (AccessPattern::Temporal, _) => EvictionStrategy::AdaptiveLRU,
             (AccessPattern::Frequency, _) => EvictionStrategy::AdaptiveLFU,
             (AccessPattern::Mixed, MemoryPressure::High) => EvictionStrategy::TTL,
-            (AccessPattern::Mixed, _) => EvictionStrategy::AdaptiveLRU,
-        }
+            (AccessPattern::Mixed, _) => EvictionStrategy::AdaptiveLRU}
     }
     
     /// Estimate cache performance for given configuration
@@ -219,8 +212,7 @@ pub mod utils {
             EvictionStrategy::LRU | EvictionStrategy::LFU => 800_000.0,
             EvictionStrategy::AdaptiveLRU | EvictionStrategy::AdaptiveLFU => 600_000.0,
             EvictionStrategy::TTL => 700_000.0,
-            EvictionStrategy::Clock | EvictionStrategy::SecondChance => 850_000.0,
-        };
+            EvictionStrategy::Clock | EvictionStrategy::SecondChance => 850_000.0};
         
         let expected_hit_ratio = match config.eviction_strategy() {
             EvictionStrategy::Random => 0.6,
@@ -231,15 +223,13 @@ pub mod utils {
             EvictionStrategy::AdaptiveLFU => 0.88,
             EvictionStrategy::TTL => 0.75,
             EvictionStrategy::Clock => 0.82,
-            EvictionStrategy::SecondChance => 0.84,
-        };
+            EvictionStrategy::SecondChance => 0.84};
         
         PerformanceEstimate {
             memory_usage_mb: memory_mb,
             throughput_ops_per_sec,
             expected_hit_ratio,
-            latency_percentile_95_ns: 1000.0 / throughput_ops_per_sec * 1_000_000_000.0 * 1.5,
-        }
+            latency_percentile_95_ns: 1000.0 / throughput_ops_per_sec * 1_000_000_000.0 * 1.5}
     }
     
     /// Access pattern classification
@@ -254,8 +244,7 @@ pub mod utils {
         /// Frequency-based (popular items accessed more)
         Frequency,
         /// Mixed access pattern
-        Mixed,
-    }
+        Mixed}
     
     /// Memory pressure level
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -265,8 +254,7 @@ pub mod utils {
         /// Medium memory pressure (70-90% utilization)
         Medium,
         /// High memory pressure (> 90% utilization)
-        High,
-    }
+        High}
     
     /// Performance estimation results
     #[derive(Debug, Clone)]
@@ -278,8 +266,7 @@ pub mod utils {
         /// Expected cache hit ratio (0.0-1.0)
         pub expected_hit_ratio: f64,
         /// 95th percentile latency in nanoseconds
-        pub latency_percentile_95_ns: f64,
-    }
+        pub latency_percentile_95_ns: f64}
     
     impl std::fmt::Display for PerformanceEstimate {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

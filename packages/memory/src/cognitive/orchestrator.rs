@@ -24,8 +24,7 @@ pub struct InfiniteOrchestrator {
     initial_code: String,
     initial_latency: f64,
     initial_memory: f64,
-    initial_relevance: f64,
-}
+    initial_relevance: f64}
 
 impl InfiniteOrchestrator {
     pub fn new<P: AsRef<Path>>(
@@ -52,8 +51,7 @@ impl InfiniteOrchestrator {
             initial_code,
             initial_latency,
             initial_memory,
-            initial_relevance,
-        })
+            initial_relevance})
     }
 
     fn parse_spec<P: AsRef<Path>>(spec_file: P) -> Result<OptimizationSpec, CognitiveError> {
@@ -174,8 +172,7 @@ impl InfiniteOrchestrator {
                             quality_score,
                             ..
                         } => (*performance_gain as f64 + *quality_score as f64) * 0.5,
-                        _ => 0.0,
-                    };
+                        _ => 0.0};
                     let b_score = match b {
                         OptimizationOutcome::Success {
                             performance_gain,
@@ -187,8 +184,7 @@ impl InfiniteOrchestrator {
                             quality_score,
                             ..
                         } => (*performance_gain as f64 + *quality_score as f64) * 0.5,
-                        _ => 0.0,
-                    };
+                        _ => 0.0};
                     a_score
                         .partial_cmp(&b_score)
                         .unwrap_or(std::cmp::Ordering::Equal)
@@ -299,8 +295,7 @@ impl InfiniteOrchestrator {
                             info!("Saved outcome for iteration {}", current_iter);
                         }
                         Ok(Err(e)) => error!("Evolution task failed: {}", e),
-                        Err(e) => error!("Evolution task panicked: {}", e),
-                    }
+                        Err(e) => error!("Evolution task panicked: {}", e)}
                     current_iter += 1;
                 }
             }
@@ -395,9 +390,7 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
                 compiler: "rustc 1.82.0".to_string(),
                 max_latency_increase,
                 max_memory_increase,
-                min_relevance_improvement,
-            },
-        },
+                min_relevance_improvement}},
         evolution_rules: EvolutionRules {
             mutation_rate: 0.1,
             selection_pressure: 0.8,
@@ -412,8 +405,7 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
             new_axis_per_iteration: true,
             max_cumulative_latency_increase: max_latency_increase,
             min_action_diversity: 30.0,
-            validation_required: true,
-        },
+            validation_required: true},
         baseline_metrics: BaselineMetrics {
             response_time: 1.0,
             accuracy: 0.9,
@@ -423,9 +415,7 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
             quality_score: 0.8,
             latency: baseline_latency,
             memory: baseline_memory,
-            relevance: baseline_relevance,
-        },
-    })
+            relevance: baseline_relevance}})
 }
 
 fn extract_percentage(line: &str) -> Option<f64> {
@@ -442,16 +432,14 @@ fn extract_number(line: &str) -> Option<f64> {
 #[derive(Debug)]
 struct IterationPlan {
     iteration: u64,
-    base_state: Option<OptimizationOutcome>,
-}
+    base_state: Option<OptimizationOutcome>}
 
 impl IterationPlan {
     /// Create a new iteration plan
     fn new(iteration: u64, base_state: Option<OptimizationOutcome>) -> Self {
         Self {
             iteration,
-            base_state,
-        }
+            base_state}
     }
 
     /// Get the iteration number
@@ -468,8 +456,7 @@ impl IterationPlan {
             OptimizationOutcome::PartialSuccess {
                 performance_gain, ..
             } => Some(*performance_gain),
-            OptimizationOutcome::Failure { .. } => None,
-        })
+            OptimizationOutcome::Failure { .. } => None})
     }
 
     /// Get quality score for this iteration
@@ -478,8 +465,7 @@ impl IterationPlan {
         self.base_state.as_ref().and_then(|state| match state {
             OptimizationOutcome::Success { quality_score, .. } => Some(*quality_score),
             OptimizationOutcome::PartialSuccess { quality_score, .. } => Some(*quality_score),
-            OptimizationOutcome::Failure { .. } => None,
-        })
+            OptimizationOutcome::Failure { .. } => None})
     }
 
     /// Get improvement summary for this iteration
@@ -488,7 +474,6 @@ impl IterationPlan {
         self.base_state.as_ref().and_then(|state| match state {
             OptimizationOutcome::Success { improvements, .. } => Some(improvements),
             OptimizationOutcome::PartialSuccess { improvements, .. } => Some(improvements),
-            OptimizationOutcome::Failure { .. } => None,
-        })
+            OptimizationOutcome::Failure { .. } => None})
     }
 }

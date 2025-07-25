@@ -153,8 +153,7 @@ pub enum NormalizationMethod {
     /// Min-max normalization (scale to [0, 1])
     MinMax,
     /// No normalization
-    None,
-}
+    None}
 
 impl Default for NormalizationMethod {
     fn default() -> Self {

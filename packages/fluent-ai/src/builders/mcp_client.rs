@@ -2,7 +2,6 @@
 //!
 //! All MCP client construction logic and builder patterns.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use std::time::Duration;
@@ -12,16 +11,14 @@ use tokio::sync::RwLock;
 
 /// Zero-allocation MCP client builder with blazing-fast construction
 pub struct McpClientBuilder {
-    timeout: Duration,
-}
+    timeout: Duration}
 
 impl McpClientBuilder {
     /// Create new MCP client builder - EXACT syntax: McpClientBuilder::new()
     #[inline]
     pub fn new() -> Self {
         Self {
-            timeout: Duration::from_secs(30),
-        }
+            timeout: Duration::from_secs(30)}
     }
 
     /// Set request timeout - EXACT syntax: .with_timeout(timeout)
@@ -37,8 +34,7 @@ impl McpClientBuilder {
         McpClient {
             request_id: AtomicU64::new(0),
             response_cache: Arc::new(RwLock::new(HashMap::with_capacity(256))),
-            request_timeout: self.timeout,
-        }
+            request_timeout: self.timeout}
     }
 }
 

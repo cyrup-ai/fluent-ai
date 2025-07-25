@@ -17,10 +17,8 @@ use crate::clients::vertexai::model_info::get_model_config;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use cyrup_sugars::ZeroOneOrMany;
-use std::collections::HashMap;
-
 /// Maximum number of messages in a conversation
 const MAX_MESSAGES: usize = 100;
 
@@ -56,8 +54,7 @@ pub struct VertexAICompletionBuilder {
     documents: ArrayVec<Document, 64>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>,
-}
+    chunk_handler: Option<ChunkHandler>}
 
 /// Completion request for VertexAI models
 #[derive(Debug, Clone, Serialize)]
@@ -84,8 +81,7 @@ pub struct CompletionRequest {
     
     /// System instruction
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_instruction: Option<Content>,
-}
+    pub system_instruction: Option<Content>}
 
 /// Message content with parts
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,8 +90,7 @@ pub struct Content {
     pub role: ArrayString<16>,
     
     /// Message parts (text, image, etc.)
-    pub parts: ArrayVec<Part, MAX_PARTS>,
-}
+    pub parts: ArrayVec<Part, MAX_PARTS>}
 
 /// Message part (text, image, function call, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,44 +98,37 @@ pub struct Content {
 pub enum Part {
     /// Text content
     Text {
-        text: String,
-    },
+        text: String},
     
     /// Image content (base64 encoded)
     InlineData {
         #[serde(rename = "mimeType")]
         mime_type: ArrayString<32>,
-        data: String,
-    },
+        data: String},
     
     /// File data reference
     FileData {
         #[serde(rename = "mimeType")]
         mime_type: ArrayString<32>,
         #[serde(rename = "fileUri")]
-        file_uri: ArrayString<256>,
-    },
+        file_uri: ArrayString<256>},
     
     /// Function call
     FunctionCall {
         name: ArrayString<64>,
-        args: HashMap<String, serde_json::Value>,
-    },
+        args: HashMap<String, serde_json::Value>},
     
     /// Function response
     FunctionResponse {
         name: ArrayString<64>,
-        response: HashMap<String, serde_json::Value>,
-    },
+        response: HashMap<String, serde_json::Value>},
     
     /// Video content
     VideoMetadata {
         #[serde(rename = "startOffset")]
         start_offset: ArrayString<16>,
         #[serde(rename = "endOffset")]
-        end_offset: ArrayString<16>,
-    },
-}
+        end_offset: ArrayString<16>}}
 
 /// Generation configuration parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,8 +164,7 @@ pub struct GenerationConfig {
     
     /// Response schema for structured output
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_schema: Option<serde_json::Value>,
-}
+    pub response_schema: Option<serde_json::Value>}
 
 /// Safety settings for content filtering
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -187,8 +174,7 @@ pub struct SafetySettings {
     pub category: SafetyCategory,
     
     /// Safety threshold
-    pub threshold: SafetyThreshold,
-}
+    pub threshold: SafetyThreshold}
 
 /// Safety categories for content filtering
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -204,8 +190,7 @@ pub enum SafetyCategory {
     HarmCategoryHarassment,
     HarmCategoryHateSpeech,
     HarmCategorySexuallyExplicit,
-    HarmCategoryDangerousContent,
-}
+    HarmCategoryDangerousContent}
 
 /// Safety thresholds
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,16 +200,14 @@ pub enum SafetyThreshold {
     BlockLowAndAbove,
     BlockMediumAndAbove,
     BlockOnlyHigh,
-    BlockNone,
-}
+    BlockNone}
 
 /// Tool/function definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tool {
     /// Function declarations
-    pub function_declarations: ArrayVec<FunctionDeclaration, MAX_TOOLS>,
-}
+    pub function_declarations: ArrayVec<FunctionDeclaration, MAX_TOOLS>}
 
 /// Function declaration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,16 +219,14 @@ pub struct FunctionDeclaration {
     pub description: String,
     
     /// Function parameters schema
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 /// Tool configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolConfig {
     /// Function calling configuration
-    pub function_calling_config: FunctionCallingConfig,
-}
+    pub function_calling_config: FunctionCallingConfig}
 
 /// Function calling configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -256,8 +237,7 @@ pub struct FunctionCallingConfig {
     
     /// Allowed function names
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub allowed_function_names: ArrayVec<ArrayString<64>, MAX_TOOLS>,
-}
+    pub allowed_function_names: ArrayVec<ArrayString<64>, MAX_TOOLS>}
 
 /// Function calling modes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -266,8 +246,7 @@ pub enum FunctionCallingMode {
     ModeUnspecified,
     Auto,
     Any,
-    None,
-}
+    None}
 
 /// Completion response from VertexAI
 #[derive(Debug, Clone, Deserialize)]
@@ -282,8 +261,7 @@ pub struct CompletionResponse {
     
     /// Usage metadata
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub usage_metadata: Option<UsageMetadata>,
-}
+    pub usage_metadata: Option<UsageMetadata>}
 
 /// Response candidate
 #[derive(Debug, Clone, Deserialize)]
@@ -306,8 +284,7 @@ pub struct Candidate {
     
     /// Grounding attributions
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub grounding_attributions: ArrayVec<GroundingAttribution, 10>,
-}
+    pub grounding_attributions: ArrayVec<GroundingAttribution, 10>}
 
 /// Finish reasons
 #[derive(Debug, Clone, Deserialize)]
@@ -322,8 +299,7 @@ pub enum FinishReason {
     Blocklist,
     ProhibitedContent,
     Spii,
-    MalformedFunctionCall,
-}
+    MalformedFunctionCall}
 
 /// Safety rating
 #[derive(Debug, Clone, Deserialize)]
@@ -337,8 +313,7 @@ pub struct SafetyRating {
     
     /// Blocked status
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub blocked: Option<bool>,
-}
+    pub blocked: Option<bool>}
 
 /// Safety probability levels
 #[derive(Debug, Clone, Deserialize)]
@@ -348,8 +323,7 @@ pub enum SafetyProbability {
     Negligible,
     Low,
     Medium,
-    High,
-}
+    High}
 
 /// Prompt feedback
 #[derive(Debug, Clone, Deserialize)]
@@ -361,8 +335,7 @@ pub struct PromptFeedback {
     
     /// Safety ratings
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub safety_ratings: ArrayVec<SafetyRating, MAX_SAFETY_SETTINGS>,
-}
+    pub safety_ratings: ArrayVec<SafetyRating, MAX_SAFETY_SETTINGS>}
 
 /// Block reasons
 #[derive(Debug, Clone, Deserialize)]
@@ -372,8 +345,7 @@ pub enum BlockReason {
     Safety,
     Other,
     Blocklist,
-    ProhibitedContent,
-}
+    ProhibitedContent}
 
 /// Usage metadata
 #[derive(Debug, Clone, Deserialize)]
@@ -393,16 +365,14 @@ pub struct UsageMetadata {
     
     /// Cached content token count
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cached_content_token_count: Option<u32>,
-}
+    pub cached_content_token_count: Option<u32>}
 
 /// Citation metadata
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CitationMetadata {
     /// Citation sources
-    pub citation_sources: ArrayVec<CitationSource, 10>,
-}
+    pub citation_sources: ArrayVec<CitationSource, 10>}
 
 /// Citation source
 #[derive(Debug, Clone, Deserialize)]
@@ -422,8 +392,7 @@ pub struct CitationSource {
     
     /// License
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub license: Option<ArrayString<64>>,
-}
+    pub license: Option<ArrayString<64>>}
 
 /// Grounding attribution
 #[derive(Debug, Clone, Deserialize)]
@@ -434,8 +403,7 @@ pub struct GroundingAttribution {
     
     /// Source ID
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source_id: Option<ArrayString<64>>,
-}
+    pub source_id: Option<ArrayString<64>>}
 
 /// Streaming completion chunk
 #[derive(Debug, Clone, Deserialize)]
@@ -450,8 +418,7 @@ pub struct CompletionChunk {
     
     /// Model version
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_version: Option<ArrayString<32>>,
-}
+    pub model_version: Option<ArrayString<32>>}
 
 impl CompletionRequest {
     /// Create new completion request with validation
@@ -465,8 +432,7 @@ impl CompletionRequest {
             safety_settings: ArrayVec::new(),
             tools: ArrayVec::new(),
             tool_config: None,
-            system_instruction: None,
-        })
+            system_instruction: None})
     }
     
     /// Add user message
@@ -474,21 +440,17 @@ impl CompletionRequest {
         if self.contents.len() >= MAX_MESSAGES {
             return Err(VertexAIError::RequestValidation {
                 field: "contents".to_string(),
-                reason: format!("Maximum {} messages exceeded", MAX_MESSAGES),
-            });
+                reason: format!("Maximum {} messages exceeded", MAX_MESSAGES)});
         }
         
         let mut parts = ArrayVec::new();
         parts.push(Part::Text {
-            text: text.to_string(),
-        });
+            text: text.to_string()});
         
         let content = Content {
             role: ArrayString::from("user").map_err(|_| VertexAIError::Internal {
-                context: "Failed to create user role".to_string(),
-            })?,
-            parts,
-        };
+                context: "Failed to create user role".to_string()})?,
+            parts};
         
         self.contents.push(content);
         Ok(())
@@ -498,15 +460,12 @@ impl CompletionRequest {
     pub fn add_system_message(&mut self, text: &str) -> VertexAIResult<()> {
         let mut parts = ArrayVec::new();
         parts.push(Part::Text {
-            text: text.to_string(),
-        });
+            text: text.to_string()});
         
         self.system_instruction = Some(Content {
             role: ArrayString::from("user").map_err(|_| VertexAIError::Internal {
-                context: "Failed to create system role".to_string(),
-            })?,
-            parts,
-        });
+                context: "Failed to create system role".to_string()})?,
+            parts});
         
         Ok(())
     }
@@ -516,28 +475,24 @@ impl CompletionRequest {
         let last_content = self.contents.last_mut().ok_or_else(|| {
             VertexAIError::RequestValidation {
                 field: "contents".to_string(),
-                reason: "No messages to add image to".to_string(),
-            }
+                reason: "No messages to add image to".to_string()}
         })?;
         
         if last_content.parts.len() >= MAX_PARTS {
             return Err(VertexAIError::RequestValidation {
                 field: "parts".to_string(),
-                reason: format!("Maximum {} parts per message exceeded", MAX_PARTS),
-            });
+                reason: format!("Maximum {} parts per message exceeded", MAX_PARTS)});
         }
         
         let mime_type = ArrayString::from(mime_type).map_err(|_| {
             VertexAIError::RequestValidation {
                 field: "mime_type".to_string(),
-                reason: "MIME type too long".to_string(),
-            }
+                reason: "MIME type too long".to_string()}
         })?;
         
         last_content.parts.push(Part::InlineData {
             mime_type,
-            data: image_data.to_string(),
-        });
+            data: image_data.to_string()});
         
         Ok(())
     }
@@ -551,19 +506,16 @@ impl CompletionRequest {
     pub fn add_tool(&mut self, function: FunctionDeclaration) -> VertexAIResult<()> {
         if self.tools.is_empty() {
             self.tools.push(Tool {
-                function_declarations: ArrayVec::new(),
-            });
+                function_declarations: ArrayVec::new()});
         }
         
         let tool = self.tools.last_mut().ok_or_else(|| VertexAIError::Internal {
-            context: "Tool list is empty after adding tool".to_string(),
-        })?;
+            context: "Tool list is empty after adding tool".to_string()})?;
         
         if tool.function_declarations.len() >= MAX_TOOLS {
             return Err(VertexAIError::RequestValidation {
                 field: "tools".to_string(),
-                reason: format!("Maximum {} tools exceeded", MAX_TOOLS),
-            });
+                reason: format!("Maximum {} tools exceeded", MAX_TOOLS)});
         }
         
         tool.function_declarations.push(function);
@@ -575,9 +527,7 @@ impl CompletionRequest {
         self.tool_config = Some(ToolConfig {
             function_calling_config: FunctionCallingConfig {
                 mode,
-                allowed_function_names: ArrayVec::new(),
-            },
-        });
+                allowed_function_names: ArrayVec::new()}});
     }
     
     /// Add safety setting
@@ -585,14 +535,12 @@ impl CompletionRequest {
         if self.safety_settings.len() >= MAX_SAFETY_SETTINGS {
             return Err(VertexAIError::RequestValidation {
                 field: "safety_settings".to_string(),
-                reason: format!("Maximum {} safety settings exceeded", MAX_SAFETY_SETTINGS),
-            });
+                reason: format!("Maximum {} safety settings exceeded", MAX_SAFETY_SETTINGS)});
         }
         
         self.safety_settings.push(SafetySettings {
             category,
-            threshold,
-        });
+            threshold});
         
         Ok(())
     }
@@ -606,8 +554,7 @@ impl CompletionRequest {
         if self.contents.is_empty() && self.system_instruction.is_none() {
             return Err(VertexAIError::RequestValidation {
                 field: "contents".to_string(),
-                reason: "Request must have at least one message or system instruction".to_string(),
-            });
+                reason: "Request must have at least one message or system instruction".to_string()});
         }
         
         // Validate generation config if present
@@ -628,8 +575,7 @@ impl CompletionRequest {
     pub fn to_json_bytes(&self) -> VertexAIResult<Vec<u8>> {
         serde_json::to_vec(self).map_err(|e| VertexAIError::Json {
             operation: "request_serialization".to_string(),
-            details: format!("Failed to serialize request: {}", e),
-        })
+            details: format!("Failed to serialize request: {}", e)})
     }
 }
 
@@ -644,8 +590,7 @@ impl GenerationConfig {
             candidate_count: None,
             stop_sequences: ArrayVec::new(),
             response_mime_type: None,
-            response_schema: None,
-        }
+            response_schema: None}
     }
     
     /// Set temperature
@@ -677,15 +622,13 @@ impl GenerationConfig {
         if self.stop_sequences.len() >= 8 {
             return Err(VertexAIError::RequestValidation {
                 field: "stop_sequences".to_string(),
-                reason: "Maximum 8 stop sequences allowed".to_string(),
-            });
+                reason: "Maximum 8 stop sequences allowed".to_string()});
         }
         
         let stop_string = ArrayString::from(stop).map_err(|_| {
             VertexAIError::RequestValidation {
                 field: "stop_sequences".to_string(),
-                reason: "Stop sequence too long".to_string(),
-            }
+                reason: "Stop sequence too long".to_string()}
         })?;
         
         self.stop_sequences.push(stop_string);
@@ -696,8 +639,7 @@ impl GenerationConfig {
     pub fn json_mode(mut self) -> VertexAIResult<Self> {
         self.response_mime_type = Some(ArrayString::from("application/json").map_err(|_| {
             VertexAIError::Internal {
-                context: "Failed to set JSON MIME type".to_string(),
-            }
+                context: "Failed to set JSON MIME type".to_string()}
         })?);
         Ok(self)
     }
@@ -719,8 +661,7 @@ impl CompletionResponse {
             .iter()
             .find_map(|part| match part {
                 Part::Text { text } => Some(text.clone()),
-                _ => None,
-            })
+                _ => None})
     }
     
     /// Get finish reason
@@ -787,8 +728,7 @@ impl CompletionProvider for VertexAICompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None,
-        })
+            chunk_handler: None})
     }
 
     /// Set explicit API key (for consistency with other providers)
@@ -1001,8 +941,7 @@ impl VertexAICompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None,
-        })
+            chunk_handler: None})
     }
 
     /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)

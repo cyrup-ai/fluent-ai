@@ -52,8 +52,7 @@ pub enum CompatibilityMode {
     #[default]
     Flexible,
     /// Hybrid mode: Support both modern and transitional types simultaneously
-    Hybrid,
-}
+    Hybrid}
 
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use cognitive::{CognitiveMemory, CognitiveProcessor};
@@ -61,8 +60,7 @@ pub use config::database::{DatabaseType, PoolConfig};
 pub use config::shared::RetryConfig;
 pub use config::shared::{EmbeddingConfig, EmbeddingModelType};
 pub use config::vector::{
-    DistanceMetric, IndexConfig, IndexType, PerformanceConfig, SimdConfig, VectorStoreType,
-};
+    DistanceMetric, IndexConfig, IndexType, PerformanceConfig, SimdConfig, VectorStoreType};
 pub use config::{DatabaseConfig, MemoryConfig, VectorStoreConfig};
 // Conditional re-exports for cognitive features
 // Removed unexpected cfg condition "cognitive" - feature does not exist
@@ -71,8 +69,7 @@ pub use config::{DatabaseConfig, MemoryConfig, VectorStoreConfig};
 // Re-export core types for backward compatibility
 pub use manager::Memory;
 pub use ops::{
-    CpuArchitecture, CpuFeatures, EMBEDDING_DIMENSION, Op, SIMD_WIDTH, SMALL_EMBEDDING_DIMENSION,
-};
+    CpuArchitecture, CpuFeatures, EMBEDDING_DIMENSION, Op, SIMD_WIDTH, SMALL_EMBEDDING_DIMENSION};
 pub use primitives::*;
 // Re-export commonly used primitives types
 pub use primitives::{MemoryContent, MemoryTypeEnum};
@@ -100,17 +97,16 @@ pub type VectorStoreError = Error;
 /// Memory system configuration combining all subsystem configurations
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemorySystemConfig {
-    /// Database configuration
+    /// Database configuration for persistent storage
     pub database: DatabaseConfig,
-    /// Vector store configuration  
+    /// Vector store configuration for embeddings and similarity search
     pub vector_store: VectorStoreConfig,
-    /// LLM configuration for AI operations
+    /// LLM configuration for AI operations like summarization and querying
     pub llm: LLMConfig,
-    /// Enable cognitive features
+    /// Enable cognitive features for advanced memory processing
     pub enable_cognitive: bool,
-    /// Compatibility mode for transitional systems
-    pub compatibility_mode: CompatibilityMode,
-}
+    /// Compatibility mode for transitional systems migration
+    pub compatibility_mode: CompatibilityMode}
 
 impl MemorySystemConfig {
     /// Create optimized configuration for production use
@@ -120,8 +116,7 @@ impl MemorySystemConfig {
             vector_store: VectorStoreConfig::default(),
             llm: LLMConfig::default(),
             enable_cognitive: true,
-            compatibility_mode: CompatibilityMode::Hybrid,
-        })
+            compatibility_mode: CompatibilityMode::Hybrid})
     }
 
     /// Create minimal configuration for testing
@@ -135,8 +130,7 @@ impl MemorySystemConfig {
             )?,
             llm: LLMConfig::new(LLMProvider::OpenAI, "gpt-4")?,
             enable_cognitive: false,
-            compatibility_mode: CompatibilityMode::Strict,
-        })
+            compatibility_mode: CompatibilityMode::Strict})
     }
 
     /// Validate configuration consistency
@@ -160,8 +154,7 @@ pub struct MemorySystemBuilder {
     vector_config: Option<VectorStoreConfig>,
     llm_config: Option<LLMConfig>,
     enable_cognitive: bool,
-    compatibility_mode: CompatibilityMode,
-}
+    compatibility_mode: CompatibilityMode}
 
 impl MemorySystemBuilder {
     /// Create new memory system builder
@@ -212,8 +205,7 @@ impl MemorySystemBuilder {
             vector_store: self.vector_config.unwrap_or_default(),
             llm: self.llm_config.unwrap_or_default(),
             enable_cognitive: self.enable_cognitive,
-            compatibility_mode: self.compatibility_mode,
-        };
+            compatibility_mode: self.compatibility_mode};
 
         config.validate()?;
         Ok(config)

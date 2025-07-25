@@ -36,8 +36,7 @@ pub use crate::openai::{
     OpenAIStreamingChoice as DeepSeekStreamingChoice,
     OpenAIStreamingDelta as DeepSeekStreamingDelta,
     OpenAIStreamingToolCall as DeepSeekStreamingToolCall,
-    OpenAIStreamingFunction as DeepSeekStreamingFunction,
-};
+    OpenAIStreamingFunction as DeepSeekStreamingFunction};
 
 // ============================================================================
 // Chat Completions API (OpenAI-compatible with DeepSeek extensions)
@@ -85,8 +84,7 @@ pub struct DeepSeekChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_effort: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_reasoning_tokens: Option<u32>,
-}
+    pub max_reasoning_tokens: Option<u32>}
 
 // ============================================================================
 // Fine-tuning API
@@ -100,8 +98,7 @@ pub struct DeepSeekFineTuneRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validation_file: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hyperparameters: Option<DeepSeekHyperparameters<'a>>,
-}
+    pub hyperparameters: Option<DeepSeekHyperparameters<'a>>}
 
 /// Hyperparameters for fine-tuning
 #[derive(Debug, Serialize, Default)]
@@ -113,8 +110,7 @@ pub struct DeepSeekHyperparameters<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub n_epochs: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub suffix: Option<&'a str>,
-}
+    pub suffix: Option<&'a str>}
 
 // ============================================================================
 // Reasoning API (DeepSeek-specific)
@@ -132,8 +128,7 @@ pub struct DeepSeekReasoningRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub stream: Option<bool>,
-}
+    pub stream: Option<bool>}
 
 // ============================================================================
 // Builder Implementations
@@ -160,8 +155,7 @@ impl<'a> DeepSeekChatRequest<'a> {
             tools: None,
             tool_choice: None,
             reasoning_effort: None,
-            max_reasoning_tokens: None,
-        }
+            max_reasoning_tokens: None}
     }
 
     #[inline(always)]
@@ -172,8 +166,7 @@ impl<'a> DeepSeekChatRequest<'a> {
                 content: Some(content),
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -322,8 +315,7 @@ impl<'a> DeepSeekFineTuneRequest<'a> {
             model,
             training_file,
             validation_file: None,
-            hyperparameters: None,
-        }
+            hyperparameters: None}
     }
 
     pub fn validation_file(mut self, file: &'a str) -> Self {
@@ -371,8 +363,7 @@ impl<'a> DeepSeekReasoningRequest<'a> {
             reasoning_effort: None,
             max_reasoning_tokens: None,
             temperature: None,
-            stream: None,
-        }
+            stream: None}
     }
 
     pub fn reasoning_effort_high(mut self) -> Self {

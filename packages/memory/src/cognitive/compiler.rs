@@ -29,5 +29,4 @@ impl RuntimeCompiler {
 
 #[derive(Debug)]
 pub struct CompiledCode {
-    pub performance_improvement: f64,
-}
+    pub performance_improvement: f64}

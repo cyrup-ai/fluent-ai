@@ -20,8 +20,7 @@ pub struct SecurityPolicy {
     /// Rate limit per user (commands per minute)
     pub rate_limit: u32,
     /// Maximum execution time in seconds
-    pub max_execution_time: u32,
-}
+    pub max_execution_time: u32}
 
 impl Default for SecurityPolicy {
     fn default() -> Self {
@@ -39,8 +38,7 @@ pub struct RateLimiter {
     /// Request count in current window
     request_count: CachePadded<AtomicU64>,
     /// Window start time (Unix timestamp)
-    window_start: CachePadded<AtomicU64>,
-}
+    window_start: CachePadded<AtomicU64>}
 
 impl RateLimiter {
     /// Create new rate limiter
@@ -77,8 +75,7 @@ pub struct SecurityMiddleware {
     /// Rate limiter
     rate_limiter: Arc<RateLimiter>,
     /// Middleware name
-    name: String,
-}
+    name: String}
 
 impl SecurityMiddleware {
     /// Create new security middleware
@@ -86,8 +83,7 @@ impl SecurityMiddleware {
         Self {
             policy,
             rate_limiter: Arc::new(RateLimiter::new()),
-            name: "security".to_string(),
-        }
+            name: "security".to_string()}
     }
 
     /// Create security middleware with default policy
@@ -120,8 +116,7 @@ impl SecurityMiddleware {
             ChatCommand::Session { .. } => "session",
             ChatCommand::Tool { .. } => "tool",
             ChatCommand::Stats { .. } => "stats",
-            ChatCommand::Theme { .. } => "theme",
-        };
+            ChatCommand::Theme { .. } => "theme"};
 
         self.policy.allowed_commands.contains(command_type)
     }

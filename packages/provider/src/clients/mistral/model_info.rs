@@ -34,8 +34,7 @@ impl ModelInfo for MistralLarge {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "mistral-large-latest",
-    };
+        model_name: "mistral-large-latest"};
 }
 
 impl ModelPrompt for MistralLarge {
@@ -61,8 +60,7 @@ impl ModelInfo for Codestral {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "codestral-latest",
-    };
+        model_name: "codestral-latest"};
 }
 
 impl ModelPrompt for Codestral {
@@ -88,8 +86,7 @@ impl ModelInfo for PixtralLarge {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "pixtral-large-latest",
-    };
+        model_name: "pixtral-large-latest"};
 }
 
 impl ModelPrompt for PixtralLarge {
@@ -115,8 +112,7 @@ impl ModelInfo for MistralSaba {
         supports_thinking: true,
         optimal_thinking_budget: 5000,
         provider: "mistral",
-        model_name: "mistral-saba-latest",
-    };
+        model_name: "mistral-saba-latest"};
 }
 
 impl ModelPrompt for MistralSaba {
@@ -142,8 +138,7 @@ impl ModelInfo for Ministral3B {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "ministral-3b-latest",
-    };
+        model_name: "ministral-3b-latest"};
 }
 
 impl ModelPrompt for Ministral3B {
@@ -169,8 +164,7 @@ impl ModelInfo for Ministral8B {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "ministral-8b-latest",
-    };
+        model_name: "ministral-8b-latest"};
 }
 
 impl ModelPrompt for Ministral8B {
@@ -200,8 +194,7 @@ impl ModelInfo for MistralSmall {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "mistral-small-latest",
-    };
+        model_name: "mistral-small-latest"};
 }
 
 impl ModelPrompt for MistralSmall {
@@ -227,8 +220,7 @@ impl ModelInfo for PixtralSmall {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "pixtral-12b-2409",
-    };
+        model_name: "pixtral-12b-2409"};
 }
 
 impl ModelPrompt for PixtralSmall {
@@ -254,8 +246,7 @@ impl ModelInfo for MistralNemo {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "open-mistral-nemo",
-    };
+        model_name: "open-mistral-nemo"};
 }
 
 impl ModelPrompt for MistralNemo {
@@ -281,8 +272,7 @@ impl ModelInfo for CodestralMamba {
         supports_thinking: false,
         optimal_thinking_budget: 0,
         provider: "mistral",
-        model_name: "open-codestral-mamba",
-    };
+        model_name: "open-codestral-mamba"};
 }
 
 impl ModelPrompt for CodestralMamba {
@@ -332,8 +322,7 @@ pub const fn model_supports_vision(model_name: &str) -> bool {
         "mistral-large-latest" => true,
         "pixtral-large-latest" => true,
         "pixtral-12b-2409" => true,
-        _ => false,
-    }
+        _ => false}
 }
 
 /// Check if model supports thinking at compile time
@@ -341,8 +330,7 @@ pub const fn model_supports_vision(model_name: &str) -> bool {
 pub const fn model_supports_thinking(model_name: &str) -> bool {
     match model_name {
         "mistral-saba-latest" => true,
-        _ => false,
-    }
+        _ => false}
 }
 
 /// Check if model supports audio at compile time
@@ -375,8 +363,7 @@ pub const fn get_model_max_output_tokens(model_name: &str) -> u32 {
 pub const fn get_model_thinking_budget(model_name: &str) -> u32 {
     match model_name {
         "mistral-saba-latest" => 5000,
-        _ => 0,
-    }
+        _ => 0}
 }
 
 /// Get model by compile-time lookup (zero allocation)
@@ -387,8 +374,7 @@ pub const fn is_free_model(model_name: &str) -> bool {
         "pixtral-12b-2409" => true,
         "open-mistral-nemo" => true,
         "open-codestral-mamba" => true,
-        _ => false,
-    }
+        _ => false}
 }
 
 /// Get model pricing tier (zero allocation)
@@ -427,6 +413,5 @@ pub const fn is_valid_model(model_name: &str) -> bool {
         | "pixtral-12b-2409"
         | "open-mistral-nemo"
         | "open-codestral-mamba" => true,
-        _ => false,
-    }
+        _ => false}
 }

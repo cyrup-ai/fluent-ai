@@ -60,8 +60,7 @@ pub enum SamplingError {
     ProcessingFailed(String),
 
     #[error("Processor chain error: {0}")]
-    ProcessorChainError(String),
-}
+    ProcessorChainError(String)}
 
 impl From<candle_core::Error> for SamplingError {
     fn from(err: candle_core::Error) -> Self {
@@ -87,8 +86,7 @@ pub struct SamplingConfig {
     /// Top-k token limit (> 0)
     pub top_k: Option<usize>,
     /// Random seed for reproducible sampling
-    pub random_seed: u64,
-}
+    pub random_seed: u64}
 
 impl Default for SamplingConfig {
     fn default() -> Self {
@@ -96,8 +94,7 @@ impl Default for SamplingConfig {
             temperature: 1.0,
             top_p: None,
             top_k: None,
-            random_seed: 42,
-        }
+            random_seed: 42}
     }
 }
 
@@ -144,22 +141,17 @@ impl SamplingConfig {
     pub fn build_sampling(&self) -> Sampling {
         match (self.top_k, self.top_p) {
             (None, None) => Sampling::All {
-                temperature: self.temperature,
-            },
+                temperature: self.temperature},
             (Some(k), None) => Sampling::TopK {
                 k,
-                temperature: self.temperature,
-            },
+                temperature: self.temperature},
             (None, Some(p)) => Sampling::TopP {
                 p,
-                temperature: self.temperature,
-            },
+                temperature: self.temperature},
             (Some(k), Some(p)) => Sampling::TopKThenTopP {
                 k,
                 p,
-                temperature: self.temperature,
-            },
-        }
+                temperature: self.temperature}}
     }
 
     /// Build canonical LogitsProcessor from configuration
@@ -170,15 +162,13 @@ impl SamplingConfig {
 
 /// Convenient builder for canonical LogitsProcessor with validation
 pub struct LogitsProcessorBuilder {
-    config: SamplingConfig,
-}
+    config: SamplingConfig}
 
 impl LogitsProcessorBuilder {
     /// Create new builder
     pub fn new() -> Self {
         Self {
-            config: SamplingConfig::default(),
-        }
+            config: SamplingConfig::default()}
     }
 
     /// Set temperature with validation
@@ -368,8 +358,7 @@ mod tests {
                 assert_eq!(k, 40);
                 assert!((temperature - 0.8).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected TopK sampling"),
-        }
+            _ => panic!("Expected TopK sampling")}
 
         let _processor = config.build_processor();
     }

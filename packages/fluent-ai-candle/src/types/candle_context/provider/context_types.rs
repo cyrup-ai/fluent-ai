@@ -27,8 +27,7 @@ pub struct ImmutableFileContext {
     /// Last modified timestamp
     pub modified: SystemTime,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 impl ImmutableFileContext {
     /// Create new file context
@@ -38,8 +37,7 @@ impl ImmutableFileContext {
             content_hash: String::new(),
             size_bytes: 0,
             modified: SystemTime::now(),
-            memory_integration: None,
-        }
+            memory_integration: None}
     }
 
     /// Set content hash
@@ -93,8 +91,7 @@ pub struct ImmutableFilesContext {
     /// Total files count
     pub total_files: usize,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 impl ImmutableFilesContext {
     /// Create new files context
@@ -103,8 +100,7 @@ impl ImmutableFilesContext {
             paths: Vec::new(),
             pattern,
             total_files: 0,
-            memory_integration: None,
-        }
+            memory_integration: None}
     }
 
     /// Add file path
@@ -145,8 +141,7 @@ pub struct ImmutableDirectoryContext {
     /// Maximum depth for traversal
     pub max_depth: Option<usize>,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 impl ImmutableDirectoryContext {
     /// Create new directory context
@@ -156,8 +151,7 @@ impl ImmutableDirectoryContext {
             recursive: true,
             extensions: Vec::new(),
             max_depth: None,
-            memory_integration: None,
-        }
+            memory_integration: None}
     }
 
     /// Set recursive traversal
@@ -208,8 +202,7 @@ pub struct ImmutableGithubContext {
     /// Authentication token (if needed)
     pub auth_token: Option<String>,
     /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>,
-}
+    pub memory_integration: Option<MemoryIntegration>}
 
 impl ImmutableGithubContext {
     /// Create new GitHub context
@@ -219,8 +212,7 @@ impl ImmutableGithubContext {
             branch: "main".to_string(),
             pattern,
             auth_token: None,
-            memory_integration: None,
-        }
+            memory_integration: None}
     }
 
     /// Set branch
@@ -253,8 +245,7 @@ pub enum ContextSourceType {
     File(ImmutableFileContext),
     Files(ImmutableFilesContext),
     Directory(ImmutableDirectoryContext),
-    Github(ImmutableGithubContext),
-}
+    Github(ImmutableGithubContext)}
 
 impl ContextSourceType {
     /// Get source type name
@@ -263,8 +254,7 @@ impl ContextSourceType {
             ContextSourceType::File(_) => "file",
             ContextSourceType::Files(_) => "files",
             ContextSourceType::Directory(_) => "directory",
-            ContextSourceType::Github(_) => "github",
-        }
+            ContextSourceType::Github(_) => "github"}
     }
 
     /// Get memory integration if present
@@ -273,8 +263,7 @@ impl ContextSourceType {
             ContextSourceType::File(ctx) => ctx.memory_integration.as_ref(),
             ContextSourceType::Files(ctx) => ctx.memory_integration.as_ref(),
             ContextSourceType::Directory(ctx) => ctx.memory_integration.as_ref(),
-            ContextSourceType::Github(ctx) => ctx.memory_integration.as_ref(),
-        }
+            ContextSourceType::Github(ctx) => ctx.memory_integration.as_ref()}
     }
 }
 
@@ -282,8 +271,7 @@ impl ContextSourceType {
 pub struct Context<T> {
     pub(crate) source: ContextSourceType,
     pub(crate) processor: StreamingContextProcessor,
-    pub(crate) _marker: PhantomData<T>,
-}
+    pub(crate) _marker: PhantomData<T>}
 
 impl<T> Context<T> {
     /// Create new context with streaming processor
@@ -294,8 +282,7 @@ impl<T> Context<T> {
         Self {
             source,
             processor,
-            _marker: PhantomData,
-        }
+            _marker: PhantomData}
     }
 
     /// Create context with event streaming
@@ -306,8 +293,7 @@ impl<T> Context<T> {
         let context = Self {
             source,
             processor,
-            _marker: PhantomData,
-        };
+            _marker: PhantomData};
         (context, stream)
     }
 

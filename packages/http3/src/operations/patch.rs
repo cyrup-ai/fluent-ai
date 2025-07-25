@@ -12,8 +12,7 @@ pub struct PatchOperation {
     client: HttpClient,
     url: String,
     headers: HeaderMap,
-    body: PatchBody,
-}
+    body: PatchBody}
 
 /// Supported PATCH types
 #[derive(Clone)]
@@ -21,8 +20,7 @@ pub enum PatchBody {
     /// JSON Patch (RFC 6902) - Array of patch operations
     JsonPatch(Value),
     /// JSON Merge Patch (RFC 7396) - Object representing the patch
-    JsonMergePatch(Value),
-}
+    JsonMergePatch(Value)}
 
 impl PatchOperation {
     /// Create a new PATCH operation
@@ -32,8 +30,7 @@ impl PatchOperation {
             client,
             url,
             headers: HeaderMap::new(),
-            body: PatchBody::JsonMergePatch(Value::Null),
-        }
+            body: PatchBody::JsonMergePatch(Value::Null)}
     }
 
     /// Add custom header
@@ -88,8 +85,7 @@ impl HttpOperation for PatchOperation {
             PatchBody::JsonMergePatch(val) => match serde_json::to_vec(val) {
                 Ok(bytes) => bytes,
                 Err(_) => Vec::new(), // Fallback to empty body on serialization error
-            },
-        };
+            }};
 
         let request = HttpRequest::new(
             self.method(),

@@ -7,7 +7,6 @@
 //! - Compliance-ready audit trails
 //! - Zero-allocation event handling
 
-use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
@@ -32,46 +31,40 @@ pub enum CredentialEvent {
         provider: String,
         source: CredentialSource,
         timestamp: SystemTime,
-        success: bool,
-    },
+        success: bool},
 
     /// Credential accessed from cache
     Access {
         provider: String,
         source: CredentialSource,
         timestamp: SystemTime,
-        success: bool,
-    },
+        success: bool},
 
     /// Credential updated or rotated
     Update {
         provider: String,
         source: CredentialSource,
         timestamp: SystemTime,
-        success: bool,
-    },
+        success: bool},
 
     /// Credential removed
     Remove {
         provider: String,
         timestamp: SystemTime,
-        success: bool,
-    },
+        success: bool},
 
     /// Credential validation event
     Validation {
         provider: String,
         timestamp: SystemTime,
         success: bool,
-        failure_reason: Option<String>,
-    },
+        failure_reason: Option<String>},
 
     /// Credential not found
     NotFound {
         provider: String,
         attempted_sources: Vec<String>,
-        timestamp: SystemTime,
-    },
+        timestamp: SystemTime},
 
     /// Credential rotation event
     Rotation {
@@ -79,9 +72,7 @@ pub enum CredentialEvent {
         old_key_age: std::time::Duration,
         timestamp: SystemTime,
         success: bool,
-        rotation_reason: String,
-    },
-}
+        rotation_reason: String}}
 
 /// Security-related system events
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,15 +82,13 @@ pub enum SecurityEvent {
     SystemStartup {
         timestamp: SystemTime,
         component: String,
-        configuration: String,
-    },
+        configuration: String},
 
     /// System shutdown
     SystemShutdown {
         timestamp: SystemTime,
         component: String,
-        uptime: std::time::Duration,
-    },
+        uptime: std::time::Duration},
 
     /// Encryption key operations
     KeyOperation {
@@ -107,8 +96,7 @@ pub enum SecurityEvent {
         key_path: String,
         timestamp: SystemTime,
         success: bool,
-        error: Option<String>,
-    },
+        error: Option<String>},
 
     /// Authentication attempts
     Authentication {
@@ -116,8 +104,7 @@ pub enum SecurityEvent {
         timestamp: SystemTime,
         success: bool,
         failure_reason: Option<String>,
-        source_ip: Option<String>,
-    },
+        source_ip: Option<String>},
 
     /// Security policy violations
     PolicyViolation {
@@ -125,8 +112,7 @@ pub enum SecurityEvent {
         violation_type: String,
         details: String,
         timestamp: SystemTime,
-        severity: SecuritySeverity,
-    },
+        severity: SecuritySeverity},
 
     /// Suspicious activity detection
     SuspiciousActivity {
@@ -134,9 +120,7 @@ pub enum SecurityEvent {
         details: String,
         timestamp: SystemTime,
         risk_score: f32,
-        recommended_action: String,
-    },
-}
+        recommended_action: String}}
 
 /// Security event severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,8 +128,7 @@ pub enum SecuritySeverity {
     Low,
     Medium,
     High,
-    Critical,
-}
+    Critical}
 
 /// Audit log entry with integrity verification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,16 +152,14 @@ pub struct AuditLogEntry {
     pub sequence: u64,
 
     /// Additional metadata
-    pub metadata: HashMap<String, String>,
-}
+    pub metadata: HashMap<String, String>}
 
 /// Union type for all audit events
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "category")]
 pub enum AuditEvent {
     Credential(CredentialEvent),
-    Security(SecurityEvent),
-}
+    Security(SecurityEvent)}
 
 /// Statistics about audit logging
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,8 +169,7 @@ pub struct AuditStatistics {
     pub security_events: u64,
     pub last_event_time: Option<SystemTime>,
     pub log_file_size: u64,
-    pub integrity_violations: u64,
-}
+    pub integrity_violations: u64}
 
 /// Production-ready audit logger with tamper detection
 pub struct AuditLogger {
@@ -209,8 +189,7 @@ pub struct AuditLogger {
     statistics: Arc<RwLock<AuditStatistics>>,
 
     /// Real-time event monitoring cache
-    recent_events: Arc<DashMap<String, Vec<AuditLogEntry>>>,
-}
+    recent_events: Arc<DashMap<String, Vec<AuditLogEntry>>>}
 
 impl AuditLogger {
     /// Create new audit logger with configuration
@@ -223,8 +202,7 @@ impl AuditLogger {
         // Ensure log directory exists
         if let Some(parent) = Path::new(&config.log_path).parent() {
             std::fs::create_dir_all(parent).map_err(|e| SecurityError::AuditError {
-                message: format!("Failed to create audit log directory: {}", e),
-            })?;
+                message: format!("Failed to create audit log directory: {}", e)})?;
         }
 
         // Open log file with append mode
@@ -233,8 +211,7 @@ impl AuditLogger {
             .append(true)
             .open(&config.log_path)
             .map_err(|e| SecurityError::AuditError {
-                message: format!("Failed to open audit log file {}: {}", config.log_path, e),
-            })?;
+                message: format!("Failed to open audit log file {}: {}", config.log_path, e)})?;
 
         // Set file permissions (Unix only)
         #[cfg(unix)]
@@ -243,14 +220,12 @@ impl AuditLogger {
             let mut perms = log_file
                 .metadata()
                 .map_err(|e| SecurityError::AuditError {
-                    message: format!("Failed to read log file metadata: {}", e),
-                })?
+                    message: format!("Failed to read log file metadata: {}", e)})?
                 .permissions();
             perms.set_mode(0o640); // Owner read/write, group read
             std::fs::set_permissions(&config.log_path, perms).map_err(|e| {
                 SecurityError::AuditError {
-                    message: format!("Failed to set log file permissions: {}", e),
-                }
+                    message: format!("Failed to set log file permissions: {}", e)}
             })?;
         }
 
@@ -264,8 +239,7 @@ impl AuditLogger {
             security_events: 0,
             last_event_time: None,
             log_file_size: log_file.metadata().map(|m| m.len()).unwrap_or(0),
-            integrity_violations: 0,
-        };
+            integrity_violations: 0};
 
         Ok(Self {
             config: config.clone(),
@@ -273,16 +247,14 @@ impl AuditLogger {
             sequence_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             last_entry_hash: Arc::new(RwLock::new(last_entry_hash)),
             statistics: Arc::new(RwLock::new(statistics)),
-            recent_events: Arc::new(DashMap::new()),
-        })
+            recent_events: Arc::new(DashMap::new())})
     }
 
     /// Create a disabled audit logger (for testing or disabled configurations)
     async fn create_disabled_logger(config: &AuditConfig) -> SecurityResult<Self> {
         // Create a dummy file handle that will never be used
         let temp_file = tempfile::NamedTempFile::new().map_err(|e| SecurityError::AuditError {
-            message: format!("Failed to create temporary file for disabled logger: {}", e),
-        })?;
+            message: format!("Failed to create temporary file for disabled logger: {}", e)})?;
 
         let statistics = AuditStatistics {
             total_events: 0,
@@ -290,8 +262,7 @@ impl AuditLogger {
             security_events: 0,
             last_event_time: None,
             log_file_size: 0,
-            integrity_violations: 0,
-        };
+            integrity_violations: 0};
 
         Ok(Self {
             config: config.clone(),
@@ -299,8 +270,7 @@ impl AuditLogger {
             sequence_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             last_entry_hash: Arc::new(RwLock::new(String::new())),
             statistics: Arc::new(RwLock::new(statistics)),
-            recent_events: Arc::new(DashMap::new()),
-        })
+            recent_events: Arc::new(DashMap::new())})
     }
 
     /// Log a credential-related event
@@ -341,8 +311,7 @@ impl AuditLogger {
             previous_hash: previous_hash.clone(),
             entry_hash: String::new(), // Will be calculated below
             sequence,
-            metadata: self.create_metadata(&event).await,
-        };
+            metadata: self.create_metadata(&event).await};
 
         // Calculate entry hash
         let entry_content = format!("{:?}{}{}", entry.event, entry.previous_hash, entry.sequence);
@@ -353,18 +322,15 @@ impl AuditLogger {
 
         // Serialize to JSON
         let json_line = serde_json::to_string(&entry).map_err(|e| SecurityError::AuditError {
-            message: format!("Failed to serialize audit event: {}", e),
-        })?;
+            message: format!("Failed to serialize audit event: {}", e)})?;
 
         // Write to log file
         {
             let mut file = self.log_file.write().await;
             writeln!(file, "{}", json_line).map_err(|e| SecurityError::AuditError {
-                message: format!("Failed to write to audit log: {}", e),
-            })?;
+                message: format!("Failed to write to audit log: {}", e)})?;
             file.flush().map_err(|e| SecurityError::AuditError {
-                message: format!("Failed to flush audit log: {}", e),
-            })?;
+                message: format!("Failed to flush audit log: {}", e)})?;
         }
 
         // Update last entry hash
@@ -378,8 +344,7 @@ impl AuditLogger {
 
             match event {
                 AuditEvent::Credential(_) => stats.credential_events += 1,
-                AuditEvent::Security(_) => stats.security_events += 1,
-            }
+                AuditEvent::Security(_) => stats.security_events += 1}
         }
 
         // Add to recent events cache for monitoring
@@ -395,8 +360,7 @@ impl AuditLogger {
             "INFO" => info!("Audit event: {:?}", event),
             "WARN" => warn!("Audit event: {:?}", event),
             "ERROR" => error!("Audit event: {:?}", event),
-            _ => info!("Audit event: {:?}", event),
-        }
+            _ => info!("Audit event: {:?}", event)}
 
         Ok(())
     }
@@ -473,17 +437,14 @@ impl AuditLogger {
                 CredentialEvent::Remove { .. } => "credential_remove".to_string(),
                 CredentialEvent::Validation { .. } => "credential_validation".to_string(),
                 CredentialEvent::NotFound { .. } => "credential_not_found".to_string(),
-                CredentialEvent::Rotation { .. } => "credential_rotation".to_string(),
-            },
+                CredentialEvent::Rotation { .. } => "credential_rotation".to_string()},
             AuditEvent::Security(sec_event) => match sec_event {
                 SecurityEvent::SystemStartup { .. } => "system_startup".to_string(),
                 SecurityEvent::SystemShutdown { .. } => "system_shutdown".to_string(),
                 SecurityEvent::KeyOperation { .. } => "key_operation".to_string(),
                 SecurityEvent::Authentication { .. } => "authentication".to_string(),
                 SecurityEvent::PolicyViolation { .. } => "policy_violation".to_string(),
-                SecurityEvent::SuspiciousActivity { .. } => "suspicious_activity".to_string(),
-            },
-        }
+                SecurityEvent::SuspiciousActivity { .. } => "suspicious_activity".to_string()}}
     }
 
     /// Calculate the hash of the last entry in the log file
@@ -494,8 +455,7 @@ impl AuditLogger {
 
         // Read the last line of the log file
         let content = std::fs::read_to_string(log_path).map_err(|e| SecurityError::AuditError {
-            message: format!("Failed to read audit log for hash calculation: {}", e),
-        })?;
+            message: format!("Failed to read audit log for hash calculation: {}", e)})?;
 
         if let Some(last_line) = content.lines().last() {
             if let Ok(entry) = serde_json::from_str::<AuditLogEntry>(last_line) {
@@ -529,8 +489,7 @@ impl AuditLogger {
     pub async fn verify_log_integrity(&self) -> SecurityResult<bool> {
         let content = std::fs::read_to_string(&self.config.log_path).map_err(|e| {
             SecurityError::AuditError {
-                message: format!("Failed to read audit log for integrity check: {}", e),
-            }
+                message: format!("Failed to read audit log for integrity check: {}", e)}
         })?;
 
         let mut previous_hash = "genesis".to_string();
@@ -538,8 +497,7 @@ impl AuditLogger {
         for line in content.lines() {
             let entry: AuditLogEntry =
                 serde_json::from_str(line).map_err(|e| SecurityError::AuditError {
-                    message: format!("Failed to parse audit log entry: {}", e),
-                })?;
+                    message: format!("Failed to parse audit log entry: {}", e)})?;
 
             // Verify previous hash matches
             if entry.previous_hash != previous_hash {
@@ -588,8 +546,7 @@ impl Drop for AuditLogger {
                 previous_hash: String::new(), // Best effort
                 entry_hash: String::new(),    // Best effort
                 sequence: 0,                  // Best effort
-                metadata: HashMap::new(),
-            }) {
+                metadata: HashMap::new()}) {
                 if let Ok(mut file) = self.log_file.try_write() {
                     let _ = writeln!(file, "{}", json_line);
                     let _ = file.flush();
@@ -614,8 +571,7 @@ mod tests {
             enabled: true,
             log_path: log_path.to_string_lossy().to_string(),
             log_level: "INFO".to_string(),
-            include_credential_hashes: true,
-        };
+            include_credential_hashes: true};
 
         let logger = AuditLogger::new(&config)
             .await
@@ -625,11 +581,9 @@ mod tests {
         let event = CredentialEvent::Load {
             provider: "openai".to_string(),
             source: CredentialSource::Environment {
-                variable_name: "OPENAI_API_KEY".to_string(),
-            },
+                variable_name: "OPENAI_API_KEY".to_string()},
             timestamp: SystemTime::now(),
-            success: true,
-        };
+            success: true};
 
         logger
             .log_credential_event(event)
@@ -654,8 +608,7 @@ mod tests {
             enabled: true,
             log_path: log_path.to_string_lossy().to_string(),
             log_level: "INFO".to_string(),
-            include_credential_hashes: true,
-        };
+            include_credential_hashes: true};
 
         let logger = AuditLogger::new(&config)
             .await
@@ -666,11 +619,9 @@ mod tests {
             let event = CredentialEvent::Access {
                 provider: format!("provider_{}", i),
                 source: CredentialSource::Environment {
-                    variable_name: format!("API_KEY_{}", i),
-                },
+                    variable_name: format!("API_KEY_{}", i)},
                 timestamp: SystemTime::now(),
-                success: true,
-            };
+                success: true};
 
             logger
                 .log_credential_event(event)
@@ -696,8 +647,7 @@ mod tests {
             enabled: false,
             log_path: "/dev/null".to_string(),
             log_level: "INFO".to_string(),
-            include_credential_hashes: false,
-        };
+            include_credential_hashes: false};
 
         let logger = AuditLogger::new(&config).await.unwrap();
 
@@ -705,11 +655,9 @@ mod tests {
         let event = CredentialEvent::Load {
             provider: "test".to_string(),
             source: CredentialSource::Environment {
-                variable_name: "TEST_KEY".to_string(),
-            },
+                variable_name: "TEST_KEY".to_string()},
             timestamp: SystemTime::now(),
-            success: true,
-        };
+            success: true};
 
         // Should succeed but do nothing
         logger.log_credential_event(event).await.unwrap();

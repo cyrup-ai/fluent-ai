@@ -50,8 +50,7 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
             .map_err(|e| CommandError::ParseError(e.to_string()))
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }
 
@@ -99,8 +98,7 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }
 
@@ -150,7 +148,6 @@ pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
+            detail: "Command executor not initialized".to_string()})
     }
 }

@@ -20,8 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Try parsing as raw serde_json::Value to see structure
             match yyaml::from_str::<serde_json::Value>(&yaml_content) {
                 Ok(v) => println!("Raw parse successful: {:#?}", v),
-                Err(e2) => println!("Even raw parse failed: {:?}", e2),
-            }
+                Err(e2) => println!("Even raw parse failed: {:?}", e2)}
         }
     }
     

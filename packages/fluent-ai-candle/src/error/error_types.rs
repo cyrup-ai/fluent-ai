@@ -88,7 +88,20 @@ pub enum CandleError {
     ModelInferenceError(String),
     /// Cache error (alias for Cache)
     CacheError(String),
-}
+    /// Device incompatibility error
+    IncompatibleDevice { msg: String },
+    /// Model incompatibility error
+    IncompatibleModel { msg: String },
+    /// Version incompatibility error
+    IncompatibleVersion { msg: String },
+    /// Shape mismatch error
+    ShapeMismatch { expected: String, actual: String },
+    /// Device error
+    DeviceError(String),
+    /// IO error
+    IoError(String),
+    /// JSON parsing error
+    JsonError(String)}
 
 impl fmt::Display for CandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -143,8 +156,78 @@ impl fmt::Display for CandleError {
             Self::TensorError(msg) => write!(f, "Tensor error: {}", msg),
             Self::ModelInferenceError(msg) => write!(f, "Model inference error: {}", msg),
             Self::CacheError(msg) => write!(f, "Cache error: {}", msg),
-        }
+            Self::IncompatibleDevice { msg } => write!(f, "Incompatible device: {}", msg),
+            Self::IncompatibleModel { msg } => write!(f, "Incompatible model: {}", msg),
+            Self::IncompatibleVersion { msg } => write!(f, "Incompatible version: {}", msg),
+            Self::ShapeMismatch { expected, actual } => {
+                write!(f, "Shape mismatch: expected {}, got {}", expected, actual)
+            },
+            Self::DeviceError(msg) => write!(f, "Device error: {}", msg),
+            Self::IoError(msg) => write!(f, "IO error: {}", msg),
+            Self::JsonError(msg) => write!(f, "JSON error: {}", msg)}
     }
 }
 
 impl std::error::Error for CandleError {}
+
+/// Convert CandleError to candle_core::Error for seamless interoperability
+impl From<CandleError> for candle_core::Error {
+    fn from(err: CandleError) -> Self {
+        match err {
+            CandleError::Msg(msg) => candle_core::Error::Msg(msg),
+            CandleError::ModelNotFound(path) => candle_core::Error::Msg(format!("Model not found: {}", path)),
+            CandleError::ModelLoadError(msg) => candle_core::Error::Msg(format!("Model loading failed: {}", msg)),
+            CandleError::InvalidModelFormat(msg) => candle_core::Error::Msg(format!("Invalid model format: {}", msg)),
+            CandleError::TensorOperation(msg) => candle_core::Error::Msg(format!("Tensor operation failed: {}", msg)),
+            CandleError::DeviceAllocation(msg) => candle_core::Error::Msg(format!("Device allocation failed: {}", msg)),
+            CandleError::Quantization(msg) => candle_core::Error::Msg(format!("Quantization error: {}", msg)),
+            CandleError::Tokenizer(msg) => candle_core::Error::Msg(format!("Tokenizer error: {}", msg)),
+            CandleError::MemoryMapping(msg) => candle_core::Error::Msg(format!("Memory mapping failed: {}", msg)),
+            CandleError::LoadingTimeout => candle_core::Error::Msg("Model loading timeout".to_string()),
+            CandleError::UnsupportedArchitecture(arch) => candle_core::Error::Msg(format!("Unsupported architecture: {}", arch)),
+            CandleError::Configuration(msg) => candle_core::Error::Msg(format!("Configuration error: {}", msg)),
+            CandleError::TokenizationError(msg) => candle_core::Error::Msg(format!("Tokenization error: {}", msg)),
+            CandleError::SafeTensors(msg) => candle_core::Error::Msg(format!("SafeTensors error: {}", msg)),
+            CandleError::ContextLengthExceeded { current, max } => {
+                candle_core::Error::Msg(format!("Context length exceeded: {} > {}", current, max))
+            }
+            CandleError::VocabularyMismatch { expected, actual } => {
+                candle_core::Error::Msg(format!("Vocabulary size mismatch: expected {}, got {}", expected, actual))
+            }
+            CandleError::GenerationFailed(msg) => candle_core::Error::Msg(format!("Generation failed: {}", msg)),
+            CandleError::CacheOverflow => candle_core::Error::Msg("Cache overflow".to_string()),
+            CandleError::InvalidInput(msg) => candle_core::Error::Msg(format!("Invalid input: {}", msg)),
+            CandleError::DeviceOperation(msg) => candle_core::Error::Msg(format!("Device operation failed: {}", msg)),
+            CandleError::ProcessingError(msg) => candle_core::Error::Msg(format!("Processing error: {}", msg)),
+            CandleError::InvalidConfiguration(msg) => candle_core::Error::Msg(format!("Invalid configuration: {}", msg)),
+            CandleError::Tokenization(msg) => candle_core::Error::Msg(format!("Tokenization error: {}", msg)),
+            CandleError::MemoryAllocation(msg) => candle_core::Error::Msg(format!("Memory allocation failed: {}", msg)),
+            CandleError::TokenizerError(msg) => candle_core::Error::Msg(format!("Tokenizer error: {}", msg)),
+            CandleError::ConfigurationError(msg) => candle_core::Error::Msg(format!("Configuration error: {}", msg)),
+            CandleError::UnsupportedOperation(msg) => candle_core::Error::Msg(format!("Unsupported operation: {}", msg)),
+            CandleError::IncompatibleTokenizer(msg) => candle_core::Error::Msg(format!("Incompatible tokenizer: {}", msg)),
+            CandleError::Progress(msg) => candle_core::Error::Msg(format!("Progress tracking error: {}", msg)),
+            CandleError::Cache(msg) => candle_core::Error::Msg(format!("Cache error: {}", msg)),
+            CandleError::InitializationError(msg) => candle_core::Error::Msg(format!("ProgressHub initialization error: {}", msg)),
+            CandleError::ProgressHubError(msg) => candle_core::Error::Msg(format!("ProgressHub error: {}", msg)),
+            CandleError::BackendError(msg) => candle_core::Error::Msg(format!("Backend selection error: {}", msg)),
+            CandleError::NetworkError(msg) => candle_core::Error::Msg(format!("Network error: {}", msg)),
+            CandleError::ValidationError(msg) => candle_core::Error::Msg(format!("Validation error: {}", msg)),
+            CandleError::Io(msg) => candle_core::Error::Msg(format!("I/O error: {}", msg)),
+            CandleError::ModelNotLoaded(msg) => candle_core::Error::Msg(format!("Model not loaded: {}", msg)),
+            CandleError::TensorError(msg) => candle_core::Error::Msg(format!("Tensor error: {}", msg)),
+            CandleError::ModelInferenceError(msg) => candle_core::Error::Msg(format!("Model inference error: {}", msg)),
+            CandleError::CacheError(msg) => candle_core::Error::Msg(format!("Cache error: {}", msg)),
+            CandleError::IncompatibleDevice { msg } => candle_core::Error::Msg(format!("Incompatible device: {}", msg)),
+            CandleError::IncompatibleModel { msg } => candle_core::Error::Msg(format!("Incompatible model: {}", msg)),
+            CandleError::IncompatibleVersion { msg } => {
+                candle_core::Error::Msg(format!("Incompatible version: {}", msg))
+            }
+            CandleError::ShapeMismatch { expected, actual } => {
+                candle_core::Error::Msg(format!("Shape mismatch: expected {}, got {}", expected, actual))
+            }
+            CandleError::DeviceError(msg) => candle_core::Error::Msg(format!("Device error: {}", msg)),
+            CandleError::IoError(msg) => candle_core::Error::Msg(format!("IO error: {}", msg)),
+            CandleError::JsonError(msg) => candle_core::Error::Msg(format!("JSON error: {}", msg))}
+    }
+}

@@ -30,8 +30,7 @@ pub struct MemoryPool {
     total_deallocations: AtomicUsize,
 
     /// Peak usage (maximum blocks allocated simultaneously)
-    peak_usage: AtomicUsize,
-}
+    peak_usage: AtomicUsize}
 
 impl MemoryPool {
     /// Create new memory pool
@@ -43,8 +42,7 @@ impl MemoryPool {
             created_at_nanos: Self::current_time_nanos(),
             total_allocations: AtomicUsize::new(0),
             total_deallocations: AtomicUsize::new(0),
-            peak_usage: AtomicUsize::new(0),
-        }
+            peak_usage: AtomicUsize::new(0)}
     }
 
     /// Get block size
@@ -266,8 +264,7 @@ impl MemoryPool {
             is_under_pressure: self.is_under_pressure(),
             is_underutilized: self.is_underutilized(),
             needs_expansion: self.needs_expansion(),
-            can_shrink: self.can_shrink(),
-        }
+            can_shrink: self.can_shrink()}
     }
 
     /// Update peak usage tracking
@@ -284,8 +281,7 @@ impl MemoryPool {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => break,
-                Err(new_peak) => peak = new_peak,
-            }
+                Err(new_peak) => peak = new_peak}
         }
     }
 
@@ -362,8 +358,7 @@ pub struct MemoryPoolStats {
     /// Whether pool needs expansion
     pub needs_expansion: bool,
     /// Whether pool can be shrunk
-    pub can_shrink: bool,
-}
+    pub can_shrink: bool}
 
 impl MemoryPoolStats {
     /// Get memory usage in bytes
@@ -483,8 +478,7 @@ pub enum PoolHealth {
     /// Pool is critically stressed
     Critical,
     /// Pool is significantly underutilized
-    Underutilized,
-}
+    Underutilized}
 
 impl std::fmt::Display for PoolHealth {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -492,22 +486,19 @@ impl std::fmt::Display for PoolHealth {
             PoolHealth::Healthy => write!(f, "Healthy"),
             PoolHealth::Warning => write!(f, "Warning"),
             PoolHealth::Critical => write!(f, "Critical"),
-            PoolHealth::Underutilized => write!(f, "Underutilized"),
-        }
+            PoolHealth::Underutilized => write!(f, "Underutilized")}
     }
 }
 
 /// Memory pool collection for managing multiple pool sizes
 pub struct MemoryPoolCollection {
-    pools: arrayvec::ArrayVec<MemoryPool, 16>,
-}
+    pools: arrayvec::ArrayVec<MemoryPool, 16>}
 
 impl MemoryPoolCollection {
     /// Create new pool collection
     pub fn new() -> Self {
         Self {
-            pools: arrayvec::ArrayVec::new(),
-        }
+            pools: arrayvec::ArrayVec::new()}
     }
 
     /// Add a memory pool
@@ -571,8 +562,7 @@ impl MemoryPoolCollection {
             total_memory_used: self.total_memory_used(),
             total_memory_capacity: self.total_memory_capacity(),
             overall_utilization: self.overall_utilization(),
-            pool_stats: self.pools.iter().map(|pool| pool.stats()).collect(),
-        }
+            pool_stats: self.pools.iter().map(|pool| pool.stats()).collect()}
     }
 }
 
@@ -594,8 +584,7 @@ pub struct PoolCollectionStats {
     /// Overall utilization across all pools
     pub overall_utilization: f64,
     /// Individual pool statistics
-    pub pool_stats: Vec<MemoryPoolStats>,
-}
+    pub pool_stats: Vec<MemoryPoolStats>}
 
 impl std::fmt::Display for PoolCollectionStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

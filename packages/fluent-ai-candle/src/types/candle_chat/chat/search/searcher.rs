@@ -7,12 +7,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use atomic_counter::{AtomicCounter, ConsistentCounter};
+use crate::types::candle_chat::search::tagging::ConsistentCounter;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::types::{SearchResult, SearchQuery, SearchStatistics};
+use crate::types::{CandleMessage, CandleMessageRole};
+use crate::types::candle_chat::message::SearchChatMessage;
+use super::types::{SearchResult, SearchQuery};
 use super::index::ChatSearchIndex;
 
 /// Search options for fine-tuning search behavior
@@ -31,8 +33,7 @@ pub struct SearchOptions {
     /// Enable search analytics
     pub enable_analytics: bool,
     /// Custom search parameters
-    pub custom_params: HashMap<String, String>,
-}
+    pub custom_params: HashMap<String, String>}
 
 /// Main chat searcher with advanced capabilities
 pub struct ChatSearcher {
@@ -47,8 +48,7 @@ pub struct ChatSearcher {
     /// Operation counters
     pub search_counter: ConsistentCounter,
     pub cache_hits: Arc<AtomicUsize>,
-    pub cache_misses: Arc<AtomicUsize>,
-}
+    pub cache_misses: Arc<AtomicUsize>}
 
 impl std::fmt::Debug for ChatSearcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -73,8 +73,7 @@ pub struct CachedSearchResult {
     /// Result metadata
     pub metadata: SearchResultMetadata,
     /// Cache hit count
-    pub hit_count: usize,
-}
+    pub hit_count: usize}
 
 /// Metadata about search results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,8 +89,7 @@ pub struct SearchResultMetadata {
     /// Index version used
     pub index_version: usize,
     /// Additional metadata
-    pub extra: HashMap<String, serde_json::Value>,
-}
+    pub extra: HashMap<String, serde_json::Value>}
 
 /// Statistics for the chat searcher
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,8 +103,7 @@ pub struct ChatSearcherStats {
     /// Most common search terms
     pub popular_terms: Vec<(String, usize)>,
     /// Search performance metrics
-    pub performance_metrics: HashMap<String, f64>,
-}
+    pub performance_metrics: HashMap<String, f64>}
 
 impl ChatSearcher {
     /// Create a new chat searcher
@@ -118,8 +115,7 @@ impl ChatSearcher {
             options,
             search_counter: ConsistentCounter::new(0),
             cache_hits: Arc::new(AtomicUsize::new(0)),
-            cache_misses: Arc::new(AtomicUsize::new(0)),
-        }
+            cache_misses: Arc::new(AtomicUsize::new(0))}
     }
 
     /// Perform a search with caching and ranking (streaming)
@@ -164,13 +160,23 @@ impl ChatSearcher {
                 // For now, create a sample result
                 let result = SearchResult {
                     id: Uuid::new_v4(),
-                    message: crate::chat::message::SearchChatMessage {
-                        id: Uuid::new_v4(),
+                    message: SearchChatMessage {
+                        id: Uuid::new_v4().to_string(),
                         content: format!("Sample result for term: {}", term),
-                        role: crate::chat::message::MessageRole::User,
-                        timestamp: chrono::Utc::now(),
-                        metadata: HashMap::new(),
-                    },
+                        role: CandleMessageRole::User,
+                        name: None,
+                        metadata: None,
+                        timestamp: Some(
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
+                        ),
+                        relevance_score: 1.0,
+                        search_timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64},
                     score: 1.0,
                     highlighted_content: None,
                     context: Vec::new(),
@@ -179,8 +185,7 @@ impl ChatSearcher {
                     conversation_id: None,
                     tags: Vec::new(),
                     result_timestamp: chrono::Utc::now(),
-                    extra_data: HashMap::new(),
-                };
+                    extra_data: HashMap::new()};
                 results.push(result);
             }
 
@@ -196,10 +201,8 @@ impl ChatSearcher {
                         from_cache: false,
                         algorithm: "basic".to_string(),
                         index_version: 1,
-                        extra: HashMap::new(),
-                    },
-                    hit_count: 0,
-                };
+                        extra: HashMap::new()},
+                    hit_count: 0};
                 result_cache.insert(cache_key, cached_result);
             }
 
@@ -259,8 +262,7 @@ impl Default for SearchOptions {
             max_search_time_ms: 5000,
             enable_suggestions: false,
             enable_analytics: true,
-            custom_params: HashMap::new(),
-        }
+            custom_params: HashMap::new()}
     }
 }
 
@@ -277,7 +279,6 @@ impl Default for ChatSearcherStats {
             cache_hit_rate: 0.0,
             avg_search_time_ms: 0.0,
             popular_terms: Vec::new(),
-            performance_metrics: HashMap::new(),
-        }
+            performance_metrics: HashMap::new()}
     }
 }

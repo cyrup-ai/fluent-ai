@@ -5,7 +5,6 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
 
 use regex::Regex;
 use uuid::Uuid;
@@ -23,8 +22,7 @@ pub struct MacroContextManager {
     /// Variable change listeners
     listeners: Vec<VariableChangeListener>,
     /// Configuration for context behavior
-    config: ContextConfig,
-}
+    config: ContextConfig}
 
 /// Configuration for context management
 #[derive(Debug, Clone)]
@@ -36,8 +34,7 @@ pub struct ContextConfig {
     /// Variable name validation regex
     pub variable_name_pattern: Option<Regex>,
     /// Enable variable change notifications
-    pub enable_notifications: bool,
-}
+    pub enable_notifications: bool}
 
 /// Variable change listener for reactive updates
 #[derive(Debug)]
@@ -47,8 +44,7 @@ pub struct VariableChangeListener {
     /// Variable name pattern to watch
     pub pattern: Regex,
     /// Callback function name
-    pub callback: String,
-}
+    pub callback: String}
 
 /// Result of variable resolution
 #[derive(Debug, Clone)]
@@ -58,15 +54,22 @@ pub enum VariableResolutionResult {
     /// Variable not found
     NotFound(String),
     /// Resolution error
-    Error(String),
-}
+    Error(String)}
 
 /// Context evaluation utilities
 pub struct ContextEvaluator {
     /// Regex cache for pattern matching
     regex_cache: HashMap<String, Regex>,
     /// Function registry for custom functions
-    functions: HashMap<String, Box<dyn Fn(&[String]) -> String + Send + Sync>>,
+    functions: HashMap<String, Box<dyn Fn(&[String]) -> String + Send + Sync>>}
+
+impl std::fmt::Debug for ContextEvaluator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContextEvaluator")
+            .field("regex_cache", &format!("[{} cached regexes]", self.regex_cache.len()))
+            .field("functions", &format!("[{} functions]", self.functions.len()))
+            .finish()
+    }
 }
 
 impl MacroContextManager {
@@ -76,8 +79,7 @@ impl MacroContextManager {
             global_variables: HashMap::new(),
             context_variables: HashMap::new(),
             listeners: Vec::new(),
-            config: ContextConfig::default(),
-        }
+            config: ContextConfig::default()}
     }
 
     /// Create a context manager with custom configuration
@@ -86,8 +88,7 @@ impl MacroContextManager {
             global_variables: HashMap::new(),
             context_variables: HashMap::new(),
             listeners: Vec::new(),
-            config,
-        }
+            config}
     }
 
     /// Create a new execution context
@@ -98,10 +99,12 @@ impl MacroContextManager {
         MacroExecutionContext {
             variables: context_vars.into_iter().map(|(k, v)| (Arc::from(k), Arc::from(v))).collect(),
             execution_id: context_id,
-            start_time: Instant::now(),
+            start_time: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
             current_action: 0,
-            loop_stack: Vec::new(),
-        }
+            loop_stack: Vec::new()}
     }
 
     /// Set a global variable
@@ -184,8 +187,7 @@ impl MacroContextManager {
             self.listeners.push(VariableChangeListener {
                 id,
                 pattern: regex,
-                callback,
-            });
+                callback});
         }
         id
     }
@@ -237,8 +239,7 @@ impl ContextEvaluator {
     pub fn new() -> Self {
         let mut evaluator = Self {
             regex_cache: HashMap::new(),
-            functions: HashMap::new(),
-        };
+            functions: HashMap::new()};
 
         // Register built-in functions
         evaluator.register_builtin_functions();
@@ -299,8 +300,7 @@ impl ContextEvaluator {
             ParsedExpression::BinaryOp {
                 operator,
                 left,
-                right,
-            } => self.evaluate_binary_op(operator, left, right, variables),
+                right} => self.evaluate_binary_op(operator, left, right, variables),
             ParsedExpression::UnaryOp { operator, operand } => {
                 self.evaluate_unary_op(operator, operand, variables)
             }
@@ -365,13 +365,11 @@ impl ContextEvaluator {
                     Ok(regex) => Ok(regex.is_match(&left_val).to_string()),
                     Err(_) => Err(MacroSystemError::ConditionError(
                         format!("Invalid regex pattern: {}", right_val)
-                    )),
-                }
+                    ))}
             }
             _ => Err(MacroSystemError::ConditionError(
                 format!("Unsupported binary operator: {:?}", operator)
-            )),
-        }
+            ))}
     }
 
     /// Evaluate a unary operation
@@ -427,8 +425,7 @@ impl ContextEvaluator {
         match value.to_lowercase().as_str() {
             "true" | "1" | "yes" | "on" => true,
             "false" | "0" | "no" | "off" | "" => false,
-            _ => !value.is_empty(),
-        }
+            _ => !value.is_empty()}
     }
 
     /// Get or compile a regex pattern
@@ -460,8 +457,7 @@ impl Default for ContextConfig {
             enable_caching: true,
             max_cached_variables: 1000,
             variable_name_pattern: Some(Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap()),
-            enable_notifications: true,
-        }
+            enable_notifications: true}
     }
 }
 

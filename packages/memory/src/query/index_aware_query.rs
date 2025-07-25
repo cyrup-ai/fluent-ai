@@ -1,7 +1,5 @@
 //! Index-aware query optimization
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use crate::query::{QueryPlan, QueryStep, QueryType, Result};
@@ -19,8 +17,7 @@ pub struct IndexInfo {
     pub index_type: IndexType,
 
     /// Index statistics
-    pub stats: IndexStats,
-}
+    pub stats: IndexStats}
 
 /// Index types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,8 +32,7 @@ pub enum IndexType {
     /// Vector index
     Vector,
     /// Composite index
-    Composite,
-}
+    Composite}
 
 /// Index statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,21 +47,18 @@ pub struct IndexStats {
     pub avg_query_time_ms: f64,
 
     /// Last updated
-    pub last_updated: chrono::DateTime<chrono::Utc>,
-}
+    pub last_updated: chrono::DateTime<chrono::Utc>}
 
 /// Index-aware query planner
 pub struct IndexAwareQueryPlanner {
     /// Available indexes
-    indexes: HashMap<String, IndexInfo>,
-}
+    indexes: HashMap<String, IndexInfo>}
 
 impl IndexAwareQueryPlanner {
     /// Create a new planner
     pub fn new() -> Self {
         Self {
-            indexes: HashMap::new(),
-        }
+            indexes: HashMap::new()}
     }
 
     /// Register an index
@@ -91,8 +84,7 @@ impl IndexAwareQueryPlanner {
                     name: "Index Lookup".to_string(),
                     description: format!("Use index '{}' for fast lookup", name),
                     cost: 5.0,
-                    parallel: false,
-                });
+                    parallel: false});
 
                 break;
             }
@@ -103,8 +95,7 @@ impl IndexAwareQueryPlanner {
                 name: "Full Scan".to_string(),
                 description: "Scan all documents (no suitable index found)".to_string(),
                 cost: 80.0,
-                parallel: true,
-            });
+                parallel: true});
         }
 
         // Add filtering step
@@ -112,8 +103,7 @@ impl IndexAwareQueryPlanner {
             name: "Filter Results".to_string(),
             description: "Apply query filters".to_string(),
             cost: 10.0,
-            parallel: true,
-        });
+            parallel: true});
 
         // Add sorting step if needed
         if query_type == QueryType::Similarity {
@@ -121,8 +111,7 @@ impl IndexAwareQueryPlanner {
                 name: "Sort by Score".to_string(),
                 description: "Sort results by similarity score".to_string(),
                 cost: 5.0,
-                parallel: false,
-            });
+                parallel: false});
         }
 
         Ok(QueryPlan {
@@ -130,8 +119,7 @@ impl IndexAwareQueryPlanner {
             cost,
             use_index,
             index_name,
-            steps,
-        })
+            steps})
     }
 
     /// Check if an index can be used for a query
@@ -149,8 +137,7 @@ impl IndexAwareQueryPlanner {
             QueryType::Similarity => {
                 matches!(index.index_type, IndexType::Vector)
             }
-            _ => false,
-        }
+            _ => false}
     }
 }
 
@@ -166,8 +153,7 @@ pub struct IndexOptimizer {
     query_history: Vec<QueryInfo>,
 
     /// Optimization threshold
-    threshold: f64,
-}
+    threshold: f64}
 
 /// Query information for optimization
 #[derive(Debug, Clone)]
@@ -177,16 +163,14 @@ struct QueryInfo {
     query_type: QueryType,
     execution_time_ms: f64,
     #[allow(dead_code)]
-    result_count: usize,
-}
+    result_count: usize}
 
 impl IndexOptimizer {
     /// Create a new optimizer
     pub fn new(threshold: f64) -> Self {
         Self {
             query_history: Vec::new(),
-            threshold,
-        }
+            threshold}
     }
 
     /// Record a query execution
@@ -201,8 +185,7 @@ impl IndexOptimizer {
             fields,
             query_type,
             execution_time_ms,
-            result_count,
-        });
+            result_count});
 
         // Keep only recent history
         if self.query_history.len() > 1000 {
@@ -236,8 +219,7 @@ impl IndexOptimizer {
                     reason: format!(
                         "Frequent slow queries on fields: {:?} ({} occurrences)",
                         fields, count
-                    ),
-                });
+                    )});
             }
         }
 
@@ -258,5 +240,4 @@ pub struct IndexRecommendation {
     pub estimated_improvement: f64,
 
     /// Reason for recommendation
-    pub reason: String,
-}
+    pub reason: String}

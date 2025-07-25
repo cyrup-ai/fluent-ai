@@ -53,8 +53,7 @@ pub struct GroqChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logprobs: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub top_logprobs: Option<u32>,
-}
+    pub top_logprobs: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqMessage<'a> {
@@ -67,15 +66,13 @@ pub struct GroqMessage<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<ArrayVec<GroqToolCall<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_call_id: Option<&'a str>,
-}
+    pub tool_call_id: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GroqContent<'a> {
     Text(&'a str),
-    Array(ArrayVec<GroqContentPart<'a>, MAX_IMAGES>),
-}
+    Array(ArrayVec<GroqContentPart<'a>, MAX_IMAGES>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -83,29 +80,24 @@ pub enum GroqContentPart<'a> {
     #[serde(rename = "text")]
     Text {
         #[serde(borrow)]
-        text: &'a str,
-    },
+        text: &'a str},
     #[serde(rename = "image_url")]
     ImageUrl {
-        image_url: GroqImageUrl<'a>,
-    },
-}
+        image_url: GroqImageUrl<'a>}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqImageUrl<'a> {
     #[serde(borrow)]
     pub url: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub detail: Option<&'a str>,
-}
+    pub detail: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqTool<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub tool_type: &'a str,
-    pub function: GroqFunction<'a>,
-}
+    pub function: GroqFunction<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqFunction<'a> {
@@ -113,8 +105,7 @@ pub struct GroqFunction<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqToolCall<'a> {
@@ -123,16 +114,14 @@ pub struct GroqToolCall<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub call_type: &'a str,
-    pub function: GroqFunctionCall<'a>,
-}
+    pub function: GroqFunctionCall<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqFunctionCall<'a> {
     #[serde(borrow)]
     pub name: &'a str,
     #[serde(borrow)]
-    pub arguments: &'a str,
-}
+    pub arguments: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -142,15 +131,12 @@ pub enum GroqToolChoice<'a> {
         #[serde(rename = "type")]
         #[serde(borrow)]
         choice_type: &'a str,
-        function: GroqToolChoiceFunction<'a>,
-    },
-}
+        function: GroqToolChoiceFunction<'a>}}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqToolChoiceFunction<'a> {
     #[serde(borrow)]
-    pub name: &'a str,
-}
+    pub name: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqResponseFormat<'a> {
@@ -171,8 +157,7 @@ pub struct GroqChatResponse {
     pub system_fingerprint: Option<String>,
     // Groq-specific response fields
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub x_groq: Option<GroqExtensions>,
-}
+    pub x_groq: Option<GroqExtensions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqChoice {
@@ -180,58 +165,50 @@ pub struct GroqChoice {
     pub message: GroqResponseMessage,
     pub finish_reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<GroqLogprobs>,
-}
+    pub logprobs: Option<GroqLogprobs>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqResponseMessage {
     pub role: String,
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<GroqResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<GroqResponseToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqResponseToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
-    pub function: GroqResponseFunction,
-}
+    pub function: GroqResponseFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqResponseFunction {
     pub name: String,
-    pub arguments: String,
-}
+    pub arguments: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqLogprobs {
-    pub content: ArrayVec<GroqContentLogprob, 1024>,
-}
+    pub content: ArrayVec<GroqContentLogprob, 1024>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqContentLogprob {
     pub token: String,
     pub logprob: f32,
     pub bytes: Option<ArrayVec<u8, 4>>,
-    pub top_logprobs: ArrayVec<GroqTopLogprob, 10>,
-}
+    pub top_logprobs: ArrayVec<GroqTopLogprob, 10>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqTopLogprob {
     pub token: String,
     pub logprob: f32,
-    pub bytes: Option<ArrayVec<u8, 4>>,
-}
+    pub bytes: Option<ArrayVec<u8, 4>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqExtensions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<GroqUsageExtensions>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-}
+    pub id: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqUsageExtensions {
@@ -242,8 +219,7 @@ pub struct GroqUsageExtensions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_time: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_time: Option<f32>,
-}
+    pub total_time: Option<f32>}
 
 // ============================================================================
 // Models API
@@ -252,8 +228,7 @@ pub struct GroqUsageExtensions {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqModelsResponse {
     pub object: String,
-    pub data: ArrayVec<GroqModel, 64>,
-}
+    pub data: ArrayVec<GroqModel, 64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqModel {
@@ -263,8 +238,7 @@ pub struct GroqModel {
     pub owned_by: String,
     pub active: bool,
     pub context_window: u32,
-    pub public_apps: Option<ArrayVec<String, 16>>,
-}
+    pub public_apps: Option<ArrayVec<String, 16>>}
 
 // ============================================================================
 // Audio API (Whisper-compatible)
@@ -285,8 +259,7 @@ pub struct GroqAudioTranscriptionRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub timestamp_granularities: Option<ArrayVec<&'a str, 2>>,
-}
+    pub timestamp_granularities: Option<ArrayVec<&'a str, 2>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqAudioTranslationRequest<'a> {
@@ -299,8 +272,7 @@ pub struct GroqAudioTranslationRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_format: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub temperature: Option<f32>,
-}
+    pub temperature: Option<f32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqAudioResponse {
@@ -312,15 +284,13 @@ pub struct GroqAudioResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub words: Option<ArrayVec<GroqWord, 2048>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub segments: Option<ArrayVec<GroqSegment, 256>>,
-}
+    pub segments: Option<ArrayVec<GroqSegment, 256>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqWord {
     pub word: String,
     pub start: f32,
-    pub end: f32,
-}
+    pub end: f32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqSegment {
@@ -335,8 +305,7 @@ pub struct GroqSegment {
     pub compression_ratio: f32,
     pub no_speech_prob: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub words: Option<ArrayVec<GroqWord, 256>>,
-}
+    pub words: Option<ArrayVec<GroqWord, 256>>}
 
 // ============================================================================
 // Common Structures
@@ -353,13 +322,11 @@ pub struct GroqUsage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_time: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_time: Option<f32>,
-}
+    pub total_time: Option<f32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqErrorResponse {
-    pub error: GroqError,
-}
+    pub error: GroqError}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqError {
@@ -369,8 +336,7 @@ pub struct GroqError {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub param: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-}
+    pub code: Option<String>}
 
 // ============================================================================
 // Streaming Support
@@ -386,8 +352,7 @@ pub struct GroqStreamingChunk {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_fingerprint: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub x_groq: Option<GroqExtensions>,
-}
+    pub x_groq: Option<GroqExtensions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqStreamingChoice {
@@ -395,8 +360,7 @@ pub struct GroqStreamingChoice {
     pub delta: GroqStreamingDelta,
     pub finish_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<GroqLogprobs>,
-}
+    pub logprobs: Option<GroqLogprobs>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqStreamingDelta {
@@ -405,8 +369,7 @@ pub struct GroqStreamingDelta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<GroqStreamingToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<GroqStreamingToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqStreamingToolCall {
@@ -417,16 +380,14 @@ pub struct GroqStreamingToolCall {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub call_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function: Option<GroqStreamingFunction>,
-}
+    pub function: Option<GroqStreamingFunction>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroqStreamingFunction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<String>,
-}
+    pub arguments: Option<String>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -453,8 +414,7 @@ impl<'a> GroqChatRequest<'a> {
             response_format: None,
             parallel_tool_calls: None,
             logprobs: None,
-            top_logprobs: None,
-        }
+            top_logprobs: None}
     }
 
     pub fn add_message(mut self, role: &'a str, content: GroqContent<'a>) -> Self {
@@ -464,8 +424,7 @@ impl<'a> GroqChatRequest<'a> {
                 content,
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -516,8 +475,7 @@ impl<'a> GroqChatRequest<'a> {
 
     pub fn response_format_json(mut self) -> Self {
         self.response_format = Some(GroqResponseFormat {
-            format_type: "json_object",
-        });
+            format_type: "json_object"});
         self
     }
 
@@ -566,8 +524,7 @@ impl<'a> GroqAudioTranscriptionRequest<'a> {
             prompt: None,
             response_format: None,
             temperature: None,
-            timestamp_granularities: None,
-        }
+            timestamp_granularities: None}
     }
 
     pub fn language(mut self, language: &'a str) -> Self {
@@ -603,8 +560,7 @@ impl<'a> GroqAudioTranslationRequest<'a> {
             model,
             prompt: None,
             response_format: None,
-            temperature: None,
-        }
+            temperature: None}
     }
 
     pub fn prompt(mut self, prompt: &'a str) -> Self {

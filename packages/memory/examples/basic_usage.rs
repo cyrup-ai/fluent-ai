@@ -8,16 +8,13 @@
 //! - Searching memories by content and vector similarity
 
 use fluent_ai_memory::memory::{
-    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager,
-};
+    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager};
 use futures_util::StreamExt;
 use surrealdb::{
     Surreal,
     engine::{
         any::Any,
-        local::{Db, Mem},
-    },
-};
+        local::{Db, Mem}}};
 
 async fn create_mem_db() -> Result<Surreal<Any>, Box<dyn std::error::Error>> {
     // Create in-memory database

@@ -36,8 +36,7 @@ pub struct FlowController {
     /// Adaptive parameters
     adaptive_params: AdaptiveParams,
     /// Rate limiter
-    rate_limiter: TokenRateLimiter,
-}
+    rate_limiter: TokenRateLimiter}
 
 impl FlowController {
     /// Create new flow controller
@@ -54,8 +53,7 @@ impl FlowController {
             last_check: Instant::now(),
             current_delay: Duration::from_micros(0),
             adaptive_params: AdaptiveParams::default(),
-            rate_limiter: TokenRateLimiter::unlimited(),
-        }
+            rate_limiter: TokenRateLimiter::unlimited()}
     }
 
     /// Create flow controller with rate limiting
@@ -131,8 +129,7 @@ impl FlowController {
             BackpressureStrategy::Custom {
                 base_delay_ms,
                 multiplier,
-                max_delay_ms,
-            } => {
+                max_delay_ms} => {
                 let delay_us = (base_delay_ms * 1000) as f32 * (1.0 + pressure * multiplier);
                 delay_us.min(max_delay_ms as f32 * 1000.0) as u64
             }
@@ -201,7 +198,7 @@ impl FlowController {
     pub fn apply_delay(&self) -> AsyncStream<()> {
         let delay = self.current_delay;
         
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |sender: fluent_ai_async::AsyncStreamSender<()>| {
             if delay.as_micros() > 0 {
                 // For streaming flow control, we emit immediately and let the caller
                 // handle timing through the streaming pipeline's natural backpressure

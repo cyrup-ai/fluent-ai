@@ -31,16 +31,13 @@ pub enum MirostatConfig {
         /// Target surprise (tau)
         tau: f32,
         /// Learning rate for tau adjustment
-        learning_rate: f32,
-    },
+        learning_rate: f32},
     /// Mirostat v2: Temperature-based adjustment
     V2 {
         /// Target surprise (tau)
         tau: f32,
         /// Eta parameter for temperature scaling
-        eta: f32,
-    },
-}
+        eta: f32}}
 
 impl MirostatConfig {
     /// Create Mirostat v1 configuration with validation
@@ -83,8 +80,7 @@ impl MirostatConfig {
     #[inline(always)]
     pub const fn tau(&self) -> f32 {
         match self {
-            Self::V1 { tau, .. } | Self::V2 { tau, .. } => *tau,
-        }
+            Self::V1 { tau, .. } | Self::V2 { tau, .. } => *tau}
     }
 
     /// Get variant name for debugging
@@ -92,8 +88,7 @@ impl MirostatConfig {
     pub const fn variant_name(&self) -> &'static str {
         match self {
             Self::V1 { .. } => "Mirostat v1",
-            Self::V2 { .. } => "Mirostat v2",
-        }
+            Self::V2 { .. } => "Mirostat v2"}
     }
 }
 
@@ -102,8 +97,7 @@ impl Default for MirostatConfig {
     fn default() -> Self {
         Self::V1 {
             tau: 5.0,
-            learning_rate: 0.1,
-        }
+            learning_rate: 0.1}
     }
 }
 

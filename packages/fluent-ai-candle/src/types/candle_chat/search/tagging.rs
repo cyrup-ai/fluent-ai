@@ -5,7 +5,7 @@
 
 use crate::types::CandleSearchChatMessage;
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{AsyncStream};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use std::sync::Arc;
@@ -13,23 +13,42 @@ use std::time::Instant;
 use uuid::Uuid;
 
 /// Consistent counter for lock-free operations
+#[derive(Debug)]
 pub struct ConsistentCounter {
-    value: std::sync::atomic::AtomicUsize,
-}
+    value: std::sync::atomic::AtomicUsize}
 
 impl ConsistentCounter {
     pub fn new(initial: usize) -> Self {
         Self {
-            value: std::sync::atomic::AtomicUsize::new(initial),
-        }
+            value: std::sync::atomic::AtomicUsize::new(initial)}
     }
 
     pub fn inc(&self) {
         self.value.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
+    pub fn dec(&self) {
+        self.value.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
     pub fn get(&self) -> usize {
         self.value.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn set(&self, value: usize) {
+        self.value.store(value, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+impl Clone for ConsistentCounter {
+    fn clone(&self) -> Self {
+        Self::new(self.get())
+    }
+}
+
+impl Default for ConsistentCounter {
+    fn default() -> Self {
+        Self::new(0)
     }
 }
 
@@ -59,8 +78,7 @@ pub struct ConversationTag {
     /// Tag usage count
     pub usage_count: u64,
     /// Tag is active
-    pub is_active: bool,
-}
+    pub is_active: bool}
 
 impl ConversationTag {
     /// Create a new tag
@@ -82,8 +100,7 @@ impl ConversationTag {
             created_at: now,
             updated_at: now,
             usage_count: 0,
-            is_active: true,
-        }
+            is_active: true}
     }
 }
 
@@ -102,8 +119,7 @@ pub struct ConversationTagger {
     /// Tagging counter
     tagging_counter: Arc<ConsistentCounter>,
     /// Auto-tagging rules - lock-free concurrent access
-    auto_tagging_rules: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>,
-}
+    auto_tagging_rules: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>}
 
 impl ConversationTagger {
     /// Create a new conversation tagger
@@ -115,8 +131,7 @@ impl ConversationTagger {
             tag_hierarchy: SkipMap::new(),
             tag_counter: Arc::new(ConsistentCounter::new(0)),
             tagging_counter: Arc::new(ConsistentCounter::new(0)),
-            auto_tagging_rules: Arc::new(SkipMap::new()),
-        }
+            auto_tagging_rules: Arc::new(SkipMap::new())}
     }
 
     /// Create a new tag (streaming)
@@ -238,7 +253,7 @@ impl ConversationTagger {
     ) -> AsyncStream<Arc<str>> {
         // Perform auto-tagging analysis immediately
         let mut suggested_tags = Vec::new();
-        let content = message.message.content.to_lowercase();
+        let content = message.content.to_lowercase();
 
         // SkipMap is lock-free, access directly
         let rules = &self.auto_tagging_rules;
@@ -364,8 +379,7 @@ impl ConversationTagger {
                 .iter()
                 .filter(|entry| entry.value().is_active)
                 .count(),
-            most_used_tag: self.get_most_used_tag(),
-        }
+            most_used_tag: self.get_most_used_tag()}
     }
 
     /// Get most used tag
@@ -389,5 +403,4 @@ pub struct TaggingStatistics {
     pub total_tags: usize,
     pub total_taggings: usize,
     pub active_tags: usize,
-    pub most_used_tag: Option<Arc<str>>,
-}
+    pub most_used_tag: Option<Arc<str>>}

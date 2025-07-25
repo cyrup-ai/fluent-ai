@@ -31,8 +31,7 @@ pub enum UtilityError {
     /// Cache operation error
     CacheError,
     /// Metrics collection error
-    MetricsError,
-}
+    MetricsError}
 
 impl std::fmt::Display for UtilityError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -41,8 +40,7 @@ impl std::fmt::Display for UtilityError {
             UtilityError::AuthError => write!(f, "Authentication failed"),
             UtilityError::RetryError => write!(f, "Retry operation failed"),
             UtilityError::CacheError => write!(f, "Cache operation failed"),
-            UtilityError::MetricsError => write!(f, "Metrics collection failed"),
-        }
+            UtilityError::MetricsError => write!(f, "Metrics collection failed")}
     }
 }
 

@@ -26,9 +26,7 @@ pub enum BackpressureStrategy {
     Custom {
         base_delay_ms: u64,
         multiplier: f32,
-        max_delay_ms: u64,
-    },
-}
+        max_delay_ms: u64}}
 
 impl Default for BackpressureStrategy {
     fn default() -> Self {
@@ -54,8 +52,7 @@ pub struct FlowStats {
     /// Number of flow control adjustments made
     pub flow_adjustments: u64,
     /// Last adjustment timestamp
-    pub last_adjustment: Option<Instant>,
-}
+    pub last_adjustment: Option<Instant>}
 
 impl FlowStats {
     /// Create new empty flow statistics
@@ -123,8 +120,7 @@ pub struct AdaptiveParams {
     /// Maximum delay (microseconds)
     pub max_delay_us: u64,
     /// Exponential smoothing factor
-    pub smoothing_factor: f32,
-}
+    pub smoothing_factor: f32}
 
 impl Default for AdaptiveParams {
     fn default() -> Self {
@@ -133,8 +129,7 @@ impl Default for AdaptiveParams {
             buffer_sensitivity: 2.0,
             min_delay_us: 10,
             max_delay_us: 10_000,
-            smoothing_factor: 0.9,
-        }
+            smoothing_factor: 0.9}
     }
 }
 
@@ -152,8 +147,7 @@ impl AdaptiveParams {
             buffer_sensitivity: buffer_sensitivity.clamp(0.0, 10.0),
             min_delay_us,
             max_delay_us: max_delay_us.max(min_delay_us),
-            smoothing_factor: 0.9,
-        }
+            smoothing_factor: 0.9}
     }
 
     /// Update learning parameters with validation

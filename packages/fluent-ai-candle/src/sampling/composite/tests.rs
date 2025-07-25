@@ -10,8 +10,7 @@ mod tests {
     use super::super::{
         core::CompositeProcessor,
         builder::CompositeProcessorBuilder,
-        parallel::{ParallelCompositeProcessor, MergeStrategy},
-    };
+        parallel::{ParallelCompositeProcessor, MergeStrategy}};
     use crate::sampling::temperature::TemperatureProcessor;
     use crate::processing::traits::LogitsProcessor;
     use crate::sampling::SamplingError;

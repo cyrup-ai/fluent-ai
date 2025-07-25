@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use super::core::ChatSearchIndex;
-use super::super::types::{SearchResult, SortOrder};
+use super::super::types::SearchResult;
 
 impl ChatSearchIndex {
     /// Search for documents containing exact term
@@ -27,13 +27,12 @@ impl ChatSearchIndex {
                         relevance_score: tf_idf,
                         matching_terms: vec![term.clone()],
                         highlighted_content: Some(Arc::from(
-                            self.highlight_text(&message.value().message.content, term),
+                            self.highlight_text(&message.value().content, term),
                         )),
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
-                        metadata: None,
-                    };
+                        metadata: None};
                     results.push(result);
                 }
             }
@@ -72,7 +71,7 @@ impl ChatSearchIndex {
             };
 
             for result in term_results {
-                excluded_docs.insert(result.message.message.id.unwrap_or_default());
+                excluded_docs.insert(result.message.id.clone());
             }
         }
 
@@ -89,8 +88,7 @@ impl ChatSearchIndex {
                     tags: vec![],
                     context: vec![],
                     match_positions: vec![],
-                    metadata: None,
-                };
+                    metadata: None};
                 results.push(result);
             }
         }
@@ -110,7 +108,7 @@ impl ChatSearchIndex {
 
         for entry in self.document_store.iter() {
             let message = entry.value();
-            let content = message.message.content.to_lowercase();
+            let content = message.content.to_lowercase();
 
             let matches = if fuzzy {
                 self.fuzzy_match(&content, &phrase)
@@ -129,8 +127,7 @@ impl ChatSearchIndex {
                     tags: vec![],
                     context: vec![],
                     match_positions: vec![],
-                    metadata: None,
-                };
+                    metadata: None};
                 results.push(result);
             }
         }
@@ -144,7 +141,7 @@ impl ChatSearchIndex {
 
         for entry in self.document_store.iter() {
             let message = entry.value();
-            let tokens = self.tokenize_with_simd(&message.message.content);
+            let tokens = self.tokenize_with_simd(&message.content);
 
             if self.check_proximity(&tokens, terms, distance) {
                 let relevance_score = if fuzzy { 0.7 } else { 0.9 };
@@ -153,13 +150,12 @@ impl ChatSearchIndex {
                     relevance_score,
                     matching_terms: terms.to_vec(),
                     highlighted_content: Some(Arc::from(
-                        self.highlight_terms(&message.message.content, terms),
+                        self.highlight_terms(&message.content, terms),
                     )),
                     tags: vec![],
                     context: vec![],
                     match_positions: vec![],
-                    metadata: None,
-                };
+                    metadata: None};
                 results.push(result);
             }
         }

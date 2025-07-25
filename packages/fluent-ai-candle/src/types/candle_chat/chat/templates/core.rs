@@ -31,8 +31,7 @@ pub enum TemplateError {
     PermissionDenied { message: Arc<str> },
 
     #[error("Storage error: {message}")]
-    StorageError { message: Arc<str> },
-}
+    StorageError { message: Arc<str> }}
 
 /// Template result type
 pub type TemplateResult<T> = Result<T, TemplateError>;
@@ -47,8 +46,7 @@ pub struct TemplateInfo {
     pub variable_count: usize,
     pub created_at: i64,
     pub modified_at: i64,
-    pub version: Arc<str>,
-}
+    pub version: Arc<str>}
 
 /// Template category enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -62,8 +60,7 @@ pub enum TemplateCategory {
     Context,
     Prompt,
     Response,
-    Custom,
-}
+    Custom}
 
 impl Default for TemplateCategory {
     fn default() -> Self {
@@ -79,8 +76,7 @@ pub enum VariableType {
     Boolean,
     Array,
     Object,
-    Any,
-}
+    Any}
 
 /// Template variable definition
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,8 +89,7 @@ pub struct TemplateVariable {
     pub validation_pattern: Option<Arc<str>>,
     pub valid_values: Option<Arc<[Arc<str>]>>,
     pub min_value: Option<f64>,
-    pub max_value: Option<f64>,
-}
+    pub max_value: Option<f64>}
 
 /// Template permissions
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -103,8 +98,7 @@ pub struct TemplatePermissions {
     pub write: bool,
     pub execute: bool,
     pub share: bool,
-    pub delete: bool,
-}
+    pub delete: bool}
 
 impl Default for TemplatePermissions {
     fn default() -> Self {
@@ -113,8 +107,7 @@ impl Default for TemplatePermissions {
             write: true,
             execute: true,
             share: true,
-            delete: true,
-        }
+            delete: true}
     }
 }
 
@@ -132,8 +125,7 @@ pub struct TemplateMetadata {
     pub modified_at: u64,
     pub usage_count: u64,
     pub rating: f64,
-    pub permissions: TemplatePermissions,
-}
+    pub permissions: TemplatePermissions}
 
 /// Template value type for variables
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -143,8 +135,7 @@ pub enum TemplateValue {
     Boolean(bool),
     Array(Arc<[TemplateValue]>),
     Object(Arc<HashMap<Arc<str>, TemplateValue>>),
-    Null,
-}
+    Null}
 
 impl From<&str> for TemplateValue {
     fn from(s: &str) -> Self {
@@ -177,15 +168,13 @@ pub struct TemplateContext {
     pub functions: HashMap<
         Arc<str>,
         Arc<dyn Fn(&[TemplateValue]) -> TemplateResult<TemplateValue> + Send + Sync>,
-    >,
-}
+    >}
 
 impl TemplateContext {
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
-            functions: HashMap::new(),
-        }
+            functions: HashMap::new()}
     }
 
     pub fn with_variable(
@@ -224,24 +213,19 @@ pub enum TemplateAst {
     Variable(Arc<str>),
     Expression {
         operator: Arc<str>,
-        operands: Arc<[TemplateAst]>,
-    },
+        operands: Arc<[TemplateAst]>},
     Conditional {
         condition: Arc<TemplateAst>,
         if_true: Arc<TemplateAst>,
-        if_false: Option<Arc<TemplateAst>>,
-    },
+        if_false: Option<Arc<TemplateAst>>},
     Loop {
         variable: Arc<str>,
         iterable: Arc<TemplateAst>,
-        body: Arc<TemplateAst>,
-    },
+        body: Arc<TemplateAst>},
     Block(Arc<[TemplateAst]>),
     Function {
         name: Arc<str>,
-        args: Arc<[TemplateAst]>,
-    },
-}
+        args: Arc<[TemplateAst]>}}
 
 /// Compiled template representation
 #[derive(Debug, Clone)]
@@ -249,8 +233,7 @@ pub struct CompiledTemplate {
     pub metadata: TemplateMetadata,
     pub ast: TemplateAst,
     pub variables: Arc<[TemplateVariable]>,
-    pub optimized: bool,
-}
+    pub optimized: bool}
 
 impl CompiledTemplate {
     pub fn new(
@@ -262,8 +245,7 @@ impl CompiledTemplate {
             metadata,
             ast,
             variables,
-            optimized: false,
-        }
+            optimized: false}
     }
 
     pub fn render(&self, context: &TemplateContext) -> TemplateResult<Arc<str>> {
@@ -279,12 +261,10 @@ impl CompiledTemplate {
                         TemplateValue::String(s) => Ok(s.clone()),
                         TemplateValue::Number(n) => Ok(Arc::from(n.to_string())),
                         TemplateValue::Boolean(b) => Ok(Arc::from(b.to_string())),
-                        _ => Ok(Arc::from(format!("{:?}", value))),
-                    }
+                        _ => Ok(Arc::from(format!("{:?}", value)))}
                 } else {
                     Err(TemplateError::VariableError {
-                        message: Arc::from(format!("Variable '{}' not found", name)),
-                    })
+                        message: Arc::from(format!("Variable '{}' not found", name))})
                 }
             }
             TemplateAst::Block(nodes) => {
@@ -298,8 +278,7 @@ impl CompiledTemplate {
             TemplateAst::Conditional {
                 condition,
                 if_true,
-                if_false,
-            } => {
+                if_false} => {
                 let cond_result = self.render_ast(condition, context)?;
                 let is_truthy = !cond_result.is_empty()
                     && cond_result.as_ref() != "false"
@@ -324,8 +303,7 @@ pub struct ChatTemplate {
     pub metadata: TemplateMetadata,
     pub content: Arc<str>,
     pub variables: Arc<[TemplateVariable]>,
-    pub compiled: Option<CompiledTemplate>,
-}
+    pub compiled: Option<CompiledTemplate>}
 
 impl ChatTemplate {
     pub fn new(
@@ -337,8 +315,7 @@ impl ChatTemplate {
             metadata,
             content,
             variables,
-            compiled: None,
-        }
+            compiled: None}
     }
 
     pub fn render(&self, variables: &HashMap<Arc<str>, Arc<str>>) -> TemplateResult<Arc<str>> {
@@ -385,14 +362,12 @@ impl ChatTemplate {
         // Basic validation
         if self.metadata.name.is_empty() {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Template name cannot be empty"),
-            });
+                message: Arc::from("Template name cannot be empty")});
         }
 
         if self.content.is_empty() {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Template content cannot be empty"),
-            });
+                message: Arc::from("Template content cannot be empty")});
         }
 
         // Additional validation can be added here
@@ -409,8 +384,7 @@ impl ChatTemplate {
             variable_count: self.variables.len(),
             created_at: self.metadata.created_at as i64,
             modified_at: self.metadata.modified_at as i64,
-            version: self.metadata.version.clone(),
-        }
+            version: self.metadata.version.clone()}
     }
 }
 
@@ -422,8 +396,7 @@ pub struct TemplateConfig {
     pub allow_nested_templates: bool,
     pub cache_compiled: bool,
     pub optimize_templates: bool,
-    pub security_mode: SecurityMode,
-}
+    pub security_mode: SecurityMode}
 
 /// Security mode for templates
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -442,8 +415,7 @@ impl Default for TemplateConfig {
             allow_nested_templates: true,
             cache_compiled: true,
             optimize_templates: true,
-            security_mode: SecurityMode::Normal,
-        }
+            security_mode: SecurityMode::Normal}
     }
 }
 
@@ -453,24 +425,21 @@ pub struct TemplateExample {
     pub name: Arc<str>,
     pub description: Arc<str>,
     pub input_variables: HashMap<Arc<str>, Arc<str>>,
-    pub expected_output: Arc<str>,
-}
+    pub expected_output: Arc<str>}
 
 /// Template tag for categorization
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TemplateTag {
     pub name: Arc<str>,
     pub color: Option<Arc<str>>,
-    pub description: Option<Arc<str>>,
-}
+    pub description: Option<Arc<str>>}
 
 impl TemplateTag {
     pub fn new(name: impl Into<Arc<str>>) -> Self {
         Self {
             name: name.into(),
             color: None,
-            description: None,
-        }
+            description: None}
     }
 
     pub fn with_color(mut self, color: impl Into<Arc<str>>) -> Self {

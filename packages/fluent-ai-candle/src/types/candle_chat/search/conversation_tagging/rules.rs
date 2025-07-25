@@ -3,7 +3,6 @@
 //! This module implements the rule-based tagging system with pattern
 //! matching and automatic classification capabilities.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -25,8 +24,7 @@ pub struct TaggingRule {
     /// Rule weight
     pub weight: f32,
     /// Active flag
-    pub active: bool,
-}
+    pub active: bool}
 
 impl TaggingRule {
     /// Create a new tagging rule
@@ -38,8 +36,7 @@ impl TaggingRule {
             tag_id,
             min_confidence: 0.5,
             weight: 1.0,
-            active: true,
-        }
+            active: true}
     }
 
     /// Check if rule matches content
@@ -103,8 +100,7 @@ pub struct TaggerConfig {
     /// Enable topic detection
     pub enable_topic_detection: bool,
     /// Custom patterns
-    pub custom_patterns: HashMap<String, String>,
-}
+    pub custom_patterns: HashMap<String, String>}
 
 impl Default for TaggerConfig {
     fn default() -> Self {
@@ -114,8 +110,7 @@ impl Default for TaggerConfig {
             max_tags_per_conversation: 10,
             enable_sentiment: true,
             enable_topic_detection: true,
-            custom_patterns: HashMap::new(),
-        }
+            custom_patterns: HashMap::new()}
     }
 }
 
@@ -137,8 +132,7 @@ pub struct TaggingStatistics {
     /// Most used tags
     pub most_used_tags: Vec<(Uuid, usize)>,
     /// Processing time statistics
-    pub avg_processing_time_ms: f64,
-}
+    pub avg_processing_time_ms: f64}
 
 impl TaggingStatistics {
     /// Update statistics with new tag application

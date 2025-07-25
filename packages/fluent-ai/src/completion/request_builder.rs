@@ -15,11 +15,9 @@ use crate::{
     completion::{
         CompletionError, CompletionModel, CompletionRequest, CompletionResponse,
         StreamingCompletionResponse,
-        message::{Message, Text},
-    },
+        message::{Message, Text}},
     runtime::{AsyncTask, spawn_async},
-    streaming::streaming::StreamingResultDyn,
-};
+    streaming::streaming::StreamingResultDyn};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Typestate markers
@@ -43,8 +41,7 @@ pub struct CompletionRequestBuilder<M, S = Empty> {
     temperature: f32,
     max_tokens: Option<u32>,
     top_p: Option<f32>,
-    _state: PhantomData<S>,
-}
+    _state: PhantomData<S>}
 
 impl<M> CompletionRequestBuilder<M, Empty>
 where
@@ -58,8 +55,7 @@ where
             temperature: 1.0,
             max_tokens: None,
             top_p: None,
-            _state: PhantomData,
-        }
+            _state: PhantomData}
     }
 
     // -------- prompt creation helpers --------------------------------------
@@ -83,8 +79,7 @@ where
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             top_p: self.top_p,
-            _state: PhantomData,
-        }
+            _state: PhantomData}
     }
 
     /// Push an arbitrary message.
@@ -98,8 +93,7 @@ where
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             top_p: self.top_p,
-            _state: PhantomData,
-        }
+            _state: PhantomData}
     }
 
     // -------- generation params --------------------------------------------
@@ -138,8 +132,7 @@ where
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
-            top_p: self.top_p,
-        };
+            top_p: self.top_p};
         let model = self.model.clone();
         spawn_async(async move { model.completion(req).await })
     }
@@ -153,8 +146,7 @@ where
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
-            top_p: self.top_p,
-        };
+            top_p: self.top_p};
         let model = self.model.clone();
         spawn_async(async move {
             let inner = model.stream(req).await?;

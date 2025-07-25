@@ -23,8 +23,7 @@ use crate::streaming;
 #[serde(rename_all = "lowercase", tag = "type")]
 /// Represents the content sent back in the StreamDelta for an Assistant
 enum AssistantContent {
-    Text { text: String },
-}
+    Text { text: String }}
 
 // Ensure that string contents can be serialized correctly
 impl FromStr for AssistantContent {
@@ -32,8 +31,7 @@ impl FromStr for AssistantContent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(AssistantContent::Text {
-            text: s.to_string(),
-        })
+            text: s.to_string()})
     }
 }
 
@@ -42,17 +40,14 @@ impl FromStr for AssistantContent {
 enum StreamDelta {
     Assistant {
         #[serde(deserialize_with = "json_util::string_or_vec")]
-        content: Vec<AssistantContent>,
-    },
-}
+        content: Vec<AssistantContent>}}
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 struct StreamingChoice {
     index: usize,
     delta: StreamDelta,
     logprobs: Value,
-    finish_reason: Option<String>,
-}
+    finish_reason: Option<String>}
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 struct CompletionChunk {
@@ -61,8 +56,7 @@ struct CompletionChunk {
     model: String,
     #[serde(default)]
     system_fingerprint: String,
-    choices: Vec<StreamingChoice>,
-}
+    choices: Vec<StreamingChoice>}
 
 impl CompletionModel {
     pub(crate) async fn stream_internal(

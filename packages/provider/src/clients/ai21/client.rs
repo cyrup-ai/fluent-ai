@@ -26,7 +26,7 @@ use fluent_ai_domain::AsyncTask;
 use crate::AsyncStream;
 
 use arc_swap::{ArcSwap, Guard};
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString};
 use smallvec::{SmallVec, smallvec};
 use std::sync::{Arc, LazyLock};
 use std::sync::atomic::{AtomicU64, AtomicU32, Ordering};
@@ -60,8 +60,7 @@ pub struct AI21Metrics {
     /// Current concurrent requests
     pub concurrent_requests: AtomicU32,
     /// Circuit breaker trips
-    pub circuit_breaker_trips: AtomicU32,
-}
+    pub circuit_breaker_trips: AtomicU32}
 
 /// Global metrics instance
 static METRICS: LazyLock<AI21Metrics> = LazyLock::new(|| AI21Metrics {
@@ -70,8 +69,7 @@ static METRICS: LazyLock<AI21Metrics> = LazyLock::new(|| AI21Metrics {
     failed_requests: AtomicU64::new(0),
     total_response_time_ms: AtomicU64::new(0),
     concurrent_requests: AtomicU32::new(0),
-    circuit_breaker_trips: AtomicU32::new(0),
-});
+    circuit_breaker_trips: AtomicU32::new(0)});
 
 /// Circuit breaker for fault tolerance
 #[derive(Debug)]
@@ -89,14 +87,12 @@ pub struct CircuitBreaker {
 pub enum CircuitBreakerState {
     Closed = 0,
     Open = 1,
-    HalfOpen = 2,
-}
+    HalfOpen = 2}
 
 /// Request timer for performance monitoring
 pub struct RequestTimer {
     start_time: Instant,
-    metrics: &'static AI21Metrics,
-}
+    metrics: &'static AI21Metrics}
 
 /// AI21 client with zero allocation architecture
 #[derive(Clone)]
@@ -114,8 +110,7 @@ pub struct AI21Client {
     timeout: Duration,
     
     /// Maximum retry attempts
-    max_retries: u32,
-}
+    max_retries: u32}
 
 impl CircuitBreaker {
     /// Create new circuit breaker
@@ -126,8 +121,7 @@ impl CircuitBreaker {
             failure_threshold,
             timeout,
             last_failure_time: ArcSwap::from_pointee(None),
-            state: AtomicU32::new(CircuitBreakerState::Closed as u32),
-        }
+            state: AtomicU32::new(CircuitBreakerState::Closed as u32)}
     }
     
     /// Check if request is allowed
@@ -154,8 +148,7 @@ impl CircuitBreaker {
                     true
                 }
             }
-            CircuitBreakerState::HalfOpen => true,
-        }
+            CircuitBreakerState::HalfOpen => true}
     }
     
     /// Record successful request
@@ -191,8 +184,7 @@ impl CircuitBreaker {
             0 => CircuitBreakerState::Closed,
             1 => CircuitBreakerState::Open,
             2 => CircuitBreakerState::HalfOpen,
-            _ => CircuitBreakerState::Closed,
-        }
+            _ => CircuitBreakerState::Closed}
     }
 }
 
@@ -205,8 +197,7 @@ impl RequestTimer {
         
         Self {
             start_time: Instant::now(),
-            metrics,
-        }
+            metrics}
     }
     
     /// Finish timing with success
@@ -252,8 +243,7 @@ impl AI21Client {
             http_client: &HTTP_CLIENT,
             circuit_breaker: &CIRCUIT_BREAKER,
             timeout: Duration::from_secs(config::DEFAULT_TIMEOUT_SECS),
-            max_retries: config::MAX_RETRIES,
-        })
+            max_retries: config::MAX_RETRIES})
     }
     
     /// Update API key with zero downtime using hot-swapping
@@ -327,8 +317,7 @@ impl AI21Client {
             supports_streaming: models::supports_streaming(model),
             supports_tools: models::supports_tools(model),
             temperature_range: models::temperature_range(model),
-            pricing_tier: utils::pricing_tier(model),
-        })
+            pricing_tier: utils::pricing_tier(model)})
     }
     
     /// Build authentication headers with zero allocation
@@ -425,8 +414,7 @@ impl AI21Client {
             },
             concurrent_requests: METRICS.concurrent_requests.load(Ordering::Relaxed),
             circuit_breaker_trips: METRICS.circuit_breaker_trips.load(Ordering::Relaxed),
-            circuit_breaker_state: self.circuit_breaker.get_state(),
-        }
+            circuit_breaker_state: self.circuit_breaker.get_state()}
     }
     
     /// Reset performance metrics
@@ -454,8 +442,7 @@ pub struct PerformanceMetrics {
     pub average_response_time_ms: u64,
     pub concurrent_requests: u32,
     pub circuit_breaker_trips: u32,
-    pub circuit_breaker_state: CircuitBreakerState,
-}
+    pub circuit_breaker_state: CircuitBreakerState}
 
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for AI21Client {
@@ -514,8 +501,7 @@ impl AI21Client {
             .map_err(|e| AI21Error::Configuration {
                 field: "api_key".to_string(),
                 message: format!("Failed to retrieve secure AI21 API key: {}", e),
-                suggestion: "Ensure AI21_API_KEY environment variable is set or credential is stored securely".to_string(),
-            })?;
+                suggestion: "Ensure AI21_API_KEY environment variable is set or credential is stored securely".to_string()})?;
         
         let api_key = credential.value.as_str().to_string();
         Self::new(api_key)
@@ -555,8 +541,7 @@ impl AI21Client {
                 .map_err(|e| AI21Error::Configuration {
                     field: "credential_manager".to_string(),
                     message: format!("Failed to initialize credential manager: {}", e),
-                    suggestion: "Check credential configuration and permissions".to_string(),
-                })?
+                    suggestion: "Check credential configuration and permissions".to_string()})?
         );
         
         // Initialize key rotation if enabled
@@ -567,8 +552,7 @@ impl AI21Client {
                     .map_err(|e| AI21Error::Configuration {
                         field: "audit_logger".to_string(),
                         message: format!("Failed to initialize audit logger: {}", e),
-                        suggestion: "Check audit log permissions and configuration".to_string(),
-                    })?
+                        suggestion: "Check audit log permissions and configuration".to_string()})?
             );
             
             let rotation_policy = crate::security::RotationPolicy::default();
@@ -579,14 +563,12 @@ impl AI21Client {
             ).await.map_err(|e| AI21Error::Configuration {
                 field: "rotation_scheduler".to_string(),
                 message: format!("Failed to initialize key rotation scheduler: {}", e),
-                suggestion: "Check rotation policy configuration".to_string(),
-            })?;
+                suggestion: "Check rotation policy configuration".to_string()})?;
             
             rotation_scheduler.start().await.map_err(|e| AI21Error::Configuration {
                 field: "rotation_scheduler".to_string(),
                 message: format!("Failed to start key rotation scheduler: {}", e),
-                suggestion: "Check rotation scheduler permissions".to_string(),
-            })?;
+                suggestion: "Check rotation scheduler permissions".to_string()})?;
             
             tracing::info!("AI21 security system initialized with key rotation enabled");
         } else {
@@ -605,15 +587,13 @@ impl AI21Client {
                 "ai21",
                 new_api_key.clone(),
                 crate::security::CredentialSource::Runtime {
-                    origin: "manual_update".to_string(),
-                },
+                    origin: "manual_update".to_string()},
             )
             .await
             .map_err(|e| AI21Error::Configuration {
                 field: "api_key_update".to_string(),
                 message: format!("Failed to update API key securely: {}", e),
-                suggestion: "Check new API key format and permissions".to_string(),
-            })?;
+                suggestion: "Check new API key format and permissions".to_string()})?;
         
         // Update the client's internal key as well
         self.update_api_key(new_api_key)?;
@@ -665,8 +645,7 @@ impl Default for AI21Client {
                     http_client: &HTTP_CLIENT,
                     circuit_breaker: &CIRCUIT_BREAKER,
                     timeout: Duration::from_secs(30),
-                    max_retries: 3,
-                }
+                    max_retries: 3}
             }
         }
     }

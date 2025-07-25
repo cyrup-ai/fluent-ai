@@ -27,8 +27,7 @@ pub struct FirecrackerConfig {
     /// Number of vCPUs
     pub vcpu_count: u32,
     /// Network configuration (optional)
-    pub network_config: Option<NetworkConfig>,
-}
+    pub network_config: Option<NetworkConfig>}
 
 /// Network configuration for Firecracker VM
 #[derive(Debug, Clone)]
@@ -38,8 +37,7 @@ pub struct NetworkConfig {
     /// Guest MAC address
     pub guest_mac: String,
     /// IP configuration
-    pub ip_config: String,
-}
+    pub ip_config: String}
 
 impl Default for FirecrackerConfig {
     fn default() -> Self {
@@ -49,8 +47,7 @@ impl Default for FirecrackerConfig {
             rootfs_path: PathBuf::from("/var/lib/firecracker/rootfs.ext4"),
             mem_size_mib: 512,
             vcpu_count: 1,
-            network_config: None,
-        }
+            network_config: None}
     }
 }
 
@@ -59,8 +56,7 @@ pub struct FirecrackerVM {
     config: FirecrackerConfig,
     socket_path: PathBuf,
     api_socket: Option<PathBuf>,
-    vm_id: String,
-}
+    vm_id: String}
 
 impl FirecrackerVM {
     /// Create a new Firecracker VM manager
@@ -72,8 +68,7 @@ impl FirecrackerVM {
             config,
             socket_path,
             api_socket: None,
-            vm_id,
-        }
+            vm_id}
     }
 
     /// Start the Firecracker VM
@@ -306,8 +301,7 @@ impl FirecrackerVM {
             "rust" => "rs",
             "python" => "py",
             "js" => "js",
-            _ => "txt",
-        }
+            _ => "txt"}
     }
 
     /// Get the execution command for a language
@@ -317,8 +311,7 @@ impl FirecrackerVM {
             "rust" => format!("rust-script {file_path}"),
             "python" => format!("python3 {file_path}"),
             "js" => format!("node {file_path}"),
-            _ => format!("cat {file_path}"),
-        }
+            _ => format!("cat {file_path}")}
     }
 }
 
@@ -333,8 +326,7 @@ pub fn create_firecracker_environment(
         rootfs_path: PathBuf::from("/var/lib/firecracker/rootfs.ext4"),
         mem_size_mib: (config.size_gb * 1024) as u32,
         vcpu_count: 1,
-        network_config: None,
-    };
+        network_config: None};
 
     let vm_id = format!("cylo-{}", uuid::Uuid::new_v4());
     let mut vm = FirecrackerVM::new(fc_config, vm_id);

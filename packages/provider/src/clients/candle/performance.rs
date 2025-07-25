@@ -33,8 +33,7 @@ pub struct SimdCapabilities {
     /// SSE4.1 support (128-bit vectors)
     pub has_sse41: bool,
     /// Vector width in f32 elements
-    pub vector_width: usize,
-}
+    pub vector_width: usize}
 
 impl Default for SimdCapabilities {
     fn default() -> Self {
@@ -65,8 +64,7 @@ impl SimdCapabilities {
                 has_avx2,
                 has_fma,
                 has_sse41,
-                vector_width,
-            }
+                vector_width}
         }
 
         #[cfg(target_arch = "aarch64")]
@@ -89,8 +87,7 @@ impl SimdCapabilities {
                 has_avx2: false,
                 has_fma: false,
                 has_sse41: false,
-                vector_width: 1,
-            }
+                vector_width: 1}
         }
     }
 
@@ -121,8 +118,7 @@ pub struct AlignedBuffer {
     /// Current length
     length: usize,
     /// Memory layout for deallocation
-    layout: Layout,
-}
+    layout: Layout}
 
 impl AlignedBuffer {
     /// Create new aligned buffer with specified capacity
@@ -153,8 +149,7 @@ impl AlignedBuffer {
             ptr,
             capacity,
             length: 0,
-            layout,
-        })
+            layout})
     }
 
     /// Get mutable slice of the buffer
@@ -253,8 +248,7 @@ pub struct PerformanceConfig {
     /// Cache-friendly chunk size
     pub chunk_size: usize,
     /// Enable aggressive optimizations
-    pub aggressive_optimizations: bool,
-}
+    pub aggressive_optimizations: bool}
 
 impl Default for PerformanceConfig {
     fn default() -> Self {
@@ -268,8 +262,7 @@ impl Default for PerformanceConfig {
             thread_pool_size: 0, // Auto-detect
             parallel_threshold: 1024,
             chunk_size: capabilities.optimal_chunk_size(8192),
-            aggressive_optimizations: false,
-        }
+            aggressive_optimizations: false}
     }
 }
 
@@ -286,8 +279,7 @@ impl PerformanceConfig {
             thread_pool_size: 0,
             parallel_threshold: 512, // Lower threshold for more parallelism
             chunk_size: capabilities.optimal_chunk_size(16384),
-            aggressive_optimizations: true,
-        }
+            aggressive_optimizations: true}
     }
 
     /// Create configuration for debugging/profiling
@@ -300,8 +292,7 @@ impl PerformanceConfig {
             thread_pool_size: 1,
             parallel_threshold: usize::MAX, // No parallelization
             chunk_size: 64,
-            aggressive_optimizations: false,
-        }
+            aggressive_optimizations: false}
     }
 
     /// Validate configuration
@@ -340,8 +331,7 @@ pub struct BenchmarkResult {
     /// Average time per operation
     pub avg_time_per_op: Duration,
     /// Memory throughput (bytes/second)
-    pub memory_throughput: f64,
-}
+    pub memory_throughput: f64}
 
 impl BenchmarkResult {
     /// Create new benchmark result
@@ -376,8 +366,7 @@ impl BenchmarkResult {
             iterations,
             ops_per_second,
             avg_time_per_op,
-            memory_throughput,
-        }
+            memory_throughput}
     }
 
     /// Get throughput in MB/s
@@ -396,8 +385,7 @@ pub struct PerformanceOptimizer {
     /// Performance statistics
     stats: PerformanceStatistics,
     /// Benchmark results
-    benchmarks: ArcSwap<Vec<BenchmarkResult>>,
-}
+    benchmarks: ArcSwap<Vec<BenchmarkResult>>}
 
 impl PerformanceOptimizer {
     /// Create new performance optimizer
@@ -408,8 +396,7 @@ impl PerformanceOptimizer {
             config,
             simd_capabilities,
             stats: PerformanceStatistics::default(),
-            benchmarks: ArcSwap::from_pointee(Vec::new()),
-        }
+            benchmarks: ArcSwap::from_pointee(Vec::new())}
     }
 
     /// Optimized vector addition with SIMD acceleration
@@ -649,8 +636,7 @@ impl PerformanceOptimizer {
             scalar_operations: self.stats.scalar_operations.load(),
             total_compute_time: Duration::from_nanos(self.stats.total_compute_time.load()),
             simd_capabilities: self.simd_capabilities,
-            config: self.config.clone(),
-        }
+            config: self.config.clone()}
     }
 
     /// Get benchmark results
@@ -675,8 +661,7 @@ pub struct PerformanceStatistics {
     /// SIMD capabilities
     simd_capabilities: SimdCapabilities,
     /// Configuration
-    config: PerformanceConfig,
-}
+    config: PerformanceConfig}
 
 impl Default for PerformanceStatistics {
     fn default() -> Self {
@@ -687,8 +672,7 @@ impl Default for PerformanceStatistics {
             scalar_operations: AtomicCell::new(0),
             total_compute_time: AtomicCell::new(0),
             simd_capabilities: SimdCapabilities::detect(),
-            config: PerformanceConfig::default(),
-        }
+            config: PerformanceConfig::default()}
     }
 }
 

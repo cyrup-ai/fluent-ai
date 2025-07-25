@@ -15,8 +15,7 @@ pub struct FormatStyle {
     /// End position in the text
     pub end: usize,
     /// Style type
-    pub style: StyleType,
-}
+    pub style: StyleType}
 
 impl FormatStyle {
     /// Create new format style with validation
@@ -24,8 +23,7 @@ impl FormatStyle {
     pub fn new(start: usize, end: usize, style: StyleType) -> FormatResult<Self> {
         if start >= end {
             return Err(FormatError::InvalidContent {
-                detail: "Style start must be less than end".to_string(),
-            });
+                detail: "Style start must be less than end".to_string()});
         }
         Ok(Self { start, end, style })
     }
@@ -53,8 +51,7 @@ pub enum StyleType {
     Code,
     Link { url: String },
     Color { rgb: u32 },
-    Background { rgb: u32 },
-}
+    Background { rgb: u32 }}
 
 impl StyleType {
     /// Get style name as static string (zero allocation)
@@ -68,8 +65,7 @@ impl StyleType {
             Self::Code => "code",
             Self::Link { .. } => "link",
             Self::Color { .. } => "color",
-            Self::Background { .. } => "background",
-        }
+            Self::Background { .. } => "background"}
     }
 
     /// Check if style requires additional data
@@ -94,8 +90,7 @@ pub struct ImmutableCustomFormatRule {
     /// Rule priority (higher = applied first)
     pub priority: u32,
     /// Whether rule is enabled
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 impl ImmutableCustomFormatRule {
     /// Create new custom format rule with validation
@@ -109,13 +104,11 @@ impl ImmutableCustomFormatRule {
     ) -> FormatResult<Self> {
         if name.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule name cannot be empty".to_string(),
-            });
+                detail: "Rule name cannot be empty".to_string()});
         }
         if pattern.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule pattern cannot be empty".to_string(),
-            });
+                detail: "Rule pattern cannot be empty".to_string()});
         }
 
         Ok(Self {
@@ -123,8 +116,7 @@ impl ImmutableCustomFormatRule {
             pattern,
             replacement,
             priority,
-            enabled,
-        })
+            enabled})
     }
 
     /// Validate rule configuration
@@ -132,13 +124,11 @@ impl ImmutableCustomFormatRule {
     pub fn validate(&self) -> FormatResult<()> {
         if self.name.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule name cannot be empty".to_string(),
-            });
+                detail: "Rule name cannot be empty".to_string()});
         }
         if self.pattern.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule pattern cannot be empty".to_string(),
-            });
+                detail: "Rule pattern cannot be empty".to_string()});
         }
         // TODO: Validate regex pattern syntax
         Ok(())

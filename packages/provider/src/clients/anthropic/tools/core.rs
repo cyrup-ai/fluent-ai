@@ -3,7 +3,6 @@
 //! Foundational types and traits for the Anthropic tool system with
 //! optimal performance, lock-free operations, and elegant ergonomics.
 
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use bytes::Bytes;
@@ -22,8 +21,7 @@ pub enum SchemaType {
     /// Manual JSON schema definition
     JsonSchema,
     /// Inline parameter definitions
-    Inline,
-}
+    Inline}
 
 /// Zero-allocation closure storage types for event handlers
 pub type InvocationHandler<D, Req, Res> =
@@ -51,8 +49,7 @@ pub enum ToolRegistrationError {
     /// Tool capacity exceeded
     CapacityExceeded { limit: usize },
     /// Type mismatch in tool parameters
-    TypeMismatch { expected: String, actual: String },
-}
+    TypeMismatch { expected: String, actual: String }}
 
 /// Tool execution errors with comprehensive coverage
 #[derive(Debug, thiserror::Error)]
@@ -70,8 +67,7 @@ pub enum ToolExecutionError {
     #[error("Schema validation failed: {details}")]
     ValidationFailed { details: String },
     #[error("Missing required property: {property}")]
-    MissingProperty { property: String },
-}
+    MissingProperty { property: String }}
 
 impl std::fmt::Display for ToolRegistrationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -122,8 +118,7 @@ pub struct ToolExecutionContext {
     /// User context information
     pub user_id: Option<String>,
     /// Conversation context
-    pub conversation_id: Option<String>,
-}
+    pub conversation_id: Option<String>}
 
 /// Real-time tool output emitter with zero-allocation streaming
 pub struct Emitter {
@@ -132,16 +127,14 @@ pub struct Emitter {
     /// Atomic completion flag
     completed: AtomicBool,
     /// Performance metrics
-    chunk_count: AtomicU32,
-}
+    chunk_count: AtomicU32}
 
 /// Tool output chunk for streaming results
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolOutputChunk {
     pub tool_use_id: String,
     pub content: String,
-    pub chunk_type: ChunkType,
-}
+    pub chunk_type: ChunkType}
 
 /// Type of output chunk for semantic streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,8 +146,7 @@ pub enum ChunkType {
     /// Error information
     Error,
     /// Completion marker
-    Complete,
-}
+    Complete}
 
 /// Conversation state for tool execution context
 pub struct Conversation {
@@ -163,8 +155,7 @@ pub struct Conversation {
     /// Conversation metadata
     pub metadata: HashMap<String, Value>,
     /// Active tool tracking
-    pub active_tools: Vec<String>,
-}
+    pub active_tools: Vec<String>}
 
 /// Chain control for tool execution flow
 pub struct ChainControl {
@@ -173,8 +164,7 @@ pub struct ChainControl {
     /// Error count
     pub error_count: AtomicU32,
     /// Retry attempts
-    pub retry_count: AtomicU32,
-}
+    pub retry_count: AtomicU32}
 
 impl Emitter {
     /// Create new emitter with bounded channel for backpressure
@@ -184,8 +174,7 @@ impl Emitter {
         let emitter = Self {
             sender,
             completed: AtomicBool::new(false),
-            chunk_count: AtomicU32::new(0),
-        };
+            chunk_count: AtomicU32::new(0)};
         (emitter, receiver)
     }
 
@@ -215,8 +204,7 @@ impl Emitter {
         let completion_chunk = ToolOutputChunk {
             tool_use_id: "completion".to_string(),
             content: "".to_string(),
-            chunk_type: ChunkType::Complete,
-        };
+            chunk_type: ChunkType::Complete};
 
         self.sender
             .send(completion_chunk)
@@ -228,8 +216,7 @@ impl Emitter {
     pub fn metrics(&self) -> EmitterMetrics {
         EmitterMetrics {
             chunks_emitted: self.chunk_count.load(Ordering::Relaxed),
-            is_completed: self.completed.load(Ordering::Acquire),
-        }
+            is_completed: self.completed.load(Ordering::Acquire)}
     }
 }
 
@@ -237,8 +224,7 @@ impl Emitter {
 #[derive(Debug, Clone)]
 pub struct EmitterMetrics {
     pub chunks_emitted: u32,
-    pub is_completed: bool,
-}
+    pub is_completed: bool}
 
 /// Tool execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -247,8 +233,7 @@ pub struct ToolExecutionResult {
     pub name: String,
     pub result: ToolOutput,
     pub execution_time_ms: u64,
-    pub memory_usage_bytes: u64,
-}
+    pub memory_usage_bytes: u64}
 
 /// Tool output data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -258,16 +243,12 @@ pub enum ToolOutput {
     Json(Value),
     Error {
         message: String,
-        code: Option<String>,
-    },
+        code: Option<String>},
     Binary {
         data: Bytes,
-        mime_type: String,
-    },
+        mime_type: String},
     Stream {
-        chunks: Vec<ToolOutputChunk>,
-    },
-}
+        chunks: Vec<ToolOutputChunk>}}
 
 impl Default for ToolExecutionContext {
     fn default() -> Self {
@@ -277,8 +258,7 @@ impl Default for ToolExecutionContext {
             metadata: HashMap::new(),
             tool_use_id: String::new(),
             user_id: None,
-            conversation_id: None,
-        }
+            conversation_id: None}
     }
 }
 
@@ -309,8 +289,7 @@ impl Into<ToolOutputChunk> for String {
         ToolOutputChunk {
             tool_use_id: "default".to_string(),
             content: self,
-            chunk_type: ChunkType::Text,
-        }
+            chunk_type: ChunkType::Text}
     }
 }
 
@@ -319,8 +298,7 @@ impl Into<ToolOutputChunk> for &str {
         ToolOutputChunk {
             tool_use_id: "default".to_string(),
             content: self.to_string(),
-            chunk_type: ChunkType::Text,
-        }
+            chunk_type: ChunkType::Text}
     }
 }
 
@@ -331,8 +309,7 @@ impl ChainControl {
         Self {
             should_continue: AtomicBool::new(true),
             error_count: AtomicU32::new(0),
-            retry_count: AtomicU32::new(0),
-        }
+            retry_count: AtomicU32::new(0)}
     }
 
     /// Stop execution chain

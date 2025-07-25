@@ -4,24 +4,21 @@
 
 use crate::theme::{
     SemanticColor, get_current_theme, write_colored, write_colored_bold,
-    write_colored_italic,
-};
+    write_colored_italic};
 use crate::{BufferedStandardStream, ColorChoice, WriteColor};
 use std::io::{self, Write};
 
 /// Zero-allocation message builder for structured colored output
 #[derive(Debug)]
 pub struct ColoredMessage {
-    parts: Vec<MessagePart>,
-}
+    parts: Vec<MessagePart>}
 
 /// Individual part of a colored message
 #[derive(Debug, Clone)]
 struct MessagePart {
     text: String,
     semantic: SemanticColor,
-    style: MessageStyle,
-}
+    style: MessageStyle}
 
 /// Text styling options
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,8 +26,7 @@ pub enum MessageStyle {
     Normal,
     Bold,
     Italic,
-    BoldItalic,
-}
+    BoldItalic}
 
 impl ColoredMessage {
     /// Create new empty colored message
@@ -51,8 +47,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Primary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -62,8 +57,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Secondary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -73,8 +67,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Accent,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -84,8 +77,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Success,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -95,8 +87,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Warning,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -106,8 +97,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Error,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -117,8 +107,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Info,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -128,8 +117,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::Debug,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -139,8 +127,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::TextPrimary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -150,8 +137,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::TextSecondary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -161,8 +147,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: text.into(),
             semantic: SemanticColor::TextMuted,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -172,8 +157,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: "\n".to_string(),
             semantic: SemanticColor::TextPrimary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -183,8 +167,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: " ".to_string(),
             semantic: SemanticColor::TextPrimary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -194,8 +177,7 @@ impl ColoredMessage {
         self.parts.push(MessagePart {
             text: "\t".to_string(),
             semantic: SemanticColor::TextPrimary,
-            style: MessageStyle::Normal,
-        });
+            style: MessageStyle::Normal});
         self
     }
 
@@ -206,8 +188,7 @@ impl ColoredMessage {
             last.style = match last.style {
                 MessageStyle::Normal => MessageStyle::Bold,
                 MessageStyle::Italic => MessageStyle::BoldItalic,
-                other => other,
-            };
+                other => other};
         }
         self
     }
@@ -219,8 +200,7 @@ impl ColoredMessage {
             last.style = match last.style {
                 MessageStyle::Normal => MessageStyle::Italic,
                 MessageStyle::Bold => MessageStyle::BoldItalic,
-                other => other,
-            };
+                other => other};
         }
         self
     }

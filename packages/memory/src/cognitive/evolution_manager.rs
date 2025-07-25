@@ -14,23 +14,20 @@ use crate::cognitive::types::CognitiveError;
 pub struct EvolutionManager {
     current_best: Arc<RwLock<CodeState>>,
     failed_attempts: Arc<RwLock<Vec<FailedAttempt>>>,
-    generation_count: Arc<RwLock<u64>>,
-}
+    generation_count: Arc<RwLock<u64>>}
 
 #[derive(Debug, Clone)]
 struct FailedAttempt {
     action: String,
     reasons: Vec<String>,
-    suggestions: Vec<String>,
-}
+    suggestions: Vec<String>}
 
 impl EvolutionManager {
     pub fn new(initial_state: CodeState) -> Self {
         Self {
             current_best: Arc::new(RwLock::new(initial_state)),
             failed_attempts: Arc::new(RwLock::new(Vec::new())),
-            generation_count: Arc::new(RwLock::new(0)),
-        }
+            generation_count: Arc::new(RwLock::new(0))}
     }
 
     /// Process committee decision and update best state if progress made

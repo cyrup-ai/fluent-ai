@@ -4,8 +4,7 @@ use super::{
     error::{DecoderError, Result},
     state::DecoderState,
     stats::DecoderStats,
-    validation,
-};
+    validation};
 
 /// Configuration for the streaming decoder
 #[derive(Debug, Clone, Copy)]
@@ -15,8 +14,7 @@ pub struct DecoderConfig {
     /// Whether to handle partial sequences incrementally
     pub enable_incremental: bool,
     /// Maximum allowed pending bytes before error
-    pub max_pending_bytes: usize,
-}
+    pub max_pending_bytes: usize}
 
 impl Default for DecoderConfig {
     fn default() -> Self {
@@ -35,8 +33,7 @@ pub struct StreamingDecoder {
     /// Decoder configuration
     config: DecoderConfig,
     /// Statistics about decoder operations
-    stats: DecoderStats,
-}
+    stats: DecoderStats}
 
 impl Default for StreamingDecoder {
     fn default() -> Self {
@@ -50,8 +47,7 @@ impl StreamingDecoder {
         Self {
             state: DecoderState::ready(),
             config,
-            stats: DecoderStats::new(),
-        }
+            stats: DecoderStats::new()}
     }
 
     /// Reset the decoder to its initial state
@@ -74,8 +70,7 @@ impl StreamingDecoder {
             let result = String::from_utf8(bytes.to_vec())
                 .map_err(|e| DecoderError::InvalidUtf8Sequence {
                     position: 0,
-                    bytes: e.into_bytes(),
-                })?;
+                    bytes: e.into_bytes()})?;
             self.stats.total_chars_decoded += result.len();
             return Ok(result);
         }
@@ -136,8 +131,7 @@ impl StreamingDecoder {
                 combined.extend_from_slice(new_bytes);
                 combined
             }
-            _ => new_bytes.to_vec(),
-        }
+            _ => new_bytes.to_vec()}
     }
 
     /// Find the longest valid UTF-8 sequence in the input
@@ -166,15 +160,13 @@ impl StreamingDecoder {
                 } else {
                     return Err(DecoderError::UnexpectedEof {
                         expected: seq_len,
-                        actual: bytes.len() - end + 1,
-                    });
+                        actual: bytes.len() - end + 1});
                 }
             } else if !validation::is_continuation_byte(bytes[end - 1]) {
                 // Invalid UTF-8 sequence
                 return Err(DecoderError::InvalidUtf8Sequence {
                     position: end - 1,
-                    bytes: bytes.to_vec(),
-                });
+                    bytes: bytes.to_vec()});
             }
             end -= 1;
         }
@@ -189,8 +181,7 @@ impl StreamingDecoder {
             if pending.len() > self.config.max_pending_bytes {
                 return Err(DecoderError::InvalidUtf8Sequence {
                     position: 0,
-                    bytes: pending.to_vec(),
-                });
+                    bytes: pending.to_vec()});
             }
 
             if self.config.enable_incremental && !is_complete {
@@ -213,7 +204,6 @@ impl StreamingDecoder {
 
         String::from_utf8(bytes.to_vec()).map_err(|e| DecoderError::InvalidUtf8Sequence {
             position: e.utf8_error().valid_up_to(),
-            bytes: bytes.to_vec(),
-        })
+            bytes: bytes.to_vec()})
     }
 }

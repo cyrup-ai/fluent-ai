@@ -52,8 +52,7 @@ pub enum CognitiveError {
     SerializationError(String),
 
     #[error("Unknown error: {0}")]
-    Unknown(String),
-}
+    Unknown(String)}
 
 /// Enhanced query with cognitive context
 #[derive(Debug, Clone)]
@@ -66,24 +65,21 @@ pub struct EnhancedQuery {
     pub temporal_context: Option<TemporalContext>,
     pub cognitive_hints: Vec<String>,
     pub expected_complexity: f64,
-    pub priority: u32,
-}
+    pub priority: u32}
 
 /// Temporal context for queries
 #[derive(Debug, Clone)]
 pub struct TemporalContext {
     pub timestamp: std::time::Instant,
     pub duration: std::time::Duration,
-    pub temporal_type: TemporalType,
-}
+    pub temporal_type: TemporalType}
 
 #[derive(Debug, Clone)]
 pub enum TemporalType {
     Past,
     Present,
     Future,
-    Timeless,
-}
+    Timeless}
 
 /// Routing strategy for query processing
 #[derive(Debug, Clone)]
@@ -92,8 +88,7 @@ pub enum RoutingStrategy {
     Attention,
     Causal,
     Emergent,
-    Hybrid(Vec<RoutingStrategy>),
-}
+    Hybrid(Vec<RoutingStrategy>)}
 
 /// Routing decision with alternatives and reasoning
 #[derive(Debug, Clone)]
@@ -102,16 +97,14 @@ pub struct RoutingDecision {
     pub target_context: String,
     pub confidence: f64,
     pub alternatives: Vec<AlternativeRoute>,
-    pub reasoning: String,
-}
+    pub reasoning: String}
 
 /// Alternative routing option
 #[derive(Debug, Clone)]
 pub struct AlternativeRoute {
     pub strategy: RoutingStrategy,
     pub confidence: f64,
-    pub estimated_quality: f64,
-}
+    pub estimated_quality: f64}
 
 /// Types of entanglement between quantum states
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -120,8 +113,7 @@ pub enum EntanglementType {
     GHZ,
     Werner,
     Cluster,
-    Custom,
-}
+    Custom}
 
 impl fmt::Display for EntanglementType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -130,7 +122,6 @@ impl fmt::Display for EntanglementType {
             EntanglementType::GHZ => write!(f, "GHZ"),
             EntanglementType::Werner => write!(f, "Werner"),
             EntanglementType::Cluster => write!(f, "Cluster"),
-            EntanglementType::Custom => write!(f, "Custom"),
-        }
+            EntanglementType::Custom => write!(f, "Custom")}
     }
 }

@@ -14,7 +14,7 @@ use super::tool_definition::ToolDefinition;
 use crate::model::{ValidationError, ValidationResult};
 use crate::types::CandleDocument;
 use crate::types::ZeroOneOrMany;
-use crate::types::candle_chat::message::CandleMessage;
+use crate::types::CandleMessage;
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,8 +34,7 @@ pub struct CandleCompletionRequest {
     /// Size of chunks for streaming
     pub chunk_size: Option<usize>,
     /// Additional provider-specific parameters
-    pub additional_params: Option<Value>,
-}
+    pub additional_params: Option<Value>}
 
 /// Builder for `CompletionRequest`
 #[derive(Clone)]
@@ -47,8 +46,7 @@ pub struct CompletionRequestBuilder {
     temperature: f64,
     max_tokens: Option<NonZeroU64>,
     chunk_size: Option<usize>,
-    additional_params: Option<Value>,
-}
+    additional_params: Option<Value>}
 
 /// Error type for completion request validation
 #[derive(Debug, Error)]
@@ -59,8 +57,7 @@ pub enum CompletionRequestError {
 
     /// Validation error
     #[error(transparent)]
-    Validation(#[from] ValidationError),
-}
+    Validation(#[from] ValidationError)}
 
 impl CandleCompletionRequest {
     /// Create a new builder with required fields
@@ -79,8 +76,7 @@ impl CandleCompletionRequest {
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
                     TEMPERATURE_RANGE.end()
-                ),
-            });
+                )});
         }
 
         // Validate max_tokens
@@ -89,8 +85,7 @@ impl CandleCompletionRequest {
                 return Err(ValidationError::InvalidRange {
                     parameter: "max_tokens".into(),
                     actual: max_tokens.to_string(),
-                    expected: format!("less than or equal to {}", MAX_TOKENS),
-                });
+                    expected: format!("less than or equal to {}", MAX_TOKENS)});
             }
         }
 
@@ -100,8 +95,7 @@ impl CandleCompletionRequest {
                 return Err(ValidationError::InvalidRange {
                     parameter: "chunk_size".into(),
                     actual: chunk_size.to_string(),
-                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE),
-                });
+                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE)});
             }
         }
 
@@ -119,8 +113,7 @@ impl CandleCompletionRequest {
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 }
 
@@ -135,8 +128,7 @@ impl CompletionRequestBuilder {
             temperature: 1.0,
             max_tokens: None,
             chunk_size: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 
     /// Set the system prompt
@@ -200,8 +192,7 @@ impl CompletionRequestBuilder {
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,
-            additional_params: self.additional_params,
-        };
+            additional_params: self.additional_params};
 
         // Validate the request before returning
         request

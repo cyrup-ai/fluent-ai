@@ -4,16 +4,13 @@
 //! that can be awaited, following the pattern of no async_trait or Box<dyn Future>
 
 use fluent_ai_memory::memory::{
-    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager,
-};
+    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager};
 use futures_util::StreamExt;
 use surrealdb::{
     Surreal,
     engine::{
         any::Any,
-        local::{Db, Mem},
-    },
-}; // For stream operations
+        local::{Db, Mem}}}; // For stream operations
 
 async fn create_mem_db() -> Result<Surreal<Any>, Box<dyn std::error::Error>> {
     // Create in-memory database
@@ -61,8 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // We can await it
     match query.await? {
         Some(retrieved) => println!("✅ Retrieved: {}", retrieved.content),
-        None => println!("❌ Memory not found"),
-    }
+        None => println!("❌ Memory not found")}
 
     // 3. Demonstrating MemoryStream (Stream type)
     println!("\n3. MemoryStream - Async Stream");
@@ -90,8 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("  📄 {}: {}", memory.id, memory.content);
                 count += 1;
             }
-            Err(e) => println!("  ❌ Error: {e}"),
-        }
+            Err(e) => println!("  ❌ Error: {e}")}
     }
     println!("Total streamed: {count} memories");
 
@@ -163,8 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match memory_manager.get_memory("non_existent").await {
         Ok(Some(mem)) => println!("Found: {}", mem.id),
         Ok(None) => println!("✅ Correctly returned None for non-existent memory"),
-        Err(e) => println!("Error: {e}"),
-    }
+        Err(e) => println!("Error: {e}")}
 
     // 7. Demonstrating RelationshipStream
     println!("\n7. RelationshipStream");

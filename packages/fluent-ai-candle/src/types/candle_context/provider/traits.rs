@@ -14,8 +14,7 @@ pub struct EmbeddingModelInfo {
     pub version: String,
     pub vector_dimension: usize,
     pub max_input_length: usize,
-    pub supported_languages: Vec<String>,
-}
+    pub supported_languages: Vec<String>}
 
 impl EmbeddingModelInfo {
     /// Create new embedding model info
@@ -30,8 +29,7 @@ impl EmbeddingModelInfo {
             version,
             vector_dimension,
             max_input_length,
-            supported_languages: Vec::new(),
-        }
+            supported_languages: Vec::new()}
     }
 
     /// Add supported language
@@ -65,8 +63,7 @@ pub struct MemoryManagerInfo {
     pub version: String,
     pub storage_type: String,
     pub max_memory_nodes: Option<usize>,
-    pub supported_operations: Vec<String>,
-}
+    pub supported_operations: Vec<String>}
 
 impl MemoryManagerInfo {
     /// Create new memory manager info
@@ -76,8 +73,7 @@ impl MemoryManagerInfo {
             version,
             storage_type,
             max_memory_nodes: None,
-            supported_operations: Vec::new(),
-        }
+            supported_operations: Vec::new()}
     }
 
     /// Set maximum memory nodes

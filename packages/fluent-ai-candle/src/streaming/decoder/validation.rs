@@ -32,8 +32,7 @@ pub fn validate_utf8_sequence(bytes: &[u8]) -> Result<()> {
     if bytes.len() < expected_len {
         return Err(DecoderError::UnexpectedEof {
             expected: expected_len,
-            actual: bytes.len(),
-        });
+            actual: bytes.len()});
     }
 
     // Check continuation bytes
@@ -41,8 +40,7 @@ pub fn validate_utf8_sequence(bytes: &[u8]) -> Result<()> {
         if (byte & 0xC0) != 0x80 {
             return Err(DecoderError::InvalidContinuationByte {
                 position: i + 1,
-                byte,
-            });
+                byte});
         }
     }
 
@@ -53,22 +51,19 @@ pub fn validate_utf8_sequence(bytes: &[u8]) -> Result<()> {
             n if n <= 0x7F => 1,
             n if n <= 0x7FF => 2,
             n if n <= 0xFFFF => 3,
-            _ => 4,
-        };
+            _ => 4};
 
         if expected_len > min_bytes {
             return Err(DecoderError::OverlongEncoding {
                 position: 0,
-                codepoint,
-            });
+                codepoint});
         }
 
         // Check for invalid codepoints
         if (0xD800..=0xDFFF).contains(&codepoint) || codepoint > 0x10FFFF {
             return Err(DecoderError::InvalidCodepoint {
                 position: 0,
-                codepoint,
-            });
+                codepoint});
         }
     }
 
@@ -101,8 +96,7 @@ pub fn decode_codepoint(bytes: &[u8]) -> Result<Option<u32>> {
         _ => {
             return Err(DecoderError::InvalidUtf8Sequence {
                 position: 0,
-                bytes: bytes.to_vec(),
-            })
+                bytes: bytes.to_vec()})
         }
     };
 

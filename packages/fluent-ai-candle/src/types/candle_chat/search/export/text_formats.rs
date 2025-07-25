@@ -30,10 +30,10 @@ impl TextFormatsExporter {
         xml.push_str("  <results>\n");
         for result in results {
             xml.push_str("    <result>\n");
-            xml.push_str(&format!("      <id>{}</id>\n", Self::escape_xml(&result.message.message.id)));
-            xml.push_str(&format!("      <user>{}</user>\n", Self::escape_xml(&result.message.message.user.as_deref().unwrap_or(""))));
-            xml.push_str(&format!("      <content>{}</content>\n", Self::escape_xml(&result.message.message.content)));
-            xml.push_str(&format!("      <timestamp>{}</timestamp>\n", result.message.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
+            xml.push_str(&format!("      <id>{}</id>\n", Self::escape_xml(&result.message.id)));
+            xml.push_str(&format!("      <role>{}</role>\n", Self::escape_xml(&result.message.role.to_string())));
+            xml.push_str(&format!("      <content>{}</content>\n", Self::escape_xml(&result.message.content)));
+            xml.push_str(&format!("      <timestamp>{}</timestamp>\n", result.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
             
             if options.include_scores {
                 xml.push_str(&format!("      <relevance_score>{}</relevance_score>\n", result.relevance_score));
@@ -66,9 +66,9 @@ impl TextFormatsExporter {
 
         for (i, result) in results.iter().enumerate() {
             text.push_str(&format!("Result {}\n", i + 1));
-            text.push_str(&format!("User: {}\n", result.message.message.user.as_deref().unwrap_or("")));
-            text.push_str(&format!("Content: {}\n", result.message.message.content));
-            text.push_str(&format!("Timestamp: {}\n", result.message.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
+            text.push_str(&format!("Role: {}\n", result.message.role.to_string()));
+            text.push_str(&format!("Content: {}\n", result.message.content));
+            text.push_str(&format!("Timestamp: {}\n", result.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
             
             if options.include_scores {
                 text.push_str(&format!("Relevance Score: {:.3}\n", result.relevance_score));
@@ -99,9 +99,9 @@ impl TextFormatsExporter {
 
         for (i, result) in results.iter().enumerate() {
             md.push_str(&format!("## Result {}\n\n", i + 1));
-            md.push_str(&format!("**User:** {}\n\n", result.message.message.user.as_deref().unwrap_or("")));
-            md.push_str(&format!("**Content:** {}\n\n", result.message.message.content));
-            md.push_str(&format!("**Timestamp:** {}\n\n", result.message.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
+            md.push_str(&format!("**Role:** {}\n\n", result.message.role.to_string()));
+            md.push_str(&format!("**Content:** {}\n\n", result.message.content));
+            md.push_str(&format!("**Timestamp:** {}\n\n", result.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
             
             if options.include_scores {
                 md.push_str(&format!("**Relevance Score:** {:.3}\n\n", result.relevance_score));
@@ -139,9 +139,9 @@ impl TextFormatsExporter {
         for (i, result) in results.iter().enumerate() {
             html.push_str("<div class=\"result\">\n");
             html.push_str(&format!("<h3>Result {}</h3>\n", i + 1));
-            html.push_str(&format!("<p class=\"user\">User: {}</p>\n", Self::escape_html(&result.message.message.user.as_deref().unwrap_or(""))));
-            html.push_str(&format!("<p>Content: {}</p>\n", Self::escape_html(&result.message.message.content)));
-            html.push_str(&format!("<p>Timestamp: {}</p>\n", result.message.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
+            html.push_str(&format!("<p class=\"role\">Role: {}</p>\n", Self::escape_html(&result.message.role.to_string())));
+            html.push_str(&format!("<p>Content: {}</p>\n", Self::escape_html(&result.message.content)));
+            html.push_str(&format!("<p>Timestamp: {}</p>\n", result.message.timestamp.map(|t| t.to_string()).unwrap_or_default()));
             
             if options.include_scores {
                 html.push_str(&format!("<p class=\"score\">Relevance Score: {:.3}</p>\n", result.relevance_score));
@@ -158,22 +158,18 @@ impl TextFormatsExporter {
     /// Export search statistics as text
     pub fn export_statistics_as_text(stats: &SearchStatistics) -> String {
         format!(
-            "Search Statistics\n=================\nTotal Queries: {}\nTotal Results: {}\nAverage Query Time: {:.2}ms\nCache Hit Rate: {:.1}%\n",
+            "Search Statistics\n=================\nTotal Queries: {}\nAverage Query Time: {:.2}ms\n",
             stats.total_queries,
-            stats.total_results,
-            stats.average_query_time,
-            stats.cache_hit_rate * 100.0
+            stats.average_query_time
         )
     }
 
     /// Export search statistics as Markdown
     pub fn export_statistics_as_markdown(stats: &SearchStatistics) -> String {
         format!(
-            "# Search Statistics\n\n- **Total Queries:** {}\n- **Total Results:** {}\n- **Average Query Time:** {:.2}ms\n- **Cache Hit Rate:** {:.1}%\n",
+            "# Search Statistics\n\n- **Total Queries:** {}\n- **Average Query Time:** {:.2}ms\n",
             stats.total_queries,
-            stats.total_results,
-            stats.average_query_time,
-            stats.cache_hit_rate * 100.0
+            stats.average_query_time
         )
     }
 

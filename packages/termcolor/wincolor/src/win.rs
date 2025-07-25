@@ -3,8 +3,7 @@ use std::io;
 use winapi::shared::minwindef::WORD;
 use winapi::um::wincon::{
     self, FOREGROUND_BLUE as FG_BLUE, FOREGROUND_GREEN as FG_GREEN,
-    FOREGROUND_INTENSITY as FG_INTENSITY, FOREGROUND_RED as FG_RED,
-};
+    FOREGROUND_INTENSITY as FG_INTENSITY, FOREGROUND_RED as FG_RED};
 use winapi_util as winutil;
 
 const FG_CYAN: WORD = FG_BLUE | FG_GREEN;
@@ -28,22 +27,19 @@ const FG_WHITE: WORD = FG_BLUE | FG_GREEN | FG_RED;
 pub struct Console {
     kind: HandleKind,
     start_attr: TextAttributes,
-    cur_attr: TextAttributes,
-}
+    cur_attr: TextAttributes}
 
 #[derive(Clone, Copy, Debug)]
 enum HandleKind {
     Stdout,
-    Stderr,
-}
+    Stderr}
 
 impl HandleKind {
     #[inline]
     fn handle(&self) -> winutil::HandleRef {
         match *self {
             HandleKind::Stdout => winutil::HandleRef::stdout(),
-            HandleKind::Stderr => winutil::HandleRef::stderr(),
-        }
+            HandleKind::Stderr => winutil::HandleRef::stderr()}
     }
 }
 
@@ -151,8 +147,7 @@ struct TextAttributes {
     fg_color: Color,
     fg_intense: Intense,
     bg_color: Color,
-    bg_intense: Intense,
-}
+    bg_intense: Intense}
 
 impl TextAttributes {
     #[inline(always)]
@@ -171,8 +166,7 @@ impl TextAttributes {
             fg_color: Color::from_fg(word),
             fg_intense: Intense::from_fg(word),
             bg_color: Color::from_bg(word),
-            bg_intense: Intense::from_bg(word),
-        }
+            bg_intense: Intense::from_bg(word)}
     }
 }
 
@@ -181,8 +175,7 @@ impl TextAttributes {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Intense {
     Yes,
-    No,
-}
+    No}
 
 impl Intense {
     #[inline(always)]
@@ -199,8 +192,7 @@ impl Intense {
     fn to_fg(&self) -> WORD {
         match *self {
             Intense::No => 0,
-            Intense::Yes => FG_INTENSITY,
-        }
+            Intense::Yes => FG_INTENSITY}
     }
 
     #[inline(always)]
@@ -224,8 +216,7 @@ pub enum Color {
     Cyan,
     Magenta,
     Yellow,
-    White,
-}
+    White}
 
 impl Color {
     #[inline(always)]
@@ -248,8 +239,7 @@ impl Color {
             Color::Cyan => FG_CYAN,
             Color::Magenta => FG_MAGENTA,
             Color::Yellow => FG_YELLOW,
-            Color::White => FG_WHITE,
-        }
+            Color::White => FG_WHITE}
     }
 
     #[inline(always)]
@@ -262,7 +252,6 @@ impl Color {
             FG_MAGENTA => Color::Magenta,
             FG_YELLOW => Color::Yellow,
             FG_WHITE => Color::White,
-            _ => Color::Black,
-        }
+            _ => Color::Black}
     }
 }

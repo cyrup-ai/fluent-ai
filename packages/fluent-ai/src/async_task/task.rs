@@ -11,8 +11,7 @@ use crossbeam_channel::{Receiver, Sender, bounded};
 /// Pure streaming task - NO Future implementation!
 /// Zero-allocation one-shot streaming built on crossbeam
 pub struct AsyncTask<T> {
-    rx: Receiver<T>,
-}
+    rx: Receiver<T>}
 
 impl<T> AsyncTask<T>
 where

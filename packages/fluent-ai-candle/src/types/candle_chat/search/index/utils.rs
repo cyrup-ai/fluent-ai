@@ -32,11 +32,11 @@ impl ChatSearchIndex {
         let mut intersection = Vec::new();
         let ids2: std::collections::HashSet<_> = results2
             .iter()
-            .map(|r| r.message.message.id.clone().unwrap_or_default())
+            .map(|r| r.message.id.clone())
             .collect();
 
         for result in results1 {
-            if ids2.contains(&result.message.message.id.clone().unwrap_or_default()) {
+            if ids2.contains(&result.message.id.clone()) {
                 intersection.push(result);
             }
         }

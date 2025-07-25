@@ -3,14 +3,12 @@
 //! Provides blazing-fast real-time streaming for OpenAI chat completions, function calls,
 //! and tool use with comprehensive SSE parsing and no unsafe operations.
 
-use std::collections::HashMap;
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
 use super::tools::{
-    OpenAIFunctionCall as ToolsOpenAIFunctionCall, OpenAIToolCall as ToolsOpenAIToolCall,
-};
+    OpenAIFunctionCall as ToolsOpenAIFunctionCall, OpenAIToolCall as ToolsOpenAIToolCall};
 use super::{OpenAIError, OpenAIMessage, OpenAIResult};
 use crate::AsyncStream;
 use crate::ZeroOneOrMany;
@@ -27,8 +25,7 @@ pub struct OpenAIStreamChunk {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<StreamUsage>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_fingerprint: Option<String>,
-}
+    pub system_fingerprint: Option<String>}
 
 /// Individual choice in streaming response
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,8 +35,7 @@ pub struct StreamChoice {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logprobs: Option<LogProbs>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 /// Delta containing incremental content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,8 +47,7 @@ pub struct Delta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<ZeroOneOrMany<ToolCallDelta>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_call: Option<FunctionCallDelta>,
-}
+    pub function_call: Option<FunctionCallDelta>}
 
 /// Tool call delta for streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,8 +58,7 @@ pub struct ToolCallDelta {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub call_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function: Option<FunctionCallDelta>,
-}
+    pub function: Option<FunctionCallDelta>}
 
 /// Function call delta for streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,14 +66,12 @@ pub struct FunctionCallDelta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<String>,
-}
+    pub arguments: Option<String>}
 
 /// Log probabilities for streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogProbs {
-    pub content: Option<ZeroOneOrMany<TokenLogProb>>,
-}
+    pub content: Option<ZeroOneOrMany<TokenLogProb>>}
 
 /// Token log probability
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,16 +79,14 @@ pub struct TokenLogProb {
     pub token: String,
     pub logprob: f32,
     pub bytes: Option<ZeroOneOrMany<u8>>,
-    pub top_logprobs: ZeroOneOrMany<TopLogProb>,
-}
+    pub top_logprobs: ZeroOneOrMany<TopLogProb>}
 
 /// Top log probability alternative
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TopLogProb {
     pub token: String,
     pub logprob: f32,
-    pub bytes: Option<ZeroOneOrMany<u8>>,
-}
+    pub bytes: Option<ZeroOneOrMany<u8>>}
 
 /// Usage information for streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,8 +97,7 @@ pub struct StreamUsage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completion_tokens_details: Option<CompletionTokensDetails>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub prompt_tokens_details: Option<PromptTokensDetails>,
-}
+    pub prompt_tokens_details: Option<PromptTokensDetails>}
 
 /// Detailed completion token breakdown
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,8 +109,7 @@ pub struct CompletionTokensDetails {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepted_prediction_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rejected_prediction_tokens: Option<u32>,
-}
+    pub rejected_prediction_tokens: Option<u32>}
 
 /// Detailed prompt token breakdown
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,16 +117,14 @@ pub struct PromptTokensDetails {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cached_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub audio_tokens: Option<u32>,
-}
+    pub audio_tokens: Option<u32>}
 
 /// SSE event parser for OpenAI streams
 #[derive(Debug, Clone)]
 pub struct SSEParser {
     buffer: String,
     event_type: Option<String>,
-    data_lines: Vec<String>,
-}
+    data_lines: Vec<String>}
 
 /// Parsed SSE event
 #[derive(Debug, Clone)]
@@ -146,8 +132,7 @@ pub struct SSEEvent {
     pub event_type: Option<String>,
     pub data: String,
     pub id: Option<String>,
-    pub retry: Option<u64>,
-}
+    pub retry: Option<u64>}
 
 /// Stream accumulator for building complete messages
 #[derive(Debug, Clone)]
@@ -159,8 +144,7 @@ pub struct StreamAccumulator {
     pub finish_reason: Option<String>,
     pub usage: Option<StreamUsage>,
     pub model: String,
-    pub id: String,
-}
+    pub id: String}
 
 /// Partial tool call being built from deltas
 #[derive(Debug, Clone)]
@@ -168,15 +152,13 @@ pub struct PartialToolCall {
     pub id: Option<String>,
     pub call_type: Option<String>,
     pub function_name: Option<String>,
-    pub function_arguments: String,
-}
+    pub function_arguments: String}
 
 /// Partial function call being built from deltas
 #[derive(Debug, Clone)]
 pub struct PartialFunctionCall {
     pub name: Option<String>,
-    pub arguments: String,
-}
+    pub arguments: String}
 
 /// Stream processing configuration
 #[derive(Debug, Clone)]
@@ -186,8 +168,7 @@ pub struct StreamConfig {
     pub retry_attempts: u32,
     pub include_usage: bool,
     pub include_logprobs: bool,
-    pub yield_incomplete_tool_calls: bool,
-}
+    pub yield_incomplete_tool_calls: bool}
 
 /// Stream processing metrics
 #[derive(Debug, Clone)]
@@ -197,8 +178,7 @@ pub struct StreamMetrics {
     pub processing_time_ms: u64,
     pub average_chunk_size: f32,
     pub tool_calls_count: u32,
-    pub errors_encountered: u32,
-}
+    pub errors_encountered: u32}
 
 impl SSEParser {
     /// Create new SSE parser
@@ -207,8 +187,7 @@ impl SSEParser {
         Self {
             buffer: String::with_capacity(4096),
             event_type: None,
-            data_lines: Vec::with_capacity(16),
-        }
+            data_lines: Vec::with_capacity(16)}
     }
 
     /// Parse SSE chunk and return complete events
@@ -228,8 +207,7 @@ impl SSEParser {
                         event_type: self.event_type.take(),
                         data: self.data_lines.join("\n"),
                         id: None,
-                        retry: None,
-                    };
+                        retry: None};
                     events.push(event);
                     self.data_lines.clear();
                 }
@@ -277,8 +255,7 @@ impl StreamAccumulator {
             finish_reason: None,
             usage: None,
             model: String::new(),
-            id: String::new(),
-        }
+            id: String::new()}
     }
 
     /// Process streaming chunk and update accumulator
@@ -316,22 +293,19 @@ impl StreamAccumulator {
             let usage = self.usage.as_ref().map(|u| crate::domain::chunk::Usage {
                 prompt_tokens: u.prompt_tokens,
                 completion_tokens: u.completion_tokens,
-                total_tokens: u.total_tokens,
-            });
+                total_tokens: u.total_tokens});
 
             let reason = match finish_reason.as_str() {
                 "stop" => Some(crate::domain::chunk::FinishReason::Stop),
                 "length" => Some(crate::domain::chunk::FinishReason::Length),
                 "content_filter" => Some(crate::domain::chunk::FinishReason::ContentFilter),
                 "tool_calls" => Some(crate::domain::chunk::FinishReason::ToolCalls),
-                _ => Some(crate::domain::chunk::FinishReason::Stop),
-            };
+                _ => Some(crate::domain::chunk::FinishReason::Stop)};
 
             CompletionChunk::Complete {
                 text: self.content.clone(),
                 finish_reason: reason,
-                usage,
-            }
+                usage}
         } else {
             CompletionChunk::Text(String::new())
         };
@@ -402,8 +376,7 @@ impl StreamAccumulator {
                 id: None,
                 call_type: None,
                 function_name: None,
-                function_arguments: String::with_capacity(512),
-            });
+                function_arguments: String::with_capacity(512)});
 
         // Update ID if present
         if let Some(id) = &delta.id {
@@ -435,8 +408,7 @@ impl StreamAccumulator {
             .function_call
             .get_or_insert_with(|| PartialFunctionCall {
                 name: None,
-                arguments: String::with_capacity(512),
-            });
+                arguments: String::with_capacity(512)});
 
         if let Some(name) = &delta.name {
             function_call.name = Some(name.clone());
@@ -460,9 +432,7 @@ impl StreamAccumulator {
                     call_type: call_type.clone(),
                     function: ToolsOpenAIFunctionCall {
                         name: name.clone(),
-                        arguments: partial.function_arguments.clone(),
-                    },
-                });
+                        arguments: partial.function_arguments.clone()}});
             }
         }
 
@@ -488,9 +458,7 @@ impl StreamAccumulator {
                     call_type: call.call_type,
                     function: crate::providers::openai::messages::OpenAIFunctionCall {
                         name: call.function.name,
-                        arguments: call.function.arguments,
-                    },
-                };
+                        arguments: call.function.arguments}};
                 Some(vec![messages_call])
             }
             ZeroOneOrMany::Many(calls) => {
@@ -502,9 +470,7 @@ impl StreamAccumulator {
                         call_type: call.call_type,
                         function: crate::providers::openai::messages::OpenAIFunctionCall {
                             name: call.function.name,
-                            arguments: call.function.arguments,
-                        },
-                    })
+                            arguments: call.function.arguments}})
                     .collect();
                 Some(messages_calls)
             }
@@ -525,10 +491,8 @@ impl StreamAccumulator {
             function_call: self.function_call.as_ref().map(|fc| {
                 crate::providers::openai::messages::OpenAIFunctionCall {
                     name: fc.name.clone().unwrap_or_default(),
-                    arguments: fc.arguments.clone(),
-                }
-            }),
-        }
+                    arguments: fc.arguments.clone()}
+            })}
     }
 }
 
@@ -542,8 +506,7 @@ impl StreamConfig {
             retry_attempts: 3,
             include_usage: true,
             include_logprobs: false,
-            yield_incomplete_tool_calls: false,
-        }
+            yield_incomplete_tool_calls: false}
     }
 
     /// Create configuration optimized for speed
@@ -555,8 +518,7 @@ impl StreamConfig {
             retry_attempts: 1,
             include_usage: false,
             include_logprobs: false,
-            yield_incomplete_tool_calls: true,
-        }
+            yield_incomplete_tool_calls: true}
     }
 
     /// Create configuration optimized for reliability
@@ -568,8 +530,7 @@ impl StreamConfig {
             retry_attempts: 5,
             include_usage: true,
             include_logprobs: true,
-            yield_incomplete_tool_calls: false,
-        }
+            yield_incomplete_tool_calls: false}
     }
 
     /// Set buffer size
@@ -618,8 +579,7 @@ impl StreamMetrics {
             processing_time_ms: 0,
             average_chunk_size: 0.0,
             tool_calls_count: 0,
-            errors_encountered: 0,
-        }
+            errors_encountered: 0}
     }
 
     /// Update metrics with new chunk
@@ -644,8 +604,7 @@ impl StreamMetrics {
                     self.tool_calls_count += match tool_calls {
                         ZeroOneOrMany::One(_) => 1,
                         ZeroOneOrMany::Many(calls) => calls.len() as u32,
-                        ZeroOneOrMany::None => 0,
-                    };
+                        ZeroOneOrMany::None => 0};
                 }
             }
             ZeroOneOrMany::Many(choices) => {
@@ -654,8 +613,7 @@ impl StreamMetrics {
                         self.tool_calls_count += match tool_calls {
                             ZeroOneOrMany::One(_) => 1,
                             ZeroOneOrMany::Many(calls) => calls.len() as u32,
-                            ZeroOneOrMany::None => 0,
-                        };
+                            ZeroOneOrMany::None => 0};
                     }
                 }
             }

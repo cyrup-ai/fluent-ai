@@ -67,8 +67,7 @@ pub fn validate_flow_config(
     if let BackpressureStrategy::Custom {
         base_delay_ms,
         multiplier,
-        max_delay_ms,
-    } = strategy
+        max_delay_ms} = strategy
     {
         if base_delay_ms > max_delay_ms {
             return Err(StreamingError::FlowControlError(
@@ -166,8 +165,7 @@ mod tests {
         let custom_strategy = BackpressureStrategy::Custom {
             base_delay_ms: 10,
             multiplier: 2.0,
-            max_delay_ms: 100,
-        };
+            max_delay_ms: 100};
         let mut controller = FlowController::new(true, 0.8, custom_strategy);
 
         controller.check_backpressure(0.9);
@@ -260,8 +258,7 @@ mod tests {
         let invalid_custom = BackpressureStrategy::Custom {
             base_delay_ms: 100,
             multiplier: -1.0,
-            max_delay_ms: 50,
-        };
+            max_delay_ms: 50};
         assert!(validate_flow_config(0.8, invalid_custom).is_err());
     }
 

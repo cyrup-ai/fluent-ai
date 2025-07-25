@@ -12,8 +12,7 @@ pub enum ActionExecutionResult {
     Success,
     Wait(Duration),
     SkipToAction(usize),
-    Error(Arc<str>),
-}
+    Error(Arc<str>)}
 
 /// Result of macro playback operation
 #[derive(Debug)]
@@ -21,8 +20,7 @@ pub enum MacroPlaybackResult {
     ActionExecuted,
     Completed,
     Failed,
-    SessionNotActive,
-}
+    SessionNotActive}
 
 /// Macro system errors
 #[derive(Debug, thiserror::Error)]
@@ -45,4 +43,9 @@ pub enum MacroSystemError {
     ActionExecutionFailed(String),
     #[error("Feature not implemented")]
     NotImplemented,
-}
+    #[error("Invalid macro: {0}")]
+    InvalidMacro(String),
+    #[error("Maximum recursion depth exceeded")]
+    MaxRecursionDepthExceeded,
+    #[error("System error: {0}")]
+    SystemError(String)}

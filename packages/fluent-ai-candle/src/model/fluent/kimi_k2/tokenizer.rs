@@ -36,7 +36,7 @@ use fluent_ai_async::{AsyncStream, handle_error};
 use fluent_ai_http3::client::HttpClient;
 
 use crate::error::{CandleError, CandleResult};
-use crate::{tokenizer::CandleTokenizer, types::candle_chat::message::CandleMessage};
+use crate::{tokenizer::CandleTokenizer, types::CandleMessage};
 
 /// Special token literals as per `tokenizer_config.json`.
 const BOS: &str = "[BOS]";
@@ -54,8 +54,7 @@ const MAX_PROMPT_BUFFER: usize = 8192;
 /// Zero-allocation, production-ready tokenizer for Kimi-K2.
 #[derive(Clone)]
 pub struct KimiK2Tokenizer {
-    inner: Arc<CandleTokenizer>,
-}
+    inner: Arc<CandleTokenizer>}
 
 impl KimiK2Tokenizer {
     /// Download tokenizer files from Hugging Face Hub and construct the wrapper.
@@ -94,7 +93,7 @@ impl KimiK2Tokenizer {
 
         // Append system message if first message role == system.
         let mut idx = 0;
-        if messages[0].role == crate::types::candle_chat::message::CandleMessageRole::System {
+        if messages[0].role == crate::types::CandleMessageRole::System {
             Self::push_pair(&mut buf, BOS, IM_SYSTEM)?;
             Self::push_line(&mut buf, &messages[0].content)?;
             Self::push_line(&mut buf, EOT)?;
@@ -105,7 +104,7 @@ impl KimiK2Tokenizer {
         while idx < messages.len() {
             // Expect user
             let user_msg = &messages[idx];
-            if user_msg.role != crate::types::candle_chat::message::CandleMessageRole::User {
+            if user_msg.role != crate::types::CandleMessageRole::User {
                 return Err(CandleError::Tokenizer(
                     "Expected user role in chat sequence",
                 ));
@@ -120,7 +119,7 @@ impl KimiK2Tokenizer {
             // If assistant response exists, append and <|im_end|>
             if idx < messages.len()
                 && messages[idx].role
-                    == crate::types::candle_chat::message::CandleMessageRole::Assistant
+                    == crate::types::CandleMessageRole::Assistant
             {
                 let assist_msg = &messages[idx];
                 Self::push_line(&mut buf, &assist_msg.content)?;

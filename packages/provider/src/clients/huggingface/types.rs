@@ -19,8 +19,7 @@ pub struct HuggingFaceTextGenerationRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<HuggingFaceGenerationParameters>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<HuggingFaceOptions>,
-}
+    pub options: Option<HuggingFaceOptions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceGenerationParameters {
@@ -55,23 +54,20 @@ pub struct HuggingFaceGenerationParameters {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub typical_p: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub watermark: Option<bool>,
-}
+    pub watermark: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_cache: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub wait_for_model: Option<bool>,
-}
+    pub wait_for_model: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceTextGenerationResponse {
     pub generated_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub details: Option<HuggingFaceGenerationDetails>,
-}
+    pub details: Option<HuggingFaceGenerationDetails>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceGenerationDetails {
@@ -80,16 +76,14 @@ pub struct HuggingFaceGenerationDetails {
     pub seed: Option<u64>,
     pub prefill: ArrayVec<HuggingFaceToken, 2048>,
     pub tokens: ArrayVec<HuggingFaceToken, 2048>,
-    pub best_of_sequences: Option<ArrayVec<HuggingFaceSequence, 8>>,
-}
+    pub best_of_sequences: Option<ArrayVec<HuggingFaceSequence, 8>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceToken {
     pub id: u32,
     pub text: String,
     pub logprob: f32,
-    pub special: bool,
-}
+    pub special: bool}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceSequence {
@@ -98,8 +92,7 @@ pub struct HuggingFaceSequence {
     pub generated_tokens: u32,
     pub prefill: ArrayVec<HuggingFaceToken, 2048>,
     pub tokens: ArrayVec<HuggingFaceToken, 2048>,
-    pub seed: Option<u64>,
-}
+    pub seed: Option<u64>}
 
 // ============================================================================
 // Chat Completion API (Messages)
@@ -138,8 +131,7 @@ pub struct HuggingFaceChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ArrayVec<HuggingFaceTool<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_choice: Option<&'a str>,
-}
+    pub tool_choice: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceMessage<'a> {
@@ -152,8 +144,7 @@ pub struct HuggingFaceMessage<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<ArrayVec<HuggingFaceToolCall<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_call_id: Option<&'a str>,
-}
+    pub tool_call_id: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceToolCall<'a> {
@@ -162,24 +153,21 @@ pub struct HuggingFaceToolCall<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub call_type: &'a str,
-    pub function: HuggingFaceFunction<'a>,
-}
+    pub function: HuggingFaceFunction<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceFunction<'a> {
     #[serde(borrow)]
     pub name: &'a str,
     #[serde(borrow)]
-    pub arguments: &'a str,
-}
+    pub arguments: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceTool<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub tool_type: &'a str,
-    pub function: HuggingFaceToolFunction<'a>,
-}
+    pub function: HuggingFaceToolFunction<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceToolFunction<'a> {
@@ -187,8 +175,7 @@ pub struct HuggingFaceToolFunction<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceResponseFormat<'a> {
@@ -196,8 +183,7 @@ pub struct HuggingFaceResponseFormat<'a> {
     #[serde(borrow)]
     pub format_type: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema: Option<serde_json::Value>,
-}
+    pub schema: Option<serde_json::Value>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceChatResponse {
@@ -208,8 +194,7 @@ pub struct HuggingFaceChatResponse {
     pub choices: ArrayVec<HuggingFaceChoice, 8>,
     pub usage: HuggingFaceUsage,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_fingerprint: Option<String>,
-}
+    pub system_fingerprint: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceChoice {
@@ -217,50 +202,43 @@ pub struct HuggingFaceChoice {
     pub message: HuggingFaceResponseMessage,
     pub finish_reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<HuggingFaceLogprobs>,
-}
+    pub logprobs: Option<HuggingFaceLogprobs>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceResponseMessage {
     pub role: String,
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<HuggingFaceResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<HuggingFaceResponseToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceResponseToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
-    pub function: HuggingFaceResponseFunction,
-}
+    pub function: HuggingFaceResponseFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceResponseFunction {
     pub name: String,
-    pub arguments: String,
-}
+    pub arguments: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceLogprobs {
-    pub content: ArrayVec<HuggingFaceContentLogprob, 1024>,
-}
+    pub content: ArrayVec<HuggingFaceContentLogprob, 1024>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceContentLogprob {
     pub token: String,
     pub logprob: f32,
     pub bytes: Option<ArrayVec<u8, 4>>,
-    pub top_logprobs: ArrayVec<HuggingFaceTopLogprob, 10>,
-}
+    pub top_logprobs: ArrayVec<HuggingFaceTopLogprob, 10>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceTopLogprob {
     pub token: String,
     pub logprob: f32,
-    pub bytes: Option<ArrayVec<u8, 4>>,
-}
+    pub bytes: Option<ArrayVec<u8, 4>>}
 
 // ============================================================================
 // Embeddings API
@@ -271,22 +249,19 @@ pub struct HuggingFaceEmbeddingRequest<'a> {
     #[serde(borrow)]
     pub inputs: HuggingFaceEmbeddingInput<'a>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<HuggingFaceOptions>,
-}
+    pub options: Option<HuggingFaceOptions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum HuggingFaceEmbeddingInput<'a> {
     Single(&'a str),
-    Multiple(ArrayVec<&'a str, MAX_DOCUMENTS>),
-}
+    Multiple(ArrayVec<&'a str, MAX_DOCUMENTS>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum HuggingFaceEmbeddingResponse {
     Single(ArrayVec<f32, 1536>),
-    Multiple(ArrayVec<ArrayVec<f32, 1536>, MAX_DOCUMENTS>),
-}
+    Multiple(ArrayVec<ArrayVec<f32, 1536>, MAX_DOCUMENTS>)}
 
 // ============================================================================
 // Classification API
@@ -299,8 +274,7 @@ pub struct HuggingFaceClassificationRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<HuggingFaceClassificationParameters<'a>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<HuggingFaceOptions>,
-}
+    pub options: Option<HuggingFaceOptions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceClassificationParameters<'a> {
@@ -309,28 +283,24 @@ pub struct HuggingFaceClassificationParameters<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub multi_label: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hypothesis_template: Option<&'a str>,
-}
+    pub hypothesis_template: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum HuggingFaceClassificationResponse {
     ZeroShot(ArrayVec<HuggingFaceZeroShotResult, 32>),
-    TextClassification(ArrayVec<HuggingFaceTextClassificationResult, 32>),
-}
+    TextClassification(ArrayVec<HuggingFaceTextClassificationResult, 32>)}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceZeroShotResult {
     pub sequence: String,
     pub labels: ArrayVec<String, 32>,
-    pub scores: ArrayVec<f32, 32>,
-}
+    pub scores: ArrayVec<f32, 32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceTextClassificationResult {
     pub label: String,
-    pub score: f32,
-}
+    pub score: f32}
 
 // ============================================================================
 // Question Answering API
@@ -343,16 +313,14 @@ pub struct HuggingFaceQuestionAnsweringRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<HuggingFaceQAParameters>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<HuggingFaceOptions>,
-}
+    pub options: Option<HuggingFaceOptions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceQAInput<'a> {
     #[serde(borrow)]
     pub question: &'a str,
     #[serde(borrow)]
-    pub context: &'a str,
-}
+    pub context: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceQAParameters {
@@ -369,16 +337,14 @@ pub struct HuggingFaceQAParameters {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub handle_impossible_answer: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub align_to_words: Option<bool>,
-}
+    pub align_to_words: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceQAResponse {
     pub score: f32,
     pub start: u32,
     pub end: u32,
-    pub answer: String,
-}
+    pub answer: String}
 
 // ============================================================================
 // Image-to-Text API  
@@ -391,19 +357,16 @@ pub struct HuggingFaceImageToTextRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<HuggingFaceImageToTextParameters>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<HuggingFaceOptions>,
-}
+    pub options: Option<HuggingFaceOptions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceImageToTextParameters {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_new_tokens: Option<u32>,
-}
+    pub max_new_tokens: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceImageToTextResponse {
-    pub generated_text: String,
-}
+    pub generated_text: String}
 
 // ============================================================================
 // Text-to-Image API
@@ -416,8 +379,7 @@ pub struct HuggingFaceTextToImageRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<HuggingFaceTextToImageParameters>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<HuggingFaceOptions>,
-}
+    pub options: Option<HuggingFaceOptions>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceTextToImageParameters {
@@ -432,8 +394,7 @@ pub struct HuggingFaceTextToImageParameters {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub negative_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub seed: Option<u64>,
-}
+    pub seed: Option<u64>}
 
 // Response is binary image data, so no specific structure needed
 
@@ -445,15 +406,13 @@ pub struct HuggingFaceTextToImageParameters {
 pub struct HuggingFaceUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceErrorResponse {
     pub error: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_type: Option<String>,
-}
+    pub error_type: Option<String>}
 
 // ============================================================================
 // Streaming Support
@@ -465,8 +424,7 @@ pub struct HuggingFaceStreamingChunk {
     pub object: String,
     pub created: u64,
     pub model: String,
-    pub choices: ArrayVec<HuggingFaceStreamingChoice, 8>,
-}
+    pub choices: ArrayVec<HuggingFaceStreamingChoice, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceStreamingChoice {
@@ -474,8 +432,7 @@ pub struct HuggingFaceStreamingChoice {
     pub delta: HuggingFaceStreamingDelta,
     pub finish_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub logprobs: Option<HuggingFaceLogprobs>,
-}
+    pub logprobs: Option<HuggingFaceLogprobs>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HuggingFaceStreamingDelta {
@@ -484,8 +441,7 @@ pub struct HuggingFaceStreamingDelta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<HuggingFaceResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<HuggingFaceResponseToolCall, MAX_TOOLS>>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -496,8 +452,7 @@ impl<'a> HuggingFaceTextGenerationRequest<'a> {
         Self {
             inputs,
             parameters: None,
-            options: None,
-        }
+            options: None}
     }
 
     pub fn with_parameters(mut self, parameters: HuggingFaceGenerationParameters) -> Self {
@@ -529,8 +484,7 @@ impl HuggingFaceGenerationParameters {
             top_p: None,
             truncate: None,
             typical_p: None,
-            watermark: None,
-        }
+            watermark: None}
     }
 
     pub fn max_new_tokens(mut self, tokens: u32) -> Self {
@@ -582,8 +536,7 @@ impl<'a> HuggingFaceChatRequest<'a> {
             presence_penalty: None,
             response_format: None,
             tools: None,
-            tool_choice: None,
-        }
+            tool_choice: None}
     }
 
     pub fn add_message(mut self, role: &'a str, content: &'a str) -> Self {
@@ -593,8 +546,7 @@ impl<'a> HuggingFaceChatRequest<'a> {
                 content,
                 name: None,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -624,15 +576,13 @@ impl<'a> HuggingFaceEmbeddingRequest<'a> {
     pub fn new_single(input: &'a str) -> Self {
         Self {
             inputs: HuggingFaceEmbeddingInput::Single(input),
-            options: None,
-        }
+            options: None}
     }
 
     pub fn new_multiple(inputs: ArrayVec<&'a str, MAX_DOCUMENTS>) -> Self {
         Self {
             inputs: HuggingFaceEmbeddingInput::Multiple(inputs),
-            options: None,
-        }
+            options: None}
     }
 
     pub fn with_options(mut self, options: HuggingFaceOptions) -> Self {
@@ -646,8 +596,7 @@ impl<'a> HuggingFaceClassificationRequest<'a> {
         Self {
             inputs,
             parameters: None,
-            options: None,
-        }
+            options: None}
     }
 
     pub fn with_candidate_labels(mut self, labels: ArrayVec<&'a str, 32>) -> Self {
@@ -670,8 +619,7 @@ impl<'a> Default for HuggingFaceClassificationParameters<'a> {
         Self {
             candidate_labels: None,
             multi_label: None,
-            hypothesis_template: None,
-        }
+            hypothesis_template: None}
     }
 }
 
@@ -680,8 +628,7 @@ impl<'a> HuggingFaceQuestionAnsweringRequest<'a> {
         Self {
             inputs: HuggingFaceQAInput { question, context },
             parameters: None,
-            options: None,
-        }
+            options: None}
     }
 
     pub fn with_parameters(mut self, parameters: HuggingFaceQAParameters) -> Self {
@@ -694,8 +641,7 @@ impl HuggingFaceOptions {
     pub fn new() -> Self {
         Self {
             use_cache: None,
-            wait_for_model: None,
-        }
+            wait_for_model: None}
     }
 
     pub fn use_cache(mut self, cache: bool) -> Self {

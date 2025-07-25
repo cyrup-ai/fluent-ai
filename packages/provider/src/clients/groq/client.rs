@@ -7,13 +7,12 @@
 use std::sync::LazyLock;
 
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayString, ArrayVec};
+use arrayvec::{ArrayString};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::prompt::Prompt;
 use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
-};
+    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder};
 use fluent_ai_domain::memory::workflow::PromptError;
 use fluent_ai_domain::message::Message;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
@@ -34,7 +33,8 @@ fn merge_json_values(mut base: serde_json::Value, other: serde_json::Value) -> s
         other
     }
 }
-use fluent_ai_domain::{AsyncTask, channel, spawn_async};
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_async::channel;
 
 // ============================================================================
 // Groq API Client with HTTP3 and zero-allocation patterns
@@ -55,8 +55,7 @@ pub struct GroqMetrics {
     pub total_requests: RelaxedCounter,
     pub successful_requests: RelaxedCounter,
     pub failed_requests: RelaxedCounter,
-    pub concurrent_requests: RelaxedCounter,
-}
+    pub concurrent_requests: RelaxedCounter}
 
 impl GroqMetrics {
     #[inline]
@@ -65,8 +64,7 @@ impl GroqMetrics {
             total_requests: RelaxedCounter::new(0),
             successful_requests: RelaxedCounter::new(0),
             failed_requests: RelaxedCounter::new(0),
-            concurrent_requests: RelaxedCounter::new(0),
-        }
+            concurrent_requests: RelaxedCounter::new(0)}
     }
 }
 
@@ -80,8 +78,7 @@ pub struct Client {
     /// Shared HTTP3 client
     http_client: &'static HttpClient,
     /// Performance metrics
-    metrics: &'static GroqMetrics,
-}
+    metrics: &'static GroqMetrics}
 
 impl Client {
     /// Create a new Groq client with zero-allocation API key validation
@@ -100,8 +97,7 @@ impl Client {
             api_key: ArcSwap::from_pointee(api_key_array),
             base_url: GROQ_API_BASE_URL,
             http_client: &HTTP_CLIENT,
-            metrics: &GROQ_METRICS,
-        })
+            metrics: &GROQ_METRICS})
     }
 
     /// Create a new Groq client from environment variable with validation
@@ -174,8 +170,7 @@ impl Client {
 
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
-            Err(_) => self.metrics.failed_requests.inc(),
-        }
+            Err(_) => self.metrics.failed_requests.inc()}
 
         response
     }
@@ -268,8 +263,7 @@ pub struct GroqCompletionBuilder<'a, S> {
     max_tokens: Option<u64>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
-    _state: std::marker::PhantomData<S>,
-}
+    _state: std::marker::PhantomData<S>}
 
 // ============================================================================
 // Constructors
@@ -288,8 +282,7 @@ impl<'a> GroqCompletionBuilder<'a, NeedsPrompt> {
             max_tokens: None,
             additional_params: json!({}),
             prompt: None,
-            _state: std::marker::PhantomData,
-        }
+            _state: std::marker::PhantomData}
     }
 
     /// Convenience helper: sensible defaults for chat
@@ -366,8 +359,7 @@ impl<'a> GroqCompletionBuilder<'a, NeedsPrompt> {
             max_tokens: self.max_tokens,
             additional_params: self.additional_params,
             prompt: self.prompt,
-            _state: std::marker::PhantomData::<HasPrompt>,
-        }
+            _state: std::marker::PhantomData::<HasPrompt>}
     }
 }
 

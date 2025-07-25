@@ -16,31 +16,51 @@ use fluent_ai_async::emit;
 /// Command execution errors with minimal allocations
 #[derive(Error, Debug, Clone)]
 pub enum CommandError {
+    /// Command name not recognized
     #[error("Unknown command: {command}")]
-    UnknownCommand { command: String },
+    UnknownCommand { 
+        /// The unrecognized command name
+        command: String 
+    },
+    /// Invalid or malformed arguments provided
     #[error("Invalid arguments: {0}")]
     InvalidArguments(String),
+    /// Syntax error in command structure
     #[error("Invalid syntax: {detail}")]
-    InvalidSyntax { detail: String },
+    InvalidSyntax { 
+        /// Details about the syntax error
+        detail: String 
+    },
+    /// Command execution failed
     #[error("Execution failed: {0}")]
     ExecutionFailed(String),
+    /// User lacks permission to execute command
     #[error("Permission denied")]
     PermissionDenied,
+    /// Error parsing command parameters
     #[error("Parse error: {0}")]
     ParseError(String),
+    /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { detail: String },
+    ConfigurationError { 
+        /// Details about the configuration error
+        detail: String 
+    },
+    /// Input/output operation failed
     #[error("IO error: {0}")]
     IoError(String),
+    /// Network communication error
     #[error("Network error: {0}")]
     NetworkError(String),
+    /// Command execution timed out
     #[error("Command timeout")]
     Timeout,
+    /// Requested resource not found
     #[error("Resource not found")]
     NotFound,
+    /// Internal system error
     #[error("Internal error: {0}")]
-    InternalError(String),
-}
+    InternalError(String)}
 
 /// Result type for command operations
 pub type CommandResult<T> = Result<T, CommandError>;
@@ -67,8 +87,7 @@ pub enum ParameterType {
     /// Enumeration parameter with possible values
     Enum,
     /// Path parameter for file/directory paths
-    Path,
-}
+    Path}
 
 /// Parameter information for command definitions with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,8 +101,7 @@ pub struct ParameterInfo {
     /// Whether the parameter is required
     pub required: bool,
     /// Default value if not required
-    pub default_value: Option<String>,
-}
+    pub default_value: Option<String>}
 
 /// Command information for command registry with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,8 +119,7 @@ pub struct CommandInfo {
     /// Command category
     pub category: String,
     /// Usage examples
-    pub examples: Vec<String>,
-}
+    pub examples: Vec<String>}
 
 /// Resource usage tracking for command execution
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -114,8 +131,7 @@ pub struct ResourceUsage {
     /// Number of network requests made
     pub network_requests: u32,
     /// Number of disk operations performed
-    pub disk_operations: u32,
-}
+    pub disk_operations: u32}
 
 /// Immutable chat command with owned strings (allocated once)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -125,15 +141,13 @@ pub enum ImmutableChatCommand {
         /// Optional command to get help for
         command: Option<String>,
         /// Show extended help
-        extended: bool,
-    },
+        extended: bool},
     /// Clear chat history
     Clear {
         /// Confirm the action
         confirm: bool,
         /// Keep last N messages
-        keep_last: Option<usize>,
-    },
+        keep_last: Option<usize>},
     /// Export conversation
     Export {
         /// Export format (json, markdown, pdf, html)
@@ -141,8 +155,7 @@ pub enum ImmutableChatCommand {
         /// Output file path
         output: Option<String>,
         /// Include metadata
-        include_metadata: bool,
-    },
+        include_metadata: bool},
     /// Modify configuration
     Config {
         /// Configuration key
@@ -152,8 +165,7 @@ pub enum ImmutableChatCommand {
         /// Show current configuration
         show: bool,
         /// Reset to defaults
-        reset: bool,
-    },
+        reset: bool},
     /// Template operations
     Template {
         /// Template action
@@ -163,8 +175,7 @@ pub enum ImmutableChatCommand {
         /// Template content
         content: Option<String>,
         /// Template variables
-        variables: HashMap<String, String>,
-    },
+        variables: HashMap<String, String>},
     /// Macro operations
     Macro {
         /// Macro action
@@ -174,8 +185,7 @@ pub enum ImmutableChatCommand {
         /// Auto-execute macro
         auto_execute: bool,
         /// Commands to execute in macro
-        commands: Vec<String>,
-    },
+        commands: Vec<String>},
     /// Search chat history
     Search {
         /// Search query
@@ -185,8 +195,7 @@ pub enum ImmutableChatCommand {
         /// Maximum results
         limit: Option<usize>,
         /// Include context
-        include_context: bool,
-    },
+        include_context: bool},
     /// Branch conversation
     Branch {
         /// Branch action
@@ -194,8 +203,7 @@ pub enum ImmutableChatCommand {
         /// Branch name
         name: Option<String>,
         /// Source branch for merging
-        source: Option<String>,
-    },
+        source: Option<String>},
     /// Session management
     Session {
         /// Session action
@@ -203,8 +211,7 @@ pub enum ImmutableChatCommand {
         /// Session name
         name: Option<String>,
         /// Include configuration
-        include_config: bool,
-    },
+        include_config: bool},
     /// Tool integration
     Tool {
         /// Tool action
@@ -212,8 +219,7 @@ pub enum ImmutableChatCommand {
         /// Tool name
         name: Option<String>,
         /// Tool arguments
-        args: HashMap<String, String>,
-    },
+        args: HashMap<String, String>},
     /// Statistics and analytics
     Stats {
         /// Statistics type
@@ -221,8 +227,7 @@ pub enum ImmutableChatCommand {
         /// Time period
         period: Option<String>,
         /// Show detailed breakdown
-        detailed: bool,
-    },
+        detailed: bool},
     /// Theme and appearance
     Theme {
         /// Theme action
@@ -230,8 +235,7 @@ pub enum ImmutableChatCommand {
         /// Theme name
         name: Option<String>,
         /// Theme properties
-        properties: HashMap<String, String>,
-    },
+        properties: HashMap<String, String>},
     /// Debugging and diagnostics
     Debug {
         /// Debug action
@@ -239,8 +243,7 @@ pub enum ImmutableChatCommand {
         /// Debug level
         level: Option<String>,
         /// Show system information
-        system_info: bool,
-    },
+        system_info: bool},
     /// Chat history operations
     History {
         /// History action
@@ -248,8 +251,7 @@ pub enum ImmutableChatCommand {
         /// Number of messages to show
         limit: Option<usize>,
         /// Filter criteria
-        filter: Option<String>,
-    },
+        filter: Option<String>},
     /// Save conversation state
     Save {
         /// Save name
@@ -257,8 +259,7 @@ pub enum ImmutableChatCommand {
         /// Include configuration
         include_config: bool,
         /// Save location
-        location: Option<String>,
-    },
+        location: Option<String>},
     /// Load conversation state
     Load {
         /// Load name
@@ -266,8 +267,7 @@ pub enum ImmutableChatCommand {
         /// Merge with current session
         merge: bool,
         /// Load location
-        location: Option<String>,
-    },
+        location: Option<String>},
     /// Import data or configuration
     Import {
         /// Import type
@@ -275,8 +275,7 @@ pub enum ImmutableChatCommand {
         /// Source file or URL
         source: String,
         /// Import options
-        options: HashMap<String, String>,
-    },
+        options: HashMap<String, String>},
     /// Application settings
     Settings {
         /// Setting category
@@ -288,8 +287,7 @@ pub enum ImmutableChatCommand {
         /// Show current settings
         show: bool,
         /// Reset to defaults
-        reset: bool,
-    },
+        reset: bool},
     /// Custom command
     Custom {
         /// Command name
@@ -297,9 +295,7 @@ pub enum ImmutableChatCommand {
         /// Command arguments
         args: HashMap<String, String>,
         /// Command metadata
-        metadata: Option<serde_json::Value>,
-    },
-}
+        metadata: Option<serde_json::Value>}}
 impl ImmutableChatCommand {
     /// Get command name as borrowed string (zero allocation)
     #[inline]
@@ -323,8 +319,7 @@ impl ImmutableChatCommand {
             Self::Load { .. } => "load",
             Self::Import { .. } => "import",
             Self::Settings { .. } => "settings",
-            Self::Custom { .. } => "custom",
-        }
+            Self::Custom { .. } => "custom"}
     }
 
     /// Check if command requires confirmation
@@ -404,47 +399,66 @@ impl ImmutableChatCommand {
 pub enum CommandEvent {
     /// Command started executing
     Started {
+        /// The command that was started
         command: ImmutableChatCommand,
+        /// Unique identifier for this execution
         execution_id: u64,
-        timestamp_nanos: u64,
-    },
+        /// Start time in nanoseconds since epoch
+        timestamp_nanos: u64},
     /// Command execution progress
     Progress {
+        /// Unique identifier for this execution
         execution_id: u64,
+        /// Progress as percentage (0.0 to 100.0)
         progress_percent: f32,
-        message: Option<String>,
-    },
+        /// Optional progress message
+        message: Option<String>},
     /// Command produced output
     Output {
+        /// Unique identifier for this execution
         execution_id: u64,
+        /// The output content produced
         output: String,
-        output_type: OutputType,
-    },
+        /// Type/format of the output
+        output_type: OutputType},
     /// Command completed successfully
     Completed {
+        /// Unique identifier for this execution
         execution_id: u64,
+        /// Final result of the execution
         result: CommandExecutionResult,
-        duration_nanos: u64,
-    },
+        /// Total execution time in nanoseconds
+        duration_nanos: u64},
     /// Command failed
     Failed {
+        /// Unique identifier for this execution
         execution_id: u64,
+        /// The error that caused the failure
         error: CommandError,
-        duration_nanos: u64,
-    },
+        /// Time until failure in nanoseconds
+        duration_nanos: u64},
     /// Command was cancelled
-    Cancelled { execution_id: u64, reason: String },
+    Cancelled { 
+        /// Unique identifier for this execution
+        execution_id: u64, 
+        /// Reason for cancellation
+        reason: String 
+    }
 }
 
 /// Command output type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputType {
+    /// Plain text output
     Text,
+    /// JSON formatted output
     Json,
+    /// HTML formatted output
     Html,
+    /// Markdown formatted output
     Markdown,
-    Binary,
-}
+    /// Binary data output
+    Binary}
 
 /// Streaming parse token for command tokenization
 #[derive(Debug, Clone)]
@@ -460,120 +474,177 @@ pub enum ParseToken {
     /// Parsing completed successfully
     ParseComplete(ImmutableChatCommand),
     /// Parsing failed with error
-    ParseError(String),
-}
+    ParseError(String)}
 
 /// Search-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchScope {
+    /// Search all available content
     All,
+    /// Search current conversation only
     Current,
+    /// Search recent conversations
     Recent,
-    Bookmarked,
-}
+    /// Search bookmarked items only
+    Bookmarked}
 
 /// Template-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TemplateAction {
+    /// List available templates
     List,
+    /// Create a new template
     Create,
+    /// Delete a template
     Delete,
+    /// Edit an existing template
     Edit,
+    /// Use a template
     Use,
 }
 
 /// Macro-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MacroAction {
+    /// List available macros
     List,
+    /// Create a new macro
     Create,
+    /// Delete a macro
     Delete,
+    /// Edit an existing macro
     Edit,
+    /// Execute a macro
     Execute,
 }
 
 /// Branch-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BranchAction {
+    /// List available branches
     List,
+    /// Create a new branch
     Create,
+    /// Switch to a different branch
     Switch,
+    /// Merge branches
     Merge,
+    /// Delete a branch
     Delete,
 }
 
 /// Session-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionAction {
+    /// List available sessions
     List,
+    /// Create a new session
     New,
+    /// Switch to a different session
     Switch,
+    /// Delete a session
     Delete,
+    /// Export session data
     Export,
+    /// Import session data
     Import,
 }
 
 /// Tool-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ToolAction {
+    /// List available tools
     List,
+    /// Install a new tool
     Install,
+    /// Remove a tool
     Remove,
+    /// Configure tool settings
     Configure,
+    /// Update a tool
     Update,
+    /// Execute a tool
     Execute,
 }
 
 /// Stats-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatsType {
+    /// Usage statistics
     Usage,
+    /// Performance metrics
     Performance,
+    /// History logs
     History,
+    /// Token usage statistics
     Tokens,
+    /// Cost statistics
     Costs,
+    /// Error statistics
     Errors,
 }
 
 /// Theme-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeAction {
+    /// Set active theme
     Set,
+    /// List available themes
     List,
+    /// Create a new theme
     Create,
+    /// Export theme data
     Export,
+    /// Import theme data
     Import,
+    /// Edit existing theme
     Edit,
 }
 
 /// Debug-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DebugAction {
+    /// Show debug information
     Info,
+    /// Display system logs
     Logs,
+    /// Show performance metrics
     Performance,
+    /// Display memory usage
     Memory,
+    /// Show network statistics
     Network,
+    /// Display cache statistics
     Cache,
 }
 
 /// History-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryAction {
+    /// Show history entries
     Show,
+    /// Search through history
     Search,
+    /// Clear history
     Clear,
+    /// Export history data
     Export,
+    /// Import history data
     Import,
+    /// Backup history
     Backup,
 }
 
 /// Import-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImportType {
+    /// Import chat data
     Chat,
+    /// Import configuration
     Config,
+    /// Import templates
     Templates,
+    /// Import macros
     Macros,
 }
 
@@ -586,8 +657,11 @@ pub enum CommandExecutionResult {
     Data(serde_json::Value),
     /// File result with path and metadata
     File {
+        /// File path
         path: String,
+        /// File size in bytes
         size_bytes: u64,
+        /// MIME type of the file
         mime_type: String,
     },
     /// Multiple results
@@ -607,8 +681,7 @@ pub struct StreamingCommandExecutor {
     /// Failed executions (atomic)
     failed_executions: AtomicU64,
     /// Event stream sender
-    event_sender: Option<AsyncStreamSender<CommandEvent>>,
-}
+    event_sender: Option<AsyncStreamSender<CommandEvent>>}
 
 impl StreamingCommandExecutor {
     /// Create new streaming command executor
@@ -620,8 +693,7 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender: None,
-        }
+            event_sender: None}
     }
 
     /// Create executor with event streaming
@@ -647,8 +719,7 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender,
-        };
+            event_sender};
 
         (executor, stream)
     }
@@ -671,8 +742,7 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Started {
                 command: command.clone(),
                 execution_id,
-                timestamp_nanos: Self::current_timestamp_nanos(),
-            });
+                timestamp_nanos: Self::current_timestamp_nanos()});
         }
 
         // TODO: Implement actual command execution logic here
@@ -697,8 +767,7 @@ impl StreamingCommandExecutor {
             active_executions: self.active_executions.load(Ordering::Relaxed) as u64,
             total_executions: self.total_executions.load(Ordering::Relaxed),
             successful_executions: self.successful_executions.load(Ordering::Relaxed),
-            failed_executions: self.failed_executions.load(Ordering::Relaxed),
-        }
+            failed_executions: self.failed_executions.load(Ordering::Relaxed)}
     }
 
     /// Cancel command execution
@@ -707,8 +776,7 @@ impl StreamingCommandExecutor {
         if let Some(ref sender) = self.event_sender {
             let _ = sender.send(CommandEvent::Cancelled {
                 execution_id,
-                reason: reason.into(),
-            });
+                reason: reason.into()});
         }
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
     }
@@ -724,9 +792,13 @@ impl Default for StreamingCommandExecutor {
 /// Command executor statistics
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommandExecutorStats {
+    /// Number of currently active executions
     pub active_executions: u64,
+    /// Total number of executions
     pub total_executions: u64,
+    /// Number of successful executions
     pub successful_executions: u64,
+    /// Number of failed executions
     pub failed_executions: u64,
 }
 
@@ -752,11 +824,17 @@ impl CommandExecutorStats {
 /// Settings categories
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SettingsCategory {
+    /// Appearance settings
     Appearance,
+    /// Behavior settings
     Behavior,
+    /// Security settings
     Security,
+    /// Performance settings
     Performance,
+    /// Integration settings
     Integration,
+    /// Advanced settings
     Advanced,
 }
 
@@ -802,8 +880,7 @@ impl CommandParser {
             "load" => Self::parse_load_command(args),
             "import" => Self::parse_import_command(args),
             "settings" | "set" => Self::parse_settings_command(args),
-            _ => Self::parse_custom_command(&command_name, args),
-        }
+            _ => Self::parse_custom_command(&command_name, args)}
     }
 
     /// Parse help command
@@ -854,8 +931,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Export {
             format,
             output,
-            include_metadata,
-        })
+            include_metadata})
     }
 
     /// Parse settings command
@@ -877,8 +953,7 @@ impl CommandParser {
             key,
             value,
             show,
-            reset,
-        })
+            reset})
     }
 
     /// Parse config command with streaming tokenization (zero-allocation)
@@ -933,8 +1008,7 @@ impl CommandParser {
                     key,
                     value,
                     show,
-                    reset,
-                }));
+                    reset}));
             });
         })
     }
@@ -957,8 +1031,7 @@ impl CommandParser {
             key,
             value,
             show,
-            reset,
-        })
+            reset})
     }
 
     /// Parse search command with streaming tokenization (zero-allocation)
@@ -1027,8 +1100,7 @@ impl CommandParser {
                     query,
                     scope,
                     limit,
-                    include_context,
-                }));
+                    include_context}));
             });
         })
     }
@@ -1105,15 +1177,14 @@ impl CommandParser {
                     action,
                     name,
                     content,
-                    variables,
-                }));
+                    variables}));
             });
         })
     }
 
-    /// Parse template command (legacy compatibility)
+    /// Parse template command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_template_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_template_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--list") {
             TemplateAction::List
         } else if args.contains(&"--create") {
@@ -1141,8 +1212,7 @@ impl CommandParser {
             action,
             name,
             content,
-            variables: HashMap::new(),
-        })
+            variables: HashMap::new()})
     }
 
     /// Parse macro command with streaming tokenization (zero-allocation)
@@ -1205,15 +1275,15 @@ impl CommandParser {
                     action,
                     name,
                     auto_execute,
-                    commands,
-                }));
+                    commands}));
             });
         })
     }
 
     /// Parse macro command (legacy compatibility)
+    /// Parse macro command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_macro_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_macro_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--list") {
             MacroAction::List
         } else if args.contains(&"--create") {
@@ -1241,13 +1311,12 @@ impl CommandParser {
             action,
             name,
             auto_execute: false,
-            commands,
-        })
+            commands})
     }
 
-    /// Parse branch command
+    /// Parse branch command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_branch_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_branch_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--create") {
             BranchAction::Create
         } else if args.contains(&"--switch") {
@@ -1274,8 +1343,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Branch {
             action,
             name,
-            source,
-        })
+            source})
     }
 
     /// Parse session command with streaming tokenization (zero-allocation)
@@ -1344,15 +1412,14 @@ impl CommandParser {
                 emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Session {
                     action,
                     name,
-                    include_config,
-                }));
+                    include_config}));
             });
         })
     }
 
-    /// Parse session command (legacy compatibility)
+    /// Parse session command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_session_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_session_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--new") {
             SessionAction::New
         } else if args.contains(&"--switch") {
@@ -1372,33 +1439,19 @@ impl CommandParser {
             .find(|&&arg| !arg.starts_with("--"))
             .map(|s| s.to_string());
 
-        // Parse configuration key-value pairs from arguments (--key=value format)
-        let config: std::collections::HashMap<String, String> = args
-            .iter()
-            .filter_map(|&arg| {
-                if arg.starts_with("--") && arg.contains('=') {
-                    let parts: Vec<&str> = arg.splitn(2, '=').collect();
-                    if parts.len() == 2 {
-                        Some((parts[0][2..].to_string(), parts[1].to_string()))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
+        // Configuration parsing removed as it was unused
 
         Ok(ImmutableChatCommand::Session {
             action,
             name,
-            include_config: !config.is_empty(),
+            include_config: false, // No config available since parsing was removed
         })
     }
 
     /// Parse tool command
+    /// Parse tool command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_tool_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_tool_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--list") {
             ToolAction::List
         } else if args.contains(&"--install") {
@@ -1428,13 +1481,13 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Tool {
             action,
             name,
-            args: args_map,
-        })
+            args: args_map})
     }
 
     /// Parse stats command
+    /// Parse stats command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_stats_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_stats_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let stat_type = if args.contains(&"--usage") {
             StatsType::Usage
         } else if args.contains(&"--performance") {
@@ -1462,13 +1515,13 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Stats {
             stat_type,
             period,
-            detailed,
-        })
+            detailed})
     }
 
     /// Parse theme command
+    /// Parse theme command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_theme_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_theme_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--set") {
             ThemeAction::Set
         } else if args.contains(&"--list") {
@@ -1495,13 +1548,13 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Theme {
             action,
             name,
-            properties,
-        })
+            properties})
     }
 
     /// Parse debug command
+    /// Parse debug command (legacy compatibility) - planned feature
     #[inline]
-    fn parse_debug_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
+    fn _parse_debug_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--info") {
             DebugAction::Info
         } else if args.contains(&"--logs") {
@@ -1529,8 +1582,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Debug {
             action,
             level,
-            system_info,
-        })
+            system_info})
     }
 
     /// Parse history command
@@ -1563,8 +1615,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::History {
             action,
             limit,
-            filter,
-        })
+            filter})
     }
 
     /// Parse save command
@@ -1586,8 +1637,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Save {
             name,
             include_config,
-            location,
-        })
+            location})
     }
 
     /// Parse load command
@@ -1610,8 +1660,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Load {
             name,
             merge,
-            location,
-        })
+            location})
     }
 
     /// Parse import command
@@ -1640,8 +1689,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Import {
             import_type,
             source,
-            options,
-        })
+            options})
     }
 
     /// Parse custom command
@@ -1656,8 +1704,7 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Custom {
             name: name.to_string(),
             args: args_map,
-            metadata: None,
-        })
+            metadata: None})
     }
 }
 
@@ -1677,8 +1724,7 @@ pub struct CommandContext {
     /// Execution timestamp in nanoseconds
     pub timestamp_nanos: u64,
     /// Environment variables
-    pub environment: HashMap<String, String>,
-}
+    pub environment: HashMap<String, String>}
 
 impl CommandContext {
     /// Create new command context
@@ -1692,8 +1738,7 @@ impl CommandContext {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos() as u64)
                 .unwrap_or(0),
-            environment: HashMap::new(),
-        }
+            environment: HashMap::new()}
     }
 
     /// Add environment variable
@@ -1726,8 +1771,7 @@ pub struct CommandOutput {
     /// Command execution data payload
     pub data: Option<String>,
     /// Resource usage statistics
-    pub resource_usage: Option<ResourceUsage>,
-}
+    pub resource_usage: Option<ResourceUsage>}
 
 impl CommandOutput {
     /// Create new command output
@@ -1746,8 +1790,7 @@ impl CommandOutput {
             success: true,
             message: String::new(),
             data: None,
-            resource_usage: None,
-        }
+            resource_usage: None}
     }
 
     /// Create successful command output
@@ -1832,8 +1875,7 @@ pub struct ExecutionMetrics {
     /// Error counts by type
     pub error_counts: HashMap<String, u64>,
     /// Average execution time in nanoseconds
-    pub average_execution_time: u64,
-}
+    pub average_execution_time: u64}
 
 impl ExecutionMetrics {
     /// Create new execution metrics
@@ -1851,8 +1893,7 @@ impl ExecutionMetrics {
             successful_commands: 0,
             failed_commands: 0,
             error_counts: HashMap::new(),
-            average_execution_time: 0,
-        }
+            average_execution_time: 0}
     }
 
     /// Calculate duration in milliseconds
@@ -1906,8 +1947,7 @@ pub struct CommandHandlerMetadata {
     /// Handler version
     pub version: String,
     /// Whether handler is enabled
-    pub enabled: bool,
-}
+    pub enabled: bool}
 
 impl CommandHandlerMetadata {
     /// Create new command handler metadata
@@ -1922,8 +1962,7 @@ impl CommandHandlerMetadata {
             description: description.into(),
             supported_commands,
             version: "1.0.0".to_string(),
-            enabled: true,
-        }
+            enabled: true}
     }
 
     /// Set handler version
@@ -1944,8 +1983,7 @@ impl CommandHandlerMetadata {
 /// Default command handler implementation
 #[derive(Debug)]
 pub struct DefaultCommandHandler {
-    metadata: CommandHandlerMetadata,
-}
+    metadata: CommandHandlerMetadata}
 
 impl DefaultCommandHandler {
     /// Create new default command handler
@@ -1988,8 +2026,7 @@ impl CommandHandler for DefaultCommandHandler {
             let output = match &command {
                 ImmutableChatCommand::Help {
                     command: cmd,
-                    extended,
-                } => {
+                    extended} => {
                     let content = if let Some(cmd) = cmd {
                         if *extended {
                             format!("Extended help for command: {}", cmd)
@@ -2029,15 +2066,13 @@ impl CommandHandler for DefaultCommandHandler {
                         HistoryAction::Clear => "Chat history cleared".to_string(),
                         HistoryAction::Export => "Chat history exported".to_string(),
                         HistoryAction::Import => "Chat history imported".to_string(),
-                        HistoryAction::Backup => "Chat history backed up".to_string(),
-                    };
+                        HistoryAction::Backup => "Chat history backed up".to_string()};
                     CommandOutput::text(context.execution_id, content)
                 }
                 _ => CommandOutput::text(
                     context.execution_id,
                     format!("Command {} executed successfully", command.command_name()),
-                ),
-            };
+                )};
 
             // Send output through stream
             let _ = sender.try_send(output.final_output());
@@ -2081,16 +2116,14 @@ mod tests {
             query: "test".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false,
-        };
+            include_context: false};
         assert!(cmd.validate().is_ok());
 
         let cmd = ImmutableChatCommand::Search {
             query: "".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false,
-        };
+            include_context: false};
         assert!(cmd.validate().is_err());
     }
 

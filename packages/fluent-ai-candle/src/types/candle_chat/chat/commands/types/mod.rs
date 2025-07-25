@@ -19,12 +19,11 @@ mod tests;
 
 // Re-export all public types for convenience
 pub use actions::*;
-pub use command::{ChatCommand, ImmutableChatCommand};
+pub use command::ImmutableChatCommand;
 pub use context::{CommandContext, CommandOutput};
 pub use core::{
     CommandError, CommandInfo, CommandResult, ParameterInfo, ParameterType, ResourceUsage,
-    SettingsCategory,
-};
+    SettingsCategory};
 pub use events::{CommandEvent, CommandExecutionResult, OutputType};
 pub use executor::{CommandExecutorStats, StreamingCommandExecutor};
 pub use handler::{CommandHandler, CommandHandlerMetadata, DefaultCommandHandler};

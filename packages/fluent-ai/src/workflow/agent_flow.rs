@@ -32,8 +32,7 @@ where
     index: I,
     n: usize,
     _in: std::marker::PhantomData<In>,
-    _t: std::marker::PhantomData<T>,
-}
+    _t: std::marker::PhantomData<T>}
 
 impl<I, In, T> Lookup<I, In, T>
 where
@@ -45,8 +44,7 @@ where
             index,
             n,
             _in: std::marker::PhantomData,
-            _t: std::marker::PhantomData,
-        }
+            _t: std::marker::PhantomData}
     }
 }
 
@@ -96,8 +94,7 @@ where
     P: Prompt + Send + Sync,
 {
     prompt: P,
-    _in: std::marker::PhantomData<In>,
-}
+    _in: std::marker::PhantomData<In>}
 
 impl<P, In> PromptOp<P, In>
 where
@@ -107,8 +104,7 @@ where
     pub(crate) fn new(prompt: P) -> Self {
         Self {
             prompt,
-            _in: std::marker::PhantomData,
-        }
+            _in: std::marker::PhantomData}
     }
 }
 
@@ -153,8 +149,7 @@ where
     Out: schemars::JsonSchema + for<'de> serde::Deserialize<'de> + Send + Sync,
 {
     extractor: Extractor<M, Out>,
-    _in: std::marker::PhantomData<In>,
-}
+    _in: std::marker::PhantomData<In>}
 
 impl<M, In, Out> ExtractOp<M, In, Out>
 where
@@ -165,8 +160,7 @@ where
     pub(crate) fn new(extractor: Extractor<M, Out>) -> Self {
         Self {
             extractor,
-            _in: std::marker::PhantomData,
-        }
+            _in: std::marker::PhantomData}
     }
 }
 

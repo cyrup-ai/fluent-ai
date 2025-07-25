@@ -7,8 +7,7 @@ use crate::types::candle_chat::realtime::{
     events::RealTimeEvent,
     typing::{TypingIndicator, TypingStatistics},
     live_updates::{LiveUpdateSystem, LiveUpdateStatistics},
-    connections::{ConnectionManager, ConnectionManagerStatistics},
-};
+    connections::{ConnectionManager, ConnectionManagerStatistics}};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
@@ -24,8 +23,7 @@ pub struct RealTimeSystem {
     /// Global event broadcaster
     pub event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// System statistics
-    pub statistics: Arc<RwLock<RealTimeSystemStatistics>>,
-}
+    pub statistics: Arc<RwLock<RealTimeSystemStatistics>>}
 
 impl std::fmt::Debug for RealTimeSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,8 +44,7 @@ pub struct RealTimeSystemStatistics {
     pub live_update_stats: LiveUpdateStatistics,
     pub connection_stats: ConnectionManagerStatistics,
     pub total_events: usize,
-    pub system_uptime: u64,
-}
+    pub system_uptime: u64}
 
 impl RealTimeSystem {
     /// Create a new real-time system
@@ -67,27 +64,22 @@ impl RealTimeSystem {
                     active_users: 0,
                     total_typing_events: 0,
                     expiry_duration: 30,
-                    cleanup_interval: 10,
-                },
+                    cleanup_interval: 10},
                 live_update_stats: LiveUpdateStatistics {
                     total_messages: 0,
                     active_subscribers: 0,
                     queue_size: 0,
                     backpressure_events: 0,
                     processing_rate: 100.0,
-                    last_update: 0,
-                },
+                    last_update: 0},
                 connection_stats: ConnectionManagerStatistics {
                     total_connections: 0,
                     total_heartbeats: 0,
                     failed_connections: 0,
                     heartbeat_timeout: 60,
-                    health_check_interval: 30,
-                },
+                    health_check_interval: 30},
                 total_events: 0,
-                system_uptime: 0,
-            })),
-        }
+                system_uptime: 0}))}
     }
 
     /// Start all real-time services
@@ -95,8 +87,7 @@ impl RealTimeSystem {
         // Start typing indicator cleanup
         self.typing_indicator.start_cleanup_task();
 
-        // Start live update processing
-        self.live_update_system.start_processing();
+        // Live update system processes messages on-demand through send_message calls
 
         // Start statistics update task
         self.start_statistics_update();
@@ -105,7 +96,7 @@ impl RealTimeSystem {
     /// Start statistics update task (zero-allocation, lock-free streaming)
     fn start_statistics_update(&self) {
         let typing_indicator = self.typing_indicator.clone();
-        let live_update_system = self.live_update_system.clone();
+        let _live_update_system = self.live_update_system.clone();
         let connection_manager = self.connection_manager.clone();
         let statistics = self.statistics.clone();
 
@@ -126,8 +117,7 @@ impl RealTimeSystem {
                     queue_size: 0,
                     backpressure_events: 0,
                     processing_rate: 100.0,
-                    last_update: 0,
-                };
+                    last_update: 0};
                 let connection_stats = connection_manager.get_manager_statistics();
 
                 if let Ok(mut stats) = statistics.try_write() {
@@ -150,31 +140,76 @@ impl RealTimeSystem {
                     active_users: 0,
                     total_typing_events: 0,
                     expiry_duration: 30,
-                    cleanup_interval: 10,
-                },
+                    cleanup_interval: 10},
                 live_update_stats: LiveUpdateStatistics {
                     total_messages: 0,
                     active_subscribers: 0,
                     queue_size: 0,
                     backpressure_events: 0,
                     processing_rate: 100.0,
-                    last_update: 0,
-                },
+                    last_update: 0},
                 connection_stats: ConnectionManagerStatistics {
                     total_connections: 0,
                     total_heartbeats: 0,
                     failed_connections: 0,
                     heartbeat_timeout: 60,
-                    health_check_interval: 30,
-                },
+                    health_check_interval: 30},
                 total_events: 0,
-                system_uptime: 0,
-            })
+                system_uptime: 0})
     }
 
     /// Subscribe to all real-time events
     pub fn subscribe_to_all_events(&self) -> broadcast::Receiver<RealTimeEvent> {
         self.event_broadcaster.subscribe()
+    }
+    
+    /// Stream events with proper AsyncStream trait bounds - from TODO4.md
+    pub fn stream_events(&self) -> fluent_ai_async::AsyncStream<RealTimeEvent>
+    where
+        RealTimeEvent: Send + 'static,
+    {
+        let mut receiver = self.event_broadcaster.subscribe();
+        
+        fluent_ai_async::AsyncStream::with_channel(move |sender| {
+            use fluent_ai_async::{emit, handle_error};
+            
+            // Use crossbeam for lock-free streaming instead of async/await
+            std::thread::spawn(move || {
+                loop {
+                    match receiver.try_recv() {
+                        Ok(event) => {
+                            emit!(sender, event);
+                        }
+                        Err(broadcast::error::TryRecvError::Empty) => {
+                            // No events available, yield thread
+                            std::thread::yield_now();
+                        }
+                        Err(broadcast::error::TryRecvError::Lagged(_)) => {
+                            handle_error!("Event stream lagged", "Receiver fell behind event broadcaster");
+                        }
+                        Err(broadcast::error::TryRecvError::Closed) => {
+                            // Channel closed, exit loop
+                            break;
+                        }
+                    }
+                }
+            });
+        })
+    }
+    
+    /// Broadcast an event to all subscribers
+    pub fn broadcast_event(&self, event: RealTimeEvent) -> Result<usize, broadcast::error::SendError<RealTimeEvent>> {
+        // Update statistics
+        if let Ok(mut stats) = self.statistics.try_write() {
+            stats.total_events += 1;
+        }
+        
+        self.event_broadcaster.send(event)
+    }
+    
+    /// Get active subscriber count
+    pub fn subscriber_count(&self) -> usize {
+        self.event_broadcaster.receiver_count()
     }
 }
 
@@ -183,3 +218,5 @@ impl Default for RealTimeSystem {
         Self::new()
     }
 }
+
+// Send + Sync are automatically derived for RealTimeSystemStatistics since all fields implement Send + Sync

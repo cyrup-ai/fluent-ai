@@ -9,8 +9,7 @@ use async_stream::stream;
 use futures_util::StreamExt;
 
 use crate::{
-    DownloadChunk, DownloadStream, HttpChunk, HttpConfig, HttpError, HttpRequest, HttpStream,
-};
+    DownloadChunk, DownloadStream, HttpChunk, HttpConfig, HttpError, HttpRequest, HttpStream};
 
 /// Lightweight HTTP client that orchestrates specialized operation modules
 #[derive(Debug, Clone)]
@@ -20,8 +19,7 @@ pub struct HttpClient {
     /// Client configuration
     config: HttpConfig,
     /// Atomic metrics for lock-free statistics
-    stats: ClientStats,
-}
+    stats: ClientStats}
 
 impl HttpClient {
     /// Returns a reference to the inner `reqwest::Client`.
@@ -134,8 +132,7 @@ impl HttpClient {
                                     data: bytes,
                                     chunk_number,
                                     total_size,
-                                    bytes_downloaded,
-                                };
+                                    bytes_downloaded};
                                 yield Ok(chunk);
                             }
                             Err(e) => {
@@ -175,8 +172,7 @@ pub struct ClientStats {
     /// Number of cache hits
     pub cache_hits: Arc<AtomicUsize>,
     /// Number of cache misses
-    pub cache_misses: Arc<AtomicUsize>,
-}
+    pub cache_misses: Arc<AtomicUsize>}
 
 /// Immutable snapshot of client statistics at a point in time
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -198,8 +194,7 @@ pub struct ClientStatsSnapshot {
     /// Number of cache hits
     pub cache_hits: usize,
     /// Number of cache misses
-    pub cache_misses: usize,
-}
+    pub cache_misses: usize}
 
 impl ClientStats {
     /// Create a snapshot of the current statistics.
@@ -213,8 +208,7 @@ impl ClientStats {
             successful_requests: self.successful_requests.load(Ordering::Relaxed),
             failed_requests: self.failed_requests.load(Ordering::Relaxed),
             cache_hits: self.cache_hits.load(Ordering::Relaxed),
-            cache_misses: self.cache_misses.load(Ordering::Relaxed),
-        }
+            cache_misses: self.cache_misses.load(Ordering::Relaxed)}
     }
 }
 
@@ -239,7 +233,6 @@ impl Default for HttpClient {
         Self {
             inner,
             config,
-            stats: ClientStats::default(),
-        }
+            stats: ClientStats::default()}
     }
 }

@@ -4,8 +4,7 @@ use super::primitives::{MemoryContent, MemoryNode, MemoryTypeEnum as MemoryType}
 pub struct MemoryNodePool {
     available: crossbeam_queue::ArrayQueue<MemoryNode>,
     embedding_dimension: usize,
-    max_capacity: usize,
-}
+    max_capacity: usize}
 
 impl MemoryNodePool {
     /// Create new memory node pool with specified capacity and embedding dimension
@@ -14,8 +13,7 @@ impl MemoryNodePool {
         let pool = Self {
             available: crossbeam_queue::ArrayQueue::new(capacity),
             embedding_dimension,
-            max_capacity: capacity,
-        };
+            max_capacity: capacity};
 
         // Pre-allocate nodes to avoid allocations during runtime
         for _ in 0..capacity {
@@ -52,8 +50,7 @@ impl MemoryNodePool {
         PooledMemoryNode {
             node: std::mem::ManuallyDrop::new(node),
             pool: self,
-            taken: false,
-        }
+            taken: false}
     }
 
     /// Release a node back to the pool for reuse
@@ -85,8 +82,7 @@ impl MemoryNodePool {
 pub struct PooledMemoryNode<'a> {
     node: std::mem::ManuallyDrop<MemoryNode>,
     pool: &'a MemoryNodePool,
-    taken: bool,
-}
+    taken: bool}
 
 impl<'a> PooledMemoryNode<'a> {
     /// Initialize the pooled node with content

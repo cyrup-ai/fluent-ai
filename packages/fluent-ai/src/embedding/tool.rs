@@ -53,8 +53,7 @@ use serde::Serialize;
 
 use crate::{
     domain::tool::ToolEmbeddingDyn,
-    embedding::embed::{Embed, EmbedError, TextEmbedder},
-};
+    embedding::embed::{Embed, EmbedError, TextEmbedder}};
 
 /// Embeddable representation of a [`Tool`](crate::tool::Tool).
 #[derive(Clone, Serialize, Default, Eq, PartialEq)]
@@ -64,8 +63,7 @@ pub struct ToolSchema {
     /// Arbitrary JSON context emitted by the tool implementation.
     pub context: serde_json::Value,
     /// Human-readable documentation chunks plugged into the vector store.
-    pub embedding_docs: Vec<String>,
-}
+    pub embedding_docs: Vec<String>}
 
 // -------------------------------------------------------------------------
 // Embed implementation – feed docs into `TextEmbedder` untouched.
@@ -89,8 +87,7 @@ impl ToolSchema {
         Ok(Self {
             name: tool.name(),
             context: tool.context().map_err(EmbedError::new)?,
-            embedding_docs: tool.embedding_docs(),
-        })
+            embedding_docs: tool.embedding_docs()})
     }
 }
 

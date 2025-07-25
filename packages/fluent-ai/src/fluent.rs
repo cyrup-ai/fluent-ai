@@ -9,14 +9,12 @@ pub struct FluentAi;
 
 /// Builder for configuring the global FluentAi environment
 pub struct FluentAiBuilder {
-    theme_config: ThemeConfig,
-}
+    theme_config: ThemeConfig}
 
 impl Default for FluentAiBuilder {
     fn default() -> Self {
         Self {
-            theme_config: ThemeConfig::Default,
-        }
+            theme_config: ThemeConfig::Default}
     }
 }
 

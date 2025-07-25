@@ -26,8 +26,7 @@ pub struct CacheKey {
     /// Position range start for efficient range queries
     position_start: u32,
     /// Position range end for efficient range queries
-    position_end: u32,
-}
+    position_end: u32}
 
 impl CacheKey {
     #[inline(always)]
@@ -36,8 +35,7 @@ impl CacheKey {
             sequence_id,
             layer_id,
             position_start,
-            position_end,
-        }
+            position_end}
     }
 
     #[inline(always)]
@@ -86,8 +84,7 @@ pub struct KVCacheEntry {
     /// Creation timestamp in nanoseconds
     creation_time_nanos: AtomicU64,
     /// Access count for usage statistics
-    access_count: AtomicU64,
-}
+    access_count: AtomicU64}
 
 impl KVCacheEntry {
     #[inline(always)]
@@ -121,8 +118,7 @@ impl KVCacheEntry {
             ref_count: AtomicU32::new(1), // Start with reference count of 1
             last_access_nanos: AtomicU64::new(now_nanos),
             creation_time_nanos: AtomicU64::new(now_nanos),
-            access_count: AtomicU64::new(0),
-        })
+            access_count: AtomicU64::new(0)})
     }
 
     #[inline(always)]
@@ -177,8 +173,7 @@ impl KVCacheEntry {
     pub fn age_nanos(&self) -> u64 {
         let now = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
             Ok(duration) => duration.as_nanos() as u64,
-            Err(_) => return 0,
-        };
+            Err(_) => return 0};
         let creation_time = self.creation_time_nanos.load(Ordering::Relaxed);
         now.saturating_sub(creation_time)
     }
@@ -206,8 +201,7 @@ pub struct KVCacheConfig {
     /// Enable per-sequence memory limits
     pub per_sequence_limits: bool,
     /// Memory limit per sequence (if per_sequence_limits enabled)
-    pub max_memory_per_sequence: u64,
-}
+    pub max_memory_per_sequence: u64}
 
 impl Default for KVCacheConfig {
     #[inline(always)]
@@ -234,8 +228,7 @@ pub struct KVCacheStats {
     pub cache_misses: u64,
     pub hit_rate: f32,
     pub eviction_count: u64,
-    pub memory_utilization: f32,
-}
+    pub memory_utilization: f32}
 
 /// Lock-free KV cache manager with atomic operations
 pub struct KVCacheManager {
@@ -256,8 +249,7 @@ pub struct KVCacheManager {
     /// Eviction count for statistics
     eviction_count: AtomicU64,
     /// Per-sequence memory usage tracking
-    sequence_memory: SkipMap<u64, AtomicU64>,
-}
+    sequence_memory: SkipMap<u64, AtomicU64>}
 
 impl KVCacheManager {
     #[inline(always)]
@@ -271,8 +263,7 @@ impl KVCacheManager {
             cache_hits: AtomicU64::new(0),
             cache_misses: AtomicU64::new(0),
             eviction_count: AtomicU64::new(0),
-            sequence_memory: SkipMap::new(),
-        }
+            sequence_memory: SkipMap::new()}
     }
 
     #[inline(always)]
@@ -497,8 +488,7 @@ impl KVCacheManager {
             },
             eviction_count: self.eviction_count.load(Ordering::Relaxed),
             memory_utilization: self.total_memory_usage.load(Ordering::Relaxed) as f32
-                / self.config.max_memory_bytes as f32,
-        }
+                / self.config.max_memory_bytes as f32}
     }
 
     #[inline(always)]

@@ -42,8 +42,7 @@ pub enum AI21Error {
         /// Whether retry is possible
         retry_possible: bool,
         /// HTTP status code
-        status_code: u16,
-    },
+        status_code: u16},
     
     /// Rate limiting exceeded
     #[error("Rate limit exceeded: {message}")]
@@ -57,8 +56,7 @@ pub enum AI21Error {
         /// Maximum allowed requests
         max_requests: u32,
         /// Reset time (Unix timestamp)
-        reset_time: u64,
-    },
+        reset_time: u64},
     
     /// Model not supported or unavailable
     #[error("Model not supported: {model}")]
@@ -70,8 +68,7 @@ pub enum AI21Error {
         /// Suggested alternative model
         suggested_model: ArrayString<64>,
         /// Whether model exists but is unavailable
-        model_exists: bool,
-    },
+        model_exists: bool},
     
     /// Request validation failed
     #[error("Request validation failed: {field} - {reason}")]
@@ -85,8 +82,7 @@ pub enum AI21Error {
         /// Valid range or options
         valid_range: ArrayString<128>,
         /// Whether value can be auto-corrected
-        auto_correctable: bool,
-    },
+        auto_correctable: bool},
     
     /// Quota exceeded for AI21 API
     #[error("Quota exceeded: {quota_type}")]
@@ -100,8 +96,7 @@ pub enum AI21Error {
         /// Reset time (Unix timestamp)
         reset_time: u64,
         /// Billing information
-        billing_info: ArrayString<256>,
-    },
+        billing_info: ArrayString<256>},
     
     /// Model capacity exceeded
     #[error("Model capacity exceeded: {model}")]
@@ -115,8 +110,7 @@ pub enum AI21Error {
         /// Whether retry is recommended
         retry_recommended: bool,
         /// Alternative models available
-        alternatives: ArrayString<256>,
-    },
+        alternatives: ArrayString<256>},
     
     /// JSON processing error
     #[error("JSON processing failed: {operation} - {message}")]
@@ -130,8 +124,7 @@ pub enum AI21Error {
         /// Column number where error occurred
         column_number: Option<usize>,
         /// Whether recovery is possible
-        recovery_possible: bool,
-    },
+        recovery_possible: bool},
     
     /// Request timeout
     #[error("Request timeout: {duration_ms}ms")]
@@ -143,8 +136,7 @@ pub enum AI21Error {
         /// Whether retry is recommended
         retry_recommended: bool,
         /// Suggested timeout for retry
-        suggested_timeout_ms: u64,
-    },
+        suggested_timeout_ms: u64},
     
     /// Configuration error
     #[error("Configuration error: {setting} - {reason}")]
@@ -156,8 +148,7 @@ pub enum AI21Error {
         /// Current value
         current_value: ArrayString<128>,
         /// Expected value or range
-        expected_value: ArrayString<128>,
-    },
+        expected_value: ArrayString<128>},
     
     /// Streaming error
     #[error("Streaming error: {reason}")]
@@ -169,8 +160,7 @@ pub enum AI21Error {
         /// Whether stream can be resumed
         resumable: bool,
         /// Partial content received
-        partial_content: ArrayString<512>,
-    },
+        partial_content: ArrayString<512>},
     
     /// Invalid API key format
     #[error("Invalid API key: {reason}")]
@@ -180,9 +170,7 @@ pub enum AI21Error {
         /// Key length for debugging
         key_length: usize,
         /// Whether format is valid
-        format_valid: bool,
-    },
-}
+        format_valid: bool}}
 
 /// Quota type enumeration for detailed quota management
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,8 +185,7 @@ pub enum QuotaType {
     /// Model-specific quota
     ModelSpecific,
     /// Billing quota
-    BillingQuota,
-}
+    BillingQuota}
 
 /// JSON operation types for error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -213,8 +200,7 @@ pub enum JsonOperation {
     /// Tool call parse
     ToolCallParse,
     /// Usage statistics parse
-    UsageStatsParse,
-}
+    UsageStatsParse}
 
 /// Request type enumeration for timeout context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -227,8 +213,7 @@ pub enum RequestType {
     /// Model information request
     ModelInfo,
     /// Health check request
-    HealthCheck,
-}
+    HealthCheck}
 
 /// Streaming error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -243,8 +228,7 @@ pub enum StreamingErrorReason {
     /// Unexpected event type
     UnexpectedEventType,
     /// Stream ended unexpectedly
-    StreamEndedUnexpectedly,
-}
+    StreamEndedUnexpectedly}
 
 /// Error code enumeration for programmatic error handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -271,8 +255,7 @@ pub enum ErrorCode {
     /// Streaming error
     StreamingError = 10,
     /// Invalid API key
-    InvalidApiKey = 11,
-}
+    InvalidApiKey = 11}
 
 impl AI21Error {
     /// Create authentication error with context
@@ -289,8 +272,7 @@ impl AI21Error {
             token_length,
             format_valid,
             retry_possible,
-            status_code,
-        }
+            status_code}
     }
     
     /// Create rate limit error with retry information
@@ -307,8 +289,7 @@ impl AI21Error {
             retry_after_seconds,
             current_requests,
             max_requests,
-            reset_time,
-        }
+            reset_time}
     }
     
     /// Create model not supported error
@@ -324,8 +305,7 @@ impl AI21Error {
             model: ArrayString::from(model).unwrap_or_default(),
             available_models: ArrayString::from(&available_str).unwrap_or_default(),
             suggested_model: ArrayString::from(suggested_model).unwrap_or_default(),
-            model_exists,
-        }
+            model_exists}
     }
     
     /// Create request validation error
@@ -342,8 +322,7 @@ impl AI21Error {
             reason: ArrayString::from(reason).unwrap_or_default(),
             current_value: ArrayString::from(current_value).unwrap_or_default(),
             valid_range: ArrayString::from(valid_range).unwrap_or_default(),
-            auto_correctable,
-        }
+            auto_correctable}
     }
     
     /// Create quota exceeded error
@@ -360,8 +339,7 @@ impl AI21Error {
             current_usage,
             max_usage,
             reset_time,
-            billing_info: ArrayString::from(billing_info).unwrap_or_default(),
-        }
+            billing_info: ArrayString::from(billing_info).unwrap_or_default()}
     }
     
     /// Create model capacity error
@@ -379,8 +357,7 @@ impl AI21Error {
             queue_length,
             estimated_wait_seconds,
             retry_recommended,
-            alternatives: ArrayString::from(&alternatives_str).unwrap_or_default(),
-        }
+            alternatives: ArrayString::from(&alternatives_str).unwrap_or_default()}
     }
     
     /// Create JSON processing error
@@ -397,8 +374,7 @@ impl AI21Error {
             message: ArrayString::from(message).unwrap_or_default(),
             line_number,
             column_number,
-            recovery_possible,
-        }
+            recovery_possible}
     }
     
     /// Create timeout error
@@ -413,8 +389,7 @@ impl AI21Error {
             duration_ms,
             request_type,
             retry_recommended,
-            suggested_timeout_ms,
-        }
+            suggested_timeout_ms}
     }
     
     /// Create configuration error
@@ -429,8 +404,7 @@ impl AI21Error {
             setting: ArrayString::from(setting).unwrap_or_default(),
             reason: ArrayString::from(reason).unwrap_or_default(),
             current_value: ArrayString::from(current_value).unwrap_or_default(),
-            expected_value: ArrayString::from(expected_value).unwrap_or_default(),
-        }
+            expected_value: ArrayString::from(expected_value).unwrap_or_default()}
     }
     
     /// Create streaming error
@@ -445,8 +419,7 @@ impl AI21Error {
             reason,
             event_number,
             resumable,
-            partial_content: ArrayString::from(partial_content).unwrap_or_default(),
-        }
+            partial_content: ArrayString::from(partial_content).unwrap_or_default()}
     }
     
     /// Create invalid API key error
@@ -459,8 +432,7 @@ impl AI21Error {
         Self::InvalidApiKey {
             reason: ArrayString::from(reason).unwrap_or_default(),
             key_length,
-            format_valid,
-        }
+            format_valid}
     }
     
     /// Get error code for programmatic handling
@@ -508,8 +480,7 @@ impl AI21Error {
             Self::RateLimit { retry_after_seconds, .. } => Some(*retry_after_seconds),
             Self::ModelCapacity { estimated_wait_seconds, .. } => Some(*estimated_wait_seconds),
             Self::Timeout { .. } => Some(5), // Default 5 second delay for timeouts
-            _ => None,
-        }
+            _ => None}
     }
     
     /// Get suggested action for error recovery
@@ -527,8 +498,7 @@ impl AI21Error {
             Self::Configuration { .. } => "Check configuration settings and correct invalid values",
             Self::Streaming { .. } => "Check connection and restart stream",
             Self::InvalidApiKey { .. } => "Provide valid API key in correct format",
-            Self::Http(_) => "Check network connection and retry",
-        }
+            Self::Http(_) => "Check network connection and retry"}
     }
 }
 
@@ -585,8 +555,7 @@ impl From<u16> for AI21Error {
                 true,
                 &["jamba-1.5-mini"],
             ),
-            _ => Self::Http(fluent_ai_http3::HttpError::Status(status_code)),
-        }
+            _ => Self::Http(fluent_ai_http3::HttpError::Status(status_code))}
     }
 }
 
@@ -612,8 +581,7 @@ impl fmt::Display for QuotaType {
             Self::DailyRequests => write!(f, "Daily requests"),
             Self::ConcurrentRequests => write!(f, "Concurrent requests"),
             Self::ModelSpecific => write!(f, "Model-specific quota"),
-            Self::BillingQuota => write!(f, "Billing quota"),
-        }
+            Self::BillingQuota => write!(f, "Billing quota")}
     }
 }
 
@@ -624,8 +592,7 @@ impl fmt::Display for JsonOperation {
             Self::ResponseDeserialization => write!(f, "Response deserialization"),
             Self::StreamingParse => write!(f, "Streaming parse"),
             Self::ToolCallParse => write!(f, "Tool call parse"),
-            Self::UsageStatsParse => write!(f, "Usage statistics parse"),
-        }
+            Self::UsageStatsParse => write!(f, "Usage statistics parse")}
     }
 }
 
@@ -635,8 +602,7 @@ impl fmt::Display for RequestType {
             Self::ChatCompletion => write!(f, "Chat completion"),
             Self::StreamingCompletion => write!(f, "Streaming completion"),
             Self::ModelInfo => write!(f, "Model information"),
-            Self::HealthCheck => write!(f, "Health check"),
-        }
+            Self::HealthCheck => write!(f, "Health check")}
     }
 }
 
@@ -647,8 +613,7 @@ impl fmt::Display for StreamingErrorReason {
             Self::ConnectionInterrupted => write!(f, "Connection interrupted"),
             Self::JsonParsingFailed => write!(f, "JSON parsing failed"),
             Self::UnexpectedEventType => write!(f, "Unexpected event type"),
-            Self::StreamEndedUnexpectedly => write!(f, "Stream ended unexpectedly"),
-        }
+            Self::StreamEndedUnexpectedly => write!(f, "Stream ended unexpectedly")}
     }
 }
 

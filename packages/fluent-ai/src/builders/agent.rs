@@ -19,8 +19,7 @@ pub struct AgentBuilder {
     memory: Option<Memory>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
-    additional_params: Option<Value>,
-}
+    additional_params: Option<Value>}
 
 pub struct AgentBuilderWithHandler {
     model: Models,
@@ -33,8 +32,7 @@ pub struct AgentBuilderWithHandler {
     additional_params: Option<Value>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
     result_handler: Option<Box<dyn FnOnce(Agent) -> Agent + Send + 'static>>,
-    chunk_handler: Option<Box<dyn FnMut(Agent) -> Agent + Send + 'static>>,
-}
+    chunk_handler: Option<Box<dyn FnMut(Agent) -> Agent + Send + 'static>>}
 
 impl Agent {
     pub fn with_model(model: Models) -> AgentBuilder {
@@ -46,8 +44,7 @@ impl Agent {
             memory: None,
             temperature: None,
             max_tokens: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 }
 
@@ -104,8 +101,7 @@ impl AgentBuilder {
             additional_params: self.additional_params,
             error_handler: Box::new(handler),
             result_handler: None,
-            chunk_handler: None,
-        }
+            chunk_handler: None}
     }
 }
 
@@ -121,8 +117,7 @@ impl AgentBuilderWithHandler {
             memory: self.memory,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
-            additional_params: self.additional_params,
-        }
+            additional_params: self.additional_params}
     }
 
     pub fn chat_message(

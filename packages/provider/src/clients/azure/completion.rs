@@ -11,8 +11,7 @@ use std::{convert::Infallible, str::FromStr};
 use fluent_ai_domain::completion::CompletionRequest;
 use fluent_ai_domain::completion::StreamingCoreResponse;
 use fluent_ai_domain::completion::{
-    self, CompletionCoreError, StreamingCoreResponse as RigStreaming,
-};
+    self, CompletionCoreError, StreamingCoreResponse as RigStreaming};
 use fluent_ai_domain::message::{self, MessageError};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -22,8 +21,7 @@ use tokio::task::spawn as AsyncTask;
 use super::client::Client;
 use crate::{
     OneOrMany,
-    clients::openai::{self, TranscriptionResponse, send_compatible_streaming_request},
-};
+    clients::openai::{self, TranscriptionResponse, send_compatible_streaming_request}};
 
 // ───────────────────────────── public constants ──────────────────────────
 
@@ -58,15 +56,13 @@ pub const GPT_35_TURBO_16K: &str = "gpt-3.5-turbo-16k";
 
 #[derive(Debug, Deserialize)]
 struct ApiErrorResponse {
-    message: String,
-}
+    message: String}
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ApiResponse<T> {
     Ok(T),
-    Err(ApiErrorResponse),
-}
+    Err(ApiErrorResponse)}
 
 // ───────────────────────────── provider model ────────────────────────────
 
@@ -77,8 +73,7 @@ impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_owned(),
-        }
+            model: model.to_owned()}
     }
 }
 
@@ -134,8 +129,7 @@ impl CompletionModel {
                     );
                     response.try_into()
                 }
-                ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message)),
-            }
+                ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message))}
         } else {
             Err(CompletionError::ProviderError(response.text().await?))
         }
@@ -168,8 +162,7 @@ impl CompletionModel {
     ) -> Result<serde_json::Value, CompletionError> {
         let mut full_history: Vec<openai::Message> = match &completion_request.preamble {
             Some(preamble) => vec![openai::Message::system(preamble)],
-            None => vec![],
-        };
+            None => vec![]};
 
         if let Some(docs) = completion_request.normalized_documents() {
             let docs: Vec<openai::Message> = docs.try_into()?;
@@ -191,16 +184,14 @@ impl CompletionModel {
             json!({
                 "model": self.model,
                 "messages": full_history,
-                "temperature": completion_request.temperature,
-            })
+                "temperature": completion_request.temperature})
         } else {
             json!({
                 "model": self.model,
                 "messages": full_history,
                 "temperature": completion_request.temperature,
                 "tools": completion_request.tools.into_iter().map(openai::ToolDefinition::from).collect::<Vec<_>>(),
-                "tool_choice": "auto",
-            })
+                "tool_choice": "auto"})
         };
 
         let request = if let Some(params) = completion_request.additional_params {

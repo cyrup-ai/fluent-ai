@@ -16,8 +16,7 @@ pub struct MemoryConfig {
     /// Cache configuration
     pub cache: CacheConfig,
     /// Logging configuration
-    pub logging: LoggingConfig,
-}
+    pub logging: LoggingConfig}
 
 /// Database configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,15 +36,13 @@ pub struct DatabaseConfig {
     /// Connection pool size (optional)
     pub pool_size: Option<usize>,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Database types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DatabaseType {
     /// SurrealDB
-    SurrealDB,
-}
+    SurrealDB}
 
 /// Vector store configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,8 +58,7 @@ pub struct VectorStoreConfig {
     /// API key (optional, for hosted vector stores)
     pub api_key: Option<String>,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Vector store types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -74,8 +70,7 @@ pub enum VectorStoreType {
     /// FAISS vector store
     FAISS,
     /// HNSW vector store
-    HNSW,
-}
+    HNSW}
 
 /// Embedding model configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,8 +84,7 @@ pub struct EmbeddingModelConfig {
     /// API base URL (optional)
     pub api_base: Option<String>,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Embedding model types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,8 +92,7 @@ pub enum EmbeddingModelType {
     /// OpenAI embedding models
     OpenAI,
     /// Custom embedding model
-    Custom,
-}
+    Custom}
 
 /// Completion provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,8 +110,7 @@ pub struct CompletionConfig {
     /// Max tokens (optional)
     pub max_tokens: Option<usize>,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Completion providers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -128,8 +120,7 @@ pub enum CompletionProvider {
     /// Anthropic
     Anthropic,
     /// Custom provider
-    Custom,
-}
+    Custom}
 
 /// API configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,8 +142,7 @@ pub struct APIConfig {
     /// Rate limit requests per minute
     pub rate_limit_rpm: Option<usize>,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Authentication types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -162,8 +152,7 @@ pub enum AuthType {
     /// JWT authentication
     JWT,
     /// OAuth authentication
-    OAuth,
-}
+    OAuth}
 
 /// Cache configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,8 +166,7 @@ pub struct CacheConfig {
     /// Cache TTL in seconds (optional)
     pub ttl: Option<u64>,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Cache types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -186,8 +174,7 @@ pub enum CacheType {
     /// In-memory cache
     Memory,
     /// Redis cache
-    Redis,
-}
+    Redis}
 
 /// Logging configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,8 +186,7 @@ pub struct LoggingConfig {
     /// Log to console
     pub console: bool,
     /// Additional options (optional)
-    pub options: Option<serde_json::Value>,
-}
+    pub options: Option<serde_json::Value>}
 
 /// Log levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -212,8 +198,7 @@ pub enum LogLevel {
     /// Warning level
     Warn,
     /// Error level
-    Error,
-}
+    Error}
 
 impl Default for MemoryConfig {
     fn default() -> Self {
@@ -223,8 +208,7 @@ impl Default for MemoryConfig {
             completion: CompletionConfig::default(),
             api: None,
             cache: CacheConfig::default(),
-            logging: LoggingConfig::default(),
-        }
+            logging: LoggingConfig::default()}
     }
 }
 
@@ -238,8 +222,7 @@ impl Default for DatabaseConfig {
             username: None,
             password: None,
             pool_size: Some(10),
-            options: None,
-        }
+            options: None}
     }
 }
 
@@ -251,8 +234,7 @@ impl Default for VectorStoreConfig {
             dimension: 1536,
             connection_string: None,
             api_key: None,
-            options: None,
-        }
+            options: None}
     }
 }
 
@@ -263,8 +245,7 @@ impl Default for EmbeddingModelConfig {
             model_name: "text-embedding-3-small".to_string(),
             api_key: None,
             api_base: None,
-            options: None,
-        }
+            options: None}
     }
 }
 
@@ -277,8 +258,7 @@ impl Default for CompletionConfig {
             api_base: None,
             temperature: Some(0.7),
             max_tokens: Some(2048),
-            options: None,
-        }
+            options: None}
     }
 }
 
@@ -289,8 +269,7 @@ impl Default for CacheConfig {
             cache_type: CacheType::Memory,
             size: Some(10000),
             ttl: Some(3600),
-            options: None,
-        }
+            options: None}
     }
 }
 
@@ -300,7 +279,6 @@ impl Default for LoggingConfig {
             level: LogLevel::Info,
             file: None,
             console: true,
-            options: None,
-        }
+            options: None}
     }
 }

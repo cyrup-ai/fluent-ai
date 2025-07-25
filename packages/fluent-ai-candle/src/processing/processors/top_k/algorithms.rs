@@ -4,10 +4,10 @@
 
 use arrayvec::ArrayVec;
 
-use crate::processing::traits::{ProcessingResult, utils::{clamp_for_stability, validate_logits}};
+use crate::processing::traits::ProcessingResult;
 use crate::processing::ProcessingError;
 
-use super::core::{MAX_TOP_K, TopKBuffer};
+use super::core::TopKBuffer;
 
 /// Selection algorithms for top-k filtering
 pub struct SelectionAlgorithms;

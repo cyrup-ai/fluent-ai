@@ -3,7 +3,6 @@
 //! Optimized implementation using SIMD operations where available,
 //! efficient indexing, and configurable similarity thresholds.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
@@ -31,8 +30,7 @@ pub struct InMemoryVectorStoreConfig {
     /// Enable approximate search for large datasets
     pub enable_approximate_search: bool,
     /// Number of clusters for approximate search
-    pub num_clusters: usize,
-}
+    pub num_clusters: usize}
 
 impl Default for InMemoryVectorStoreConfig {
     fn default() -> Self {
@@ -43,8 +41,7 @@ impl Default for InMemoryVectorStoreConfig {
             normalize_on_insert: true,
             initial_capacity: 1000,
             enable_approximate_search: false,
-            num_clusters: 100,
-        }
+            num_clusters: 100}
     }
 }
 
@@ -58,8 +55,7 @@ pub struct VectorEntry {
     /// Associated metadata
     pub metadata: Value,
     /// Optional text content for the vector
-    pub content: Option<String>,
-}
+    pub content: Option<String>}
 
 /// Search result with similarity score
 #[derive(Debug, Clone)]
@@ -71,8 +67,7 @@ pub struct SearchResult {
     /// Associated metadata
     pub metadata: Value,
     /// Optional content
-    pub content: Option<String>,
-}
+    pub content: Option<String>}
 
 /// High-performance in-memory vector store
 pub struct InMemoryVectorStore {
@@ -81,8 +76,7 @@ pub struct InMemoryVectorStore {
     /// Storage for vectors and metadata
     storage: Arc<RwLock<VectorStorage>>,
     /// Optional embedding provider for query vectorization
-    embedding_provider: Option<Arc<dyn EmbeddingProvider>>,
-}
+    embedding_provider: Option<Arc<dyn EmbeddingProvider>>}
 
 /// Internal storage structure
 struct VectorStorage {
@@ -95,8 +89,7 @@ struct VectorStorage {
     /// Mapping from entry ID to vector index
     id_to_index: HashMap<String, usize>,
     /// Dimensional consistency check
-    dimensions: Option<usize>,
-}
+    dimensions: Option<usize>}
 
 /// Trait for embedding providers (for query vectorization)
 pub trait EmbeddingProvider: Send + Sync {
@@ -114,8 +107,7 @@ impl VectorStorage {
             vectors: Vec::with_capacity(capacity),
             index_to_id: Vec::with_capacity(capacity),
             id_to_index: HashMap::with_capacity(capacity),
-            dimensions: None,
-        }
+            dimensions: None}
     }
 
     fn insert(&mut self, entry: VectorEntry) -> Result<(), String> {
@@ -212,8 +204,7 @@ impl VectorStorage {
                         score: similarity as f64,
                         id: entry.id.clone(),
                         metadata: entry.metadata.clone(),
-                        content: entry.content.clone(),
-                    });
+                        content: entry.content.clone()});
                 }
             }
         }
@@ -254,8 +245,7 @@ impl InMemoryVectorStore {
         Self {
             config,
             storage: Arc::new(RwLock::new(storage)),
-            embedding_provider: None,
-        }
+            embedding_provider: None}
     }
 
     /// Set embedding provider for query vectorization
@@ -291,8 +281,7 @@ impl InMemoryVectorStore {
                 id: id.clone(),
                 vector: normalized_vector,
                 metadata,
-                content: None,
-            };
+                content: None};
 
             let mut storage = storage.write();
             if let Err(e) = storage.insert(entry) {
@@ -330,8 +319,7 @@ impl InMemoryVectorStore {
                 id: id.clone(),
                 vector: normalized_vector,
                 metadata,
-                content: Some(content),
-            };
+                content: Some(content)};
 
             let mut storage = storage.write();
             if let Err(e) = storage.insert(entry) {
@@ -468,8 +456,7 @@ impl Clone for InMemoryVectorStore {
         Self {
             config: self.config.clone(),
             storage: self.storage.clone(),
-            embedding_provider: self.embedding_provider.clone(),
-        }
+            embedding_provider: self.embedding_provider.clone()}
     }
 }
 
@@ -506,8 +493,7 @@ impl VectorStoreIndexDyn for InMemoryVectorStore {
                             ZeroOneOrMany::None
                         }
                     }
-                    _ => ZeroOneOrMany::Many(tuples),
-                }
+                    _ => ZeroOneOrMany::Many(tuples)}
             }
         })
     }
@@ -535,8 +521,7 @@ impl VectorStoreIndexDyn for InMemoryVectorStore {
                             ZeroOneOrMany::None
                         }
                     }
-                    _ => ZeroOneOrMany::Many(tuples),
-                }
+                    _ => ZeroOneOrMany::Many(tuples)}
             }
         })
     }

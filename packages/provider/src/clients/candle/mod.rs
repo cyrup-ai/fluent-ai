@@ -19,8 +19,7 @@ pub mod tokenizer;
 
 pub use client::CandleCompletionClient;
 pub use config::{
-    CacheConfig, CandleGlobalConfig, ComputeConfig, MetricsCollector, ModelSpecificConfig,
-};
+    CacheConfig, CandleGlobalConfig, ComputeConfig, MetricsCollector, ModelSpecificConfig};
 pub use device_manager::{DeviceInfo, DeviceManager, DeviceType};
 pub use error::{CandleError, CandleResult, ErrorMetrics};
 pub use generation::{GenerationStatistics, SamplingConfig, TextGenerator, TokenProb};
@@ -29,8 +28,7 @@ pub use memory_pool::{MemoryPool, MemoryPoolManager, PoolConfig, PoolStatistics,
 pub use model_repo::{ModelArchitecture, ModelMetadata, ModelRepository, ModelState};
 pub use models::{CandleModel, CandleModelInfo};
 pub use performance::{
-    AlignedBuffer, BenchmarkResult, PerformanceConfig, PerformanceOptimizer, SimdCapabilities,
-};
+    AlignedBuffer, BenchmarkResult, PerformanceConfig, PerformanceOptimizer, SimdCapabilities};
 pub use provider::CandleProvider;
 pub use streaming::{FinishReason, StreamingChunk, StreamingCoordinator, TokenStreamer};
 pub use tokenizer::{CandleTokenizer, SpecialTokens, TokenizationResult, TokenizerConfig};

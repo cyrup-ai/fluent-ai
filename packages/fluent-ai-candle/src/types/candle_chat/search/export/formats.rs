@@ -21,8 +21,7 @@ pub enum ExportFormat {
     /// Markdown format
     Markdown,
     /// HTML format
-    Html,
-}
+    Html}
 
 /// Export options for customizing output
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,8 +39,7 @@ pub struct ExportOptions {
     /// Include timestamps
     pub include_timestamps: bool,
     /// Include relevance scores
-    pub include_scores: bool,
-}
+    pub include_scores: bool}
 
 impl Default for ExportOptions {
     fn default() -> Self {
@@ -52,8 +50,7 @@ impl Default for ExportOptions {
             max_results: None,
             pretty_print: true,
             include_timestamps: true,
-            include_scores: true,
-        }
+            include_scores: true}
     }
 }
 
@@ -63,15 +60,13 @@ pub struct ExportMetadata {
     pub export_time: u64,
     pub format: ExportFormat,
     pub total_results: usize,
-    pub options: ExportOptions,
-}
+    pub options: ExportOptions}
 
 /// Export data structure for JSON serialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportData {
     pub results: Vec<SearchResult>,
-    pub metadata: Option<ExportMetadata>,
-}
+    pub metadata: Option<ExportMetadata>}
 
 /// Export error types
 #[derive(Debug, Clone, thiserror::Error)]
@@ -83,5 +78,4 @@ pub enum ExportError {
     UnsupportedFormat(ExportFormat),
     
     #[error("Export failed: {0}")]
-    ExportFailed(String),
-}
+    ExportFailed(String)}

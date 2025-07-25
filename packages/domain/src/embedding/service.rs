@@ -3,8 +3,7 @@
 //! This module provides production-ready embedding services with zero-allocation methods,
 //! lock-free caching, and high-performance vector operations.
 
-use std::collections::HashMap;
-use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, hash_map::DefaultHasher};
 use std::hash::{Hash, Hasher};
 
 use fluent_ai_async::AsyncStream;
@@ -15,8 +14,7 @@ pub enum VectorStoreError {
     #[error("Not found")]
     NotFound,
     #[error("Operation failed: {0}")]
-    OperationFailed(String),
-}
+    OperationFailed(String)}
 
 /// Production-ready embedding service trait with zero-allocation methods
 pub trait EmbeddingService: Send + Sync {
@@ -46,8 +44,7 @@ pub trait EmbeddingService: Send + Sync {
 pub struct EmbeddingPool {
     available: crossbeam_queue::ArrayQueue<Vec<f32>>,
     dimension: usize,
-    max_capacity: usize,
-}
+    max_capacity: usize}
 impl EmbeddingPool {
     /// Create new embedding pool with specified capacity
     #[inline]
@@ -55,8 +52,7 @@ impl EmbeddingPool {
         let pool = Self {
             available: crossbeam_queue::ArrayQueue::new(capacity),
             dimension,
-            max_capacity: capacity,
-        };
+            max_capacity: capacity};
 
         // Pre-allocate vectors to avoid allocations during runtime
         for _ in 0..capacity {
@@ -97,8 +93,7 @@ pub struct InMemoryEmbeddingCache {
     cache: std::sync::RwLock<HashMap<String, Vec<f32>>>,
     pool: EmbeddingPool,
     #[allow(dead_code)] // TODO: Implement in embedding cache system
-    dimension: usize,
-}
+    dimension: usize}
 impl InMemoryEmbeddingCache {
     /// Create new embedding cache with specified dimension
     #[inline]
@@ -106,8 +101,7 @@ impl InMemoryEmbeddingCache {
         Self {
             cache: std::sync::RwLock::new(HashMap::with_capacity(1000)),
             pool: EmbeddingPool::new(dimension, 100),
-            dimension,
-        }
+            dimension}
     }
 
     /// Get cached embedding with zero-copy return

@@ -144,8 +144,7 @@ pub enum ImportFormat {
     /// CSV format
     Csv,
     /// Binary format
-    Binary,
-}
+    Binary}
 
 /// Import configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,8 +159,7 @@ pub struct ImportConfig {
     pub batch_size: usize,
 
     /// Continue on error
-    pub continue_on_error: bool,
-}
+    pub continue_on_error: bool}
 
 impl Default for ImportConfig {
     fn default() -> Self {
@@ -169,7 +167,6 @@ impl Default for ImportConfig {
             format: ImportFormat::Json,
             skip_validation: false,
             batch_size: 1000,
-            continue_on_error: false,
-        }
+            continue_on_error: false}
     }
 }

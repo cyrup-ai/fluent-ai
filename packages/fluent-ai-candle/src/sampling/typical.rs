@@ -31,8 +31,7 @@ pub struct TypicalSamplingProcessor {
     max_surprisal_diff: f64,
     /// Whether to use efficient approximation
     #[allow(dead_code)] // Legacy field
-    use_approximation: bool,
-}
+    use_approximation: bool}
 
 impl TypicalSamplingProcessor {
     /// Minimum typical_p value
@@ -64,8 +63,7 @@ impl TypicalSamplingProcessor {
             typical_p,
             min_entropy: Self::DEFAULT_MIN_ENTROPY,
             max_surprisal_diff: 10.0, // Reasonable upper bound
-            use_approximation: false,
-        })
+            use_approximation: false})
     }
 
     /// Create with custom configuration
@@ -98,8 +96,7 @@ impl TypicalSamplingProcessor {
             typical_p,
             min_entropy,
             max_surprisal_diff,
-            use_approximation,
-        })
+            use_approximation})
     }
 
     /// Get typical_p value
@@ -250,7 +247,6 @@ impl TypicalSamplingProcessor {
     }
 
     /// Create filtered logits with only typical tokens
-    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[allow(dead_code)]
     fn create_filtered_logits(
         &self,
@@ -307,8 +303,7 @@ impl TypicalSamplingProcessor {
             entropy,
             selected_tokens: typical_indices.len(),
             selected_probability_mass: selected_mass,
-            efficiency_ratio: selected_mass / (typical_indices.len() as f64).max(1.0),
-        })
+            efficiency_ratio: selected_mass / (typical_indices.len() as f64).max(1.0)})
     }
 }
 
@@ -431,8 +426,7 @@ pub struct TypicalSamplingStats {
     /// Total probability mass of selected tokens
     pub selected_probability_mass: f64,
     /// Efficiency ratio (mass per token)
-    pub efficiency_ratio: f64,
-}
+    pub efficiency_ratio: f64}
 
 impl TypicalSamplingStats {
     /// Check if the sampling is efficient (good mass concentration)
@@ -456,8 +450,7 @@ pub struct TypicalSamplingBuilder {
     typical_p: Option<f64>,
     min_entropy: Option<f64>,
     max_surprisal_diff: Option<f64>,
-    use_approximation: bool,
-}
+    use_approximation: bool}
 
 impl TypicalSamplingBuilder {
     /// Create new builder
@@ -467,8 +460,7 @@ impl TypicalSamplingBuilder {
             typical_p: None,
             min_entropy: None,
             max_surprisal_diff: None,
-            use_approximation: false,
-        }
+            use_approximation: false}
     }
 
     /// Set typical_p value

@@ -14,8 +14,7 @@ pub enum FlushPolicy {
     /// Batch tokens until buffer is full
     Batched,
     /// Flush on timeout or buffer full
-    Adaptive,
-}
+    Adaptive}
 
 impl Default for FlushPolicy {
     #[inline(always)]
@@ -38,8 +37,7 @@ pub struct StreamingConfig {
     /// Enable automatic chunk merging on overflow
     pub merge_on_overflow: bool,
     /// Maximum merge attempts before dropping
-    pub max_merge_attempts: u8,
-}
+    pub max_merge_attempts: u8}
 
 impl Default for StreamingConfig {
     #[inline(always)]
@@ -50,8 +48,7 @@ impl Default for StreamingConfig {
             max_chunk_size: MAX_CHUNK_TEXT_SIZE,
             flush_policy: FlushPolicy::Immediate,
             merge_on_overflow: true,
-            max_merge_attempts: 3,
-        }
+            max_merge_attempts: 3}
     }
 }
 

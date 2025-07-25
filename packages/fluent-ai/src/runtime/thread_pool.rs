@@ -1,11 +1,9 @@
 use std::{
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+        atomic::{AtomicUsize, Ordering}},
     thread,
-    time::Duration,
-};
+    time::Duration};
 
 use crossbeam_deque::{Injector, Steal, Stealer, Worker};
 use crossbeam_queue::ArrayQueue;
@@ -19,8 +17,7 @@ static IDLE_RING: ArrayQueue<thread::Thread> = ArrayQueue::new(MAX_IDLE);
 pub struct ThreadPool {
     injector: Arc<Injector<Job>>,
     stealers: Arc<Vec<Stealer<Job>>>,
-    rr: Arc<AtomicUsize>,
-}
+    rr: Arc<AtomicUsize>}
 
 impl ThreadPool {
     pub fn new() -> Self {
@@ -50,8 +47,7 @@ impl ThreadPool {
         Self {
             injector,
             stealers: Arc::new(stealers),
-            rr: Arc::new(AtomicUsize::new(0)),
-        }
+            rr: Arc::new(AtomicUsize::new(0))}
     }
 
     #[inline(always)]

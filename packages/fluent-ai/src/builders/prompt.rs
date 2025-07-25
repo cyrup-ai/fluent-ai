@@ -4,15 +4,13 @@
 use fluent_ai_domain::Prompt;
 
 pub struct PromptBuilder {
-    content: String,
-}
+    content: String}
 
 impl Prompt {
     // Semantic entry point
     pub fn ask(content: impl Into<String>) -> PromptBuilder {
         PromptBuilder {
-            content: content.into(),
-        }
+            content: content.into()}
     }
 }
 

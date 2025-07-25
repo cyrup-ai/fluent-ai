@@ -3,34 +3,15 @@
 //! Zero-allocation, crossbeam-based thread pool with proven performance
 //! Eliminated Future usage - pure closure-based execution
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::task::Waker;
-
-use crossbeam_channel::Receiver;
-
 pub struct GlobalExecutor {
-    waker_registry: Arc<Mutex<HashMap<u64, Waker>>>,
+    // NO FUTURES! Removed waker_registry per NO FUTURES architecture
 }
 
 impl GlobalExecutor {
     pub fn new() -> Self {
         Self {
-            waker_registry: Arc::new(Mutex::new(HashMap::new())),
+            // NO FUTURES! Removed waker_registry per NO FUTURES architecture
         }
-    }
-
-    pub fn register_waker<T>(&self, rx: Receiver<T>, waker: Waker) {
-        // Generate unique ID for this waker based on receiver address
-        let waker_id = &rx as *const _ as usize as u64;
-
-        // Store waker in registry for later coordination
-        if let Ok(mut registry) = self.waker_registry.lock() {
-            registry.insert(waker_id, waker.clone());
-        }
-
-        // Wake immediately to prevent blocking (fallback)
-        waker.wake();
     }
 
     /// Execute closure on thread - NO Future usage!
@@ -66,5 +47,5 @@ impl Default for GlobalExecutor {
 static GLOBAL_EXECUTOR_INSTANCE: std::sync::OnceLock<GlobalExecutor> = std::sync::OnceLock::new();
 
 pub fn global_executor() -> &'static GlobalExecutor {
-    GLOBAL_EXECUTOR_INSTANCE.get_or_init(|| GlobalExecutor::new())
+    GLOBAL_EXECUTOR_INSTANCE.get_or_init(GlobalExecutor::new)
 }

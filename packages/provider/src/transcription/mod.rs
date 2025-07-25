@@ -4,7 +4,6 @@
 //! with zero-allocation audio processing and consistent interfaces
 //! across all provider implementations.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 
@@ -36,8 +35,7 @@ pub struct TranscriptionRequest {
     /// Temperature for transcription (0.0-1.0)
     pub temperature: Option<f64>,
     /// Additional provider-specific parameters
-    pub additional_params: Option<Value>,
-}
+    pub additional_params: Option<Value>}
 
 impl TranscriptionRequest {
     /// Create a new transcription request
@@ -46,8 +44,7 @@ impl TranscriptionRequest {
             data,
             filename,
             temperature: None,
-            additional_params: None,
-        }
+            additional_params: None}
     }
 
     /// Set temperature
@@ -124,8 +121,7 @@ pub enum TranscriptionError {
 
     /// IO error (file operations)
     #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-}
+    IoError(#[from] std::io::Error)}
 
 /// Result type for transcription operations
 pub type Result<T> = std::result::Result<T, TranscriptionError>;
@@ -146,8 +142,7 @@ pub enum AudioFormat {
     /// FLAC audio format
     Flac,
     /// OGG audio format
-    Ogg,
-}
+    Ogg}
 
 impl AudioFormat {
     /// Get the file extension for this format
@@ -160,8 +155,7 @@ impl AudioFormat {
             AudioFormat::Wav => "wav",
             AudioFormat::Webm => "webm",
             AudioFormat::Flac => "flac",
-            AudioFormat::Ogg => "ogg",
-        }
+            AudioFormat::Ogg => "ogg"}
     }
 
     /// Get the MIME type for this format
@@ -174,8 +168,7 @@ impl AudioFormat {
             AudioFormat::Wav => "audio/wav",
             AudioFormat::Webm => "audio/webm",
             AudioFormat::Flac => "audio/flac",
-            AudioFormat::Ogg => "audio/ogg",
-        }
+            AudioFormat::Ogg => "audio/ogg"}
     }
 
     /// Detect format from file extension
@@ -189,8 +182,7 @@ impl AudioFormat {
             "webm" => Some(AudioFormat::Webm),
             "flac" => Some(AudioFormat::Flac),
             "ogg" => Some(AudioFormat::Ogg),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Detect format from file path
@@ -251,8 +243,7 @@ pub enum Language {
     /// Finnish
     Fi,
     /// Auto-detect language
-    Auto,
-}
+    Auto}
 
 impl Language {
     /// Get the ISO 639-1 language code
@@ -278,8 +269,7 @@ impl Language {
             Language::No => "no",
             Language::Da => "da",
             Language::Fi => "fi",
-            Language::Auto => "auto",
-        }
+            Language::Auto => "auto"}
     }
 
     /// Parse language from ISO code
@@ -306,8 +296,7 @@ impl Language {
             "da" => Some(Language::Da),
             "fi" => Some(Language::Fi),
             "auto" => Some(Language::Auto),
-            _ => None,
-        }
+            _ => None}
     }
 
     /// Get the human-readable language name
@@ -333,8 +322,7 @@ impl Language {
             Language::No => "Norwegian",
             Language::Da => "Danish",
             Language::Fi => "Finnish",
-            Language::Auto => "Auto-detect",
-        }
+            Language::Auto => "Auto-detect"}
     }
 }
 
@@ -430,8 +418,7 @@ pub struct TranscriptionOptions {
     /// Maximum segment length in seconds (for chunked processing)
     pub max_segment_length: Option<f32>,
     /// Additional provider-specific options
-    pub additional_options: HashMap<String, Value>,
-}
+    pub additional_options: HashMap<String, Value>}
 
 impl Default for TranscriptionOptions {
     fn default() -> Self {
@@ -443,8 +430,7 @@ impl Default for TranscriptionOptions {
             temperature: None,
             prompt: None,
             max_segment_length: None,
-            additional_options: HashMap::new(),
-        }
+            additional_options: HashMap::new()}
     }
 }
 
@@ -526,8 +512,7 @@ pub struct TranscriptionResponse<T> {
     /// Confidence score (0.0-1.0)
     pub confidence: Option<f32>,
     /// Response metadata
-    pub metadata: TranscriptionMetadata,
-}
+    pub metadata: TranscriptionMetadata}
 
 impl<T> TranscriptionResponse<T> {
     /// Create a new transcription response
@@ -539,8 +524,7 @@ impl<T> TranscriptionResponse<T> {
             segments: None,
             language: None,
             confidence: None,
-            metadata: TranscriptionMetadata::default(),
-        }
+            metadata: TranscriptionMetadata::default()}
     }
 
     /// Add segments with timestamps
@@ -605,8 +589,7 @@ pub struct TranscriptionSegment {
     /// Confidence score for this segment (0.0-1.0)
     pub confidence: Option<f32>,
     /// Speaker ID (for diarization)
-    pub speaker: Option<String>,
-}
+    pub speaker: Option<String>}
 
 impl TranscriptionSegment {
     /// Create a new transcription segment
@@ -617,8 +600,7 @@ impl TranscriptionSegment {
             start,
             end,
             confidence: None,
-            speaker: None,
-        }
+            speaker: None}
     }
 
     /// Add confidence score
@@ -649,8 +631,7 @@ pub struct StreamingTranscriptionResponse<T> {
     /// Stream of transcription chunks
     pub stream: AsyncStream<Result<TranscriptionChunk, TranscriptionError>>,
     /// Response metadata (filled as chunks arrive)
-    pub metadata: TranscriptionMetadata,
-}
+    pub metadata: TranscriptionMetadata}
 
 impl<T> StreamingTranscriptionResponse<T> {
     /// Create a new streaming transcription response
@@ -662,8 +643,7 @@ impl<T> StreamingTranscriptionResponse<T> {
         Self {
             raw_response,
             stream,
-            metadata: TranscriptionMetadata::default(),
-        }
+            metadata: TranscriptionMetadata::default()}
     }
 
     /// Add metadata
@@ -697,8 +677,7 @@ impl<T> StreamingTranscriptionResponse<T> {
                         overall_confidence = Some(conf);
                     }
                 }
-                Err(e) => return Err(e),
-            }
+                Err(e) => return Err(e)}
         }
 
         let mut response = TranscriptionResponse::new(self.raw_response, full_text);
@@ -733,8 +712,7 @@ pub struct TranscriptionChunk {
     /// Confidence score for this chunk
     pub confidence: Option<f32>,
     /// Whether this is the final chunk
-    pub is_final: bool,
-}
+    pub is_final: bool}
 
 /// Transcription response metadata
 #[derive(Debug, Clone, Default)]
@@ -750,8 +728,7 @@ pub struct TranscriptionMetadata {
     /// Audio format that was processed
     pub audio_format: Option<AudioFormat>,
     /// Additional provider-specific metadata
-    pub provider_metadata: Option<Value>,
-}
+    pub provider_metadata: Option<Value>}
 
 impl TranscriptionMetadata {
     /// Create new transcription metadata

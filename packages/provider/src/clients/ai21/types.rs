@@ -36,8 +36,7 @@ pub struct AI21CompletionRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub presencePenalty: Option<AI21Penalty>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub frequencyPenalty: Option<AI21Penalty>,
-}
+    pub frequencyPenalty: Option<AI21Penalty>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Penalty {
@@ -51,67 +50,57 @@ pub struct AI21Penalty {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applyToStopwords: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub applyToEmojis: Option<bool>,
-}
+    pub applyToEmojis: Option<bool>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21CompletionResponse {
     pub id: String,
     pub prompt: AI21PromptInfo,
-    pub completions: ArrayVec<AI21Completion, 16>,
-}
+    pub completions: ArrayVec<AI21Completion, 16>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21PromptInfo {
     pub text: String,
-    pub tokens: ArrayVec<AI21Token, 2048>,
-}
+    pub tokens: ArrayVec<AI21Token, 2048>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Token {
     pub generatedToken: AI21GeneratedToken,
     pub topTokens: Option<ArrayVec<AI21TopToken, 100>>,
-    pub textRange: AI21TextRange,
-}
+    pub textRange: AI21TextRange}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21GeneratedToken {
     pub token: String,
     pub logprob: f32,
-    pub raw_logprob: f32,
-}
+    pub raw_logprob: f32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21TopToken {
     pub token: String,
     pub logprob: f32,
-    pub raw_logprob: f32,
-}
+    pub raw_logprob: f32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21TextRange {
     pub start: u32,
-    pub end: u32,
-}
+    pub end: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Completion {
     pub data: AI21CompletionData,
-    pub finishReason: AI21FinishReason,
-}
+    pub finishReason: AI21FinishReason}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21CompletionData {
     pub text: String,
-    pub tokens: ArrayVec<AI21Token, 2048>,
-}
+    pub tokens: ArrayVec<AI21Token, 2048>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21FinishReason {
     pub reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub length: Option<u32>,
-}
+    pub length: Option<u32>}
 
 // ============================================================================
 // Chat API (Jamba Models)
@@ -140,8 +129,7 @@ pub struct AI21ChatRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub response_format: Option<AI21ResponseFormat<'a>>,
-}
+    pub response_format: Option<AI21ResponseFormat<'a>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ChatMessage<'a> {
@@ -152,16 +140,14 @@ pub struct AI21ChatMessage<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<ArrayVec<AI21ToolCall<'a>, MAX_TOOLS>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_call_id: Option<&'a str>,
-}
+    pub tool_call_id: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Tool<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub tool_type: &'a str,
-    pub function: AI21Function<'a>,
-}
+    pub function: AI21Function<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Function<'a> {
@@ -169,8 +155,7 @@ pub struct AI21Function<'a> {
     pub name: &'a str,
     #[serde(borrow)]
     pub description: &'a str,
-    pub parameters: serde_json::Value,
-}
+    pub parameters: serde_json::Value}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ToolCall<'a> {
@@ -179,23 +164,20 @@ pub struct AI21ToolCall<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
     pub call_type: &'a str,
-    pub function: AI21FunctionCall<'a>,
-}
+    pub function: AI21FunctionCall<'a>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21FunctionCall<'a> {
     #[serde(borrow)]
     pub name: &'a str,
     #[serde(borrow)]
-    pub arguments: &'a str,
-}
+    pub arguments: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ResponseFormat<'a> {
     #[serde(rename = "type")]
     #[serde(borrow)]
-    pub format_type: &'a str,
-}
+    pub format_type: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ChatResponse {
@@ -204,37 +186,32 @@ pub struct AI21ChatResponse {
     pub created: u64,
     pub model: String,
     pub choices: ArrayVec<AI21ChatChoice, 8>,
-    pub usage: AI21Usage,
-}
+    pub usage: AI21Usage}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ChatChoice {
     pub index: u32,
     pub message: AI21ChatResponseMessage,
-    pub finish_reason: String,
-}
+    pub finish_reason: String}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ChatResponseMessage {
     pub role: String,
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<AI21ResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<AI21ResponseToolCall, MAX_TOOLS>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ResponseToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
-    pub function: AI21ResponseFunction,
-}
+    pub function: AI21ResponseFunction}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ResponseFunction {
     pub name: String,
-    pub arguments: String,
-}
+    pub arguments: String}
 
 // ============================================================================
 // Summarize API
@@ -247,14 +224,12 @@ pub struct AI21SummarizeRequest<'a> {
     #[serde(borrow)]
     pub sourceType: &'a str, // "TEXT" or "URL"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub focus: Option<&'a str>,
-}
+    pub focus: Option<&'a str>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21SummarizeResponse {
     pub id: String,
-    pub summary: String,
-}
+    pub summary: String}
 
 // ============================================================================
 // Paraphrase API
@@ -269,21 +244,18 @@ pub struct AI21ParaphraseRequest<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub startIndex: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub endIndex: Option<u32>,
-}
+    pub endIndex: Option<u32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ParaphraseResponse {
     pub id: String,
-    pub suggestions: ArrayVec<AI21ParaphraseSuggestion, 16>,
-}
+    pub suggestions: ArrayVec<AI21ParaphraseSuggestion, 16>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ParaphraseSuggestion {
     pub text: String,
     pub startIndex: u32,
-    pub endIndex: u32,
-}
+    pub endIndex: u32}
 
 // ============================================================================
 // Grammar Correction API
@@ -292,14 +264,12 @@ pub struct AI21ParaphraseSuggestion {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21GrammarRequest<'a> {
     #[serde(borrow)]
-    pub text: &'a str,
-}
+    pub text: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21GrammarResponse {
     pub id: String,
-    pub corrections: ArrayVec<AI21GrammarCorrection, 64>,
-}
+    pub corrections: ArrayVec<AI21GrammarCorrection, 64>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21GrammarCorrection {
@@ -307,8 +277,7 @@ pub struct AI21GrammarCorrection {
     pub startIndex: u32,
     pub endIndex: u32,
     pub originalText: String,
-    pub correctionType: String,
-}
+    pub correctionType: String}
 
 // ============================================================================
 // Text Improvements API
@@ -325,8 +294,7 @@ pub struct AI21ImprovementsRequest<'a> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ImprovementsResponse {
     pub id: String,
-    pub improvements: ArrayVec<AI21Improvement, 32>,
-}
+    pub improvements: ArrayVec<AI21Improvement, 32>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Improvement {
@@ -334,8 +302,7 @@ pub struct AI21Improvement {
     pub startIndex: u32,
     pub endIndex: u32,
     pub originalText: String,
-    pub improvementType: String,
-}
+    pub improvementType: String}
 
 // ============================================================================
 // Contextual Answers API
@@ -346,15 +313,13 @@ pub struct AI21AnswerRequest<'a> {
     #[serde(borrow)]
     pub context: &'a str,
     #[serde(borrow)]
-    pub question: &'a str,
-}
+    pub question: &'a str}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21AnswerResponse {
     pub id: String,
     pub answerInContext: bool,
-    pub answer: Option<String>,
-}
+    pub answer: Option<String>}
 
 // ============================================================================
 // Segmentation API
@@ -371,15 +336,13 @@ pub struct AI21SegmentationRequest<'a> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21SegmentationResponse {
     pub id: String,
-    pub segments: ArrayVec<AI21Segment, 256>,
-}
+    pub segments: ArrayVec<AI21Segment, 256>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21Segment {
     pub segmentText: String,
     pub segmentType: String,
-    pub segmentHtml: Option<String>,
-}
+    pub segmentHtml: Option<String>}
 
 // ============================================================================
 // Embed API
@@ -397,13 +360,11 @@ pub struct AI21EmbedRequest<'a> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21EmbedResponse {
     pub id: String,
-    pub results: ArrayVec<AI21EmbedResult, MAX_DOCUMENTS>,
-}
+    pub results: ArrayVec<AI21EmbedResult, MAX_DOCUMENTS>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21EmbedResult {
-    pub embedding: ArrayVec<f32, 768>,
-}
+    pub embedding: ArrayVec<f32, 768>}
 
 // ============================================================================
 // Library Management API
@@ -416,8 +377,7 @@ pub struct AI21LibraryCreateRequest<'a> {
     #[serde(borrow)]
     pub files: ArrayVec<AI21LibraryFile<'a>, 256>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labels: Option<ArrayVec<&'a str, 32>>,
-}
+    pub labels: Option<ArrayVec<&'a str, 32>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21LibraryFile<'a> {
@@ -426,8 +386,7 @@ pub struct AI21LibraryFile<'a> {
     #[serde(borrow)]
     pub fileContent: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labels: Option<ArrayVec<&'a str, 32>>,
-}
+    pub labels: Option<ArrayVec<&'a str, 32>>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21LibraryResponse {
@@ -437,13 +396,11 @@ pub struct AI21LibraryResponse {
     pub lastUpdated: String,
     pub publicUrl: Option<String>,
     pub labels: ArrayVec<String, 32>,
-    pub fileCount: u32,
-}
+    pub fileCount: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21LibraryListResponse {
-    pub libraries: ArrayVec<AI21LibraryResponse, 64>,
-}
+    pub libraries: ArrayVec<AI21LibraryResponse, 64>}
 
 // ============================================================================
 // Common Structures
@@ -453,13 +410,11 @@ pub struct AI21LibraryListResponse {
 pub struct AI21Usage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+    pub total_tokens: u32}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ErrorResponse {
-    pub detail: ArrayVec<AI21ErrorDetail, 8>,
-}
+    pub detail: ArrayVec<AI21ErrorDetail, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21ErrorDetail {
@@ -469,8 +424,7 @@ pub struct AI21ErrorDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub loc: Option<ArrayVec<String, 4>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub input: Option<String>,
-}
+    pub input: Option<String>}
 
 // ============================================================================
 // Streaming Support
@@ -482,15 +436,13 @@ pub struct AI21StreamingChunk {
     pub object: String,
     pub created: u64,
     pub model: String,
-    pub choices: ArrayVec<AI21StreamingChoice, 8>,
-}
+    pub choices: ArrayVec<AI21StreamingChoice, 8>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21StreamingChoice {
     pub index: u32,
     pub delta: AI21StreamingDelta,
-    pub finish_reason: Option<String>,
-}
+    pub finish_reason: Option<String>}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AI21StreamingDelta {
@@ -499,8 +451,7 @@ pub struct AI21StreamingDelta {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<AI21ResponseToolCall, MAX_TOOLS>>,
-}
+    pub tool_calls: Option<ArrayVec<AI21ResponseToolCall, MAX_TOOLS>>}
 
 // ============================================================================
 // Builder Patterns for Http3 Integration
@@ -519,8 +470,7 @@ impl<'a> AI21CompletionRequest<'a> {
             stopSequences: None,
             countPenalty: None,
             presencePenalty: None,
-            frequencyPenalty: None,
-        }
+            frequencyPenalty: None}
     }
 
     pub fn max_tokens(mut self, tokens: u32) -> Self {
@@ -555,8 +505,7 @@ impl<'a> AI21CompletionRequest<'a> {
             applyToPunctuations: None,
             applyToNumbers: None,
             applyToStopwords: None,
-            applyToEmojis: None,
-        });
+            applyToEmojis: None});
         self
     }
 
@@ -567,8 +516,7 @@ impl<'a> AI21CompletionRequest<'a> {
             applyToPunctuations: None,
             applyToNumbers: None,
             applyToStopwords: None,
-            applyToEmojis: None,
-        });
+            applyToEmojis: None});
         self
     }
 }
@@ -586,8 +534,7 @@ impl<'a> AI21ChatRequest<'a> {
             stream: None,
             tools: None,
             tool_choice: None,
-            response_format: None,
-        }
+            response_format: None}
     }
 
     pub fn add_message(mut self, role: &'a str, content: &'a str) -> Self {
@@ -596,8 +543,7 @@ impl<'a> AI21ChatRequest<'a> {
                 role,
                 content,
                 tool_calls: None,
-                tool_call_id: None,
-            });
+                tool_call_id: None});
         }
         self
     }
@@ -624,8 +570,7 @@ impl<'a> AI21ChatRequest<'a> {
 
     pub fn response_format_json(mut self) -> Self {
         self.response_format = Some(AI21ResponseFormat {
-            format_type: "json_object",
-        });
+            format_type: "json_object"});
         self
     }
 }
@@ -635,16 +580,14 @@ impl<'a> AI21SummarizeRequest<'a> {
         Self {
             source: text,
             sourceType: "TEXT",
-            focus: None,
-        }
+            focus: None}
     }
 
     pub fn new_url(url: &'a str) -> Self {
         Self {
             source: url,
             sourceType: "URL",
-            focus: None,
-        }
+            focus: None}
     }
 
     pub fn focus(mut self, focus: &'a str) -> Self {
@@ -659,8 +602,7 @@ impl<'a> AI21ParaphraseRequest<'a> {
             text,
             style: None,
             startIndex: None,
-            endIndex: None,
-        }
+            endIndex: None}
     }
 
     pub fn style_formal(mut self) -> Self {
@@ -684,15 +626,13 @@ impl<'a> AI21EmbedRequest<'a> {
     pub fn new_segment(texts: ArrayVec<&'a str, MAX_DOCUMENTS>) -> Self {
         Self {
             texts,
-            embed_type: "segment",
-        }
+            embed_type: "segment"}
     }
 
     pub fn new_query(texts: ArrayVec<&'a str, MAX_DOCUMENTS>) -> Self {
         Self {
             texts,
-            embed_type: "query",
-        }
+            embed_type: "query"}
     }
 }
 
@@ -701,8 +641,7 @@ impl<'a> AI21LibraryCreateRequest<'a> {
         Self {
             libraryName: library_name,
             files,
-            labels: None,
-        }
+            labels: None}
     }
 
     pub fn with_labels(mut self, labels: ArrayVec<&'a str, 32>) -> Self {
@@ -721,15 +660,13 @@ impl<'a> AI21SegmentationRequest<'a> {
     pub fn new_text(text: &'a str) -> Self {
         Self {
             source: text,
-            sourceType: "TEXT",
-        }
+            sourceType: "TEXT"}
     }
 
     pub fn new_url(url: &'a str) -> Self {
         Self {
             source: url,
-            sourceType: "URL",
-        }
+            sourceType: "URL"}
     }
 }
 

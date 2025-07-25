@@ -4,8 +4,7 @@
 use std::pin::Pin;
 use std::{
     sync::atomic::{AtomicU64, Ordering},
-    time::{Duration, Instant},
-};
+    time::{Duration, Instant}};
 
 use fastrand::Rng;
 use futures_util::stream::{self, Stream};
@@ -27,8 +26,7 @@ pub struct RetryPolicy {
     /// Jitter factor (0.0 to 1.0) to prevent thundering herd
     pub jitter_factor: f64,
     /// Timeout per individual attempt in milliseconds
-    pub attempt_timeout_ms: u64,
-}
+    pub attempt_timeout_ms: u64}
 
 impl Default for RetryPolicy {
     fn default() -> Self {
@@ -121,8 +119,7 @@ impl RetryPolicy {
             HttpError::DownloadInterrupted { .. } => true,
             HttpError::InvalidContentLength { .. } => false,
             HttpError::ChunkProcessingError { .. } => false,
-            _ => false,
-        }
+            _ => false}
     }
 }
 
@@ -142,8 +139,7 @@ pub struct RetryStats {
     /// Final result timestamp
     pub end_time: Option<Instant>,
     /// List of errors encountered during retries
-    pub retry_errors: Vec<String>,
-}
+    pub retry_errors: Vec<String>}
 
 impl Default for RetryStats {
     fn default() -> Self {
@@ -154,8 +150,7 @@ impl Default for RetryStats {
             total_delay_time: Duration::ZERO,
             start_time: Instant::now(),
             end_time: None,
-            retry_errors: Vec::new(),
-        }
+            retry_errors: Vec::new()}
     }
 }
 
@@ -169,8 +164,7 @@ impl RetryStats {
     pub fn total_elapsed(&self) -> Duration {
         match self.end_time {
             Some(end) => end.duration_since(self.start_time),
-            None => self.start_time.elapsed(),
-        }
+            None => self.start_time.elapsed()}
     }
 
     /// Check if any retries were successful
@@ -196,8 +190,7 @@ pub enum RetryResult<T> {
         /// The successful result
         result: T,
         /// Retry statistics
-        stats: RetryStats,
-    },
+        stats: RetryStats},
     /// Attempt failed, will retry
     Retry {
         /// The error that occurred
@@ -207,16 +200,13 @@ pub enum RetryResult<T> {
         /// Delay before next retry
         delay: Duration,
         /// Retry statistics
-        stats: RetryStats,
-    },
+        stats: RetryStats},
     /// Final failure after all retries exhausted
     FinalFailure {
         /// The final error
         error: HttpError,
         /// Retry statistics
-        stats: RetryStats,
-    },
-}
+        stats: RetryStats}}
 
 /// Retry executor for HTTP operations using native Streams
 pub struct HttpRetryExecutor<F, T>
@@ -224,8 +214,7 @@ where
     F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
     T: Send + 'static,
 {
-    operation: F,
-}
+    operation: F}
 
 impl<F, T> HttpRetryExecutor<F, T>
 where
@@ -273,8 +262,7 @@ where
                         Some((
                             RetryResult::Success {
                                 result,
-                                stats: stats.clone(),
-                            },
+                                stats: stats.clone()},
                             (policy.clone(), operation, policy.max_attempts, stats),
                         ))
                     }
@@ -297,16 +285,14 @@ where
                                     error: error.clone(),
                                     attempt: attempt + 1,
                                     delay,
-                                    stats: stats.clone(),
-                                },
+                                    stats: stats.clone()},
                                 (policy, operation, attempt + 1, stats),
                             ))
                         } else {
                             Some((
                                 RetryResult::FinalFailure {
                                     error,
-                                    stats: stats.clone(),
-                                },
+                                    stats: stats.clone()},
                                 (policy.clone(), operation, policy.max_attempts, stats),
                             ))
                         }
@@ -314,8 +300,7 @@ where
                     None => {
                         // Stream ended without result - treat as error
                         let error = HttpError::InvalidResponse {
-                            message: "Empty response stream".to_string(),
-                        };
+                            message: "Empty response stream".to_string()};
                         stats.total_retry_time += attempt_start.elapsed();
                         stats.retry_errors.push(error.to_string());
                         stats.complete();
@@ -323,8 +308,7 @@ where
                         Some((
                             RetryResult::FinalFailure {
                                 error,
-                                stats: stats.clone(),
-                            },
+                                stats: stats.clone()},
                             (policy.clone(), operation, policy.max_attempts, stats),
                         ))
                     }
@@ -339,8 +323,7 @@ pub struct GlobalRetryStats {
     total_operations: AtomicU64,
     total_retries: AtomicU64,
     total_failures: AtomicU64,
-    total_successes: AtomicU64,
-}
+    total_successes: AtomicU64}
 
 impl GlobalRetryStats {
     /// Create new global retry statistics
@@ -349,8 +332,7 @@ impl GlobalRetryStats {
             total_operations: AtomicU64::new(0),
             total_retries: AtomicU64::new(0),
             total_failures: AtomicU64::new(0),
-            total_successes: AtomicU64::new(0),
-        }
+            total_successes: AtomicU64::new(0)}
     }
 
     /// Record an operation start
