@@ -16,11 +16,19 @@ impl ChatSearchIndex {
         if let Some(entries) = self.inverted_index.get(term) {
             for entry in entries.value() {
                 if let Some(message) = self.document_store.get(&entry.doc_id) {
+                    let tf_idf = if let Some(tf) = self.term_frequencies.get(term) {
+                        tf.value().calculate_tfidf()
+                    } else {
+                        entry.term_frequency
+                    };
+
                     let result = SearchResult {
                         message: message.value().clone(),
-                        relevance_score: entry.term_frequency * 100.0,
+                        relevance_score: tf_idf,
                         matching_terms: vec![term.clone()],
-                        highlighted_content: None,
+                        highlighted_content: Some(Arc::from(
+                            self.highlight_text(&message.value().message.content, term),
+                        )),
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
@@ -38,25 +46,14 @@ impl ChatSearchIndex {
     pub(super) fn fuzzy_search(&self, term: &Arc<str>) -> Vec<SearchResult> {
         let mut results = Vec::new();
 
-        // Simple fuzzy matching - can be enhanced with more sophisticated algorithms
         for entry in self.inverted_index.iter() {
-            let index_term = entry.key();
-            if self.fuzzy_match(index_term.as_ref(), term.as_ref()) {
-                for index_entry in entry.value() {
-                    if let Some(message) = self.document_store.get(&index_entry.doc_id) {
-                        let result = SearchResult {
-                            message: message.value().clone(),
-                            relevance_score: index_entry.term_frequency * 80.0, // Lower score for fuzzy
-                            matching_terms: vec![term.clone()],
-                            highlighted_content: None,
-                            tags: vec![],
-                            context: vec![],
-                            match_positions: vec![],
-                            metadata: None,
-                        };
-                        results.push(result);
-                    }
+            let indexed_term = entry.key();
+            if self.fuzzy_match(indexed_term, term) {
+                let mut exact_results = self.exact_search(indexed_term);
+                for result in &mut exact_results {
+                    result.relevance_score *= 0.8; // Reduce score for fuzzy matches
                 }
+                results.extend(exact_results);
             }
         }
 

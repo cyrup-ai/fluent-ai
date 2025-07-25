@@ -434,8 +434,18 @@ impl StreamingReceiver {
     }
 
     /// Receive next streaming message
-    pub async fn recv(&mut self) -> Option<StreamingMessage> {
-        self.receiver.recv().await
+    pub fn recv(&mut self) -> AsyncStream<StreamingMessage> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let receiver = self.receiver.clone();
+        AsyncStream::with_channel(move |sender| {
+            loop {
+                match receiver.recv() {
+                    Ok(msg) => emit!(sender, msg),
+                    Err(e) => handle_error!(e, "failed to receive streaming message"),
+                }
+            }
+        })
     }
 }
 

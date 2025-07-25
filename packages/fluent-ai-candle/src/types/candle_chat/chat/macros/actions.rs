@@ -13,7 +13,7 @@ use fluent_ai_async::{AsyncStream, emit, handle_error};
 use uuid::Uuid;
 
 use super::types::*;
-use crate::chat::commands::ImmutableChatCommand;
+use crate::types::candle_chat::chat::commands::ImmutableChatCommand;
 
 /// Action handler registry for processing different action types
 #[derive(Debug)]

@@ -10,7 +10,7 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use super::types::*;
-use crate::chat::commands::ImmutableChatCommand;
+use crate::types::candle_chat::chat::commands::ImmutableChatCommand;
 
 /// Macro parser for converting text definitions to executable macros
 #[derive(Debug)]

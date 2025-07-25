@@ -30,3 +30,16 @@ macro_rules! candle_error {
         }
     };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::CandleError;
+
+    #[test]
+    fn test_candle_error_macro() {
+        let error = CandleError::ModelLoadingError("test".to_string());
+        let error_with_context = candle_error!(error, "test_operation");
+        assert_eq!(error_with_context.context.operation, "test_operation");
+    }
+}

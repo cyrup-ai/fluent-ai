@@ -5,8 +5,7 @@
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use crate::AsyncStream;
-use crate::types::AsyncStreamSender;
+use crate::{AsyncStream, AsyncStreamSender};
 
 use super::command::ImmutableChatCommand;
 use super::core::CommandResult;

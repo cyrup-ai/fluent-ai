@@ -3,7 +3,6 @@
 //! Contains the main ChatSearchIndex struct and core functionality for
 //! managing inverted indexes, document stores, and search statistics.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

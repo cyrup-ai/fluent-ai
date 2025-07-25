@@ -10,7 +10,7 @@ use arc_swap::ArcSwap;
 use candle_core::Device;
 
 use super::super::config::{CandleClientConfig, DeviceType};
-use super::super::metrics::{CandleMetrics, CANDLE_METRICS};
+use super::super::metrics::CandleMetrics;
 use crate::generator::CandleGenerator;
 use crate::model::CandleModel;
 use crate::tokenizer::CandleTokenizer;

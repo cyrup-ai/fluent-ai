@@ -4,7 +4,12 @@
 //! slash commands, command parsing, execution, and auto-completion with zero-allocation
 //! patterns and blazing-fast performance.
 
+pub mod command;
+pub mod error;
+pub mod events;
 pub mod execution;
+pub mod executor;
+pub mod parameter;
 pub mod parsing;
 pub mod registry;
 pub mod response;

@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
-use crate::types::candle_chat::chat::config_core::ChatConfig;
-use crate::types::candle_chat::chat::validation::{
+use super::config_core::ChatConfig;
+use super::validation::{
     ConfigurationValidator, PersonalityValidator, BehaviorValidator, 
     UIValidator, IntegrationValidator
 };

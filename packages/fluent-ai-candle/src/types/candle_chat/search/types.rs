@@ -213,6 +213,13 @@ pub struct TermFrequency {
     pub tf_idf_score: f64,
 }
 
+impl TermFrequency {
+    /// Calculate TF-IDF score
+    pub fn calculate_tfidf(&self) -> f32 {
+        self.tf_idf_score as f32
+    }
+}
+
 /// Stream collection trait to provide .collect() method for future-like behavior
 pub trait StreamCollect<T> {
     fn collect_sync(self) -> AsyncStream<Vec<T>>;

@@ -9,6 +9,3 @@ pub mod typestate;
 // Re-export public types for backward compatibility
 pub use client_builder::CandleClientBuilder;
 pub use typestate::{HasPrompt, NeedsPrompt};
-
-// Type alias for backward compatibility
-pub type CandleCompletionBuilder = CandleClientBuilder;

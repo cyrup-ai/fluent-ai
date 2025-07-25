@@ -46,6 +46,13 @@ pub mod var_builder;
 
 pub mod builders;
 pub use builders::*;
+
+// Re-export fluent-ai-async types for internal usage
+pub use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+
+// Re-export utility types for internal usage
+pub use types::candle_utils::zero_one_or_many::ZeroOneOrMany;
+
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
 // Re-export constraint system for structured generation

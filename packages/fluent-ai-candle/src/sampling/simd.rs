@@ -10,8 +10,8 @@ use fluent_ai_simd::{
     config::ProcessorConfig,
     context::ProcessingContext,
     error::SimdError,
-    logits::{processing::apply_temperature_scaling_simd, topk::topk_filtering_simd},
-    ops::{SoftmaxProcessor, TemperatureProcessor, compute_softmax_inplace},
+    logits::{process_logits_scalar, topk_filtering_simd, LogitsProcessor},
+    ops::{argmax, softmax, scale_temperature},
 };
 
 use crate::error::CandleError;
@@ -85,7 +85,7 @@ impl CandleSimdProcessor {
     /// Apply temperature scaling with SIMD optimization
     #[inline(always)]
     pub fn apply_temperature(&self, logits: &mut [f32], temperature: f32) -> CandleResult<()> {
-        apply_temperature_scaling_simd(logits, temperature).map_err(|e| {
+        scale_temperature(logits, temperature).map_err(|e| {
             candle_core::Error::Msg(format!("SIMD temperature scaling failed: {:?}", e))
         })
     }
@@ -114,22 +114,20 @@ impl Default for CandleSimdProcessor {
 /// Zero-allocation softmax processor using shared SIMD operations
 #[repr(C, align(64))]
 pub struct CandleSoftmaxProcessor {
-    inner: SoftmaxProcessor,
+    // No inner processor needed, just use the function directly
 }
 
 impl CandleSoftmaxProcessor {
     /// Create new SIMD softmax processor with zero allocation
     #[inline(always)]
     pub fn new(_temperature: f32) -> CandleResult<Self> {
-        let inner = SoftmaxProcessor::new();
-
-        Ok(Self { inner })
+        Ok(Self {})
     }
 
     /// Compute softmax in-place with SIMD acceleration
     #[inline(always)]
     pub fn softmax_inplace(&mut self, logits: &mut [f32]) -> Result<(), candle_core::Error> {
-        compute_softmax_inplace(logits)
+        softmax(logits)
             .map_err(|e| candle_core::Error::Msg(format!("Softmax failed: {}", e)))
     }
 

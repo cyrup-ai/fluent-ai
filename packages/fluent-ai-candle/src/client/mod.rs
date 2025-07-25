@@ -7,17 +7,14 @@
 pub mod builder;
 pub mod completion;
 pub mod config;
-pub mod core;
-pub mod metrics;
 
 // Re-export core types for public API compatibility
-pub use builder::{CandleClientBuilder, CandleCompletionBuilder, HasPrompt, NeedsPrompt};
+pub use builder::{CandleClientBuilder, HasPrompt, NeedsPrompt};
+pub use completion::{CandleCompletionClient, CandleMetrics, CANDLE_METRICS};
 pub use config::{
     CandleClientConfig, DeviceType, ModelArchitecture, ModelConfig, QuantizationType,
     MAX_DOCUMENTS, MAX_MESSAGES, MAX_TOOLS,
 };
-pub use core::CandleCompletionClient;
-pub use metrics::{CandleMetrics, CANDLE_METRICS};
 
 // Type aliases for backward compatibility
 pub type Message = crate::types::CandleMessage;

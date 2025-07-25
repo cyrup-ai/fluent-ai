@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::chat::templates::core::{ChatTemplate, TemplateError, TemplateResult};
+use crate::types::candle_chat::chat::templates::core::{ChatTemplate, TemplateError, TemplateResult};
 
 /// Template storage interface
 pub trait TemplateStore: Send + Sync {

@@ -11,7 +11,8 @@ use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::chat::message::{MessageRole, SearchChatMessage};
+use crate::types::candle_chat::chat::MessageRole;
+use crate::types::candle_chat::chat::message::SearchChatMessage;
 
 /// Handle errors in streaming context without panicking
 macro_rules! handle_error {

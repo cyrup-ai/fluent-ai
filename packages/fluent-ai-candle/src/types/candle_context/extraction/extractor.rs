@@ -213,7 +213,7 @@ impl crate::types::CandleCompletionModel for AgentCompletionModel {
     fn complete(
         &self,
         _request: crate::types::CandleCompletionRequest,
-    ) -> crate::client::CandleCompletionBuilder<'_, ()> {
+    ) -> crate::client::CandleCompletionBuilder {
         // TODO: Implement proper completion builder
         todo!("Implement completion builder")
     }

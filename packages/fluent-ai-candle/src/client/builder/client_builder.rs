@@ -2,9 +2,9 @@
 //!
 //! This module provides a fluent builder API for configuring and creating clients.
 
-use fluent_ai_async::AsyncStream;
 use super::super::config::{CandleClientConfig, DeviceType, QuantizationType};
-use super::super::core::CandleCompletionClient;
+use super::super::completion::CandleCompletionClient;
+use crate::error::CandleResult;
 use crate::generator::GenerationConfig;
 
 /// Builder for CandleCompletionClient
@@ -66,14 +66,8 @@ impl CandleClientBuilder {
 
     /// Build the client
     #[inline(always)]
-    pub fn build(self) -> AsyncStream<CandleCompletionClient> {
+    pub fn build(self) -> CandleResult<CandleCompletionClient> {
         CandleCompletionClient::new(self.config)
-    }
-
-    /// Build the client from HuggingFace Hub
-    #[inline(always)]
-    pub fn build_from_hub(self, repo_id: String) -> AsyncStream<CandleCompletionClient> {
-        CandleCompletionClient::from_hub(repo_id, self.config)
     }
 }
 

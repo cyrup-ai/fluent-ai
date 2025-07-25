@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use crate::chat::templates::core::{
+use crate::types::candle_chat::chat::templates::core::{
     ChatTemplate, TemplateContext, TemplateError, TemplateResult, TemplateValue,
 };
 

@@ -9,7 +9,7 @@ use uuid::Uuid;
 use super::types::{ExportOptions, ExportFormat};
 use super::statistics::ExportStatistics;
 use super::formats::{get_format_handler, FormatHandler};
-use crate::chat::message::SearchChatMessage;
+use crate::types::candle_chat::chat::message::SearchChatMessage;
 
 /// History exporter with streaming capabilities
 pub struct HistoryExporter {

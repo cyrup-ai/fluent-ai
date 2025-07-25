@@ -34,8 +34,7 @@ pub use styles::{FormatStyle, ImmutableCustomFormatRule, StyleType};
 #[deprecated(note = "Use ImmutableMessageContent instead for zero-allocation streaming")]
 pub use content::MessageContent;
 
-#[deprecated(note = "Use ImmutableFormatOptions instead for zero-allocation streaming")]
-pub use options::FormatOptions;
+// FormatOptions deprecated - use options::ImmutableFormatOptions instead
 
 #[deprecated(note = "Use ImmutableColorScheme instead for zero-allocation streaming")]
 pub use themes::ColorScheme;

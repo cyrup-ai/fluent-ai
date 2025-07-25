@@ -6,8 +6,9 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
-use super::model_config::{ModelConfig, ValidationResult};
-use super::types::{ConfigSection, ValidationSeverity};
+use super::super::model_config::{ModelConfig, ValidationResult};
+use super::types::ConfigSection;
+use crate::types::candle_model::validation::ValidationSeverity;
 
 /// Trait for configuration validation
 pub trait ConfigurationValidator: Send + Sync {

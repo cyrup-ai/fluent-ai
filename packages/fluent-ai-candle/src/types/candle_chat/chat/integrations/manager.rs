@@ -82,83 +82,127 @@ impl IntegrationManager {
     }
 
     /// Send message to integration
-    pub async fn send_to_integration(
+    pub fn send_to_integration(
         &self,
         integration_name: &str,
         message: &str,
-    ) -> IntegrationResult<String> {
-        let integration = self.get_integration(integration_name).ok_or_else(|| {
-            IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration not found"),
-            }
-        })?;
+    ) -> AsyncStream<String> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let integration_name = integration_name.to_string();
+        let message = message.to_string();
+        let manager = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let integration = match manager.get_integration(&integration_name) {
+                Some(integration) => integration,
+                None => {
+                    handle_error!(
+                        IntegrationError::ConfigurationError {
+                            detail: Arc::from("Integration not found"),
+                        },
+                        "integration lookup failed"
+                    );
+                }
+            };
 
-        if !integration.enabled {
-            return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration is disabled"),
+            if !integration.enabled {
+                handle_error!(
+                    IntegrationError::ConfigurationError {
+                        detail: Arc::from("Integration is disabled"),
+                    },
+                    "integration disabled"
+                );
+            }
+
+            let result_stream = match integration.integration_type {
+                IntegrationType::Webhook => manager.send_webhook(integration, &message),
+                IntegrationType::RestApi => manager.send_rest_api(integration, &message),
+                IntegrationType::Plugin => manager.send_plugin(integration, &message),
+                IntegrationType::ExternalService => {
+                    manager.send_external_service(integration, &message)
+                }
+            };
+            
+            result_stream.on_chunk(|response| {
+                emit!(sender, response);
             });
-        }
-
-        match integration.integration_type {
-            IntegrationType::Webhook => self.send_webhook(integration, message).await,
-            IntegrationType::RestApi => self.send_rest_api(integration, message).await,
-            IntegrationType::Plugin => self.send_plugin(integration, message).await,
-            IntegrationType::ExternalService => {
-                self.send_external_service(integration, message).await
-            }
-        }
+        })
     }
 
     /// Send webhook message
-    async fn send_webhook(
+    fn send_webhook(
         &self,
         integration: &IntegrationConfig,
         message: &str,
-    ) -> IntegrationResult<String> {
-        // Placeholder for webhook implementation
-        // In production, this would use an HTTP client like reqwest
-        Ok(format!(
-            "Webhook sent to {}: {}",
-            integration.endpoint, message
-        ))
+    ) -> AsyncStream<String> {
+        use fluent_ai_async::{AsyncStream, emit};
+        
+        let endpoint = integration.endpoint.clone();
+        let message = message.to_string();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Placeholder for webhook implementation
+            // In production, this would use fluent_ai_http3 streaming
+            let response = format!("Webhook sent to {}: {}", endpoint, message);
+            emit!(sender, response);
+        })
     }
 
     /// Send REST API message
-    async fn send_rest_api(
+    fn send_rest_api(
         &self,
         integration: &IntegrationConfig,
         message: &str,
-    ) -> IntegrationResult<String> {
-        // Placeholder for REST API implementation
-        // In production, this would use an HTTP client like reqwest
-        Ok(format!(
-            "REST API call to {}: {}",
-            integration.endpoint, message
-        ))
+    ) -> AsyncStream<String> {
+        use fluent_ai_async::{AsyncStream, emit};
+        
+        let endpoint = integration.endpoint.clone();
+        let message = message.to_string();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Placeholder for REST API implementation
+            // In production, this would use fluent_ai_http3 streaming
+            let response = format!("REST API call to {}: {}", endpoint, message);
+            emit!(sender, response);
+        })
     }
 
     /// Send plugin message
-    async fn send_plugin(
+    fn send_plugin(
         &self,
         integration: &IntegrationConfig,
         message: &str,
-    ) -> IntegrationResult<String> {
-        // Placeholder for plugin implementation
-        // In production, this would interface with a plugin system
-        Ok(format!("Plugin call to {}: {}", integration.name, message))
+    ) -> AsyncStream<String> {
+        use fluent_ai_async::{AsyncStream, emit};
+        
+        let name = integration.name.clone();
+        let message = message.to_string();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Placeholder for plugin implementation
+            // In production, this would interface with a plugin system
+            let response = format!("Plugin call to {}: {}", name, message);
+            emit!(sender, response);
+        })
     }
 
     /// Send external service message
-    async fn send_external_service(
+    fn send_external_service(
         &self,
         integration: &IntegrationConfig,
         message: &str,
-    ) -> IntegrationResult<String> {
-        // Placeholder for external service implementation
-        // In production, this would interface with external APIs
-        Ok(format!(
-            "External service call to {}: {}",
-            integration.endpoint, message
-        ))
+    ) -> AsyncStream<String> {
+        use fluent_ai_async::{AsyncStream, emit};
+        
+        let endpoint = integration.endpoint.clone();
+        let message = message.to_string();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Placeholder for external service implementation
+            // In production, this would interface with external APIs
+            let response = format!("External service call to {}: {}", endpoint, message);
+            emit!(sender, response);
+        })
     }
 }

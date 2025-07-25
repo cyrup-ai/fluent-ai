@@ -12,7 +12,7 @@ use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::chat::message::SearchChatMessage;
+use crate::types::candle_chat::chat::message::SearchChatMessage;
 use super::types::{SearchResult, SearchQuery};
 use super::index::ChatSearchIndex;
 use super::tagging::ConversationTagger;

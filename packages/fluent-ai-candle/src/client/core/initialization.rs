@@ -87,37 +87,39 @@ impl CandleCompletionClient {
     /// Create a new CandleCompletionClient from HuggingFace Hub
     #[inline(always)]
     pub fn from_hub(repo_id: String, config: CandleClientConfig) -> AsyncStream<Self> {
+        use fluent_ai_async::{emit, handle_error};
+        
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                if !config.enable_hub_integration {
-                    handle_error!(
-                        crate::error::CandleError::configuration("Hub integration is disabled"),
-                        "Hub integration disabled"
-                    );
-                    return Ok(());
+            if !config.enable_hub_integration {
+                handle_error!(
+                    crate::error::CandleError::configuration("Hub integration is disabled"),
+                    "Hub integration disabled"
+                );
+                return Ok(());
+            }
+
+            // TODO: Implement HuggingFace Hub integration
+            // For now, create a basic client with hub model path
+            let mut hub_config = config.clone();
+            hub_config.model_path = format!("hub://{}", repo_id);
+
+            // Create client through normal initialization path
+            let mut client_stream = Self::new(hub_config);
+            
+            // Forward the result using .collect() to get first result synchronously
+            match client_stream.collect::<Vec<_>>().first() {
+                Some(client) => {
+                    emit!(sender, client.clone());
                 }
-
-                // TODO: Implement HuggingFace Hub integration
-                // For now, create a basic client with hub model path
-                let mut hub_config = config.clone();
-                hub_config.model_path = format!("hub://{}", repo_id);
-
-                // Create client through normal initialization path
-                let mut client_stream = Self::new(hub_config);
-                
-                // Forward the result
-                // Note: In real implementation, this would handle Hub-specific loading
-                if let Some(client) = client_stream.next().await {
-                    let _ = sender.send(client).await;
-                } else {
+                None => {
                     handle_error!(
                         crate::error::CandleError::model_loading("Failed to load model from Hub"),
                         "Hub model loading failed"
                     );
                 }
-                
-                Ok(())
-            })
+            }
+            
+            Ok(())
         })
     }
 

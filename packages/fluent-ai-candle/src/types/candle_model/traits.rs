@@ -339,7 +339,7 @@ pub trait CandleCompletionModel: Model {
     fn complete(
         &self,
         request: crate::types::CandleCompletionRequest,
-    ) -> crate::client::CandleCompletionBuilder<'_, ()>;
+    ) -> crate::client::CandleCompletionBuilder;
 
     /// Generate streaming completions from a request with zero-allocation streaming builder
     fn stream_complete(

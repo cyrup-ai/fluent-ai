@@ -9,6 +9,26 @@ use std::time::Duration;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// Model validator for configuration validation
+#[derive(Debug, Clone)]
+pub struct ModelValidator;
+
+impl ModelValidator {
+    /// Validate model configuration
+    pub fn validate(&self, config: &ModelConfig) -> Result<(), String> {
+        if config.provider.is_empty() {
+            return Err("Provider cannot be empty".to_string());
+        }
+        if config.model_name.is_empty() {
+            return Err("Model name cannot be empty".to_string());
+        }
+        if config.temperature < 0.0 || config.temperature > 2.0 {
+            return Err("Temperature must be between 0.0 and 2.0".to_string());
+        }
+        Ok(())
+    }
+}
+
 /// Duration serialization helper
 mod duration_secs {
     use super::*;

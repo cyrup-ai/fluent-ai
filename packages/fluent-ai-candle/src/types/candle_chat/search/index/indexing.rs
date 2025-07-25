@@ -71,10 +71,15 @@ impl ChatSearchIndex {
                     .map(|e| e.value().len() as u32)
                     .unwrap_or(1);
                     
+                let total_docs = self_clone.document_count.load(Ordering::Relaxed) as u32 + 1;
+                let idf = (total_docs as f64 / doc_freq as f64).ln();
+                let tf_idf_score = tf as f64 * idf;
+                
                 let tf_entry = TermFrequency {
-                    tf: tf,
-                    df: doc_freq,
-                    total_docs: self_clone.document_count.load(Ordering::Relaxed) as u32 + 1,
+                    term: term.clone(),
+                    frequency: count,
+                    document_frequency: doc_freq,
+                    tf_idf_score,
                 };
                 self_clone.term_frequencies.insert(term.clone(), tf_entry);
             }

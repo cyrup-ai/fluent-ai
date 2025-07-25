@@ -65,12 +65,13 @@ pub mod config_manager;
 pub mod config_builder;
 
 // Legacy module structure for compatibility
+pub mod builder {
+    pub use super::config_builder::*;
+}
 pub mod model;
 pub mod core;
 pub mod events;
 pub mod manager;
-pub mod builder;
-pub mod builders;
 pub mod presets;
 
 // Re-export commonly used types
@@ -98,10 +99,7 @@ pub use manager::{
     ConfigurationManager, ConfigurationStatistics
 };
 
-pub use builder::{
-    ConfigurationBuilder, ModelConfigBuilder, PersonalityConfigBuilder,
-    BehaviorConfigBuilder, UIConfigBuilder
-};
+// Configuration builders are imported from main config module when needed
 
 pub use presets::{
     professional, casual, creative, technical, customer_support,

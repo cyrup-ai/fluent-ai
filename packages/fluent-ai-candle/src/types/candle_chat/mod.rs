@@ -18,6 +18,7 @@
 //! crossbeam-skiplist for lock-free data structures, and atomic operations
 //! for thread-safe state management.
 
+pub mod chat;
 pub mod commands;
 pub mod config;
 pub mod conversation;

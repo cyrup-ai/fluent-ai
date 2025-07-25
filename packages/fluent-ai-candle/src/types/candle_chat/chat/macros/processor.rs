@@ -425,21 +425,52 @@ impl MacroProcessor {
     }
 
     /// Set global variable
-    pub async fn set_variable(&self, name: Arc<str>, value: Arc<str>) {
-        let mut vars = self.variables.write().await;
-        vars.insert(name, value);
+    pub fn set_variable(&self, name: Arc<str>, value: Arc<str>) -> AsyncStream<()> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let variables = self.variables.clone();
+        AsyncStream::with_channel(move |sender| {
+            match variables.write() {
+                Ok(mut vars) => {
+                    vars.insert(name, value);
+                    emit!(sender, ());
+                }
+                Err(e) => handle_error!(e, "failed to acquire write lock on variables"),
+            }
+        })
     }
 
     /// Get global variable
-    pub async fn get_variable(&self, name: &str) -> Option<Arc<str>> {
-        let vars = self.variables.read().await;
-        vars.get(name).cloned()
+    pub fn get_variable(&self, name: &str) -> AsyncStream<Option<Arc<str>>> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let name = name.to_string();
+        let variables = self.variables.clone();
+        AsyncStream::with_channel(move |sender| {
+            match variables.read() {
+                Ok(vars) => {
+                    let result = vars.get(&name).cloned();
+                    emit!(sender, result);
+                }
+                Err(e) => handle_error!(e, "failed to acquire read lock on variables"),
+            }
+        })
     }
 
     /// Clear all global variables
-    pub async fn clear_variables(&self) {
-        let mut vars = self.variables.write().await;
-        vars.clear();
+    pub fn clear_variables(&self) -> AsyncStream<()> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let variables = self.variables.clone();
+        AsyncStream::with_channel(move |sender| {
+            match variables.write() {
+                Ok(mut vars) => {
+                    vars.clear();
+                    emit!(sender, ());
+                }
+                Err(e) => handle_error!(e, "failed to acquire write lock on variables"),
+            }
+        })
     }
 }
 

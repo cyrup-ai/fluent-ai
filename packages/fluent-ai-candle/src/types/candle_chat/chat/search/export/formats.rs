@@ -1,7 +1,7 @@
 //! Export format implementations and serialization
 
 use super::types::{ExportFormat, ExportOptions};
-use crate::chat::message::SearchChatMessage;
+use crate::types::candle_chat::chat::message::SearchChatMessage;
 use std::collections::HashMap;
 
 /// Format handler trait for different export formats

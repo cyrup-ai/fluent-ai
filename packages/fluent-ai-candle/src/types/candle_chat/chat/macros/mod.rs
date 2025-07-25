@@ -48,11 +48,14 @@
 //! // Process results using AsyncStream patterns...
 //! ```
 
-pub mod types;
-pub mod parser;
-pub mod context;
-pub mod execution;
 pub mod actions;
+pub mod context;
+pub mod errors;
+pub mod execution;
+pub mod parser;
+pub mod processor;
+pub mod system;
+pub mod types;
 
 // Re-export commonly used types from types module
 pub use types::{

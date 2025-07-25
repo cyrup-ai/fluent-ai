@@ -13,5 +13,3 @@ pub mod macros;
 pub use error_types::{CandleError, CandleResult};
 pub use error_context::{ErrorContext, CandleErrorWithContext};
 
-// Re-export the macro
-pub use macros::*;

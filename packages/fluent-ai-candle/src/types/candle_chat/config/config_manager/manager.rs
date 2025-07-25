@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use fluent_ai_async::AsyncStream;
 use uuid::Uuid;
 
-use super::model_config::ModelConfig;
-use super::chat_core::ChatConfig;
+use super::super::model_config::ModelConfig;
+use super::super::chat_core::ChatConfig;
 use super::types::*;
 use super::validators::ConfigurationValidator;
 

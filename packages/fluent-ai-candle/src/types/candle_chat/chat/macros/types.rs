@@ -12,7 +12,7 @@ use atomic_counter::{AtomicCounter, ConsistentCounter};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::chat::commands::ImmutableChatCommand;
+use crate::types::candle_chat::chat::commands::ImmutableChatCommand;
 
 /// Macro action representing a single recorded operation
 #[derive(Debug, Clone, Serialize, Deserialize)]

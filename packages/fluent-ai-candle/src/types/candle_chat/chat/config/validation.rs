@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::types::candle_chat::chat::config_core::{ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig};
+use super::core::{ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig};
 
 /// Configuration validation error
 #[derive(Debug, Clone, thiserror::Error)]

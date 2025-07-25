@@ -7,7 +7,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::types::candle_chat::chat::config_core::{
+use super::config_core::{
     ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig,
     ModelConfig, ModelRetryConfig, ModelPerformanceConfig,
 };
