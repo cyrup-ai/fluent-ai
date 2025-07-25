@@ -14,16 +14,6 @@ use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, Document, Message, spawn_async};
 // Import centralized HTTP structs - no more local definitions!
 // TODO: Replace with local Gemini types - removed unauthorized fluent_ai_http_structs import
-// use fluent_ai_http_structs::{
-    builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
-    common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
-    errors::{HttpStructError, HttpStructResult},
-    google::{
-        GeminiCandidate, GeminiContent, GeminiFunctionCall, GeminiFunctionDeclaration,
-        GeminiFunctionResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse,
-        GeminiGenerationConfig, GeminiInlineData, GeminiPart, GeminiSafetySetting,
-        GeminiStreamGenerateContentResponse, GeminiTool, GeminiUsageMetadata},
-    validation::{ValidateRequest, ValidationResult}};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::{Map, Value};
 use tracing::{debug, error, info, warn};

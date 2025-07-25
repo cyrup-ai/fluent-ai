@@ -90,7 +90,7 @@ impl ModelMetadata {
                 shape: tensor.shape().to_vec(),
                 quantized: None, // Will be detected during loading
             };
-            metadata.tensors.insert(name.to_string(), info);
+            let _ = metadata.tensors.insert(name.to_string(), info);
 
             // Update total size with zero-allocation calculation
             let tensor_size = tensor.data().len() as u64;

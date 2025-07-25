@@ -205,7 +205,7 @@ impl MacroProcessor {
     pub fn execute_macro(
         &self,
         macro_id: &Uuid,
-        context_variables: HashMap<Arc<str>, Arc<str>>,
+        _context_variables: HashMap<Arc<str>, Arc<str>>,
     ) -> AsyncStream<MacroExecutionResult> {
         let macros = self.macros.clone();
         let macro_id = *macro_id;
@@ -232,12 +232,12 @@ impl MacroProcessor {
     /// Execute a macro directly with fluent-ai-async streaming architecture
     pub fn execute_macro_direct(
         &self,
-        macro_def: StoredMacro,
-        context_variables: HashMap<Arc<str>, Arc<str>>,
+        _macro_def: StoredMacro,
+        _context_variables: HashMap<Arc<str>, Arc<str>>,
     ) -> AsyncStream<MacroExecutionResult> {
-        let processor = self.clone();
+        let _processor = self.clone();
         
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |_sender| {
             // Execute macro implementation synchronously (no nested streaming)
             handle_error!(
                 MacroSystemError::NotImplemented,
@@ -254,7 +254,7 @@ impl MacroProcessor {
     ) -> AsyncStream<MacroExecutionResult> {
         let variables = self.variables.clone();
         let stats = self.stats.clone();
-        let processor = self.clone();
+        let _processor = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let execution_id = Uuid::new_v4();
@@ -275,7 +275,7 @@ impl MacroProcessor {
                 .fetch_add(1, Ordering::Relaxed);
 
             // Merge context variables with global variables using zero-allocation patterns
-            let execution_context = if let Ok(global_vars) = variables.try_read() {
+            let _execution_context = if let Ok(global_vars) = variables.try_read() {
                 let mut context = global_vars.clone();
                 context.extend(context_variables.clone());
                 context.extend(macro_def.variables.clone());

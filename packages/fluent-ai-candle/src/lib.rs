@@ -9,6 +9,8 @@
 //! - No unsafe/unchecked: Explicit bounds checking, safe performance optimizations
 //! - Elegant ergonomic: Clean API with builder patterns, zero-cost abstractions
 
+#![deny(missing_docs)]
+
 pub mod client;
 pub mod constants;
 pub mod constraints;
@@ -347,3 +349,4 @@ mod tests {
         assert!(BUILD_INFO.contains("fluent_ai_candle"));
     }
 }
+

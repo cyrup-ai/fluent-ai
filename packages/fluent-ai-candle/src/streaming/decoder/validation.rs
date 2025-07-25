@@ -1,6 +1,6 @@
 //! UTF-8 validation utilities for the streaming decoder
 
-use super::error::{DecoderError, Result};
+use super::error::{DecoderError, DecoderResult};
 
 /// Validates if a byte is a valid UTF-8 start byte
 #[inline(always)]
@@ -22,7 +22,7 @@ pub fn expected_sequence_length(first_byte: u8) -> usize {
 }
 
 /// Validates a complete UTF-8 sequence
-pub fn validate_utf8_sequence(bytes: &[u8]) -> Result<()> {
+pub fn validate_utf8_sequence(bytes: &[u8]) -> DecoderResult<()> {
     if bytes.is_empty() {
         return Ok(());
     }
@@ -71,7 +71,7 @@ pub fn validate_utf8_sequence(bytes: &[u8]) -> Result<()> {
 }
 
 /// Decodes a codepoint from a UTF-8 sequence
-pub fn decode_codepoint(bytes: &[u8]) -> Result<Option<u32>> {
+pub fn decode_codepoint(bytes: &[u8]) -> DecoderResult<Option<u32>> {
     if bytes.is_empty() {
         return Ok(None);
     }

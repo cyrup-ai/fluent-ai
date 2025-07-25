@@ -33,6 +33,7 @@ impl Default for RecoveryStrategy {
 }
 
 /// Recovery context for model loading
+#[derive(Debug)]
 pub struct RecoveryContext {
     strategy: RecoveryStrategy,
     retry_attempts: u32,
@@ -100,6 +101,17 @@ pub enum RecoveryAction {
     
     /// Recover with a modified model
     Recover(Box<dyn FnOnce() -> CandleResult<()> + Send + 'static>)}
+
+impl std::fmt::Debug for RecoveryAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RecoveryAction::Retry => write!(f, "RecoveryAction::Retry"),
+            RecoveryAction::FallbackToDummy => write!(f, "RecoveryAction::FallbackToDummy"),
+            RecoveryAction::Fail(err) => write!(f, "RecoveryAction::Fail({:?})", err),
+            RecoveryAction::Recover(_) => write!(f, "RecoveryAction::Recover(<closure>)"),
+        }
+    }
+}
 
 /// Check if an error is recoverable
 fn is_recoverable_error(error: &CandleError) -> bool {

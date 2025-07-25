@@ -1,7 +1,7 @@
 //! Gemini model constants and utility functions
 //!
 //! This module contains Gemini-specific model constants and conversion utilities.
-//! All HTTP request/response types are now centralized in fluent_ai_http_structs::google.
+//! All HTTP request/response types have been moved to local implementations.
 
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 // Use local Gemini request/response types

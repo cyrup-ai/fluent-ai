@@ -3,8 +3,6 @@
 //! Provides zero-allocation command parsing from string input with comprehensive
 //! support for all command types and their arguments.
 
-use std::collections::HashMap;
-
 use super::actions::*;
 use super::command::ImmutableChatCommand;
 use super::core::{CommandError, CommandResult, SettingsCategory};

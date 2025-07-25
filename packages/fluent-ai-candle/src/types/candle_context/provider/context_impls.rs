@@ -2,7 +2,6 @@
 //!
 //! Zero-allocation context implementations with streaming operations and AsyncStream patterns.
 
-use std::collections::HashMap;
 use std::path::Path;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use uuid::Uuid;

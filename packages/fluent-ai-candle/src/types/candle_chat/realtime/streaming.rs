@@ -251,7 +251,7 @@ impl LiveMessageStreamer {
 
     /// Update processing rate dynamically
     pub fn set_processing_rate(&self, rate: u64) -> AsyncStream<()> {
-        self.processing_rate.store(rate, Ordering::AcqRel);
+        self.processing_rate.store(rate, Ordering::Release);
 
         let stats = Arc::clone(&self.stats);
         AsyncStream::with_channel(move |sender| {

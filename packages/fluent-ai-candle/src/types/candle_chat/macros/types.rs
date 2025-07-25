@@ -4,7 +4,6 @@
 //! including enums, structs, and configuration types.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use atomic_counter::{AtomicCounter, ConsistentCounter};

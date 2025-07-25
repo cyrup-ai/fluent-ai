@@ -499,23 +499,37 @@ pub enum ValidationError {
         expected_format: Arc<str>,
     },
 
+    /// Parameter has invalid file extension
     #[error(
         "Parameter '{parameter}' has invalid file extension '{extension}', allowed: {allowed_extensions:?}"
     )]
     InvalidFileExtension {
+        /// Parameter name with invalid extension
         parameter: Arc<str>,
+        /// The invalid extension that was provided
         extension: Arc<str>,
-        allowed_extensions: Vec<Arc<str>>},
+        /// List of allowed file extensions
+        allowed_extensions: Vec<Arc<str>>,
+    },
 
+    /// Too many parameters provided
     #[error("Too many parameters: {actual_count} > {max_count}")]
     TooManyParameters {
+        /// Maximum allowed parameter count
         max_count: usize,
-        actual_count: usize},
+        /// Actual parameter count provided
+        actual_count: usize,
+    },
 
+    /// Security violation detected in parameter
     #[error("Security violation in parameter '{parameter}': {detail}")]
     SecurityViolation {
+        /// Parameter name where violation occurred
         parameter: Arc<str>,
-        detail: Arc<str>}}
+        /// Details of the security violation
+        detail: Arc<str>,
+    },
+}
 
 /// Global validator instance
 static GLOBAL_VALIDATOR: Lazy<CommandValidator> = Lazy::new(CommandValidator::new);

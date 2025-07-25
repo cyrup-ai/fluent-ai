@@ -75,6 +75,7 @@ impl Default for QuantizationConfig {
 }
 
 /// Quantized tensor representation
+#[derive(Debug)]
 pub struct QuantizedTensor {
     /// The quantized data
     pub data: Tensor,

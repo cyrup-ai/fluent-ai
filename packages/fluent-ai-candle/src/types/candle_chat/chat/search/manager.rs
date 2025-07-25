@@ -65,8 +65,8 @@ impl EnhancedHistoryManager {
     }
 
     /// Add a message to the history (streaming)
-    pub fn add_message(&self, message: SearchChatMessage) -> AsyncStream<()> {
-        let search_index = self.search_index.clone();
+    pub fn add_message(&self, _message: SearchChatMessage) -> AsyncStream<()> {
+        let _search_index = self.search_index.clone();
         let operation_counter = self.operation_counter.clone();
 
         AsyncStream::with_channel(move |sender| {
@@ -77,8 +77,8 @@ impl EnhancedHistoryManager {
     }
 
     /// Search messages (streaming)
-    pub fn search_messages(&self, query: SearchQuery) -> AsyncStream<SearchResult> {
-        let search_index = self.search_index.clone();
+    pub fn search_messages(&self, _query: SearchQuery) -> AsyncStream<SearchResult> {
+        let _search_index = self.search_index.clone();
         let operation_counter = self.operation_counter.clone();
 
         AsyncStream::with_channel(move |sender| {

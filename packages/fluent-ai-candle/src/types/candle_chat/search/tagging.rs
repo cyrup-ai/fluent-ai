@@ -7,9 +7,7 @@ use crate::types::CandleSearchChatMessage;
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::{AsyncStream};
 use serde::{Deserialize, Serialize};
-use smallvec::SmallVec;
 use std::sync::Arc;
-use std::time::Instant;
 use uuid::Uuid;
 
 /// Consistent counter for lock-free operations

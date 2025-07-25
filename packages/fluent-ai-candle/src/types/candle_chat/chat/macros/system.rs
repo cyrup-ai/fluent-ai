@@ -60,7 +60,7 @@ impl MacroSystem {
             let macro_id = Uuid::new_v4();
 
             // Use zero-allocation, lock-free patterns for time operations
-            let current_time = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+            let _current_time = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
                 Ok(duration) => Duration::from_secs(duration.as_secs()),
                 Err(_) => {
                     handle_error!(
@@ -360,7 +360,7 @@ impl MacroSystem {
                     return;
                 }
 
-                let action = &macro_def.actions[session.current_action];
+                let _action = &macro_def.actions[session.current_action];
                 // For now, simulate action execution - proper implementation would use internal execute_action_internal
                 session.current_action += 1;
 

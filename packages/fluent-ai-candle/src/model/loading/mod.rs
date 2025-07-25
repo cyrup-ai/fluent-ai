@@ -127,6 +127,7 @@ impl Default for ModelLoaderConfig {
 }
 
 /// Main model loader
+#[derive(Debug)]
 pub struct ModelLoader {
     config: ModelLoaderConfig,
     progress: ProgressTracker,

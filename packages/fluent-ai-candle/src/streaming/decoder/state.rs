@@ -8,9 +8,16 @@ pub enum DecoderState {
     /// Ready to decode new bytes
     Ready,
     /// Waiting for more bytes to complete a multi-byte sequence
-    Partial { pending_bytes: Vec<u8> },
+    Partial { 
+        /// Bytes waiting to be processed as part of a multi-byte sequence
+        pending_bytes: Vec<u8> 
+    },
     /// Error state requiring reset
-    Error { error: String }}
+    Error { 
+        /// Error message describing what went wrong
+        error: String 
+    }
+}
 
 impl Default for DecoderState {
     fn default() -> Self {

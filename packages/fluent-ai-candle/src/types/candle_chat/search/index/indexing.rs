@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-use atomic_counter::AtomicCounter;
 use fluent_ai_async::AsyncStream;
 
 use crate::types::candle_chat::message::CandleMessage;
@@ -15,7 +14,6 @@ use crate::types::CandleSearchChatMessage as SearchChatMessage;
 
 use super::super::types::TermFrequency;
 use super::core::{ChatSearchIndex, IndexEntry};
-use crate::types::extensions::RoleExt;
 
 impl ChatSearchIndex {
     /// Add message to search index (streaming)

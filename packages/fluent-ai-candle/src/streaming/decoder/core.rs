@@ -1,7 +1,7 @@
 //! Core streaming UTF-8 decoder implementation
 
 use super::{
-    error::{DecoderError, Result},
+    error::{DecoderError, DecoderResult},
     state::DecoderState,
     stats::DecoderStats,
     validation};
@@ -57,7 +57,7 @@ impl StreamingDecoder {
     }
 
     /// Decode a chunk of bytes into a string, handling partial sequences
-    pub fn decode(&mut self, bytes: &[u8]) -> Result<String> {
+    pub fn decode(&mut self, bytes: &[u8]) -> DecoderResult<String> {
         if bytes.is_empty() {
             return Ok(String::new());
         }
@@ -104,7 +104,7 @@ impl StreamingDecoder {
     }
 
     /// Internal method to handle decoding with state management
-    fn decode_with_state(&mut self, new_bytes: &[u8]) -> Result<String> {
+    fn decode_with_state(&mut self, new_bytes: &[u8]) -> DecoderResult<String> {
         let combined = self.combine_with_pending(new_bytes);
         let (complete, pending, is_complete) = self.find_complete_sequence(&combined)?;
 
@@ -138,7 +138,7 @@ impl StreamingDecoder {
     fn find_complete_sequence<'a>(
         &self,
         bytes: &'a [u8],
-    ) -> Result<(&'a [u8], &'a [u8], bool)> {
+    ) -> DecoderResult<(&'a [u8], &'a [u8], bool)> {
         if bytes.is_empty() {
             return Ok((&[], &[], true));
         }
@@ -176,7 +176,7 @@ impl StreamingDecoder {
     }
 
     /// Update the decoder state based on the current operation
-    fn update_state(&mut self, pending: &[u8], is_complete: bool) -> Result<()> {
+    fn update_state(&mut self, pending: &[u8], is_complete: bool) -> DecoderResult<()> {
         if !pending.is_empty() {
             if pending.len() > self.config.max_pending_bytes {
                 return Err(DecoderError::InvalidUtf8Sequence {
@@ -197,7 +197,7 @@ impl StreamingDecoder {
     }
 
     /// Decode a complete UTF-8 sequence
-    fn decode_complete_bytes(&self, bytes: &[u8]) -> Result<String> {
+    fn decode_complete_bytes(&self, bytes: &[u8]) -> DecoderResult<String> {
         if self.config.validate_utf8 {
             validation::validate_utf8_sequence(bytes)?;
         }

@@ -2,7 +2,6 @@
 //!
 //! Zero-allocation context processing with atomic performance counters and streaming operations.
 
-use std::collections::HashMap;
 use std::sync::{Arc, atomic::{AtomicU64, AtomicUsize, Ordering}};
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use serde::{Deserialize, Serialize};

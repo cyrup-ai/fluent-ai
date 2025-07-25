@@ -84,6 +84,16 @@ pub struct VarBuilderFactory {
     tensors: HashMap<String, Tensor>,
     safetensors: Option<MmapedSafetensors>}
 
+impl std::fmt::Debug for VarBuilderFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VarBuilderFactory")
+            .field("config", &self.config)
+            .field("tensors", &self.tensors)
+            .field("safetensors", &self.safetensors.as_ref().map(|_| "<MmapedSafetensors>"))
+            .finish()
+    }
+}
+
 impl VarBuilderFactory {
     /// Safe wrapper for loading SafeTensors files
     /// 
@@ -174,7 +184,7 @@ impl VarBuilderFactory {
             // Move to target device
             let tensor = tensor.to_device(&factory.config.device)?;
             
-            factory.tensors.insert(name, tensor); // Zero-allocation string reference
+            let _ = factory.tensors.insert(name, tensor); // Zero-allocation string reference
             
             loaded_tensors += 1;
             
@@ -232,6 +242,14 @@ impl VarBuilderFactory {
 /// A wrapper around VarBuilder that supports hot-swapping
 pub struct HotSwappableVarBuilder {
     inner: Arc<ArcSwap<VarBuilder<'static>>>}
+
+impl std::fmt::Debug for HotSwappableVarBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HotSwappableVarBuilder")
+            .field("inner", &"<VarBuilder>")
+            .finish()
+    }
+}
 
 impl HotSwappableVarBuilder {
     /// Create a new HotSwappableVarBuilder

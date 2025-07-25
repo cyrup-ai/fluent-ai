@@ -81,19 +81,19 @@ impl fmt::Display for DecoderError {
 impl std::error::Error for DecoderError {}
 
 /// A specialized `Result` type for decoder operations
-pub type Result<T> = std::result::Result<T, DecoderError>;
+pub(super) type DecoderResult<T> = Result<T, DecoderError>;
 
 /// Extension trait for converting between different error types
-pub trait ErrorExt<T> {
+pub(super) trait ErrorExt<T> {
     /// Convert an error into a decoder error
-    fn into_decoder_error(self, context: &'static str) -> std::result::Result<T, DecoderError>;
+    fn into_decoder_error(self, context: &'static str) -> DecoderResult<T>;
 }
 
-impl<T, E> ErrorExt<T> for std::result::Result<T, E>
+impl<T, E> ErrorExt<T> for Result<T, E>
 where
     E: std::error::Error,
 {
-    fn into_decoder_error(self, context: &'static str) -> std::result::Result<T, DecoderError> {
+    fn into_decoder_error(self, context: &'static str) -> DecoderResult<T> {
         self.map_err(|e| DecoderError::InvalidUtf8Sequence {
             position: 0,
             bytes: format!("{}: {}", context, e).into_bytes()})

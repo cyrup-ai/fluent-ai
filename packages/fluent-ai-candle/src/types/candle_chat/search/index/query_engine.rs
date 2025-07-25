@@ -5,7 +5,6 @@
 
 use std::sync::Arc;
 
-use atomic_counter::AtomicCounter;
 use fluent_ai_async::AsyncStream;
 
 use super::core::ChatSearchIndex;

@@ -165,8 +165,8 @@ impl TryFrom<message::Message> for Message {
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n");
 
-                fluent_ai_http_structs::perplexity::PerplexityMessage {
-                    role: fluent_ai_http_structs::perplexity::PerplexityRole::User,
+                PerplexityMessage {
+                    role: PerplexityRole::User,
                     content: collapsed_content}
             }
 
@@ -184,8 +184,8 @@ impl TryFrom<message::Message> for Message {
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n");
 
-                fluent_ai_http_structs::perplexity::PerplexityMessage {
-                    role: fluent_ai_http_structs::perplexity::PerplexityRole::Assistant,
+                PerplexityMessage {
+                    role: PerplexityRole::Assistant,
                     content: collapsed_content}
             }
         })

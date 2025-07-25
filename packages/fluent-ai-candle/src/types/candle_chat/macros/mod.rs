@@ -5,6 +5,7 @@
 //! lock-free data structures for blazing-fast performance.
 
 use std::collections::HashMap;
+use fluent_ai_async::{AsyncStream, emit};
 
 pub mod types;
 pub mod recording;
@@ -94,8 +95,6 @@ impl MacroSystem {
 
     /// Start macro playback
     pub fn start_playback(&self, macro_id: Uuid, variables: HashMap<String, String>) -> fluent_ai_async::AsyncStream<Uuid> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
         self.execution_counter.inc();
         let player = self.player.clone();
         // Use the async start_playback method directly
@@ -104,8 +103,6 @@ impl MacroSystem {
 
     /// Execute the next action in a playback session
     pub fn execute_next_action(&self, session_id: Uuid) -> fluent_ai_async::AsyncStream<MacroPlaybackResult> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
         let player = self.player.clone();
         // Use the async execute_next_action method directly  
         player.execute_next_action(session_id)
@@ -160,8 +157,6 @@ impl MacroSystem {
 
     /// Get global variable
     pub fn get_variable(&self, name: &str) -> fluent_ai_async::AsyncStream<Option<String>> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
         let result = match self.variables.read() {
             Ok(vars) => vars.get_variable(name).cloned(),
             Err(_) => None,

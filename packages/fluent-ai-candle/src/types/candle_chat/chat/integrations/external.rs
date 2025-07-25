@@ -9,8 +9,6 @@
 
 use std::sync::Arc;
 
-use fluent_ai_http3::header::{HeaderName, HeaderValue};
-
 use super::types::{
     IntegrationConfig, IntegrationType, IntegrationError, IntegrationResult,
     IntegrationStats, IntegrationRequest, IntegrationResponse};
@@ -60,7 +58,7 @@ impl ExternalIntegration {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
         
         if !self.config.enabled {
-            return AsyncStream::with_channel(move |sender| {
+            return AsyncStream::with_channel(move |_sender| {
                 handle_error!(
                     IntegrationError::ConfigurationError {
                         detail: Arc::from("Integration is disabled")},
