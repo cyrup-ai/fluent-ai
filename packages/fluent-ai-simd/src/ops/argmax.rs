@@ -205,6 +205,7 @@ fn create_argmax_dispatch() -> ArgmaxDispatch {
     }
 }
 
+/// Global dispatch table for argmax operations with runtime CPU feature detection
 pub static ARGMAX_DISPATCH: Lazy<ArgmaxDispatch> = Lazy::new(create_argmax_dispatch);
 
 /// Computes argmax over a slice of logits using the best available implementation.

@@ -9,8 +9,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use candle_core::{DType, Device, Result as CandleResult, Tensor, VarBuilder};
-use safetensors::MmapedSafetensors;
+use candle_core::{DType, Device, Result as CandleResult, Tensor};
+use candle_nn::VarBuilder;
+use candle_core::safetensors::MmapedSafetensors;
 
 use crate::error::CandleError;
 use super::progress::ProgressTracker;

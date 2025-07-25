@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use candle_core::{DType, Device, Result as CandleResult};
-use safetensors::MmapedSafetensors;
+use candle_core::safetensors::MmapedSafetensors;
 
 use crate::error::CandleError;
 

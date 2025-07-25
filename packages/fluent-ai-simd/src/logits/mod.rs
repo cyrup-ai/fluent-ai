@@ -1,5 +1,7 @@
 //! Logits processing module for SIMD-accelerated operations
 
+use smallvec::SmallVec;
+
 mod nucleus;
 mod penalties;
 pub mod processing;
@@ -101,7 +103,7 @@ pub fn process_logits_scalar(
             let max_logit = logits.iter().fold(f32::NEG_INFINITY, |acc, &x| acc.max(x));
 
             // Create SmallVec of (index, logit) pairs
-            let mut sorted: SmallVec<[(usize, f32); 512]> =
+            let mut sorted: SmallVec<(usize, f32), 512> =
                 logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
 
             // Sort in descending order by logit value
@@ -129,7 +131,7 @@ pub fn process_logits_scalar(
             }
 
             // Collect indices to keep (using SmallVec to avoid alloc if small)
-            let mut keep_indices: SmallVec<[usize; 512]> =
+            let keep_indices: SmallVec<usize, 512> =
                 sorted[..cutoff].iter().map(|&(idx, _)| idx).collect();
 
             // Mask logits not in keep (in-place, zero alloc)

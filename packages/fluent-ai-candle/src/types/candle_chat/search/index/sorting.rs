@@ -10,19 +10,12 @@ use super::super::types::{SearchResult, SortOrder};
 
 impl ChatSearchIndex {
     /// Sort search results by specified order
-    pub(super) fn sort_results(&self, results: &mut Vec<SearchResult>, sort_order: SortOrder) {
+    pub(super) fn sort_results(&self, results: &mut Vec<SearchResult>, sort_order: &SortOrder) {
         match sort_order {
-            SortOrder::RelevanceDescending => {
+            SortOrder::Relevance => {
                 results.sort_by(|a, b| {
                     b.relevance_score
                         .partial_cmp(&a.relevance_score)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
-            }
-            SortOrder::RelevanceAscending => {
-                results.sort_by(|a, b| {
-                    a.relevance_score
-                        .partial_cmp(&b.relevance_score)
                         .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }

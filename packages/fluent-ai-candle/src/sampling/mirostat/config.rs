@@ -7,8 +7,8 @@ use arraystring::{ArrayString, typenum::U64};
 use candle_core::{Result as CandleResult};
 
 /// Tau adjustment learning rate bounds
-const MIN_LEARNING_RATE: f32 = 1e-6;
-const MAX_LEARNING_RATE: f32 = 1.0;
+pub const MIN_LEARNING_RATE: f32 = 1e-6;
+pub const MAX_LEARNING_RATE: f32 = 1.0;
 
 /// Eta parameter bounds for Mirostat v2
 const MIN_ETA: f32 = 1e-6;

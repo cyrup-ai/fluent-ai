@@ -4,7 +4,6 @@ use rand::Rng;
 use smallvec::SmallVec;
 
 use crate::logits::LogitsResult;
-use crate::ops::softmax;
 
 /// Prepare logits for nucleus sampling
 pub fn prepare_nucleus_sampling_simd(logits: &mut [f32], top_p: f64) -> LogitsResult<()> {
@@ -22,7 +21,7 @@ pub fn prepare_nucleus_sampling_simd(logits: &mut [f32], top_p: f64) -> LogitsRe
     let max_logit = logits.iter().fold(f32::NEG_INFINITY, |acc, &x| acc.max(x));
 
     // Create SmallVec of (index, logit) pairs
-    let mut sorted: SmallVec<[(usize, f32); 512]> =
+    let mut sorted: SmallVec<(usize, f32), 512> =
         logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
 
     // Sort in descending order by logit value
@@ -48,7 +47,7 @@ pub fn prepare_nucleus_sampling_simd(logits: &mut [f32], top_p: f64) -> LogitsRe
     }
 
     // Collect indices to keep (using SmallVec to avoid alloc if small)
-    let mut keep_indices: SmallVec<[usize; 512]> =
+    let keep_indices: SmallVec<usize, 512> =
         sorted[..cutoff].iter().map(|&(idx, _)| idx).collect();
 
     // Sort keep_indices for potential binary search if needed, but here we use loop

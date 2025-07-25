@@ -126,6 +126,17 @@ unsafe fn neon_temperature_scale(logits: &mut [f32], temperature: f32) -> SimdRe
 /// Dispatch table for temperature scaling operations across different CPU capabilities
 pub static TEMPERATURE_DISPATCH: Lazy<TemperatureDispatch> = Lazy::new(create_temperature_dispatch);
 
+/// Scale logits by temperature using the best available SIMD implementation
+///
+/// Applies temperature scaling to logits in-place: logit /= temperature
+/// Automatically selects optimal SIMD implementation based on runtime CPU features.
+///
+/// # Arguments
+/// * `logits` - Mutable slice of logits to scale
+/// * `temperature` - Temperature scaling factor (must be > 0.0)
+///
+/// # Returns
+/// * `SimdResult<()>` - Success or error if temperature is invalid
 pub fn scale_temperature(logits: &mut [f32], temperature: f32) -> SimdResult<()> {
     TEMPERATURE_DISPATCH.call(logits, temperature)
 }

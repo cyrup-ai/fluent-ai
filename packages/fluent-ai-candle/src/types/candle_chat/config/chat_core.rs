@@ -9,7 +9,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    SessionConfig, PersonalityConfig, BehaviorConfig, UIConfig, 
+    BehaviorConfig, UIConfig, 
     IntegrationConfig, HistoryConfig, SecurityConfig, PerformanceConfig
 };
 

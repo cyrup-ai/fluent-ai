@@ -158,6 +158,134 @@ DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MI
 **Architecture:** Successfully maintained all functionality while creating focused modules ≤300 lines each. Preserved zero-allocation, inline design patterns with comprehensive error handling capabilities.
 **Status:** ✅ COMPLETED BY claude976 - All error handling logic successfully decomposed and verified
 
+### Task 11g: CRITICAL - Fix Search Index Decomposition Breaking Changes (claude916)
+**File:** Multiple files in `src/types/candle_chat/search/index/` module
+**Lines:** All decomposed modules created by claude916
+**Issue:** Search index decomposition introduced breaking changes preventing safe deletion of original
+**Architecture:** Achieve 100% functional parity with original implementation while maintaining modular structure
+**Status:** ACTIVELY WORKING BY claude916 - Critical fixes required for production deployment
+
+#### Sub-task 11g.1: Fix Search Stream API Contract (query_engine.rs:50-75)
+**File:** `src/types/candle_chat/search/index/query_engine.rs`
+**Lines:** 50-75 (search_stream method)
+**Issue:** Current implementation parses `query.query` string, but original used `query.terms` directly
+**Architecture:** Restore original API contract that expects pre-parsed terms in SearchQuery struct
+**Implementation:** Modify search_stream to use `query.terms` directly instead of parsing `query.query` string. Ensure SearchQuery struct has terms field accessible.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.2: QA: Verify Search Stream API Compatibility
+Act as an Objective QA Rust developer and rate the search stream API fix on a scale of 1-10. Verify that the search_stream method now uses the exact same API contract as the original implementation. Confirm that existing code calling this method will continue to work without changes. Test with sample SearchQuery structs to ensure identical behavior.
+
+#### Sub-task 11g.3: Fix SortOrder Enum Compatibility (sorting.rs:12-50)
+**File:** `src/types/candle_chat/search/index/sorting.rs`
+**Lines:** 12-50 (sort_results method)
+**Issue:** Original used `SortOrder::Relevance`, decomposed uses `SortOrder::RelevanceDescending/Ascending`
+**Architecture:** Restore original SortOrder enum variant names to maintain backward compatibility
+**Implementation:** Update sort_results method to handle original SortOrder::Relevance variant. Check types.rs file for correct enum definition and align implementation.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.4: QA: Verify SortOrder Enum Compatibility
+Act as an Objective QA Rust developer and rate the SortOrder enum fix on a scale of 1-10. Verify that all original enum variants are supported and produce identical sorting behavior. Test each sort order variant against the original implementation to ensure no behavioral changes.
+
+#### Sub-task 11g.5: Fix Search Proximity Algorithm (search_ops.rs:140-200)
+**File:** `src/types/candle_chat/search/index/search_ops.rs`
+**Lines:** 140-200 (search_proximity method)
+**Issue:** Decomposed version uses cartesian_product method, original used direct proximity checking
+**Architecture:** Restore original proximity checking algorithm to ensure identical search results
+**Implementation:** Replace current cartesian_product approach with original direct proximity checking logic. Reference original lines 542-575 for exact algorithm. Ensure token position checking matches exactly.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.6: QA: Verify Search Proximity Algorithm
+Act as an Objective QA Rust developer and rate the search proximity algorithm fix on a scale of 1-10. Verify that proximity search now produces identical results to the original implementation. Test with various term combinations and proximity distances to ensure behavioral parity.
+
+#### Sub-task 11g.7: Verify Fuzzy Match Implementation (search_ops.rs:202-244)
+**File:** `src/types/candle_chat/search/index/search_ops.rs`
+**Lines:** 202-244 (fuzzy_match and levenshtein_distance methods)
+**Issue:** Ensure fuzzy matching logic exactly matches original implementation
+**Architecture:** Confirm fuzzy_match threshold calculation and levenshtein_distance implementation are identical
+**Implementation:** Compare against original lines 477-518. Verify max_distance calculation formula and matrix implementation match exactly. Fix any discrepancies.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.8: QA: Verify Fuzzy Match Implementation
+Act as an Objective QA Rust developer and rate the fuzzy match implementation on a scale of 1-10. Verify that fuzzy matching produces identical results to the original. Test with various string combinations and distance thresholds to ensure algorithmic parity.
+
+#### Sub-task 11g.9: Fix Import Dependencies (mod.rs:1-17)
+**File:** `src/types/candle_chat/search/index/mod.rs`
+**Lines:** 1-17 (all module declarations and re-exports)
+**Issue:** Ensure all imports and re-exports maintain original API surface
+**Architecture:** Verify that external code can import and use ChatSearchIndex exactly as before
+**Implementation:** Check that all public methods, structs, and traits are properly re-exported. Ensure IndexEntry and other types are accessible at the same import paths as original.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.10: QA: Verify Module Integration
+Act as an Objective QA Rust developer and rate the module integration on a scale of 1-10. Verify that all imports work correctly and external code can use the decomposed modules exactly like the original file. Test import statements and API access patterns.
+
+#### Sub-task 11g.11: Fix Cross-Module Method Access (all modules)
+**File:** All modules in `src/types/candle_chat/search/index/`
+**Lines:** Method declarations with pub(super) visibility
+**Issue:** Ensure all methods are accessible where needed across modules
+**Architecture:** Verify that search_and can call intersect_results, search_proximity can call check_proximity, etc.
+**Implementation:** Review all method visibility declarations. Ensure methods called across module boundaries have proper pub(super) visibility. Fix any compilation errors related to method access.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.12: QA: Verify Cross-Module Method Access
+Act as an Objective QA Rust developer and rate the cross-module method access on a scale of 1-10. Verify that all methods are properly accessible across modules and compilation succeeds. Test that method calls work correctly in all contexts.
+
+#### Sub-task 11g.13: Verify SIMD Optimization Behavior (indexing.rs:107-117)
+**File:** `src/types/candle_chat/search/index/indexing.rs`
+**Lines:** 107-117 (SIMD threshold logic)
+**Issue:** Ensure SIMD optimization triggers under same conditions as original
+**Architecture:** Verify that simd_threshold loading and comparison logic matches original exactly
+**Implementation:** Compare against original lines 234-236. Ensure >= comparison and threshold loading behavior is identical. Fix any discrepancies in condition evaluation.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.14: QA: Verify SIMD Optimization Behavior
+Act as an Objective QA Rust developer and rate the SIMD optimization behavior on a scale of 1-10. Verify that SIMD processing triggers under identical conditions to the original. Test with various text sizes to ensure optimization thresholds work correctly.
+
+#### Sub-task 11g.15: Verify Statistics Update Logic (indexing.rs:77-94)
+**File:** `src/types/candle_chat/search/index/indexing.rs`
+**Lines:** 77-94 (statistics update in add_message_stream)
+**Issue:** Ensure statistics tracking behavior matches original exactly
+**Architecture:** Verify counter increments, timestamp updates, and statistics calculation are identical
+**Implementation:** Compare against original lines 180-189. Ensure document_count, index_update_counter, and statistics updates happen in same order with same values.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.16: QA: Verify Statistics Update Logic
+Act as an Objective QA Rust developer and rate the statistics update logic on a scale of 1-10. Verify that statistics tracking produces identical results to the original. Test message indexing to ensure counters and timestamps update correctly.
+
+#### Sub-task 11g.17: Comprehensive Compilation Verification
+**File:** Entire `src/types/candle_chat/search/index/` module
+**Lines:** All files
+**Issue:** Ensure clean compilation with zero errors and zero warnings
+**Architecture:** Verify all modules compile together cleanly with proper dependencies
+**Implementation:** Run cargo check on the entire module. Fix any compilation errors, unused imports, or warnings. Ensure all method signatures are compatible across modules.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.18: QA: Verify Compilation Success
+Act as an Objective QA Rust developer and rate the compilation verification on a scale of 1-10. Verify that the entire module compiles cleanly with zero errors and zero warnings. Test in both debug and release modes.
+
+#### Sub-task 11g.19: Final Behavioral Verification Testing
+**File:** All modules in decomposed search index
+**Lines:** All implementations
+**Issue:** Verify identical behavior through comprehensive testing
+**Architecture:** Test all search operations, indexing, and statistics to ensure perfect parity
+**Implementation:** Create test cases that compare original vs decomposed behavior. Test: tokenization, exact search, fuzzy search, proximity search, phrase search, sorting, and statistics. Verify identical results.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.20: QA: Verify Behavioral Parity
+Act as an Objective QA Rust developer and rate the behavioral verification on a scale of 1-10. Verify that all search operations produce identical results to the original implementation. Confirm that the decomposition introduces zero functional changes.
+
+#### Sub-task 11g.21: Safe Original File Deletion
+**File:** `src/types/candle_chat/search/index_original.rs.backup`
+**Lines:** N/A (file deletion)
+**Issue:** Safely remove original file only after 100% verification
+**Architecture:** Final cleanup step after complete verification
+**Implementation:** Only delete the backup file after all previous verification tasks pass with 9/10 or higher ratings. Ensure decomposed modules are fully production-ready.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### Sub-task 11g.22: QA: Verify Safe Deletion
+Act as an Objective QA Rust developer and rate the deletion safety on a scale of 1-10. Verify that the original file has been safely removed and that the decomposed modules provide complete functional replacement. Confirm that no functionality was lost in the process.
+
 ### Task 12: Fix sampling/mirostat.rs Future violations
 **File:** `src/sampling/mirostat.rs`
 **Lines:** 41, 45, 49 (future references)

@@ -148,51 +148,22 @@ impl ChatSearchIndex {
         for entry in self.document_store.iter() {
             let message = entry.value();
             let tokens = self.tokenize_with_simd(&message.message.content);
-            
-            // Find positions of all terms
-            let mut term_positions = std::collections::HashMap::new();
-            for (i, token) in tokens.iter().enumerate() {
-                for term in terms {
-                    let matches = if fuzzy {
-                        self.fuzzy_match(token.as_ref(), term.as_ref())
-                    } else {
-                        token == term
-                    };
 
-                    if matches {
-                        term_positions.entry(term.clone()).or_insert_with(Vec::new).push(i);
-                    }
-                }
-            }
-
-            // Check if all terms found and within proximity
-            if term_positions.len() == terms.len() {
-                let mut found_proximity = false;
-
-                // Check all combinations of positions
-                for positions_combo in self.cartesian_product(&term_positions) {
-                    let min_pos = *positions_combo.iter().min().unwrap_or(&0);
-                    let max_pos = *positions_combo.iter().max().unwrap_or(&0);
-                    
-                    if (max_pos - min_pos) <= distance as usize {
-                        found_proximity = true;
-                        break;
-                    }
-                }
-
-                if found_proximity {
-                    let result = SearchResult {
-                        message: message.clone(),
-                        relevance_score: if fuzzy { 0.7 } else { 0.9 },
-                        matching_terms: terms.to_vec(),
-                        highlighted_content: None,
-                        tags: vec![],
-                        context: vec![],
-                        match_positions: vec![],
-                        metadata: None,
-                    };
-                    results.push(result);
-                }
+            if self.check_proximity(&tokens, terms, distance) {
+                let relevance_score = if fuzzy { 0.7 } else { 0.9 };
+                let result = SearchResult {
+                    message: message.clone(),
+                    relevance_score,
+                    matching_terms: terms.to_vec(),
+                    highlighted_content: Some(Arc::from(
+                        self.highlight_terms(&message.message.content, terms),
+                    )),
+                    tags: vec![],
+                    context: vec![],
+                    match_positions: vec![],
+                    metadata: None,
+                };
+                results.push(result);
             }
         }
 

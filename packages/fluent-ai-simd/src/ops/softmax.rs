@@ -284,6 +284,16 @@ fn create_softmax_dispatch() -> SoftmaxDispatch {
     }
 }
 
+/// Compute softmax over logits using the best available SIMD implementation
+///
+/// This function automatically selects the optimal SIMD implementation based on runtime
+/// CPU feature detection, providing maximum performance across different hardware.
+/// 
+/// # Arguments
+/// * `logits` - Input logits slice
+///
+/// # Returns
+/// * `SimdResult<Vec<f32>>` - Normalized probabilities or error
 pub fn softmax(logits: &[f32]) -> SimdResult<Vec<f32>> {
     SOFTMAX_DISPATCH.call(logits)
 }

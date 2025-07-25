@@ -52,15 +52,10 @@ impl CpuFeatures {
 static CPU_FEATURES: AtomicU8 = AtomicU8::new(0xFF); // 0xFF = uninitialized
 
 /// Static lazy initialization for CPU features with AVX512 check
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(dead_code)] // Reserved for future AVX512 optimizations
 static HAS_AVX512: Lazy<bool> = Lazy::new(|| {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        is_x86_feature_detected!("avx512f")
-    }
-    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-    {
-        false
-    }
+    is_x86_feature_detected!("avx512f")
 });
 
 /// Runtime CPU feature detection with caching

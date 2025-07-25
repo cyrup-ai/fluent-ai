@@ -34,6 +34,7 @@ pub mod context;
 pub mod error;
 pub mod logits;
 pub mod ops;
+/// Runtime CPU feature detection and dispatch for SIMD operations
 pub mod runtime;
 pub mod similarity;
 pub mod utils;
