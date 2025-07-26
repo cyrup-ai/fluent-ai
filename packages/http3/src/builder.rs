@@ -11,6 +11,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use crate::{DownloadStream, HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream};
 
 /// Content type enumeration for elegant API
@@ -372,90 +373,181 @@ pub trait HttpStreamExt {
     /// Collect the entire HTTP stream into a deserialized type, calling error handler on failure
     fn collect_or_else<
         T: DeserializeOwned + Send + 'static,
-        F: Fn(HttpError) -> T + Send + 'static,
+        F: Fn(HttpError) -> T + Send + Sync + 'static + Clone,
     >(
         self,
         f: F,
     ) -> T;
 }
 
-impl HttpStream {
-    // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
-    async fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> Result<T, HttpError> {
-        use futures_util::StreamExt;
+impl HttpStreamExt for HttpStream {
+    #[inline(always)]
+    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T {
+        self.collect_internal()
+    }
 
-        let mut stream = self;
-        let mut all_bytes = Vec::new();
-
-        while let Some(chunk_result) = stream.next().await {
-            match chunk_result {
-                Ok(HttpChunk::Body(bytes)) => {
-                    all_bytes.extend_from_slice(&bytes);
-                }
-                Ok(HttpChunk::Head(status, _)) => {
-                    log::debug!("HTTP Response Status: {}", status.as_u16());
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
-
-        if all_bytes.is_empty() {
-            return Err(HttpError::InvalidResponse {
-                message: "Empty response body".to_string()});
-        }
-
-        match serde_json::from_slice(&all_bytes) {
-            Ok(value) => Ok(value),
-            Err(err) => Err(HttpError::DeserializationError {
-                message: format!("JSON deserialization failed: {}", err)})}
+    #[inline(always)]
+    fn collect_or_else<T, F>(self, f: F) -> T
+    where
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(HttpError) -> T + Send + Sync + 'static + Clone,
+    {
+        self.collect_or_else_impl(f)
     }
 }
 
-impl HttpStreamExt for HttpStream {
-    // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
-    #[inline(always)]
-    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T {
-        // Create a channel for async result communication
-        let (tx, rx) = std::sync::mpsc::channel();
+impl HttpStream {
+    // NO FUTURES - Pure AsyncStream pattern for HTTP response collection
+pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
+    where
+        T: Default,
+    {
+        use futures_util::StreamExt;
 
-        // Spawn task to handle async collection
-        tokio::spawn(async move {
-            let result = self.collect_internal().await;
-            let _ = tx.send(result);
+        // Convert HttpStream to AsyncStream for pure streaming pattern
+        let stream = AsyncStream::<T, 1024>::with_channel(move |sender: AsyncStreamSender<T, 1024>| {
+            let rt = tokio::runtime::Runtime::new().unwrap_or_else(|_| {
+                // Fallback to current runtime if available
+                panic!("Failed to create tokio runtime");
+            });
+            
+            rt.block_on(async move {
+                let mut http_stream = self;
+                let mut all_bytes = Vec::new();
+                let mut status_code = None;
+
+                while let Some(chunk_result) = http_stream.next().await {
+                    match chunk_result {
+                        Ok(HttpChunk::Body(bytes)) => {
+                            all_bytes.extend_from_slice(&bytes);
+                        }
+                        Ok(HttpChunk::Head(status, _)) => {
+                            status_code = Some(status);
+                            log::debug!("HTTP Response Status: {}", status.as_u16());
+                        }
+                        Err(e) => {
+                            log::error!("Error receiving chunk: {}", e);
+                            let _ = sender.send(T::default());
+                            return ();
+                        }
+                    }
+                }
+
+                // If we got a 204 No Content, return default
+                if status_code.map_or(false, |s| s.as_u16() == 204) || all_bytes.is_empty() {
+                    let _ = sender.send(T::default());
+                    return ();
+                }
+
+                // Try to deserialize the response
+                match serde_json::from_slice(&all_bytes) {
+                    Ok(value) => {
+                        let _ = sender.send(value);
+                    }
+                    Err(e) => {
+                        log::error!("Failed to deserialize response: {}", e);
+                        let _ = sender.send(T::default());
+                    }
+                }
+            });
         });
 
-        // Receive result synchronously
-        match rx.recv() {
-            Ok(Ok(value)) => value,
-            _ => T::default()}
+        // Collect from AsyncStream (blocking, no futures)
+        let results = stream.collect();
+        results.into_iter().next().unwrap_or_else(T::default)
     }
 
-    // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
     #[inline(always)]
-    fn collect_or_else<
+    fn collect_or_else<T, F>(self, f: F) -> T
+    where
         T: DeserializeOwned + Send + 'static,
-        F: Fn(HttpError) -> T + Send + 'static,
-    >(
-        self,
-        f: F,
-    ) -> T {
-        // Create a channel for async result communication
-        let (tx, rx) = std::sync::mpsc::channel();
+        F: Fn(HttpError) -> T + Send + Sync + 'static + Clone,
+    {
+        self.collect_or_else_impl(f)
+    }
 
-        // Spawn task to handle async collection
-        tokio::spawn(async move {
-            let result = self.collect_internal::<T>().await;
-            let _ = tx.send(result);
+    fn collect_or_else_impl<T, F>(self, f: F) -> T
+    where
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(HttpError) -> T + Send + Sync + 'static + Clone,
+    {
+        use futures_util::StreamExt;
+        use http::StatusCode;
+
+        // Convert HttpStream to AsyncStream for pure streaming pattern  
+        let f_arc = std::sync::Arc::new(f.clone());
+        let f_arc_clone = f_arc.clone();
+        let stream = AsyncStream::<T, 1024>::with_channel(move |sender: AsyncStreamSender<T, 1024>| {
+            let f_arc = f_arc_clone.clone();
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(_) => {
+                    // Send error on runtime creation failure
+                    let _ = sender.send(f_arc(HttpError::HttpStatus {
+                        status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                        message: "Runtime creation failed".to_string(),
+                        body: String::new(),
+                    }));
+                    return;
+                }
+            };
+            
+            rt.block_on(async move {
+                let mut http_stream = self;
+                let mut all_bytes = Vec::new();
+                let mut status_code = None;
+
+                while let Some(chunk_result) = http_stream.next().await {
+                    match chunk_result {
+                        Ok(HttpChunk::Body(bytes)) => {
+                            all_bytes.extend_from_slice(&bytes);
+                        }
+                        Ok(HttpChunk::Head(status, _)) => {
+                            status_code = Some(status);
+                            log::debug!("HTTP Response Status: {}", status.as_u16());
+                        }
+                        Err(e) => {
+                            let _ = sender.send(f_arc(e));
+                            return ();
+                        }
+                    }
+                }
+
+                // If we got a 204 No Content or empty response
+                let status = status_code.unwrap_or(StatusCode::NO_CONTENT);
+                if status == StatusCode::NO_CONTENT || all_bytes.is_empty() {
+                    let _ = sender.send(f_arc(HttpError::HttpStatus {
+                        status: status.as_u16(),
+                        message: "No content".to_string(),
+                        body: String::from_utf8_lossy(&all_bytes).to_string(),
+                    }));
+                    return ();
+                }
+
+                // Try to deserialize the response
+                match serde_json::from_slice(&all_bytes) {
+                    Ok(value) => {
+                        let _ = sender.send(value);
+                    }
+                    Err(e) => {
+                        log::error!("Failed to deserialize response: {}", e);
+                        let _ = sender.send(f_arc(HttpError::HttpStatus {
+                            status: status.as_u16(),
+                            message: format!("Failed to deserialize response: {}", e),
+                            body: String::from_utf8_lossy(&all_bytes).to_string(),
+                        }));
+                    }
+                }
+            });
         });
 
-        // Receive result synchronously
-        match rx.recv() {
-            Ok(Ok(value)) => value,
-            Ok(Err(err)) => f(err),
-            Err(_) => f(HttpError::InvalidResponse {
-                message: "Channel communication failed".to_string()})}
+        // Collect from AsyncStream (blocking, no futures)
+        let results = stream.collect();
+        results.into_iter().next().unwrap_or_else(|| f_arc(HttpError::HttpStatus {
+            status: StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+            message: "Stream collection failed".to_string(),
+            body: String::new(),
+        }))
     }
 }
 

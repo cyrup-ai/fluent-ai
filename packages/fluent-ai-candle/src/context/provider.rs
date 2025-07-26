@@ -27,6 +27,18 @@ use uuid::Uuid;
 // Domain imports
 use crate::{domain::CandleZeroOneOrMany as ZeroOneOrMany, domain::context::CandleDocument as Document};
 
+// Re-export the types with Candle prefix for backward compatibility
+pub use crate::domain::context::provider::{
+    CandleContextError as ContextError,
+    CandleContextEvent as ContextEvent,
+    CandleContextSourceType as ContextSourceType,
+    CandleDocument as Document,
+    CandleFile as File,
+    CandleFiles as Files,
+    CandleDirectory as Directory,
+    CandleGithub as Github,
+};
+
 // Macros now imported from fluent_ai_async - removed local definitions
 
 /// Marker types for CandleContext
@@ -210,8 +222,8 @@ pub struct CandleImmutableFileContext {
     pub size_bytes: u64,
     /// Last modified timestamp
     pub modified: SystemTime,
-    /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>}
+    /// Memory integration for context processing
+    pub memory_integration: Option<CandleMemoryIntegration>}
 
 /// Immutable files context with owned strings
 #[derive(Debug, Clone)]
@@ -222,8 +234,8 @@ pub struct CandleImmutableFilesContext {
     pub pattern: String,
     /// Total files count
     pub total_files: usize,
-    /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>}
+    /// Memory integration for context processing
+    pub memory_integration: Option<CandleMemoryIntegration>}
 
 /// Immutable directory context with owned strings
 #[derive(Debug, Clone)]
@@ -236,8 +248,8 @@ pub struct CandleImmutableDirectoryContext {
     pub extensions: Vec<String>,
     /// Maximum depth for traversal
     pub max_depth: Option<usize>,
-    /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>}
+    /// Memory integration for context processing
+    pub memory_integration: Option<CandleMemoryIntegration>}
 
 /// Immutable GitHub context with owned strings
 #[derive(Debug, Clone)]
@@ -250,8 +262,8 @@ pub struct CandleImmutableGithubContext {
     pub pattern: String,
     /// Authentication token (if needed)
     pub auth_token: Option<String>,
-    /// Memory integration layer
-    pub memory_integration: Option<MemoryIntegration>}
+    /// Memory integration for context processing
+    pub memory_integration: Option<CandleMemoryIntegration>}
 
 /// Memory integration layer with atomic operations
 #[derive(Debug)]
@@ -825,9 +837,9 @@ impl Context<Directory> {
                                         if let Ok(content) = std::fs::read_to_string(&path) {
                                             let document = Document {
                                                 data: content,
-                                                format: Some(crate::context::ContentFormat::Text),
+                                                format: Some(CandleContentFormat::Text),
                                                 media_type: Some(
-                                                    crate::context::DocumentMediaType::TXT,
+                                                    CandleDocumentMediaType::TXT,
                                                 ),
                                                 additional_props: {
                                                     let mut props = HashMap::new();

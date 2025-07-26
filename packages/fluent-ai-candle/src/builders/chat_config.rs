@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use fluent_ai_domain::chat::config::{
+use crate::domain::chat::config::{
     BehaviorConfig, ChatConfig, IntegrationConfig, PersonalityConfig, UIConfig,
 };
 

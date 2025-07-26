@@ -13,6 +13,8 @@
 #![allow(clippy::must_use_candidate)]
 
 // Core modules
+/// Additional types for agent configuration
+pub mod additional_types;
 /// Agent abstractions and management
 pub mod agent;
 /// Chat functionality and conversation management
@@ -54,8 +56,8 @@ pub mod workflow;
 
 // Additional module re-exports for provider compatibility
 // Essential re-exports for Candle public API
-// Candle-prefixed compatibility aliases
-pub use core::{CandleChannelError, CandleChannelSender};
+// Candle-prefixed compatibility aliases  
+pub use core::{ChannelError as CandleChannelError, ChannelSender as CandleChannelSender};
 
 // Re-export HashMap from hashbrown for domain consistency
 pub use hashbrown::HashMap;
@@ -152,6 +154,16 @@ impl<T> IntoIterator for CandleZeroOneOrMany<T> {
 pub use fluent_ai_async::spawn_task as spawn_async; // Alias for backward compatibility
 pub use util::json_util;
 pub use {
+    // Additional types for agent configuration
+    additional_types::{CandleAdditionalParams, CandleMetadata},
+    
+    // Candle Agent system
+    agent::{
+        Agent as CandleAgent, AgentError as CandleAgentError, AgentResult as CandleAgentResult,
+        CandleAgentConversation, CandleAgentConversationMessage, CandleAgentRole, CandleAgentRoleAgent, CandleAgentRoleImpl,
+        AgentConversation as CandleConversation
+    },
+    
     // Candle Chat system
     chat::{
         CandleChatConfig, CandleCommandExecutor, CandleCommandRegistry, CandleConversation as CandleConversationTrait,
@@ -159,40 +171,44 @@ pub use {
         CandlePersonalityConfig},
 
     // Candle Completion system
-    completion::{CandleCompletionModel},
+    completion::{CandleCompletionModel, CandleCompletionBackend as CandleCompletionProvider},
 
     // Candle Concurrency primitives
-    concurrency::{CandleChannel, CandleIntoTask, CandleOneshotChannel},
+    crate::concurrency::{CandleChannel, CandleIntoTask, CandleOneshotChannel},
 
     // Candle Context system
-    context::{CandleContentFormat, CandleDocument, CandleDocumentLoader, CandleDocumentMediaType},
+    context::{CandleContentFormat, CandleDocument, CandleDocumentMediaType, CandleContext},
+    
     // Candle Core types
-    core::{CandleDomainInitError, candle_execute_with_circuit_breaker},
-
-    // Candle HTTP types
-    http::{CandleProvider},
+    core::{DomainInitError as CandleDomainInitError, execute_with_circuit_breaker as candle_execute_with_circuit_breaker},
 
     // Streaming primitives from fluent-ai-async (kept as-is per requirements)
     fluent_ai_async::{AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task},
 
     // Candle Core initialization and management
-    init::{
+    crate::init::{
         candle_get_default_memory_config, candle_get_from_pool, candle_initialize_domain, candle_initialize_domain_with_config,
         candle_pool_size, candle_return_to_pool},
+
+    // Candle Memory system  
+    memory::{Memory as CandleMemory, MemoryConfig, MemoryResult, MemoryTool, MemoryToolError},
 
     // Candle Model system
     model::{
         CandleCapability, CandleModel, CandleModelCapabilities, CandleModelInfo, CandleModelPerformance, CandleUsage, CandleUseCase,
         CandleValidationError, CandleValidationIssue, CandleValidationReport, CandleValidationResult, CandleValidationSeverity},
 
-    // Candle Prompt system
-    prompt::CandlePrompt,
+    // Candle Prompt system - using actual type name
+    prompt::{Prompt as CandlePrompt},
 
-    // Candle Voice system
-    voice::{CandleAudio, CandleAudioMediaType, transcription::CandleTranscription},
+    // Candle Tool system
+    tool::{CandleTool, CandleMcpClient as CandleMcpServer},
 
-    // Candle Workflow system
-    workflow::{CandleStepType, CandleWorkflow, CandleWorkflowStep}};
+    // Candle Voice system - using actual type names
+    voice::{Audio as CandleAudio, AudioMediaType as CandleAudioMediaType, transcription::{Transcription as CandleTranscription}},
+
+    // Candle Workflow system - using actual type names
+    workflow::{StepType as CandleStepType, Workflow as CandleWorkflow, WorkflowStep as CandleWorkflowStep}};
 
 /// Extension trait to add missing methods to CandleZeroOneOrMany
 pub trait CandleZeroOneOrManyExt<T> {

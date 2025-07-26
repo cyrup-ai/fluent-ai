@@ -12,6 +12,7 @@ rkyv-serialization = ["rkyv"]
 [dependencies]
 fluent-ai-async = { path = "../fluent-ai-async" }
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
+model-info = { path = "../model-info" }
 
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
@@ -86,7 +87,13 @@ weak-table = "0.3.2"
 fnv = "1.0.7"
 hdrhistogram = "7.5.4"
 html-escape = "0.2.13"
+criterion = { version = "0.7.0", features = ["html_reports", "async_tokio"] }
+futures-util = "0.3.31"
 
 [lib]
 name = "fluent_ai_domain"
 path = "src/lib.rs"
+
+[[bench]]
+name = "model_performance"
+harness = false

@@ -1062,9 +1062,9 @@ impl CandleConfigurationManager {
                     .unwrap_or_default()
                     .as_nanos() as u64;
                 
-                let validation_start = ConfigUpdate {
+                let validation_start = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::ValidationCompleted,
+                    update_type: CandleConfigUpdateType::ValidationStarted,
                     section: None,
                     success: true,
                     description: Some(Arc::from("Configuration validation initiated"))};
@@ -1072,9 +1072,9 @@ impl CandleConfigurationManager {
                 emit!(sender, validation_start);
                 
                 // Emit completion update
-                let completion_update = ConfigUpdate {
+                let completion_update = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::ValidationCompleted,
+                    update_type: CandleConfigUpdateType::ValidationCompleted,
                     section: None,
                     success: true,
                     description: Some(Arc::from("Configuration validation completed"))};

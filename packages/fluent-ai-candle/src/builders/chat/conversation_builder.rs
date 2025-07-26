@@ -1,4 +1,5 @@
-use crate::domain::chat::{CandleMessageRole as MessageRole, CandleStreamingConversation as StreamingConversation};
+use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
+use crate::domain::chat::conversation::CandleStreamingConversation as StreamingConversation;
 
 /// Builder for creating conversations
 pub struct ConversationBuilder {

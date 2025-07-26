@@ -1,5 +1,6 @@
 use std::num::NonZeroU32;
-use fluent_ai_domain::model::{ModelInfo, ModelError, Result};
+use crate::domain::model::{CandleModelInfo as ModelInfo};
+use crate::domain::model::error::{CandleModelError as ModelError, CandleResult as Result};
 
 /// Builder for creating ModelInfo instances
 pub struct ModelInfoBuilder {

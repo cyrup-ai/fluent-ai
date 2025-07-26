@@ -8,7 +8,7 @@ use std::num::NonZeroU32;
 use serde::{Deserialize, Serialize};
 
 // Removed unused import: smallvec::SmallVec
-use crate::model::error::{CandleModelError, CandleResult};
+use crate::domain::model::error::{CandleModelError, CandleResult};
 
 /// Core metadata and capabilities for a Candle AI model
 ///

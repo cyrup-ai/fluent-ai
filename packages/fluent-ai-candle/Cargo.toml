@@ -21,9 +21,9 @@ cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["
 fluent_ai_http3 = { path = "../http3" }
 
 # Candle framework for local model inference
-candle-core = "0.8.0"
-candle-nn = "0.8.0"
-candle-transformers = "0.8.0"
+candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
 tokenizers = "0.21.0"
 
 # Core dependencies

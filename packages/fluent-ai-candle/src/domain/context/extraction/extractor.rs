@@ -7,10 +7,10 @@ use serde::de::DeserializeOwned;
 use super::error::{ExtractionError, _ExtractionResult as ExtractionResult};
 use crate::domain::agent::types::CandleAgent as Agent;
 use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
-use crate::domain::completion::request::CandleCompletionRequest as CompletionRequest;
+use crate::domain::completion::CandleCompletionRequest as CompletionRequest;
 use crate::domain::completion::model::CandleCompletionModel as CompletionModel;
 use crate::domain::completion::chunk::{CandleCompletionChunk as CompletionChunk, CandleFinishReason as FinishReason};
-use crate::domain::prompt::types::CandlePrompt as Prompt;
+use crate::prompt::CandlePrompt as Prompt;
 
 /// Trait defining the core extraction interface
 pub trait Extractor<T>: Send + Sync + fmt::Debug + Clone

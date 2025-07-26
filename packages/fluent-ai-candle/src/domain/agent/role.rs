@@ -15,10 +15,10 @@ use crate::domain::{
 use crate::domain::completion::CandleCompletionModel;
 use crate::domain::context::CandleContext;
 use crate::domain::tool::CandleTool;
-use crate::domain::memory::CandleMemory;
+use crate::domain::memory::Memory as CandleMemory;
 // Note: These types may need to be defined or imported from their specific modules
-// use crate::domain::CandleAdditionalParams;
-// use crate::domain::CandleMetadata;
+use super::types::CandleAdditionalParams;
+use crate::domain::additional_types::CandleMetadata;
 // use crate::domain::CandleAgentConversation;
 // use crate::domain::CandleAgentRoleAgent;
 // Unused imports cleaned up
@@ -271,4 +271,4 @@ pub trait ConversationHistoryArgs {
 }
 
 // Forward declaration for ChatError - will be defined in chat.rs
-use crate::domain::agent::chat::CandleChatError as ChatError;
+use crate::domain::agent::chat::ChatError;

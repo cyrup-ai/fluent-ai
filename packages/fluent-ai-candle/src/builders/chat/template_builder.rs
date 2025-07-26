@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use fluent_ai_domain::chat::{ChatTemplate, TemplateCategory, core};
+use crate::domain::chat::{CandleChatTemplate as ChatTemplate, CandleTemplateCategory as TemplateCategory};
 
 /// Template builder struct
 #[derive(Debug, Clone)]

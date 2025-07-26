@@ -1,7 +1,7 @@
 //! Prompt builder implementation moved from domain
 //! Builders are behavioral/construction logic, separate from core domain models
 
-use fluent_ai_domain::Prompt;
+use crate::prompt::Prompt;
 
 pub struct PromptBuilder {
     content: String}

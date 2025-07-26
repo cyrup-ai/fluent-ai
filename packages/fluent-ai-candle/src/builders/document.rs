@@ -7,11 +7,10 @@ use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 
-use crate::domain::context::{CandleDocumentChunk as DocumentChunk};
-use crate::domain::{
-    CandleContentFormat as ContentFormat, CandleDocument as Document, 
-    CandleDocumentMediaType as DocumentMediaType, CandleZeroOneOrMany as ZeroOneOrMany};
-use fluent_ai_async::{AsyncTask, AsyncStream, spawn_task as spawn_async};
+use crate::domain::context::{CandleDocumentChunk as DocumentChunk, CandleDocument as Document};
+use crate::domain::context::{CandleContentFormat as ContentFormat, CandleDocumentMediaType as DocumentMediaType};
+use crate::util::ZeroOneOrMany;
+use fluent_ai_async::{AsyncTask, AsyncStream, spawn_task};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpMethod, HttpRequest};
 use serde_json::Value;
 use tokio::fs;

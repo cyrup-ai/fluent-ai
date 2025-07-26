@@ -11,7 +11,9 @@
 //! - `types.rs` - Shared Candle types and constants
 
 pub mod candle;
+pub mod chunk;
 pub mod core;
+pub mod model;
 pub mod request;
 pub mod response;
 pub mod types;
@@ -20,12 +22,12 @@ pub mod types;
 pub use core::{CandleCompletionBackend, CandleCompletionModel};
 
 pub use candle::{
-    CandleCompletionCoreError, CandleCompletionCoreRequest, CandleCompletionCoreResponse, CandleCompletionCoreResult,
-    CandleStreamingCoreResponse};
+    CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse, CompletionCoreResult,
+    StreamingCoreResponse};
 
 // Type aliases for convenience
-pub type CandleCompletionResult<T> = CandleCompletionCoreResult<T>;
-pub type CandleStreamingResponse = CandleStreamingCoreResponse;
-pub use request::{CandleCompletionRequest, CandleCompletionRequestError};
-pub use response::{CandleCompactCompletionResponse, CandleCompletionResponse};
+pub type CandleCompletionResult<T> = CompletionCoreResult<T>;
+pub type CandleStreamingResponse = StreamingCoreResponse;
+pub use request::{CompletionRequest as CandleCompletionRequest, CompletionRequestError as CandleCompletionRequestError};
+pub use response::{CompactCompletionResponse as CandleCompactCompletionResponse, CompletionResponse as CandleCompletionResponse};
 pub use types::{CandleCompletionChunk, CandleCompletionParams, CandleModelParams, CandleToolDefinition};

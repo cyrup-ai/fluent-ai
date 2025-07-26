@@ -422,12 +422,16 @@ mod tests {
     // Import ModelInfo::builder() from fluent-ai
     use fluent_ai::builders::ModelInfoBuilder;
 
+    #[derive(Debug)]
     struct TestModel {
-        info: &'static ModelInfo}
+        info: &'static ModelInfo,
+    }
 
     impl Model for TestModel {
         fn info(&self) -> &'static ModelInfo {
-            self.info
+            // SAFETY: We ensure the ModelInfo is static and lives for the entire program
+            // This is fine for test code
+            unsafe { std::mem::transmute::<&ModelInfo, &'static ModelInfo>(self.info) }
         }
     }
 

@@ -10,8 +10,8 @@ use ahash::RandomState;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
-use crate::model::error::{ModelError, Result};
-use crate::model::info::CandleModelInfo;
+use crate::domain::model::error::{CandleModelError as ModelError, CandleResult as Result};
+use crate::domain::model::CandleModelInfo;
 use crate::model::traits::Model;
 
 /// A type-erased model reference

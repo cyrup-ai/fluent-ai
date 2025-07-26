@@ -71,7 +71,7 @@ impl MessageBuilder for UserMessageBuilder {
         Message::user(
             self.content
                 .unwrap_or_else(|| {
-                    UserContent::Text(fluent_ai_domain::message::Text {
+                    UserContent::Text(crate::domain::chat::message::Text {
                         content: "".to_string()})
                 })
                 .as_text(),
@@ -81,7 +81,7 @@ impl MessageBuilder for UserMessageBuilder {
 
 impl UserMessageBuilderTrait for UserMessageBuilder {
     fn text(mut self, text: impl Into<String>) -> Self {
-        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
+        self.content = Some(UserContent::Text(crate::domain::chat::message::Text {
             content: text.into()}));
         self
     }
@@ -96,14 +96,14 @@ impl UserMessageBuilderTrait for UserMessageBuilder {
 
     fn audio(mut self, audio: Audio) -> Self {
         // Convert audio to text for user content
-        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
+        self.content = Some(UserContent::Text(crate::domain::chat::message::Text {
             content: format!("[Audio: {}]", audio.data)}));
         self
     }
 
     fn document(mut self, document: Document) -> Self {
         // Convert document to text for user content
-        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
+        self.content = Some(UserContent::Text(crate::domain::chat::message::Text {
             content: document.content}));
         self
     }
@@ -125,7 +125,7 @@ impl MessageBuilder for AssistantMessageBuilder {
         Message::assistant(
             self.content
                 .unwrap_or_else(|| {
-                    AssistantContent::Text(fluent_ai_domain::message::Text {
+                    AssistantContent::Text(crate::domain::chat::message::Text {
                         content: "".to_string()})
                 })
                 .as_text(),
@@ -135,7 +135,7 @@ impl MessageBuilder for AssistantMessageBuilder {
 
 impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
     fn text(mut self, text: impl Into<String>) -> Self {
-        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
+        self.content = Some(AssistantContent::Text(crate::domain::chat::message::Text {
             content: text.into()}));
         self
     }
@@ -148,7 +148,7 @@ impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
     ) -> Self {
         let tool_call = ToolCall {
             id: id.into(),
-            function: fluent_ai_domain::message::ToolFunction {
+            function: crate::domain::chat::message::ToolFunction {
                 name: name.into(),
                 description: None,
                 parameters: arguments}};
@@ -157,13 +157,13 @@ impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
     }
 
     fn tool_result(mut self, tool_call_id: impl Into<String>, result: Value) -> Self {
-        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
+        self.content = Some(AssistantContent::Text(crate::domain::chat::message::Text {
             content: format!("Tool result for {}: {}", tool_call_id.into(), result)}));
         self
     }
 
     fn tool_error(mut self, tool_call_id: impl Into<String>, error: impl Into<String>) -> Self {
-        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
+        self.content = Some(AssistantContent::Text(crate::domain::chat::message::Text {
             content: format!("Tool error for {}: {}", tool_call_id.into(), error.into())}));
         self
     }

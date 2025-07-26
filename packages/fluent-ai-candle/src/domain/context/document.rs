@@ -9,6 +9,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+// Import DocumentMediaType from the chat::message::media module
+use crate::domain::chat::message::media::DocumentMediaType;
+
 /// Candle document structure for storing document data and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CandleDocument {

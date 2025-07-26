@@ -3,7 +3,7 @@
 // Removed unused Arc import
 
 use cyrup_sugars::ZeroOneOrMany;
-use crate::chat::MessageRole;
+use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
 use crate::context::Context;
 use crate::tool::Tool;
 

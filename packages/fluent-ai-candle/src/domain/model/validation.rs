@@ -8,6 +8,13 @@ use serde::{Deserialize, Serialize};
 /// Result type for validation operations
 pub type ValidationResult<T> = Result<T, ValidationError>;
 
+/// Candle-prefixed type aliases for domain compatibility
+pub type CandleValidationResult<T> = ValidationResult<T>;
+pub type CandleValidationError = ValidationError;
+pub type CandleValidationSeverity = ValidationSeverity;
+pub type CandleValidationIssue = ValidationIssue;
+pub type CandleValidationReport = ValidationReport;
+
 /// Validation error types for detailed error reporting
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationError {

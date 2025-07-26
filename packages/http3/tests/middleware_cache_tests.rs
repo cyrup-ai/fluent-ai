@@ -49,8 +49,8 @@ fn test_etag_generation() {
     let middleware = CacheMiddleware::new();
 
     // Create mock response for testing
-    let headers = HeaderMap::new();
-    let response = HttpResponse::new(StatusCode::OK, headers, b"test content".to_vec());
+    let mut headers = HeaderMap::new();
+    let response = HttpResponse::new(StatusCode::OK, &headers, b"test content".to_vec());
 
     // Process through middleware to trigger ETag generation
     let processed = middleware
@@ -65,8 +65,8 @@ fn test_etag_generation() {
     assert!(etag.len() > 4); // Should have content beyond W/""
 
     // Same content should generate same ETag (process again)
-    let headers2 = HeaderMap::new();
-    let response2 = HttpResponse::new(StatusCode::OK, headers2, b"test content".to_vec());
+    let mut headers2 = HeaderMap::new();
+    let response2 = HttpResponse::new(StatusCode::OK, &headers2, b"test content".to_vec());
     let processed2 = middleware
         .process_response(response2)
         .expect("Processing should succeed");
@@ -77,8 +77,8 @@ fn test_etag_generation() {
 fn test_expires_computation() {
     let middleware = CacheMiddleware::new().with_default_expires_hours(1);
 
-    let headers = HeaderMap::new();
-    let response = HttpResponse::new(StatusCode::OK, headers, b"test".to_vec());
+    let mut headers = HeaderMap::new();
+    let response = HttpResponse::new(StatusCode::OK, &headers, b"test".to_vec());
 
     // Process through middleware to compute expires
     let processed = middleware
@@ -142,7 +142,7 @@ fn test_cache_response_processing() {
 
     // Create response without ETag or Expires
     let headers = HeaderMap::new();
-    let response = HttpResponse::new(StatusCode::OK, headers, b"test content".to_vec());
+    let response = HttpResponse::new(StatusCode::OK, &headers, b"test content".to_vec());
     assert!(response.etag().is_none());
     assert!(response.expires().is_none());
 

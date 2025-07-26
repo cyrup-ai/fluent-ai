@@ -69,3 +69,11 @@ pub fn return_to_pool(_memory: Arc<PlaceholderMemoryManager>) {
 pub fn pool_size() -> usize {
     1 // Placeholder implementation
 }
+
+// Candle-prefixed function aliases for domain compatibility
+pub use initialize_domain as candle_initialize_domain;
+pub use initialize_domain_with_config as candle_initialize_domain_with_config;
+pub use get_default_memory_config as candle_get_default_memory_config;
+pub use get_from_pool as candle_get_from_pool;
+pub use return_to_pool as candle_return_to_pool;
+pub use pool_size as candle_pool_size;

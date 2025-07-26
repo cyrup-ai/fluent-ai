@@ -26,7 +26,7 @@ use uuid::Uuid;
 
 // Domain imports
 use cyrup_sugars::ZeroOneOrMany;
-use crate::context::Document;
+use crate::domain::context::CandleDocument as Document;
 
 // Macros now imported from fluent_ai_async - removed local definitions
 

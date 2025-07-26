@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crossbeam_skiplist::SkipMap;
 
-use super::types::{self, CandleCommandError, CommandInfo, CommandRegistryStats, ImmutableChatCommand};
+use super::types::{self, CandleCommandError, CommandInfo, CommandRegistryStats as TypesCommandRegistryStats, ImmutableChatCommand};
 
 /// Command registry with concurrent access
 #[derive(Debug, Clone)]

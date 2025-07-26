@@ -1,0 +1,449 @@
+//! Model adapter system for unified interface between generated enums and domain types
+//! 
+//! ALL STREAMS architecture - no Result types, only unwrapped values and AsyncStream patterns.
+//! Provides zero-allocation conversion methods for seamless integration between
+//! static generated model enums and dynamic ModelInfo structs.
+
+use crate::model::ModelInfo as DomainModelInfo;
+use fluent_ai_async::{AsyncStream, emit, handle_error};
+
+/// Unified interface for model adaptation between generated enums and domain types
+/// 
+/// ALL STREAMS architecture - no Result types, only unwrapped values and streams.
+/// Provides zero-allocation conversion methods for seamless integration between
+/// static generated model enums and dynamic ModelInfo structs.
+pub trait ModelAdapter: Sized + Clone + Send + Sync + 'static {
+    /// Convert adapter instance to domain ModelInfo (unwrapped)
+    fn to_model_info(&self) -> DomainModelInfo;
+    
+    /// Create adapter instance from domain ModelInfo - returns default if incompatible
+    /// NO Option<T> - always succeeds with fallback behavior
+    fn from_model_info(info: &DomainModelInfo) -> Self;
+    
+    /// Get static model name identifier
+    fn model_name(&self) -> &'static str;
+    
+    /// Get provider name for this adapter
+    fn provider_name(&self) -> &'static str;
+    
+    /// Get maximum context length for this model
+    fn max_context(&self) -> u64 {
+        self.to_model_info().max_context
+    }
+    
+    /// Get input pricing per 1K tokens
+    fn pricing_input(&self) -> f64 {
+        self.to_model_info().pricing_input
+    }
+    
+    /// Get output pricing per 1K tokens  
+    fn pricing_output(&self) -> f64 {
+        self.to_model_info().pricing_output
+    }
+    
+    /// Check if this is a thinking/reasoning model
+    fn is_thinking(&self) -> bool {
+        self.to_model_info().is_thinking
+    }
+    
+    /// Get required temperature if any, returns 0.0 if none
+    fn required_temperature(&self) -> f64 {
+        self.to_model_info().required_temperature.unwrap_or(0.0)
+    }
+}
+
+/// Collection trait for streaming operations on model adapters
+/// ALL STREAMS architecture - no Result types, only AsyncStream patterns
+pub trait ModelAdapterCollection<T: ModelAdapter> {
+    /// Stream all available models in this collection
+    fn stream_all_models() -> AsyncStream<T> {
+        AsyncStream::with_channel(|sender| {
+            for model in Self::all_models() {
+                emit!(sender, model);
+            }
+        })
+    }
+    
+    /// Get all available models as Vec (non-streaming fallback)
+    fn all_models() -> Vec<T>;
+    
+    /// Stream models by provider
+    fn stream_models_by_provider(provider: &'static str) -> AsyncStream<T> {
+        AsyncStream::with_channel(move |sender| {
+            for model in Self::all_models() {
+                if model.provider_name() == provider {
+                    emit!(sender, model);
+                }
+            }
+        })
+    }
+    
+    /// Find single model by name - returns default if not found (no Option)
+    fn find_by_name(name: &str) -> T {
+        for model in Self::all_models() {
+            if model.model_name() == name {
+                return model;
+            }
+        }
+        // Return first model as default fallback
+        Self::all_models().into_iter().next()
+            .unwrap_or_else(|| panic!("No models available in collection"))
+    }
+    
+    /// Stream all model names
+    fn stream_model_names() -> AsyncStream<&'static str> {
+        AsyncStream::with_channel(|sender| {
+            for model in Self::all_models() {
+                emit!(sender, model.model_name());
+            }
+        })
+    }
+}
+
+/// High-performance registry for model adapter lookup and management
+/// NO Result types - all operations succeed with fallback behavior
+#[derive(Default)]
+pub struct AdapterRegistry {
+    name_to_info: std::collections::HashMap<String, DomainModelInfo>,
+    provider_models: std::collections::HashMap<String, Vec<String>>,
+}
+
+impl AdapterRegistry {
+    /// Create new registry instance
+    pub fn new() -> Self {
+        Self {
+            name_to_info: std::collections::HashMap::new(),
+            provider_models: std::collections::HashMap::new(),
+        }
+    }
+    
+    /// Get global registry instance
+    pub fn global() -> &'static Self {
+        use std::sync::OnceLock;
+        static REGISTRY: OnceLock<AdapterRegistry> = OnceLock::new();
+        REGISTRY.get_or_init(|| Self::new())
+    }
+    
+    /// Register model adapter in registry
+    pub fn register<T: ModelAdapter>(&mut self, adapter: &T) {
+        let model_info = adapter.to_model_info();
+        let model_name = adapter.model_name().to_string();
+        let provider_name = adapter.provider_name().to_string();
+        
+        self.name_to_info.insert(model_name.clone(), model_info);
+        
+        self.provider_models
+            .entry(provider_name)
+            .or_insert_with(Vec::new)
+            .push(model_name);
+    }
+    
+    /// Register collection of adapters
+    pub fn register_collection<T: ModelAdapter + ModelAdapterCollection<T>>(&mut self) {
+        for adapter in T::all_models() {
+            self.register(&adapter);
+        }
+    }
+    
+    /// Lookup model info by name - returns default if not found
+    pub fn lookup(&self, model_name: &str) -> DomainModelInfo {
+        self.name_to_info.get(model_name)
+            .cloned()
+            .unwrap_or_else(|| DomainModelInfo {
+                name: model_name.to_string(),
+                max_context: 4096,
+                pricing_input: 0.0,
+                pricing_output: 0.0,
+                is_thinking: false,
+                required_temperature: None,
+            })
+    }
+    
+    /// Stream all models for provider
+    pub fn stream_models_for_provider(&self, provider: &str) -> AsyncStream<String> {
+        let models = self.provider_models.get(provider).cloned().unwrap_or_default();
+        AsyncStream::with_channel(move |sender| {
+            for model in models {
+                emit!(sender, model);
+            }
+        })
+    }
+    
+    /// Stream all available providers
+    pub fn stream_providers(&self) -> AsyncStream<String> {
+        let providers: Vec<String> = self.provider_models.keys().cloned().collect();
+        AsyncStream::with_channel(move |sender| {
+            for provider in providers {
+                emit!(sender, provider);
+            }
+        })
+    }
+    
+    /// Stream all model info
+    pub fn stream_all_model_info(&self) -> AsyncStream<DomainModelInfo> {
+        let all_info: Vec<DomainModelInfo> = self.name_to_info.values().cloned().collect();
+        AsyncStream::with_channel(move |sender| {
+            for info in all_info {
+                emit!(sender, info);
+            }
+        })
+    }
+    
+    /// Get total number of registered models
+    pub fn model_count(&self) -> usize {
+        self.name_to_info.len()
+    }
+    
+    /// Get models for provider as Vec (non-streaming fallback)
+    pub fn models_for_provider(&self, provider: &str) -> Vec<String> {
+        self.provider_models
+            .get(provider)
+            .cloned()
+            .unwrap_or_default()
+    }
+    
+    /// Get all providers as Vec (non-streaming fallback)
+    pub fn providers(&self) -> Vec<String> {
+        self.provider_models.keys().cloned().collect()
+    }
+}
+
+/// Conversion utilities between model-info and domain types
+/// NO Result types - all conversions succeed
+pub mod convert {
+    use super::*;
+    
+    /// Convert model-info ModelInfo to domain ModelInfo
+    pub fn model_info_to_domain(info: &model_info::ModelInfo) -> DomainModelInfo {
+        DomainModelInfo {
+            name: info.name.clone(),
+            max_context: info.max_context,
+            pricing_input: info.pricing_input,
+            pricing_output: info.pricing_output,
+            is_thinking: info.is_thinking,
+            required_temperature: info.required_temperature,
+        }
+    }
+    
+    /// Convert domain ModelInfo to model-info ModelInfo
+    pub fn domain_to_model_info(info: &DomainModelInfo) -> model_info::ModelInfo {
+        model_info::ModelInfo {
+            name: info.name.clone(),
+            max_context: info.max_context,
+            pricing_input: info.pricing_input,
+            pricing_output: info.pricing_output,
+            is_thinking: info.is_thinking,
+            required_temperature: info.required_temperature,
+        }
+    }
+    
+    /// Stream convert multiple model-info to domain
+    pub fn stream_model_info_to_domain(infos: Vec<model_info::ModelInfo>) -> AsyncStream<DomainModelInfo> {
+        AsyncStream::with_channel(move |sender| {
+            for info in infos {
+                let domain_info = model_info_to_domain(&info);
+                emit!(sender, domain_info);
+            }
+        })
+    }
+    
+    /// Stream convert multiple domain to model-info
+    pub fn stream_domain_to_model_info(infos: Vec<DomainModelInfo>) -> AsyncStream<model_info::ModelInfo> {
+        AsyncStream::with_channel(move |sender| {
+            for info in infos {
+                let model_info = domain_to_model_info(&info);
+                emit!(sender, model_info);
+            }
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[derive(Clone)]
+    struct TestAdapter {
+        name: &'static str,
+        provider: &'static str,
+        context: u64,
+    }
+    
+    impl ModelAdapter for TestAdapter {
+        fn to_model_info(&self) -> DomainModelInfo {
+            DomainModelInfo {
+                name: self.name.to_string(),
+                max_context: self.context,
+                pricing_input: 1.0,
+                pricing_output: 2.0,
+                is_thinking: false,
+                required_temperature: None,
+            }
+        }
+        
+        fn from_model_info(info: &DomainModelInfo) -> Self {
+            Self {
+                name: "default",
+                provider: "test",
+                context: info.max_context,
+            }
+        }
+        
+        fn model_name(&self) -> &'static str {
+            self.name
+        }
+        
+        fn provider_name(&self) -> &'static str {
+            self.provider
+        }
+    }
+    
+    impl ModelAdapterCollection<TestAdapter> for TestAdapter {
+        fn all_models() -> Vec<TestAdapter> {
+            vec![
+                TestAdapter { name: "test-1", provider: "test", context: 4096 },
+                TestAdapter { name: "test-2", provider: "test", context: 8192 },
+            ]
+        }
+    }
+    
+    #[test]
+    fn test_adapter_basic_functionality() {
+        let adapter = TestAdapter { name: "test-model", provider: "test", context: 4096 };
+        
+        assert_eq!(adapter.model_name(), "test-model");
+        assert_eq!(adapter.provider_name(), "test");
+        assert_eq!(adapter.max_context(), 4096);
+        assert_eq!(adapter.pricing_input(), 1.0);
+        assert_eq!(adapter.pricing_output(), 2.0);
+        assert!(!adapter.is_thinking());
+        assert_eq!(adapter.required_temperature(), 0.0);
+    }
+    
+    #[test]
+    fn test_adapter_conversion() {
+        let adapter = TestAdapter { name: "test-model", provider: "test", context: 4096 };
+        let model_info = adapter.to_model_info();
+        
+        assert_eq!(model_info.name, "test-model");
+        assert_eq!(model_info.max_context, 4096);
+        
+        let converted = TestAdapter::from_model_info(&model_info);
+        assert_eq!(converted.model_name(), "default");
+        assert_eq!(converted.max_context(), 4096);
+    }
+    
+    #[test]
+    fn test_collection_operations() {
+        let all_models = TestAdapter::all_models();
+        assert_eq!(all_models.len(), 2);
+        
+        let found = TestAdapter::find_by_name("test-1");
+        assert_eq!(found.model_name(), "test-1");
+        
+        let not_found = TestAdapter::find_by_name("nonexistent");
+        assert_eq!(not_found.model_name(), "test-1"); // Returns first as fallback
+        
+        let provider_models = TestAdapter::stream_models_by_provider("test").collect();
+        assert_eq!(provider_models.len(), 2);
+        
+        let model_names = TestAdapter::stream_model_names().collect();
+        assert_eq!(model_names.len(), 2);
+    }
+    
+    #[test]
+    fn test_registry_operations() {
+        let mut registry = AdapterRegistry::new();
+        let adapter = TestAdapter { name: "test-model", provider: "test", context: 4096 };
+        
+        registry.register(&adapter);
+        
+        let model_info = registry.lookup("test-model");
+        assert_eq!(model_info.name, "test-model");
+        assert_eq!(model_info.max_context, 4096);
+        
+        let provider_models = registry.models_for_provider("test");
+        assert_eq!(provider_models.len(), 1);
+        assert_eq!(provider_models[0], "test-model");
+        
+        let providers = registry.providers();
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0], "test");
+        
+        assert_eq!(registry.model_count(), 1);
+    }
+    
+    #[test]
+    fn test_registry_streaming() {
+        let mut registry = AdapterRegistry::new();
+        registry.register_collection::<TestAdapter>();
+        
+        assert_eq!(registry.model_count(), 2);
+        
+        let test1 = registry.lookup("test-1");
+        assert_eq!(test1.max_context, 4096);
+        
+        let test2 = registry.lookup("test-2");
+        assert_eq!(test2.max_context, 8192);
+        
+        let provider_models = registry.stream_models_for_provider("test").collect();
+        assert_eq!(provider_models.len(), 2);
+        
+        let all_info = registry.stream_all_model_info().collect();
+        assert_eq!(all_info.len(), 2);
+    }
+    
+    #[test]
+    fn test_conversion_utilities() {
+        let domain_info = DomainModelInfo {
+            name: "test-model".to_string(),
+            max_context: 4096,
+            pricing_input: 1.0,
+            pricing_output: 2.0,
+            is_thinking: false,
+            required_temperature: None,
+        };
+        
+        let model_info = convert::domain_to_model_info(&domain_info);
+        assert_eq!(model_info.name, "test-model");
+        assert_eq!(model_info.max_context, 4096);
+        
+        let converted_back = convert::model_info_to_domain(&model_info);
+        assert_eq!(converted_back.name, "test-model");
+        assert_eq!(converted_back.max_context, 4096);
+        assert_eq!(converted_back.pricing_input, 1.0);
+        assert_eq!(converted_back.pricing_output, 2.0);
+    }
+    
+    #[test]
+    fn test_streaming_conversions() {
+        let domain_infos = vec![
+            DomainModelInfo {
+                name: "test-1".to_string(),
+                max_context: 4096,
+                pricing_input: 1.0,
+                pricing_output: 2.0,
+                is_thinking: false,
+                required_temperature: None,
+            },
+            DomainModelInfo {
+                name: "test-2".to_string(),
+                max_context: 8192,
+                pricing_input: 2.0,
+                pricing_output: 4.0,
+                is_thinking: true,
+                required_temperature: Some(1.0),
+            },
+        ];
+        
+        let model_infos = convert::stream_domain_to_model_info(domain_infos).collect();
+        assert_eq!(model_infos.len(), 2);
+        assert_eq!(model_infos[0].name, "test-1");
+        assert_eq!(model_infos[1].name, "test-2");
+        
+        let converted_back = convert::stream_model_info_to_domain(model_infos).collect();
+        assert_eq!(converted_back.len(), 2);
+        assert_eq!(converted_back[0].name, "test-1");
+        assert_eq!(converted_back[1].name, "test-2");
+    }
+}

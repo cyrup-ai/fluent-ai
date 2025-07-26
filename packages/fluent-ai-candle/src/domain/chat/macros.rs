@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::domain::chat::commands::CandleImmutableChatCommand;
+use crate::domain::chat::commands::ImmutableChatCommand;
 // Removed unused import: crate::chat::formatting::MessageContent
 
 /// Macro action representing a single recorded operation

@@ -6,11 +6,11 @@
 use std::marker::PhantomData;
 use std::collections::HashMap;
 
-// CORRECTED DOMAIN IMPORTS - use fluent_ai_domain, not local definitions
-use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
-use fluent_ai_domain::async_task::AsyncStream;
-use fluent_ai_domain::memory::workflow::{MemoryEnhancedWorkflow, OpTrait, WorkflowError};
-use fluent_ai_domain::workflow::{Workflow, WorkflowStep, StepType};
+// CORRECTED DOMAIN IMPORTS - use local domain, not external fluent_ai_domain
+use fluent_ai_async::{AsyncTask, AsyncStream};
+use crate::domain::workflow::{Workflow, WorkflowStep, StepType, OpTrait, WorkflowError};
+use crate::domain::memory::workflow::MemoryEnhancedWorkflow;
+use crate::util::ZeroOneOrMany;
 use serde_json::Value;
 use tokio::sync::mpsc;
 

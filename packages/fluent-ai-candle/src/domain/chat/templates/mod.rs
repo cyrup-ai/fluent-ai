@@ -25,6 +25,7 @@ pub use core::{
     ChatTemplate as CandleChatTemplate,
     CompiledTemplate as CandleCompiledTemplate,
     TemplateAst as CandleTemplateAst,
+    TemplateCategory as CandleTemplateCategory,
     TemplateError as CandleTemplateError,
     TemplateResult as CandleTemplateResult,
 };

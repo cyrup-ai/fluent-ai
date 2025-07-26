@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::model::Usage;
+use crate::domain::model::CandleUsage as Usage;
 
 /// Candle chunk of document content for streaming file operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

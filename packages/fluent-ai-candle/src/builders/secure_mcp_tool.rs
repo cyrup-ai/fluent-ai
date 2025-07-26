@@ -3,7 +3,7 @@
 //! All secure MCP tool construction logic and builder patterns.
 
 use fluent_ai_cylo::{Cylo, CyloInstance};
-use fluent_ai_domain::secure_mcp_tool::SecureMcpTool;
+use crate::tool::SecureMcpTool;
 use serde_json::Value;
 
 /// Zero-allocation builder for high-performance MCP tools

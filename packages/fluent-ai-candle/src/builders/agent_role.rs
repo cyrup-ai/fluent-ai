@@ -6,13 +6,18 @@ use std::marker::PhantomData;
 use std::collections::HashMap;
 
 use crate::domain::{
+    // Agent types - now properly exported from agent module
     CandleAgentConversation, CandleAgentConversationMessage, CandleAgentRole, CandleAgentRoleAgent, CandleAgentRoleImpl,
-    CandleChatMessageChunk, CandleCompletionProvider, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
-    CandleAdditionalParams, CandleMetadata, CandleConversation, CandleMessageRole,
+    
+    // Core domain types exported at top level
+    CandleAgent, CandleMessage, CandleMessageChunk, CandleMessageRole, 
+    CandleMemory, CandleConversationTrait as CandleConversation,
     CandleZeroOneOrMany, AsyncStream,
-    agent::CandleAgent,
-    completion::{CandleMessage, CandleCompletionModel, CandleCompletionRequest, CandleMessageChunk},
-    chat::CandleChatLoop,
+    
+    // Module-specific types
+    completion::{CandleCompletionModel},
+    context::{CandleContext, CandleDocument},
+    tool::{CandleTool},
 };
 use serde_json::Value;
 use futures_util::StreamExt;
@@ -66,7 +71,7 @@ pub trait CandleAgentRoleBuilder: Sized {
     /// Zero-allocation: uses compile-time type information instead of Any trait
     fn completion_provider<P>(self, provider: P) -> impl CandleAgentRoleBuilder
     where
-        P: CandleCompletionProvider + Send + Sync + 'static;
+        P: CandleCompletionModel + Send + Sync + 'static;
     
     /// Set model - EXACT syntax: .model(Models::Gpt4OMini)
     fn model(self, model: impl CandleCompletionModel) -> impl CandleAgentRoleBuilder;
@@ -130,7 +135,7 @@ pub trait CandleAgentRoleBuilder: Sized {
 }
 
 /// Hidden Candle implementation struct - zero-allocation builder state with zero Box<dyn> usage
-struct CandleAgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+struct CandleAgentRoleBuilderImpl<F1 = fn(String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
 where
     F1: FnMut(String) + Send + 'static,
     F2: Fn(&CandleAgentConversation, &CandleAgentRoleAgent) + Send + Sync + 'static,
@@ -189,7 +194,7 @@ where
     /// Zero-allocation: uses compile-time type information instead of Any trait
     fn completion_provider<P>(mut self, provider: P) -> impl CandleAgentRoleBuilder
     where
-        P: CandleCompletionProvider + Send + Sync + 'static,
+        P: CandleCompletionModel + Send + Sync + 'static,
     {
         // Store actual completion provider domain object - zero allocation with static dispatch
         self.completion_provider = self.completion_provider.with_pushed(provider);
@@ -421,7 +426,7 @@ where
 
     fn completion_provider<P>(self, provider: P) -> impl CandleAgentRoleBuilder
     where
-        P: CandleCompletionProvider + Send + Sync + 'static,
+        P: CandleCompletionModel + Send + Sync + 'static,
     {
         let mut inner = self.inner;
         inner.completion_provider = inner.completion_provider.with_pushed(provider);
@@ -492,11 +497,11 @@ where
 
     fn additional_params<P>(self, params: P) -> impl CandleAgentRoleBuilder
     where
-        P: Into<hashbrown::HashMap<&'static str, &'static str>>,
+        P: Into<CandleHashMap<&'static str, &'static str>>,
     {
         let mut inner = self.inner;
         let config_map = params.into();
-        let mut param_map = HashMap::new();
+        let mut param_map = CandleHashMap::new();
         for (k, v) in config_map {
             param_map.insert(k.to_string(), Value::String(v.to_string()));
         }
@@ -522,11 +527,11 @@ where
 
     fn metadata<M>(self, metadata: M) -> impl CandleAgentRoleBuilder
     where
-        M: Into<hashbrown::HashMap<&'static str, &'static str>>,
+        M: Into<CandleHashMap<&'static str, &'static str>>,
     {
         let mut inner = self.inner;
         let config_map = metadata.into();
-        let mut meta_map = HashMap::new();
+        let mut meta_map = CandleHashMap::new();
         for (k, v) in config_map {
             meta_map.insert(k.to_string(), Value::String(v.to_string()));
         }
@@ -659,7 +664,7 @@ where
 
     fn completion_provider<P>(self, provider: P) -> impl CandleAgentRoleBuilder
     where
-        P: CandleCompletionProvider + Send + Sync + 'static,
+        P: CandleCompletionModel + Send + Sync + 'static,
     {
         let mut inner = self.inner;
         inner.completion_provider = inner.completion_provider.with_pushed(provider);
@@ -730,11 +735,11 @@ where
 
     fn additional_params<P>(self, params: P) -> impl CandleAgentRoleBuilder
     where
-        P: Into<hashbrown::HashMap<&'static str, &'static str>>,
+        P: Into<CandleHashMap<&'static str, &'static str>>,
     {
         let mut inner = self.inner;
         let config_map = params.into();
-        let mut param_map = HashMap::new();
+        let mut param_map = CandleHashMap::new();
         for (k, v) in config_map {
             param_map.insert(k.to_string(), Value::String(v.to_string()));
         }
@@ -760,11 +765,11 @@ where
 
     fn metadata<M>(self, metadata: M) -> impl CandleAgentRoleBuilder
     where
-        M: Into<hashbrown::HashMap<&'static str, &'static str>>,
+        M: Into<CandleHashMap<&'static str, &'static str>>,
     {
         let mut inner = self.inner;
         let config_map = metadata.into();
-        let mut meta_map = HashMap::new();
+        let mut meta_map = CandleHashMap::new();
         for (k, v) in config_map {
             meta_map.insert(k.to_string(), Value::String(v.to_string()));
         }
@@ -1150,45 +1155,70 @@ where
     }
 }
 
-// hashbrown::HashMap From implementations for transparent {"key" => "value"} syntax
-// Enables: .additional_params({"beta" => "true"}) and .metadata({"key" => "val", "foo" => "bar"})
+// Newtype wrapper for hashbrown::HashMap to avoid orphan rule violations
+#[derive(Debug, Default, Clone)]
+pub struct CandleHashMap<K, V>(pub hashbrown::HashMap<K, V>);
 
-impl From<[(&'static str, &'static str); 1]> for hashbrown::HashMap<&'static str, &'static str> {
+impl<K: std::hash::Hash + Eq, V> std::ops::Deref for CandleHashMap<K, V> {
+    type Target = hashbrown::HashMap<K, V>;
+    
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<K: std::hash::Hash + Eq, V> std::ops::DerefMut for CandleHashMap<K, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+// Implement From for our newtype wrapper
+// This enables the same syntax: .additional_params({"beta" => "true"}) and .metadata({"key" => "val"})
+
+impl From<[(&'static str, &'static str); 1]> for CandleHashMap<&'static str, &'static str> {
     fn from(arr: [(&'static str, &'static str); 1]) -> Self {
         let mut map = hashbrown::HashMap::new();
         let [(k, v)] = arr;
         map.insert(k, v);
-        map
+        CandleHashMap(map)
     }
 }
 
-impl From<[(&'static str, &'static str); 2]> for hashbrown::HashMap<&'static str, &'static str> {
+impl From<[(&'static str, &'static str); 2]> for CandleHashMap<&'static str, &'static str> {
     fn from(arr: [(&'static str, &'static str); 2]) -> Self {
         let mut map = hashbrown::HashMap::new();
         for (k, v) in arr {
             map.insert(k, v);
         }
-        map
+        CandleHashMap(map)
     }
 }
 
-impl From<[(&'static str, &'static str); 3]> for hashbrown::HashMap<&'static str, &'static str> {
+impl From<[(&'static str, &'static str); 3]> for CandleHashMap<&'static str, &'static str> {
     fn from(arr: [(&'static str, &'static str); 3]) -> Self {
         let mut map = hashbrown::HashMap::new();
         for (k, v) in arr {
             map.insert(k, v);
         }
-        map
+        CandleHashMap(map)
     }
 }
 
-impl From<[(&'static str, &'static str); 4]> for hashbrown::HashMap<&'static str, &'static str> {
+impl From<[(&'static str, &'static str); 4]> for CandleHashMap<&'static str, &'static str> {
     fn from(arr: [(&'static str, &'static str); 4]) -> Self {
         let mut map = hashbrown::HashMap::new();
         for (k, v) in arr {
             map.insert(k, v);
         }
-        map
+        CandleHashMap(map)
+    }
+}
+
+// Add a convenience method to convert to the inner HashMap if needed
+impl<K, V> From<CandleHashMap<K, V>> for hashbrown::HashMap<K, V> {
+    fn from(wrapper: CandleHashMap<K, V>) -> Self {
+        wrapper.0
     }
 }
 

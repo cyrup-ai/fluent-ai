@@ -1,3 +1,5 @@
+use fluent_ai_async::AsyncStream;
+
 pub trait Model {
     fn name(&self) -> &'static str;
     fn max_context_length(&self) -> u64;
@@ -18,5 +20,5 @@ pub struct ModelInfo {
 }
 
 pub trait ProviderTrait {
-    async fn get_model_info(&self, model: &str) -> anyhow::Result<ModelInfo>;
+    fn get_model_info(&self, model: &str) -> AsyncStream<ModelInfo>;
 }

@@ -12,7 +12,7 @@ use thiserror::Error;
 use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition};
 use cyrup_sugars::ZeroOneOrMany;
 use crate::domain::chat::message::types::CandleMessage as ChatMessage;
-use crate::domain::context::Document;
+use crate::domain::context::CandleDocument as Document;
 use crate::domain::model::{ValidationError, ValidationResult};
 
 /// A request for text completion

@@ -85,12 +85,15 @@ impl CandleCompletionParams {
 
 /// Tool definition for completion requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolDefinition {
+pub struct CandleToolDefinition {
     pub name: String,
     pub description: String,
     pub parameters: Value}
 
-impl ToolDefinition {
+/// Backward compatibility alias
+pub type ToolDefinition = CandleToolDefinition;
+
+impl CandleToolDefinition {
     /// Create a new tool definition
     pub fn new(name: impl Into<String>, description: impl Into<String>, parameters: Value) -> Self {
         Self {
@@ -103,7 +106,7 @@ impl ToolDefinition {
 /// Model-specific parameters for completion requests
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct ModelParams {
+pub struct CandleModelParams {
     /// RoPE theta parameter for positional encoding
     pub rope_theta: f32,
     /// RoPE frequency base for positional encoding  

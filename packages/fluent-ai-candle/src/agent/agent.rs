@@ -12,7 +12,7 @@ use crate::{
     domain::tool::ToolSet,
     runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
-use crate::domain::{CandleMessageRole as MessageRole, CandleMessageChunk as MessageChunk, CandleConversationTrait as AgentConversation, CandleZeroOneOrMany as ZeroOneOrMany};
+use crate::domain::chat::message::types::{CandleMessageRole as MessageRole, CandleMessageChunk as MessageChunk, CandleConversationTrait as AgentConversation, CandleZeroOneOrMany as ZeroOneOrMany};
 use crate::chat::ChatLoop;
 
 // ============================================================================

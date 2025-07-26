@@ -6,7 +6,7 @@ pub mod macro_builder;
 pub mod template_builder;
 
 // Re-export for convenience
-pub use conversation_builder::CandleConversationBuilder;
-pub use history_manager_builder::CandleHistoryManagerBuilder;
-pub use macro_builder::CandleMacroBuilder;
-pub use template_builder::CandleTemplateBuilder;
+pub use conversation_builder::ConversationBuilder;
+pub use history_manager_builder::HistoryManagerBuilder;
+pub use macro_builder::MacroBuilder;
+pub use template_builder::TemplateBuilder;

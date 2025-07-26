@@ -16,7 +16,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use strsim;
 
-use crate::model::error::{ModelError, Result};
+use crate::domain::model::error::{CandleModelError as ModelError, CandleResult as Result};
 use crate::model::info::ModelInfo;
 use crate::model::registry::ModelRegistry;
 // Removed unused import: strsim::jaro_winkler

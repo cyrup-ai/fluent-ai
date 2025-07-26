@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::{CandleUsage, info::CandleModelInfo};
+use crate::domain::model::{CandleUsage, CandleModelInfo};
 
 /// Core trait for all Candle AI models
 ///

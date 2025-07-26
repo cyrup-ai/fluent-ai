@@ -2,7 +2,7 @@
 //!
 //! All live message streamer construction logic and builder patterns.
 
-use fluent_ai_domain::chat::realtime::streaming::LiveMessageStreamer;
+use crate::domain::chat::realtime::streaming::LiveMessageStreamer;
 
 /// Live message streamer builder for ergonomic configuration
 #[derive(Debug, Clone)]

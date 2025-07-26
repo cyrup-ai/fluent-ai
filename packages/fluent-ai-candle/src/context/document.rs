@@ -15,9 +15,9 @@ pub struct CandleDocument {
     /// The document content data as a string
     pub data: String,
     /// Optional format specification for the document content
-    pub format: Option<ContentFormat>,
+    pub format: Option<CandleContentFormat>,
     /// Optional media type classification for the document
-    pub media_type: Option<DocumentMediaType>,
+    pub media_type: Option<CandleDocumentMediaType>,
     /// Additional properties stored as key-value pairs
     #[serde(flatten)]
     pub additional_props: HashMap<String, Value>,

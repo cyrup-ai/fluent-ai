@@ -33,11 +33,19 @@ pub struct MiddlewareChain {
 
 impl MiddlewareChain {
     /// Create a new middleware chain
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Add middleware to the chain
+    ///
+    /// # Arguments
+    /// * `middleware` - The middleware to add to the chain
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn add<M: Middleware + 'static>(mut self, middleware: M) -> Self {
         self.middlewares.push(Arc::new(middleware));
         self
@@ -74,9 +82,10 @@ impl MiddlewareChain {
 pub struct RequestIdMiddleware;
 
 impl RequestIdMiddleware {
-    /// Create a new RequestIdMiddleware instance
+    /// Create a new `RequestIdMiddleware` instance
+    #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 }
 
@@ -86,7 +95,8 @@ impl Middleware for RequestIdMiddleware {
         let request = request.header(
             http::HeaderName::from_static("x-request-id"),
             http::HeaderValue::from_str(&request_id).map_err(|e| HttpError::StreamError {
-                message: format!("Invalid request ID: {}", e)})?,
+                message: format!("Invalid request ID: {e}")
+            })?,
         );
         Ok(request)
     }

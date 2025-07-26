@@ -16,7 +16,7 @@
 /// Candle agent abstractions and management  
 // pub mod agent; // Temporarily disabled for testing core functionality
 /// Candle builders for zero-allocation construction patterns
-// pub mod builders; // Temporarily disabled for testing core functionality  
+pub mod builders;  
 /// Candle chat functionality and conversation management
 // pub mod chat; // Temporarily disabled for testing core functionality
 /// Candle concurrency primitives and async utilities
@@ -58,7 +58,7 @@ pub mod workflow;
 pub use domain::{
     // Main Candle domain types
     CandleMessage, CandleMessageRole, CandleMessageChunk,
-    CandleZeroOneOrMany,
+    CandleZeroOneOrMany, CandleAgent,
     
     // Core Candle types from context
     CandleDocument, CandleContext, CandleDocumentLoader,
@@ -81,7 +81,7 @@ pub use domain::{
     // Other domain types (AsyncStream imported separately below)
 };
 
-// Re-export main builders
+// Re-export main builders  
 pub use builders::{CandleFluentAi, CandleAgentRoleBuilder};
 
 // Re-export main providers

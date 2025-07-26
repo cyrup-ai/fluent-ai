@@ -4,8 +4,8 @@
 
 use fluent_ai_async::AsyncStream;
 
-use super::request::CandleCompletionRequest;
-use super::response::CandleCompletionResponse;
+use super::request::CompletionRequest;
+use super::response::CompletionResponse;
 use super::types::CandleCompletionParams;
 use super::types::CandleCompletionChunk;
 use crate::prompt::CandlePrompt;

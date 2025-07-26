@@ -2,7 +2,7 @@
 //!
 //! All memory system configuration and builder patterns.
 
-use fluent_ai_domain::memory::{
+use crate::domain::memory::{
     CompatibilityMode, DatabaseConfig, LLMConfig, MemorySystemConfig, VectorStoreConfig,
 };
 
@@ -59,7 +59,7 @@ impl MemorySystemBuilder {
     }
 
     /// Build memory system configuration
-    pub fn build(self) -> fluent_ai_domain::memory::primitives::MemoryResult<MemorySystemConfig> {
+    pub fn build(self) -> crate::domain::memory::MemoryResult<MemorySystemConfig> {
         let config = MemorySystemConfig {
             database: self.database_config.unwrap_or_default(),
             vector_store: self.vector_config.unwrap_or_default(),

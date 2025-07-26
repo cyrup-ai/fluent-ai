@@ -6,13 +6,12 @@
 use std::marker::PhantomData;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-// CORRECTED DOMAIN IMPORTS - use fluent_ai_domain, not local definitions
-use fluent_ai_domain::{
-    AsyncTask, ZeroOneOrMany, spawn_async,
-    memory::{MemoryError, MemoryManager, MemoryNode, MemoryType},
-    memory::workflow::{OpTrait, WorkflowError, MemoryEnhancedWorkflow},
-};
-use fluent_ai_domain::async_task::AsyncStream;
+// CORRECTED DOMAIN IMPORTS - use local domain, not external fluent_ai_domain
+use fluent_ai_async::{AsyncTask, AsyncStream, spawn_task};
+use crate::util::ZeroOneOrMany;
+use crate::domain::memory::{MemoryError, MemoryManager, MemoryNode, MemoryType};
+use crate::domain::workflow::{OpTrait, WorkflowError};
+use crate::domain::memory::workflow::MemoryEnhancedWorkflow;
 use serde_json::Value;
 use tracing::{error, warn};
 

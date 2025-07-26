@@ -33,3 +33,6 @@ impl Into<String> for Prompt {
 }
 
 // PromptBuilder implementation moved to fluent-ai/src/builders/prompt.rs
+
+/// Candle-prefixed type alias for domain compatibility
+pub type CandlePrompt = Prompt;

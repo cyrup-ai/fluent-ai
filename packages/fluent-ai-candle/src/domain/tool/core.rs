@@ -185,7 +185,7 @@ pub trait CandleToolEmbeddingDyn: Send + Sync {
 }
 
 // Import the CandleTool trait
-use crate::tool::traits::CandleTool as CandleToolTrait;
+use crate::domain::tool::traits::CandleTool as CandleToolTrait;
 use fluent_ai_async::AsyncStream;
 
 // Implement CandleTool trait for CandleTool<T>

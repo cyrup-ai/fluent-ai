@@ -3,10 +3,8 @@
 //! This module provides a Candle ML framework integration for the Kimi K2 model,
 //! implementing zero-allocation streaming inference with the CandleCompletionModel trait.
 
-use crate::domain::{
-    completion::{CandleCompletionModel, CandleCompletionRequest, CandleCompletionChunk, CandleCompletionCoreError},
-    AsyncStream, AsyncTask, spawn_task,
-};
+use crate::domain::completion::{CandleCompletionModel, CandleCompletionRequest, CandleCompletionChunk, CompletionCoreError as CandleCompletionCoreError};
+use fluent_ai_async::{AsyncStream, AsyncTask, spawn_task};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -421,6 +419,23 @@ impl Module for CandleMLP {
 }
 
 impl CandleCompletionModel for CandleKimiK2Provider {
+    fn prompt(&self, prompt: CandlePrompt, params: &CandleCompletionParams) -> AsyncStream<CandleCompletionChunk> {
+        // Convert CandlePrompt and CandleCompletionParams to CandleCompletionRequest
+        let request = CandleCompletionRequest {
+            messages: vec![ChatMessage {
+                role: "user".to_string(),
+                content: prompt.into_string(),
+                ..Default::default()
+            }],
+            temperature: params.temperature,
+            max_tokens: params.max_tokens,
+            ..Default::default()
+        };
+        
+        // Forward to the complete method
+        self.complete(request)
+    }
+    
     fn complete(&mut self, request: CandleCompletionRequest) -> AsyncStream<CandleCompletionChunk> {
         let model = match self.get_model() {
             Ok(model) => model,

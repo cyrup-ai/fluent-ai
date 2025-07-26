@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context, Result};
-use hashbrown::HashMap;
 use quote::quote;
-use fluent_ai_http3::Http3;
+use fluent_ai_http3::{Http3, HttpStreamExt};
 use serde::Deserialize;
 use serde_json::Value;
 use std::env;
@@ -10,27 +9,26 @@ use std::io::Write;
 use std::path::Path;
 use syn::Ident;
 use proc_macro2::Span;
-use tokio::runtime::Runtime;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct OpenAiModelsResponse {
-    object: String,
+    _object: String,
     data: Vec<Value>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct MistralModelsResponse {
-    object: String,
+    _object: String,
     data: Vec<Value>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct XaiModelsResponse {
-    object: String,
+    _object: String,
     data: Vec<Value>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct TogetherModel {
     id: String,
     context_length: u64,
@@ -39,18 +37,18 @@ struct TogetherModel {
     description: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct TogetherPricing {
     input: f64,
     output: f64,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct OpenRouterModelsResponse {
     data: Vec<OpenRouterModel>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct OpenRouterModel {
     id: String,
     context_length: u64,
@@ -58,14 +56,14 @@ struct OpenRouterModel {
     description: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct OpenRouterPricing {
     prompt: String,
     completion: String,
 }
 
 fn main() -> Result<()> {
-    let rt = Runtime::new().context("Failed to create tokio runtime")?;
+    let rt = tokio::runtime::Runtime::new().context("Failed to create tokio runtime")?;
     rt.block_on(async_main())
 }
 
@@ -75,17 +73,31 @@ async fn async_main() -> Result<()> {
     let mut f = File::create(&dest_path).context("Failed to create generated file")?;
 
     fn sanitize_ident(id: &str) -> Ident {
-        let sanitized = id
-            .chars()
-            .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
-            .collect::<String>()
-            .to_uppercase();
-        let sanitized = if sanitized.chars().next().map_or(false, |c| c.is_ascii_digit()) {
-            format!("M_{}", sanitized)
+        let words: Vec<&str> = id.split(|c: char| !c.is_alphanumeric()).collect();
+        let mut pascal_case = String::new();
+        
+        for word in words {
+            if !word.is_empty() {
+                let mut chars = word.chars();
+                if let Some(first) = chars.next() {
+                    pascal_case.push(first.to_ascii_uppercase());
+                    for ch in chars {
+                        pascal_case.push(ch.to_ascii_lowercase());
+                    }
+                }
+            }
+        }
+        
+        // Handle leading digits and empty strings
+        let final_name = if pascal_case.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+            format!("Model{}", pascal_case)
+        } else if pascal_case.is_empty() {
+            "Unknown".to_string()
         } else {
-            sanitized
+            pascal_case
         };
-        Ident::new(&sanitized, Span::call_site())
+        
+        Ident::new(&final_name, Span::call_site())
     }
 
     // Function to generate enum and impl for a provider
@@ -172,31 +184,26 @@ async fn async_main() -> Result<()> {
     // OpenAI
     let mut openai_models: Vec<(String, u64, f64, f64, bool, Option<f64>)> = vec![];
     if let Ok(key) = env::var("OPENAI_API_KEY") {
-        match Http3::json()
+        let stream = Http3::json()
             .api_key(&key)
-            .get("https://api.openai.com/v1/models")
-            .collect::<OpenAiModelsResponse>()
-            .await
-        {
-            Ok(response) => {
-                for m in response.data {
-                    let id = m["id"].as_str().unwrap_or("").to_string();
-                    if id.is_empty() {
-                        continue;
-                    }
-                    let (context, input, output, thinking, temp) = match id.as_str() {
-                        "gpt-4.1" => (128000, 2.0, 8.0, false, None),
-                        "gpt-4.1-mini" => (128000, 0.4, 1.6, false, None),
-                        "o3" => (200000, 3.0, 12.0, true, Some(1.0)),
-                        "o4-mini" => (128000, 1.1, 4.4, true, Some(1.0)),
-                        "gpt-4o" => (128000, 5.0, 15.0, false, None),
-                        "gpt-4o-mini" => (128000, 0.15, 0.6, false, None),
-                        _ => (8192, 0.0, 0.0, false, None),
-                    };
-                    openai_models.push((id, context, input, output, thinking, temp));
-                }
+            .get("https://api.openai.com/v1/models");
+        let response: OpenAiModelsResponse = HttpStreamExt::collect(stream);
+        
+        for m in response.data {
+            let id = m["id"].as_str().unwrap_or("").to_string();
+            if id.is_empty() {
+                continue;
             }
-            Err(_) => {}
+            let (context, input, output, thinking, temp) = match id.as_str() {
+                "gpt-4.1" => (128000, 2.0, 8.0, false, None),
+                "gpt-4.1-mini" => (128000, 0.4, 1.6, false, None),
+                "o3" => (200000, 3.0, 12.0, true, Some(1.0)),
+                "o4-mini" => (128000, 1.1, 4.4, true, Some(1.0)),
+                "gpt-4o" => (128000, 5.0, 15.0, false, None),
+                "gpt-4o-mini" => (128000, 0.15, 0.6, false, None),
+                _ => (8192, 0.0, 0.0, false, None),
+            };
+            openai_models.push((id, context, input, output, thinking, temp));
         }
     }
     if openai_models.is_empty() {
@@ -214,36 +221,31 @@ async fn async_main() -> Result<()> {
     // Mistral
     let mut mistral_models: Vec<(String, u64, f64, f64, bool, Option<f64>)> = vec![];
     if let Ok(key) = env::var("MISTRAL_API_KEY") {
-        match Http3::json()
+        let stream = Http3::json()
             .api_key(&key)
-            .get("https://api.mistral.ai/v1/models")
-            .collect::<MistralModelsResponse>()
-            .await
-        {
-            Ok(response) => {
-                for m in response.data {
-                    let id = m["id"].as_str().unwrap_or("").to_string();
-                    if id.is_empty() {
-                        continue;
-                    }
-                    let (context, input, output, thinking, temp) = match id.as_str() {
-                        "mistral-large-2407" => (128000, 8.0, 24.0, false, None),
-                        "mistral-large-2312" => (32000, 3.0, 9.0, false, None),
-                        "mistral-small-2409" => (128000, 0.2, 0.6, false, None),
-                        "mistral-nemo-2407" => (128000, 0.2, 0.6, false, None),
-                        "open-mistral-nemo" => (128000, 0.3, 1.0, false, None),
-                        "codestral-2405" => (32000, 0.8, 2.5, false, None),
-                        "mistral-embed" => (8192, 0.1, 0.1, false, None),
-                        "mistral-tiny" => (32000, 0.25, 0.75, false, None),
-                        "mistral-small" => (32000, 2.0, 6.0, false, None),
-                        "mistral-medium" => (32000, 8.0, 24.0, false, None),
-                        "mistral-large" => (32000, 20.0, 60.0, false, None),
-                        _ => (8192, 0.0, 0.0, false, None),
-                    };
-                    mistral_models.push((id, context, input, output, thinking, temp));
-                }
+            .get("https://api.mistral.ai/v1/models");
+        let response: MistralModelsResponse = HttpStreamExt::collect(stream);
+        
+        for m in response.data {
+            let id = m["id"].as_str().unwrap_or("").to_string();
+            if id.is_empty() {
+                continue;
             }
-            Err(_) => {}
+            let (context, input, output, thinking, temp) = match id.as_str() {
+                "mistral-large-2407" => (128000, 8.0, 24.0, false, None),
+                "mistral-large-2312" => (32000, 3.0, 9.0, false, None),
+                "mistral-small-2409" => (128000, 0.2, 0.6, false, None),
+                "mistral-nemo-2407" => (128000, 0.2, 0.6, false, None),
+                "open-mistral-nemo" => (128000, 0.3, 1.0, false, None),
+                "codestral-2405" => (32000, 0.8, 2.5, false, None),
+                "mistral-embed" => (8192, 0.1, 0.1, false, None),
+                "mistral-tiny" => (32000, 0.25, 0.75, false, None),
+                "mistral-small" => (32000, 2.0, 6.0, false, None),
+                "mistral-medium" => (32000, 8.0, 24.0, false, None),
+                "mistral-large" => (32000, 20.0, 60.0, false, None),
+                _ => (8192, 0.0, 0.0, false, None),
+            };
+            mistral_models.push((id, context, input, output, thinking, temp));
         }
     }
     if mistral_models.is_empty() {
@@ -273,25 +275,21 @@ async fn async_main() -> Result<()> {
 
     // Together
     let mut together_models: Vec<(String, u64, f64, f64, bool, Option<f64>)> = vec![];
-    let mut together_headers = HashMap::new();
-    if let Ok(key) = env::var("TOGETHER_API_KEY") {
-        together_headers.insert("Authorization".to_string(), format!("Bearer {}", key));
-    }
-    
-    match Http3::json()
-        .headers(|| together_headers)
-        .get("https://api.together.ai/v1/models")
-        .collect::<Vec<TogetherModel>>()
-        .await
-    {
-        Ok(response) => {
-            for m in response.into_iter().take(20) {
-                let is_thinking = m.description.to_lowercase().contains("reasoning") || m.id.contains("reasoning");
-                let temp = if is_thinking { Some(1.0) } else { None };
-                together_models.push((m.id, m.context_length, m.pricing.input, m.pricing.output, is_thinking, temp));
-            }
+    let together_result: Result<Vec<TogetherModel>, anyhow::Error> = (|| {
+        let mut builder = Http3::json();
+        if let Ok(key) = env::var("TOGETHER_API_KEY") {
+            builder = builder.api_key(&key);
         }
-        Err(_) => {}
+        let stream = builder.get("https://api.together.ai/v1/models");
+        Ok(HttpStreamExt::collect(stream))
+    })();
+    
+    if let Ok(response) = together_result {
+        for m in response.into_iter().take(20) {
+            let is_thinking = m.description.to_lowercase().contains("reasoning") || m.id.contains("reasoning");
+            let temp = if is_thinking { Some(1.0) } else { None };
+            together_models.push((m.id, m.context_length, m.pricing.input, m.pricing.output, is_thinking, temp));
+        }
     }
     if together_models.is_empty() {
         together_models = vec![
@@ -304,21 +302,20 @@ async fn async_main() -> Result<()> {
 
     // OpenRouter
     let mut openrouter_models: Vec<(String, u64, f64, f64, bool, Option<f64>)> = vec![];
-    match Http3::json()
-        .get("https://openrouter.ai/api/v1/models")
-        .collect::<OpenRouterModelsResponse>()
-        .await
-    {
-        Ok(response) => {
-            for m in response.data.into_iter().take(20) {
-                let input = m.pricing.prompt.parse::<f64>().unwrap_or(0.0) * 1_000_000.0;
-                let output = m.pricing.completion.parse::<f64>().unwrap_or(0.0) * 1_000_000.0;
-                let is_thinking = m.description.to_lowercase().contains("reasoning") || m.id.contains("o1") || m.id.contains("o3");
-                let temp = if is_thinking { Some(1.0) } else { None };
-                openrouter_models.push((m.id, m.context_length, input, output, is_thinking, temp));
-            }
+    let openrouter_result: Result<OpenRouterModelsResponse, anyhow::Error> = (|| {
+        let stream = Http3::json()
+            .get("https://openrouter.ai/api/v1/models");
+        Ok(HttpStreamExt::collect(stream))
+    })();
+    
+    if let Ok(response) = openrouter_result {
+        for m in response.data.into_iter().take(20) {
+            let input = m.pricing.prompt.parse::<f64>().unwrap_or(0.0) * 1_000_000.0;
+            let output = m.pricing.completion.parse::<f64>().unwrap_or(0.0) * 1_000_000.0;
+            let is_thinking = m.description.to_lowercase().contains("reasoning") || m.id.contains("o1") || m.id.contains("o3");
+            let temp = if is_thinking { Some(1.0) } else { None };
+            openrouter_models.push((m.id, m.context_length, input, output, is_thinking, temp));
         }
-        Err(_) => {}
     }
     if openrouter_models.is_empty() {
         openrouter_models = vec![
@@ -331,32 +328,28 @@ async fn async_main() -> Result<()> {
 
     // HuggingFace
     let mut huggingface_models: Vec<(String, u64, f64, f64, bool, Option<f64>)> = vec![];
-    let mut hf_headers = HashMap::new();
-    if let Ok(key) = env::var("HF_API_KEY") {
-        hf_headers.insert("Authorization".to_string(), format!("Bearer {}", key));
-    }
-    
-    match Http3::json()
-        .headers(|| hf_headers)
-        .get("https://api.huggingface.co/models?sort=downloads&direction=-1&limit=20")
-        .collect::<Vec<Value>>()
-        .await
-    {
-        Ok(response) => {
-            for m in response {
-                let id = m["id"].as_str().unwrap_or("").to_string();
-                if id.is_empty() {
-                    continue;
-                }
-                let context = m["config"]["max_position_embeddings"].as_u64().unwrap_or(m["max_length"].as_u64().unwrap_or(8192));
-                let input = 0.0;
-                let output = 0.0;
-                let is_thinking = m["tags"].as_array().map(|t| t.iter().any(|tag| tag.as_str().unwrap_or("").contains("reasoning"))) .unwrap_or(false);
-                let temp = if is_thinking { Some(1.0) } else { None };
-                huggingface_models.push((id, context, input, output, is_thinking, temp));
-            }
+    let hf_result: Result<Vec<Value>, anyhow::Error> = (|| {
+        let mut builder = Http3::json();
+        if let Ok(key) = env::var("HF_API_KEY") {
+            builder = builder.api_key(&key);
         }
-        Err(_) => {}
+        let stream = builder.get("https://api.huggingface.co/models?sort=downloads&direction=-1&limit=20");
+        Ok(HttpStreamExt::collect(stream))
+    })();
+    
+    if let Ok(response) = hf_result {
+        for m in response {
+            let id = m["id"].as_str().unwrap_or("").to_string();
+            if id.is_empty() {
+                continue;
+            }
+            let context = m["config"]["max_position_embeddings"].as_u64().unwrap_or(m["max_length"].as_u64().unwrap_or(8192));
+            let input = 0.0;
+            let output = 0.0;
+            let is_thinking = m["tags"].as_array().map(|t| t.iter().any(|tag| tag.as_str().unwrap_or("").contains("reasoning"))) .unwrap_or(false);
+            let temp = if is_thinking { Some(1.0) } else { None };
+            huggingface_models.push((id, context, input, output, is_thinking, temp));
+        }
     }
     if huggingface_models.is_empty() {
         huggingface_models = vec![
@@ -370,28 +363,23 @@ async fn async_main() -> Result<()> {
     // xAI
     let mut xai_models: Vec<(String, u64, f64, f64, bool, Option<f64>)> = vec![];
     if let Ok(key) = env::var("XAI_API_KEY") {
-        match Http3::json()
+        let stream = Http3::json()
             .api_key(&key)
-            .get("https://api.x.ai/v1/models")
-            .collect::<XaiModelsResponse>()
-            .await
-        {
-            Ok(response) => {
-                for m in response.data {
-                    let id = m["id"].as_str().unwrap_or("").to_string();
-                    if id.is_empty() {
-                        continue;
-                    }
-                    let (context, input, output, thinking, temp) = match id.as_str() {
-                        "grok-4" => (256000, 3.0, 15.0, true, Some(1.0)),
-                        "grok-3" => (131072, 3.0, 15.0, true, Some(1.0)),
-                        "grok-3-mini" => (131072, 0.3, 0.5, true, None),
-                        _ => (8192, 0.0, 0.0, true, None),
-                    };
-                    xai_models.push((id, context, input, output, thinking, temp));
-                }
+            .get("https://api.x.ai/v1/models");
+        let response: XaiModelsResponse = HttpStreamExt::collect(stream);
+        
+        for m in response.data {
+            let id = m["id"].as_str().unwrap_or("").to_string();
+            if id.is_empty() {
+                continue;
             }
-            Err(_) => {}
+            let (context, input, output, thinking, temp) = match id.as_str() {
+                "grok-4" => (256000, 3.0, 15.0, true, Some(1.0)),
+                "grok-3" => (131072, 3.0, 15.0, true, Some(1.0)),
+                "grok-3-mini" => (131072, 0.3, 0.5, true, None),
+                _ => (8192, 0.0, 0.0, true, None),
+            };
+            xai_models.push((id, context, input, output, thinking, temp));
         }
     }
     if xai_models.is_empty() {

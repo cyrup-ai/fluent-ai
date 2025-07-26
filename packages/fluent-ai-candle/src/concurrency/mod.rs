@@ -113,3 +113,8 @@ where
         AsyncTask::new(rx)
     }
 }
+
+// Candle-prefixed type aliases for domain compatibility
+pub type CandleChannel<T> = Channel<T>;
+pub type CandleOneshotChannel<T> = OneshotChannel<T>;
+pub type CandleIntoTask<T> = dyn IntoTask<T>;

@@ -12,6 +12,7 @@
 //! - Real-time features with atomic state management
 //! - Enhanced history management with full-text search
 //! - External integration system with plugin architecture
+//! - Chat loop control flow management
 //!
 //! ## Architecture
 //! All modules use zero-allocation patterns with Arc<str> for string sharing,
@@ -25,6 +26,12 @@ pub mod export;
 pub mod formatting;
 pub mod integrations;
 pub mod macros;
+
+// Note: Using raw identifier syntax for the loop module name
+mod r#loop;
+
+// Re-export the CandleChatLoop type for public use
+pub use self::r#loop::CandleChatLoop;
 pub mod message;
 pub mod realtime;
 pub mod search;

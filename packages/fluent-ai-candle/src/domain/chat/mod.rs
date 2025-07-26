@@ -30,18 +30,37 @@ pub mod realtime;
 pub mod search;
 pub mod templates;
 
-// Re-export Candle-prefixed types to avoid ambiguous glob re-exports
-pub use commands::{CandleCommandExecutor, CandleCommandRegistry, CandleImmutableChatCommand};
+// Re-export types with corrected names to avoid ambiguous glob re-exports
+pub use commands::{
+    CommandExecutor as CandleCommandExecutor, 
+    CommandRegistry as CandleCommandRegistry, 
+    ImmutableChatCommand as CandleImmutableChatCommand
+};
 pub use config::{CandleChatConfig, CandlePersonalityConfig};
-pub use conversation::{CandleConversation, CandleConversationImpl};
-pub use export::{CandleExportData, CandleExportFormat};
-pub use formatting::{CandleFormatStyle, CandleStreamingMessageFormatter};
-pub use integrations::{CandleIntegrationConfig, CandleIntegrationManager};
-pub use macros::{CandleMacroAction, CandleMacroSystem};
+pub use conversation::{CandleConversationEvent as CandleConversation, ConversationImpl as CandleConversationImpl};
+pub use export::{ExportData as CandleExportData, ExportFormat as CandleExportFormat};
+pub use formatting::{FormatStyle as CandleFormatStyle, StreamingMessageFormatter as CandleStreamingMessageFormatter};
+pub use integrations::{IntegrationConfig as CandleIntegrationConfig, IntegrationManager as CandleIntegrationManager};
+pub use macros::{
+    MacroAction as CandleMacroAction, 
+    MacroSystem as CandleMacroSystem,
+    ChatMacro as CandleChatMacro,
+    MacroExecutionConfig as CandleMacroExecutionConfig,
+    MacroMetadata as CandleMacroMetadata,
+    MacroSystemError as CandleMacroSystemError
+};
 pub use message::message_processing::{
     process_message as candle_process_message, sanitize_content as candle_sanitize_content, 
     validate_message as candle_validate_message, validate_message_sync as candle_validate_message_sync};
 pub use message::types::{CandleMessage, CandleMessageChunk, CandleMessageRole};
-pub use realtime::CandleRealTimeSystem;
-pub use search::{CandleChatSearchIndex, CandleSearchQuery};
-pub use templates::{CandleChatTemplate, CandleTemplateManager};
+pub use realtime::{RealTimeSystem as CandleRealTimeSystem};
+pub use search::{
+    ChatSearchIndex as CandleChatSearchIndex, 
+    SearchQuery as CandleSearchQuery,
+    SearchStatistics as CandleSearchStatistics,
+    ConversationTagger as CandleConversationTagger,
+    HistoryExporter as CandleHistoryExporter,
+    EnhancedHistoryManager as CandleEnhancedHistoryManager,
+    HistoryManagerStatistics as CandleHistoryManagerStatistics
+};
+pub use templates::{ChatTemplate as CandleChatTemplate, TemplateManager as CandleTemplateManager, TemplateCategory as CandleTemplateCategory};

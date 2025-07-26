@@ -821,6 +821,31 @@ impl CommandExecutorStats {
     }
 }
 
+/// Command registry statistics
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandRegistryStats {
+    /// Total number of registered commands
+    pub total_commands: usize,
+    /// Total number of aliases
+    pub total_aliases: usize,
+    /// Total number of categories
+    pub total_categories: usize,
+    /// Count of commands per category
+    pub category_counts: HashMap<String, usize>,
+}
+
+impl CommandRegistryStats {
+    /// Get average commands per category
+    #[inline]
+    pub fn avg_commands_per_category(&self) -> f64 {
+        if self.total_categories == 0 {
+            0.0
+        } else {
+            self.total_commands as f64 / self.total_categories as f64
+        }
+    }
+}
+
 /// Settings categories
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SettingsCategory {

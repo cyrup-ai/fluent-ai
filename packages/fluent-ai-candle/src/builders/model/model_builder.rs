@@ -1,4 +1,8 @@
-use fluent_ai_domain::model::{Model, ModelRegistry, RegisteredModel, Result};
+use crate::domain::model::{CandleModel as Model, CandleModelRegistry as ModelRegistry};
+use crate::domain::model::error::CandleResult as Result;
+
+// Alias for RegisteredModel - could be same as CandleModel for now
+type RegisteredModel = Model;
 
 /// Builder for registering models with the global registry
 pub struct ModelBuilder<M: Model + 'static> {

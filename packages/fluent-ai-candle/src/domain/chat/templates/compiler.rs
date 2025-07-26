@@ -2,7 +2,7 @@
 //!
 //! Provides template compilation with optimization passes.
 
-use crate::domain::chat::templates::core::{CandleChatTemplate as ChatTemplate, CandleCompiledTemplate as CompiledTemplate, CandleTemplateAst as TemplateAst, CandleTemplateResult as TemplateResult};
+use crate::domain::chat::templates::core::{ChatTemplate, CompiledTemplate, TemplateAst, TemplateResult};
 
 /// Template compiler configuration
 #[derive(Debug, Clone)]

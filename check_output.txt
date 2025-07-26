@@ -1,0 +1,3618 @@
+warning: method `collect_or_else` is never used
+   --> packages/http3/src/builder.rs:461:8
+    |
+399 | impl HttpStream {
+    | --------------- method in this implementation
+...
+461 |     fn collect_or_else<T, F>(self, f: F) -> T
+    |        ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: `fluent_ai_http3` (lib) generated 1 warning
+warning: `fluent_ai_http3` (lib) generated 1 warning (1 duplicate)
+   Compiling fluent_ai_domain v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/domain)
+    Checking progresshub-client-xet v0.1.0 (/Volumes/samsung_t9/progresshub/client_xet)
+    Checking progresshub-client-quic v0.1.0 (/Volumes/samsung_t9/progresshub/client_quic)
+    Checking fluent_ai_candle v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle)
+    Checking progresshub-client-selector v0.1.0 (/Volumes/samsung_t9/progresshub/client_selector)
+warning: unused import: `crate::model::capabilities::ModelCapabilities`
+  --> packages/domain/src/model/model_registry.rs:41:5
+   |
+41 | use crate::model::capabilities::ModelCapabilities;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::collections::HashMap`
+ --> packages/domain/src/model/cache.rs:8:5
+  |
+8 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `arrayvec::ArrayVec`
+  --> packages/domain/src/model/cache.rs:16:5
+   |
+16 | use arrayvec::ArrayVec;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `ModelError` and `Result`
+  --> packages/domain/src/model/cache.rs:20:27
+   |
+20 | use crate::model::error::{ModelError, Result};
+   |                           ^^^^^^^^^^  ^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> packages/domain/src/model/model_validation.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `smallvec::SmallVec`
+  --> packages/domain/src/model/model_validation.rs:14:5
+   |
+14 | use smallvec::SmallVec;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ModelInfo as ModelInfoProvider`
+  --> packages/domain/src/model/model_validation.rs:19:37
+   |
+19 | use model_info::{Provider, common::{ModelInfo as ModelInfoProvider, ProviderTrait}};
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Checking progresshub v0.1.0 (/Volumes/samsung_t9/progresshub/tui)
+error[E0107]: struct takes 2 generic arguments but 1 generic argument was supplied
+   --> packages/domain/src/model/model_registry.rs:77:41
+    |
+77  |     models_by_provider: DashMap<String, SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER]>, RandomState>,
+    |                                         ^^^^^^^^ ------------------------------------------------- supplied 1 generic argument
+    |                                         |
+    |                                         expected 2 generic arguments
+    |
+note: struct defined here, with 2 generic parameters: `T`, `N`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smallvec-2.0.0-alpha.11/src/lib.rs:302:12
+    |
+302 | pub struct SmallVec<T, const N: usize> {
+    |            ^^^^^^^^ -  --------------
+help: add missing generic argument
+    |
+77  |     models_by_provider: DashMap<String, SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER], N>, RandomState>,
+    |                                                                                                   +++
+
+error[E0107]: struct takes 2 generic arguments but 1 generic argument was supplied
+   --> packages/domain/src/model/cache.rs:116:18
+    |
+116 |     model_names: SmallVec<[String; WARM_BATCH_SIZE]>,
+    |                  ^^^^^^^^ ------------------------- supplied 1 generic argument
+    |                  |
+    |                  expected 2 generic arguments
+    |
+note: struct defined here, with 2 generic parameters: `T`, `N`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smallvec-2.0.0-alpha.11/src/lib.rs:302:12
+    |
+302 | pub struct SmallVec<T, const N: usize> {
+    |            ^^^^^^^^ -  --------------
+help: add missing generic argument
+    |
+116 |     model_names: SmallVec<[String; WARM_BATCH_SIZE], N>,
+    |                                                    +++
+
+error[E0432]: unresolved imports `crate::domain::chat::CandleChatMacro`, `crate::domain::chat::CandleMacroExecutionConfig`, `crate::domain::chat::CandleMacroMetadata`, `crate::domain::chat::CandleMacroSystemError`
+  --> packages/fluent-ai-candle/src/builders/chat/macro_builder.rs:6:5
+   |
+6  |     CandleChatMacro as ChatMacro, 
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleChatMacro` in `domain::chat`
+7  |     CandleMacroAction as MacroAction, 
+8  |     CandleMacroExecutionConfig as MacroExecutionConfig, 
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleMacroExecutionConfig` in `domain::chat`
+9  |     CandleMacroMetadata as MacroMetadata, 
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleMacroMetadata` in `domain::chat`
+10 |     CandleMacroSystemError as MacroSystemError
+   |     ----------------------^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     no `CandleMacroSystemError` in `domain::chat`
+   |     help: a similar name exists in the module: `CandleMacroSystem`
+
+error[E0432]: unresolved import `crate::domain::chat::CandleTemplateCategory`
+ --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:2:63
+  |
+2 | use crate::domain::chat::{CandleChatTemplate as ChatTemplate, CandleTemplateCategory as TemplateCategory};
+  |                                                               ----------------------^^^^^^^^^^^^^^^^^^^^
+  |                                                               |
+  |                                                               no `CandleTemplateCategory` in `domain::chat`
+  |                                                               help: a similar name exists in the module: `CandleTemplateManager`
+
+error[E0432]: unresolved imports `chat::CandleCommandExecutor`, `chat::CandleCommandRegistry`, `chat::CandleImmutableChatCommand`
+   --> packages/fluent-ai-candle/src/domain/mod.rs:157:27
+    |
+157 |         CandleChatConfig, CandleCommandExecutor, CandleCommandRegistry, CandleConversation as CandleConversationTrait,
+    |                           ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ no `CandleCommandRegistry` in `domain::chat`
+    |                           |
+    |                           no `CandleCommandExecutor` in `domain::chat`
+158 |         CandleConversationImpl, CandleImmutableChatCommand, CandleMessage, CandleMessageChunk, CandleMessageRole,
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleImmutableChatCommand` in `domain::chat`
+    |
+help: a similar name exists in the module
+    |
+157 -         CandleChatConfig, CandleCommandExecutor, CandleCommandRegistry, CandleConversation as CandleConversationTrait,
+157 +         CandleChatConfig, CommandExecutor, CandleCommandRegistry, CandleConversation as CandleConversationTrait,
+    |
+help: a similar name exists in the module
+    |
+157 -         CandleChatConfig, CandleCommandExecutor, CandleCommandRegistry, CandleConversation as CandleConversationTrait,
+157 +         CandleChatConfig, CandleCommandExecutor, CommandRegistry, CandleConversation as CandleConversationTrait,
+    |
+help: a similar name exists in the module
+    |
+158 -         CandleConversationImpl, CandleImmutableChatCommand, CandleMessage, CandleMessageChunk, CandleMessageRole,
+158 +         CandleConversationImpl, ImmutableChatCommand, CandleMessage, CandleMessageChunk, CandleMessageRole,
+    |
+
+error[E0432]: unresolved import `crate::domain::completion::CandleCompletionCoreError`
+ --> packages/fluent-ai-candle/src/providers/kimi_k2.rs:7:89
+  |
+7 |     completion::{CandleCompletionModel, CandleCompletionRequest, CandleCompletionChunk, CandleCompletionCoreError},
+  |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                                                                                         |
+  |                                                                                         no `CandleCompletionCoreError` in `domain::completion`
+  |                                                                                         help: a similar name exists in the module: `CompletionCoreError`
+
+error[E0432]: unresolved imports `crate::domain::CandleAgentConversation`, `crate::domain::CandleAgentConversationMessage`, `crate::domain::CandleAgentRole`, `crate::domain::CandleAgentRoleAgent`, `crate::domain::CandleAgentRoleImpl`, `crate::domain::CandleChatMessageChunk`, `crate::domain::CandleCompletionProvider`, `crate::domain::CandleContext`, `crate::domain::CandleTool`, `crate::domain::CandleMcpServer`, `crate::domain::CandleMemory`, `crate::domain::CandleAdditionalParams`, `crate::domain::CandleMetadata`, `crate::domain::CandleConversation`
+  --> packages/fluent-ai-candle/src/builders/agent_role.rs:9:5
+   |
+9  |     CandleAgentConversation, CandleAgentConversationMessage, CandleAgentRole, CandleAgentRoleAgent, CandleAgentRoleImpl,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^ no `CandleAgentRoleImpl` in `domain`
+   |     |                        |                               |                |
+   |     |                        |                               |                no `CandleAgentRoleAgent` in `domain`
+   |     |                        |                               no `CandleAgentRole` in `domain`
+   |     |                        no `CandleAgentConversationMessage` in `domain`
+   |     no `CandleAgentConversation` in `domain`
+10 |     CandleChatMessageChunk, CandleCompletionProvider, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
+   |     ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^
+   |     |                       |                         |              |           |
+   |     |                       |                         |              |           no `CandleMcpServer` in `domain`
+   |     |                       |                         |              no `CandleTool` in `domain`
+   |     |                       |                         no `CandleContext` in `domain`
+   |     |                       no `CandleCompletionProvider` in `domain`
+   |     no `CandleChatMessageChunk` in `domain`
+11 |     CandleAdditionalParams, CandleMetadata, CandleConversation, CandleMessageRole,
+   |     ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider importing one of these structs instead:
+           crate::context::CandleContext
+           crate::domain::context::CandleContext
+   = help: consider importing one of these items instead:
+           crate::domain::tool::CandleTool
+           crate::domain::tool::traits::CandleTool
+           crate::domain::tool::types::CandleTool
+help: a similar name exists in the module
+   |
+10 -     CandleChatMessageChunk, CandleCompletionProvider, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
+10 +     CandleMessageChunk, CandleCompletionProvider, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
+   |
+help: a similar name exists in the module
+   |
+10 -     CandleChatMessageChunk, CandleCompletionProvider, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
+10 +     CandleChatMessageChunk, CandleCompletionModel, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
+   |
+help: a similar name exists in the module
+   |
+10 -     CandleChatMessageChunk, CandleCompletionProvider, CandleContext, CandleTool, CandleMcpServer, CandleMemory, 
+10 +     CandleChatMessageChunk, CandleCompletionProvider, CandleContext, CandleModel, CandleMcpServer, CandleMemory, 
+   |
+
+error[E0432]: unresolved import `crate::domain::chat::message::types::CandleStreamingConversation`
+ --> packages/fluent-ai-candle/src/builders/chat/conversation_builder.rs:1:77
+  |
+1 | use crate::domain::chat::message::types::{CandleMessageRole as MessageRole, CandleStreamingConversation as StreamingConversation};
+  |                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleStreamingConversation` in `domain::chat::message::types`
+  |
+  = help: consider importing this struct instead:
+          crate::domain::chat::conversation::CandleStreamingConversation
+
+error[E0432]: unresolved import `crate::domain::model::CandleRegisteredModel`
+ --> packages/fluent-ai-candle/src/builders/model/model_builder.rs:1:88
+  |
+1 | use crate::domain::model::{CandleModel as Model, CandleModelRegistry as ModelRegistry, CandleRegisteredModel as RegisteredModel};
+  |                                                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleRegisteredModel` in `domain::model`
+
+error[E0432]: unresolved import `crate::model::error`
+ --> packages/fluent-ai-candle/src/builders/model/model_builder.rs:2:19
+  |
+2 | use crate::model::error::Result;
+  |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved import `crate::model::error`
+ --> packages/fluent-ai-candle/src/builders/model/model_info_builder.rs:3:19
+  |
+3 | use crate::model::error::{ModelError, Result};
+  |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved imports `conversation::ConversationEvent`, `conversation::ConversationEvent`
+  --> packages/fluent-ai-candle/src/domain/chat/mod.rs:36:24
+   |
+36 | pub use conversation::{ConversationEvent as CandleConversation, ConversationEvent as CandleConversationImpl};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ConversationEvent` in `domain::chat::conversation`
+   |                        |
+   |                        no `ConversationEvent` in `domain::chat::conversation`
+   |
+help: a similar name exists in the module
+   |
+36 - pub use conversation::{ConversationEvent as CandleConversation, ConversationEvent as CandleConversationImpl};
+36 + pub use conversation::{Conversation as CandleConversation, ConversationEvent as CandleConversationImpl};
+   |
+help: a similar name exists in the module
+   |
+36 - pub use conversation::{ConversationEvent as CandleConversation, ConversationEvent as CandleConversationImpl};
+36 + pub use conversation::{ConversationEvent as CandleConversation, Conversation as CandleConversationImpl};
+   |
+
+error[E0432]: unresolved import `super::types::ModelParams`
+  --> packages/fluent-ai-candle/src/domain/completion/candle.rs:19:5
+   |
+19 | use super::types::ModelParams;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ModelParams` in `domain::completion::types`
+
+error[E0432]: unresolved import `crate::domain::context::Document`
+  --> packages/fluent-ai-candle/src/domain/completion/request.rs:15:5
+   |
+15 | use crate::domain::context::Document;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `Document` in `domain::context`
+   |
+help: a similar name exists in the module
+   |
+15 - use crate::domain::context::Document;
+15 + use crate::domain::context::document;
+   |
+help: consider importing one of these items instead
+   |
+15 - use crate::domain::context::Document;
+15 + use crate::domain::message::CandleMediaType::Document;
+   |
+15 - use crate::domain::context::Document;
+15 + use yyaml::parser::Document;
+   |
+15 - use crate::domain::context::Document;
+15 + use yyaml::parser::grammar::ParseContext::Document;
+   |
+15 - use crate::domain::context::Document;
+15 + use yyaml::parser::grammar::Production::Document;
+   |
+     and 2 other candidates
+
+error[E0432]: unresolved import `crate::domain::model::Usage`
+  --> packages/fluent-ai-candle/src/domain/context/chunk.rs:13:5
+   |
+13 | use crate::domain::model::Usage;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `Usage` in `domain::model`
+   |
+help: a similar name exists in the module (notice the capitalization difference)
+   |
+13 - use crate::domain::model::Usage;
+13 + use crate::domain::model::usage;
+   |
+help: consider importing one of these items instead
+   |
+13 - use crate::domain::model::Usage;
+13 + use crate::domain::chat::commands::StatsType::Usage;
+   |
+13 - use crate::domain::model::Usage;
+13 + use crate::domain::usage::Usage;
+   |
+13 - use crate::domain::model::Usage;
+13 + use crate::model::Usage;
+   |
+
+error[E0432]: unresolved import `crate::domain::completion::request::CandleCompletionRequest`
+  --> packages/fluent-ai-candle/src/domain/context/extraction/extractor.rs:10:5
+   |
+10 | use crate::domain::completion::request::CandleCompletionRequest as CompletionRequest;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleCompletionRequest` in `domain::completion::request`
+   |
+help: a similar name exists in the module
+   |
+10 - use crate::domain::completion::request::CandleCompletionRequest as CompletionRequest;
+10 + use crate::domain::completion::request::CompletionRequest as CompletionRequest;
+   |
+help: consider importing this struct through its public re-export instead
+   |
+10 - use crate::domain::completion::request::CandleCompletionRequest as CompletionRequest;
+10 + use crate::domain::completion::CandleCompletionRequest as CompletionRequest;
+   |
+
+error[E0432]: unresolved import `crate::domain::prompt::types`
+  --> packages/fluent-ai-candle/src/domain/context/extraction/extractor.rs:13:28
+   |
+13 | use crate::domain::prompt::types::CandlePrompt as Prompt;
+   |                            ^^^^^ could not find `types` in `prompt`
+
+error[E0432]: unresolved import `crate::context::Document`
+  --> packages/fluent-ai-candle/src/domain/context/provider.rs:29:5
+   |
+29 | use crate::context::Document;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ no `Document` in `context`
+   |
+help: a similar name exists in the module
+   |
+29 - use crate::context::Document;
+29 + use crate::context::document;
+   |
+help: consider importing one of these items instead
+   |
+29 - use crate::context::Document;
+29 + use crate::domain::message::CandleMediaType::Document;
+   |
+29 - use crate::context::Document;
+29 + use yyaml::parser::Document;
+   |
+29 - use crate::context::Document;
+29 + use yyaml::parser::grammar::ParseContext::Document;
+   |
+29 - use crate::context::Document;
+29 + use yyaml::parser::grammar::Production::Document;
+   |
+     and 2 other candidates
+
+error[E0432]: unresolved import `crate::domain::completion::response::CandleCompletionResponse`
+  --> packages/fluent-ai-candle/src/domain/engine.rs:12:5
+   |
+12 | use crate::domain::completion::response::CandleCompletionResponse as CompletionResponse;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleCompletionResponse` in `domain::completion::response`
+   |
+help: a similar name exists in the module
+   |
+12 - use crate::domain::completion::response::CandleCompletionResponse as CompletionResponse;
+12 + use crate::domain::completion::response::CompletionResponse as CompletionResponse;
+   |
+help: consider importing this struct through its public re-export instead
+   |
+12 - use crate::domain::completion::response::CandleCompletionResponse as CompletionResponse;
+12 + use crate::domain::completion::CandleCompletionResponse as CompletionResponse;
+   |
+
+error[E0432]: unresolved import `crate::model::error`
+  --> packages/fluent-ai-candle/src/domain/model/info.rs:11:19
+   |
+11 | use crate::model::error::{CandleModelError, CandleResult};
+   |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved import `crate::model::error`
+  --> packages/fluent-ai-candle/src/domain/model/registry.rs:13:19
+   |
+13 | use crate::model::error::{ModelError, Result};
+   |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved import `crate::model::info::CandleModelInfo`
+  --> packages/fluent-ai-candle/src/domain/model/registry.rs:14:5
+   |
+14 | use crate::model::info::CandleModelInfo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleModelInfo` in `model::info`
+   |
+help: consider importing this struct through its public re-export instead
+   |
+14 - use crate::model::info::CandleModelInfo;
+14 + use crate::CandleModelInfo;
+   |
+
+error[E0432]: unresolved import `crate::model::error`
+  --> packages/fluent-ai-candle/src/domain/model/resolver.rs:19:19
+   |
+19 | use crate::model::error::{ModelError, Result};
+   |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved imports `crate::model::CandleUsage`, `crate::model::info::CandleModelInfo`
+ --> packages/fluent-ai-candle/src/domain/model/traits.rs:7:20
+  |
+7 | use crate::model::{CandleUsage, info::CandleModelInfo};
+  |                    ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ no `CandleModelInfo` in `model::info`
+  |                    |
+  |                    no `CandleUsage` in `model`
+  |
+  = help: consider importing this struct through its public re-export instead:
+          crate::CandleUsage
+  = help: consider importing this struct through its public re-export instead:
+          crate::CandleModelInfo
+
+error[E0432]: unresolved imports `core::CandleChannelError`, `core::CandleChannelSender`
+  --> packages/fluent-ai-candle/src/domain/mod.rs:58:16
+   |
+58 | pub use core::{CandleChannelError, CandleChannelSender};
+   |                ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^ no `CandleChannelSender` in `domain::core`
+   |                |
+   |                no `CandleChannelError` in `domain::core`
+   |
+help: a similar name exists in the module
+   |
+58 - pub use core::{CandleChannelError, CandleChannelSender};
+58 + pub use core::{ChannelError, CandleChannelSender};
+   |
+help: a similar name exists in the module
+   |
+58 - pub use core::{CandleChannelError, CandleChannelSender};
+58 + pub use core::{CandleChannelError, ChannelSender};
+   |
+
+error[E0432]: unresolved imports `context::CandleDocumentLoader`, `core::CandleDomainInitError`, `core::candle_execute_with_circuit_breaker`, `http::CandleProvider`, `prompt::CandlePrompt`, `voice::CandleAudio`, `voice::CandleAudioMediaType`, `voice::transcription::CandleTranscription`, `workflow::CandleStepType`, `workflow::CandleWorkflow`, `workflow::CandleWorkflowStep`
+   --> packages/fluent-ai-candle/src/domain/mod.rs:168:52
+    |
+168 |     context::{CandleContentFormat, CandleDocument, CandleDocumentLoader, CandleDocumentMediaType},
+    |                                                    ^^^^^^^^^^^^^^^^^^^^ no `CandleDocumentLoader` in `domain::context`
+169 |     // Candle Core types
+170 |     core::{CandleDomainInitError, candle_execute_with_circuit_breaker},
+    |            ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `candle_execute_with_circuit_breaker` in `domain::core`
+    |            |
+    |            no `CandleDomainInitError` in `domain::core`
+...
+173 |     http::{CandleProvider},
+    |            ^^^^^^^^^^^^^^ no `CandleProvider` in `domain::http`
+...
+189 |     prompt::CandlePrompt,
+    |     ^^^^^^^^^^^^^^^^^^^^ no `CandlePrompt` in `domain::prompt`
+...
+192 |     voice::{CandleAudio, CandleAudioMediaType, transcription::CandleTranscription},
+    |             ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `CandleTranscription` in `domain::voice::transcription`
+    |             |            |
+    |             |            no `CandleAudioMediaType` in `domain::voice`
+    |             no `CandleAudio` in `domain::voice`
+...
+195 |     workflow::{CandleStepType, CandleWorkflow, CandleWorkflowStep}};
+    |                ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^
+    |                |               |
+    |                |               no `CandleWorkflow` in `domain::workflow`
+    |                no `CandleStepType` in `domain::workflow`
+    |
+    = help: consider importing this struct through its public re-export instead:
+            crate::context::CandleDocumentLoader
+    = help: consider importing this type alias instead:
+            crate::prompt::CandlePrompt
+    = help: consider importing this enum through its public re-export instead:
+            crate::domain::message::CandleAudioMediaType
+help: a similar name exists in the module
+    |
+168 -     context::{CandleContentFormat, CandleDocument, CandleDocumentLoader, CandleDocumentMediaType},
+168 +     context::{CandleContentFormat, CandleDocument, CandleDocument, CandleDocumentMediaType},
+    |
+help: a similar name exists in the module
+    |
+170 -     core::{CandleDomainInitError, candle_execute_with_circuit_breaker},
+170 +     core::{DomainInitError, candle_execute_with_circuit_breaker},
+    |
+help: a similar name exists in the module
+    |
+170 -     core::{CandleDomainInitError, candle_execute_with_circuit_breaker},
+170 +     core::{CandleDomainInitError, execute_with_circuit_breaker},
+    |
+help: a similar name exists in the module
+    |
+192 -     voice::{CandleAudio, CandleAudioMediaType, transcription::CandleTranscription},
+192 +     voice::{CandleAudio, AudioMediaType, transcription::CandleTranscription},
+    |
+help: a similar name exists in the module
+    |
+192 -     voice::{CandleAudio, CandleAudioMediaType, transcription::CandleTranscription},
+192 +     voice::{CandleAudio, CandleAudioMediaType, transcription::Transcription},
+    |
+
+error[E0432]: unresolved import `crate::model::error`
+  --> packages/fluent-ai-candle/src/model/info.rs:11:19
+   |
+11 | use crate::model::error::{ModelError, Result};
+   |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved import `crate::model::error`
+  --> packages/fluent-ai-candle/src/model/registry.rs:12:19
+   |
+12 | use crate::model::error::{ModelError, Result};
+   |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved import `crate::model::error`
+  --> packages/fluent-ai-candle/src/model/resolver.rs:19:19
+   |
+19 | use crate::model::error::{ModelError, Result};
+   |                   ^^^^^ could not find `error` in `model`
+
+error[E0432]: unresolved import `error`
+  --> packages/fluent-ai-candle/src/model/mod.rs:21:9
+   |
+21 | pub use error::{ModelError, Result};
+   |         ^^^^^ help: a similar path exists: `std::error`
+
+error[E0432]: unresolved imports `domain::CandleAgent`, `domain::CandleContext`
+  --> packages/fluent-ai-candle/src/lib.rs:61:26
+   |
+61 |     CandleZeroOneOrMany, CandleAgent,
+   |                          ^^^^^^^^^^^ no `CandleAgent` in `domain`
+...
+64 |     CandleDocument, CandleContext, CandleDocumentLoader,
+   |                     ^^^^^^^^^^^^^ no `CandleContext` in `domain`
+   |
+   = help: consider importing this struct through its public re-export instead:
+           crate::domain::agent::CandleAgent
+   = help: consider importing one of these structs instead:
+           crate::context::CandleContext
+           crate::domain::context::CandleContext
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/context/chunk.rs:105:22
+    |
+105 |     pub role: crate::chat::message::MessageRole,
+    |                      ^^^^
+    |                      |
+    |                      unresolved import
+    |                      help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/context/chunk.rs:228:57
+    |
+228 |     pub fn new(content: impl Into<String>, role: crate::chat::message::MessageRole) -> Self {
+    |                                                         ^^^^
+    |                                                         |
+    |                                                         unresolved import
+    |                                                         help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: could not find `DocumentMediaType` in `context`
+   --> packages/fluent-ai-candle/src/context/provider.rs:543:46
+    |
+543 |             media_type: Some(crate::context::DocumentMediaType::TXT),
+    |                                              ^^^^^^^^^^^^^^^^^ could not find `DocumentMediaType` in `context`
+
+error[E0433]: failed to resolve: could not find `DocumentMediaType` in `context`
+   --> packages/fluent-ai-candle/src/context/provider.rs:721:65
+    |
+721 | ...                   crate::context::DocumentMediaType::TXT,
+    |                                       ^^^^^^^^^^^^^^^^^ could not find `DocumentMediaType` in `context`
+
+error[E0433]: failed to resolve: could not find `DocumentMediaType` in `context`
+   --> packages/fluent-ai-candle/src/context/provider.rs:830:69
+    |
+830 | ...                   crate::context::DocumentMediaType::TXT,
+    |                                       ^^^^^^^^^^^^^^^^^ could not find `DocumentMediaType` in `context`
+
+error[E0107]: struct takes 2 generic arguments but 1 generic argument was supplied
+   --> packages/domain/src/model/model_registry.rs:72:29
+    |
+72  | pub type ModelQueryResult = SmallVec<[Arc<ModelInfoProvider>; 16]>;
+    |                             ^^^^^^^^ ---------------------------- supplied 1 generic argument
+    |                             |
+    |                             expected 2 generic arguments
+    |
+note: struct defined here, with 2 generic parameters: `T`, `N`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smallvec-2.0.0-alpha.11/src/lib.rs:302:12
+    |
+302 | pub struct SmallVec<T, const N: usize> {
+    |            ^^^^^^^^ -  --------------
+help: add missing generic argument
+    |
+72  | pub type ModelQueryResult = SmallVec<[Arc<ModelInfoProvider>; 16], N>;
+    |                                                                  +++
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:152:28
+    |
+152 |         messages: &[crate::chat::message::Message],
+    |                            ^^^^
+    |                            |
+    |                            unresolved import
+    |                            help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:208:28
+    |
+208 |         messages: &[crate::chat::message::Message],
+    |                            ^^^^
+    |                            |
+    |                            unresolved import
+    |                            help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:217:28
+    |
+217 |         messages: &[crate::chat::message::Message],
+    |                            ^^^^
+    |                            |
+    |                            unresolved import
+    |                            help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:253:28
+    |
+253 |         messages: &[crate::chat::message::Message],
+    |                            ^^^^
+    |                            |
+    |                            unresolved import
+    |                            help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:273:28
+    |
+273 |         messages: &[crate::chat::message::Message],
+    |                            ^^^^
+    |                            |
+    |                            unresolved import
+    |                            help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:325:24
+    |
+325 |     messages: &[crate::chat::message::Message],
+    |                        ^^^^
+    |                        |
+    |                        unresolved import
+    |                        help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:337:24
+    |
+337 |     messages: &[crate::chat::message::Message],
+    |                        ^^^^
+    |                        |
+    |                        unresolved import
+    |                        help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:352:24
+    |
+352 |     messages: &[crate::chat::message::Message],
+    |                        ^^^^
+    |                        |
+    |                        unresolved import
+    |                        help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:380:24
+    |
+380 |     messages: &[crate::chat::message::Message],
+    |                        ^^^^
+    |                        |
+    |                        unresolved import
+    |                        help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/chat/export.rs:406:24
+    |
+406 |     messages: &[crate::chat::message::Message],
+    |                        ^^^^
+    |                        |
+    |                        unresolved import
+    |                        help: a similar path exists: `builders::chat`
+
+error[E0433]: failed to resolve: could not find `DocumentMediaType` in `context`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:544:46
+    |
+544 |             media_type: Some(crate::context::DocumentMediaType::TXT),
+    |                                              ^^^^^^^^^^^^^^^^^ could not find `DocumentMediaType` in `context`
+
+error[E0433]: failed to resolve: could not find `DocumentMediaType` in `context`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:722:65
+    |
+722 | ...                   crate::context::DocumentMediaType::TXT,
+    |                                       ^^^^^^^^^^^^^^^^^ could not find `DocumentMediaType` in `context`
+
+error[E0433]: failed to resolve: could not find `DocumentMediaType` in `context`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:831:69
+    |
+831 | ...                   crate::context::DocumentMediaType::TXT,
+    |                                       ^^^^^^^^^^^^^^^^^ could not find `DocumentMediaType` in `context`
+
+error[E0107]: struct takes 2 generic arguments but 1 generic argument was supplied
+   --> packages/domain/src/model/model_registry.rs:308:37
+    |
+308 |                     let arc_models: SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER]> = 
+    |                                     ^^^^^^^^ ------------------------------------------------- supplied 1 generic argument
+    |                                     |
+    |                                     expected 2 generic arguments
+    |
+note: struct defined here, with 2 generic parameters: `T`, `N`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smallvec-2.0.0-alpha.11/src/lib.rs:302:12
+    |
+302 | pub struct SmallVec<T, const N: usize> {
+    |            ^^^^^^^^ -  --------------
+help: add missing generic argument
+    |
+308 |                     let arc_models: SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER], N> = 
+    |                                                                                               +++
+
+error[E0407]: method `complete` is not a member of trait `CandleCompletionModel`
+   --> packages/fluent-ai-candle/src/providers/kimi_k2.rs:424:5
+    |
+424 | /     fn complete(&mut self, request: CandleCompletionRequest) -> AsyncStream<CandleCompletionChunk> {
+425 | |         let model = match self.get_model() {
+426 | |             Ok(model) => model,
+427 | |             Err(error) => {
+...   |
+663 | |         })
+664 | |     }
+    | |_____^ not a member of trait `CandleCompletionModel`
+
+error[E0412]: cannot find type `CandleChatLoop` in this scope
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:875:48
+    |
+875 |         F: FnOnce(&CandleAgentConversation) -> CandleChatLoop + Send + 'static;
+    |                                                ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `CandleCompletionRequest` in this scope
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:973:42
+    |
+973 |                 let completion_request = CandleCompletionRequest {
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+4   + use crate::domain::completion::CandleCompletionRequest;
+    |
+
+error[E0412]: cannot find type `CandleChatLoop` in this scope
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1014:48
+     |
+1014 |         F: FnOnce(&CandleAgentConversation) -> CandleChatLoop + Send + 'static,
+     |                                                ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `TemplateMetadata` in crate `core`
+  --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:65:30
+   |
+65 |         let metadata = core::TemplateMetadata {
+   |                              ^^^^^^^^^^^^^^^^ not found in `core`
+   |
+help: consider importing this struct through its public re-export
+   |
+1  + use crate::domain::chat::templates::TemplateMetadata;
+   |
+help: if you import `TemplateMetadata`, refer to it directly
+   |
+65 -         let metadata = core::TemplateMetadata {
+65 +         let metadata = TemplateMetadata {
+   |
+
+error[E0433]: failed to resolve: could not find `TemplateCategory` in `core`
+  --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:71:29
+   |
+71 |             category: core::TemplateCategory::Chat,
+   |                             ^^^^^^^^^^^^^^^^ could not find `TemplateCategory` in `core`
+   |
+help: consider importing this enum through its public re-export
+   |
+1  + use crate::domain::chat::templates::TemplateCategory;
+   |
+help: if you import `TemplateCategory`, refer to it directly
+   |
+71 -             category: core::TemplateCategory::Chat,
+71 +             category: TemplateCategory::Chat,
+   |
+
+error[E0433]: failed to resolve: could not find `TemplatePermissions` in `core`
+  --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:77:32
+   |
+77 |             permissions: core::TemplatePermissions::default(),
+   |                                ^^^^^^^^^^^^^^^^^^^ could not find `TemplatePermissions` in `core`
+   |
+help: consider importing this struct
+   |
+1  + use crate::domain::chat::templates::core::TemplatePermissions;
+   |
+help: if you import `TemplatePermissions`, refer to it directly
+   |
+77 -             permissions: core::TemplatePermissions::default(),
+77 +             permissions: TemplatePermissions::default(),
+   |
+
+error[E0412]: cannot find type `TemplateVariable` in crate `core`
+  --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:80:35
+   |
+80 |         let variables: Arc<[core::TemplateVariable]> = self
+   |                                   ^^^^^^^^^^^^^^^^ not found in `core`
+   |
+help: consider importing this struct
+   |
+1  + use crate::domain::chat::templates::core::TemplateVariable;
+   |
+help: if you import `TemplateVariable`, refer to it directly
+   |
+80 -         let variables: Arc<[core::TemplateVariable]> = self
+80 +         let variables: Arc<[TemplateVariable]> = self
+   |
+
+error[E0422]: cannot find struct, variant or union type `TemplateVariable` in crate `core`
+  --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:83:28
+   |
+83 |             .map(|v| core::TemplateVariable {
+   |                            ^^^^^^^^^^^^^^^^ not found in `core`
+   |
+help: consider importing this struct
+   |
+1  + use crate::domain::chat::templates::core::TemplateVariable;
+   |
+help: if you import `TemplateVariable`, refer to it directly
+   |
+83 -             .map(|v| core::TemplateVariable {
+83 +             .map(|v| TemplateVariable {
+   |
+
+error[E0433]: failed to resolve: could not find `VariableType` in `core`
+  --> packages/fluent-ai-candle/src/builders/chat/template_builder.rs:86:33
+   |
+86 |                 var_type: core::VariableType::String,
+   |                                 ^^^^^^^^^^^^ could not find `VariableType` in `core`
+   |
+help: consider importing this enum
+   |
+1  + use crate::domain::chat::templates::core::VariableType;
+   |
+help: if you import `VariableType`, refer to it directly
+   |
+86 -                 var_type: core::VariableType::String,
+86 +                 var_type: VariableType::String,
+   |
+
+error[E0412]: cannot find type `ZeroOneOrMany` in the crate root
+   --> packages/fluent-ai-candle/src/context/chunk.rs:163:28
+    |
+163 |     pub embeddings: crate::ZeroOneOrMany<f32>,
+    |                            ^^^^^^^^^^^^^ not found in the crate root
+    |
+help: consider importing this enum
+    |
+7   + use cyrup_sugars::ZeroOneOrMany;
+    |
+help: if you import `ZeroOneOrMany`, refer to it directly
+    |
+163 -     pub embeddings: crate::ZeroOneOrMany<f32>,
+163 +     pub embeddings: ZeroOneOrMany<f32>,
+    |
+
+error[E0412]: cannot find type `ContentFormat` in this scope
+  --> packages/fluent-ai-candle/src/context/document.rs:18:24
+   |
+18 |     pub format: Option<ContentFormat>,
+   |                        ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these enums
+   |
+7  + use crate::domain::image::ContentFormat;
+   |
+7  + use crate::domain::voice::audio::ContentFormat;
+   |
+7  + use crate::image::ContentFormat;
+   |
+7  + use crate::voice::audio::ContentFormat;
+   |
+
+error[E0412]: cannot find type `DocumentMediaType` in this scope
+  --> packages/fluent-ai-candle/src/context/document.rs:20:28
+   |
+20 |     pub media_type: Option<DocumentMediaType>,
+   |                            ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+14 | pub struct CandleDocument<DocumentMediaType> {
+   |                          +++++++++++++++++++
+
+error[E0412]: cannot find type `DocumentMediaType` in this scope
+  --> packages/fluent-ai-candle/src/context/document.rs:20:28
+   |
+20 |     pub media_type: Option<DocumentMediaType>,
+   |                            ^^^^^^^^^^^^^^^^^ not found in this scope
+
+warning: unused variable: `provider`
+   --> packages/domain/src/model/model_registry.rs:401:43
+    |
+401 |     async fn fetch_provider_models(&self, provider: &Provider) -> Result<Vec<ModelInfoProvider>> {
+    |                                           ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_provider`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `request`
+   --> packages/domain/src/model/cache.rs:425:35
+    |
+425 |     async fn process_warm_request(request: WarmRequest) {
+    |                                   ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+error[E0412]: cannot find type `MemoryIntegration` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:214:36
+    |
+214 |     pub memory_integration: Option<MemoryIntegration>}
+    |                                    ^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+204 | pub struct CandleImmutableFileContext<MemoryIntegration> {
+    |                                      +++++++++++++++++++
+
+error[E0412]: cannot find type `MemoryIntegration` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:226:36
+    |
+226 |     pub memory_integration: Option<MemoryIntegration>}
+    |                                    ^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+218 | pub struct CandleImmutableFilesContext<MemoryIntegration> {
+    |                                       +++++++++++++++++++
+
+error[E0277]: `fluent_ai_async::AsyncStream<model_info::ModelInfo>` is not a future
+   --> packages/domain/src/model/model_validation.rs:319:64
+    |
+319 |             match provider_instance.get_model_info(model_name).await {
+    |                                                                ^^^^^ `fluent_ai_async::AsyncStream<model_info::ModelInfo>` is not a future
+    |
+    = help: the trait `futures_util::Future` is not implemented for `fluent_ai_async::AsyncStream<model_info::ModelInfo>`
+    = note: fluent_ai_async::AsyncStream<model_info::ModelInfo> must be a future or must implement `IntoFuture` to be awaited
+    = note: required for `fluent_ai_async::AsyncStream<model_info::ModelInfo>` to implement `std::future::IntoFuture`
+help: remove the `.await`
+    |
+319 -             match provider_instance.get_model_info(model_name).await {
+319 +             match provider_instance.get_model_info(model_name) {
+    |
+
+error[E0412]: cannot find type `MemoryIntegration` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:240:36
+    |
+240 |     pub memory_integration: Option<MemoryIntegration>}
+    |                                    ^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+230 | pub struct CandleImmutableDirectoryContext<MemoryIntegration> {
+    |                                           +++++++++++++++++++
+
+warning: unused variable: `required_capabilities`
+   --> packages/domain/src/model/model_validation.rs:420:44
+    |
+420 | ...                   required_capabilities: &[&str]) -> Result<ValidationResult> {
+    |                       ^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_required_capabilities`
+
+warning: variable does not need to be mutable
+   --> packages/domain/src/model/model_validation.rs:421:13
+    |
+421 |         let mut base_result = self.validate_model_exists(provider, model_name).await?;
+    |             ----^^^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+error[E0412]: cannot find type `MemoryIntegration` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:254:36
+    |
+254 |     pub memory_integration: Option<MemoryIntegration>}
+    |                                    ^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+244 | pub struct CandleImmutableGithubContext<MemoryIntegration> {
+    |                                        +++++++++++++++++++
+
+error[E0412]: cannot find type `CandleDocument` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:455:92
+    |
+455 |     pub fn process_file_context(&self, context: CandleImmutableFileContext) -> AsyncStream<CandleDocument> {
+    |                                                                                            ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these structs
+    |
+10  + use crate::CandleDocument;
+    |
+10  + use crate::context::CandleDocument;
+    |
+
+error[E0412]: cannot find type `CandleDocument` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:537:75
+    |
+537 |     fn load_file_document(context: &CandleImmutableFileContext) -> Result<CandleDocument, CandleContextError> {
+    |                                                                           ^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing one of these structs
+    |
+10  + use crate::CandleDocument;
+    |
+10  + use crate::context::CandleDocument;
+    |
+
+error[E0433]: failed to resolve: could not find `ContentFormat` in `context`
+   --> packages/fluent-ai-candle/src/context/provider.rs:542:42
+    |
+542 |             format: Some(crate::context::ContentFormat::Text),
+    |                                          ^^^^^^^^^^^^^ could not find `ContentFormat` in `context`
+    |
+help: consider importing one of these enums
+    |
+10  + use crate::domain::image::ContentFormat;
+    |
+10  + use crate::domain::voice::audio::ContentFormat;
+    |
+10  + use crate::image::ContentFormat;
+    |
+10  + use crate::voice::audio::ContentFormat;
+    |
+help: if you import `ContentFormat`, refer to it directly
+    |
+542 -             format: Some(crate::context::ContentFormat::Text),
+542 +             format: Some(ContentFormat::Text),
+    |
+
+error[E0412]: cannot find type `Context` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:691:6
+    |
+691 | impl Context<Files> {
+    |      ^^^^^^^ not found in this scope
+    |
+help: consider importing one of these items
+    |
+10  + use std::task::Context;
+    |
+10  + use candle_core::Context;
+    |
+10  + use futures_util::task::Context;
+    |
+10  + use gix::config::file::includes::conditional::Context;
+    |
+      and 2 other candidates
+
+error[E0412]: cannot find type `Files` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:691:14
+    |
+691 | impl Context<Files> {
+    |              ^^^^^ not found in this scope
+    |
+help: there is an enum variant `crate::context::CandleContextSourceType::Files` and 3 others; try using the variant's enum
+    |
+691 - impl Context<Files> {
+691 + impl Context<crate::context::CandleContextSourceType> {
+    |
+691 - impl Context<Files> {
+691 + impl Context<crate::domain::context::CandleContextSourceType> {
+    |
+691 | impl Context<gix::status::UntrackedFiles> {
+    |              ++++++++++++++++++++++
+help: you might be missing a type parameter
+    |
+691 | impl<Files> Context<Files> {
+    |     +++++++
+
+error[E0422]: cannot find struct, variant or union type `ImmutableFilesContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:696:29
+    |
+218 | pub struct CandleImmutableFilesContext {
+    | -------------------------------------- similarly named struct `CandleImmutableFilesContext` defined here
+...
+696 |         let files_context = ImmutableFilesContext {
+    |                             ^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableFilesContext`
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> packages/domain/src/completion/request.rs:52:31
+   |
+52 |     pub fn validate(&self) -> ValidationResult<()> {
+   |                               ^^^^^^^^^^^^^^^^---- help: remove the unnecessary generics
+   |                               |
+   |                               expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> packages/domain/src/model/model_validation.rs:36:12
+   |
+36 | pub struct ValidationResult {
+   |            ^^^^^^^^^^^^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> packages/domain/src/completion/types.rs:50:60
+   |
+50 |     pub fn with_temperature(mut self, temperature: f64) -> ValidationResult<Self> {
+   |                                                            ^^^^^^^^^^^^^^^^------ help: remove the unnecessary generics
+   |                                                            |
+   |                                                            expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> packages/domain/src/model/model_validation.rs:36:12
+   |
+36 | pub struct ValidationResult {
+   |            ^^^^^^^^^^^^^^^^
+
+error[E0433]: failed to resolve: could not find `ContentFormat` in `context`
+   --> packages/fluent-ai-candle/src/context/provider.rs:719:74
+    |
+719 | ...                   format: Some(crate::context::ContentFormat::Text),
+    |                                                    ^^^^^^^^^^^^^ could not find `ContentFormat` in `context`
+    |
+help: consider importing one of these enums
+    |
+10  + use crate::domain::image::ContentFormat;
+    |
+10  + use crate::domain::voice::audio::ContentFormat;
+    |
+10  + use crate::image::ContentFormat;
+    |
+10  + use crate::voice::audio::ContentFormat;
+    |
+help: if you import `ContentFormat`, refer to it directly
+    |
+719 -                                             format: Some(crate::context::ContentFormat::Text),
+719 +                                             format: Some(ContentFormat::Text),
+    |
+
+error[E0412]: cannot find type `Context` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:772:6
+    |
+772 | impl Context<Directory> {
+    |      ^^^^^^^ not found in this scope
+    |
+help: consider importing one of these items
+    |
+10  + use std::task::Context;
+    |
+10  + use candle_core::Context;
+    |
+10  + use futures_util::task::Context;
+    |
+10  + use gix::config::file::includes::conditional::Context;
+    |
+      and 2 other candidates
+
+error[E0412]: cannot find type `Directory` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:772:14
+    |
+772 | impl Context<Directory> {
+    |              ^^^^^^^^^ not found in this scope
+    |
+help: there is an enum variant `crate::context::CandleContextSourceType::Directory` and 1 other; try using the variant's enum
+    |
+772 - impl Context<Directory> {
+772 + impl Context<crate::context::CandleContextSourceType> {
+    |
+772 - impl Context<Directory> {
+772 + impl Context<crate::domain::context::CandleContextSourceType> {
+    |
+help: you might be missing a type parameter
+    |
+772 | impl<Directory> Context<Directory> {
+    |     +++++++++++
+
+error[E0422]: cannot find struct, variant or union type `ImmutableDirectoryContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:777:33
+    |
+230 | pub struct CandleImmutableDirectoryContext {
+    | ------------------------------------------ similarly named struct `CandleImmutableDirectoryContext` defined here
+...
+777 |         let directory_context = ImmutableDirectoryContext {
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableDirectoryContext`
+
+error[E0433]: failed to resolve: could not find `ContentFormat` in `context`
+   --> packages/fluent-ai-candle/src/context/provider.rs:828:78
+    |
+828 | ...                   format: Some(crate::context::ContentFormat::Text),
+    |                                                    ^^^^^^^^^^^^^ could not find `ContentFormat` in `context`
+    |
+help: consider importing one of these enums
+    |
+10  + use crate::domain::image::ContentFormat;
+    |
+10  + use crate::domain::voice::audio::ContentFormat;
+    |
+10  + use crate::image::ContentFormat;
+    |
+10  + use crate::voice::audio::ContentFormat;
+    |
+help: if you import `ContentFormat`, refer to it directly
+    |
+828 -                                                 format: Some(crate::context::ContentFormat::Text),
+828 +                                                 format: Some(ContentFormat::Text),
+    |
+
+error[E0412]: cannot find type `Context` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:906:6
+    |
+906 | impl Context<Github> {
+    |      ^^^^^^^ not found in this scope
+    |
+help: consider importing one of these items
+    |
+10  + use std::task::Context;
+    |
+10  + use candle_core::Context;
+    |
+10  + use futures_util::task::Context;
+    |
+10  + use gix::config::file::includes::conditional::Context;
+    |
+      and 2 other candidates
+
+error[E0412]: cannot find type `Github` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:906:14
+    |
+906 | impl Context<Github> {
+    |              ^^^^^^ not found in this scope
+    |
+help: there is an enum variant `crate::context::CandleContextSourceType::Github` and 1 other; try using the variant's enum
+    |
+906 - impl Context<Github> {
+906 + impl Context<crate::context::CandleContextSourceType> {
+    |
+906 - impl Context<Github> {
+906 + impl Context<crate::domain::context::CandleContextSourceType> {
+    |
+help: you might be missing a type parameter
+    |
+906 | impl<Github> Context<Github> {
+    |     ++++++++
+
+error[E0422]: cannot find struct, variant or union type `ImmutableGithubContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:911:30
+    |
+244 | pub struct CandleImmutableGithubContext {
+    | --------------------------------------- similarly named struct `CandleImmutableGithubContext` defined here
+...
+911 |         let github_context = ImmutableGithubContext {
+    |                              ^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableGithubContext`
+
+error[E0412]: cannot find type `ImmutableFileContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:964:24
+    |
+204 | pub struct CandleImmutableFileContext {
+    | ------------------------------------- similarly named struct `CandleImmutableFileContext` defined here
+...
+964 | pub type FileContext = ImmutableFileContext;
+    |                        ^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableFileContext`
+
+error[E0412]: cannot find type `ImmutableFilesContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:967:25
+    |
+218 | pub struct CandleImmutableFilesContext {
+    | -------------------------------------- similarly named struct `CandleImmutableFilesContext` defined here
+...
+967 | pub type FilesContext = ImmutableFilesContext;
+    |                         ^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableFilesContext`
+
+error[E0412]: cannot find type `ImmutableDirectoryContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:970:29
+    |
+230 | pub struct CandleImmutableDirectoryContext {
+    | ------------------------------------------ similarly named struct `CandleImmutableDirectoryContext` defined here
+...
+970 | pub type DirectoryContext = ImmutableDirectoryContext;
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableDirectoryContext`
+
+error[E0412]: cannot find type `ImmutableGithubContext` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:973:26
+    |
+244 | pub struct CandleImmutableGithubContext {
+    | --------------------------------------- similarly named struct `CandleImmutableGithubContext` defined here
+...
+973 | pub type GithubContext = ImmutableGithubContext;
+    |                          ^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleImmutableGithubContext`
+
+error[E0405]: cannot find trait `ImmutableEmbeddingModel` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:976:27
+    |
+351 | pub trait CandleImmutableEmbeddingModel: Send + Sync + 'static {
+    | -------------------------------------------------------------- similarly named trait `CandleImmutableEmbeddingModel` defined here
+...
+976 | pub trait EmbeddingModel: ImmutableEmbeddingModel {}
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^ help: a trait with a similar name exists: `CandleImmutableEmbeddingModel`
+
+error[E0405]: cannot find trait `ImmutableMemoryManager` in this scope
+   --> packages/fluent-ai-candle/src/context/provider.rs:979:26
+    |
+372 | pub trait CandleImmutableMemoryManager: Send + Sync + 'static {
+    | ------------------------------------------------------------- similarly named trait `CandleImmutableMemoryManager` defined here
+...
+979 | pub trait MemoryManager: ImmutableMemoryManager {}
+    |                          ^^^^^^^^^^^^^^^^^^^^^^ help: a trait with a similar name exists: `CandleImmutableMemoryManager`
+
+error[E0412]: cannot find type `CandleAdditionalParams` in this scope
+  --> packages/fluent-ai-candle/src/domain/agent/role.rs:85:38
+   |
+85 |     additional_params: ZeroOneOrMany<CandleAdditionalParams>,
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+69 | pub struct AgentRoleImpl<CandleAdditionalParams> {
+   |                         ++++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleMetadata` in this scope
+  --> packages/fluent-ai-candle/src/domain/agent/role.rs:89:29
+   |
+89 |     metadata: ZeroOneOrMany<CandleMetadata>,
+   |                             ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+69 | pub struct AgentRoleImpl<CandleMetadata> {
+   |                         ++++++++++++++++
+
+error[E0412]: cannot find type `CandleAgentConversation` in this scope
+   --> packages/fluent-ai-candle/src/domain/agent/role.rs:93:46
+    |
+93  |     on_conversation_turn_handler: Option<fn(&CandleAgentConversation, &CandleAgentRoleAgent)>}
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^
+...
+224 | pub struct AgentConversation {
+    | ---------------------------- similarly named struct `AgentConversation` defined here
+    |
+help: a struct with a similar name exists
+    |
+93  -     on_conversation_turn_handler: Option<fn(&CandleAgentConversation, &CandleAgentRoleAgent)>}
+93  +     on_conversation_turn_handler: Option<fn(&AgentConversation, &CandleAgentRoleAgent)>}
+    |
+help: you might be missing a type parameter
+    |
+69  | pub struct AgentRoleImpl<CandleAgentConversation> {
+    |                         +++++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleAgentRoleAgent` in this scope
+   --> packages/fluent-ai-candle/src/domain/agent/role.rs:93:72
+    |
+93  |     on_conversation_turn_handler: Option<fn(&CandleAgentConversation, &CandleAgentRoleAgent)>}
+    |                                                                        ^^^^^^^^^^^^^^^^^^^^
+...
+221 | pub struct AgentRoleAgent;
+    | -------------------------- similarly named struct `AgentRoleAgent` defined here
+    |
+help: a struct with a similar name exists
+    |
+93  -     on_conversation_turn_handler: Option<fn(&CandleAgentConversation, &CandleAgentRoleAgent)>}
+93  +     on_conversation_turn_handler: Option<fn(&CandleAgentConversation, &AgentRoleAgent)>}
+    |
+help: you might be missing a type parameter
+    |
+69  | pub struct AgentRoleImpl<CandleAgentRoleAgent> {
+    |                         ++++++++++++++++++++++
+
+error[E0425]: cannot find value `include_context` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/parsing.rs:603:40
+    |
+603 |                 "--include-context" => include_context = true,
+    |                                        ^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `query` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/parsing.rs:605:24
+    |
+605 |                     if query.is_none() {
+    |                        ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `query` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/parsing.rs:606:25
+    |
+606 |                         query = Some(arg.to_string());
+    |                         ^^^^^
+    |
+help: you might have meant to introduce a new binding
+    |
+606 |                         let query = Some(arg.to_string());
+    |                         +++
+
+error[E0425]: cannot find value `query` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/parsing.rs:620:21
+    |
+620 |         let query = query.ok_or_else(|| ParseError::MissingParameter {
+    |                     ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `include_context` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/parsing.rs:627:13
+    |
+627 |             include_context})
+    |             ^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `CandleCommandContext` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:31:53
+     |
+31   | pub fn initialize_candle_command_executor(context: &CandleCommandContext) {
+     |                                                     ^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CommandContext`
+     |
+    ::: packages/fluent-ai-candle/src/domain/chat/commands/types.rs:1749:1
+     |
+1749 | pub struct CommandContext {
+     | ------------------------- similarly named struct `CommandContext` defined here
+
+error[E0412]: cannot find type `CandleCommandExecutor` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:39:48
+   |
+39 | pub fn get_candle_command_executor() -> Option<CandleCommandExecutor> {
+   |                                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: packages/fluent-ai-candle/src/domain/chat/commands/types.rs:18:1
+   |
+18 | pub enum CandleCommandError {
+   | --------------------------- similarly named enum `CandleCommandError` defined here
+   |
+help: an enum with a similar name exists
+   |
+39 - pub fn get_candle_command_executor() -> Option<CandleCommandExecutor> {
+39 + pub fn get_candle_command_executor() -> Option<CandleCommandError> {
+   |
+help: you might be missing a type parameter
+   |
+39 | pub fn get_candle_command_executor<CandleCommandExecutor>() -> Option<CandleCommandExecutor> {
+   |                                   +++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleCommandResult` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:44:45
+   |
+44 | pub fn parse_candle_command(input: &str) -> CandleCommandResult<CandleImmutableChatCommand> {
+   |                                             ^^^^^^^^^^^^^^^^^^^ help: an enum with a similar name exists: `CandleCommandError`
+   |
+  ::: packages/fluent-ai-candle/src/domain/chat/commands/types.rs:18:1
+   |
+18 | pub enum CandleCommandError {
+   | --------------------------- similarly named enum `CandleCommandError` defined here
+
+error[E0412]: cannot find type `CandleImmutableChatCommand` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:44:65
+    |
+44  | pub fn parse_candle_command(input: &str) -> CandleCommandResult<CandleImmutableChatCommand> {
+    |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: packages/fluent-ai-candle/src/domain/chat/commands/types.rs:138:1
+    |
+138 | pub enum ImmutableChatCommand {
+    | ----------------------------- similarly named enum `ImmutableChatCommand` defined here
+    |
+help: an enum with a similar name exists
+    |
+44  - pub fn parse_candle_command(input: &str) -> CandleCommandResult<CandleImmutableChatCommand> {
+44  + pub fn parse_candle_command(input: &str) -> CandleCommandResult<ImmutableChatCommand> {
+    |
+help: you might be missing a type parameter
+    |
+44  | pub fn parse_candle_command<CandleImmutableChatCommand>(input: &str) -> CandleCommandResult<CandleImmutableChatCommand> {
+    |                            ++++++++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleImmutableChatCommand` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:57:52
+    |
+57  | pub async fn execute_candle_command_async(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: an enum with a similar name exists: `ImmutableChatCommand`
+    |
+   ::: packages/fluent-ai-candle/src/domain/chat/commands/types.rs:138:1
+    |
+138 | pub enum ImmutableChatCommand {
+    | ----------------------------- similarly named enum `ImmutableChatCommand` defined here
+
+error[E0412]: cannot find type `CandleCandleCommandResult` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:57:83
+   |
+57 | pub async fn execute_candle_command_async(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+   |                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `CandleCandleCommandOutput` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:57:109
+   |
+57 | pub async fn execute_candle_command_async(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+   |                                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+57 | pub async fn execute_candle_command_async<CandleCandleCommandOutput>(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+   |                                          +++++++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleImmutableChatCommand` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:78:40
+    |
+78  | pub fn execute_candle_command(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: an enum with a similar name exists: `ImmutableChatCommand`
+    |
+   ::: packages/fluent-ai-candle/src/domain/chat/commands/types.rs:138:1
+    |
+138 | pub enum ImmutableChatCommand {
+    | ----------------------------- similarly named enum `ImmutableChatCommand` defined here
+
+error[E0412]: cannot find type `CandleCandleCommandResult` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:78:71
+   |
+78 | pub fn execute_candle_command(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+   |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `CandleCandleCommandOutput` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:78:97
+   |
+78 | pub fn execute_candle_command(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+   |                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+78 | pub fn execute_candle_command<CandleCandleCommandOutput>(command: CandleImmutableChatCommand) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+   |                              +++++++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleCandleCommandResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:121:69
+    |
+121 | pub async fn parse_and_execute_candle_command_async(input: &str) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `CandleCandleCommandOutput` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:121:95
+    |
+121 | pub async fn parse_and_execute_candle_command_async(input: &str) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+121 | pub async fn parse_and_execute_candle_command_async<CandleCandleCommandOutput>(input: &str) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                                    +++++++++++++++++++++++++++
+
+error[E0412]: cannot find type `CandleCandleCommandResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:142:57
+    |
+142 | pub fn parse_and_execute_candle_command(input: &str) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `CandleCandleCommandOutput` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/commands/mod.rs:142:83
+    |
+142 | pub fn parse_and_execute_candle_command(input: &str) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: you might be missing a type parameter
+    |
+142 | pub fn parse_and_execute_candle_command<CandleCandleCommandOutput>(input: &str) -> CandleCandleCommandResult<CandleCandleCommandOutput> {
+    |                                        +++++++++++++++++++++++++++
+
+error[E0412]: cannot find type `ModelRetryConfig` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/config.rs:80:23
+   |
+80 |     pub retry_config: ModelRetryConfig,
+   |                       ^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ModelPerformanceConfig` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/config.rs:82:22
+    |
+82  |     pub performance: ModelPerformanceConfig}
+    |                      ^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleModelPerformanceConfig`
+...
+100 | pub struct CandleModelPerformanceConfig {
+    | --------------------------------------- similarly named struct `CandleModelPerformanceConfig` defined here
+
+error[E0422]: cannot find struct, variant or union type `ConfigurationChangeEvent` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1014:32
+     |
+436  | pub struct CandleConfigurationChangeEvent {
+     | ----------------------------------------- similarly named struct `CandleConfigurationChangeEvent` defined here
+...
+1014 |             let change_event = ConfigurationChangeEvent {
+     |                                ^^^^^^^^^^^^^^^^^^^^^^^^ help: a struct with a similar name exists: `CandleConfigurationChangeEvent`
+
+error[E0412]: cannot find type `ConfigurationChangeEvent` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1050:63
+     |
+436  | pub struct CandleConfigurationChangeEvent {
+     | ----------------------------------------- similarly named struct `CandleConfigurationChangeEvent` defined here
+...
+1050 |     pub fn subscribe_to_changes(&self) -> broadcast::Receiver<ConfigurationChangeEvent> {
+     |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+help: a struct with a similar name exists
+     |
+1050 |     pub fn subscribe_to_changes(&self) -> broadcast::Receiver<CandleConfigurationChangeEvent> {
+     |                                                                ++++++
+help: you might be missing a type parameter
+     |
+902  | impl<ConfigurationChangeEvent> CandleConfigurationManager {
+     |     ++++++++++++++++++++++++++
+
+error[E0412]: cannot find type `ChatConfig` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1055:51
+     |
+1055 |     pub fn validate_config_stream(&self, _config: ChatConfig) -> AsyncStream<ConfigUpdate> {
+     |                                                   ^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1055:78
+     |
+1055 |     pub fn validate_config_stream(&self, _config: ChatConfig) -> AsyncStream<ConfigUpdate> {
+     |                                                                              ^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+902  | impl<ConfigUpdate> CandleConfigurationManager {
+     |     ++++++++++++++
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1065:40
+     |
+1065 |                 let validation_start = ConfigUpdate {
+     |                                        ^^^^^^^^^^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1075:41
+     |
+1075 |                 let completion_update = ConfigUpdate {
+     |                                         ^^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `ConfigurationValidator` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1090:28
+     |
+665  | pub trait CandleConfigurationValidator {
+     | -------------------------------------- similarly named trait `CandleConfigurationValidator` defined here
+...
+1090 |         validator: Arc<dyn ConfigurationValidator + Send + Sync>,
+     |                            ^^^^^^^^^^^^^^^^^^^^^^ help: a trait with a similar name exists: `CandleConfigurationValidator`
+
+error[E0412]: cannot find type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1091:22
+     |
+1091 |     ) -> AsyncStream<ConfigUpdate> {
+     |                      ^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+902  | impl<ConfigUpdate> CandleConfigurationManager {
+     |     ++++++++++++++
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1103:43
+     |
+1103 |                 let registration_update = ConfigUpdate {
+     |                                           ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `PersistenceEvent` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1116:66
+     |
+1116 |     pub fn create_persistence_event_stream(&self) -> AsyncStream<PersistenceEvent> {
+     |                                                                  ^^^^^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+902  | impl<PersistenceEvent> CandleConfigurationManager {
+     |     ++++++++++++++++++
+
+error[E0422]: cannot find struct, variant or union type `PersistenceEvent` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1129:29
+     |
+1129 |                 let event = PersistenceEvent {
+     |                             ^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1141:57
+     |
+1141 |     pub fn check_auto_save_stream(&self) -> AsyncStream<ConfigUpdate> {
+     |                                                         ^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+902  | impl<ConfigUpdate> CandleConfigurationManager {
+     |     ++++++++++++++
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1151:36
+     |
+1151 |                 let check_update = ConfigUpdate {
+     |                                    ^^^^^^^^^^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1171:43
+     |
+1171 |                     let autosave_update = ConfigUpdate {
+     |                                           ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1185:54
+     |
+1185 |     pub fn save_to_file_stream(&self) -> AsyncStream<ConfigUpdate> {
+     |                                                      ^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+902  | impl<ConfigUpdate> CandleConfigurationManager {
+     |     ++++++++++++++
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1195:34
+     |
+1195 |                 let save_start = ConfigUpdate {
+     |                                  ^^^^^^^^^^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1208:37
+     |
+1208 |                 let save_complete = ConfigUpdate {
+     |                                     ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1257:56
+     |
+1257 |     pub fn load_from_file_stream(&self) -> AsyncStream<ConfigUpdate> {
+     |                                                        ^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+902  | impl<ConfigUpdate> CandleConfigurationManager {
+     |     ++++++++++++++
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1267:34
+     |
+1267 |                 let load_start = ConfigUpdate {
+     |                                  ^^^^^^^^^^^^ not found in this scope
+
+error[E0422]: cannot find struct, variant or union type `ConfigUpdate` in this scope
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1280:37
+     |
+1280 |                 let load_complete = ConfigUpdate {
+     |                                     ^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `Message` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:19:33
+   |
+19 | pub fn process_message(message: Message) -> AsyncStream<Message> {
+   |                                 ^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `candle_core::MetalError::Message` and 1 other; try using the variant's enum
+   |
+19 - pub fn process_message(message: Message) -> AsyncStream<Message> {
+19 + pub fn process_message(message: candle_core::MetalError) -> AsyncStream<Message> {
+   |
+19 - pub fn process_message(message: Message) -> AsyncStream<Message> {
+19 + pub fn process_message(message: crate::domain::agent::ChatError) -> AsyncStream<Message> {
+   |
+
+error[E0412]: cannot find type `Message` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:19:57
+   |
+19 | pub fn process_message(message: Message) -> AsyncStream<Message> {
+   |                                                         ^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `candle_core::MetalError::Message` and 1 other; try using the variant's enum
+   |
+19 - pub fn process_message(message: Message) -> AsyncStream<Message> {
+19 + pub fn process_message(message: Message) -> AsyncStream<candle_core::MetalError> {
+   |
+19 - pub fn process_message(message: Message) -> AsyncStream<Message> {
+19 + pub fn process_message(message: Message) -> AsyncStream<crate::domain::agent::ChatError> {
+   |
+help: you might be missing a type parameter
+   |
+19 | pub fn process_message<Message>(message: Message) -> AsyncStream<Message> {
+   |                       +++++++++
+
+error[E0412]: cannot find type `Message` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:39:34
+   |
+39 | pub fn validate_message(message: Message) -> AsyncStream<Message> {
+   |                                  ^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `candle_core::MetalError::Message` and 1 other; try using the variant's enum
+   |
+39 - pub fn validate_message(message: Message) -> AsyncStream<Message> {
+39 + pub fn validate_message(message: candle_core::MetalError) -> AsyncStream<Message> {
+   |
+39 - pub fn validate_message(message: Message) -> AsyncStream<Message> {
+39 + pub fn validate_message(message: crate::domain::agent::ChatError) -> AsyncStream<Message> {
+   |
+
+error[E0412]: cannot find type `Message` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:39:58
+   |
+39 | pub fn validate_message(message: Message) -> AsyncStream<Message> {
+   |                                                          ^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `candle_core::MetalError::Message` and 1 other; try using the variant's enum
+   |
+39 - pub fn validate_message(message: Message) -> AsyncStream<Message> {
+39 + pub fn validate_message(message: Message) -> AsyncStream<candle_core::MetalError> {
+   |
+39 - pub fn validate_message(message: Message) -> AsyncStream<Message> {
+39 + pub fn validate_message(message: Message) -> AsyncStream<crate::domain::agent::ChatError> {
+   |
+help: you might be missing a type parameter
+   |
+39 | pub fn validate_message<Message>(message: Message) -> AsyncStream<Message> {
+   |                        +++++++++
+
+error[E0412]: cannot find type `Message` in this scope
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:66:40
+   |
+66 | pub fn validate_message_sync(message: &Message) -> Result<(), String> {
+   |                                        ^^^^^^^ not found in this scope
+   |
+help: there is an enum variant `candle_core::MetalError::Message` and 1 other; try using the variant's enum
+   |
+66 - pub fn validate_message_sync(message: &Message) -> Result<(), String> {
+66 + pub fn validate_message_sync(message: &candle_core::MetalError) -> Result<(), String> {
+   |
+66 - pub fn validate_message_sync(message: &Message) -> Result<(), String> {
+66 + pub fn validate_message_sync(message: &crate::domain::agent::ChatError) -> Result<(), String> {
+   |
+
+error[E0433]: failed to resolve: could not find `MessageRole` in `super`
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:74:16
+   |
+74 |         super::MessageRole::User => {
+   |                ^^^^^^^^^^^ could not find `MessageRole` in `super`
+   |
+help: consider importing one of these enums
+   |
+7  + use crate::domain::http::MessageRole;
+   |
+7  + use crate::http::MessageRole;
+   |
+help: if you import `MessageRole`, refer to it directly
+   |
+74 -         super::MessageRole::User => {
+74 +         MessageRole::User => {
+   |
+
+error[E0433]: failed to resolve: could not find `MessageRole` in `super`
+  --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:77:16
+   |
+77 |         super::MessageRole::Assistant => {
+   |                ^^^^^^^^^^^ could not find `MessageRole` in `super`
+   |
+help: consider importing one of these enums
+   |
+7  + use crate::domain::http::MessageRole;
+   |
+7  + use crate::http::MessageRole;
+   |
+help: if you import `MessageRole`, refer to it directly
+   |
+77 -         super::MessageRole::Assistant => {
+77 +         MessageRole::Assistant => {
+   |
+
+error[E0425]: cannot find value `keep_result` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:904:20
+    |
+904 |                 if keep_result {
+    |                    ^^^^^^^^^^^
+    |
+help: the binding `keep_result` is available in a different scope in the same function
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:873:25
+    |
+873 |                 let mut keep_result = true;
+    |                         ^^^^^^^^^^^
+
+error[E0425]: cannot find value `result` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:906:25
+    |
+906 |                     if !result
+    |                         ^^^^^^ help: a local variable with a similar name exists: `results`
+
+error[E0425]: cannot find value `keep_result` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:912:25
+    |
+912 |                         keep_result = false;
+    |                         ^^^^^^^^^^^
+    |
+help: the binding `keep_result` is available in a different scope in the same function
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:873:25
+    |
+873 |                 let mut keep_result = true;
+    |                         ^^^^^^^^^^^
+
+error[E0425]: cannot find value `keep_result` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:916:20
+    |
+916 |                 if keep_result {
+    |                    ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `result` in this scope
+   --> packages/fluent-ai-candle/src/domain/chat/search.rs:917:41
+    |
+917 |                     let _ = sender.send(result);
+    |                                         ^^^^^^ help: a local variable with a similar name exists: `results`
+
+error[E0412]: cannot find type `CandleCompletionRequest` in this scope
+  --> packages/fluent-ai-candle/src/domain/completion/core.rs:37:18
+   |
+37 |         request: CandleCompletionRequest,
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct through its public re-export
+   |
+5  + use crate::domain::completion::CandleCompletionRequest;
+   |
+
+error[E0412]: cannot find type `CandleCompletionResponse` in this scope
+  --> packages/fluent-ai-candle/src/domain/completion/core.rs:38:37
+   |
+38 |     ) -> fluent_ai_async::AsyncTask<CandleCompletionResponse<'a>>;
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: packages/fluent-ai-candle/src/domain/completion/response.rs:14:1
+   |
+14 | pub struct CompletionResponse<'a> {
+   | --------------------------------- similarly named struct `CompletionResponse` defined here
+   |
+help: a struct with a similar name exists
+   |
+38 -     ) -> fluent_ai_async::AsyncTask<CandleCompletionResponse<'a>>;
+38 +     ) -> fluent_ai_async::AsyncTask<CompletionResponse<'a>>;
+   |
+help: consider importing this struct through its public re-export
+   |
+5  + use crate::domain::completion::CandleCompletionResponse;
+   |
+
+error[E0412]: cannot find type `ValidationResult` in this scope
+  --> packages/fluent-ai-candle/src/domain/completion/types.rs:64:60
+   |
+64 |     pub fn with_temperature(mut self, temperature: f64) -> ValidationResult<Self> {
+   |                                                            ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these type aliases
+   |
+5  + use crate::domain::model::ValidationResult;
+   |
+5  + use crate::model::ValidationResult;
+   |
+
+error[E0433]: failed to resolve: use of undeclared type `ValidationError`
+  --> packages/fluent-ai-candle/src/domain/completion/types.rs:66:24
+   |
+66 |             return Err(ValidationError::InvalidRange {
+   |                        ^^^^^^^^^^^^^^^ use of undeclared type `ValidationError`
+   |
+help: consider importing one of these enums
+   |
+5  + use crate::domain::chat::commands::validation::ValidationError;
+   |
+5  + use crate::domain::http::ValidationError;
+   |
+5  + use crate::domain::model::ValidationError;
+   |
+5  + use crate::http::ValidationError;
+   |
+     and 1 other candidate
+
+error[E0412]: cannot find type `ModelParams` in this scope
+   --> packages/fluent-ai-candle/src/domain/completion/types.rs:119:18
+    |
+119 | impl Default for ModelParams {
+    |                  ^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `ImageFormat` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/chunk.rs:54:17
+   |
+54 |     pub format: ImageFormat,
+   |                 ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this enum through its public re-export
+   |
+7  + use crate::context::ImageFormat;
+   |
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/context/chunk.rs:105:22
+    |
+105 |     pub role: crate::chat::message::MessageRole,
+    |                      ^^^^ unresolved import
+    |
+help: a similar path exists
+    |
+105 |     pub role: crate::builders::chat::message::MessageRole,
+    |                      ++++++++++
+help: consider importing this module through its public re-export
+    |
+7   + use crate::domain::message;
+    |
+help: if you import `message`, refer to it directly
+    |
+105 -     pub role: crate::chat::message::MessageRole,
+105 +     pub role: message::MessageRole,
+    |
+
+error[E0412]: cannot find type `ZeroOneOrMany` in the crate root
+   --> packages/fluent-ai-candle/src/domain/context/chunk.rs:163:28
+    |
+163 |     pub embeddings: crate::ZeroOneOrMany<f32>,
+    |                            ^^^^^^^^^^^^^ not found in the crate root
+    |
+help: consider importing this enum
+    |
+7   + use cyrup_sugars::ZeroOneOrMany;
+    |
+help: if you import `ZeroOneOrMany`, refer to it directly
+    |
+163 -     pub embeddings: crate::ZeroOneOrMany<f32>,
+163 +     pub embeddings: ZeroOneOrMany<f32>,
+    |
+
+error[E0412]: cannot find type `DocumentChunk` in this scope
+   --> packages/fluent-ai-candle/src/domain/context/chunk.rs:217:6
+    |
+217 | impl DocumentChunk {
+    |      ^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+7   + use crate::context::DocumentChunk;
+    |
+
+error[E0433]: failed to resolve: unresolved import
+   --> packages/fluent-ai-candle/src/domain/context/chunk.rs:228:57
+    |
+228 |     pub fn new(content: impl Into<String>, role: crate::chat::message::MessageRole) -> Self {
+    |                                                         ^^^^ unresolved import
+    |
+help: a similar path exists
+    |
+228 |     pub fn new(content: impl Into<String>, role: crate::builders::chat::message::MessageRole) -> Self {
+    |                                                         ++++++++++
+help: consider importing this module through its public re-export
+    |
+7   + use crate::domain::message;
+    |
+help: if you import `message`, refer to it directly
+    |
+228 -     pub fn new(content: impl Into<String>, role: crate::chat::message::MessageRole) -> Self {
+228 +     pub fn new(content: impl Into<String>, role: message::MessageRole) -> Self {
+    |
+
+error[E0412]: cannot find type `ContentFormat` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:18:24
+   |
+18 |     pub format: Option<ContentFormat>,
+   |                        ^^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these enums
+   |
+7  + use crate::domain::image::ContentFormat;
+   |
+7  + use crate::domain::voice::audio::ContentFormat;
+   |
+7  + use crate::image::ContentFormat;
+   |
+7  + use crate::voice::audio::ContentFormat;
+   |
+
+error[E0412]: cannot find type `DocumentMediaType` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:20:28
+   |
+20 |     pub media_type: Option<DocumentMediaType>,
+   |                            ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+14 | pub struct CandleDocument<DocumentMediaType> {
+   |                          +++++++++++++++++++
+
+error[E0412]: cannot find type `DocumentMediaType` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:20:28
+   |
+20 |     pub media_type: Option<DocumentMediaType>,
+   |                            ^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `Document` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:56:6
+   |
+56 | impl Document {
+   |      ^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+7  + use yyaml::parser::Document;
+   |
+
+error[E0433]: failed to resolve: use of undeclared type `ContentFormat`
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:67:18
+   |
+67 |             Some(ContentFormat::Base64) => "[Base64 Document]".to_string(),
+   |                  ^^^^^^^^^^^^^ use of undeclared type `ContentFormat`
+   |
+help: consider importing one of these enums
+   |
+7  + use crate::domain::image::ContentFormat;
+   |
+7  + use crate::domain::voice::audio::ContentFormat;
+   |
+7  + use crate::image::ContentFormat;
+   |
+7  + use crate::voice::audio::ContentFormat;
+   |
+
+error[E0412]: cannot find type `Document` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:78:26
+   |
+78 |     pub fn load(self) -> Document {
+   |                          ^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+7  + use yyaml::parser::Document;
+   |
+
+error[E0422]: cannot find struct, variant or union type `Document` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:81:9
+   |
+81 |         Document {
+   |         ^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+7  + use crate::domain::message::CandleMediaType::Document;
+   |
+7  + use yyaml::parser::Document;
+   |
+7  + use yyaml::parser::grammar::ParseContext::Document;
+   |
+7  + use yyaml::parser::grammar::Production::Document;
+   |
+     and 2 other candidates
+
+error[E0433]: failed to resolve: use of undeclared type `ContentFormat`
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:83:26
+   |
+83 |             format: Some(ContentFormat::Text),
+   |                          ^^^^^^^^^^^^^ use of undeclared type `ContentFormat`
+   |
+help: consider importing one of these enums
+   |
+7  + use crate::domain::image::ContentFormat;
+   |
+7  + use crate::domain::voice::audio::ContentFormat;
+   |
+7  + use crate::image::ContentFormat;
+   |
+7  + use crate::voice::audio::ContentFormat;
+   |
+
+error[E0422]: cannot find struct, variant or union type `CompletionParams` in this scope
+  --> packages/fluent-ai-candle/src/domain/context/extraction/extractor.rs:89:22
+   |
+89 |         let params = CompletionParams {
+   |                      ^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `CompletionParams` in this scope
+   --> packages/fluent-ai-candle/src/domain/context/extraction/extractor.rs:176:21
+    |
+176 |         params: &'a CompletionParams,
+    |                     ^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: could not find `ContentFormat` in `context`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:543:42
+    |
+543 |             format: Some(crate::context::ContentFormat::Text),
+    |                                          ^^^^^^^^^^^^^ could not find `ContentFormat` in `context`
+    |
+help: consider importing one of these enums
+    |
+10  + use crate::domain::image::ContentFormat;
+    |
+10  + use crate::domain::voice::audio::ContentFormat;
+    |
+10  + use crate::image::ContentFormat;
+    |
+10  + use crate::voice::audio::ContentFormat;
+    |
+help: if you import `ContentFormat`, refer to it directly
+    |
+543 -             format: Some(crate::context::ContentFormat::Text),
+543 +             format: Some(ContentFormat::Text),
+    |
+
+error[E0433]: failed to resolve: could not find `ContentFormat` in `context`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:720:74
+    |
+720 | ...                   format: Some(crate::context::ContentFormat::Text),
+    |                                                    ^^^^^^^^^^^^^ could not find `ContentFormat` in `context`
+    |
+help: consider importing one of these enums
+    |
+10  + use crate::domain::image::ContentFormat;
+    |
+10  + use crate::domain::voice::audio::ContentFormat;
+    |
+10  + use crate::image::ContentFormat;
+    |
+10  + use crate::voice::audio::ContentFormat;
+    |
+help: if you import `ContentFormat`, refer to it directly
+    |
+720 -                                             format: Some(crate::context::ContentFormat::Text),
+720 +                                             format: Some(ContentFormat::Text),
+    |
+
+error[E0433]: failed to resolve: could not find `ContentFormat` in `context`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:829:78
+    |
+829 | ...                   format: Some(crate::context::ContentFormat::Text),
+    |                                                    ^^^^^^^^^^^^^ could not find `ContentFormat` in `context`
+    |
+help: consider importing one of these enums
+    |
+10  + use crate::domain::image::ContentFormat;
+    |
+10  + use crate::domain::voice::audio::ContentFormat;
+    |
+10  + use crate::image::ContentFormat;
+    |
+10  + use crate::voice::audio::ContentFormat;
+    |
+help: if you import `ContentFormat`, refer to it directly
+    |
+829 -                                                 format: Some(crate::context::ContentFormat::Text),
+829 +                                                 format: Some(ContentFormat::Text),
+    |
+
+error[E0412]: cannot find type `CandleModelCapabilities` in module `crate::model::capabilities`
+   --> packages/fluent-ai-candle/src/domain/model/info.rs:165:66
+    |
+165 |     pub fn to_capabilities(&self) -> crate::model::capabilities::CandleModelCapabilities {
+    |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: packages/fluent-ai-candle/src/model/capabilities.rs:59:1
+    |
+59  | pub struct ModelCapabilities {
+    | ---------------------------- similarly named struct `ModelCapabilities` defined here
+    |
+help: a struct with a similar name exists
+    |
+165 -     pub fn to_capabilities(&self) -> crate::model::capabilities::CandleModelCapabilities {
+165 +     pub fn to_capabilities(&self) -> crate::model::capabilities::ModelCapabilities {
+    |
+help: consider importing this struct through its public re-export
+    |
+5   + use crate::CandleModelCapabilities;
+    |
+help: if you import `CandleModelCapabilities`, refer to it directly
+    |
+165 -     pub fn to_capabilities(&self) -> crate::model::capabilities::CandleModelCapabilities {
+165 +     pub fn to_capabilities(&self) -> CandleModelCapabilities {
+    |
+
+error[E0422]: cannot find struct, variant or union type `CandleModelCapabilities` in module `crate::model::capabilities`
+   --> packages/fluent-ai-candle/src/domain/model/info.rs:166:37
+    |
+166 |         crate::model::capabilities::CandleModelCapabilities {
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: packages/fluent-ai-candle/src/model/capabilities.rs:59:1
+    |
+59  | pub struct ModelCapabilities {
+    | ---------------------------- similarly named struct `ModelCapabilities` defined here
+    |
+help: a struct with a similar name exists
+    |
+166 -         crate::model::capabilities::CandleModelCapabilities {
+166 +         crate::model::capabilities::ModelCapabilities {
+    |
+help: consider importing this struct through its public re-export
+    |
+5   + use crate::CandleModelCapabilities;
+    |
+help: if you import `CandleModelCapabilities`, refer to it directly
+    |
+166 -         crate::model::capabilities::CandleModelCapabilities {
+166 +         CandleModelCapabilities {
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+  --> packages/fluent-ai-candle/src/domain/model/registry.rs:23:15
+   |
+23 |     fn new<M: CandleModel + 'static>(model: M) -> Self {
+   |               ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this trait through its public re-export
+   |
+3  + use crate::domain::CandleModel;
+   |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+  --> packages/fluent-ai-candle/src/domain/model/registry.rs:34:20
+   |
+34 |     fn as_model<M: CandleModel + 'static>(&self) -> Option<&M> {
+   |                    ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this trait through its public re-export
+   |
+3  + use crate::domain::CandleModel;
+   |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+  --> packages/fluent-ai-candle/src/domain/model/registry.rs:84:24
+   |
+84 |     pub fn register<M: CandleModel + 'static>(
+   |                        ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this trait through its public re-export
+   |
+3  + use crate::domain::CandleModel;
+   |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+  --> packages/fluent-ai-candle/src/domain/model/registry.rs:88:10
+   |
+88 |     ) -> CandleResult<RegisteredModel<M>> {
+   |          ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this type alias through its public re-export
+   |
+3  + use crate::domain::model::CandleResult;
+   |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:100:24
+    |
+100 |             return Err(CandleModelError::ModelAlreadyExists {
+    |                        ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:131:19
+    |
+131 |     pub fn get<M: CandleModel + 'static>(
+    |                   ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:135:10
+    |
+135 |     ) -> CandleResult<Option<RegisteredModel<M>>> {
+    |          ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this type alias through its public re-export
+    |
+3   + use crate::domain::model::CandleResult;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:146:24
+    |
+146 |             return Err(CandleModelError::InvalidConfiguration(
+    |                        ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:164:28
+    |
+164 |     pub fn get_required<M: CandleModel + 'static>(
+    |                            ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:168:10
+    |
+168 |     ) -> CandleResult<RegisteredModel<M>> {
+    |          ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this type alias through its public re-export
+    |
+3   + use crate::domain::model::CandleResult;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:170:28
+    |
+170 |             .ok_or_else(|| CandleModelError::ModelNotFound {
+    |                            ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:179:24
+    |
+179 |     pub fn find_all<M: CandleModel + 'static>(&self) -> Vec<RegisteredModel<M>> {
+    |                        ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:213:10
+    |
+213 |     ) -> CandleResult<Option<Arc<T>>>
+    |          ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this type alias through its public re-export
+    |
+3   + use crate::domain::model::CandleResult;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:229:21
+    |
+229 |                 Err(CandleModelError::InvalidConfiguration(
+    |                     ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:233:25
+    |
+233 |             None => Err(CandleModelError::InvalidConfiguration(
+    |                         ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:254:10
+    |
+254 |     ) -> CandleResult<Option<Box<T>>>
+    |          ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this type alias through its public re-export
+    |
+3   + use crate::domain::model::CandleResult;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:268:13
+    |
+268 |         Err(CandleModelError::InvalidConfiguration(Cow::Owned(format!(
+    |             ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:286:10
+    |
+286 |     ) -> CandleResult<Arc<T>>
+    |          ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this type alias through its public re-export
+    |
+3   + use crate::domain::model::CandleResult;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:291:28
+    |
+291 |             .ok_or_else(|| CandleModelError::ModelNotFound {
+    |                            ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0412]: cannot find type `CandleResult` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:308:10
+    |
+308 |     ) -> CandleResult<Box<T>>
+    |          ^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this type alias through its public re-export
+    |
+3   + use crate::domain::model::CandleResult;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `CandleModelError`
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:313:28
+    |
+313 |             .ok_or_else(|| CandleModelError::ModelNotFound {
+    |                            ^^^^^^^^^^^^^^^^ use of undeclared type `CandleModelError`
+    |
+help: consider importing this enum through its public re-export
+    |
+3   + use crate::domain::model::CandleModelError;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:323:31
+    |
+323 | pub struct RegisteredModel<M: CandleModel + 'static> {
+    |                               ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:327:9
+    |
+327 | impl<M: CandleModel + 'static> Clone for RegisteredModel<M> {
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:335:9
+    |
+335 | impl<M: CandleModel + 'static> std::ops::Deref for RegisteredModel<M> {
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:345:9
+    |
+345 | impl<M: CandleModel + 'static> AsRef<M> for RegisteredModel<M> {
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:353:9
+    |
+353 | impl<M: CandleModel + 'static> std::fmt::Debug for RegisteredModel<M> {
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:362:9
+    |
+362 | impl<M: CandleModel + 'static> PartialEq for RegisteredModel<M> {
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:368:9
+    |
+368 | impl<M: CandleModel + 'static> Eq for RegisteredModel<M> {}
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0405]: cannot find trait `CandleModel` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/registry.rs:370:9
+    |
+370 | impl<M: CandleModel + 'static> Hash for RegisteredModel<M> {
+    |         ^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this trait through its public re-export
+    |
+3   + use crate::domain::CandleModel;
+    |
+
+error[E0412]: cannot find type `Usage` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/traits.rs:162:23
+    |
+162 |     pub usage: Option<Usage>}
+    |                       ^^^^^ not found in this scope
+    |
+help: consider importing one of these items
+    |
+3   + use crate::domain::usage::Usage;
+    |
+3   + use crate::model::Usage;
+    |
+
+error[E0412]: cannot find type `Usage` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/traits.rs:196:23
+    |
+196 |     pub usage: Option<Usage>}
+    |                       ^^^^^ not found in this scope
+    |
+help: consider importing one of these items
+    |
+3   + use crate::domain::usage::Usage;
+    |
+3   + use crate::model::Usage;
+    |
+
+error[E0405]: cannot find trait `Model` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/traits.rs:211:34
+    |
+211 | pub trait TextGenerationCapable: Model {
+    |                                  ^^^^^ not found in this scope
+    |
+help: consider importing one of these traits
+    |
+3   + use crate::model::Model;
+    |
+3   + use tokenizers::Model;
+    |
+
+error[E0405]: cannot find trait `Model` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/traits.rs:229:34
+    |
+229 | pub trait ChatCompletionCapable: Model {
+    |                                  ^^^^^ not found in this scope
+    |
+help: consider importing one of these traits
+    |
+3   + use crate::model::Model;
+    |
+3   + use tokenizers::Model;
+    |
+
+error[E0405]: cannot find trait `Model` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/traits.rs:252:29
+    |
+252 | pub trait EmbeddingCapable: Model {
+    |                             ^^^^^ not found in this scope
+    |
+help: consider importing one of these traits
+    |
+3   + use crate::model::Model;
+    |
+3   + use tokenizers::Model;
+    |
+
+error[E0405]: cannot find trait `Model` in this scope
+   --> packages/fluent-ai-candle/src/domain/model/traits.rs:278:24
+    |
+278 | pub trait FineTunable: Model {
+    |                        ^^^^^ not found in this scope
+    |
+help: consider importing one of these traits
+    |
+3   + use crate::model::Model;
+    |
+3   + use tokenizers::Model;
+    |
+
+error[E0412]: cannot find type `McpError` in this scope
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:221:77
+    |
+221 |     pub async fn call_tool(&self, name: &str, args: Value) -> Result<Value, McpError> {
+    |                                                                             ^^^^^^^^ not found in this scope
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `McpError`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:235:66
+    |
+235 |         serde_json::to_writer(&mut buffer, &request).map_err(|_| McpError::SerializationFailed)?;
+    |                                                                  ^^^^^^^^ use of undeclared type `McpError`
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `McpError`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:241:28
+    |
+241 |                 return Err(McpError::Timeout);
+    |                            ^^^^^^^^ use of undeclared type `McpError`
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `McpError`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:247:30
+    |
+247 |                 .map_err(|_| McpError::SerializationFailed)?;
+    |                              ^^^^^^^^ use of undeclared type `McpError`
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `McpError`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:251:32
+    |
+251 |                     return Err(McpError::ExecutionFailed(error.message));
+    |                                ^^^^^^^^ use of undeclared type `McpError`
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `McpError`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:254:46
+    |
+254 |                 return response.result.ok_or(McpError::InvalidResponse);
+    |                                              ^^^^^^^^ use of undeclared type `McpError`
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0412]: cannot find type `Tool` in module `super::types`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:282:64
+    |
+282 |     pub async fn list_tools(&self) -> Result<Vec<super::types::Tool>, McpError> {
+    |                                                                ^^^^ not found in `super::types`
+    |
+help: consider importing one of these items
+    |
+8   + use crate::tool::Tool;
+    |
+8   + use crate::tool::traits::Tool;
+    |
+8   + use crate::tool::types::Tool;
+    |
+help: if you import `Tool`, refer to it directly
+    |
+282 -     pub async fn list_tools(&self) -> Result<Vec<super::types::Tool>, McpError> {
+282 +     pub async fn list_tools(&self) -> Result<Vec<Tool>, McpError> {
+    |
+
+error[E0412]: cannot find type `McpError` in this scope
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:282:71
+    |
+282 |     pub async fn list_tools(&self) -> Result<Vec<super::types::Tool>, McpError> {
+    |                                                                       ^^^^^^^^ not found in this scope
+    |
+help: consider importing this enum through its public re-export
+    |
+8   + use crate::tool::McpError;
+    |
+
+error[E0412]: cannot find type `Tool` in module `super::types`
+   --> packages/fluent-ai-candle/src/domain/tool/mcp.rs:289:76
+    |
+289 |                 if let Ok(parsed) = serde_json::from_value::<super::types::Tool>(tool.clone()) {
+    |                                                                            ^^^^ not found in `super::types`
+    |
+help: consider importing one of these items
+    |
+8   + use crate::tool::Tool;
+    |
+8   + use crate::tool::traits::Tool;
+    |
+8   + use crate::tool::types::Tool;
+    |
+help: if you import `Tool`, refer to it directly
+    |
+289 -                 if let Ok(parsed) = serde_json::from_value::<super::types::Tool>(tool.clone()) {
+289 +                 if let Ok(parsed) = serde_json::from_value::<Tool>(tool.clone()) {
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `TypeId`
+   --> packages/fluent-ai-candle/src/model/registry.rs:173:23
+    |
+173 |         let type_id = TypeId::of::<M>();
+    |                       ^^^^^^ use of undeclared type `TypeId`
+    |
+help: consider importing this struct
+    |
+3   + use std::any::TypeId;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `TypeId`
+   --> packages/fluent-ai-candle/src/model/registry.rs:244:23
+    |
+244 |         let type_id = TypeId::of::<M>();
+    |                       ^^^^^^ use of undeclared type `TypeId`
+    |
+help: consider importing this struct
+    |
+3   + use std::any::TypeId;
+    |
+
+error[E0603]: module `cognitive` is private
+  --> packages/fluent-ai-candle/src/domain/memory/config/memory.rs:9:20
+   |
+9  | use crate::memory::cognitive::{CognitiveMemoryConfig, CognitiveProcessorConfig};
+   |                    ^^^^^^^^^ private module
+   |
+note: the module `cognitive` is defined here
+  --> packages/fluent-ai-candle/src/memory/mod.rs:10:1
+   |
+10 | mod cognitive;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `std::fmt`
+ --> packages/fluent-ai-candle/src/builders/agent_role.rs:4:5
+  |
+4 | use std::fmt;
+  |     ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `agent::CandleAgent`
+  --> packages/fluent-ai-candle/src/builders/agent_role.rs:13:5
+   |
+13 |     agent::CandleAgent,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `CandleValidationResult as ValidationResult` and `MAX_CHUNK_SIZE`
+  --> packages/fluent-ai-candle/src/builders/completion/completion_request_builder.rs:10:17
+   |
+10 |         types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, CandleToolDefinition as ToolDefinition}
+   |                 ^^^^^^^^^^^^^^
+11 |     },
+12 |     model::{CandleValidationError as ValidationError, CandleValidationResult as ValidationResult}
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `hashbrown::HashMap`
+  --> packages/fluent-ai-candle/src/domain/agent/role.rs:12:5
+   |
+12 | use hashbrown::HashMap;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `Stdio` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `Stdio` in the type namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `Stdio` in the value namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `Stdio` in the value namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `AgentRoleAgent` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `AgentRoleAgent` in the type namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `AgentRoleAgent` in the value namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `AgentRoleAgent` in the value namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `AgentConversation` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `AgentConversation` in the type namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `AgentConversationMessage` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `AgentConversationMessage` in the type namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `ContextArgs` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `ContextArgs` in the type namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `ToolArgs` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `ToolArgs` in the type namespace is also re-exported here
+
+warning: ambiguous glob re-exports
+  --> packages/fluent-ai-candle/src/domain/agent/mod.rs:13:9
+   |
+13 | pub use role::*;
+   |         ^^^^^^^ the name `ConversationHistoryArgs` in the type namespace is first re-exported here
+14 | pub use types::*;
+   |         -------- but the name `ConversationHistoryArgs` in the type namespace is also re-exported here
+
+warning: unused import: `self`
+  --> packages/fluent-ai-candle/src/domain/chat/commands/execution.rs:13:20
+   |
+13 | use super::types::{self, CandleCommandError, *};
+   |                    ^^^^
+
+warning: unused imports: `CommandRegistryStats as TypesCommandRegistryStats`, `ImmutableChatCommand`, and `self`
+  --> packages/fluent-ai-candle/src/domain/chat/commands/registry.rs:11:20
+   |
+11 | use super::types::{self, CandleCommandError, CommandInfo, CommandRegistryStats as TypesCommandRegistryStats, ImmutableChatCommand};
+   |                    ^^^^                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::types::CandleMessage`
+ --> packages/fluent-ai-candle/src/domain/chat/message/message_processing.rs:9:5
+  |
+9 | use super::types::CandleMessage;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::request::CompletionRequest`
+ --> packages/fluent-ai-candle/src/domain/completion/core.rs:7:5
+  |
+7 | use super::request::CompletionRequest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::response::CompletionResponse`
+ --> packages/fluent-ai-candle/src/domain/completion/core.rs:8:5
+  |
+8 | use super::response::CompletionResponse;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NonZeroU8`
+ --> packages/fluent-ai-candle/src/domain/completion/types.rs:5:28
+  |
+5 | use std::num::{NonZeroU64, NonZeroU8};
+  |                            ^^^^^^^^^
+
+warning: unused imports: `CandleValidationError` and `CandleValidationResult`
+  --> packages/fluent-ai-candle/src/domain/completion/types.rs:11:28
+   |
+11 | use crate::domain::model::{CandleValidationError, CandleValidationResult};
+   |                            ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `CognitiveMemoryConfig` and `CognitiveProcessorConfig`
+ --> packages/fluent-ai-candle/src/domain/memory/cognitive/mod.rs:5:22
+  |
+5 |     CognitiveMemory, CognitiveMemoryConfig, CognitiveProcessor, CognitiveProcessorConfig};
+  |                      ^^^^^^^^^^^^^^^^^^^^^                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `AsyncTask` and `spawn_task`
+ --> packages/fluent-ai-candle/src/providers/kimi_k2.rs:8:18
+  |
+8 |     AsyncStream, AsyncTask, spawn_task,
+  |                  ^^^^^^^^^  ^^^^^^^^^^
+
+warning: unnecessary parentheses around `match` scrutinee expression
+   --> packages/fluent-ai-candle/src/providers/kimi_k2.rs:528:47
+    |
+528 |                     let scaled_logits = match (&last_logits / config.temperature) {
+    |                                               ^                                 ^
+    |
+    = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+    |
+528 -                     let scaled_logits = match (&last_logits / config.temperature) {
+528 +                     let scaled_logits = match &last_logits / config.temperature {
+    |
+
+warning: unused import: `Encoding`
+  --> packages/fluent-ai-candle/src/providers/tokenizer.rs:11:29
+   |
+11 | use tokenizers::{Tokenizer, Encoding};
+   |                             ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> packages/domain/src/completion/request.rs:55:20
+   |
+52 |       pub fn validate(&self) -> ValidationResult<()> {
+   |                                 -------------------- expected `model_validation::ValidationResult` because of return type
+...
+55 |               return Err(ValidationError::InvalidRange {
+   |  ____________________^
+56 | |                 field: "temperature".into(),
+57 | |                 value: self.temperature.to_string(),
+58 | |                 expected: format!(
+...  |
+61 | |                     TEMPERATURE_RANGE.end()
+62 | |                 )});
+   | |___________________^ expected `ValidationResult`, found `Result<_, ValidationError>`
+   |
+   = note: expected struct `model_validation::ValidationResult`
+                found enum `std::result::Result<_, model::validation::ValidationError>`
+
+error[E0308]: mismatched types
+  --> packages/domain/src/completion/request.rs:85:9
+   |
+52 |     pub fn validate(&self) -> ValidationResult<()> {
+   |                               -------------------- expected `model_validation::ValidationResult` because of return type
+...
+85 |         Ok(())
+   |         ^^^^^^ expected `ValidationResult`, found `Result<(), _>`
+   |
+   = note: expected struct `model_validation::ValidationResult`
+                found enum `std::result::Result<(), _>`
+
+error[E0308]: mismatched types
+  --> packages/domain/src/completion/types.rs:52:20
+   |
+50 |       pub fn with_temperature(mut self, temperature: f64) -> ValidationResult<Self> {
+   |                                                              ---------------------- expected `model_validation::ValidationResult` because of return type
+51 |           if !TEMPERATURE_RANGE.contains(&temperature) {
+52 |               return Err(ValidationError::InvalidRange {
+   |  ____________________^
+53 | |                 field: "temperature".into(),
+54 | |                 value: temperature.to_string(),
+55 | |                 expected: format!(
+...  |
+58 | |                     TEMPERATURE_RANGE.end()
+59 | |                 )});
+   | |___________________^ expected `ValidationResult`, found `Result<_, ValidationError>`
+   |
+   = note: expected struct `model_validation::ValidationResult`
+                found enum `std::result::Result<_, model::validation::ValidationError>`
+
+error[E0308]: mismatched types
+  --> packages/domain/src/completion/types.rs:62:9
+   |
+50 |     pub fn with_temperature(mut self, temperature: f64) -> ValidationResult<Self> {
+   |                                                            ---------------------- expected `model_validation::ValidationResult` because of return type
+...
+62 |         Ok(self)
+   |         ^^^^^^^^ expected `ValidationResult`, found `Result<CompletionParams, _>`
+   |
+   = note: expected struct `model_validation::ValidationResult`
+                found enum `std::result::Result<CompletionParams, _>`
+
+error[E0782]: expected a type, found a trait
+  --> packages/fluent-ai-candle/src/domain/agent/role.rs:72:40
+   |
+72 |     completion_provider: ZeroOneOrMany<CandleCompletionModel>,
+   |                                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+72 |     completion_provider: ZeroOneOrMany<dyn CandleCompletionModel>,
+   |                                        +++
+
+error[E0107]: missing generics for struct `domain::context::provider::CandleContext`
+   --> packages/fluent-ai-candle/src/domain/agent/role.rs:79:29
+    |
+79  |     contexts: ZeroOneOrMany<CandleContext>,
+    |                             ^^^^^^^^^^^^^ expected 1 generic argument
+    |
+note: struct defined here, with 1 generic parameter: `T`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:622:12
+    |
+622 | pub struct CandleContext<T> {
+    |            ^^^^^^^^^^^^^ -
+help: add missing generic argument
+    |
+79  |     contexts: ZeroOneOrMany<CandleContext<T>>,
+    |                                          +++
+
+error[E0107]: missing generics for struct `domain::tool::core::CandleTool`
+  --> packages/fluent-ai-candle/src/domain/agent/role.rs:81:26
+   |
+81 |     tools: ZeroOneOrMany<CandleTool>,
+   |                          ^^^^^^^^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> packages/fluent-ai-candle/src/domain/tool/core.rs:53:12
+   |
+53 | pub struct CandleTool<T> {
+   |            ^^^^^^^^^^ -
+help: add missing generic argument
+   |
+81 |     tools: ZeroOneOrMany<CandleTool<T>>,
+   |                                    +++
+
+error[E0107]: missing generics for struct `domain::context::provider::CandleContext`
+   --> packages/fluent-ai-candle/src/domain/agent/role.rs:258:50
+    |
+258 |     fn add_to(self, contexts: &mut ZeroOneOrMany<CandleContext>);
+    |                                                  ^^^^^^^^^^^^^ expected 1 generic argument
+    |
+note: struct defined here, with 1 generic parameter: `T`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:622:12
+    |
+622 | pub struct CandleContext<T> {
+    |            ^^^^^^^^^^^^^ -
+help: add missing generic argument
+    |
+258 |     fn add_to(self, contexts: &mut ZeroOneOrMany<CandleContext<T>>);
+    |                                                               +++
+
+error[E0107]: missing generics for struct `domain::tool::core::CandleTool`
+   --> packages/fluent-ai-candle/src/domain/agent/role.rs:264:47
+    |
+264 |     fn add_to(self, tools: &mut ZeroOneOrMany<CandleTool>);
+    |                                               ^^^^^^^^^^ expected 1 generic argument
+    |
+note: struct defined here, with 1 generic parameter: `T`
+   --> packages/fluent-ai-candle/src/domain/tool/core.rs:53:12
+    |
+53  | pub struct CandleTool<T> {
+    |            ^^^^^^^^^^ -
+help: add missing generic argument
+    |
+264 |     fn add_to(self, tools: &mut ZeroOneOrMany<CandleTool<T>>);
+    |                                                         +++
+
+error[E0107]: missing generics for struct `domain::context::provider::CandleContext`
+   --> packages/fluent-ai-candle/src/domain/agent/types.rs:127:50
+    |
+127 |     fn add_to(self, contexts: &mut ZeroOneOrMany<Context>);
+    |                                                  ^^^^^^^ expected 1 generic argument
+    |
+note: struct defined here, with 1 generic parameter: `T`
+   --> packages/fluent-ai-candle/src/domain/context/provider.rs:622:12
+    |
+622 | pub struct CandleContext<T> {
+    |            ^^^^^^^^^^^^^ -
+help: add missing generic argument
+    |
+127 |     fn add_to(self, contexts: &mut ZeroOneOrMany<Context<T>>);
+    |                                                         +++
+
+error[E0107]: missing generics for struct `domain::tool::core::CandleTool`
+   --> packages/fluent-ai-candle/src/domain/agent/types.rs:133:47
+    |
+133 |     fn add_to(self, tools: &mut ZeroOneOrMany<Tool>);
+    |                                               ^^^^ expected 1 generic argument
+    |
+note: struct defined here, with 1 generic parameter: `T`
+   --> packages/fluent-ai-candle/src/domain/tool/core.rs:53:12
+    |
+53  | pub struct CandleTool<T> {
+    |            ^^^^^^^^^^ -
+help: add missing generic argument
+    |
+133 |     fn add_to(self, tools: &mut ZeroOneOrMany<Tool<T>>);
+    |                                                   +++
+
+error[E0631]: type mismatch in function arguments
+  --> packages/fluent-ai-candle/src/builders/agent_role.rs:49:9
+   |
+49 |     F1: FnMut(String) + Send + 'static,
+   |         ^^^^^^^^^^^^^
+   |         |
+   |         expected due to this
+   |         found signature defined here
+   |
+   = note: expected function signature `fn(std::string::String) -> _`
+              found function signature `fn(&mut std::string::String) -> _`
+
+error[E0631]: type mismatch in function arguments
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:135:9
+    |
+135 |     F1: FnMut(String) + Send + 'static,
+    |         ^^^^^^^^^^^^^
+    |         |
+    |         expected due to this
+    |         found signature defined here
+    |
+    = note: expected function signature `fn(std::string::String) -> _`
+               found function signature `fn(&mut std::string::String) -> _`
+
+error[E0631]: type mismatch in function arguments
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:42:9
+    |
+42  |         CandleAgentRoleBuilderImpl::new(name)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         |
+    |         expected due to this
+    |         found signature defined here
+    |
+    = note: expected function signature `fn(std::string::String) -> _`
+               found function signature `fn(&mut std::string::String) -> _`
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:135:9
+    |
+133 | struct CandleAgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+134 | where
+135 |     F1: FnMut(String) + Send + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+
+error[E0631]: type mismatch in function arguments
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:185:9
+    |
+185 |         Self::new(name)
+    |         ^^^^^^^^^^^^^^^
+    |         |
+    |         expected due to this
+    |         found signature defined here
+    |
+    = note: expected function signature `fn(std::string::String) -> _`
+               found function signature `fn(&mut std::string::String) -> _`
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:135:9
+    |
+133 | struct CandleAgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+134 | where
+135 |     F1: FnMut(String) + Send + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+
+error[E0631]: type mismatch in function arguments
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:409:12
+    |
+409 |     inner: CandleAgentRoleBuilderImpl,
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |            |
+    |            expected due to this
+    |            found signature defined here
+    |
+    = note: expected function signature `fn(std::string::String) -> _`
+               found function signature `fn(&mut std::string::String) -> _`
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:135:9
+    |
+133 | struct CandleAgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+134 | where
+135 |     F1: FnMut(String) + Send + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+
+error[E0631]: type mismatch in function arguments
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:648:12
+    |
+648 |     inner: CandleAgentRoleBuilderImpl,
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |            |
+    |            expected due to this
+    |            found signature defined here
+    |
+    = note: expected function signature `fn(std::string::String) -> _`
+               found function signature `fn(&mut std::string::String) -> _`
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:135:9
+    |
+133 | struct CandleAgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+134 | where
+135 |     F1: FnMut(String) + Send + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+
+error[E0631]: type mismatch in function arguments
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:880:12
+    |
+880 |     inner: CandleAgentRoleBuilderImpl,
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |            |
+    |            expected due to this
+    |            found signature defined here
+    |
+    = note: expected function signature `fn(std::string::String) -> _`
+               found function signature `fn(&mut std::string::String) -> _`
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/fluent-ai-candle/src/builders/agent_role.rs:135:9
+    |
+133 | struct CandleAgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+134 | where
+135 |     F1: FnMut(String) + Send + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1156:1
+     |
+1156 | impl From<[(&'static str, &'static str); 1]> for hashbrown::HashMap<&'static str, &'static str> {
+     | ^^^^^---------------------------------------^^^^^----------------------------------------------
+     |      |                                           |
+     |      |                                           `hashbrown::HashMap` is not defined in the current crate
+     |      this is not defined in the current crate because this is a foreign trait
+     |
+     = note: impl doesn't have any local type before any uncovered type parameters
+     = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+     = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1165:1
+     |
+1165 | impl From<[(&'static str, &'static str); 2]> for hashbrown::HashMap<&'static str, &'static str> {
+     | ^^^^^---------------------------------------^^^^^----------------------------------------------
+     |      |                                           |
+     |      |                                           `hashbrown::HashMap` is not defined in the current crate
+     |      this is not defined in the current crate because this is a foreign trait
+     |
+     = note: impl doesn't have any local type before any uncovered type parameters
+     = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+     = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1175:1
+     |
+1175 | impl From<[(&'static str, &'static str); 3]> for hashbrown::HashMap<&'static str, &'static str> {
+     | ^^^^^---------------------------------------^^^^^----------------------------------------------
+     |      |                                           |
+     |      |                                           `hashbrown::HashMap` is not defined in the current crate
+     |      this is not defined in the current crate because this is a foreign trait
+     |
+     = note: impl doesn't have any local type before any uncovered type parameters
+     = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+     = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1185:1
+     |
+1185 | impl From<[(&'static str, &'static str); 4]> for hashbrown::HashMap<&'static str, &'static str> {
+     | ^^^^^---------------------------------------^^^^^----------------------------------------------
+     |      |                                           |
+     |      |                                           `hashbrown::HashMap` is not defined in the current crate
+     |      this is not defined in the current crate because this is a foreign trait
+     |
+     = note: impl doesn't have any local type before any uncovered type parameters
+     = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+     = note: define and implement a trait or new type instead
+
+error[E0308]: mismatched types
+   --> packages/domain/src/model/model_registry.rs:165:17
+    |
+165 |                 provider,
+    |                 ^^^^^^^^ expected `Cow<'_, str>`, found `String`
+    |
+    = note: expected enum `Cow<'static, str>`
+             found struct `std::string::String`
+help: call `Into::into` on this expression to convert `std::string::String` into `Cow<'static, str>`
+    |
+165 |                 provider: provider.into(),
+    |                 +++++++++         +++++++
+
+error[E0308]: mismatched types
+   --> packages/domain/src/model/model_registry.rs:166:17
+    |
+166 |                 name,
+    |                 ^^^^ expected `Cow<'_, str>`, found `String`
+    |
+    = note: expected enum `Cow<'static, str>`
+             found struct `std::string::String`
+help: call `Into::into` on this expression to convert `std::string::String` into `Cow<'static, str>`
+    |
+166 |                 name: name.into(),
+    |                 +++++     +++++++
+
+error[E0046]: not all trait items implemented, missing: `prompt`
+   --> packages/fluent-ai-candle/src/providers/kimi_k2.rs:423:1
+    |
+423 | impl CandleCompletionModel for CandleKimiK2Provider {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `prompt` in implementation
+    |
+   ::: packages/fluent-ai-candle/src/domain/completion/core.rs:23:5
+    |
+23  |     fn prompt(&self, prompt: CandlePrompt, params: &CandleCompletionParams) -> AsyncStream<CandleCompletionChunk>;
+    |     -------------------------------------------------------------------------------------------------------------- `prompt` from trait
+
+error[E0433]: failed to resolve: use of undeclared type `CandleChatLoop`
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1030:17
+     |
+1030 |                 CandleChatLoop::Break => {
+     |                 ^^^^^^^^^^^^^^ use of undeclared type `CandleChatLoop`
+
+error[E0433]: failed to resolve: use of undeclared type `CandleChatLoop`
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1034:17
+     |
+1034 |                 CandleChatLoop::Reprompt(response) => {
+     |                 ^^^^^^^^^^^^^^ use of undeclared type `CandleChatLoop`
+
+error[E0433]: failed to resolve: use of undeclared type `CandleChatLoop`
+    --> packages/fluent-ai-candle/src/builders/agent_role.rs:1038:17
+     |
+1038 |                 CandleChatLoop::UserPrompt(prompt) => {
+     |                 ^^^^^^^^^^^^^^ use of undeclared type `CandleChatLoop`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:472:29
+    |
+472 |                 let error = ContextError::ValidationError(validation_error.to_string());
+    |                             ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextEvent`
+   --> packages/fluent-ai-candle/src/context/provider.rs:476:41
+    |
+476 |                     let _ = events.send(ContextEvent::ValidationFailed {
+    |                                         ^^^^^^^^^^^^ use of undeclared type `ContextEvent`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextEvent`
+   --> packages/fluent-ai-candle/src/context/provider.rs:493:45
+    |
+493 |                         let _ = events.send(ContextEvent::ContextLoadCompleted {
+    |                                             ^^^^^^^^^^^^ use of undeclared type `ContextEvent`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextEvent`
+   --> packages/fluent-ai-candle/src/context/provider.rs:504:45
+    |
+504 |                         let _ = events.send(ContextEvent::ContextLoadFailed {
+    |                                             ^^^^^^^^^^^^ use of undeclared type `ContextEvent`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:678:13
+    |
+678 |             ContextSourceType::File(file_context) => {
+    |             ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:683:21
+    |
+683 |                     ContextError::ContextNotFound("Invalid context type".to_string()),
+    |                     ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:701:19
+    |
+701 |         Self::new(ContextSourceType::Files(files_context))
+    |                   ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:710:21
+    |
+710 |                     ContextSourceType::Files(files_context) => {
+    |                     ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:750:37
+    |
+750 | ...                   ContextError::ContextNotFound(format!(
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:761:29
+    |
+761 | ...                   ContextError::ContextNotFound("Invalid context type".to_string()),
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:783:19
+    |
+783 |         Self::new(ContextSourceType::Directory(directory_context))
+    |                   ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:792:21
+    |
+792 |                     ContextSourceType::Directory(directory_context) => {
+    |                     ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:884:37
+    |
+884 | ...                   ContextError::ContextNotFound(format!(
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:895:29
+    |
+895 | ...                   ContextError::ContextNotFound("Invalid context type".to_string()),
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:917:19
+    |
+917 |         Self::new(ContextSourceType::Github(github_context))
+    |                   ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextSourceType`
+   --> packages/fluent-ai-candle/src/context/provider.rs:926:21
+    |
+926 |                     ContextSourceType::Github(github_context) => {
+    |                     ^^^^^^^^^^^^^^^^^ use of undeclared type `ContextSourceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:930:33
+    |
+930 | ...                   ContextError::ContextNotFound(
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:940:29
+    |
+940 | ...                   ContextError::ContextNotFound(format!(
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ContextError`
+   --> packages/fluent-ai-candle/src/context/provider.rs:952:29
+    |
+952 | ...                   ContextError::ContextNotFound("Invalid context type".to_string()),
+    |                       ^^^^^^^^^^^^ use of undeclared type `ContextError`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigurationChangeType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1023:30
+     |
+1023 |                 change_type: ConfigurationChangeType::Update,
+     |                              ^^^^^^^^^^^^^^^^^^^^^^^
+     |                              |
+     |                              use of undeclared type `ConfigurationChangeType`
+     |                              help: an enum with a similar name exists: `CandleConfigurationChangeType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1067:34
+     |
+1067 |                     update_type: ConfigUpdateType::ValidationCompleted,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1077:34
+     |
+1077 |                     update_type: ConfigUpdateType::ValidationCompleted,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1105:34
+     |
+1105 |                     update_type: ConfigUpdateType::ValidatorRegistered,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `PersistenceType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1132:39
+     |
+1132 |                     persistence_type: PersistenceType::Manual,
+     |                                       ^^^^^^^^^^^^^^^ use of undeclared type `PersistenceType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1153:34
+     |
+1153 |                     update_type: ConfigUpdateType::AutoSaveChecked,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1173:38
+     |
+1173 |                         update_type: ConfigUpdateType::AutoSaveExecuted,
+     |                                      ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1197:34
+     |
+1197 |                     update_type: ConfigUpdateType::SavedToFile,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1210:34
+     |
+1210 |                     update_type: ConfigUpdateType::SavedToFile,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1269:34
+     |
+1269 |                     update_type: ConfigUpdateType::LoadedFromFile,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `ConfigUpdateType`
+    --> packages/fluent-ai-candle/src/domain/chat/config.rs:1282:34
+     |
+1282 |                     update_type: ConfigUpdateType::LoadedFromFile,
+     |                                  ^^^^^^^^^^^^^^^^ use of undeclared type `ConfigUpdateType`
+
+error[E0433]: failed to resolve: use of undeclared type `DocumentMediaType`
+  --> packages/fluent-ai-candle/src/domain/context/document.rs:84:30
+   |
+84 |             media_type: Some(DocumentMediaType::TXT),
+   |                              ^^^^^^^^^^^^^^^^^ use of undeclared type `DocumentMediaType`
+
+Some errors have detailed explanations: E0046, E0107, E0117, E0405, E0407, E0412, E0422, E0425, E0432...
+For more information about an error, try `rustc --explain E0046`.
+warning: `fluent_ai_candle` (lib) generated 24 warnings
+error: could not compile `fluent_ai_candle` (lib) due to 267 previous errors; 24 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+warning: unused import: `ProviderTrait`
+  --> packages/domain/src/model/model_validation.rs:19:69
+   |
+19 | use model_info::{Provider, common::{ModelInfo as ModelInfoProvider, ProviderTrait}};
+   |                                                                     ^^^^^^^^^^^^^
+
+warning: unused variable: `provider`
+   --> packages/domain/src/model/model_registry.rs:353:25
+    |
+353 |         if let Some(ref provider) = filter.provider {
+    |                         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_provider`
+
+warning: unused variable: `config`
+   --> packages/domain/src/model/cache.rs:471:24
+    |
+471 |     pub fn with_config(config: CacheConfig) -> Self {
+    |                        ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+
+Some errors have detailed explanations: E0107, E0277, E0308.
+For more information about an error, try `rustc --explain E0107`.
+warning: `fluent_ai_domain` (lib) generated 14 warnings
+error: could not compile `fluent_ai_domain` (lib) due to 13 previous errors; 14 warnings emitted
+warning: `fluent_ai_domain` (lib) generated 14 warnings (14 duplicates)
+error: could not compile `fluent_ai_domain` (lib) due to 13 previous errors; 14 warnings emitted

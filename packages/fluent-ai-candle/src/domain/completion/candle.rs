@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 use thiserror::Error;
 use tokio_stream::Stream;
 
-use super::types::ModelParams;
+use super::types::CandleModelParams as ModelParams;
 // Removed unused imports: use super::{CompletionRequest, CompletionResponse, StreamingResponse};
 
 /// Maximum prompt size in bytes (4KB stack allocation)

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::database::DatabaseConfig;
 use super::vector::VectorStoreConfig;
-use crate::chat::config::ModelConfig;
+use crate::domain::chat::config::CandleModelConfig as ModelConfig;
 // Removed unused import: use crate::completion::CompletionModel;
 use crate::memory::cognitive::{CognitiveMemoryConfig, CognitiveProcessorConfig};
 

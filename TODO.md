@@ -1,4 +1,34 @@
-# FLUENT-AI ARCHITECTURAL IMPROVEMENTS
+# FLUENT-AI WARNINGS AND ERRORS
+
+## CRITICAL ERRORS (MUST FIX)
+
+1. **fluent_ai_http3**
+   - [ ] E0284: Type annotations needed for `AsyncStreamSender<T, _>` in `builder.rs` (multiple locations)
+   - [ ] E0277: The trait bound `AsyncStreamSender<T, _>: Send` is not satisfied in `builder.rs`
+   - [ ] E0308: Mismatched types in AsyncStream closure parameters
+   - [ ] E0283: Type annotations needed for const generic parameter `CAP` in AsyncStream
+
+2. **model-info build.rs**
+   - [ ] E0432: Unresolved import `proc_macro2`
+   - [ ] E0599: `HttpStream` is not an iterator (multiple locations)
+   - [ ] E0308: Mismatched types in HashMap (HeaderName vs String)
+
+3. **fluent-ai-candle**
+   - [ ] E0432: Unresolved import `crate::domain::completion::model`
+
+## WARNINGS (MUST FIX)
+
+1. **fluent_ai_domain** (185 warnings)
+   - [ ] Missing documentation for structs and fields
+   - [ ] Missing documentation for methods and associated functions
+   - [ ] Missing documentation for variants
+
+2. **fluent-ai-candle**
+   - [ ] Missing documentation for public items
+   - [ ] Unused imports and variables
+   - [ ] Dead code that needs implementation
+
+## FLUENT-AI ARCHITECTURAL IMPROVEMENTS
 
 **CRITICAL ARCHITECTURE UPGRADE** - Zero-allocation, zero-locking, zero-`dyn` implementation
 

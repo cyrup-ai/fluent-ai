@@ -2,8 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
-use fluent_ai_domain::chat::{
-    ChatMacro, MacroAction, MacroExecutionConfig, MacroMetadata, MacroSystemError
+use crate::domain::chat::{
+    CandleChatMacro as ChatMacro, 
+    CandleMacroAction as MacroAction, 
+    CandleMacroExecutionConfig as MacroExecutionConfig, 
+    CandleMacroMetadata as MacroMetadata, 
+    CandleMacroSystemError as MacroSystemError
 };
 
 /// Builder for creating macros programmatically

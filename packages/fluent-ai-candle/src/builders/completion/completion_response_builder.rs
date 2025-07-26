@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 use fluent_ai_async::AsyncStream;
-use fluent_ai_domain::{
-    completion::{CompletionResponse, CompactCompletionResponse},
-    model::Usage,
+use crate::domain::{
+    completion::{CandleCompletionResponse as CompletionResponse, CandleCompactCompletionResponse as CompactCompletionResponse},
+    model::{CandleUsage as Usage},
 };
 
 /// Builder for completion responses

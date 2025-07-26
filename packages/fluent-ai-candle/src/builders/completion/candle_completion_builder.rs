@@ -2,8 +2,8 @@ use std::sync::atomic::AtomicU32;
 use arrayvec::ArrayVec;
 use smallvec::SmallVec;
 use crate::domain::completion::{
-    CandleCompletionCoreRequest as CompletionCoreRequest, CandleCompletionCoreResponse as CompletionCoreResponse, 
-    CandleCompletionCoreResult as CompletionCoreResult, CandleCompletionCoreError as CompletionCoreError,
+    CompletionCoreRequest, CompletionCoreResponse, 
+    CompletionCoreResult, CompletionCoreError,
     types::CandleModelParams as ModelParams,
     candle::{MAX_PROMPT_SIZE, MAX_RESPONSE_SIZE, MAX_STOP_TOKENS, MAX_TOKEN_BUFFER}
 };

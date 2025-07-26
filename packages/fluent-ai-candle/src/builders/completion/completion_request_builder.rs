@@ -1,15 +1,15 @@
 use std::num::NonZeroU64;
 use serde_json::Value;
 use thiserror::Error;
-use fluent_ai_domain::{
-    ZeroOneOrMany,
-    chat::Message as ChatMessage,
-    context::Document,
+use crate::domain::{
+    CandleZeroOneOrMany as ZeroOneOrMany,
+    chat::{CandleMessage as ChatMessage},
+    context::{CandleDocument as Document},
     completion::{
-        CompletionRequest,
-        types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition}
+        CandleCompletionRequest as CompletionRequest,
+        types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, CandleToolDefinition as ToolDefinition}
     },
-    model::{ValidationError, ValidationResult}
+    model::{CandleValidationError as ValidationError, CandleValidationResult as ValidationResult}
 };
 
 /// Builder for completion requests

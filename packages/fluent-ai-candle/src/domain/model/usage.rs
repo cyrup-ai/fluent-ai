@@ -66,3 +66,6 @@ impl std::ops::AddAssign for CandleUsage {
         *self = self.add(&rhs);
     }
 }
+
+/// Type alias for backward compatibility
+pub type Usage = CandleUsage;

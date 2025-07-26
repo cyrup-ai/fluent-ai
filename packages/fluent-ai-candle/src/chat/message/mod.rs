@@ -297,7 +297,7 @@ pub mod processing {
 // Re-export commonly used types (MessageChunk and MessageRole are used throughout the codebase)
 pub use types::{Message, MessageChunk, MessageRole, MessageType, SearchChatMessage};
 pub use error::MessageError;
-pub use media::{MediaType, ImageMediaType, DocumentMediaType, AudioMediaType, VideoMediaType};
+pub use media::{CandleMediaType, CandleImageMediaType, CandleDocumentMediaType, CandleAudioMediaType, CandleVideoMediaType};
 
 // Import ToolCall from HTTP module for message processing
 pub use crate::http::{ToolCall, ToolCallType, FunctionCall};

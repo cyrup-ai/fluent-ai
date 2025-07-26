@@ -1,9 +1,13 @@
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tokio::sync::RwLock;
-use fluent_ai_domain::chat::{
-    EnhancedHistoryManager, ChatSearchIndex, ConversationTagger, 
-    HistoryExporter, HistoryManagerStatistics, SearchStatistics
+use crate::domain::chat::{
+    CandleEnhancedHistoryManager as EnhancedHistoryManager, 
+    CandleChatSearchIndex as ChatSearchIndex, 
+    CandleConversationTagger as ConversationTagger, 
+    CandleHistoryExporter as HistoryExporter, 
+    CandleHistoryManagerStatistics as HistoryManagerStatistics, 
+    CandleSearchStatistics as SearchStatistics
 };
 
 /// Builder for creating history managers

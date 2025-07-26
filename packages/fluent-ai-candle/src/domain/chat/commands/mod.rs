@@ -15,21 +15,21 @@ pub mod validation;
 // Global Candle command executor functionality
 use std::sync::{Arc, RwLock};
 
-pub use execution::CandleCommandExecutor;
+pub use execution::CommandExecutor;
 use once_cell::sync::Lazy;
-pub use parsing::{CandleCommandParser, CandleParseError, CandleParseResult};
-pub use registry::CandleCommandRegistry;
-pub use response::CandleResponseFormatter;
+pub use parsing::{CommandParser, ParseError, ParseResult};
+pub use registry::CommandRegistry;
+pub use response::ResponseFormatter;
 pub use types::*;
-pub use validation::CandleCommandValidator;
+pub use validation::CommandValidator;
 
 /// Global Candle command executor instance - PURE SYNC (no futures)
-static CANDLE_COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CandleCommandExecutor>>>> =
+static CANDLE_COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
 
 /// Initialize global Candle command executor - PURE SYNC (no futures)
 pub fn initialize_candle_command_executor(context: &CandleCommandContext) {
-    let executor = CandleCommandExecutor::with_context(context);
+    let executor = CommandExecutor::with_context(context);
     if let Ok(mut writer) = CANDLE_COMMAND_EXECUTOR.write() {
         *writer = Some(executor);
     }

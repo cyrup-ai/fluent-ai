@@ -100,7 +100,14 @@ pub use {
     // Model system
     model::{
         Capability, Model, ModelCapabilities, ModelInfo, ModelPerformance, Usage, UseCase,
-        ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity},
+        ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
+        // New model-info integration
+        UnifiedModelRegistry, ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
+        CacheStats, CacheConfig, BatchValidationResult, RegistryStats,
+        // Re-exported model-info types - REAL AI MODEL DATA
+        ModelInfoTrait, RealModelInfo, ModelInfoProviderTrait,
+        OpenAiModel, MistralModel, AnthropicModel, TogetherModel, OpenRouterModel, HuggingFaceModel, XaiModel
+        },
 
     // Prompt system
     prompt::Prompt,

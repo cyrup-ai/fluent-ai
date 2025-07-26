@@ -3,9 +3,9 @@
 //! All image construction logic and builder patterns with zero allocation.
 
 use std::marker::PhantomData;
-use fluent_ai_domain::AsyncStream;
-use fluent_ai_domain::chunk::ImageChunk;
-use fluent_ai_domain::image::{ContentFormat, Image, ImageDetail, ImageMediaType};
+use fluent_ai_async::AsyncStream;
+use crate::domain::context::CandleDocumentChunk as ImageChunk;
+use crate::image::{ContentFormat, Image, ImageDetail, ImageMediaType};
 
 /// Image builder trait - elegant zero-allocation builder pattern
 pub trait ImageBuilder: Sized {
@@ -196,11 +196,11 @@ where
         // Convert image data to bytes and create proper ImageChunk
         let data = image.data.as_bytes().to_vec();
         let format = match image.media_type.unwrap_or(ImageMediaType::PNG) {
-            ImageMediaType::PNG => fluent_ai_domain::chunk::ImageFormat::PNG,
-            ImageMediaType::JPEG => fluent_ai_domain::chunk::ImageFormat::JPEG,
-            ImageMediaType::GIF => fluent_ai_domain::chunk::ImageFormat::GIF,
-            ImageMediaType::WEBP => fluent_ai_domain::chunk::ImageFormat::WebP,
-            ImageMediaType::SVG => fluent_ai_domain::chunk::ImageFormat::PNG, // fallback
+            ImageMediaType::PNG => crate::domain::context::ImageFormat::PNG,
+            ImageMediaType::JPEG => crate::domain::context::ImageFormat::JPEG,
+            ImageMediaType::GIF => crate::domain::context::ImageFormat::GIF,
+            ImageMediaType::WEBP => crate::domain::context::ImageFormat::WebP,
+            ImageMediaType::SVG => crate::domain::context::ImageFormat::PNG, // fallback
         };
 
         let chunk = ImageChunk {
@@ -211,7 +211,7 @@ where
         };
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
-        fluent_ai_domain::async_task::AsyncStream::new(rx)
+        fluent_ai_async::AsyncStream::new(rx)
     }
     
     /// Process image - EXACT syntax: .process(|chunk| { ... })

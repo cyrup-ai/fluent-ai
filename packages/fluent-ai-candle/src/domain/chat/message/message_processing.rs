@@ -6,7 +6,7 @@
 // Removed unused import: use crate::error::ZeroAllocResult;
 use fluent_ai_async::AsyncStream;
 
-use super::types::Message;
+use super::types::CandleMessage;
 
 /// Processes a message before it's sent to the chat system using async streaming.
 ///

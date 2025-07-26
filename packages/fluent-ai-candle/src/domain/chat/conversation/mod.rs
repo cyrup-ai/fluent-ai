@@ -10,7 +10,7 @@ use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
 // REMOVED: use fluent_ai_async::AsyncStream::with_channel;
 use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
-use crate::domain::chat::message::CandleMessageRole;
+use crate::domain::chat::message::types::CandleMessageRole;
 
 /// Candle immutable message in a conversation
 #[derive(Debug, Clone, PartialEq, Eq)]

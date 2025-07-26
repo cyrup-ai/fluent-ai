@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::domain::completion::response::CandleCompletionResponse as CompletionResponse;
+use crate::domain::completion::CandleCompletionResponse as CompletionResponse;
 use crate::{AsyncStream, AsyncTask, spawn_task};
 
 /// Handle errors in streaming context without panicking

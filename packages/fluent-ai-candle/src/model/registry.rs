@@ -9,7 +9,7 @@ use ahash::RandomState;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
-use crate::model::error::{ModelError, Result};
+use crate::domain::model::error::{CandleModelError as ModelError, CandleModelResult as Result};
 use crate::model::info::ModelInfo;
 use crate::model::traits::Model;
 use crate::providers::CandleKimiK2Provider;
@@ -150,7 +150,7 @@ impl ModelRegistry {
         provider: &'static str,
         model: M,
     ) -> Result<RegisteredModel<M>> {
-        let handle = Arc::new(ModelHandle::new(model));
+        let handle = Arc::new(CandleModelHandle::new(model));
         let model_name = handle.info().name();
 
         // Get or create the provider's model map
@@ -385,7 +385,7 @@ impl ModelRegistry {
 /// This provides type-safe access to a registered model and ensures
 /// proper cleanup when the last reference is dropped.
 pub struct RegisteredModel<M: Model + 'static> {
-    handle: Arc<ModelHandle>,
+    handle: Arc<CandleModelHandle>,
     _marker: PhantomData<M>}
 
 impl<M: Model + 'static> Clone for RegisteredModel<M> {
@@ -446,6 +446,7 @@ mod tests {
     // Import ModelInfo::builder() from fluent-ai
     use fluent_ai::builders::ModelInfoBuilder;
 
+    #[derive(Debug)]
     struct TestModel {
         info: &'static ModelInfo}
 

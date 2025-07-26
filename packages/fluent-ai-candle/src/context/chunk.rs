@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use cyrup_sugars::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -160,7 +161,7 @@ pub enum CompletionChunk {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingChunk {
     /// The embedding vector
-    pub embeddings: crate::ZeroOneOrMany<f32>,
+    pub embeddings: ZeroOneOrMany<f32>,
 
     /// Index in the batch
     pub index: usize,

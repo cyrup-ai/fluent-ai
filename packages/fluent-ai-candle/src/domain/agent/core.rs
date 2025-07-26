@@ -7,9 +7,9 @@ use serde_json::Value;
 
 use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
 use crate::domain::context::CandleDocument as Document;
-use crate::domain::memory::config::memory::CandleMemoryConfig as ComprehensiveMemoryConfig;
-use crate::domain::memory::manager::CandleMemoryConfig as MemoryConfig;
-use crate::domain::memory::{CandleMemory as Memory, CandleMemoryError as MemoryError, CandleMemoryTool as MemoryTool, CandleMemoryToolError as MemoryToolError};
+use crate::domain::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
+use crate::domain::memory::manager::MemoryConfig;
+use crate::domain::memory::{Memory, Error as MemoryError, MemoryTool, MemoryToolError};
 use crate::domain::model::CandleModel as Model;
 use crate::domain::tool::CandleMcpToolData as McpToolData;
 

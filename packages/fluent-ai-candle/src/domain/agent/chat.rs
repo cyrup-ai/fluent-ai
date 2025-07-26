@@ -10,7 +10,7 @@ use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 // Removed unused import: use tokio_stream::StreamExt;
 
-use crate::domain::agent::role::CandleAgentRoleImpl as AgentRoleImpl;
+use crate::domain::agent::role::AgentRoleImpl;
 use crate::memory::primitives::{MemoryContent, MemoryTypeEnum};
 use crate::memory::{Memory, MemoryError, MemoryNode};
 use crate::memory::{MemoryTool, MemoryToolError};

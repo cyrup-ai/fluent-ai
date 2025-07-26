@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use std::marker::PhantomData;
 
 use crate::domain::context::{CandleLoader as Loader, CandleLoaderImpl as LoaderImpl};
-use crate::domain::{CandleZeroOneOrMany as ZeroOneOrMany};
-use fluent_ai_async::{AsyncTask, spawn_task as spawn_async};
+use crate::util::ZeroOneOrMany;
+use fluent_ai_async::{AsyncTask, spawn_task};
 
 /// Loader builder trait - elegant zero-allocation builder pattern
 pub trait LoaderBuilder<T>: Sized 
