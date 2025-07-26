@@ -869,54 +869,57 @@ impl ChatSearchIndex {
         let query_clone = query.clone();
 
         AsyncStream::with_channel(move |sender| {
-            for result in results {
-                let mut keep_result = true;
+            Box::pin(async move {
+                for result in results {
+                    let mut keep_result = true;
 
-                // Date range filter
-                if let Some(date_range) = &query_clone.date_range {
-                    if let Some(timestamp) = result.message.message.timestamp {
-                        if timestamp < date_range.start || timestamp > date_range.end {
+                    // Date range filter
+                    if let Some(date_range) = &query_clone.date_range {
+                        if let Some(timestamp) = result.message.message.timestamp {
+                            if timestamp < date_range.start || timestamp > date_range.end {
+                                keep_result = false;
+                            }
+                        } else {
                             keep_result = false;
                         }
-                    } else {
-                        keep_result = false;
                     }
-                }
 
-                // User filter
-                if keep_result {
-                    if let Some(user_filter) = &query_clone.user_filter {
-                    let role_filter = match user_filter.as_ref() {
-                        "system" => MessageRole::System,
-                        "user" => MessageRole::User,
-                        "assistant" => MessageRole::Assistant,
-                        "tool" => MessageRole::Tool,
-                        _ => MessageRole::User, // Default fallback
-                    };
-                    if result.message.message.role != role_filter {
-                        keep_result = false;
+                    // User filter
+                    if keep_result {
+                        if let Some(user_filter) = &query_clone.user_filter {
+                            let role_filter = match user_filter.as_ref() {
+                                "system" => MessageRole::System,
+                                "user" => MessageRole::User,
+                                "assistant" => MessageRole::Assistant,
+                                "tool" => MessageRole::Tool,
+                                _ => MessageRole::User, // Default fallback
+                            };
+                            if result.message.message.role != role_filter {
+                                keep_result = false;
+                            }
+                        }
                     }
-                }
 
-                // Content type filter
+                    // Content type filter
+                    if keep_result {
+                        if let Some(content_type) = &query_clone.content_type_filter {
+                            if !result
+                                .message
+                                .message
+                                .content
+                                .contains(content_type.as_ref())
+                            {
+                                keep_result = false;
+                            }
+                        }
                     }
-                }
-                if keep_result {
-                    if let Some(content_type) = &query_clone.content_type_filter {
-                    if !result
-                        .message
-                        .message
-                        .content
-                        .contains(content_type.as_ref())
-                    {
-                        keep_result = false;
-                    }
-                }
 
-                if keep_result {
-                    let _ = sender.send(result);
+                    if keep_result {
+                        let _ = sender.send(result).await;
+                    }
                 }
-            }
+                Ok(())
+            })
             // AsyncStream automatically closes when sender is dropped
         })
     }

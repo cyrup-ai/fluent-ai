@@ -4,6 +4,9 @@
 //! including traits, information, registry, and error handling. Integrates with
 //! model-info package for real-time model data from AI providers.
 
+pub mod adapter;
+pub mod adapter_impls;
+pub mod unified_registry;
 pub mod capabilities;
 pub mod error;
 pub mod info;
@@ -46,8 +49,12 @@ pub use model_info::{
     XaiModel,
 };
 
+// Re-export adapter infrastructure
+pub use adapter::{ModelAdapter, ModelAdapterCollection, AdapterRegistry, convert};
+pub use unified_registry::{UnifiedModelRegistry, RegistryStats};
+
 // Re-export new model-info integration modules
-pub use model_registry::{ModelRegistry as UnifiedModelRegistry, ModelFilter, ModelQueryResult, RegistryStats};
+pub use model_registry::{ModelRegistry as LegacyModelRegistry, ModelFilter, ModelQueryResult};
 pub use cache::{ModelCache, CacheStats, CacheConfig};
 pub use model_validation::{ModelValidator, ValidationResult, BatchValidationResult};
 

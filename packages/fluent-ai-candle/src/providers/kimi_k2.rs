@@ -420,23 +420,6 @@ impl Module for CandleMLP {
 
 impl CandleCompletionModel for CandleKimiK2Provider {
     fn prompt(&self, prompt: CandlePrompt, params: &CandleCompletionParams) -> AsyncStream<CandleCompletionChunk> {
-        // Convert CandlePrompt and CandleCompletionParams to CandleCompletionRequest
-        let request = CandleCompletionRequest {
-            messages: vec![ChatMessage {
-                role: "user".to_string(),
-                content: prompt.into_string(),
-                ..Default::default()
-            }],
-            temperature: params.temperature,
-            max_tokens: params.max_tokens,
-            ..Default::default()
-        };
-        
-        // Forward to the complete method
-        self.complete(request)
-    }
-    
-    fn complete(&mut self, request: CandleCompletionRequest) -> AsyncStream<CandleCompletionChunk> {
         let model = match self.get_model() {
             Ok(model) => model,
             Err(error) => {

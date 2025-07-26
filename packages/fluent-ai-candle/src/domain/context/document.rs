@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-// Import DocumentMediaType from the chat::message::media module
-use crate::domain::chat::message::media::DocumentMediaType;
+// Use the local DocumentMediaType instead of importing from non-existent module
+// DocumentMediaType is defined locally as CandleDocumentMediaType
 
 /// Candle document structure for storing document data and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,9 +18,9 @@ pub struct CandleDocument {
     /// The document content data as a string
     pub data: String,
     /// Optional format specification for the document content
-    pub format: Option<ContentFormat>,
+    pub format: Option<CandleContentFormat>,
     /// Optional media type classification for the document
-    pub media_type: Option<DocumentMediaType>,
+    pub media_type: Option<CandleDocumentMediaType>,
     /// Additional properties stored as key-value pairs
     #[serde(flatten)]
     pub additional_props: HashMap<String, Value>,
@@ -67,7 +67,7 @@ impl Document {
     /// Extract the text content from the document
     pub fn content(&self) -> String {
         match self.format {
-            Some(ContentFormat::Base64) => "[Base64 Document]".to_string(),
+            Some(CandleContentFormat::Base64) => "[Base64 Document]".to_string(),
             _ => self.data.clone()}
     }
 }
@@ -83,7 +83,7 @@ impl DocumentLoader {
         // Full loading logic is in fluent-ai builders
         Document {
             data: format!("Document from: {}", self.path),
-            format: Some(ContentFormat::Text),
+            format: Some(CandleContentFormat::Text),
             media_type: Some(DocumentMediaType::TXT),
             additional_props: HashMap::new()}
     }
@@ -97,7 +97,7 @@ impl DocumentLoader {
 //         eprintln!("Document BadTraitImpl: {}", error);
 //         Document {
 //             data: format!("Error loading document: {}", error),
-//             format: Some(ContentFormat::Text),
+//             format: Some(CandleContentFormat::Text),
 //             media_type: Some(DocumentMediaType::TXT),
 //             additional_props: HashMap::new(),
 //         }

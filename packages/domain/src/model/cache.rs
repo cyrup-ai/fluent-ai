@@ -5,19 +5,16 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
 
 use ahash::RandomState;
 use dashmap::DashMap;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
-use smallvec::SmallVec;
-use arrayvec::ArrayVec;
+// SmallVec removed - not used
 use crossbeam_channel::{bounded, Receiver, Sender};
 
 use model_info::common::ModelInfo as ModelInfoProvider;
-use crate::model::error::{ModelError, Result};
 
 /// Default cache TTL (5 minutes)
 const DEFAULT_TTL: Duration = Duration::from_secs(300);
@@ -113,7 +110,7 @@ pub struct CacheStats {
 #[derive(Debug, Clone)]
 struct WarmRequest {
     provider: String,
-    model_names: SmallVec<String, WARM_BATCH_SIZE>,
+    model_names: SmallVec<[String; WARM_BATCH_SIZE]>,
 }
 
 /// Internal cache data structure

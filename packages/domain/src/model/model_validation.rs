@@ -4,19 +4,17 @@
 //! availability checks, API connectivity, capability verification, and
 //! provider health monitoring.
 
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
 
 use ahash::RandomState;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
-use smallvec::SmallVec;
-use arrayvec::ArrayVec;
+// arrayvec::ArrayVec removed - not used
 use futures_util::future::join_all;
 use tokio::time::timeout;
 
-use model_info::{Provider, common::{ModelInfo as ModelInfoProvider, ProviderTrait}};
+use model_info::{Provider, common::ProviderTrait};
 use crate::model::error::{ModelError, Result};
 
 /// Maximum validation timeout per model

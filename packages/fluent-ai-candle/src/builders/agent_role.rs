@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use crate::domain::{
     // Agent types - now properly exported from agent module
     CandleAgentConversation, CandleAgentConversationMessage, CandleAgentRole, CandleAgentRoleAgent, CandleAgentRoleImpl,
+    CandleMcpServer, CandleAdditionalParams, CandleMetadata,
     
     // Core domain types exported at top level
     CandleAgent, CandleMessage, CandleMessageChunk, CandleMessageRole, 
@@ -15,10 +16,12 @@ use crate::domain::{
     CandleZeroOneOrMany, AsyncStream,
     
     // Module-specific types
-    completion::{CandleCompletionModel},
+    completion::{CandleCompletionModel, CandleCompletionRequest},
     context::{CandleContext, CandleDocument},
     tool::{CandleTool},
 };
+use crate::domain::tool::traits::CandleTool as CandleToolTrait;
+use crate::chat::CandleChatLoop;
 use serde_json::Value;
 use futures_util::StreamExt;
 
@@ -102,7 +105,7 @@ pub trait CandleAgentRoleBuilder: Sized {
     /// Set memory - EXACT syntax: .memory(Library::named("obsidian_vault"))
     fn memory<M>(self, memory: M) -> impl CandleAgentRoleBuilder
     where
-        M: CandleMemory + Send + Sync + 'static;
+        M: Send + Sync + 'static;
     
     /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
     fn metadata<M>(self, metadata: M) -> impl CandleAgentRoleBuilder
@@ -141,7 +144,7 @@ where
     F2: Fn(&CandleAgentConversation, &CandleAgentRoleAgent) + Send + Sync + 'static,
 {
     name: String,
-    completion_provider: CandleZeroOneOrMany<CandleCompletionProvider>,
+    completion_provider: CandleZeroOneOrMany<CandleCompletionModel>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     system_prompt: Option<String>,
@@ -270,7 +273,7 @@ where
     /// Set memory - EXACT syntax: .memory(Library::named("obsidian_vault"))
     fn memory<M>(mut self, memory: M) -> impl CandleAgentRoleBuilder
     where
-        M: CandleMemory + Send + Sync + 'static,
+        M: Send + Sync + 'static,
     {
         // Store actual memory domain object - zero allocation with static dispatch
         self.memory = self.memory.with_pushed(memory);
@@ -515,7 +518,7 @@ where
 
     fn memory<M>(self, memory: M) -> impl CandleAgentRoleBuilder
     where
-        M: CandleMemory + Send + Sync + 'static,
+        M: Send + Sync + 'static,
     {
         let mut inner = self.inner;
         inner.memory = inner.memory.with_pushed(memory);
@@ -753,7 +756,7 @@ where
 
     fn memory<M>(self, memory: M) -> impl CandleAgentRoleBuilder
     where
-        M: CandleMemory + Send + Sync + 'static,
+        M: Send + Sync + 'static,
     {
         let mut inner = self.inner;
         inner.memory = inner.memory.with_pushed(memory);
@@ -1071,7 +1074,7 @@ pub trait CandleConversationHistoryArgs {
 
 impl<T> CandleContextArgs for T
 where
-    T: CandleContext + Send + Sync + 'static,
+    T: CandleContextArgs + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut CandleZeroOneOrMany<CandleContext>) {
         // Store actual context domain object - zero allocation with static dispatch
@@ -1081,8 +1084,8 @@ where
 
 impl<T1, T2> CandleContextArgs for (T1, T2)
 where
-    T1: CandleContext + Send + Sync + 'static,
-    T2: CandleContext + Send + Sync + 'static,
+    T1: CandleContextArgs + Send + Sync + 'static,
+    T2: CandleContextArgs + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut CandleZeroOneOrMany<CandleContext>) {
         self.0.add_to(contexts);
@@ -1092,9 +1095,9 @@ where
 
 impl<T1, T2, T3> CandleContextArgs for (T1, T2, T3)
 where
-    T1: CandleContext + Send + Sync + 'static,
-    T2: CandleContext + Send + Sync + 'static,
-    T3: CandleContext + Send + Sync + 'static,
+    T1: CandleContextArgs + Send + Sync + 'static,
+    T2: CandleContextArgs + Send + Sync + 'static,
+    T3: CandleContextArgs + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut CandleZeroOneOrMany<CandleContext>) {
         self.0.add_to(contexts);
@@ -1105,10 +1108,10 @@ where
 
 impl<T1, T2, T3, T4> CandleContextArgs for (T1, T2, T3, T4)
 where
-    T1: CandleContext + Send + Sync + 'static,
-    T2: CandleContext + Send + Sync + 'static,
-    T3: CandleContext + Send + Sync + 'static,
-    T4: CandleContext + Send + Sync + 'static,
+    T1: CandleContextArgs + Send + Sync + 'static,
+    T2: CandleContextArgs + Send + Sync + 'static,
+    T3: CandleContextArgs + Send + Sync + 'static,
+    T4: CandleContextArgs + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut CandleZeroOneOrMany<CandleContext>) {
         self.0.add_to(contexts);
@@ -1123,7 +1126,7 @@ where
 
 impl<T> CandleToolArgs for T
 where
-    T: CandleTool + Send + Sync + 'static,
+    T: CandleToolTrait + Send + Sync + 'static,
 {
     fn add_to(self, tools: &mut CandleZeroOneOrMany<CandleTool>) {
         // Store actual tool domain object - zero allocation with static dispatch
@@ -1133,8 +1136,8 @@ where
 
 impl<T1, T2> CandleToolArgs for (T1, T2)
 where
-    T1: CandleTool + Send + Sync + 'static,
-    T2: CandleTool + Send + Sync + 'static,
+    T1: CandleToolTrait + Send + Sync + 'static,
+    T2: CandleToolTrait + Send + Sync + 'static,
 {
     fn add_to(self, tools: &mut CandleZeroOneOrMany<CandleTool>) {
         self.0.add_to(tools);
@@ -1144,9 +1147,9 @@ where
 
 impl<T1, T2, T3> CandleToolArgs for (T1, T2, T3)
 where
-    T1: CandleTool + Send + Sync + 'static,
-    T2: CandleTool + Send + Sync + 'static,
-    T3: CandleTool + Send + Sync + 'static,
+    T1: CandleToolTrait + Send + Sync + 'static,
+    T2: CandleToolTrait + Send + Sync + 'static,
+    T3: CandleToolTrait + Send + Sync + 'static,
 {
     fn add_to(self, tools: &mut CandleZeroOneOrMany<CandleTool>) {
         self.0.add_to(tools);

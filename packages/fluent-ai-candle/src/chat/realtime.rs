@@ -18,7 +18,7 @@ use tokio::sync::{RwLock, broadcast, mpsc};
 use tokio::time::{interval, sleep};
 
 // Removed unused import: uuid::Uuid
-use crate::chat::message::{Message, MessageRole};
+use crate::domain::chat::message::types::{CandleMessage as Message, CandleMessageRole as MessageRole};
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]

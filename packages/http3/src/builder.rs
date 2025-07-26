@@ -365,12 +365,12 @@ pub struct BodyNotSet;
 #[derive(Clone)]
 pub struct BodySet;
 
-/// Extension trait for collecting HTTP streams into deserialized types
+/// Extension trait for collecting HTTP streams into Vec of deserialized types
 pub trait HttpStreamExt {
-    /// Collect the entire HTTP stream into a deserialized type, returning default on error
-    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T;
+    /// Collect the entire HTTP stream into a Vec of deserialized types
+    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> Vec<T>;
 
-    /// Collect the entire HTTP stream into a deserialized type, calling error handler on failure
+    /// Collect the entire HTTP stream into a single item, calling error handler on failure
     fn collect_or_else<
         T: DeserializeOwned + Send + 'static,
         F: Fn(HttpError) -> T + Send + Sync + 'static + Clone,
@@ -382,7 +382,7 @@ pub trait HttpStreamExt {
 
 impl HttpStreamExt for HttpStream {
     #[inline(always)]
-    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T {
+    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> Vec<T> {
         self.collect_internal()
     }
 
@@ -458,6 +458,7 @@ pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
     }
 
     #[inline(always)]
+    #[allow(dead_code)] // Public API method for library users
     fn collect_or_else<T, F>(self, f: F) -> T
     where
         T: DeserializeOwned + Send + 'static,

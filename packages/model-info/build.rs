@@ -176,6 +176,7 @@ async fn async_main() -> Result<()> {
                     }
                 }
             }
+
         };
         f.write_all(code.to_string().as_bytes()).context("Failed to write generated code")?;
         Ok(())

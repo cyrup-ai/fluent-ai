@@ -1020,7 +1020,7 @@ impl CandleConfigurationManager {
                         .as_secs(),
                 ),
                 section: section_arc,
-                change_type: ConfigurationChangeType::Update,
+                change_type: CandleConfigurationChangeType::Update,
                 old_value: Some(Arc::from(format!("{:?}", current_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
@@ -1102,7 +1102,7 @@ impl CandleConfigurationManager {
                 // Create validator registration update
                 let registration_update = ConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::ValidatorRegistered,
+                    update_type: CandleConfigUpdateType::ValidatorRegistered,
                     section: Some(validator_name),
                     success: true,
                     description: Some(Arc::from("Configuration validator registered"))};
@@ -1129,7 +1129,7 @@ impl CandleConfigurationManager {
                 let event = PersistenceEvent {
                     timestamp_nanos: now_nanos,
                     previous_timestamp_nanos: previous_nanos,
-                    persistence_type: PersistenceType::Manual,
+                    persistence_type: CandlePersistenceType::Manual,
                     success: true};
                 
                 emit!(sender, event);
@@ -1150,7 +1150,7 @@ impl CandleConfigurationManager {
                 // Emit check initiated update
                 let check_update = ConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::AutoSaveChecked,
+                    update_type: CandleConfigUpdateType::AutoSaveChecked,
                     section: None,
                     success: true,
                     description: Some(Arc::from("Auto-save check initiated"))};
@@ -1170,7 +1170,7 @@ impl CandleConfigurationManager {
                     // Emit auto-save executed update
                     let autosave_update = ConfigUpdate {
                         timestamp_nanos: now_nanos,
-                        update_type: ConfigUpdateType::AutoSaveExecuted,
+                        update_type: CandleConfigUpdateType::AutoSaveExecuted,
                         section: None,
                         success: true,
                         description: Some(Arc::from("Auto-save executed"))};
@@ -1194,7 +1194,7 @@ impl CandleConfigurationManager {
                 // Emit save initiated update
                 let save_start = ConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::SavedToFile,
+                    update_type: CandleConfigUpdateType::SavedToFile,
                     section: None,
                     success: false,
                     description: Some(Arc::from("File save initiated"))};
@@ -1207,7 +1207,7 @@ impl CandleConfigurationManager {
                 // Emit save completion update
                 let save_complete = ConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::SavedToFile,
+                    update_type: CandleConfigUpdateType::SavedToFile,
                     section: None,
                     success,
                     description: Some(Arc::from(if success { 
@@ -1266,7 +1266,7 @@ impl CandleConfigurationManager {
                 // Emit load initiated update
                 let load_start = ConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::LoadedFromFile,
+                    update_type: CandleConfigUpdateType::LoadedFromFile,
                     section: None,
                     success: false,
                     description: Some(Arc::from("File load initiated"))};
@@ -1279,7 +1279,7 @@ impl CandleConfigurationManager {
                 // Emit load completion update
                 let load_complete = ConfigUpdate {
                     timestamp_nanos: now_nanos,
-                    update_type: ConfigUpdateType::LoadedFromFile,
+                    update_type: CandleConfigUpdateType::LoadedFromFile,
                     section: None,
                     success,
                     description: Some(Arc::from(if success { 

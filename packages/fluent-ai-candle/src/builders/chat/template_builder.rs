@@ -1,5 +1,14 @@
 use std::sync::Arc;
-use crate::domain::chat::{CandleChatTemplate as ChatTemplate, CandleTemplateCategory as TemplateCategory};
+use crate::domain::chat::templates::{
+    CandleChatTemplate as ChatTemplate, 
+    CandleTemplateCategory as TemplateCategory,
+};
+use crate::domain::chat::templates::core::{
+    TemplateMetadata,
+    TemplatePermissions,
+    TemplateVariable,
+    VariableType
+};
 
 /// Template builder struct
 #[derive(Debug, Clone)]
@@ -62,28 +71,28 @@ impl TemplateBuilder {
         let template_name: Arc<str> = Arc::from(name);
         let template_content: Arc<str> = Arc::from(content);
 
-        let metadata = core::TemplateMetadata {
+        let metadata = TemplateMetadata {
             id: template_name.clone(),
             name: template_name,
             description: Arc::from(description),
             author: Arc::from(""),
             version: Arc::from("1.0.0"),
-            category: core::TemplateCategory::Chat,
+            category: TemplateCategory::Chat,
             tags: Arc::new([]),
             created_at: 0,
             modified_at: 0,
             usage_count: 0,
             rating: 0.0,
-            permissions: core::TemplatePermissions::default(),
+            permissions: TemplatePermissions::default(),
         };
 
-        let variables: Arc<[core::TemplateVariable]> = self
+        let variables: Arc<[TemplateVariable]> = self
             .variables
             .into_iter()
-            .map(|v| core::TemplateVariable {
+            .map(|v| TemplateVariable {
                 name: Arc::from(v),
                 description: Arc::from(""),
-                var_type: core::VariableType::String,
+                var_type: VariableType::String,
                 default_value: None,
                 required: false,
                 validation_pattern: None,

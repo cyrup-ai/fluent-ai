@@ -149,7 +149,7 @@ impl ChatExporter {
     /// Export messages to the configured format
     pub fn export_messages(
         &mut self,
-        messages: &[crate::chat::message::Message],
+        messages: &[crate::domain::chat::message::types::CandleMessage],
     ) -> ExportResult<ExportData> {
         if messages.is_empty() {
             return Err(ExportError::NoMessages);
@@ -205,7 +205,7 @@ impl ChatExporter {
     /// Export as JSON format
     fn export_as_json(
         &self,
-        messages: &[crate::chat::message::Message],
+        messages: &[crate::domain::chat::message::types::CandleMessage],
     ) -> Result<String, ExportError> {
         serde_json::to_string_pretty(messages).map_err(|e| ExportError::SerializationError {
             detail: Arc::from(e.to_string())})
@@ -214,7 +214,7 @@ impl ChatExporter {
     /// Export as Markdown format
     fn export_as_markdown(
         &self,
-        messages: &[crate::chat::message::Message],
+        messages: &[crate::domain::chat::message::types::CandleMessage],
     ) -> Result<String, ExportError> {
         let mut output = String::new();
         output.push_str("# Chat Export\n\n");
@@ -250,7 +250,7 @@ impl ChatExporter {
     /// Export as plain text format
     fn export_as_text(
         &self,
-        messages: &[crate::chat::message::Message],
+        messages: &[crate::domain::chat::message::types::CandleMessage],
     ) -> Result<String, ExportError> {
         let mut output = String::new();
 
@@ -270,7 +270,7 @@ impl ChatExporter {
     /// Export as CSV format
     fn export_as_csv(
         &self,
-        messages: &[crate::chat::message::Message],
+        messages: &[crate::domain::chat::message::types::CandleMessage],
     ) -> Result<String, ExportError> {
         let mut output = String::new();
 
@@ -322,7 +322,7 @@ impl Default for ChatExporter {
 
 /// Export a conversation to the specified format
 pub fn export_conversation(
-    messages: &[crate::chat::message::Message],
+    messages: &[crate::domain::chat::message::types::CandleMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     match config.format {
@@ -334,7 +334,7 @@ pub fn export_conversation(
 
 /// Export to JSON format
 fn export_to_json(
-    messages: &[crate::chat::message::Message],
+    messages: &[crate::domain::chat::message::types::CandleMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let limited_messages = if config.max_messages > 0 {
@@ -349,7 +349,7 @@ fn export_to_json(
 
 /// Export to Markdown format
 fn export_to_markdown(
-    messages: &[crate::chat::message::Message],
+    messages: &[crate::domain::chat::message::types::CandleMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);
@@ -377,7 +377,7 @@ fn export_to_markdown(
 
 /// Export to plain text format
 fn export_to_text(
-    messages: &[crate::chat::message::Message],
+    messages: &[crate::domain::chat::message::types::CandleMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);
@@ -403,7 +403,7 @@ fn export_to_text(
 
 /// Export to CSV format
 fn export_to_csv(
-    messages: &[crate::chat::message::Message],
+    messages: &[crate::domain::chat::message::types::CandleMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);

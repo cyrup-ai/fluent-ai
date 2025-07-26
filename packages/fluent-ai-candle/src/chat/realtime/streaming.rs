@@ -16,7 +16,7 @@ use tokio::sync::broadcast;
 
 use super::events::RealTimeEvent;
 use super::typing::RealTimeError;
-use crate::chat::message::{Message, MessageRole};
+use crate::domain::chat::message::types::{CandleMessage as Message, CandleMessageRole as MessageRole};
 
 /// Live update message with zero-allocation string handling
 #[derive(Debug, Clone, Serialize, Deserialize)]

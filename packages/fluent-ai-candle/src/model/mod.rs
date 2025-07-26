@@ -18,7 +18,7 @@ pub mod models;
 
 // Re-export commonly used types
 pub use capabilities::*;
-pub use crate::domain::model::error::{CandleModelError as ModelError, CandleModelResult as Result};
+pub use crate::domain::model::error::{CandleModelError as ModelError, CandleResult as Result};
 pub use info::ModelInfo;
 pub use registry::ModelRegistry;
 pub use resolver::*;

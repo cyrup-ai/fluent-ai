@@ -3,14 +3,11 @@
 //! This module provides a high-performance, thread-safe registry for managing
 //! AI model information and capabilities.
 
-use std::sync::Arc;
 use std::collections::HashMap;
 
 use ahash::RandomState;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
-use smallvec::SmallVec;
-use arrayvec::ArrayVec;
 
 // Temporarily commented out to break circular dependency
 // use model_info::{Provider, ModelInfo as ModelInfoProvider, ProviderTrait};
@@ -37,8 +34,7 @@ pub enum Provider {
     Xai,
 }
 
-use crate::model::error::{ModelError, Result};
-use crate::model::capabilities::ModelCapabilities;
+use crate::model::error::ModelError;
 
 /// Provider names for efficient lookups
 const PROVIDER_NAMES: &[&str] = &[
@@ -69,12 +65,12 @@ pub struct ModelFilter {
 }
 
 /// Efficient model query result with zero-allocation for small results
-pub type ModelQueryResult = SmallVec<Arc<ModelInfoProvider>, 16>;
+pub type ModelQueryResult = SmallVec<[Arc<ModelInfoProvider>; 16]>;
 
 /// Internal registry data structure
 struct RegistryData {
     /// All models indexed by provider name
-    models_by_provider: DashMap<String, SmallVec<Arc<ModelInfoProvider>, MAX_MODELS_PER_PROVIDER>, RandomState>,
+    models_by_provider: DashMap<String, SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER]>, RandomState>,
     
     /// All models in a flat list for fast iteration
     all_models: parking_lot::RwLock<Vec<Arc<ModelInfoProvider>>>,

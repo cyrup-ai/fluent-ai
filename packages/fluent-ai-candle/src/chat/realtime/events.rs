@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use crate::chat::message::Message;
+use crate::domain::chat::message::types::CandleMessage as Message;
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]

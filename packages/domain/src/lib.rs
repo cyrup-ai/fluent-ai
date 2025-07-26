@@ -101,9 +101,12 @@ pub use {
     model::{
         Capability, Model, ModelCapabilities, ModelInfo, ModelPerformance, Usage, UseCase,
         ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
-        // New model-info integration
-        UnifiedModelRegistry, ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
-        CacheStats, CacheConfig, BatchValidationResult, RegistryStats,
+        // Adapter infrastructure - unified model interface
+        ModelAdapter, ModelAdapterCollection, AdapterRegistry, convert,
+        UnifiedModelRegistry, RegistryStats,
+        // Legacy model-info integration
+        LegacyModelRegistry, ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
+        CacheStats, CacheConfig, BatchValidationResult,
         // Re-exported model-info types - REAL AI MODEL DATA
         ModelInfoTrait, RealModelInfo, ModelInfoProviderTrait,
         OpenAiModel, MistralModel, AnthropicModel, TogetherModel, OpenRouterModel, HuggingFaceModel, XaiModel

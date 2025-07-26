@@ -9,7 +9,7 @@ use ahash::RandomState;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
-use crate::domain::model::error::{CandleModelError as ModelError, CandleModelResult as Result};
+use crate::domain::model::error::{CandleModelError as ModelError, CandleResult as Result};
 use crate::model::info::ModelInfo;
 use crate::model::traits::Model;
 use crate::providers::CandleKimiK2Provider;

@@ -25,14 +25,18 @@ use thiserror::Error;
 use uuid::Uuid;
 
 // Domain imports
-use crate::{domain::CandleZeroOneOrMany as ZeroOneOrMany, domain::context::CandleDocument as Document};
+use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
 
 // Re-export the types with Candle prefix for backward compatibility
+pub use crate::domain::context::document::{
+    CandleDocument as Document,
+    CandleDocumentMediaType as DocumentMediaType,
+    CandleContentFormat as ContentFormat,
+};
 pub use crate::domain::context::provider::{
     CandleContextError as ContextError,
     CandleContextEvent as ContextEvent,
     CandleContextSourceType as ContextSourceType,
-    CandleDocument as Document,
     CandleFile as File,
     CandleFiles as Files,
     CandleDirectory as Directory,
@@ -464,7 +468,7 @@ impl CandleStreamingContextProcessor {
 
     /// Process file context with streaming results - returns unwrapped values
     #[inline]
-    pub fn process_file_context(&self, context: CandleImmutableFileContext) -> AsyncStream<CandleDocument> {
+    pub fn process_file_context(&self, context: CandleImmutableFileContext) -> AsyncStream<Document> {
         let _processor_id = self.processor_id.clone();
         let event_sender = self.event_sender.clone();
 
@@ -546,13 +550,13 @@ impl CandleStreamingContextProcessor {
     }
 
     /// Load file document
-    fn load_file_document(context: &CandleImmutableFileContext) -> Result<CandleDocument, CandleContextError> {
+    fn load_file_document(context: &CandleImmutableFileContext) -> Result<Document, CandleContextError> {
         // Implementation would read file and create Document
         // For now, create a basic document structure
         Ok(Document {
             data: format!("Content from file: {}", context.path),
-            format: Some(crate::context::ContentFormat::Text),
-            media_type: Some(crate::context::DocumentMediaType::TXT),
+            format: Some(ContentFormat::Text),
+            media_type: Some(DocumentMediaType::TXT),
             additional_props: {
                 let mut props = HashMap::new();
                 props.insert(
@@ -699,13 +703,13 @@ impl CandleContext<CandleFile> {
     }
 }
 
-// Context<Files> implementation
-impl Context<Files> {
-    /// Glob pattern for files - EXACT syntax: Context<Files>::glob("**/*.{rs,md}")
+// CandleContext<Files> implementation
+impl CandleContext<Files> {
+    /// Glob pattern for files - EXACT syntax: CandleContext<Files>::glob("**/*.{rs,md}")
     #[inline]
     pub fn glob(pattern: impl AsRef<str>) -> Self {
         let pattern_str = pattern.as_ref().to_string();
-        let files_context = ImmutableFilesContext {
+        let files_context = CandleImmutableFilesContext {
             paths: Vec::new(), // Would be populated by glob expansion
             pattern: pattern_str,
             total_files: 0,
@@ -728,9 +732,9 @@ impl Context<Files> {
                                     if let Ok(content) = std::fs::read_to_string(&entry) {
                                         let document = Document {
                                             data: content,
-                                            format: Some(crate::context::ContentFormat::Text),
+                                            format: Some(ContentFormat::Text),
                                             media_type: Some(
-                                                crate::context::DocumentMediaType::TXT,
+                                                DocumentMediaType::TXT,
                                             ),
                                             additional_props: {
                                                 let mut props = HashMap::new();
@@ -780,13 +784,13 @@ impl Context<Files> {
     }
 }
 
-// Context<Directory> implementation
-impl Context<Directory> {
-    /// Load all files from directory - EXACT syntax: Context<Directory>::of("/path/to/dir")
+// CandleContext<Directory> implementation
+impl CandleContext<Directory> {
+    /// Load all files from directory - EXACT syntax: CandleContext<Directory>::of("/path/to/dir")
     #[inline]
     pub fn of(path: impl AsRef<Path>) -> Self {
         let path_str = path.as_ref().to_string_lossy().to_string();
-        let directory_context = ImmutableDirectoryContext {
+        let directory_context = CandleImmutableDirectoryContext {
             path: path_str,
             recursive: true,
             extensions: Vec::new(),
@@ -837,9 +841,9 @@ impl Context<Directory> {
                                         if let Ok(content) = std::fs::read_to_string(&path) {
                                             let document = Document {
                                                 data: content,
-                                                format: Some(CandleContentFormat::Text),
+                                                format: Some(ContentFormat::Text),
                                                 media_type: Some(
-                                                    CandleDocumentMediaType::TXT,
+                                                    DocumentMediaType::TXT,
                                                 ),
                                                 additional_props: {
                                                     let mut props = HashMap::new();
@@ -914,13 +918,13 @@ impl Context<Directory> {
     }
 }
 
-// Context<Github> implementation
-impl Context<Github> {
-    /// Glob pattern for GitHub files - EXACT syntax: Context<Github>::glob("/repo/**/*.{rs,md}")
+// CandleContext<Github> implementation
+impl CandleContext<Github> {
+    /// Glob pattern for GitHub files - EXACT syntax: CandleContext<Github>::glob("/repo/**/*.{rs,md}")
     #[inline]
     pub fn glob(pattern: impl AsRef<str>) -> Self {
         let pattern_str = pattern.as_ref().to_string();
-        let github_context = ImmutableGithubContext {
+        let github_context = CandleImmutableGithubContext {
             repository_url: String::new(), // Would be extracted from pattern
             branch: "main".to_string(),
             pattern: pattern_str,
@@ -972,17 +976,17 @@ impl Context<Github> {
 }
 
 /// Backward compatibility aliases (deprecated)
-#[deprecated(note = "Use ImmutableFileContext instead")]
-pub type FileContext = ImmutableFileContext;
+#[deprecated(note = "Use CandleImmutableFileContext instead")]
+pub type FileContext = CandleImmutableFileContext;
 
-#[deprecated(note = "Use ImmutableFilesContext instead")]
-pub type FilesContext = ImmutableFilesContext;
+#[deprecated(note = "Use CandleImmutableFilesContext instead")]
+pub type FilesContext = CandleImmutableFilesContext;
 
-#[deprecated(note = "Use ImmutableDirectoryContext instead")]
-pub type DirectoryContext = ImmutableDirectoryContext;
+#[deprecated(note = "Use CandleImmutableDirectoryContext instead")]
+pub type DirectoryContext = CandleImmutableDirectoryContext;
 
-#[deprecated(note = "Use ImmutableGithubContext instead")]
-pub type GithubContext = ImmutableGithubContext;
+#[deprecated(note = "Use CandleImmutableGithubContext instead")]
+pub type GithubContext = CandleImmutableGithubContext;
 
 #[deprecated(note = "Use ImmutableEmbeddingModel instead")]
 pub trait EmbeddingModel: ImmutableEmbeddingModel {}

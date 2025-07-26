@@ -18,7 +18,7 @@
 /// Candle builders for zero-allocation construction patterns
 pub mod builders;  
 /// Candle chat functionality and conversation management
-// pub mod chat; // Temporarily disabled for testing core functionality
+pub mod chat; // Chat functionality and conversation management
 /// Candle concurrency primitives and async utilities
 pub mod concurrency;
 /// Candle context processing and document handling
@@ -61,7 +61,7 @@ pub use domain::{
     CandleZeroOneOrMany, CandleAgent,
     
     // Core Candle types from context
-    CandleDocument, CandleContext, CandleDocumentLoader,
+    CandleDocument, CandleContext,
     
     // Candle Chat system
     CandleChatConfig, CandleCommandExecutor, CandleCommandRegistry, 
@@ -76,7 +76,7 @@ pub use domain::{
     CandleCapability, CandleUsage, CandleUseCase,
     
     // Candle HTTP types
-    CandleProvider,
+    // CandleProvider, // Temporarily removed - not found
     
     // Other domain types (AsyncStream imported separately below)
 };
