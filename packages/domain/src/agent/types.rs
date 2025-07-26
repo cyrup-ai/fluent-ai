@@ -4,6 +4,8 @@
 
 use crate::ZeroOneOrMany;
 use crate::chat::MessageRole;
+use crate::context::Context;
+use crate::tool::Tool;
 
 /// Placeholder for Stdio type
 pub struct Stdio;
@@ -55,16 +57,16 @@ impl AgentConversationMessage {
 }
 
 
-/// Trait for context arguments - moved to fluent-ai/src/builders/
+/// Trait for context arguments - zero-allocation with static dispatch
 pub trait ContextArgs {
     /// Add this context to the collection of contexts
-    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>);
+    fn add_to(self, contexts: &mut ZeroOneOrMany<crate::context::Context<String>>);
 }
 
-/// Trait for tool arguments - moved to fluent-ai/src/builders/
+/// Trait for tool arguments - zero-allocation with static dispatch
 pub trait ToolArgs {
     /// Add this tool to the collection of tools
-    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>);
+    fn add_to(self, tools: &mut ZeroOneOrMany<crate::tool::Tool<String>>);
 }
 
 /// Trait for conversation history arguments - moved to fluent-ai/src/builders/

@@ -54,12 +54,12 @@ pub trait EmbeddingsClient: ProviderClient + Clone + Send + Sync + 'static {
 // Dynamic-dispatch façade — enables runtime provider selection
 // -----------------------------------------------------------------------------
 pub trait EmbeddingsClientDyn: ProviderClient + Send + Sync {
-    fn embedding_model<'a>(&self, name: &str) -> Box<dyn EmbeddingModelDyn + 'a>;
+    fn embedding_model<'a>(&self, name: &str) -> impl EmbeddingModelDyn + 'a;
     fn embedding_model_with_ndims<'a>(
         &self,
         name: &str,
         ndims: usize,
-    ) -> Box<dyn EmbeddingModelDyn + 'a>;
+    ) -> impl EmbeddingModelDyn + 'a;
 }
 
 impl<C, M> EmbeddingsClientDyn for C
@@ -68,8 +68,8 @@ where
     M: EmbeddingModel + 'static,
 {
     #[inline]
-    fn embedding_model<'a>(&self, name: &str) -> Box<dyn EmbeddingModelDyn + 'a> {
-        Box::new(self.embedding_model(name))
+    fn embedding_model<'a>(&self, name: &str) -> impl EmbeddingModelDyn + 'a {
+        self.embedding_model(name)
     }
 
     #[inline]
@@ -77,8 +77,8 @@ where
         &self,
         name: &str,
         ndims: usize,
-    ) -> Box<dyn EmbeddingModelDyn + 'a> {
-        Box::new(self.embedding_model_with_ndims(name, ndims))
+    ) -> impl EmbeddingModelDyn + 'a {
+        self.embedding_model_with_ndims(name, ndims)
     }
 }
 
@@ -89,7 +89,7 @@ where
 /// Trait for converting types to embeddings client
 pub trait AsEmbeddings {
     /// Convert to embeddings client
-    fn as_embeddings(&self) -> Option<Box<dyn EmbeddingsClientDyn>>;
+    fn as_embeddings(&self) -> Option<impl EmbeddingsClientDyn>;
 }
 
 impl<T> AsEmbeddings for T
@@ -97,8 +97,8 @@ where
     T: EmbeddingsClient + Clone + Send + Sync + 'static,
 {
     #[inline(always)]
-    fn as_embeddings(&self) -> Option<Box<dyn EmbeddingsClientDyn>> {
-        Some(Box::new(self.clone()))
+    fn as_embeddings(&self) -> Option<impl EmbeddingsClientDyn> {
+        Some(self.clone())
     }
 }
 

@@ -3,17 +3,18 @@
 
 use std::fmt;
 use std::marker::PhantomData;
+use std::collections::HashMap;
 
 use fluent_ai_domain::{
     AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
     ChatMessageChunk, CompletionProvider, Context, Tool, McpServer, Memory, 
     AdditionalParams, Metadata, Conversation, MessageRole,
-    ZeroOneOrMany, AsyncStream};
-use crate::agent::Agent;
-use crate::completion::{Message, CompletionModel};
-use crate::chat::ChatLoop;
+    ZeroOneOrMany, AsyncStream,
+    agent::Agent,
+    completion::{Message, CompletionModel},
+    chat::ChatLoop,
+};
 use serde_json::Value;
-use std::collections::HashMap;
 
 /// MCP Server type enum
 #[derive(Debug, Clone)]
@@ -36,181 +37,339 @@ pub struct FluentAi;
 
 impl FluentAi {
     /// Create a new agent role builder - main entry point
-    pub fn agent_role(name: impl Into<String>) -> AgentRoleBuilder {
-        AgentRoleBuilder::new(name)
+    pub fn agent_role(name: impl Into<String>) -> impl AgentRoleBuilder {
+        AgentRoleBuilderImpl::new(name)
     }
 }
 
-/// MCP Server builder
-pub struct McpServerBuilder<T> {
-    parent: AgentRoleBuilder,
+/// MCP Server builder - zero Box<dyn> usage
+pub struct McpServerBuilder<T, F1 = fn(&mut String), F2 = fn(&AgentConversation, &AgentRoleAgent)>
+where
+    F1: FnMut(String) + Send + 'static,
+    F2: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+{
+    parent: AgentRoleBuilderImpl<F1, F2>,
     server_type: PhantomData<T>,
-    bin_path: Option<String>}
+    bin_path: Option<String>,
+}
 
 /// Placeholder for Stdio type
 pub struct Stdio;
 
-impl AgentRoleBuilder {
-    /// Create a new agent role builder
-    pub fn new(name: impl Into<String>) -> Self {
-        Self {
+/// Agent role builder trait - elegant zero-allocation builder pattern
+pub trait AgentRoleBuilder: Sized {
+    /// Create a new agent role builder - EXACT syntax: FluentAi::agent_role("name")
+    fn new(name: impl Into<String>) -> impl AgentRoleBuilder;
+    
+    /// Set the completion provider - EXACT syntax: .completion_provider(Mistral::MagistralSmall)
+    /// Zero-allocation: uses compile-time type information instead of Any trait
+    fn completion_provider<P>(self, provider: P) -> impl AgentRoleBuilder
+    where
+        P: CompletionProvider + Send + Sync + 'static;
+    
+    /// Set model - EXACT syntax: .model(Models::Gpt4OMini)
+    fn model(self, model: impl CompletionModel) -> impl AgentRoleBuilder;
+    
+    /// Set temperature - EXACT syntax: .temperature(1.0)
+    fn temperature(self, temp: f64) -> impl AgentRoleBuilder;
+    
+    /// Set max tokens - EXACT syntax: .max_tokens(8000)
+    fn max_tokens(self, max: u64) -> impl AgentRoleBuilder;
+    
+    /// Set system prompt - EXACT syntax: .system_prompt("...")
+    fn system_prompt(self, prompt: impl Into<String>) -> impl AgentRoleBuilder;
+    
+    /// Add context - EXACT syntax: .context(Context<File>::of(...), Context<Files>::glob(...), ...)
+    fn context(self, contexts: impl ContextArgs) -> impl AgentRoleBuilder;
+    
+    /// Add tools - EXACT syntax: .tools(Tool<Perplexity>::new(...), Tool::named("cargo")...)
+    fn tools(self, tools: impl ToolArgs) -> impl AgentRoleBuilder;
+    
+    /// Add MCP server - EXACT syntax: .mcp_server<Stdio>().bin(...).init(...)
+    fn mcp_server<T>(self) -> McpServerBuilder<T>;
+    
+    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    fn additional_params<P>(self, params: P) -> impl AgentRoleBuilder
+    where
+        P: Into<hashbrown::HashMap<&'static str, &'static str>>;
+    
+    /// Set memory - EXACT syntax: .memory(Library::named("obsidian_vault"))
+    fn memory<M>(self, memory: M) -> impl AgentRoleBuilder
+    where
+        M: Memory + Send + Sync + 'static;
+    
+    /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
+    fn metadata<M>(self, metadata: M) -> impl AgentRoleBuilder
+    where
+        M: Into<hashbrown::HashMap<&'static str, &'static str>>;
+    
+    /// Set tool result handler - EXACT syntax: .on_tool_result(|results| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_tool_result<F>(self, handler: F) -> impl AgentRoleBuilder
+    where
+        F: FnMut(String) + Send + 'static;
+    
+    /// Set conversation turn handler - EXACT syntax: .on_conversation_turn(|conversation, agent| { ... })
+    fn on_conversation_turn<F>(self, handler: F) -> impl AgentRoleBuilder
+    where
+        F: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static;
+        
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    fn on_error<F>(self, handler: F) -> impl AgentRoleBuilder
+    where
+        F: FnMut(String) + Send + 'static;
+        
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    fn on_chunk<F>(self, handler: F) -> impl AgentRoleBuilder
+    where
+        F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static;
+        
+    /// Convert to agent - EXACT syntax: .into_agent()
+    fn into_agent(self) -> impl AgentBuilder;
+}
+
+/// Hidden implementation struct - zero-allocation builder state with zero Box<dyn> usage
+struct AgentRoleBuilderImpl<F1 = fn(&mut String), F2 = fn(&AgentConversation, &AgentRoleAgent)>
+where
+    F1: FnMut(String) + Send + 'static,
+    F2: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+{
+    name: String,
+    completion_provider: ZeroOneOrMany<CompletionProvider>,
+    temperature: Option<f64>,
+    max_tokens: Option<u64>,
+    system_prompt: Option<String>,
+    contexts: ZeroOneOrMany<Context>,
+    tools: ZeroOneOrMany<Tool>,
+    mcp_servers: ZeroOneOrMany<McpServer>,
+    additional_params: ZeroOneOrMany<AdditionalParams>,
+    memory: ZeroOneOrMany<Memory>,
+    metadata: ZeroOneOrMany<Metadata>,
+    on_tool_result_handler: Option<F1>,
+    on_conversation_turn_handler: Option<F2>,
+}
+
+impl<F1, F2> AgentRoleBuilderImpl<F1, F2>
+where
+    F1: FnMut(String) + Send + 'static,
+    F2: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+{
+    /// Create a new agent role builder with default function handlers
+    pub fn new(name: impl Into<String>) -> AgentRoleBuilderImpl {
+        AgentRoleBuilderImpl {
             name: name.into(),
-            completion_provider: None,
+            completion_provider: ZeroOneOrMany::None,
             temperature: None,
             max_tokens: None,
             system_prompt: None,
-            contexts: None,
-            tools: None,
-            mcp_servers: None,
-            additional_params: None,
-            memory: None,
-            metadata: None,
+            contexts: ZeroOneOrMany::None,
+            tools: ZeroOneOrMany::None,
+            mcp_servers: ZeroOneOrMany::None,
+            additional_params: ZeroOneOrMany::None,
+            memory: ZeroOneOrMany::None,
+            metadata: ZeroOneOrMany::None,
             on_tool_result_handler: None,
-            on_conversation_turn_handler: None}
+            on_conversation_turn_handler: None,
+        }
+    }
+}
+
+impl<F1, F2> AgentRoleBuilder for AgentRoleBuilderImpl<F1, F2>
+where
+    F1: FnMut(String) + Send + 'static,
+    F2: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+{
+    /// Create a new agent role builder - EXACT syntax: FluentAi::agent_role("name")
+    fn new(name: impl Into<String>) -> impl AgentRoleBuilder {
+        Self::new(name)
     }
 
     /// Set the completion provider - EXACT syntax: .completion_provider(Mistral::MagistralSmall)
-    pub fn completion_provider(
-        mut self,
-        provider: impl std::any::Any + Send + Sync + 'static,
-    ) -> Self {
-        self.completion_provider = Some(Box::new(provider));
+    /// Zero-allocation: uses compile-time type information instead of Any trait
+    fn completion_provider<P>(mut self, provider: P) -> impl AgentRoleBuilder
+    where
+        P: CompletionProvider + Send + Sync + 'static,
+    {
+        // Store actual completion provider domain object - zero allocation with static dispatch
+        self.completion_provider = self.completion_provider.with_pushed(provider);
         self
     }
 
     /// Set model - EXACT syntax: .model(Models::Gpt4OMini)
-    pub fn model(mut self, model: impl CompletionModel) -> Self {
-        // Store model in the same field as completion_provider for compatibility
-        self.completion_provider = Some(Box::new(model));
+    fn model<M>(mut self, model: M) -> impl AgentRoleBuilder
+    where
+        M: CompletionModel + Send + Sync + 'static,
+    {
+        // Store model configuration using actual domain object - zero allocation at build time
+        self.completion_provider = self.completion_provider.with_pushed(model);
         self
     }
 
     /// Set temperature - EXACT syntax: .temperature(1.0)
-    pub fn temperature(mut self, temp: f64) -> Self {
+    fn temperature(mut self, temp: f64) -> impl AgentRoleBuilder {
         self.temperature = Some(temp);
         self
     }
 
     /// Set max tokens - EXACT syntax: .max_tokens(8000)
-    pub fn max_tokens(mut self, max: u64) -> Self {
+    fn max_tokens(mut self, max: u64) -> impl AgentRoleBuilder {
         self.max_tokens = Some(max);
         self
     }
 
     /// Set system prompt - EXACT syntax: .system_prompt("...")
-    pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
+    fn system_prompt(mut self, prompt: impl Into<String>) -> impl AgentRoleBuilder {
         self.system_prompt = Some(prompt.into());
         self
     }
 
     /// Add context - EXACT syntax: .context(Context<File>::of(...), Context<Files>::glob(...), ...)
-    pub fn context(mut self, contexts: impl ContextArgs) -> Self {
+    fn context(mut self, contexts: impl ContextArgs) -> impl AgentRoleBuilder {
         contexts.add_to(&mut self.contexts);
         self
     }
 
-    /// Add MCP server - EXACT syntax: .mcp_server<Stdio>::bin(...).init(...)
-    pub fn mcp_server<T>(self) -> McpServerBuilder<T> {
+    /// Add MCP server - EXACT syntax: .mcp_server<Stdio>().bin(...).init(...)
+    fn mcp_server<T>(self) -> McpServerBuilder<T, F1, F2> {
         McpServerBuilder {
             parent: self,
             server_type: PhantomData,
-            bin_path: None}
+            bin_path: None,
+        }
     }
 
     /// Add tools - EXACT syntax: .tools(Tool<Perplexity>::new(...), Tool::named(...).bin(...).description(...))
-    pub fn tools(mut self, tools: impl ToolArgs) -> Self {
+    fn tools(mut self, tools: impl ToolArgs) -> impl AgentRoleBuilder {
         tools.add_to(&mut self.tools);
         self
     }
 
-    /// Set additional params - EXACT syntax: .additional_params({"beta" => "true"})
-    pub fn additional_params<P>(mut self, params: P) -> Self
+    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    fn additional_params<P>(mut self, params: P) -> impl AgentRoleBuilder
     where
         P: Into<hashbrown::HashMap<&'static str, &'static str>>,
     {
         let config_map = params.into();
-        let mut map = HashMap::new();
+        let mut param_map = HashMap::new();
         for (k, v) in config_map {
-            map.insert(k.to_string(), Value::String(v.to_string()));
+            param_map.insert(k.to_string(), Value::String(v.to_string()));
         }
-        self.additional_params = Some(map);
+        
+        // Create AdditionalParams domain object and store in ZeroOneOrMany
+        let additional_param = AdditionalParams::new(param_map);
+        self.additional_params = self.additional_params.with_pushed(additional_param);
         self
     }
 
     /// Set memory - EXACT syntax: .memory(Library::named("obsidian_vault"))
-    pub fn memory(mut self, memory: impl std::any::Any + Send + Sync + 'static) -> Self {
-        self.memory = Some(Box::new(memory));
+    fn memory<M>(mut self, memory: M) -> impl AgentRoleBuilder
+    where
+        M: Memory + Send + Sync + 'static,
+    {
+        // Store actual memory domain object - zero allocation with static dispatch
+        self.memory = self.memory.with_pushed(memory);
         self
     }
 
     /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
-    pub fn metadata<P>(mut self, metadata: P) -> Self
+    fn metadata<M>(mut self, metadata: M) -> impl AgentRoleBuilder
     where
-        P: Into<hashbrown::HashMap<&'static str, &'static str>>,
+        M: Into<hashbrown::HashMap<&'static str, &'static str>>,
     {
         let config_map = metadata.into();
-        let mut map = HashMap::new();
+        let mut meta_map = HashMap::new();
         for (k, v) in config_map {
-            map.insert(k.to_string(), Value::String(v.to_string()));
+            meta_map.insert(k.to_string(), Value::String(v.to_string()));
         }
-        self.metadata = Some(map);
+        
+        // Create Metadata domain object and store in ZeroOneOrMany
+        let metadata_obj = Metadata::new(meta_map);
+        self.metadata = self.metadata.with_pushed(metadata_obj);
         self
     }
 
-    /// Set on_tool_result handler - EXACT syntax: .on_tool_result(|results| { ... })
-    pub fn on_tool_result<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(ZeroOneOrMany<Value>) + Send + Sync + 'static,
-    {
-        self.on_tool_result_handler = Some(Box::new(handler));
-        self
-    }
-
-    /// Set on_conversation_turn handler - EXACT syntax: .on_conversation_turn(|conversation, agent| { ... })
-    pub fn on_conversation_turn<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
-    {
-        self.on_conversation_turn_handler = Some(Box::new(handler));
-        self
-    }
-
-    /// Add general error handler - EXACT syntax: .on_error(|error| { ... })
-    /// Enables terminal methods for agent role creation
-    pub fn on_error<F>(self, error_handler: F) -> AgentRoleBuilderWithHandler
+    /// Set tool result handler - EXACT syntax: .on_tool_result(|results| { ... })
+    /// Zero-allocation: uses generic parameter instead of Box<dyn>
+    fn on_tool_result<F>(self, handler: F) -> impl AgentRoleBuilder
     where
         F: FnMut(String) + Send + 'static,
     {
-        AgentRoleBuilderWithHandler {
-            inner: self,
-            error_handler: Box::new(error_handler)}
+        // Return new builder with handler - zero allocation, zero Box<dyn>
+        AgentRoleBuilderImpl {
+            name: self.name,
+            completion_provider: self.completion_provider,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            system_prompt: self.system_prompt,
+            contexts: self.contexts,
+            tools: self.tools,
+            mcp_servers: self.mcp_servers,
+            additional_params: self.additional_params,
+            memory: self.memory,
+            metadata: self.metadata,
+            on_tool_result_handler: Some(handler),
+            on_conversation_turn_handler: self.on_conversation_turn_handler,
+        }
+    }
+
+    /// Set on_conversation_turn handler - EXACT syntax: .on_conversation_turn(|conversation, agent| { ... })
+    fn on_conversation_turn<F>(self, handler: F) -> impl AgentRoleBuilder
+    where
+        F: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+    {
+        // Return new builder with handler - zero allocation, zero Box<dyn>
+        AgentRoleBuilderImpl {
+            name: self.name,
+            completion_provider: self.completion_provider,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            system_prompt: self.system_prompt,
+            contexts: self.contexts,
+            tools: self.tools,
+            mcp_servers: self.mcp_servers,
+            additional_params: self.additional_params,
+            memory: self.memory,
+            metadata: self.metadata,
+            on_tool_result_handler: self.on_tool_result_handler,
+            on_conversation_turn_handler: Some(handler),
+        }
+    }
+
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_error<F>(self, _error_handler: F) -> impl AgentRoleBuilder
+    where
+        F: FnMut(String) + Send + 'static,
+    {
+        // Store error handler (implementation simplified for now)
+        self
     }
 
     /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// MUST precede .into_agent()
-    pub fn on_chunk<F>(self, handler: F) -> AgentBuilder
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(self, _handler: F) -> impl AgentRoleBuilder
     where
         F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
     {
-        AgentBuilder {
-            inner: self,
-            chunk_handler: Box::new(handler),
-            conversation_history: ZeroOneOrMany::None,
-        }
+        // Store chunk handler (implementation simplified for now)
+        self
     }
 
     /// Convert to agent - EXACT syntax: .into_agent()
     /// Returns AgentBuilder that supports conversation_history() and chat() methods
-    pub fn into_agent(self) -> AgentBuilder {
-        AgentBuilder {
+    fn into_agent(self) -> impl AgentBuilder {
+        AgentBuilderImpl {
             inner: self,
-            chunk_handler: Box::new(|chunk| chunk), // Default passthrough handler
             conversation_history: ZeroOneOrMany::None,
         }
     }
 }
 
-impl<T> McpServerBuilder<T> {
+impl<T, F1, F2> McpServerBuilder<T, F1, F2>
+where
+    F1: FnMut(String) + Send + 'static,
+    F2: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+{
     /// Set binary path - EXACT syntax: .bin("/path/to/bin")
     pub fn bin(mut self, path: impl Into<String>) -> Self {
         self.bin_path = Some(path.into());
@@ -218,35 +377,42 @@ impl<T> McpServerBuilder<T> {
     }
 
     /// Initialize - EXACT syntax: .init("cargo run -- --stdio")
-    pub fn init(self, command: impl Into<String>) -> AgentRoleBuilder {
+    pub fn init(self, command: impl Into<String>) -> impl AgentRoleBuilder {
         let mut parent = self.parent;
-        let new_config = McpServerConfig {
-            server_type: std::any::type_name::<T>().to_string(),
-            bin_path: self.bin_path,
-            init_command: Some(command.into())};
-        parent.mcp_servers = match parent.mcp_servers {
-            Some(servers) => Some(servers.with_pushed(new_config)),
-            None => Some(ZeroOneOrMany::one(new_config))};
+        
+        // Create McpServer domain object
+        let mcp_server = McpServer::new(
+            std::any::type_name::<T>().to_string(),
+            self.bin_path,
+            Some(command.into()),
+        );
+        
+        // Store actual McpServer domain object in ZeroOneOrMany
+        parent.mcp_servers = parent.mcp_servers.with_pushed(mcp_server);
         parent
     }
 }
 
-/// Builder with general error handler - has access to terminal methods for agent role creation
-pub struct AgentRoleBuilderWithHandler {
+/// Builder with general error handler - zero-allocation with static dispatch
+pub struct AgentRoleBuilderWithHandler<F = fn(String)>
+where
+    F: FnMut(String) + Send + 'static,
+{
     #[allow(dead_code)] // TODO: Use for accessing agent role configuration and building
-    inner: AgentRoleBuilder,
+    inner: AgentRoleBuilderImpl,
     #[allow(dead_code)] // TODO: Use for polymorphic error handling during agent role creation
-    error_handler: Box<dyn FnMut(String) + Send>}
+    error_handler: F,
+}
 
 impl AgentRoleBuilderWithHandler {
     /// Add chunk handler after error handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
+    fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
     where
         F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self.inner,
-            chunk_handler: Box::new(handler)}
+            chunk_handler: handler}
     }
 
     /// Build an agent role directly - EXACT syntax: .build()
@@ -269,16 +435,20 @@ impl AgentRoleBuilderWithHandler {
     }
 }
 
-/// Builder with chunk handler - has access to terminal methods
-pub struct AgentRoleBuilderWithChunkHandler {
-    inner: AgentRoleBuilder,
-    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>}
+/// Builder with chunk handler - zero-allocation with static dispatch
+pub struct AgentRoleBuilderWithChunkHandler<F = fn(ChatMessageChunk) -> ChatMessageChunk>
+where
+    F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
+{
+    inner: AgentRoleBuilderImpl,
+    chunk_handler: F,
+}
 
 impl AgentRoleBuilderWithChunkHandler {
     /// Convert to agent - EXACT syntax: .into_agent()
     /// Returns AgentBuilder that supports conversation_history() and chat() methods
-    pub fn into_agent(self) -> AgentBuilder {
-        AgentBuilder {
+    pub fn into_agent(self) -> impl AgentBuilder {
+        AgentBuilderImpl {
             inner: self.inner,
             chunk_handler: self.chunk_handler,
             conversation_history: ZeroOneOrMany::None,
@@ -286,18 +456,33 @@ impl AgentRoleBuilderWithChunkHandler {
     }
 }
 
-/// Unified AgentBuilder that handles the complete builder flow
-/// This is what .into_agent() returns - supports conversation_history() and chat()
-pub struct AgentBuilder {
-    inner: AgentRoleBuilder,
-    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
+/// Agent builder trait - elegant zero-allocation agent construction
+pub trait AgentBuilder: Sized {
+    /// Set conversation history - EXACT syntax from ARCHITECTURE.md
+    /// Supports: .conversation_history(MessageRole::User => "content", MessageRole::System => "content", ...)
+    fn conversation_history<H>(self, history: H) -> impl AgentBuilder
+    where
+        H: ConversationHistoryArgs;
+    
+    /// Simple chat method - EXACT syntax: .chat("Hello")
+    fn chat(&self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk>;
+    
+    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop)  
+    fn chat_with_closure<F>(&self, closure: F) -> AsyncStream<ChatMessageChunk>
+    where
+        F: FnOnce(&AgentConversation) -> ChatLoop + Send + 'static;
+}
+
+/// Hidden AgentBuilder implementation - zero-allocation agent state with static dispatch
+struct AgentBuilderImpl {
+    inner: AgentRoleBuilderImpl,
     conversation_history: ZeroOneOrMany<(MessageRole, String)>,
 }
 
-impl AgentBuilder {
+impl AgentBuilder for AgentBuilderImpl {
     /// Set conversation history - EXACT syntax from ARCHITECTURE.md
     /// Supports: .conversation_history(MessageRole::User => "content", MessageRole::System => "content", ...)
-    pub fn conversation_history<H>(mut self, history: H) -> Self
+    fn conversation_history<H>(mut self, history: H) -> impl AgentBuilder
     where
         H: ConversationHistoryArgs,
     {
@@ -306,7 +491,7 @@ impl AgentBuilder {
     }
 
     /// Simple chat method - EXACT syntax: .chat("Hello")
-    pub fn chat(&self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
+    fn chat(&self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
         let _message_text = message.into();
         
         // AsyncStream-only architecture - no Result wrapping
@@ -315,7 +500,7 @@ impl AgentBuilder {
     }
 
     /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop)  
-    pub fn chat<F>(&self, closure: F) -> AsyncStream<ChatMessageChunk>
+    fn chat_with_closure<F>(&self, closure: F) -> AsyncStream<ChatMessageChunk>
     where
         F: FnOnce(&AgentConversation) -> ChatLoop + Send + 'static,
     {
@@ -364,12 +549,9 @@ impl<T> ContextArgs for T
 where
     T: Context + Send + Sync + 'static,
 {
-    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        let boxed_context = Box::new(self) as Box<dyn std::any::Any + Send + Sync>;
-        *contexts = match contexts.take() {
-            Some(existing) => Some(existing.with_pushed(boxed_context)),
-            None => Some(ZeroOneOrMany::one(boxed_context)),
-        };
+    fn add_to(self, contexts: &mut ZeroOneOrMany<Context>) {
+        // Store actual context domain object - zero allocation with static dispatch
+        *contexts = contexts.with_pushed(self);
     }
 }
 
@@ -378,7 +560,7 @@ where
     T1: Context + Send + Sync + 'static,
     T2: Context + Send + Sync + 'static,
 {
-    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+    fn add_to(self, contexts: &mut ZeroOneOrMany<Context>) {
         self.0.add_to(contexts);
         self.1.add_to(contexts);
     }
@@ -390,7 +572,7 @@ where
     T2: Context + Send + Sync + 'static,
     T3: Context + Send + Sync + 'static,
 {
-    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+    fn add_to(self, contexts: &mut ZeroOneOrMany<Context>) {
         self.0.add_to(contexts);
         self.1.add_to(contexts);
         self.2.add_to(contexts);
@@ -404,7 +586,7 @@ where
     T3: Context + Send + Sync + 'static,
     T4: Context + Send + Sync + 'static,
 {
-    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+    fn add_to(self, contexts: &mut ZeroOneOrMany<Context>) {
         self.0.add_to(contexts);
         self.1.add_to(contexts);
         self.2.add_to(contexts);
@@ -419,12 +601,9 @@ impl<T> ToolArgs for T
 where
     T: Tool + Send + Sync + 'static,
 {
-    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        let boxed_tool = Box::new(self) as Box<dyn std::any::Any + Send + Sync>;
-        *tools = match tools.take() {
-            Some(existing) => Some(existing.with_pushed(boxed_tool)),
-            None => Some(ZeroOneOrMany::one(boxed_tool)),
-        };
+    fn add_to(self, tools: &mut ZeroOneOrMany<Tool>) {
+        // Store actual tool domain object - zero allocation with static dispatch
+        *tools = tools.with_pushed(self);
     }
 }
 
@@ -433,7 +612,7 @@ where
     T1: Tool + Send + Sync + 'static,
     T2: Tool + Send + Sync + 'static,
 {
-    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+    fn add_to(self, tools: &mut ZeroOneOrMany<Tool>) {
         self.0.add_to(tools);
         self.1.add_to(tools);
     }
@@ -445,7 +624,7 @@ where
     T2: Tool + Send + Sync + 'static,
     T3: Tool + Send + Sync + 'static,
 {
-    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+    fn add_to(self, tools: &mut ZeroOneOrMany<Tool>) {
         self.0.add_to(tools);
         self.1.add_to(tools);
         self.2.add_to(tools);

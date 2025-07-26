@@ -1,6 +1,6 @@
-//! Extractor builder implementations
+//! Extractor builder implementations - Zero Box<dyn> trait-based architecture
 //!
-//! All extractor construction logic and builder patterns.
+//! All extractor construction logic and builder patterns with zero allocation.
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -12,123 +12,173 @@ use fluent_ai_domain::extractor::{Extractor, ExtractorImpl};
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use serde::de::DeserializeOwned;
 
-/// Builder for creating Extractor instances
-pub struct ExtractorBuilder<
+/// Extractor builder trait - elegant zero-allocation builder pattern
+pub trait ExtractorBuilder<T>: Sized 
+where
     T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
-    M: CompletionModel,
-> {
-    model: M,
-    system_prompt: Option<String>,
-    _marker: PhantomData<T>}
+{
+    /// Set system prompt - EXACT syntax: .system_prompt("...")
+    fn system_prompt(self, prompt: impl Into<String>) -> impl ExtractorBuilder<T>;
+    
+    /// Set instructions - EXACT syntax: .instructions("...")
+    fn instructions(self, instructions: impl Into<String>) -> impl ExtractorBuilder<T>;
+    
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_error<F>(self, handler: F) -> impl ExtractorBuilder<T>
+    where
+        F: Fn(String) + Send + Sync + 'static;
+    
+    /// Set result handler - EXACT syntax: .on_result(|result| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_result<F>(self, handler: F) -> impl ExtractorBuilder<T>
+    where
+        F: FnOnce(T) -> T + Send + 'static;
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_chunk<F>(self, handler: F) -> impl ExtractorBuilder<T>
+    where
+        F: FnMut(T) -> T + Send + 'static;
+    
+    /// Build extractor - EXACT syntax: .build()
+    fn build(self) -> impl Extractor<T>;
+    
+    /// Build async extractor - EXACT syntax: .build_async()
+    fn build_async(self) -> AsyncTask<impl Extractor<T>>
+    where
+        ExtractorImpl<T>: fluent_ai_domain::async_task::NotResult;
+    
+    /// Extract from text immediately - EXACT syntax: .extract_from_text("text")
+    fn extract_from_text(self, text: impl Into<String>) -> AsyncTask<T>
+    where
+        T: fluent_ai_domain::async_task::NotResult;
+}
 
-/// Builder with error handler for polymorphic error handling
-pub struct ExtractorBuilderWithHandler<
+/// Hidden implementation struct - zero-allocation builder state with zero Box<dyn> usage
+struct ExtractorBuilderImpl<
     T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
     M: CompletionModel,
-> {
-    #[allow(dead_code)]
-    // TODO: Use for completion model integration and structured data extraction
+    F1 = fn(String),
+    F2 = fn(T) -> T,
+    F3 = fn(T) -> T,
+> where
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(T) -> T + Send + 'static,
+    F3: FnMut(T) -> T + Send + 'static,
+{
     model: M,
-    #[allow(dead_code)] // TODO: Use for extraction guidance and schema specification
     system_prompt: Option<String>,
-    #[allow(dead_code)] // TODO: Use for polymorphic error handling during extraction operations
-    error_handler: Box<dyn Fn(String) + Send + Sync>,
-    #[allow(dead_code)] // TODO: Use for extraction result processing and validation
-    result_handler: Option<Box<dyn FnOnce(T) -> T + Send + 'static>>,
-    #[allow(dead_code)] // TODO: Use for streaming extraction chunk processing
-    chunk_handler: Option<Box<dyn FnMut(T) -> T + Send + 'static>>,
-    #[allow(dead_code)] // TODO: Use for type-level extraction target specification
-    _marker: PhantomData<T>}
+    error_handler: Option<F1>,
+    result_handler: Option<F2>,
+    chunk_handler: Option<F3>,
+    _marker: PhantomData<T>,
+}
 
 impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> ExtractorImpl<T> {
-    // Semantic entry point
-    pub fn extract_with<M: CompletionModel>(model: M) -> ExtractorBuilder<T, M> {
-        ExtractorBuilder {
+    /// Semantic entry point - EXACT syntax: ExtractorImpl::extract_with(model)
+    pub fn extract_with<M: CompletionModel>(model: M) -> impl ExtractorBuilder<T> {
+        ExtractorBuilderImpl {
             model,
             system_prompt: None,
-            _marker: PhantomData}
+            error_handler: None,
+            result_handler: None,
+            chunk_handler: None,
+            _marker: PhantomData,
+        }
     }
 }
 
-impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel>
-    ExtractorBuilder<T, M>
+impl<T, M, F1, F2, F3> ExtractorBuilder<T> for ExtractorBuilderImpl<T, M, F1, F2, F3>
+where
+    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
+    M: CompletionModel + 'static,
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(T) -> T + Send + 'static,
+    F3: FnMut(T) -> T + Send + 'static,
 {
-    pub fn system_prompt(mut self, system_prompt: impl Into<String>) -> Self {
-        self.system_prompt = Some(system_prompt.into());
+    /// Set system prompt - EXACT syntax: .system_prompt("...")
+    fn system_prompt(mut self, prompt: impl Into<String>) -> impl ExtractorBuilder<T> {
+        self.system_prompt = Some(prompt.into());
         self
     }
-
-    pub fn instructions(mut self, instructions: impl Into<String>) -> Self {
+    
+    /// Set instructions - EXACT syntax: .instructions("...")
+    fn instructions(mut self, instructions: impl Into<String>) -> impl ExtractorBuilder<T> {
         self.system_prompt = Some(instructions.into());
         self
     }
-
-    // Error handling - required before terminal methods
-    pub fn on_error<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
+    
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_error<F>(self, handler: F) -> impl ExtractorBuilder<T>
     where
         F: Fn(String) + Send + Sync + 'static,
     {
-        ExtractorBuilderWithHandler {
+        ExtractorBuilderImpl {
             model: self.model,
             system_prompt: self.system_prompt,
-            error_handler: Box::new(handler),
-            result_handler: None,
-            chunk_handler: None,
-            _marker: PhantomData}
+            error_handler: Some(handler),
+            result_handler: self.result_handler,
+            chunk_handler: self.chunk_handler,
+            _marker: PhantomData,
+        }
     }
-
-    pub fn on_result<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
+    
+    /// Set result handler - EXACT syntax: .on_result(|result| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_result<F>(self, handler: F) -> impl ExtractorBuilder<T>
     where
         F: FnOnce(T) -> T + Send + 'static,
     {
-        ExtractorBuilderWithHandler {
+        ExtractorBuilderImpl {
             model: self.model,
             system_prompt: self.system_prompt,
-            error_handler: Box::new(|e| eprintln!("Extractor error: {}", e)),
-            result_handler: Some(Box::new(handler)),
-            chunk_handler: None,
-            _marker: PhantomData}
+            error_handler: self.error_handler,
+            result_handler: Some(handler),
+            chunk_handler: self.chunk_handler,
+            _marker: PhantomData,
+        }
     }
-
-    pub fn on_chunk<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_chunk<F>(self, handler: F) -> impl ExtractorBuilder<T>
     where
         F: FnMut(T) -> T + Send + 'static,
     {
-        ExtractorBuilderWithHandler {
+        ExtractorBuilderImpl {
             model: self.model,
             system_prompt: self.system_prompt,
-            error_handler: Box::new(|e| eprintln!("Extractor chunk error: {}", e)),
-            result_handler: None,
-            chunk_handler: Some(Box::new(handler)),
-            _marker: PhantomData}
+            error_handler: self.error_handler,
+            result_handler: self.result_handler,
+            chunk_handler: Some(handler),
+            _marker: PhantomData,
+        }
     }
-}
-
-impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel + 'static>
-    ExtractorBuilderWithHandler<T, M>
-{
-    // Terminal method - returns impl Extractor
-    pub fn build(self) -> impl Extractor<T> {
+    
+    /// Build extractor - EXACT syntax: .build()
+    fn build(self) -> impl Extractor<T> {
         // TODO: Convert model to agent properly
         let agent = Agent::new(Models::Gpt35Turbo, "");
-
+        
         let mut extractor = ExtractorImpl::new(agent);
         if let Some(prompt) = self.system_prompt {
             extractor = extractor.with_system_prompt(prompt);
         }
         extractor
     }
-
-    // Terminal method - async build
-    pub fn build_async(self) -> AsyncTask<impl Extractor<T>>
+    
+    /// Build async extractor - EXACT syntax: .build_async()
+    fn build_async(self) -> AsyncTask<impl Extractor<T>>
     where
         ExtractorImpl<T>: fluent_ai_domain::async_task::NotResult,
     {
         spawn_async(async move { self.build() })
     }
-
-    // Terminal method - extract from text immediately
-    pub fn extract_from_text(self, text: impl Into<String>) -> AsyncTask<T>
+    
+    /// Extract from text immediately - EXACT syntax: .extract_from_text("text")
+    fn extract_from_text(self, text: impl Into<String>) -> AsyncTask<T>
     where
         T: fluent_ai_domain::async_task::NotResult,
     {

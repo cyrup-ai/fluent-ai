@@ -1,51 +1,143 @@
-//! Loader builder implementations
+//! Loader builder implementations - Zero Box<dyn> trait-based architecture
 //!
-//! All loader construction logic and builder patterns.
+//! All loader construction logic and builder patterns with zero allocation.
 
 use std::fmt;
 use std::path::PathBuf;
+use std::marker::PhantomData;
 
 use fluent_ai_domain::loader::{Loader, LoaderImpl};
 use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 
-/// Builder for creating Loader instances
-pub struct LoaderBuilder<T: Send + Sync + fmt::Debug + Clone + 'static> {
-    pattern: Option<String>,
-    recursive: bool,
-    iterator: Option<Box<dyn Iterator<Item = T> + Send + Sync>>}
+/// Loader builder trait - elegant zero-allocation builder pattern
+pub trait LoaderBuilder<T>: Sized 
+where
+    T: Send + Sync + fmt::Debug + Clone + 'static,
+{
+    /// Set recursive loading - EXACT syntax: .recursive(true)
+    fn recursive(self, recursive: bool) -> impl LoaderBuilder<T>;
+    
+    /// Set filter function - EXACT syntax: .filter(|item| { ... })
+    fn filter<F>(self, f: F) -> impl LoaderBuilder<T>
+    where
+        F: Fn(&T) -> bool + 'static;
+    
+    /// Map transformation - EXACT syntax: .map(|item| { ... })
+    fn map<U, F>(self, f: F) -> impl LoaderBuilder<U>
+    where
+        F: Fn(T) -> U + 'static,
+        U: Send + Sync + fmt::Debug + Clone + 'static;
+    
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_error<F>(self, handler: F) -> impl LoaderBuilder<T>
+    where
+        F: Fn(String) + Send + Sync + 'static;
+    
+    /// Set result handler - EXACT syntax: .on_result(|result| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_result<F>(self, handler: F) -> impl LoaderBuilder<T>
+    where
+        F: FnOnce(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static;
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_chunk<F>(self, handler: F) -> impl LoaderBuilder<T>
+    where
+        F: FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static;
+    
+    /// Build loader - EXACT syntax: .build()
+    fn build(self) -> impl Loader<T>
+    where
+        LoaderImpl<T>: Loader<T>;
+    
+    /// Build async loader - EXACT syntax: .build_async()
+    fn build_async(self) -> AsyncTask<impl Loader<T>>
+    where
+        LoaderImpl<T>: Loader<T> + fluent_ai_domain::async_task::NotResult;
+    
+    /// Load files immediately - EXACT syntax: .load_files()
+    fn load_files(self) -> AsyncTask<ZeroOneOrMany<T>>
+    where
+        LoaderImpl<T>: Loader<T>,
+        T: fluent_ai_domain::async_task::NotResult;
+    
+    /// Stream files immediately - EXACT syntax: .stream()
+    fn stream(self) -> fluent_ai_domain::async_task::AsyncStream<T>
+    where
+        LoaderImpl<T>: Loader<T>,
+        T: fluent_ai_domain::async_task::NotResult;
+    
+    /// Legacy load method - EXACT syntax: .load()
+    fn load(self) -> AsyncTask<ZeroOneOrMany<T>>
+    where
+        LoaderImpl<T>: Loader<T>,
+        T: fluent_ai_domain::async_task::NotResult;
+    
+    /// Process with function - EXACT syntax: .process(|item| { ... })
+    fn process<F, U>(self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
+    where
+        F: Fn(&T) -> U + Send + Sync + 'static,
+        U: Send + Sync + fmt::Debug + Clone + 'static + fluent_ai_domain::async_task::NotResult,
+        LoaderImpl<T>: Loader<T>,
+        T: fluent_ai_domain::async_task::NotResult;
+    
+    /// Handle each item - EXACT syntax: .on_each(|item| { ... })
+    fn on_each<F>(self, handler: F) -> AsyncTask<()>
+    where
+        F: Fn(&T) + Send + Sync + 'static,
+        LoaderImpl<T>: Loader<T>,
+        T: fluent_ai_domain::async_task::NotResult;
+}
 
-/// Builder with error handler for polymorphic error handling
-pub struct LoaderBuilderWithHandler<T: Send + Sync + fmt::Debug + Clone + 'static> {
-    #[allow(dead_code)] // TODO: Use for file glob pattern matching and directory traversal
+/// Hidden implementation struct - zero-allocation builder state with zero Box<dyn> usage
+struct LoaderBuilderImpl<
+    T: Send + Sync + fmt::Debug + Clone + 'static,
+    F1 = fn(String),
+    F2 = fn(ZeroOneOrMany<T>) -> ZeroOneOrMany<T>,
+    F3 = fn(ZeroOneOrMany<T>) -> ZeroOneOrMany<T>,
+> where
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static,
+    F3: FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static,
+{
     pattern: Option<String>,
-    #[allow(dead_code)] // TODO: Use for recursive directory loading configuration
     recursive: bool,
-    #[allow(dead_code)] // TODO: Use for custom file iteration and processing
-    iterator: Option<Box<dyn Iterator<Item = T> + Send + Sync>>,
-    #[allow(dead_code)] // TODO: Use for polymorphic error handling during loading operations
-    error_handler: Box<dyn Fn(String) + Send + Sync>,
-    #[allow(dead_code)] // TODO: Use for loading result processing and transformation
-    result_handler: Option<Box<dyn FnOnce(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static>>,
-    #[allow(dead_code)] // TODO: Use for streaming loading chunk processing
-    chunk_handler: Option<Box<dyn FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static>>}
+    error_handler: Option<F1>,
+    result_handler: Option<F2>,
+    chunk_handler: Option<F3>,
+    _marker: PhantomData<T>,
+}
 
 impl LoaderImpl<PathBuf> {
-    // Semantic entry point
-    pub fn files_matching(pattern: &str) -> LoaderBuilder<PathBuf> {
-        LoaderBuilder {
+    /// Semantic entry point - EXACT syntax: LoaderImpl::files_matching("pattern")
+    pub fn files_matching(pattern: &str) -> impl LoaderBuilder<PathBuf> {
+        LoaderBuilderImpl {
             pattern: Some(pattern.to_string()),
             recursive: false,
-            iterator: None}
+            error_handler: None,
+            result_handler: None,
+            chunk_handler: None,
+            _marker: PhantomData,
+        }
     }
 }
 
-impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilder<T> {
-    pub fn recursive(mut self, recursive: bool) -> Self {
+impl<T, F1, F2, F3> LoaderBuilder<T> for LoaderBuilderImpl<T, F1, F2, F3>
+where
+    T: Send + Sync + fmt::Debug + Clone + 'static,
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static,
+    F3: FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static,
+{
+    /// Set recursive loading - EXACT syntax: .recursive(true)
+    fn recursive(mut self, recursive: bool) -> impl LoaderBuilder<T> {
         self.recursive = recursive;
         self
     }
-
-    pub fn filter<F>(self, _f: F) -> Self
+    
+    /// Set filter function - EXACT syntax: .filter(|item| { ... })
+    fn filter<F>(self, _f: F) -> impl LoaderBuilder<T>
     where
         F: Fn(&T) -> bool + 'static,
     {
@@ -53,83 +145,94 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilder<T> {
         // Full implementation would need to modify the iterator
         self
     }
-
-    pub fn map<U, F>(self, _f: F) -> LoaderBuilder<U>
+    
+    /// Map transformation - EXACT syntax: .map(|item| { ... })
+    fn map<U, F>(self, _f: F) -> impl LoaderBuilder<U>
     where
         F: Fn(T) -> U + 'static,
         U: Send + Sync + fmt::Debug + Clone + 'static,
     {
-        LoaderBuilder {
+        LoaderBuilderImpl {
             pattern: self.pattern,
             recursive: self.recursive,
-            iterator: None, // Would need to transform iterator
+            error_handler: None,
+            result_handler: None,
+            chunk_handler: None,
+            _marker: PhantomData,
         }
     }
-
-    // Error handling - required before terminal methods
-    pub fn on_error<F>(self, handler: F) -> LoaderBuilderWithHandler<T>
+    
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_error<F>(self, handler: F) -> impl LoaderBuilder<T>
     where
         F: Fn(String) + Send + Sync + 'static,
     {
-        LoaderBuilderWithHandler {
+        LoaderBuilderImpl {
             pattern: self.pattern,
             recursive: self.recursive,
-            iterator: self.iterator,
-            error_handler: Box::new(handler),
-            result_handler: None,
-            chunk_handler: None}
+            error_handler: Some(handler),
+            result_handler: self.result_handler,
+            chunk_handler: self.chunk_handler,
+            _marker: PhantomData,
+        }
     }
-
-    pub fn on_result<F>(self, handler: F) -> LoaderBuilderWithHandler<T>
+    
+    /// Set result handler - EXACT syntax: .on_result(|result| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_result<F>(self, handler: F) -> impl LoaderBuilder<T>
     where
         F: FnOnce(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static,
     {
-        LoaderBuilderWithHandler {
+        LoaderBuilderImpl {
             pattern: self.pattern,
             recursive: self.recursive,
-            iterator: self.iterator,
-            error_handler: Box::new(|e| eprintln!("Loader error: {}", e)),
-            result_handler: Some(Box::new(handler)),
-            chunk_handler: None}
+            error_handler: self.error_handler,
+            result_handler: Some(handler),
+            chunk_handler: self.chunk_handler,
+            _marker: PhantomData,
+        }
     }
-
-    pub fn on_chunk<F>(self, handler: F) -> LoaderBuilderWithHandler<T>
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_chunk<F>(self, handler: F) -> impl LoaderBuilder<T>
     where
         F: FnMut(ZeroOneOrMany<T>) -> ZeroOneOrMany<T> + Send + 'static,
     {
-        LoaderBuilderWithHandler {
+        LoaderBuilderImpl {
             pattern: self.pattern,
             recursive: self.recursive,
-            iterator: self.iterator,
-            error_handler: Box::new(|e| eprintln!("Loader chunk error: {}", e)),
-            result_handler: None,
-            chunk_handler: Some(Box::new(handler))}
+            error_handler: self.error_handler,
+            result_handler: self.result_handler,
+            chunk_handler: Some(handler),
+            _marker: PhantomData,
+        }
     }
-}
-
-impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> {
-    // Terminal method - returns impl Loader
-    pub fn build(self) -> impl Loader<T>
+    
+    /// Build loader - EXACT syntax: .build()
+    fn build(self) -> impl Loader<T>
     where
         LoaderImpl<T>: Loader<T>,
     {
         LoaderImpl {
             pattern: self.pattern,
             recursive: self.recursive,
-            iterator: self.iterator,
-            filter_fn: None}
+            iterator: None,
+            filter_fn: None,
+        }
     }
-
-    // Terminal method - async build
-    pub fn build_async(self) -> AsyncTask<impl Loader<T>>
+    
+    /// Build async loader - EXACT syntax: .build_async()
+    fn build_async(self) -> AsyncTask<impl Loader<T>>
     where
         LoaderImpl<T>: Loader<T> + fluent_ai_domain::async_task::NotResult,
     {
         spawn_async(async move { self.build() })
     }
-
-    // Terminal method - load files immediately
-    pub fn load_files(self) -> AsyncTask<ZeroOneOrMany<T>>
+    
+    /// Load files immediately - EXACT syntax: .load_files()
+    fn load_files(self) -> AsyncTask<ZeroOneOrMany<T>>
     where
         LoaderImpl<T>: Loader<T>,
         T: fluent_ai_domain::async_task::NotResult,
@@ -137,9 +240,9 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> 
         let loader = self.build();
         loader.load_all()
     }
-
-    // Terminal method - stream files immediately
-    pub fn stream(self) -> fluent_ai_domain::async_task::AsyncStream<T>
+    
+    /// Stream files immediately - EXACT syntax: .stream()
+    fn stream(self) -> fluent_ai_domain::async_task::AsyncStream<T>
     where
         LoaderImpl<T>: Loader<T>,
         T: fluent_ai_domain::async_task::NotResult,
@@ -147,17 +250,18 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> 
         let loader = self.build();
         loader.stream_files()
     }
-
-    // Legacy terminal methods for backward compatibility
-    pub fn load(self) -> AsyncTask<ZeroOneOrMany<T>>
+    
+    /// Legacy load method - EXACT syntax: .load()
+    fn load(self) -> AsyncTask<ZeroOneOrMany<T>>
     where
         LoaderImpl<T>: Loader<T>,
         T: fluent_ai_domain::async_task::NotResult,
     {
         self.load_files()
     }
-
-    pub fn process<F, U>(self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
+    
+    /// Process with function - EXACT syntax: .process(|item| { ... })
+    fn process<F, U>(self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
     where
         F: Fn(&T) -> U + Send + Sync + 'static,
         U: Send + Sync + fmt::Debug + Clone + 'static + fluent_ai_domain::async_task::NotResult,
@@ -167,8 +271,9 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> 
         let loader = self.build();
         loader.process_each(processor)
     }
-
-    pub fn on_each<F>(self, handler: F) -> AsyncTask<()>
+    
+    /// Handle each item - EXACT syntax: .on_each(|item| { ... })
+    fn on_each<F>(self, handler: F) -> AsyncTask<()>
     where
         F: Fn(&T) + Send + Sync + 'static,
         LoaderImpl<T>: Loader<T>,
@@ -196,4 +301,4 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> 
 // Type aliases for convenience
 pub type DefaultLoader<T> = LoaderImpl<T>;
 pub type FileLoader<T> = LoaderImpl<T>;
-pub type FileLoaderBuilder<T> = LoaderBuilder<T>;
+pub type FileLoaderBuilder<T> = impl LoaderBuilder<T>;

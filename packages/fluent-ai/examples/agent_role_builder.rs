@@ -20,7 +20,7 @@ let stream = FluentAi::agent_role("rusty-squire")
         Context<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
         Context<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
     )
-    .mcp_server<Stdio>::bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
+    .mcp_server<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait Tool
         Tool<Perplexity>::new({
             "citations" => "true"
@@ -39,13 +39,15 @@ let stream = FluentAi::agent_role("rusty-squire")
         agent.chat(process_turn()) // your custom logic
     })
     .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        Ok => chunk.into()       // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
         println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
+        chunk
     })
     .into_agent() // Agent Now
-    .conversation_history(MessageRole::User => "What time is it in Paris, France",
-            MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
-            MessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
+    .conversation_history(
+        MessageRole::User => "What time is it in Paris, France",
+        MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
+        MessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
+    )
     .chat("Hello") // AsyncStream<MessageChunk
     .collect();
 // DO NOT MODIFY !!!  DO NOT MODIFY !!!

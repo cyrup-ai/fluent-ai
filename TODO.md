@@ -1,6 +1,362 @@
-# TODO: Builder Trait Relocation Implementation
+# FLUENT-AI ARCHITECTURAL IMPROVEMENTS
 
-**APPROVED PLAN EXECUTION** - Relocate ALL Builder structs from domain crate to fluent-ai crate with trait-based patterns.
+**CRITICAL ARCHITECTURE UPGRADE** - Zero-allocation, zero-locking, zero-`dyn` implementation
+
+## CORE PRINCIPLES
+- **ZERO ALLOCATION**: No heap allocations in hot paths
+- **ZERO LOCKING**: No mutexes, RwLocks, or atomic operations in hot paths
+- **ZERO `dyn`**: No dynamic dispatch in hot paths
+- **ZERO UNSAFE**: No `unsafe` blocks outside of well-audited system code
+- **ZERO MACROS**: No procedural macros in public API
+- **ZERO UNWRAP**: No `unwrap()` or `expect()` in production code
+
+---
+
+## PHASE 0: CRITICAL COMPILATION FIXES (URGENT - MUST EXECUTE FIRST)
+
+### Task 0.1: Fix Missing Struct Fields in AgentRoleBuilderImpl
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (lines 104-116)
+
+**Technical Specifications:**
+- **COMPILATION ERROR**: Lines 250, 350 reference non-existent struct fields
+- Add missing fields to `AgentRoleBuilderImpl` struct using const generics:
+  ```rust
+  struct AgentRoleBuilderImpl<const MAX_CONTEXTS: usize = 8, const MAX_TOOLS: usize = 8> {
+      name: ArrayString<64>, // Stack-allocated string
+      completion_provider: Option<CompletionProvider>,
+      temperature: Option<f32>,
+      max_tokens: Option<u32>,
+      system_prompt: Option<ArrayString<1024>>,
+      contexts: ArrayVec<String, MAX_CONTEXTS>,
+      tools: ArrayVec<String, MAX_TOOLS>,
+      mcp_servers: Option<ArrayVec<McpServerConfig, 4>>,
+      additional_params: Option<phf::Map<&'static str, &'static str>>,
+      memory: Option<ArrayString<128>>,
+      metadata: Option<phf::Map<&'static str, &'static str>>,
+      on_tool_result_handler: Option<fn(&str) -> ()>,
+      on_conversation_turn_handler: Option<fn(&AgentConversation, &AgentRoleAgent) -> ()>,
+  }
+  ```
+
+**Error Handling:**
+- Use `Option` for all optional fields
+- Replace `Box<dyn Fn...>` with function pointers
+- Use `ArrayString` and `ArrayVec` for stack allocation
+- Use `phf` for compile-time maps
+
+### Task 0.2: Fix Constructor Field Initialization  
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (lines 118-135)
+
+**Technical Specifications:**
+- Initialize all fields in `AgentRoleBuilderImpl::new()`:
+  ```rust
+  fn new(name: impl Into<ArrayString<64>>) -> Self {
+      Self {
+          name: name.into(),
+          completion_provider: None,
+          temperature: None,
+          max_tokens: None,
+          system_prompt: None,
+          contexts: ArrayVec::new(),
+          tools: ArrayVec::new(),
+          mcp_servers: None,
+          additional_params: None,
+          memory: None,
+          metadata: None,
+          on_tool_result_handler: None,
+          on_conversation_turn_handler: None,
+      }
+  }
+  ```
+
+## PHASE 1: ZERO-ALLOCATION IMPLEMENTATION
+
+### Task 1.1: Replace Dynamic Dispatch with Static Dispatch
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/builder.rs`
+
+**Technical Specifications:**
+1. Replace all trait objects with generic parameters
+2. Use `const` generics for array sizes
+3. Replace `Box<dyn Error>` with custom error enums
+4. Use `ArrayString` and `ArrayVec` from `arrayvec` crate
+5. Replace `HashMap` with `phf` for compile-time maps
+
+### Task 1.2: Remove All Locks and Atomics
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/agent.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/builder.rs`
+
+**Technical Specifications:**
+1. Replace `Mutex`/`RwLock` with message passing
+2. Use `crossbeam-channel` for inter-thread communication
+3. Implement work-stealing for parallel processing
+4. Use `parking_lot` for any required synchronization
+
+## PHASE 2: PERFORMANCE OPTIMIZATIONS
+
+### Task 2.1: Implement Zero-Copy Parsing
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/prompt.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/completion.rs`
+
+**Technical Specifications:**
+1. Use `bytes::Bytes` for zero-copy parsing
+2. Implement `Borrow<str>` for string types
+3. Use `Cow<'_, str>` for string operations
+4. Implement `From<&str>` for owned types
+
+### Task 2.2: Optimize Memory Layout
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/agent.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/builder.rs`
+
+**Technical Specifications:**
+1. Use `#[repr(C)]` for FFI compatibility
+2. Implement `Copy` and `Clone` for small types
+3. Use `#[inline(always)]` for hot functions
+4. Implement `Default` for all config types
+
+## PHASE 3: ERROR HANDLING
+
+### Task 3.1: Implement Comprehensive Error Types
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/error.rs`
+
+**Technical Specifications:**
+1. Define error enums with `thiserror`
+2. Implement `From` for error conversions
+3. Add context to all errors
+4. Implement `Display` and `Error` for all error types
+
+### Task 3.2: Add Error Recovery
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/agent.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/builder.rs`
+
+**Technical Specifications:**
+1. Implement retry logic for recoverable errors
+2. Add circuit breakers for external services
+3. Implement backoff strategies
+4. Add metrics for error rates
+
+## PHASE 4: TESTING AND BENCHMARKING
+
+### Task 4.1: Add Comprehensive Tests
+**Files to Create/Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/tests/agent_tests.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/benches/agent_benchmarks.rs`
+
+**Technical Specifications:**
+1. Unit tests for all public APIs
+2. Integration tests for end-to-end flows
+3. Benchmarks for hot paths
+4. Fuzz testing for input validation
+
+### Task 4.2: Performance Profiling
+**Files to Create/Modify:**
+- `/Volumes/samsung_t9/fluent-ai/scripts/profile.sh`
+- `/Volumes/samsung_t9/fluent-ai/scripts/benchmark.sh`
+
+**Technical Specifications:**
+1. Add flamegraph generation
+2. Add memory profiling
+3. Add CPU profiling
+4. Add I/O profiling
+
+## DEPENDENCY UPDATES
+
+### Task 5.1: Update Cargo.toml
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/Cargo.toml`
+
+**Technical Specifications:**
+1. Add required dependencies:
+   ```toml
+   [dependencies]
+   arrayvec = { version = "0.7", features = ["serde"] }
+   phf = { version = "0.11", features = ["macros"] }
+   crossbeam-channel = "0.5"
+   parking_lot = "0.12"
+   bytes = "1.0"
+   thiserror = "1.0"
+   ```
+
+2. Add dev dependencies:
+   ```toml
+   [dev-dependencies]
+   criterion = { version = "0.4", features = ["html_reports"] }
+   proptest = "1.0"
+   ```
+
+## DOCUMENTATION
+
+### Task 6.1: Update Documentation
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/ARCHITECTURE.md`
+- `/Volumes/samsung_t9/fluent-ai/README.md`
+
+**Technical Specifications:**
+1. Document zero-allocation guarantees
+2. Document thread safety
+3. Add performance characteristics
+4. Add examples of proper usage
+
+## VALIDATION
+
+### Task 7.1: Static Analysis
+**Commands to Run:**
+```bash
+cargo clippy --all-targets --all-features -- -D warnings
+cargo miri test
+cargo udeps
+```
+
+### Task 7.2: Dynamic Analysis
+**Commands to Run:**
+```bash
+cargo test --all-features
+cargo bench
+valgrind --tool=memcheck --leak-check=full target/debug/fluent-ai
+```
+
+## DELIVERY
+
+### Task 8.1: Create Release Notes
+**Files to Create:**
+- `/Volumes/samsung_t9/fluent-ai/RELEASES.md`
+
+**Technical Specifications:**
+1. Document all breaking changes
+2. List all new features
+3. Document performance improvements
+4. Include upgrade instructions
+
+### Task 8.2: Update Examples
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/examples/chat_loop_example.rs`
+- `/Volumes/samsung_t9/fluent-ai/examples/agent_builder_example.rs`
+
+**Technical Specifications:**
+1. Update examples to use new APIs
+2. Add error handling
+3. Add performance tips
+4. Add best practices
+
+## POST-RELEASE
+
+### Task 9.1: Monitor Performance
+**Tools to Use:**
+- Prometheus
+- Grafana
+- Jaeger
+
+**Metrics to Track:**
+1. Memory usage
+2. CPU usage
+3. Error rates
+4. Latency percentiles
+
+### Task 9.2: Gather Feedback
+**Channels to Monitor:**
+- GitHub Issues
+- Discord
+- User surveys
+- Performance benchmarks
+
+**Areas of Focus:**
+1. Performance regressions
+2. API ergonomics
+3. Documentation gaps
+4. Feature requests
+
+## PHASE 0: CRITICAL COMPILATION FIXES (URGENT - MUST EXECUTE FIRST)
+
+### Task 0.1: Fix Missing Struct Fields in AgentRoleBuilderImpl
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (lines 104-116)
+
+**Technical Specifications:**
+- **COMPILATION ERROR**: Lines 250, 350 reference non-existent struct fields
+- Add missing fields to `AgentRoleBuilderImpl` struct:
+  ```rust
+  struct AgentRoleBuilderImpl {
+      name: String,
+      completion_provider: Option<String>,
+      temperature: Option<f64>,
+      max_tokens: Option<u64>,
+      system_prompt: Option<String>,
+      contexts: Vec<String>,
+      tools: Vec<String>,
+      mcp_servers: Option<ZeroOneOrMany<McpServerConfig>>,
+      additional_params: Option<HashMap<String, Value>>,
+      memory: Option<String>,
+      metadata: Option<HashMap<String, Value>>,
+      // ADD THESE MISSING FIELDS:
+      on_tool_result_handler: Option<Box<dyn FnMut(String) + Send + 'static>>,
+      on_conversation_turn_handler: Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static>>,
+  }
+  ```
+
+**Error Handling:**
+- Initialize fields as `None` in `AgentRoleBuilderImpl::new()`
+- Replace unwrap/expect with proper error propagation
+- Use `Box<dyn Fn...>` temporarily for compilation fix (will be optimized in Phase 1)
+
+### Task 0.2: Fix Constructor Field Initialization  
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (lines 118-135)
+
+**Technical Specifications:**
+- Add missing field initialization in `AgentRoleBuilderImpl::new()`:
+  ```rust
+  Self {
+      name: name.into(),
+      completion_provider: None,
+      temperature: None,
+      max_tokens: None,
+      system_prompt: None,
+      contexts: Vec::new(),
+      tools: Vec::new(),
+      mcp_servers: None,
+      additional_params: None,
+      memory: None,
+      metadata: None,
+      // ADD THESE:
+      on_tool_result_handler: None,
+      on_conversation_turn_handler: None,
+  }
+  ```
+
+### Task 0.3: Fix AsyncStream Collection Pattern in Examples
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/examples/chat_loop_example.rs` (line 50)
+
+**Technical Specifications:**
+- **SYNTAX MATCH FIX**: Current code correctly uses `.collect()` - NO CHANGE NEEDED
+- Verify ARCHITECTURE.md examples use `.collect()` pattern consistently  
+- Current: `.chat("Hello") // AsyncStream<MessageChunk>.collect();` - CORRECT
+- Ensure no `.?` operator usage with AsyncStream returns
+
+### Task 0.4: Verify Domain Import Dependencies  
+**Files to Modify:**
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (lines 7-16)
+
+**Technical Specifications:**
+- **CRITICAL**: Ensure all required domain types are imported
+- Add missing imports if referenced in lines 250, 350:
+  ```rust
+  use fluent_ai_domain::{
+      AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
+      ChatMessageChunk, CompletionProvider, Context, Tool, McpServer, Memory, 
+      AdditionalParams, Metadata, Conversation, MessageRole,
+      ZeroOneOrMany, AsyncStream
+  };
+  ```
+- Verify all type references resolve correctly
 
 ## CONSTRAINTS (CRITICAL)
 - ✅ Zero allocation, blazing-fast performance
@@ -13,387 +369,41 @@
 
 ---
 
-## PHASE 2: Memory Builder Traits Implementation
+## CRITICAL REMAINING TASKS
 
-### Task 2.1: Create Memory Builder Trait Foundation
+### Task R.1: Fix ContextArgs trait signature in domain package
 **Files to Modify:**
-- Create: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/memory.rs`
-- Modify: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/mod.rs` (add memory module)
+- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/agent/types.rs` (line 61)
 
 **Technical Specifications:**
-- Create `MemoryNodeBuilder` trait with `impl Trait` returns following AgentRoleBuilder pattern
-- Create `MemorySystemBuilder` trait with `impl Trait` returns
-- Hidden implementation structs: `MemoryNodeBuilderImpl`, `MemorySystemBuilderImpl`
-- Use `ZeroOneOrMany<T>` for collections (never `Option<ZeroOneOrMany<T>>`)
-- All methods return `Result<T, E>` with comprehensive error handling
-- Preserve zero-allocation patterns with `Arc<str>` and atomic operations
-- Inline all hot paths with `#[inline(always)]`
+- Change `fn add_to(self, contexts: &mut Vec<String>)` to `fn add_to(self, contexts: &mut ZeroOneOrMany<Context>)`
+- Add required import: `use crate::context::Context`
 
-**Architecture Notes:**
-- Public traits: `pub trait MemoryNodeBuilder { fn with_content(self, content: MemoryContent) -> impl MemoryNodeBuilder; }`
-- Hidden structs: `struct MemoryNodeBuilderImpl { content: ZeroOneOrMany<MemoryContent>, ... }`
-- Immutable builder pattern: `..self` syntax for state updates
-- Domain type preservation: All `fluent_ai_domain::memory::*` types maintained
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
 
-### Task 2.2: Implement MemoryNodeBuilder Trait Methods
+### Task R.2: Fix ToolArgs trait signature in domain package  
 **Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/memory.rs` (lines 50-200)
+- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/agent/types.rs` (line 67)
 
 **Technical Specifications:**
-- Convert from current struct methods (domain/src/memory/primitives/node.rs:594-730)
-- Methods: `with_id()`, `with_memory_type()`, `with_content()`, `with_text()`, `with_embedding()`, `with_importance()`, `with_keyword()`, `with_tag()`, `with_custom_metadata()`, `build()`
-- State management using `ZeroOneOrMany::with_pushed()` for collections
-- Validation in `build()` method with `MemoryResult<MemoryNode>`
-- Performance: Stack-allocated temporary vectors, zero-copy where possible
+- Change `fn add_to(self, tools: &mut Vec<String>)` to `fn add_to(self, tools: &mut ZeroOneOrMany<Tool>)`
+- Add required import: `use crate::tool::Tool`
 
-### Task 2.3: Implement MemorySystemBuilder Trait Methods  
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/memory.rs` (lines 200-350)
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
 
+### Task R.3: Test ARCHITECTURE.md compilation
 **Technical Specifications:**
-- Convert from current struct methods (domain/src/memory/mod.rs:159-213)
-- Methods: `with_database_config()`, `with_vector_config()`, `with_llm_config()`, `with_cognitive()`, `with_compatibility_mode()`, `build()`
-- Configuration validation in `build()` method
-- Support all specialized configurations: `for_semantic_search()`, `for_realtime_chat()`, `for_large_scale()`
+- Create test to verify all three ARCHITECTURE.md examples compile exactly as written
+- Verify zero compilation errors or warnings
+- Confirm all syntax works including =>, {}, variadic args
 
----
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
 
-## PHASE 3: Chat Builder Traits Implementation
-
-### Task 3.1: Create Chat Builder Directory Structure
-**Files to Create:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/mod.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/config.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/realtime.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/streaming.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/typing.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/templates.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/macros.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/search.rs`
-
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/mod.rs` (add chat module)
-
-### Task 3.2: Implement ConfigurationBuilder and PersonalityConfigBuilder Traits
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/config.rs`
-
+### Task R.4: Final verification and QA
 **Technical Specifications:**
-- Convert from domain struct patterns (domain/src/chat/config.rs:1374-1495)
-- `ConfigurationBuilder` trait: `temperature()`, `max_tokens()`, `system_prompt()`, `model_name()`, `build()`
-- `PersonalityConfigBuilder` trait: `personality_type()`, `response_style()`, `expertise_level()`, `creativity_level()`, `formality_level()`, `build()`
-- Zero-allocation with `Arc<str>` for string storage
-- Range validation for numeric parameters (temperature 0.0-2.0, creativity 0.0-1.0)
-
-### Task 3.3: Implement RealTimeSystemBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/realtime.rs`
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/chat/realtime.rs:1255-1369)
-- Methods: `buffer_size()`, `max_concurrent_streams()`, `heartbeat_interval()`, `message_queue_size()`, `auto_reconnect()`, `build()`
-- Use `Duration` for time-based configurations
-- `AtomicUsize` for concurrent counters with relaxed ordering
-- Validate buffer sizes and queue limits
-
-### Task 3.4: Implement LiveMessageStreamerBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/streaming.rs`
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/chat/realtime/streaming.rs:622-685)
-- Methods: `chunk_size()`, `stream_buffer_size()`, `enable_compression()`, `backpressure_threshold()`, `build()`
-- `AsyncStream<T>` integration for streaming patterns
-- Backpressure handling with atomic thresholds
-
-### Task 3.5: Implement TypingIndicatorBuilder Trait  
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/typing.rs`
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/chat/realtime/typing.rs:476-535)
-- Methods: `show_typing()`, `typing_timeout()`, `auto_hide()`, `custom_indicator()`, `build()`
-- `Duration` for timeout configurations
-- Custom indicator validation
-
-### Task 3.6: Implement TemplateBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/templates.rs`
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/chat/templates/mod.rs:102-189)
-- Methods: `name()`, `content()`, `variables()`, `category()`, `build()`
-- Convert `Vec<String>` to `ZeroOneOrMany<TemplateVariable>`
-- Template validation with variable placeholder checking
-
-### Task 3.7: Implement MacroBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/macros.rs`
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/chat/macros.rs:764-852)
-- Methods: `name()`, `description()`, `actions()`, `triggers()`, `conditions()`, `dependencies()`, `execution_config()`, `build()`
-- Convert multiple `Vec<T>` fields to `ZeroOneOrMany<T>`
-- Macro action validation and circular dependency detection
-
-### Task 3.8: Implement HistoryManagerBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/chat/search.rs`
-
-**Technical Specifications:**
-- Convert from domain pattern (domain/src/chat/search.rs)
-- Methods: `max_history_size()`, `search_indexing()`, `compression_enabled()`, `retention_policy()`, `build()`
-- Search indexing configuration with performance tuning
-
-### Task 3.9: Merge ConversationBuilder with Existing Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/conversation.rs` (merge functionality)
-
-**Technical Specifications:**
-- Analyze existing fluent-ai conversation builder (fluent-ai/src/builders/conversation.rs)
-- Merge domain ConversationBuilder functionality (domain/src/chat/conversation/mod.rs:502-597)
-- Preserve trait-based pattern while adding domain functionality
-- Convert `Vec<(String, MessageRole)>` to `ZeroOneOrMany<(String, MessageRole)>`
-- Maintain backward compatibility
-
----
-
-## PHASE 4: Completion Builder Traits Implementation
-
-### Task 4.1: Create Completion Builder Trait Foundation with Lifetime Support
-**Files to Create:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/completion.rs`
-
-**Technical Specifications:**
-- Handle complex lifetime parameters from analysis
-- `CompletionResponseBuilder<'a>` trait with lifetime preservation
-- `CompletionCoreRequestBuilder<'a>` trait with `SmallVec<&'a str, MAX_STOP_TOKENS>` support
-- Associated types for lifetime-bound returns
-- Zero-allocation performance preservation for Core builders
-
-### Task 4.2: Implement CompletionRequestBuilder Trait
-**Files to Modify:**  
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/completion.rs` (lines 50-150)
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/completion/request.rs:40-202)
-- Methods: `system_prompt()`, `chat_history()`, `documents()`, `tools()`, `temperature()`, `max_tokens()`, `chunk_size()`, `additional_params()`, `build()`
-- Preserve `ZeroOneOrMany<T>` usage (already correct in domain)
-- Validation with `CompletionRequestError`
-
-### Task 4.3: Implement CompletionResponseBuilder<'a> Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/completion.rs` (lines 150-250)
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/completion/response.rs:34-162)
-- Preserve `<'a>` lifetime parameter throughout trait definition
-- Methods: `text()`, `model()`, `provider()`, `usage()`, `finish_reason()`, `build()`
-- Handle `Cow<'a, str>` zero-copy patterns
-- Lifetime propagation in `impl Trait` returns
-
-### Task 4.4: Implement CompactCompletionResponseBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/completion.rs` (lines 250-350)
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/completion/response.rs:181-280)
-- Methods: `content()`, `model()`, `provider()`, `tokens_used()`, `finish_reason()`, `response_time_ms()`, `build()`
-- **CRITICAL**: `build()` returns `AsyncStream<CompactCompletionResponse>` 
-- Use `fluent_ai_async::AsyncStream::with_channel` pattern
-- `Arc<str>` for shared ownership
-
-### Task 4.5: Implement CompletionCoreRequestBuilder<'a> Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/completion.rs` (lines 350-450)
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/completion/candle.rs:122-245)
-- **CRITICAL**: Zero-allocation with `ArrayVec`, `SmallVec` preservation
-- Complex lifetime: `SmallVec<&'a str, MAX_STOP_TOKENS>` handling
-- Methods: `prompt()`, `max_tokens()`, `temperature()`, `top_k()`, `top_p()`, `stop_tokens()`, `stream()`, `model_params()`, `seed()`, `build()`
-- All methods `#[inline(always)]` for performance
-- Stack allocation validation
-
-### Task 4.6: Implement CompletionCoreResponseBuilder Trait
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/completion.rs` (lines 450-550)
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/completion/candle.rs:328-417)
-- Zero-allocation with `ArrayVec` containers
-- Methods: `text()`, `tokens_generated()`, `generation_time_ms()`, `tokens_per_second()`, `finish_reason()`, `model()`, `build()`
-- Atomic operations integration
-- Stack allocation validation
-
----
-
-## PHASE 5: Agent/Model Builder Merge Implementation
-
-### Task 5.1: Analyze and Plan AgentBuilder Merge Strategy
-**Files to Analyze:**
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/agent/builder.rs` (domain struct)
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (existing traits)
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/agent/builder.rs` (typestate builder)
-
-**Technical Specifications:**
-- Create unified trait hierarchy preserving trait-based patterns
-- Hybrid approach: trait-based public API + struct-based performance implementation
-- Preserve const generic parameters for zero-allocation
-- Resolve conflicts between static trait objects vs generic types
-
-### Task 5.2: Implement Unified AgentBuilder Trait System
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs` (enhance existing traits)
-
-**Technical Specifications:**
-- Merge domain's `ArrayVec<McpToolData, TOOLS_CAPACITY>` with fluent-ai flexibility
-- Preserve atomic statistics and lock-free patterns
-- Adapter pattern for API compatibility
-- Error handling unification with `AgentBuilderError`
-
-### Task 5.3: Create ModelInfoBuilder Trait
-**Files to Create:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/model.rs`
-
-**Technical Specifications:**
-- Convert from domain struct (domain/src/model/info.rs)
-- Merge with existing fluent-ai model builder (fluent-ai/src/builders/model.rs)
-- Methods: `provider_name()`, `name()`, `capabilities()`, `pricing()`, `yaml_compatibility()`, `validation()`, `build()`
-- Preserve YAML deserialization compatibility
-- Unified error handling with `ModelError`
-
----
-
-## PHASE 6: ToolBuilder Typestate Implementation
-
-### Task 6.1: Create ToolBuilder Typestate Foundation
-**Files to Create:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/tool.rs`
-
-**Technical Specifications:**
-- Sophisticated typestate pattern with compile-time safety
-- State types: `Named`, `WithDependency`, `WithRequestSchema`, `WithResultSchema`, `WithInvocation`
-- Public trait: `pub trait ToolBuilder<State> { fn named(name: impl Into<String>) -> impl ToolBuilder<Named>; }`
-- Hidden implementation: `struct ToolBuilderImpl<State> { _phantom: PhantomData<State>, ... }`
-- Type-safe state transitions
-
-### Task 6.2: Implement ToolBuilder Core Methods
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/tool.rs` (lines 100-200)
-
-**Technical Specifications:**
-- Follow exact API from domain/tests/toolregistry_tests.rs
-- Methods: `named()`, `description()`, `with<D>()`, `request_schema<T>()`, `result_schema<T>()`
-- Support `SchemaType` variants from domain
-- `ZeroOneOrMany<T>` for dependency collections
-- Compile-time state validation
-
-### Task 6.3: Implement ToolBuilder Invocation and Build Methods
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/tool.rs` (lines 200-300)
-
-**Technical Specifications:**
-- Methods: `on_invocation<F>()`, `on_error<F>()`, `build()`, `into_typed_tool()`
-- Support both sync and async invocation patterns from tests
-- Create `TypedTool` return type with full functionality
-- Comprehensive error handling with `Result<T, E>`
-
-### Task 6.4: Implement ToolBuilder Registry Integration
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/tool.rs` (lines 300-400)
-
-**Technical Specifications:**
-- `TypedToolStorage` integration following domain/tests/toolregistry_tests.rs
-- Tool registration with duplicate detection
-- Memory management with zero-allocation patterns
-- Registry functionality: add, remove, search, validate
-
----
-
-## PHASE 7: Domain Cleanup and Re-export Updates
-
-### Task 7.1: Remove Builder Re-exports from Domain
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/lib.rs` (remove builder re-exports)
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/memory/mod.rs` (remove MemoryNodeBuilder, MemorySystemBuilder)
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/chat/mod.rs` (remove all 9 chat builders)
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/completion/mod.rs` (remove all 5 completion builders)
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/agent/mod.rs` (remove AgentBuilder)
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/model/mod.rs` (remove ModelBuilder, ModelInfoBuilder)
-
-**Technical Specifications:**
-- Add deprecation warnings: `#[deprecated(since = "1.0.0", note = "Use fluent_ai::builders::* instead")]`
-- Ensure domain contains only pure types and traits
-- Clean architectural separation
-
-### Task 7.2: Add Trait Re-exports to Fluent-AI
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/lib.rs` (add builder trait re-exports)
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/mod.rs` (organize trait re-exports)
-
-**Technical Specifications:**
-- Logical organization by functional area: memory, chat, completion, model, tool
-- Proper trait visibility: `pub use builders::memory::*;`
-- External API access patterns
-
-### Task 7.3: Update Global Import Statements
-**Files to Search and Modify:**
-- All crates in workspace: provider, async, http3, etc.
-- Update: `use fluent_ai_domain::*Builder` → `use fluent_ai::builders::*Builder`
-- Search pattern: `rg "fluent_ai_domain.*Builder" --type rust`
-
-**Technical Specifications:**
-- Comprehensive import updates across entire codebase
-- Verify trait imports work correctly
-- Update external dependencies
-
----
-
-## PHASE 8: Testing and Validation
-
-### Task 8.1: Update Domain Tests for Trait Usage
-**Files to Modify:**
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/tests/toolregistry_tests.rs` (update ToolBuilder import)
-- All other test files using builders
-
-**Technical Specifications:**
-- Import ToolBuilder trait from fluent-ai
-- Verify all trait-based builder usage
-- Maintain exact functionality with trait patterns
-
-### Task 8.2: Comprehensive Architecture Validation
-**Technical Specifications:**
-- Verify no circular dependencies: `cargo check --workspace`
-- Dependency graph analysis
-- Clean architectural separation verification
-- Trait-based compilation order validation
-
-### Task 8.3: Performance Benchmarking
-**Technical Specifications:**
-- Benchmark trait-based vs struct-based performance
-- Zero-allocation verification
-- Memory usage profiling
-- Compilation time impact assessment
-
----
-
-## IMPLEMENTATION ORDER
-
-1. **Start with Memory Builders** (simplest, good foundation)
-2. **Chat Builders** (moderate complexity, good learning)
-3. **Completion Builders** (complex lifetime management)
-4. **Agent/Model Merge** (most complex architectural work)
-5. **ToolBuilder Typestate** (most sophisticated implementation)
-6. **Domain Cleanup** (straightforward but critical)
-7. **Testing and Validation** (comprehensive verification)
-
-## SUCCESS CRITERIA
-
-- ✅ All builders relocated from domain to fluent-ai crate
-- ✅ All builders converted to trait-based patterns with `impl Trait` returns
-- ✅ Zero-allocation performance maintained
-- ✅ No circular dependencies
-- ✅ All tests pass
-- ✅ Full functionality preservation
-- ✅ Clean architectural separation achieved
+- Verify perfect line-by-line syntax compliance with ARCHITECTURE.md
+- Confirm all domain objects are used correctly throughout  
+- Validate zero architectural violations remain
+- Check that user requirements are 100% satisfied
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.

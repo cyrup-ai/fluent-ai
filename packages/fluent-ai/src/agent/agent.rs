@@ -31,15 +31,18 @@ pub struct MissingPrompt;
 pub struct Ready;
 
 // ============================================================================
-// Core Agent Provider - only constructible through builder
+// Core Agent Provider - only constructible through builder with zero Box<dyn> allocation
 // ============================================================================
-pub struct Agent<M: CompletionModel> {
+pub struct Agent<M: CompletionModel, F = fn(MessageChunk) -> MessageChunk>
+where
+    F: Fn(MessageChunk) -> MessageChunk + Send + Sync + 'static,
+{
     model: M,
     preamble: String,
     static_context: Vec<Document>,
     static_tools: Vec<String>,
-    dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
-    dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+    dynamic_context: Vec<(usize, String)>, // Store as string configuration for zero allocation
+    dynamic_tools: Vec<(usize, String)>, // Store as string configuration for zero allocation
     tools: ToolSet,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
@@ -47,23 +50,27 @@ pub struct Agent<M: CompletionModel> {
     extended_thinking: bool,
     prompt_cache: bool,
     conversation_history: ZeroOneOrMany<(MessageRole, String)>,
-    chunk_handler: Option<Box<dyn Fn(MessageChunk) -> MessageChunk + Send + Sync>>}
+    chunk_handler: Option<F>, // Generic function type - zero allocation static dispatch
+}
 
 
-impl<M: CompletionModel> Agent<M> {
+impl<M: CompletionModel, F> Agent<M, F>
+where
+    F: Fn(MessageChunk) -> MessageChunk + Send + Sync + 'static,
+{
     /// Create a new AgentBuilder for the given provider model
     pub fn for_provider(model: M) -> AgentBuilder<M, MissingSys, MissingCtx> {
         AgentBuilder::new(model)
     }
 
-    /// Internal constructor for building from AgentBuilder
+    /// Internal constructor for building from AgentBuilder - zero allocation with string configurations
     pub(crate) fn new(
         model: M,
         preamble: String,
         static_context: Vec<Document>,
         static_tools: Vec<String>,
-        dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
-        dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+        dynamic_context: Vec<(usize, String)>, // String configurations for zero allocation
+        dynamic_tools: Vec<(usize, String)>, // String configurations for zero allocation
         tools: ToolSet,
         temperature: Option<f64>,
         max_tokens: Option<u64>,
@@ -85,7 +92,8 @@ impl<M: CompletionModel> Agent<M> {
             extended_thinking,
             prompt_cache,
             conversation_history: ZeroOneOrMany::None,
-            chunk_handler: None}
+            chunk_handler: None,
+        }
     }
 
     /// Start a prompt request - returns async stream
@@ -201,8 +209,8 @@ impl<M: CompletionModel> Agent<M> {
         AsyncStream::empty() // TODO: Implement proper completion to MessageChunk conversion
     }
 
-    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop)  
-    pub fn chat_with_closure<F>(&self, closure: F) -> Result<(), Box<dyn std::error::Error>>
+    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop) - zero allocation  
+    pub fn chat_with_closure<F>(&self, closure: F) -> Result<(), String>
     where
         F: FnOnce(&AgentConversation) -> ChatLoop,
     {

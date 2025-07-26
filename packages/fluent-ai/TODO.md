@@ -161,3 +161,97 @@
 - **GOAL**: 0 errors, 0 warnings ✅
 
 **NO STOPPING UNTIL ALL 229 ISSUES ARE RESOLVED!** 🎯
+
+---
+
+# 🏗️ ARCHITECTURE.MD COMPLIANCE FIXES
+
+## 🎯 CRITICAL MISSING IMPLEMENTATION DETAILS
+
+### AgentRoleBuilder Missing Handler Fields (BLOCKING)
+
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/src/builders/agent_role.rs`
+
+#### Task 1: Add Missing Handler Fields to AgentRoleBuilderImpl Struct
+**Location**: Lines 104-116 (struct AgentRoleBuilderImpl definition)
+**Problem**: Methods `on_conversation_turn()` and `on_tool_result()` reference fields that don't exist in the struct
+**Required Fields**:
+```rust
+on_conversation_turn_handler: Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static>>,
+on_tool_result_handler: Option<Box<dyn FnMut(String) + Send + 'static>>,
+```
+
+#### Task 2: Initialize Missing Fields in Constructor  
+**Location**: Lines 119-134 (AgentRoleBuilderImpl::new() method)
+**Problem**: New fields must be initialized to None in constructor
+**Required Initialization**:
+```rust
+on_conversation_turn_handler: None,
+on_tool_result_handler: None,
+```
+
+#### Task 3: Fix on_conversation_turn Method Implementation
+**Location**: Lines 245-252 (on_conversation_turn method)
+**Problem**: Method tries to set non-existent field `self.on_conversation_turn_handler`
+**Required Fix**: Use the new field instead of non-existent one
+
+#### Task 4: Verify AgentRoleBuilderWithHandler::build() Method
+**Location**: Lines 335-351 (build method)
+**Problem**: Must pass handlers to AgentRoleImpl constructor
+**Required Fix**: Ensure handlers are passed through to final AgentRoleImpl
+
+#### Task 5: Verify Domain Import Paths
+**Location**: Lines 7-16 (imports section)
+**Problem**: Check if `fluent_ai_domain` imports match actual package structure
+**Required Check**: Verify imports resolve correctly with package structure at `./packages/domain/`
+
+### EXACT ARCHITECTURE.MD SYNTAX COMPLIANCE
+
+#### Task 6: Test Against ARCHITECTURE.MD Examples
+**Test File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/examples/chat_loop_example.rs`
+**Verification**: Ensure exact syntax matches ARCHITECTURE.md:
+```rust
+.on_tool_result(|results| {
+    // do stuff
+})
+.on_conversation_turn(|conversation, agent| {
+    log.info("Agent: " + conversation.last().message())
+    agent.chat(process_turn()) // your custom logic
+})
+```
+
+#### Task 7: Compilation Verification
+**Command**: `cargo check --workspace --all-targets`
+**Requirement**: Zero errors after implementation
+**Focus**: Agent role builder functionality specifically
+
+### ZERO-ALLOCATION PERFORMANCE REQUIREMENTS
+
+#### Task 8: Handler Storage Optimization
+**Requirement**: Box<dyn Fn...> allocation only at build time, not runtime
+**Implementation**: Handlers stored once, called efficiently without additional allocations
+**Error Handling**: No unwrap()/expect() calls in production code
+
+#### Task 9: Method Chaining Efficiency
+**Requirement**: Builder methods return Self with zero additional allocations
+**Implementation**: All setters must be #[inline] for optimal performance
+**Validation**: Profile builder usage to confirm zero-allocation behavior
+
+### SEQUENTIAL EXECUTION ORDER
+
+1. **Add missing fields** to AgentRoleBuilderImpl struct (Task 1)
+2. **Initialize fields** in constructor (Task 2)  
+3. **Fix method implementation** (Task 3)
+4. **Update build method** (Task 4)
+5. **Verify imports** (Task 5)
+6. **Test syntax compliance** (Task 6)
+7. **Verify compilation** (Task 7)
+8. **Performance validation** (Tasks 8-9)
+
+### SUCCESS CRITERIA
+- ✅ All ARCHITECTURE.md examples compile and run
+- ✅ Zero compilation errors in agent_role.rs
+- ✅ Handler methods work exactly as documented
+- ✅ Zero allocations in hot paths
+- ✅ No unwrap()/expect() in production code
+- ✅ Perfect syntax compliance with ARCHITECTURE.md

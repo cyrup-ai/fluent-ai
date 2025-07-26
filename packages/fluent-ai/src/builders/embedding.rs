@@ -1,93 +1,141 @@
-//! Embedding builder implementations
+//! Embedding builder implementations - Zero Box<dyn> trait-based architecture
 //!
-//! All embedding construction logic and builder patterns.
+//! All embedding construction logic and builder patterns with zero allocation.
 
+use std::marker::PhantomData;
 use fluent_ai_domain::embedding::Embedding;
 use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 
-pub struct EmbeddingBuilder {
-    document: String,
-    vec: Option<ZeroOneOrMany<f64>>}
+/// Embedding builder trait - elegant zero-allocation builder pattern
+pub trait EmbeddingBuilder: Sized {
+    /// Set vector - EXACT syntax: .vec(vector)
+    fn vec(self, vec: ZeroOneOrMany<f64>) -> impl EmbeddingBuilder;
+    
+    /// Set dimensions - EXACT syntax: .with_dims(512)
+    fn with_dims(self, dims: usize) -> impl EmbeddingBuilder;
+    
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_error<F>(self, handler: F) -> impl EmbeddingBuilder
+    where
+        F: Fn(String) + Send + Sync + 'static;
+    
+    /// Set result handler - EXACT syntax: .on_result(|result| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_result<F>(self, handler: F) -> impl EmbeddingBuilder
+    where
+        F: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static;
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_chunk<F>(self, handler: F) -> impl EmbeddingBuilder
+    where
+        F: FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static;
+    
+    /// Generate embedding - EXACT syntax: .embed()
+    fn embed(self) -> AsyncTask<Embedding>;
+}
 
-pub struct EmbeddingBuilderWithHandler {
-    #[allow(dead_code)] // TODO: Use for source document text content for embedding generation
+/// Hidden implementation struct - zero-allocation builder state with zero Box<dyn> usage
+struct EmbeddingBuilderImpl<
+    F1 = fn(String),
+    F2 = fn(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32>,
+    F3 = fn(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32>,
+> where
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+    F3: FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+{
     document: String,
-    #[allow(dead_code)] // TODO: Use for pre-computed embedding vector values
     vec: Option<ZeroOneOrMany<f64>>,
-    #[allow(dead_code)] // TODO: Use for polymorphic error handling during embedding operations
-    error_handler: Box<dyn Fn(String) + Send + Sync>,
-    #[allow(dead_code)] // TODO: Use for embedding result processing and transformation
-    result_handler:
-        Option<Box<dyn FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
-    #[allow(dead_code)] // TODO: Use for embedding streaming chunk processing
-    chunk_handler:
-        Option<Box<dyn FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>}
+    error_handler: Option<F1>,
+    result_handler: Option<F2>,
+    chunk_handler: Option<F3>,
+}
 
 impl Embedding {
-    // Semantic entry point
-    pub fn from_document(document: impl Into<String>) -> EmbeddingBuilder {
-        EmbeddingBuilder {
+    /// Semantic entry point - EXACT syntax: Embedding::from_document("text")
+    pub fn from_document(document: impl Into<String>) -> impl EmbeddingBuilder {
+        EmbeddingBuilderImpl {
             document: document.into(),
-            vec: None}
+            vec: None,
+            error_handler: None,
+            result_handler: None,
+            chunk_handler: None,
+        }
     }
 }
 
-impl EmbeddingBuilder {
-    pub fn vec(mut self, vec: ZeroOneOrMany<f64>) -> Self {
+impl<F1, F2, F3> EmbeddingBuilder for EmbeddingBuilderImpl<F1, F2, F3>
+where
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+    F3: FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+{
+    /// Set vector - EXACT syntax: .vec(vector)
+    fn vec(mut self, vec: ZeroOneOrMany<f64>) -> impl EmbeddingBuilder {
         self.vec = Some(vec);
         self
     }
-
-    pub fn with_dims(mut self, dims: usize) -> Self {
+    
+    /// Set dimensions - EXACT syntax: .with_dims(512)
+    fn with_dims(mut self, dims: usize) -> impl EmbeddingBuilder {
         self.vec = Some(ZeroOneOrMany::many(vec![0.0; dims]));
         self
     }
-
-    // Error handling - required before terminal methods
-    pub fn on_error<F>(self, handler: F) -> EmbeddingBuilderWithHandler
+    
+    /// Set error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_error<F>(self, handler: F) -> impl EmbeddingBuilder
     where
         F: Fn(String) + Send + Sync + 'static,
     {
-        EmbeddingBuilderWithHandler {
+        EmbeddingBuilderImpl {
             document: self.document,
             vec: self.vec,
-            error_handler: Box::new(handler),
-            result_handler: None,
-            chunk_handler: None}
+            error_handler: Some(handler),
+            result_handler: self.result_handler,
+            chunk_handler: self.chunk_handler,
+        }
     }
-
-    pub fn on_result<F>(self, handler: F) -> EmbeddingBuilderWithHandler
+    
+    /// Set result handler - EXACT syntax: .on_result(|result| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_result<F>(self, handler: F) -> impl EmbeddingBuilder
     where
         F: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
     {
-        EmbeddingBuilderWithHandler {
+        EmbeddingBuilderImpl {
             document: self.document,
             vec: self.vec,
-            error_handler: Box::new(|e| eprintln!("Embedding error: {}", e)),
-            result_handler: Some(Box::new(handler)),
-            chunk_handler: None}
+            error_handler: self.error_handler,
+            result_handler: Some(handler),
+            chunk_handler: self.chunk_handler,
+        }
     }
-
-    pub fn on_chunk<F>(self, handler: F) -> EmbeddingBuilderWithHandler
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
+    fn on_chunk<F>(self, handler: F) -> impl EmbeddingBuilder
     where
         F: FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
     {
-        EmbeddingBuilderWithHandler {
+        EmbeddingBuilderImpl {
             document: self.document,
             vec: self.vec,
-            error_handler: Box::new(|e| eprintln!("Embedding chunk error: {}", e)),
-            result_handler: None,
-            chunk_handler: Some(Box::new(handler))}
+            error_handler: self.error_handler,
+            result_handler: self.result_handler,
+            chunk_handler: Some(handler),
+        }
     }
-}
-
-impl EmbeddingBuilderWithHandler {
-    // Terminal method - returns AsyncTask<Embedding>
-    pub fn embed(self) -> AsyncTask<Embedding> {
+    
+    /// Generate embedding - EXACT syntax: .embed()
+    fn embed(self) -> AsyncTask<Embedding> {
         spawn_async(async move {
             Embedding {
                 document: self.document,
-                vec: self.vec.unwrap_or(ZeroOneOrMany::None)}
+                vec: self.vec.unwrap_or(ZeroOneOrMany::None),
+            }
         })
     }
 }
