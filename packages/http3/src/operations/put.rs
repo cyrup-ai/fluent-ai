@@ -1,4 +1,4 @@
-//! PUT HTTP Operations Module - Idempotent resource replacement with ETag support
+//! PUT HTTP Operations Module - Idempotent resource replacement with `ETag` support
 
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde_json::Value;
@@ -28,7 +28,7 @@ pub enum PutBody {
 
 impl PutOperation {
     /// Create a new PUT operation
-    #[inline(always)]
+    #[must_use]
     pub fn new(client: HttpClient, url: String) -> Self {
         Self {
             client,
@@ -38,7 +38,13 @@ impl PutOperation {
     }
 
     /// Add custom header
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `key` - The header name
+    /// * `value` - The header value
+    ///
+    /// # Returns
+    /// `HttpResult<Self>` for method chaining
     pub fn header(mut self, key: &str, value: &str) -> HttpResult<Self> {
         let header_name = HeaderName::from_bytes(key.as_bytes())?;
         let header_value = HeaderValue::from_str(value)?;
@@ -47,7 +53,7 @@ impl PutOperation {
     }
 
     /// Set JSON body with automatic Content-Type
-    #[inline(always)]
+    #[must_use]
     pub fn json(mut self, json_value: Value) -> Self {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -57,8 +63,14 @@ impl PutOperation {
         self
     }
 
-    /// Set binary body with custom Content-Type
-    #[inline(always)]
+    /// Set binary body with Content-Type
+    ///
+    /// # Arguments
+    /// * `data` - The binary data to send
+    /// * `content_type` - The MIME type of the content
+    ///
+    /// # Returns
+    /// `HttpResult<Self>` for method chaining
     pub fn binary(mut self, data: Vec<u8>, content_type: &str) -> HttpResult<Self> {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -69,7 +81,14 @@ impl PutOperation {
     }
 
     /// Set text body with Content-Type
-    #[inline(always)]
+    /// Set text body with Content-Type
+    ///
+    /// # Arguments
+    /// * `data` - The text content to send
+    /// * `content_type` - The MIME type of the content
+    ///
+    /// # Returns
+    /// `HttpResult<Self>` for method chaining
     pub fn text(mut self, data: String, content_type: &str) -> HttpResult<Self> {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -80,7 +99,13 @@ impl PutOperation {
     }
 
     /// Add If-Match header for conditional replacement
-    #[inline(always)]
+    /// Add If-Match header for conditional replacement
+    ///
+    /// # Arguments
+    /// * `etag` - The entity tag to match
+    ///
+    /// # Returns
+    /// `HttpResult<Self>` for method chaining
     pub fn if_match(mut self, etag: &str) -> HttpResult<Self> {
         self.headers
             .insert(http::header::IF_MATCH, HeaderValue::from_str(etag)?);
@@ -112,12 +137,10 @@ impl HttpOperation for PutOperation {
         self.client.execute_streaming(request)
     }
 
-    #[inline(always)]
     fn method(&self) -> Method {
         Method::PUT
     }
 
-    #[inline(always)]
     fn url(&self) -> &str {
         &self.url
     }

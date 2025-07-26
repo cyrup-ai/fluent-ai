@@ -74,7 +74,7 @@ impl RetryPolicy {
             max_delay_ms: 0,
             backoff_multiplier: 1.0,
             jitter_factor: 0.0,
-            attempt_timeout_ms: 120000, // 2 minutes for single attempt
+            attempt_timeout_ms: 120_000, // 2 minutes for single attempt
         }
     }
 

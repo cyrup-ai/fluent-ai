@@ -69,7 +69,6 @@ impl MiddlewareChain {
 }
 
 /// Pre-built middleware implementations
-
 /// Adds unique request IDs to requests
 #[derive(Debug, Default)]
 pub struct RequestIdMiddleware;

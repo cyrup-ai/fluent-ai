@@ -6,6 +6,7 @@
 pub mod capabilities;
 pub mod error;
 pub mod info;
+pub mod provider_traits;
 pub mod registry;
 pub mod resolver;
 pub mod traits;
@@ -20,6 +21,7 @@ pub mod models;
 pub use capabilities::*;
 pub use error::{ModelError, Result};
 pub use info::ModelInfo;
+pub use provider_traits::{ProviderModel, ProviderModelInfo, ProviderTrait, ProviderError, ProviderResult};
 pub use registry::ModelRegistry;
 pub use resolver::*;
 pub use traits::*;

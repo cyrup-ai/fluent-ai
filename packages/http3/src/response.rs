@@ -1,6 +1,7 @@
 //! HTTP response types and utilities
 
 use std::collections::HashMap;
+use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 
 use bytes::Bytes;
@@ -21,7 +22,7 @@ pub struct SseEvent {
 
 impl SseEvent {
     /// Create new SSE event with data
-    #[inline(always)]
+    #[must_use]
     pub fn data(data: String) -> Self {
         Self {
             data: Some(data),
@@ -31,7 +32,7 @@ impl SseEvent {
     }
 
     /// Create new SSE event with type and data
-    #[inline(always)]
+    #[must_use]
     pub fn typed(event_type: String, data: String) -> Self {
         Self {
             data: Some(data),
@@ -41,29 +42,44 @@ impl SseEvent {
     }
 }
 
-/// JSON stream that yields unwrapped T values with user on_chunk error handling
-/// Zero futures, blazing-fast pure streaming architecture
-#[derive(Debug)]
+/// JSON stream that yields unwrapped T values with user `on_chunk` error handling
+/// Users get immediate values, error handling via `on_chunk` handlerstreaming architecture
+/// Type alias for the chunk handler function
+type ChunkHandler<T> = Box<dyn FnMut(&T) -> Result<(), Box<dyn std::error::Error + Send + Sync>> + 'static>;
+
+/// JSON stream that yields unwrapped T values with user `on_chunk` error handling
+/// Users get immediate values, error handling via `on_chunk` handler
 pub struct JsonStream<T> {
     body: Vec<u8>,
-    _phantom: PhantomData<T>}
+    _phantom: PhantomData<T>,
+    /// Optional handler for processing chunks
+    #[allow(dead_code)]
+    handler: Option<ChunkHandler<T>>,
+}
+
+impl<T> Debug for JsonStream<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JsonStream")
+            .field("body", &self.body)
+            .field("handler", &if self.handler.is_some() { "Some(<function>)" } else { "None" })
+            .finish()
+    }
+}
 
 impl<T: serde::de::DeserializeOwned> JsonStream<T> {
-    /// Get JSON value - returns T directly (no futures)
-    /// Users get immediate values, error handling via on_chunk handlers
-    #[inline]
+    /// Get JSON value - returns `T` directly (no futures)
+    /// 
+    /// Users get immediate values, error handling via `on_chunk` handlers
+    #[must_use]
     pub fn get(&self) -> Option<T> {
         // Parse JSON once and return the result
         // Error handling delegated to user on_chunk handlers
-        match serde_json::from_slice(&self.body) {
-            Ok(parsed) => Some(parsed),
-            Err(_) => None, // User on_chunk handler receives the error context
-        }
+        serde_json::from_slice(&self.body).ok()
     }
 
     /// Collect JSON as Vec - returns Vec<T> directly (no futures)
-    /// Users wanting "await" similar behavior call .collect()
-    #[inline]
+    /// Users wanting "await" similar behavior    /// Collect all JSON values into a Vec
+    #[must_use]
     pub fn collect_json(self) -> Vec<T> {
         match self.get() {
             Some(value) => vec![value],
@@ -75,21 +91,22 @@ impl<T> JsonStream<T>
 where
     T: Clone + Send + 'static,
 {
-    /// Add on_chunk handler for error handling and processing
-    /// Users receive unwrapped values T, errors handled in on_chunk
-    #[inline(always)]
-    pub fn on_chunk<F>(self, _handler: F) -> JsonStream<T>
+    /// Add `on_chunk` handler for error handling and processing
+    /// Users receive unwrapped values T, errors handled in `on_chunk`
+    #[must_use = "returns the modified stream"]
+    pub fn on_chunk<F>(self, f: F) -> Self
     where
-        F: FnMut(&T) -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
+        F: FnMut(&T) -> Result<(), Box<dyn std::error::Error + Send + Sync>> + 'static,
     {
-        // For streams-only architecture, on_chunk just returns self
-        // Actual error handling happens during streaming consumption
-        self
+        Self {
+            handler: Some(Box::new(f)),
+            ..self
+        }
     }
 
     /// Collect implementation for pure streaming architecture
-    /// Users wanting "await" similar behavior call .collect()
-    #[inline(always)]
+    /// Users wanting "await" similar behavior call `.collect()`
+    #[must_use = "method returns a new value and does not modify the original"]
     pub fn collect(self) -> JsonStream<T> {
         self
     }
@@ -104,7 +121,8 @@ pub struct HttpResponse {
 
 impl HttpResponse {
     /// Create a new HTTP response
-    pub fn new(status: StatusCode, headers: reqwest::header::HeaderMap, body: Vec<u8>) -> Self {
+    #[must_use]
+    pub fn new(status: StatusCode, headers: &reqwest::header::HeaderMap, body: Vec<u8>) -> Self {
         // Convert reqwest headers to HashMap with zero-allocation filtering
         let headers = headers
             .iter()
@@ -134,82 +152,84 @@ impl HttpResponse {
     }
 
     /// Get the status code
-    #[inline(always)]
+    #[must_use]
     pub fn status(&self) -> StatusCode {
         self.status
     }
 
     /// Get the headers
-    #[inline(always)]
+    #[must_use]
     pub fn headers(&self) -> &HashMap<String, String> {
         &self.headers
     }
 
     /// Get the body as bytes
-    #[inline(always)]
+    #[must_use]
     pub fn body(&self) -> &[u8] {
         &self.body
     }
 
-    /// Get the body as text - returns String directly
-    /// NO FUTURES - pure streaming, users call .collect() for await-like behavior
-    #[inline(always)]
+    /// Get the body as text - returns `String` directly
+    /// NO FUTURES - pure streaming, users call `.collect()` for await-like behavior
+    #[must_use]
     pub fn text(&self) -> String {
         String::from_utf8_lossy(&self.body).to_string()
     }
 
-    /// Get the body as bytes - returns Bytes directly  
-    /// NO FUTURES - pure streaming, users call .collect() for await-like behavior
-    #[inline(always)]
+    /// Get the body as a `Bytes` handle
+    #[must_use]
     pub fn bytes(&self) -> Bytes {
         Bytes::from(self.body.clone())
     }
 
     /// Check if response is successful (2xx status)
-    #[inline(always)]
+    #[must_use]
     pub fn is_success(&self) -> bool {
         self.status.is_success()
     }
 
     /// Parse the body as JSON stream - returns unwrapped T chunks
     /// Only available for JSON content-type responses
-    /// Zero futures, error handling via user on_chunk handlers, users call .collect() for await-like behavior
-    #[inline(always)]
+    /// Zero futures, error handling via user `on_chunk` handlers, users call `.collect()` for await-like behavior
+    #[must_use]
     pub fn json<T: serde::de::DeserializeOwned>(&self) -> Option<JsonStream<T>> {
         // Only provide JSON parsing for JSON content types
         if self.is_json_content() {
             Some(JsonStream {
                 body: self.body.clone(),
-                _phantom: std::marker::PhantomData})
+                _phantom: std::marker::PhantomData,
+                handler: None,
+            })
         } else {
             None
         }
     }
 
     /// Check if response has JSON content type
-    #[inline(always)]
+    #[must_use]
     pub fn is_json_content(&self) -> bool {
         self.content_type()
-            .map(|ct| ct.contains("application/json") || ct.contains("text/json"))
-            .unwrap_or(false)
+            .is_some_and(|ct| ct.contains("application/json") || ct.contains("text/json"))
     }
 
     /// Check if the response is a client error (4xx status)
-    #[inline(always)]
+    #[must_use]
     pub fn is_client_error(&self) -> bool {
         self.status.is_client_error()
     }
 
-    /// Get the response body as bytes vector - returns Vec<u8> directly
+    /// Get the response body as bytes vector - returns `Vec<u8>` directly
     /// NO FUTURES - pure streaming, returns unwrapped bytes
-    #[inline(always)]
+    #[must_use]
     pub fn stream(&self) -> Vec<u8> {
         self.body.clone()
     }
 
-    /// Get Server-Sent Events - returns Vec<SseEvent> directly  
-    /// NO FUTURES - pure streaming, users call .collect() for await-like behavior
-    #[inline(always)]
+    /// Get Server-Sent Events - returns Vec<SseEvent> directly
+    ///
+    /// Get SSE events if this is an SSE response
+    /// Returns empty `Vec` if not an SSE response
+    #[must_use]
     pub fn sse(&self) -> Vec<SseEvent> {
         let body = String::from_utf8_lossy(&self.body);
         Self::parse_sse_events(&body)
@@ -279,8 +299,9 @@ impl HttpResponse {
                     }
                     "retry" => {
                         // retry field must be a valid number (milliseconds)
-                        if let Ok(retry_ms) = value.parse::<u64>() {
-                            current_event.retry = Some(retry_ms as u64);
+                        let retry_ms = value.parse::<u64>().ok();
+                        if let Some(retry_ms) = retry_ms {
+                            current_event.retry = Some(retry_ms);
                         }
                     }
                     _ => {
@@ -308,82 +329,82 @@ impl HttpResponse {
         events
     }
 
-    /// Check if the response is a server error (5xx status)
-    #[inline(always)]
+    /// Check if this is a server error (5xx)
+    #[must_use]
     pub fn is_server_error(&self) -> bool {
         self.status.is_server_error()
     }
 
-    /// Check if the response is a redirection (3xx status)
-    #[inline(always)]
+    /// Check if this is a redirection (3xx)
+    #[must_use]
     pub fn is_redirection(&self) -> bool {
         self.status.is_redirection()
     }
 
-    /// Check if the response is informational (1xx status)
-    #[inline(always)]
+    /// Check if this is an informational response (1xx)
+    #[must_use]
     pub fn is_informational(&self) -> bool {
         self.status.is_informational()
     }
 
-    /// Get a header value
-    #[inline(always)]
+    /// Get header value by name (case-insensitive)
+    #[must_use]
     pub fn header(&self, key: &str) -> Option<&String> {
         self.headers.get(key)
     }
 
-    /// Get content type
-    #[inline(always)]
+    /// Get `Content-Type` header value
+    #[must_use]
     pub fn content_type(&self) -> Option<&String> {
         self.header("content-type")
     }
 
-    /// Get ETag header value
-    #[inline(always)]
+    /// Get `ETag` header value
+    #[must_use]
     pub fn etag(&self) -> Option<&String> {
         self.header("etag")
     }
 
-    /// Get Last-Modified header value
-    #[inline(always)]
+    /// Get `Last-Modified` header value
+    #[must_use]
     pub fn last_modified(&self) -> Option<&String> {
         self.header("last-modified")
     }
 
-    /// Get Cache-Control header value
-    #[inline(always)]
+    /// Get `Cache-Control` header value
+    #[must_use]
     pub fn cache_control(&self) -> Option<&String> {
         self.header("cache-control")
     }
 
     /// Get content length
-    #[inline(always)]
+    #[must_use]
     pub fn content_length(&self) -> Option<u64> {
         self.header("content-length").and_then(|v| v.parse().ok())
     }
 
-    /// Get Expires header value
-    #[inline(always)]
+    /// Get `Expires` header value
+    #[must_use]
     pub fn expires(&self) -> Option<&String> {
         self.header("expires")
     }
 
     /// Get computed expires timestamp (Unix timestamp)
-    /// This is set by CacheMiddleware and represents the effective cache expiration
-    #[inline(always)]
+    /// This is set by `CacheMiddleware` and represents the effective cache expiration
+    #[must_use]
     pub fn computed_expires(&self) -> Option<u64> {
         self.header("x-computed-expires")
             .and_then(|v| v.parse().ok())
     }
 
     /// Check if response is cacheable based on computed expires
-    #[inline(always)]
+    #[must_use]
     pub fn is_cacheable(&self) -> bool {
         self.computed_expires().is_some() && self.is_success()
     }
 
     /// Get time until expires in seconds
-    #[inline(always)]
+    #[must_use]
     pub fn seconds_until_expires(&self) -> Option<u64> {
         self.computed_expires().and_then(|expires| {
             let now = std::time::SystemTime::now()
@@ -400,43 +421,43 @@ impl HttpResponse {
     }
 
     /// Get Server header value
-    #[inline(always)]
+    #[must_use]
     pub fn server(&self) -> Option<&String> {
         self.header("server")
     }
 
     /// Get Date header value
-    #[inline(always)]
+    #[must_use]
     pub fn date(&self) -> Option<&String> {
         self.header("date")
     }
 
     /// Get Location header value (for redirects)
-    #[inline(always)]
+    #[must_use]
     pub fn location(&self) -> Option<&String> {
         self.header("location")
     }
 
     /// Get body size in bytes
-    #[inline(always)]
+    #[must_use]
     pub fn body_size(&self) -> usize {
         self.body.len()
     }
 
     /// Check if body is empty
-    #[inline(always)]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.body.is_empty()
     }
 
     /// Get status as u16
-    #[inline(always)]
+    #[must_use]
     pub fn status_code(&self) -> u16 {
         self.status.as_u16()
     }
 
     /// Get status reason phrase
-    #[inline(always)]
+    #[must_use]
     pub fn status_reason(&self) -> Option<&str> {
         self.status.canonical_reason()
     }
@@ -458,7 +479,7 @@ impl HttpResponse {
     }
 
     /// Create a 200 OK response
-    #[inline(always)]
+    #[must_use]
     pub fn ok(body: Vec<u8>) -> Self {
         Self {
             status: StatusCode::OK,
@@ -467,7 +488,7 @@ impl HttpResponse {
     }
 
     /// Create a 404 Not Found response
-    #[inline(always)]
+    #[must_use]
     pub fn not_found() -> Self {
         Self {
             status: StatusCode::NOT_FOUND,
@@ -476,7 +497,7 @@ impl HttpResponse {
     }
 
     /// Create a 500 Internal Server Error response
-    #[inline(always)]
+    #[must_use]
     pub fn internal_server_error() -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
@@ -485,7 +506,7 @@ impl HttpResponse {
     }
 
     /// Create a 400 Bad Request response
-    #[inline(always)]
+    #[must_use]
     pub fn bad_request() -> Self {
         Self {
             status: StatusCode::BAD_REQUEST,
@@ -494,7 +515,7 @@ impl HttpResponse {
     }
 
     /// Create a 401 Unauthorized response
-    #[inline(always)]
+    #[must_use]
     pub fn unauthorized() -> Self {
         Self {
             status: StatusCode::UNAUTHORIZED,
@@ -503,7 +524,7 @@ impl HttpResponse {
     }
 
     /// Create a 403 Forbidden response
-    #[inline(always)]
+    #[must_use]
     pub fn forbidden() -> Self {
         Self {
             status: StatusCode::FORBIDDEN,
@@ -512,7 +533,7 @@ impl HttpResponse {
     }
 
     /// Create a 429 Too Many Requests response
-    #[inline(always)]
+    #[must_use]
     pub fn too_many_requests() -> Self {
         Self {
             status: StatusCode::TOO_MANY_REQUESTS,
@@ -521,7 +542,7 @@ impl HttpResponse {
     }
 
     /// Create a 502 Bad Gateway response
-    #[inline(always)]
+    #[must_use]
     pub fn bad_gateway() -> Self {
         Self {
             status: StatusCode::BAD_GATEWAY,
@@ -530,7 +551,7 @@ impl HttpResponse {
     }
 
     /// Create a 503 Service Unavailable response
-    #[inline(always)]
+    #[must_use]
     pub fn service_unavailable() -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
@@ -539,7 +560,7 @@ impl HttpResponse {
     }
 
     /// Create a 504 Gateway Timeout response
-    #[inline(always)]
+    #[must_use]
     pub fn gateway_timeout() -> Self {
         Self {
             status: StatusCode::GATEWAY_TIMEOUT,

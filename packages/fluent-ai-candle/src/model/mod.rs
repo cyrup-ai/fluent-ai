@@ -1,47 +1,31 @@
-//! Modular model system with sophisticated loading and caching
+//! Model system core module
 //!
-//! This module is organized into focused sub-modules:
-//! - `loading` - Model loading with VarBuilder patterns and progressive loading
-//! - `wrappers` - Architecture-specific model wrappers with cache management
-//! - `cache` - Lock-free KV cache system with atomic operations
-//! - `types` - Model configuration types and enumerations
-//! - `metrics` - Performance metrics and statistics
-//! - `core` - Main CandleModel implementation with atomic state management
+//! This module provides the core abstractions and types for AI model management,
+//! including traits, information, registry, and error handling.
 
-pub mod cache;
-pub mod core;
-pub mod error;
-pub mod fluent;
+pub mod capabilities;
+// Error types are defined in domain/model/error.rs
 pub mod info;
-pub mod loading;
-pub mod metrics;
-pub mod model_trait;
 pub mod registry;
-pub mod types;
+pub mod resolver;
+pub mod traits;
 pub mod usage;
-// Removed useless wrappers module - direct model implementations only
+pub mod validation;
 
-// Re-export key types for backward compatibility
-pub use core::CandleModel;
+// Generated modules - created by build system
+pub mod providers;
+pub mod models;
 
-pub use cache::{CacheKey, KVCacheConfig, KVCacheEntry, KVCacheManager, KVCacheStats};
-pub use error::{ModelError, ModelResult, ValidationError, ValidationResult};
-pub use info::HasModelInfo;
-// ModelInfo moved to types module - use CandleModelInfo instead
-pub use loading::{
-    LoadingStage, ModelLoader, ModelMetadata, ProgressCallback, RecoveryStrategy, TensorInfo};
-pub use metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats};
-pub use model_trait::Model;
-pub use registry::{
-    ModelRegistry, RegistryError, get_model, global_registry, list_models, model_exists,
-    register_model};
-// All model traits are now defined in the canonical types module with Candle prefix:
-// - CandleLoadableModel (was LoadableModel)
-// - CandleUsageTrackingModel (was UsageTrackingModel)
-// - CandleCompletionModel
-// - CandleConfigurableModel
-// - CandleTokenizerModel
-// Import them from crate::types instead
-pub use types::{ModelConfig, ModelType, QuantizationType};
-// Usage moved to types module - use CandleUsage instead
-// Removed useless wrapper abstractions - direct model implementations only
+// Re-export commonly used types
+pub use capabilities::*;
+pub use error::{ModelError, Result};
+pub use info::ModelInfo;
+pub use registry::ModelRegistry;
+pub use resolver::*;
+pub use traits::*;
+pub use usage::Usage;
+pub use validation::*;
+
+// Re-export generated types (commented out until build system generates actual content)
+// pub use providers::*;
+// pub use models::*;

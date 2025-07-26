@@ -29,7 +29,7 @@ pub enum PostBody {
 
 impl PostOperation {
     /// Create a new POST operation
-    #[inline(always)]
+    #[must_use]
     pub fn new(client: HttpClient, url: String) -> Self {
         Self {
             client,
@@ -39,7 +39,13 @@ impl PostOperation {
     }
 
     /// Add custom header
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `key` - The header name
+    /// * `value` - The header value
+    ///
+    /// # Returns
+    /// `HttpResult<Self>` for method chaining
     pub fn header(mut self, key: &str, value: &str) -> HttpResult<Self> {
         let header_name = HeaderName::from_bytes(key.as_bytes())?;
         let header_value = HeaderValue::from_str(value)?;
@@ -48,7 +54,7 @@ impl PostOperation {
     }
 
     /// Set JSON body with automatic Content-Type
-    #[inline(always)]
+    #[must_use]
     pub fn json(mut self, json_value: Value) -> Self {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -59,7 +65,7 @@ impl PostOperation {
     }
 
     /// Set form data body with automatic Content-Type
-    #[inline(always)]
+    #[must_use]
     pub fn form(mut self, form_data: HashMap<String, String>) -> Self {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -70,7 +76,14 @@ impl PostOperation {
     }
 
     /// Set binary body with a specific Content-Type
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `body` - The binary data to send
+    /// * `content_type` - The MIME type of the content
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn binary(mut self, body: Vec<u8>, content_type: &str) -> Self {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -109,12 +122,10 @@ impl HttpOperation for PostOperation {
         self.client.execute_streaming(request)
     }
 
-    #[inline(always)]
     fn method(&self) -> Method {
         Method::POST
     }
 
-    #[inline(always)]
     fn url(&self) -> &str {
         &self.url
     }

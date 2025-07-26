@@ -1,545 +1,569 @@
-//! Model registry for managing available models
-//!
-//! Contains the registry system for discovering and managing available models.
+//! Model registry for dynamic model discovery and lookup
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::sync::Arc;
 
-use crate::types::CandleModel as Model;
+use ahash::RandomState;
+use dashmap::{DashMap, DashSet};
+use once_cell::sync::Lazy;
 
-/// Registry for managing available models
-#[derive(Debug)]
-pub struct ModelRegistry {
-    /// Registered models by name
-    models: RwLock<HashMap<String, Arc<dyn Model>>>,
+use crate::model::error::{ModelError, Result};
+use crate::model::info::ModelInfo;
+use crate::model::traits::Model;
+use crate::providers::CandleKimiK2Provider;
 
-    /// Model information by name
-    info: RwLock<HashMap<String, &'static crate::types::CandleModelInfo>>}
+/// Zero-allocation typed model handle with static dispatch instead of Box<dyn Any>
+#[derive(Debug, Clone)]
+pub enum CandleModelHandle {
+    /// Kimi K2 model from Candle framework
+    KimiK2(Arc<CandleKimiK2Provider>),
+    /// Generic model implementation for extensibility
+    Generic(Arc<GenericCandleModel>),
+}
+
+impl CandleModelHandle {
+    /// Create new Kimi K2 model handle
+    pub fn new_kimi_k2(model: CandleKimiK2Provider) -> Self {
+        Self::KimiK2(Arc::new(model))
+    }
+    
+    /// Create new generic model handle
+    pub fn new_generic(model: GenericCandleModel) -> Self {
+        Self::Generic(Arc::new(model))
+    }
+
+    /// Get model info with zero allocation
+    pub fn info(&self) -> ModelInfo {
+        match self {
+            Self::KimiK2(model) => model.model_info(),
+            Self::Generic(model) => model.info(),
+        }
+    }
+    
+    /// Get Kimi K2 model if this handle contains one
+    pub fn as_kimi_k2(&self) -> Option<&CandleKimiK2Provider> {
+        match self {
+            Self::KimiK2(model) => Some(model.as_ref()),
+            _ => None,
+        }
+    }
+    
+    /// Get generic model if this handle contains one
+    pub fn as_generic(&self) -> Option<&GenericCandleModel> {
+        match self {
+            Self::Generic(model) => Some(model.as_ref()),
+            _ => None,
+        }
+    }
+}
+
+/// Generic Candle model for extensibility with zero-allocation patterns
+#[derive(Debug, Clone)]
+pub struct GenericCandleModel {
+    name: String,
+    provider: String,
+    version: String,
+    context_length: u32,
+    supports_streaming: bool,
+    supports_tools: bool,
+}
+
+impl GenericCandleModel {
+    /// Create new generic model
+    pub fn new(
+        name: String,
+        provider: String,
+        version: String,
+        context_length: u32,
+        supports_streaming: bool,
+        supports_tools: bool,
+    ) -> Self {
+        Self {
+            name,
+            provider,
+            version,
+            context_length,
+            supports_streaming,
+            supports_tools,
+        }
+    }
+    
+    /// Get model info
+    pub fn info(&self) -> ModelInfo {
+        ModelInfo {
+            name: self.name.clone(),
+            provider: self.provider.clone(),
+            version: self.version.clone(),
+            context_length: self.context_length,
+            supports_streaming: self.supports_streaming,
+            supports_tools: self.supports_tools,
+        }
+    }
+}
+
+/// The global model registry with zero-allocation typed handles
+struct ModelRegistryInner {
+    /// Maps provider name to model name to typed model handle
+    models: DashMap<&'static str, DashMap<&'static str, Arc<CandleModelHandle>, RandomState>, RandomState>,
+    
+    /// Maps model type names to provider+name for efficient lookup
+    type_registry: DashMap<&'static str, DashSet<(&'static str, &'static str), RandomState>, RandomState>,
+}
+
+impl Default for ModelRegistryInner {
+    fn default() -> Self {
+        Self {
+            models: DashMap::with_hasher(RandomState::default()),
+            type_registry: DashMap::with_hasher(RandomState::default()),
+        }
+    }
+}
+
+/// The global model registry
+static GLOBAL_REGISTRY: Lazy<ModelRegistryInner> = Lazy::new(Default::default);
+
+/// A registry for managing model instances
+///
+/// This provides a thread-safe way to register, look up, and manage model instances.
+/// It supports dynamic model loading and type-safe retrieval.
+#[derive(Clone, Default)]
+pub struct ModelRegistry;
 
 impl ModelRegistry {
-    /// Create a new empty model registry
-    ///
-    /// Initializes a new registry with empty storage for models and their metadata.
-    /// The registry uses read-write locks for thread-safe concurrent access.
-    ///
-    /// # Returns
-    ///
-    /// A new `ModelRegistry` instance ready for use
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let registry = ModelRegistry::new();
-    /// assert!(registry.is_empty().unwrap());
-    /// ```
+    /// Create a new model registry
     pub fn new() -> Self {
-        Self {
-            models: RwLock::new(HashMap::new()),
-            info: RwLock::new(HashMap::new())}
+        Self
     }
 
-    /// Register a model in the registry with thread-safe storage
-    ///
-    /// Adds a model to the registry with the given name. The model must implement
-    /// the `Model` trait. If a model with the same name already exists, returns
-    /// an error without modifying the registry.
+    /// Register a model with the registry
     ///
     /// # Arguments
-    ///
-    /// * `name` - Unique identifier for the model
-    /// * `model` - The model implementation to register
+    /// * `provider` - The provider name (e.g., "openai", "anthropic")
+    /// * `model` - The model instance to register
     ///
     /// # Returns
-    ///
-    /// `Ok(())` if successful, or `RegistryError` if the model name already exists
-    /// or if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::ModelAlreadyExists` - A model with this name is already registered
-    /// - `RegistryError::LockError` - Failed to acquire write lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let registry = ModelRegistry::new();
-    /// let model = MyModel::new();
-    /// registry.register("my_model".to_string(), model)?;
-    /// ```
-    pub fn register<M: Model>(&self, name: String, model: M) -> Result<(), RegistryError> {
-        let model = Arc::new(model);
-        let info = model.info();
+    /// A result containing the registered model or an error if registration fails
+    pub fn register<M: Model + 'static>(
+        &self,
+        provider: &'static str,
+        model: M,
+    ) -> Result<RegisteredModel<M>> {
+        let handle = Arc::new(ModelHandle::new(model));
+        let model_name = handle.info().name();
 
-        {
-            let mut models = self.models.write().map_err(|_| RegistryError::LockError)?;
-            let mut info_map = self.info.write().map_err(|_| RegistryError::LockError)?;
+        // Get or create the provider's model map
+        let provider_models = GLOBAL_REGISTRY
+            .models
+            .entry(provider)
+            .or_insert_with(|| DashMap::with_hasher(RandomState::default()));
 
-            if models.contains_key(&name) {
-                return Err(RegistryError::ModelAlreadyExists { name });
-            }
-
-            models.insert(name.clone(), model);
-            info_map.insert(name, info);
+        // Check for duplicate model
+        if provider_models.contains_key(model_name) {
+            return Err(ModelError::ModelAlreadyExists {
+                provider: provider.into(),
+                name: model_name.into()});
         }
 
-        Ok(())
+        // Register the model
+        provider_models.insert(model_name, handle.clone());
+
+        // Register the model type
+        let type_id = TypeId::of::<M>();
+        let type_entries = GLOBAL_REGISTRY
+            .type_registry
+            .entry(type_id)
+            .or_insert_with(|| DashSet::with_hasher(RandomState::default()));
+
+        type_entries.insert((provider, model_name));
+
+        // Return a registered model handle
+        Ok(RegisteredModel {
+            handle,
+            _marker: PhantomData})
     }
 
-    /// Get a registered model by name with thread-safe access
-    ///
-    /// Retrieves a model from the registry by its registered name. Returns a
-    /// reference-counted pointer to the model, allowing safe sharing across threads.
+    /// Get a model by provider and name
     ///
     /// # Arguments
-    ///
-    /// * `name` - The registered name of the model to retrieve
-    ///
-    /// # Returns
-    ///
-    /// `Arc<dyn Model>` if the model exists, or `RegistryError` if not found
-    /// or if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::ModelNotFound` - No model registered with this name
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let model = registry.get("my_model")?;
-    /// let result = model.process_input("test input");
-    /// ```
-    pub fn get(&self, name: &str) -> Result<Arc<dyn Model>, RegistryError> {
-        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-
-        models
-            .get(name)
-            .cloned()
-            .ok_or_else(|| RegistryError::ModelNotFound {
-                name: name.to_string()})
-    }
-
-    /// Get model metadata information by registered name
-    ///
-    /// Retrieves the static metadata information for a registered model.
-    /// This includes model capabilities, version, and other descriptive information
-    /// without accessing the actual model instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The registered name of the model
+    /// * `provider` - The provider name
+    /// * `name` - The model name
     ///
     /// # Returns
-    ///
-    /// Static reference to `CandleModelInfo` if the model exists, or `RegistryError`
-    /// if not found or if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::ModelNotFound` - No model registered with this name
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let info = registry.info("my_model")?;
-    /// println!("Model version: {}", info.version);
-    /// ```
-    pub fn info(
+    /// A result containing the model if found, or an error if not found or type mismatch
+    pub fn get<M: Model + 'static>(
         &self,
+        provider: &str,
         name: &str,
-    ) -> Result<&'static crate::types::CandleModelInfo, RegistryError> {
-        let info = self.info.read().map_err(|_| RegistryError::LockError)?;
+    ) -> Result<Option<RegisteredModel<M>>> {
+        let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
+            Some(provider) => provider,
+            None => return Ok(None)};
 
-        info.get(name)
-            .copied()
-            .ok_or_else(|| RegistryError::ModelNotFound {
-                name: name.to_string()})
+        let handle = match provider_models.get(name) {
+            Some(handle) => handle,
+            None => return Ok(None)};
+
+        // Verify the model type
+        if handle.as_any().downcast_ref::<M>().is_none() {
+            return Err(ModelError::InvalidConfiguration(
+                "model type does not match requested type".into(),
+            ));
+        }
+
+        Ok(Some(RegisteredModel {
+            handle: handle.clone(),
+            _marker: PhantomData}))
     }
 
-    /// List all registered model names in the registry
-    ///
-    /// Returns a vector containing the names of all currently registered models.
-    /// The order of names is not guaranteed and may vary between calls.
-    ///
-    /// # Returns
-    ///
-    /// `Vec<String>` containing all registered model names, or `RegistryError`
-    /// if there's a lock contention issue. Returns empty vector if no models are registered.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let model_names = registry.list()?;
-    /// for name in model_names {
-    ///     println!("Registered model: {}", name);
-    /// }
-    /// ```
-    pub fn list(&self) -> Result<Vec<String>, RegistryError> {
-        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-        Ok(models.keys().cloned().collect())
-    }
-
-    /// Check if a model with the given name is registered
-    ///
-    /// Performs a membership test to determine if a model with the specified
-    /// name exists in the registry without retrieving the model itself.
+    /// Get a model by provider and name, returning an error if not found
     ///
     /// # Arguments
-    ///
-    /// * `name` - The model name to check for
+    /// * `provider` - The provider name
+    /// * `name` - The model name
     ///
     /// # Returns
-    ///
-    /// `true` if a model with this name is registered, `false` otherwise,
-    /// or `RegistryError` if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// if registry.contains("my_model")? {
-    ///     let model = registry.get("my_model")?;
-    ///     // Use the model...
-    /// }
-    /// ```
-    pub fn contains(&self, name: &str) -> Result<bool, RegistryError> {
-        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-        Ok(models.contains_key(name))
+    /// A result containing the model if found, or an error if not found or type mismatch
+    pub fn get_required<M: Model + 'static>(
+        &self,
+        provider: &'static str,
+        name: &'static str,
+    ) -> Result<RegisteredModel<M>> {
+        self.get(provider, name)?
+            .ok_or_else(|| ModelError::ModelNotFound {
+                provider: provider.into(),
+                name: name.into()})
     }
 
-    /// Unregister and remove a model from the registry
+    /// Find all models of a specific type
     ///
-    /// Removes a model from the registry by name and returns the model instance.
-    /// This allows for cleanup or transfer of the model to another registry.
-    /// Both the model and its metadata are removed atomically.
+    /// # Returns
+    /// A vector of registered models of the specified type
+    pub fn find_all<M: Model + 'static>(&self) -> Vec<RegisteredModel<M>> {
+        let type_id = TypeId::of::<M>();
+        let mut result = Vec::new();
+
+        if let Some(type_entries) = GLOBAL_REGISTRY.type_registry.get(&type_id) {
+            for entry in type_entries.iter() {
+                let (provider, name) = *entry;
+                if let Some(provider_models) = GLOBAL_REGISTRY.models.get(provider) {
+                    if let Some(handle) = provider_models.get(name) {
+                        if handle.as_any().downcast_ref::<M>().is_some() {
+                            result.push(RegisteredModel {
+                                handle: handle.clone(),
+                                _marker: PhantomData});
+                        }
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Get a model as a specific trait object
     ///
     /// # Arguments
-    ///
-    /// * `name` - The registered name of the model to remove
-    ///
-    /// # Returns
-    ///
-    /// The removed `Arc<dyn Model>` if successful, or `RegistryError` if the model
-    /// doesn't exist or if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::ModelNotFound` - No model registered with this name
-    /// - `RegistryError::LockError` - Failed to acquire write lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let removed_model = registry.unregister("my_model")?;
-    /// // Model is no longer in registry but can still be used
-    /// ```
-    pub fn unregister(&self, name: &str) -> Result<Arc<dyn Model>, RegistryError> {
-        let mut models = self.models.write().map_err(|_| RegistryError::LockError)?;
-        let mut info = self.info.write().map_err(|_| RegistryError::LockError)?;
-
-        let model = models
-            .remove(name)
-            .ok_or_else(|| RegistryError::ModelNotFound {
-                name: name.to_string()})?;
-
-        info.remove(name);
-
-        Ok(model)
-    }
-
-    /// Clear all registered models from the registry
-    ///
-    /// Removes all models and their metadata from the registry, returning it
-    /// to an empty state. This operation is atomic - either all models are
-    /// removed or none are (in case of lock contention).
+    /// * `provider` - The provider name
+    /// * `name` - The model name
     ///
     /// # Returns
-    ///
-    /// `Ok(())` if successful, or `RegistryError` if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::LockError` - Failed to acquire write lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// registry.clear()?;
-    /// assert!(registry.is_empty()?);
-    /// ```
-    pub fn clear(&self) -> Result<(), RegistryError> {
-        let mut models = self.models.write().map_err(|_| RegistryError::LockError)?;
-        let mut info = self.info.write().map_err(|_| RegistryError::LockError)?;
+    /// A result containing the model as the requested trait object
+    pub fn get_as<T: 'static>(
+        &self,
+        provider: &'static str,
+        name: &'static str,
+    ) -> Result<Option<Arc<T>>>
+    where
+        T: Send + Sync + Sized,
+    {
+        let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
+            Some(provider) => provider,
+            None => return Ok(None)};
 
-        models.clear();
-        info.clear();
+        let handle = match provider_models.get(name) {
+            Some(handle) => handle,
+            None => return Ok(None)};
 
-        Ok(())
+        // Attempt to downcast the handle to the requested type
+        match handle.as_any().downcast_ref::<T>() {
+            Some(_) => {
+                // For now, this method is not fully implemented due to Arc<T> conversion complexity
+                Err(ModelError::InvalidConfiguration(
+                    format!("Model downcast for '{}' from provider '{}' requires additional implementation", name, provider).into()
+                ))
+            }
+            None => Err(ModelError::InvalidConfiguration(
+                format!(
+                    "Model '{}' from provider '{}' is not of the requested type",
+                    name, provider
+                )
+                .into(),
+            ))}
     }
 
-    /// Get the total number of registered models in the registry
+    /// Get a model as a boxed trait object
     ///
-    /// Returns the count of models currently registered in the registry.
-    /// This operation is thread-safe and provides an atomic snapshot of the count.
+    /// # Arguments
+    /// * `provider` - The provider name
+    /// * `name` - The model name
     ///
     /// # Returns
-    ///
-    /// The number of registered models as `usize`, or `RegistryError`
-    /// if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let count = registry.len()?;
-    /// println!("Registry contains {} models", count);
-    /// ```
-    pub fn len(&self) -> Result<usize, RegistryError> {
-        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-        Ok(models.len())
+    /// A result containing the model as a boxed trait object
+    pub fn get_boxed<T: 'static + ?Sized>(
+        &self,
+        provider: &'static str,
+        name: &'static str,
+    ) -> Result<Option<Box<T>>>
+    where
+        T: Send + Sync,
+    {
+        let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
+            Some(provider) => provider,
+            None => return Ok(None)};
+
+        let _handle = match provider_models.get(name) {
+            Some(handle) => handle,
+            None => return Ok(None)};
+
+        // Attempt to convert the handle to a boxed trait object
+        // This is complex for ?Sized types and requires careful implementation
+        Err(ModelError::InvalidConfiguration(Cow::Owned(format!(
+            "Boxed trait object conversion for model '{}' from provider '{}' requires additional implementation for ?Sized types",
+            name, provider
+        ))))
     }
 
-    /// Check if the registry contains no registered models
+    /// Get a model as a specific trait object, returning an error if not found
     ///
-    /// Returns `true` if the registry is empty (contains no models), `false` otherwise.
-    /// This is more efficient than checking if `len() == 0` for large registries.
+    /// # Arguments
+    /// * `provider` - The provider name
+    /// * `name` - The model name
     ///
     /// # Returns
-    ///
-    /// `true` if empty, `false` if contains models, or `RegistryError`
-    /// if there's a lock contention issue.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// if registry.is_empty()? {
-    ///     println!("No models registered yet");
-    /// }
-    /// ```
-    pub fn is_empty(&self) -> Result<bool, RegistryError> {
-        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-        Ok(models.is_empty())
+    /// A result containing the model as the requested trait object
+    pub fn get_required_as<T: 'static>(
+        &self,
+        provider: &'static str,
+        name: &'static str,
+    ) -> Result<Arc<T>>
+    where
+        T: Send + Sync + Sized,
+    {
+        self.get_as(provider, name)?
+            .ok_or_else(|| ModelError::ModelNotFound {
+                provider: provider.into(),
+                name: name.into()})
     }
 
-    /// Retrieve all registered models as a collection
+    /// Get a model as a boxed trait object, returning an error if not found
     ///
-    /// Returns a vector containing references to all currently registered models.
-    /// This provides bulk access to all models without needing to iterate through
-    /// names individually. The order of models is not guaranteed.
+    /// # Arguments
+    /// * `provider` - The provider name
+    /// * `name` - The model name
     ///
     /// # Returns
-    ///
-    /// `Vec<Arc<dyn Model>>` containing all registered models, or `RegistryError`
-    /// if there's a lock contention issue. Returns empty vector if no models are registered.
-    ///
-    /// # Errors
-    ///
-    /// - `RegistryError::LockError` - Failed to acquire read lock on internal storage
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let all_models = registry.find_all()?;
-    /// for model in all_models {
-    ///     // Process each model...
-    /// }
-    /// ```
-    pub fn find_all(&self) -> Result<Vec<Arc<dyn Model>>, RegistryError> {
-        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-        Ok(models.values().cloned().collect())
+    /// A result containing the model as a boxed trait object
+    pub fn get_required_boxed<T: 'static>(
+        &self,
+        provider: &'static str,
+        name: &'static str,
+    ) -> Result<Box<T>>
+    where
+        T: Send + Sync + Sized,
+    {
+        self.get_boxed(provider, name)?
+            .ok_or_else(|| ModelError::ModelNotFound {
+                provider: provider.into(),
+                name: name.into()})
     }
 }
 
-impl Default for ModelRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+/// A handle to a registered model
+///
+/// This provides type-safe access to a registered model and ensures
+/// proper cleanup when the last reference is dropped.
+pub struct RegisteredModel<M: Model + 'static> {
+    handle: Arc<ModelHandle>,
+    _marker: PhantomData<M>}
 
-/// Errors that can occur during registry operations
-#[derive(Debug, thiserror::Error)]
-pub enum RegistryError {
-    /// Model not found in registry
-    #[error("Model not found: {name}")]
-    ModelNotFound { name: String },
-
-    /// Model already exists in registry
-    #[error("Model already exists: {name}")]
-    ModelAlreadyExists { name: String },
-
-    /// Lock error (internal synchronization issue)
-    #[error("Lock error: failed to acquire registry lock")]
-    LockError,
-
-    /// Invalid model name
-    #[error("Invalid model name: {name}")]
-    InvalidName { name: String }}
-
-/// Global model registry instance
-static GLOBAL_REGISTRY: std::sync::OnceLock<ModelRegistry> = std::sync::OnceLock::new();
-
-/// Get the global singleton model registry instance
-///
-/// Returns a reference to the global model registry that can be used throughout
-/// the application. The registry is initialized lazily on first access and remains
-/// available for the lifetime of the program.
-///
-/// # Returns
-///
-/// Static reference to the global `ModelRegistry` instance
-///
-/// # Thread Safety
-///
-/// This function is thread-safe and multiple threads can safely access the
-/// global registry simultaneously.
-///
-/// # Example
-///
-/// ```rust
-/// let registry = global_registry();
-/// registry.register("my_model".to_string(), model)?;
-/// ```
-pub fn global_registry() -> &'static ModelRegistry {
-    GLOBAL_REGISTRY.get_or_init(ModelRegistry::new)
-}
-
-/// Register a model in the global registry (convenience function)
-///
-/// A convenience function that registers a model in the global registry instance.
-/// This is equivalent to calling `global_registry().register(name, model)`.
-///
-/// # Arguments
-///
-/// * `name` - Unique identifier for the model
-/// * `model` - The model implementation to register
-///
-/// # Returns
-///
-/// `Ok(())` if successful, or `RegistryError` if registration fails
-///
-/// # Errors
-///
-/// - `RegistryError::ModelAlreadyExists` - A model with this name is already registered
-/// - `RegistryError::LockError` - Failed to acquire write lock on global registry
-///
-/// # Example
-///
-/// ```rust
-/// let model = MyModel::new();
-/// register_model("my_model".to_string(), model)?;
-/// ```
-pub fn register_model<M: Model>(name: String, model: M) -> Result<(), RegistryError> {
-    global_registry().register(name, model)
-}
-
-/// Get a model from the global registry (convenience function)
-///
-/// A convenience function that retrieves a model from the global registry instance.
-/// This is equivalent to calling `global_registry().get(name)`.
-///
-/// # Arguments
-///
-/// * `name` - The registered name of the model to retrieve
-///
-/// # Returns
-///
-/// `Arc<dyn Model>` if the model exists, or `RegistryError` if not found
-///
-/// # Errors
-///
-/// - `RegistryError::ModelNotFound` - No model registered with this name
-/// - `RegistryError::LockError` - Failed to acquire read lock on global registry
-///
-/// # Example
-///
-/// ```rust
-/// let model = get_model("my_model")?;
-/// let result = model.process_input("test input");
-/// ```
-pub fn get_model(name: &str) -> Result<Arc<dyn Model>, RegistryError> {
-    global_registry().get(name)
-}
-
-/// List all model names in the global registry (convenience function)
-///
-/// A convenience function that lists all registered model names from the global
-/// registry instance. This is equivalent to calling `global_registry().list()`.
-///
-/// # Returns
-///
-/// `Vec<String>` containing all registered model names, or `RegistryError`
-/// if there's a lock contention issue.
-///
-/// # Errors
-///
-/// - `RegistryError::LockError` - Failed to acquire read lock on global registry
-///
-/// # Example
-///
-/// ```rust
-/// let model_names = list_models()?;
-/// for name in model_names {
-///     println!("Available model: {}", name);
-/// }
-/// ```
-pub fn list_models() -> Result<Vec<String>, RegistryError> {
-    global_registry().list()
-}
-
-/// Check if a model exists in the global registry (convenience function)
-///
-/// A convenience function that checks if a model with the given name exists in
-/// the global registry instance. This is equivalent to calling `global_registry().contains(name)`.
-///
-/// # Arguments
-///
-/// * `name` - The model name to check for
-///
-/// # Returns
-///
-/// `true` if a model with this name is registered, `false` otherwise,
-/// or `RegistryError` if there's a lock contention issue.
-///
-/// # Errors
-///
-/// - `RegistryError::LockError` - Failed to acquire read lock on global registry
-///
-/// # Example
-///
-/// ```rust
-/// if model_exists("my_model")? {
-///     let model = get_model("my_model")?;
-///     // Use the model...
-/// }
-/// ```
-pub fn model_exists(name: &str) -> Result<bool, RegistryError> {
-    global_registry().contains(name)
-}
-
-impl Clone for ModelRegistry {
+impl<M: Model + 'static> Clone for RegisteredModel<M> {
     fn clone(&self) -> Self {
-        // Clone the data from the RwLocks
-        let models = self.models.read().unwrap().clone();
-        let info = self.info.read().unwrap().clone();
-
         Self {
-            models: RwLock::new(models),
-            info: RwLock::new(info)}
+            handle: self.handle.clone(),
+            _marker: PhantomData}
+    }
+}
+
+impl<M: Model + 'static> std::ops::Deref for RegisteredModel<M> {
+    type Target = M;
+
+    fn deref(&self) -> &Self::Target {
+        self.handle
+            .as_model()
+            .expect("type mismatch in RegisteredModel")
+    }
+}
+
+impl<M: Model + 'static> AsRef<M> for RegisteredModel<M> {
+    fn as_ref(&self) -> &M {
+        self.handle
+            .as_model()
+            .expect("type mismatch in RegisteredModel")
+    }
+}
+
+impl<M: Model + 'static> std::fmt::Debug for RegisteredModel<M> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RegisteredModel")
+            .field("provider", &self.info().provider())
+            .field("name", &self.info().name())
+            .finish()
+    }
+}
+
+impl<M: Model + 'static> PartialEq for RegisteredModel<M> {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.handle, &other.handle)
+    }
+}
+
+impl<M: Model + 'static> Eq for RegisteredModel<M> {}
+
+impl<M: Model + 'static> Hash for RegisteredModel<M> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.handle.info().provider().hash(state);
+        self.handle.info().name().hash(state);
+    }
+}
+
+/// A builder for configuring and registering models
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // Import ModelInfo::builder() from fluent-ai
+    use fluent_ai::builders::ModelInfoBuilder;
+
+    struct TestModel {
+        info: &'static ModelInfo}
+
+    impl Model for TestModel {
+        fn info(&self) -> &'static ModelInfo {
+            self.info
+        }
+    }
+
+    #[test]
+    fn test_register_and_get() {
+        let registry = ModelRegistry::new();
+
+        let info = ModelInfo::builder()
+            .provider_name("test")
+            .name("test-model")
+            .build()
+            .unwrap();
+
+        let model = TestModel { info: &info };
+
+        // Register the model
+        let registered = registry.register("test-provider", model).unwrap();
+
+        // Retrieve the model
+        let retrieved = registry
+            .get_required::<TestModel>("test-provider", "test-model")
+            .unwrap();
+
+        assert_eq!(registered.info().name(), retrieved.info().name());
+        assert_eq!(registered.info().provider(), retrieved.info().provider());
+    }
+
+    #[test]
+    fn test_duplicate_registration() {
+        let registry = ModelRegistry::new();
+
+        let info1 = ModelInfo::builder()
+            .provider_name("test")
+            .name("test-model")
+            .build()
+            .unwrap();
+
+        let info2 = ModelInfo::builder()
+            .provider_name("test")
+            .name("test-model")
+            .build()
+            .unwrap();
+
+        let model1 = TestModel { info: &info1 };
+        let model2 = TestModel { info: &info2 };
+
+        // First registration should succeed
+        registry.register("test-provider", model1).unwrap();
+
+        // Second registration should fail
+        let result = registry.register("test-provider", model2);
+        assert!(matches!(
+            result,
+            Err(ModelError::ModelAlreadyExists {
+                provider: "test-provider",
+                name: "test-model"})
+        ));
+    }
+
+    #[test]
+    fn test_find_all() {
+        let registry = ModelRegistry::new();
+
+        let info1 = ModelInfo::builder()
+            .provider_name("test1")
+            .name("model1")
+            .build()
+            .unwrap();
+
+        let info2 = ModelInfo::builder()
+            .provider_name("test2")
+            .name("model2")
+            .build()
+            .unwrap();
+
+        let model1 = TestModel { info: &info1 };
+        let model2 = TestModel { info: &info2 };
+
+        // Register both models
+        registry.register("test-provider1", model1).unwrap();
+        registry.register("test-provider2", model2).unwrap();
+
+        // Find all models of type TestModel
+        let models = registry.find_all::<TestModel>();
+
+        assert_eq!(models.len(), 2);
+
+        let model_names: Vec<_> = models.iter().map(|m| m.info().name()).collect();
+
+        assert!(model_names.contains(&"model1"));
+        assert!(model_names.contains(&"model2"));
+    }
+
+    #[test]
+    fn test_model_registration() {
+        let info = ModelInfo::builder()
+            .provider_name("test")
+            .name("test-model")
+            .build()
+            .unwrap();
+
+        let model = TestModel { info: &info };
+
+        // Register model directly using ModelRegistry
+        let mut registry = ModelRegistry::new();
+        registry.register("test-provider", "test-model", model).unwrap();
+
+        // Verify the model was registered
+        let retrieved = registry
+            .get_required::<TestModel>("test-provider", "test-model")
+            .unwrap();
+
+        assert_eq!(info.name(), retrieved.info().name());
     }
 }

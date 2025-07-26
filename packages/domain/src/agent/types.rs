@@ -4,8 +4,6 @@
 
 use crate::ZeroOneOrMany;
 use crate::chat::MessageRole;
-use crate::context::Context;
-use crate::tool::Tool;
 
 /// Placeholder for Stdio type
 pub struct Stdio;

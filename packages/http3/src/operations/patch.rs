@@ -24,7 +24,14 @@ pub enum PatchBody {
 
 impl PatchOperation {
     /// Create a new PATCH operation
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `client` - The HTTP client to use for the request
+    /// * `url` - The URL to send the PATCH request to
+    ///
+    /// # Returns
+    /// A new `PatchOperation` instance with JSON Merge Patch as the default format
+    #[must_use]
     pub fn new(client: HttpClient, url: String) -> Self {
         Self {
             client,
@@ -33,8 +40,15 @@ impl PatchOperation {
             body: PatchBody::JsonMergePatch(Value::Null)}
     }
 
-    /// Add custom header
-    #[inline(always)]
+    /// Add a custom header
+    ///
+    /// # Arguments
+    /// * `key` - The header name
+    /// * `value` - The header value
+    ///
+    /// # Returns
+    /// `Result<Self, HttpError>` for method chaining
+    #[must_use]
     pub fn header(mut self, key: &str, value: &str) -> HttpResult<Self> {
         let header_name = HeaderName::from_bytes(key.as_bytes())?;
         let header_value = HeaderValue::from_str(value)?;
@@ -43,7 +57,13 @@ impl PatchOperation {
     }
 
     /// Set JSON Patch operations (RFC 6902)
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `patch` - The JSON patch operations to apply
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn json_patch(mut self, patch: Value) -> Self {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -54,7 +74,13 @@ impl PatchOperation {
     }
 
     /// Set JSON Merge Patch (RFC 7396)
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `patch` - The JSON merge patch to apply
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn merge_patch(mut self, patch: Value) -> Self {
         self.headers.insert(
             http::header::CONTENT_TYPE,
@@ -65,7 +91,13 @@ impl PatchOperation {
     }
 
     /// Add If-Match header for conditional patching
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `etag` - The entity tag to use for conditional requests
+    ///
+    /// # Returns
+    /// `Result<Self, HttpError>` for method chaining
+    #[must_use]
     pub fn if_match(mut self, etag: &str) -> HttpResult<Self> {
         self.headers
             .insert(http::header::IF_MATCH, HeaderValue::from_str(etag)?);
@@ -78,14 +110,10 @@ impl HttpOperation for PatchOperation {
 
     fn execute(&self) -> Self::Output {
         let body_bytes = match &self.body {
-            PatchBody::JsonPatch(val) => match serde_json::to_vec(val) {
-                Ok(bytes) => bytes,
-                Err(_) => Vec::new(), // Fallback to empty body on serialization error
-            },
-            PatchBody::JsonMergePatch(val) => match serde_json::to_vec(val) {
-                Ok(bytes) => bytes,
-                Err(_) => Vec::new(), // Fallback to empty body on serialization error
-            }};
+            PatchBody::JsonPatch(val) | PatchBody::JsonMergePatch(val) => {
+                serde_json::to_vec(val).unwrap_or_default()
+            }
+        };
 
         let request = HttpRequest::new(
             self.method(),
@@ -98,12 +126,10 @@ impl HttpOperation for PatchOperation {
         self.client.execute_streaming(request)
     }
 
-    #[inline(always)]
     fn method(&self) -> Method {
         Method::PATCH
     }
 
-    #[inline(always)]
     fn url(&self) -> &str {
         &self.url
     }

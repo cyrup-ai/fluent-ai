@@ -42,6 +42,7 @@ pin_project! {
 
 impl HttpStream {
     /// Create a new HTTP response stream
+    #[must_use]
     pub fn new(inner: Pin<Box<dyn Stream<Item = HttpResult<HttpChunk>> + Send>>) -> Self {
         Self { inner }
     }
@@ -65,6 +66,7 @@ pin_project! {
 
 impl DownloadStream {
     /// Create a new file download stream
+    #[must_use]
     pub fn new(inner: Pin<Box<dyn Stream<Item = HttpResult<DownloadChunk>> + Send>>) -> Self {
         Self { inner }
     }
@@ -88,6 +90,7 @@ pin_project! {
 
 impl LinesStream {
     /// Create a new line-by-line text stream
+    #[must_use]
     pub fn new(inner: Pin<Box<dyn Stream<Item = HttpResult<String>> + Send>>) -> Self {
         Self { inner }
     }
@@ -111,6 +114,7 @@ pin_project! {
 
 impl SseStream {
     /// Create a new Server-Sent Events stream
+    #[must_use]
     pub fn new(inner: Pin<Box<dyn Stream<Item = HttpResult<crate::SseEvent>> + Send>>) -> Self {
         Self { inner }
     }

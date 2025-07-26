@@ -1,2 +1,19 @@
-pub mod candle_chat;
-pub use candle_chat::*;
+//! Builder patterns for fluent-ai components
+//!
+//! This module contains all builder patterns moved from the domain package
+//! to maintain architectural separation: domain contains only value objects,
+//! fluent-ai contains all builders for construction and configuration.
+
+pub mod agent_role;
+pub mod chat;
+pub mod completion;
+pub mod model;
+
+// Re-export main builders for lib.rs
+pub use agent_role::{CandleFluentAi, CandleAgentRoleBuilder};
+
+// Re-export all builders for convenience
+pub use agent_role::*;
+pub use chat::*;
+pub use completion::*;
+pub use model::*;

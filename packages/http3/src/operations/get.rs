@@ -16,7 +16,14 @@ pub struct GetOperation {
 
 impl GetOperation {
     /// Create a new GET operation
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `client` - The HTTP client to use for the request
+    /// * `url` - The URL to send the GET request to
+    ///
+    /// # Returns
+    /// A new `GetOperation` instance
+    #[must_use]
     pub fn new(client: HttpClient, url: String) -> Self {
         Self {
             client,
@@ -26,21 +33,41 @@ impl GetOperation {
     }
 
     /// Add a query parameter
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `key` - The query parameter key
+    /// * `value` - The query parameter value
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn query_param(mut self, key: &str, value: &str) -> Self {
         self.query_params.insert(key.to_string(), value.to_string());
         self
     }
 
     /// Add multiple query parameters
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `params` - A HashMap of query parameters to add
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn query_params(mut self, params: HashMap<String, String>) -> Self {
         self.query_params.extend(params);
         self
     }
 
     /// Add a custom header
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `key` - The header name
+    /// * `value` - The header value
+    ///
+    /// # Returns
+    /// `Result<Self, HttpError>` for method chaining
+    #[must_use]
     pub fn header(mut self, key: &str, value: &str) -> HttpResult<Self> {
         let header_name = HeaderName::from_bytes(key.as_bytes())?;
         let header_value = HeaderValue::from_str(value)?;
@@ -49,7 +76,13 @@ impl GetOperation {
     }
 
     /// Set headers from a HeaderMap
-    #[inline(always)]
+    ///
+    /// # Arguments
+    /// * `headers` - The headers to set
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn headers(mut self, headers: HeaderMap) -> Self {
         self.headers = headers;
         self
@@ -78,12 +111,10 @@ impl HttpOperation for GetOperation {
         self.client.execute_streaming(request)
     }
 
-    #[inline(always)]
     fn method(&self) -> Method {
         Method::GET
     }
 
-    #[inline(always)]
     fn url(&self) -> &str {
         &self.url
     }

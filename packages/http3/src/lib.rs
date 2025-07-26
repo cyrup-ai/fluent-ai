@@ -13,7 +13,7 @@
 //! - **Compression support** (gzip, brotli, deflate)
 //! - **Intelligent caching** with `ETag` and conditional requests
 //! - **Streaming support** for real-time AI responses
-//! - **File download streaming** with progress tracking and on_chunk handlers
+//! - **File download streaming** with progress tracking and `on_chunk` handlers
 //! - **Request/Response middleware** for customization
 //! - **Comprehensive error handling** with detailed diagnostics
 //!
@@ -102,8 +102,8 @@ pub mod stream;
 pub use builder::{
     ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt, header};
 
-/// Ergonomic type alias for Http3Builder - provides shorter name for common usage patterns
-/// This is the recommended entry point for HTTP3 operations: Http3::get(url), Http3::post(url), etc.
+/// Ergonomic type alias for `Http3Builder` - provides shorter name for common usage patterns
+/// This is the recommended entry point for HTTP3 operations: `Http3::get(url)`, `Http3::post(url)`, etc.
 pub type Http3 = Http3Builder;
 pub use client::{ClientStats, ClientStatsSnapshot, HttpClient};
 pub use common::cache::CacheEntry;

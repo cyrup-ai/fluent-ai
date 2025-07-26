@@ -1,0 +1,29 @@
+[package]
+name = "model-info"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Dynamic retrieval and structured representation of AI model info from various providers using build-time code generation for strongly typed enums"
+
+[dependencies]
+fluent_ai_http3 = { path = "../http3" }
+fluent_ai_domain = { path = "../domain" }
+fluent-ai-async = { path = "../fluent-ai-async" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["rt", "macros"] }
+hashbrown = "0.14"
+futures-util = "0.3"
+
+[build-dependencies]
+fluent_ai_http3 = { path = "../http3" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }
+anyhow = "1.0"
+hashbrown = "0.14"
+tokio = { version = "1.0", features = ["rt", "macros"] }

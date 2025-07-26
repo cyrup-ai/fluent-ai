@@ -29,7 +29,7 @@ pub enum ContentType {
 
 impl ContentType {
     /// Convert content type to string representation
-    #[inline(always)]
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             ContentType::ApplicationJson => "application/json",
@@ -59,15 +59,17 @@ pub struct Http3Builder<S = BodyNotSet> {
 // Entry points
 impl Http3Builder<BodyNotSet> {
     /// Start building a new request with a shared client instance
+    #[must_use]
     pub fn new(client: &HttpClient) -> Self {
         Self {
             client: client.clone(),
-            request: HttpRequest::new(Method::GET, "".to_string(), None, None, None),
+            request: HttpRequest::new(Method::GET, String::new(), None, None, None),
             state: PhantomData,
             debug_enabled: false}
     }
 
     /// Shorthand for setting Content-Type to application/json
+    #[must_use]
     pub fn json() -> Self {
         let client = HttpClient::default();
         Self::new(&client).content_type(ContentType::ApplicationJson)
@@ -76,6 +78,7 @@ impl Http3Builder<BodyNotSet> {
     // Removed duplicate debug method - keeping the one in impl<S> Http3Builder<S>
 
     /// Shorthand for setting Content-Type to application/x-www-form-urlencoded
+    #[must_use]
     pub fn form_urlencoded() -> Self {
         let client = HttpClient::default();
         Self::new(&client).content_type(ContentType::ApplicationFormUrlEncoded)
@@ -85,23 +88,46 @@ impl Http3Builder<BodyNotSet> {
 // State-agnostic methods
 impl<S> Http3Builder<S> {
     /// Enable debug logging for this request
+    #[must_use]
     pub fn debug(mut self) -> Self {
         self.debug_enabled = true;
         self
     }
     /// Set the request URL
+    ///
+    /// # Arguments
+    /// * `url` - The URL to set
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn url(mut self, url: &str) -> Self {
         self.request = self.request.set_url(url.to_string());
         self
     }
 
     /// Set a header
+    ///
+    /// # Arguments
+    /// * `key` - The header name
+    /// * `value` - The header value
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn header(mut self, key: HeaderName, value: HeaderValue) -> Self {
         self.request = self.request.header(key, value);
         self
     }
 
     /// Add multiple headers without overwriting existing ones
+    ///
+    /// # Arguments
+    /// * `f` - A closure that returns a `HashMap` of header names and values
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn headers<F>(mut self, f: F) -> Self
     where
         F: FnOnce() -> std::collections::HashMap<HeaderName, &'static str>,
@@ -116,6 +142,7 @@ impl<S> Http3Builder<S> {
     }
 
     /// Set the Content-Type header
+    #[must_use]
     pub fn content_type(self, content_type: ContentType) -> Self {
         self.header(
             header::CONTENT_TYPE,
@@ -124,6 +151,7 @@ impl<S> Http3Builder<S> {
     }
 
     /// Set the Accept header
+    #[must_use]
     pub fn accept(self, content_type: ContentType) -> Self {
         self.header(
             header::ACCEPT,
@@ -132,6 +160,13 @@ impl<S> Http3Builder<S> {
     }
 
     /// Set the API key using the x-api-key header
+    ///
+    /// # Arguments
+    /// * `key` - The API key value
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn api_key(self, key: &str) -> Self {
         match HeaderValue::from_str(key) {
             Ok(header_value) => self.header(header::X_API_KEY, header_value),
@@ -140,15 +175,22 @@ impl<S> Http3Builder<S> {
     }
 
     /// Set basic authentication header
+    ///
+    /// # Arguments
+    /// * `f` - A function that returns a `HashMap` of credentials
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn basic_auth<F>(self, f: F) -> Self
     where
         F: FnOnce() -> std::collections::HashMap<&'static str, &'static str>,
     {
         let params = f();
         if let Some((user, pass)) = params.into_iter().next() {
-            let auth_string = format!("{}:{}", user, pass);
-            let encoded = STANDARD.encode(auth_string.as_bytes());
-            let header_value = format!("Basic {}", encoded);
+            let auth_string = format!("{user}:{pass}");
+            let encoded = STANDARD.encode(auth_string);
+            let header_value = format!("Basic {encoded}");
             return match HeaderValue::from_str(&header_value) {
                 Ok(value) => self.header(header::AUTHORIZATION, value),
                 Err(_) => self, // Skip invalid header value
@@ -158,8 +200,15 @@ impl<S> Http3Builder<S> {
     }
 
     /// Set bearer token authentication header
+    ///
+    /// # Arguments
+    /// * `token` - The bearer token to use for authentication
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
     pub fn bearer_auth(self, token: &str) -> Self {
-        let header_value = format!("Bearer {}", token);
+        let header_value = format!("Bearer {token}");
         match HeaderValue::from_str(&header_value) {
             Ok(value) => self.header(header::AUTHORIZATION, value),
             Err(_) => self, // Skip invalid header value
@@ -167,6 +216,13 @@ impl<S> Http3Builder<S> {
     }
 
     /// Set the request body
+    ///
+    /// # Arguments
+    /// * `body` - The body to serialize and send
+    ///
+    /// # Returns
+    /// `Http3Builder<BodySet>` for chaining
+    #[must_use]
     pub fn body<T: Serialize>(self, body: &T) -> Http3Builder<BodySet> {
         let content_type = self
             .request
@@ -177,14 +233,12 @@ impl<S> Http3Builder<S> {
 
         let body_bytes = if content_type.contains("application/x-www-form-urlencoded") {
             // Serialize as form-urlencoded
-            match serde_urlencoded::to_string(body) {
-                Ok(form_string) => form_string.into_bytes(),
-                Err(_) => Vec::new()}
+            serde_urlencoded::to_string(body)
+                .map(std::string::String::into_bytes)
+                .unwrap_or_default()
         } else {
             // Default to JSON serialization
-            match serde_json::to_vec(body) {
-                Ok(bytes) => bytes,
-                Err(_) => Vec::new()}
+            serde_json::to_vec(body).unwrap_or_default()
         };
 
         if self.debug_enabled {
@@ -201,13 +255,21 @@ impl<S> Http3Builder<S> {
             client: self.client,
             request,
             state: PhantomData,
-            debug_enabled: self.debug_enabled}
+            debug_enabled: self.debug_enabled,
+        }
     }
 }
 
 // Terminal methods for BodyNotSet
 impl Http3Builder<BodyNotSet> {
     /// Execute a GET request
+    ///
+    /// # Arguments
+    /// * `url` - The URL to send the GET request to
+    ///
+    /// # Returns
+    /// `HttpStream` for streaming the response
+    #[must_use]
     pub fn get(mut self, url: &str) -> HttpStream {
         self.request = self
             .request
@@ -215,13 +277,20 @@ impl Http3Builder<BodyNotSet> {
             .set_url(url.to_string());
 
         if self.debug_enabled {
-            log::debug!("HTTP3 Builder: GET {}", url);
+            log::debug!("HTTP3 Builder: GET {url}");
         }
 
         self.client.execute_streaming(self.request)
     }
 
     /// Execute a DELETE request
+    ///
+    /// # Arguments
+    /// * `url` - The URL to send the DELETE request to
+    ///
+    /// # Returns
+    /// `HttpStream` for streaming the response
+    #[must_use]
     pub fn delete(mut self, url: &str) -> HttpStream {
         self.request = self
             .request
@@ -231,6 +300,13 @@ impl Http3Builder<BodyNotSet> {
     }
 
     /// Initiate a file download
+    ///
+    /// # Arguments
+    /// * `url` - The URL to download from
+    ///
+    /// # Returns
+    /// `DownloadBuilder` for configuring the download
+    #[must_use]
     pub fn download_file(mut self, url: &str) -> DownloadBuilder {
         self.request = self
             .request

@@ -13,7 +13,7 @@ members = [
     "packages/cylo",
     "packages/termcolor",
     "packages/cargo-hakari-regenerate",
-    "workspace-hack",
+    "workspace-hack", "packages/model-info",
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]
 
