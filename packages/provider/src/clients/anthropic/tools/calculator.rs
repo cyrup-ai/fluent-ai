@@ -9,6 +9,7 @@ use std::{
 
 use fluent_ai_async::AsyncStream;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 
 use super::{
     core::{AnthropicError, AnthropicResult},

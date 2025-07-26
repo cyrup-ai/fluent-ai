@@ -5,6 +5,10 @@
 
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use serde::{Deserialize, Serialize};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
+use std::collections::HashMap;
 
 use super::{OpenAIError, OpenAIResult};
 use crate::AsyncTask;

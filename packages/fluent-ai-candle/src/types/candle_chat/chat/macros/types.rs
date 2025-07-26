@@ -17,33 +17,57 @@ use crate::types::candle_chat::chat::commands::ImmutableChatCommand;
 pub enum MacroAction {
     /// Send a message with content
     SendMessage {
+        /// Message content to send
         content: Arc<str>,
+        /// Type classification for the message
         message_type: Arc<str>,
-        timestamp: Duration},
+        /// Timestamp when action was recorded
+        timestamp: Duration
+    },
     /// Execute a command
     ExecuteCommand {
+        /// Command to execute
         command: ImmutableChatCommand,
-        timestamp: Duration},
+        /// Timestamp when action was recorded
+        timestamp: Duration
+    },
     /// Wait for a specified duration
     Wait {
+        /// Duration to wait
         duration: Duration,
-        timestamp: Duration},
+        /// Timestamp when action was recorded
+        timestamp: Duration
+    },
     /// Set a variable value
     SetVariable {
+        /// Variable name
         name: Arc<str>,
+        /// Variable value
         value: Arc<str>,
-        timestamp: Duration},
+        /// Timestamp when action was recorded
+        timestamp: Duration
+    },
     /// Conditional execution based on variable
     Conditional {
+        /// Condition expression to evaluate
         condition: Arc<str>,
+        /// Actions to execute if condition is true
         then_actions: Arc<[MacroAction]>,
+        /// Optional actions to execute if condition is false
         else_actions: Option<Arc<[MacroAction]>>,
-        timestamp: Duration},
+        /// Timestamp when action was recorded
+        timestamp: Duration
+    },
     /// Loop execution
     Loop {
+        /// Number of iterations to perform
         iterations: u32,
+        /// Actions to execute in each iteration
         actions: Arc<[MacroAction]>,
-        timestamp: Duration}}
+        /// Timestamp when action was recorded
+        timestamp: Duration
+    }
+}
 
 impl MacroAction {
     /// Convert to legacy MacroAction type for compatibility
@@ -107,7 +131,8 @@ pub enum MacroRecordingState {
     /// Recording paused
     Paused,
     /// Recording completed
-    Completed}
+    Completed
+}
 
 /// Macro playback state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,37 +146,59 @@ pub enum MacroPlaybackState {
     /// Playback completed
     Completed,
     /// Playback failed
-    Failed}
+    Failed
+}
 
 /// Macro execution context with variable substitution
 #[derive(Debug, Clone)]
 pub struct MacroExecutionContext {
+    /// Variables available during execution
     pub variables: HashMap<Arc<str>, Arc<str>>,
+    /// Unique identifier for this execution
     pub execution_id: Uuid,
+    /// Unix timestamp when execution started
     pub start_time: u64,
+    /// Index of currently executing action
     pub current_action: usize,
-    pub loop_stack: Vec<LoopContext>}
+    /// Stack of nested loop contexts
+    pub loop_stack: Vec<LoopContext>
+}
 
 /// Loop execution context for tracking nested loops
 #[derive(Debug, Clone)]
 pub struct LoopContext {
+    /// Current iteration number (0-based)
     pub iteration: u32,
+    /// Maximum number of iterations
     pub max_iterations: u32,
+    /// Index of first action in loop body
     pub start_action: usize,
-    pub end_action: usize}
+    /// Index of last action in loop body
+    pub end_action: usize
+}
 
 /// Macro recording session for capturing actions
 #[derive(Debug)]
 pub struct MacroRecordingSession {
+    /// Unique identifier for this recording session
     pub id: Uuid,
+    /// Name for the recording session
     pub name: Arc<str>,
+    /// Optional description of what is being recorded
     pub description: Option<Arc<str>>,
+    /// Current recording state
     pub state: MacroRecordingState,
+    /// Unix timestamp when recording started
     pub start_time: u64,
+    /// List of recorded actions
     pub actions: Vec<MacroAction>,
+    /// Variables captured during recording
     pub variables: HashMap<Arc<str>, Arc<str>>,
+    /// Whether to automatically save changes
     pub auto_save: bool,
-    pub metadata: MacroMetadata}
+    /// Metadata for the macro being recorded
+    pub metadata: MacroMetadata
+}
 
 impl MacroRecordingSession {
     /// Create new recording session with metadata
@@ -222,14 +269,23 @@ impl MacroRecordingSession {
 /// Macro playback session for executing actions
 #[derive(Debug)]
 pub struct MacroPlaybackSession {
+    /// Unique identifier for this playback session
     pub id: Uuid,
+    /// ID of the macro being played back
     pub macro_id: Uuid,
+    /// Current state of the playback session
     pub state: MacroPlaybackState,
+    /// Unix timestamp when the session started
     pub start_time: u64,
+    /// Index of the currently executing action
     pub current_action: usize,
+    /// Total number of actions in the macro
     pub total_actions: usize,
+    /// Execution context for the macro
     pub context: MacroExecutionContext,
-    pub error: Option<MacroSystemError>}
+    /// Error that occurred during playback, if any
+    pub error: Option<MacroSystemError>
+}
 
 impl MacroPlaybackSession {
     /// Create new playback session
@@ -293,21 +349,34 @@ impl MacroPlaybackSession {
 /// Stored macro definition with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoredMacro {
+    /// Macro metadata containing ID, name, and other properties
     pub metadata: MacroMetadata,
+    /// Sequence of actions to execute in this macro
     pub actions: Arc<[MacroAction]>,
-    pub variables: HashMap<Arc<str>, Arc<str>>}
+    /// Variable definitions for macro parameters
+    pub variables: HashMap<Arc<str>, Arc<str>>
+}
 
 /// Macro metadata for organization and discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MacroMetadata {
+    /// Unique identifier for this macro
     pub id: Uuid,
+    /// Human-readable name of the macro
     pub name: Arc<str>,
+    /// Optional description of what the macro does
     pub description: Option<Arc<str>>,
+    /// Tags for categorizing and searching macros
     pub tags: Vec<Arc<str>>,
+    /// Unix timestamp when the macro was created
     pub created_at: u64,
+    /// Unix timestamp when the macro was last modified
     pub modified_at: u64,
+    /// Optional author name who created the macro
     pub author: Option<Arc<str>>,
-    pub version: u32}
+    /// Version number of the macro
+    pub version: u32
+}
 
 impl MacroMetadata {
     /// Convert to legacy MacroMetadata type for compatibility
@@ -337,18 +406,30 @@ impl MacroMetadata {
 pub enum MacroExecutionResult {
     /// Execution completed successfully
     Success {
+        /// Unique identifier for this execution attempt
         execution_id: Uuid,
+        /// Total time taken to execute the macro
         duration: Duration,
-        actions_executed: usize},
+        /// Number of actions that were successfully executed
+        actions_executed: usize
+    },
     /// Execution failed with error
     Failed {
+        /// Unique identifier for this execution attempt
         execution_id: Uuid,
+        /// Error that caused the execution to fail
         error: MacroSystemError,
-        actions_executed: usize},
+        /// Number of actions that were executed before failure
+        actions_executed: usize
+    },
     /// Execution was cancelled
     Cancelled {
+        /// Unique identifier for this execution attempt
         execution_id: Uuid,
-        actions_executed: usize}}
+        /// Number of actions that were executed before cancellation
+        actions_executed: usize
+    }
+}
 
 /// Result of macro playback operations
 #[derive(Debug, Clone)]
@@ -372,11 +453,21 @@ pub enum ActionExecutionResult {
     /// Action executed successfully
     Success,
     /// Action requires waiting
-    Wait(Duration),
+    Wait(
+        /// Duration to wait before continuing
+        Duration
+    ),
     /// Skip to specific action index
-    SkipToAction(usize),
+    SkipToAction(
+        /// Index of action to jump to
+        usize
+    ),
     /// Action execution failed
-    Error(MacroSystemError)}
+    Error(
+        /// Error that caused the failure
+        MacroSystemError
+    )
+}
 
 /// Conditional execution criteria
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -392,21 +483,41 @@ pub enum ConditionType {
     /// Variable is not empty
     VariableNotEmpty,
     /// Custom condition function
-    Custom(Arc<str>)}
+    Custom(
+        /// Custom condition function name
+        Arc<str>
+    )
+}
 
 /// Trigger conditions for automatic macro execution
 #[derive(Debug, Clone)]
 pub enum TriggerCondition {
     /// Execute on message containing text
-    MessageContains(Arc<str>),
+    MessageContains(
+        /// Text pattern to match in messages
+        Arc<str>
+    ),
     /// Execute on command execution
-    CommandExecuted(Arc<str>),
+    CommandExecuted(
+        /// Command name that triggers execution
+        Arc<str>
+    ),
     /// Execute on time interval
-    TimeInterval(Duration),
+    TimeInterval(
+        /// Interval duration between executions
+        Duration
+    ),
     /// Execute on variable change
-    VariableChanged(Arc<str>),
+    VariableChanged(
+        /// Variable name to monitor for changes
+        Arc<str>
+    ),
     /// Execute on custom condition
-    Custom(Arc<str>)}
+    Custom(
+        /// Custom trigger condition function
+        Arc<str>
+    )
+}
 
 /// Macro system configuration
 #[derive(Debug, Clone)]
@@ -422,37 +533,79 @@ pub struct MacroSystemConfig {
     /// Maximum recursion depth
     pub max_recursion_depth: usize,
     /// Enable macro validation
-    pub enable_validation: bool}
+    pub enable_validation: bool
+}
 
 /// Macro system error types
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum MacroSystemError {
+    /// Requested macro was not found
     #[error("Macro not found")]
     MacroNotFound,
+    /// Requested session was not found
     #[error("Session not found")]
     SessionNotFound,
+    /// Macro definition is invalid
     #[error("Invalid macro: {0}")]
-    InvalidMacro(String),
+    InvalidMacro(
+        /// Description of why macro is invalid
+        String
+    ),
+    /// Error during macro execution
     #[error("Execution error: {0}")]
-    ExecutionError(String),
+    ExecutionError(
+        /// Description of the execution error
+        String
+    ),
+    /// Error during macro recording
     #[error("Recording error: {0}")]
-    RecordingError(String),
+    RecordingError(
+        /// Description of the recording error
+        String
+    ),
+    /// Error during macro playback
     #[error("Playback error: {0}")]
-    PlaybackError(String),
+    PlaybackError(
+        /// Description of the playback error
+        String
+    ),
+    /// Required variable was not found
     #[error("Variable not found: {0}")]
-    VariableNotFound(String),
+    VariableNotFound(
+        /// Name of the missing variable
+        String
+    ),
+    /// Error evaluating conditional expression
     #[error("Condition evaluation error: {0}")]
-    ConditionError(String),
+    ConditionError(
+        /// Description of the condition error
+        String
+    ),
+    /// Macro recursion exceeded maximum allowed depth
     #[error("Maximum recursion depth exceeded")]
     MaxRecursionDepthExceeded,
+    /// Feature not yet implemented
     #[error("Not implemented: {0}")]
-    NotImplemented(String),
+    NotImplemented(
+        /// Description of unimplemented feature
+        String
+    ),
+    /// Internal system error
     #[error("Internal error: {0}")]
-    InternalError(String),
+    InternalError(
+        /// Description of the internal error
+        String
+    ),
+    /// Event subscriber was not found
     #[error("Subscriber not found: {0}")]
-    SubscriberNotFound(String)}
+    SubscriberNotFound(
+        /// ID of the missing subscriber
+        String
+    )
+}
 
 impl Default for MacroSystemConfig {
+    /// Create default macro system configuration with safe defaults
     fn default() -> Self {
         Self {
             max_recording_duration: Duration::from_secs(3600), // 1 hour
@@ -460,11 +613,13 @@ impl Default for MacroSystemConfig {
             max_concurrent_sessions: 100,
             enable_variable_substitution: true,
             max_recursion_depth: 10,
-            enable_validation: true}
+            enable_validation: true
+        }
     }
 }
 
 impl Default for MacroExecutionContext {
+    /// Create default macro execution context with new UUID and current time
     fn default() -> Self {
         Self {
             variables: HashMap::new(),
@@ -474,6 +629,7 @@ impl Default for MacroExecutionContext {
                 .unwrap_or_default()
                 .as_secs(),
             current_action: 0,
-            loop_stack: Vec::new()}
+            loop_stack: Vec::new()
+        }
     }
 }

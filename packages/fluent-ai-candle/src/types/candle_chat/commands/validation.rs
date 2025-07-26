@@ -443,54 +443,93 @@ impl CommandValidator {
     }
 }
 
-/// Validation error types
+/// Validation error types for command parameter validation
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ValidationError {
+    /// Parameter value is empty when it should not be
     #[error("Parameter '{parameter}' cannot be empty")]
-    EmptyParameter { parameter: Arc<str> },
+    EmptyParameter { 
+        /// Name of the parameter that was empty
+        parameter: Arc<str> 
+    },
 
+    /// Parameter value exceeds maximum allowed length
     #[error("Parameter '{parameter}' is too long: {actual_length} > {max_length}")]
     ParameterTooLong {
+        /// Name of the parameter that is too long
         parameter: Arc<str>,
+        /// Maximum allowed length for this parameter
         max_length: usize,
-        actual_length: usize},
+        /// Actual length of the parameter value
+        actual_length: usize
+    },
 
+    /// Parameter value is outside the allowed range
     #[error("Parameter '{parameter}' is out of range: {value} (min: {min:?}, max: {max:?})")]
     ParameterOutOfRange {
+        /// Name of the parameter that is out of range
         parameter: Arc<str>,
+        /// Value that was out of range
         value: String,
+        /// Minimum allowed value (if any)
         min: Option<String>,
-        max: Option<String>},
+        /// Maximum allowed value (if any)
+        max: Option<String>
+    },
 
+    /// Parameter value is not one of the allowed enum values
     #[error("Parameter '{parameter}' has invalid value '{value}', allowed: {allowed_values:?}")]
     InvalidEnumValue {
+        /// Name of the parameter with invalid enum value
         parameter: Arc<str>,
+        /// Value that was provided
         value: Arc<str>,
-        allowed_values: Vec<Arc<str>>},
+        /// List of allowed values for this parameter
+        allowed_values: Vec<Arc<str>>
+    },
 
+    /// Parameter value does not match the expected format
     #[error("Parameter '{parameter}' has invalid format '{value}', expected: {expected_format}")]
     InvalidParameterFormat {
+        /// Name of the parameter with invalid format
         parameter: Arc<str>,
+        /// Value that was provided
         value: Arc<str>,
-        expected_format: Arc<str>},
+        /// Description of the expected format
+        expected_format: Arc<str>
+    },
 
+    /// File parameter has an invalid file extension
     #[error(
         "Parameter '{parameter}' has invalid file extension '{extension}', allowed: {allowed_extensions:?}"
     )]
     InvalidFileExtension {
+        /// Name of the file parameter
         parameter: Arc<str>,
+        /// File extension that was provided
         extension: Arc<str>,
-        allowed_extensions: Vec<Arc<str>>},
+        /// List of allowed file extensions
+        allowed_extensions: Vec<Arc<str>>
+    },
 
+    /// Command has too many parameters
     #[error("Too many parameters: {actual_count} > {max_count}")]
     TooManyParameters {
+        /// Maximum allowed parameter count
         max_count: usize,
-        actual_count: usize},
+        /// Actual parameter count that was provided
+        actual_count: usize
+    },
 
+    /// Parameter value violates security constraints
     #[error("Security violation in parameter '{parameter}': {detail}")]
     SecurityViolation {
+        /// Name of the parameter that caused the security violation
         parameter: Arc<str>,
-        detail: Arc<str>}}
+        /// Detailed description of the security violation
+        detail: Arc<str>
+    }
+}
 
 /// Global validator instance
 static GLOBAL_VALIDATOR: Lazy<CommandValidator> = Lazy::new(CommandValidator::new);

@@ -12,6 +12,7 @@
 
 use serde::{Deserialize, Serialize};
 use arrayvec::ArrayVec;
+use std::collections::HashMap;
 
 use crate::{MAX_MESSAGES, MAX_TOOLS};
 

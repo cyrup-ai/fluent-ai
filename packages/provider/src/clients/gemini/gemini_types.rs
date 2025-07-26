@@ -4,12 +4,8 @@
 //! All HTTP request/response types have been moved to local implementations.
 
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-// Use local Gemini request/response types
-use super::types::{
-    GeminiCandidate, GeminiFunctionCall, GeminiGenerateContentRequest,
-    GeminiGenerateContentResponse, GeminiPart, GeminiStreamGenerateContentResponse,
-    GeminiUsageMetadata
-};
+use serde::{Deserialize, Serialize};
+// Types are defined in this file
 
 use super::gemini_error::{GeminiError, GeminiResult};
 use crate::{

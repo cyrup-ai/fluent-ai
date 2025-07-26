@@ -15,6 +15,8 @@
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use arc_swap::{ArcSwap, Guard};
 use arrayvec::{ArrayString};

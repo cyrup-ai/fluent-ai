@@ -6,28 +6,8 @@
 //! The syntax works automatically without exposing any macros to users.
 
 use std::marker::PhantomData;
-
-// Import Cylo execution environment types
-// Note: Using conditional compilation to handle optional cylo dependency
 use serde_json::Value;
-
 use hashbrown::HashMap;
-
-/// Placeholder type for Cylo execution environment instances
-/// This will be replaced with the actual CyloInstance type when cylo is implemented
-#[cfg(feature = "cylo")]
-#[derive(Debug, Clone)]
-pub struct CyloInstance {
-    /// Placeholder field - will be replaced with actual implementation
-    _placeholder: ()}
-
-#[cfg(feature = "cylo")]
-impl CyloInstance {
-    /// Create a new placeholder CyloInstance
-    pub fn new() -> Self {
-        Self { _placeholder: () }
-    }
-}
 
 // Note: The transparent JSON syntax {"key" => "value"} should work automatically
 // through cyrup_sugars transformation without requiring explicit macro imports
@@ -67,18 +47,15 @@ impl Clone for ToolDefinition {
 }
 
 /// Generic Tool with type parameter
+#[derive(Debug, Clone)]
 pub struct Tool<T> {
     #[allow(dead_code)] // TODO: Use for type-level tool differentiation (Perplexity, etc.)
     _phantom: PhantomData<T>,
     #[allow(dead_code)] // TODO: Use for tool configuration and parameter storage
     config: HashMap<String, Value>,
-    /// Optional Cylo execution environment instance
-    #[cfg(feature = "cylo")]
-    #[allow(dead_code)]
-    cylo_instance: Option<CyloInstance>,
-    #[cfg(not(feature = "cylo"))]
-    #[allow(dead_code)]
-    cylo_instance: Option<()>}
+    /// Cached parameters as JSON Value
+    parameters: Value,
+}
 
 impl<T> Tool<T> {
     /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
@@ -106,53 +83,15 @@ impl<T> Tool<T> {
             map.insert(k.to_string(), Value::String(v.to_string()));
         }
 
+        let parameters = Value::Object(map.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
+
         Self {
             _phantom: PhantomData,
             config: map,
-            cylo_instance: None}
+            parameters,
+        }
     }
 
-    /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
-    ///
-    /// Allows specifying a specific execution environment for the tool's code execution.
-    ///
-    /// Examples:
-    /// ```rust
-    /// // Apple containerization
-    /// Tool::<CustomTool>::new({"param" => "value"})
-    ///     .cylo(Cylo::Apple("python:alpine3.20").instance("python_env"))
-    ///
-    /// // LandLock sandboxing
-    /// Tool::<CustomTool>::new({"param" => "value"})
-    ///     .cylo(Cylo::LandLock("/path/to/jail").instance("secure_env"))
-    ///
-    /// // FireCracker microVM
-    /// Tool::<CustomTool>::new({"param" => "value"})
-    ///     .cylo(Cylo::FireCracker("rust:alpine3.20").instance("vm_env"))
-    /// ```
-    #[cfg(feature = "cylo")]
-    pub fn cylo(mut self, instance: CyloInstance) -> Self {
-        self.cylo_instance = Some(instance);
-        self
-    }
-
-    /// Set Cylo execution environment (no-op when cylo feature is disabled)
-    #[cfg(not(feature = "cylo"))]
-    pub fn cylo(self, _instance: ()) -> Self {
-        self
-    }
-
-    /// Get the Cylo execution environment instance if set
-    #[cfg(feature = "cylo")]
-    pub fn get_cylo_instance(&self) -> Option<&CyloInstance> {
-        self.cylo_instance.as_ref()
-    }
-
-    /// Get the Cylo execution environment instance (returns None when cylo feature is disabled)
-    #[cfg(not(feature = "cylo"))]
-    pub fn get_cylo_instance(&self) -> Option<&()> {
-        None
-    }
 }
 
 /// Named tool builder
@@ -164,13 +103,9 @@ pub struct NamedTool {
     bin_path: Option<String>,
     #[allow(dead_code)] // TODO: Use for tool functionality description
     description: Option<String>,
-    /// Optional Cylo execution environment instance
-    #[cfg(feature = "cylo")]
-    #[allow(dead_code)]
-    cylo_instance: Option<CyloInstance>,
-    #[cfg(not(feature = "cylo"))]
-    #[allow(dead_code)]
-    cylo_instance: Option<()>}
+    /// Cached parameters as JSON Value
+    parameters: Value,
+}
 
 impl Tool<()> {
     /// Create named tool - EXACT syntax: Tool::named("cargo")
@@ -179,7 +114,8 @@ impl Tool<()> {
             name: name.into(),
             bin_path: None,
             description: None,
-            cylo_instance: None}
+            parameters: Value::Object(serde_json::Map::new()),
+        }
     }
 }
 
@@ -196,45 +132,6 @@ impl NamedTool {
         self
     }
 
-    /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
-    ///
-    /// Allows specifying a specific execution environment for the named tool's execution.
-    ///
-    /// Examples:
-    /// ```rust
-    /// // Apple containerization with named tool
-    /// Tool::named("cargo")
-    ///     .bin("~/.cargo/bin")
-    ///     .cylo(Cylo::Apple("rust:alpine3.20").instance("rust_env"))
-    ///
-    /// // LandLock sandboxing with named tool
-    /// Tool::named("python")
-    ///     .bin("/usr/bin/python3")
-    ///     .cylo(Cylo::LandLock("/tmp/sandbox").instance("py_env"))
-    /// ```
-    #[cfg(feature = "cylo")]
-    pub fn cylo(mut self, instance: CyloInstance) -> Self {
-        self.cylo_instance = Some(instance);
-        self
-    }
-
-    /// Set Cylo execution environment (no-op when cylo feature is disabled)
-    #[cfg(not(feature = "cylo"))]
-    pub fn cylo(self, _instance: ()) -> Self {
-        self
-    }
-
-    /// Get the Cylo execution environment instance if set
-    #[cfg(feature = "cylo")]
-    pub fn get_cylo_instance(&self) -> Option<&CyloInstance> {
-        self.cylo_instance.as_ref()
-    }
-
-    /// Get the Cylo execution environment instance (returns None when cylo feature is disabled)
-    #[cfg(not(feature = "cylo"))]
-    pub fn get_cylo_instance(&self) -> Option<&()> {
-        None
-    }
 }
 
 /// Extension trait for executing strings as shell commands and returning text output.
@@ -281,6 +178,110 @@ pub trait ToolEmbeddingDyn: Send + Sync {
 
     /// Get tool context as JSON value
     fn context(&self) -> Result<Value, Box<dyn std::error::Error + Send + Sync>>;
+}
+
+// Import the Tool trait
+use crate::tool::traits::Tool as ToolTrait;
+use fluent_ai_async::AsyncStream;
+
+// Implement Tool trait for Tool<T>
+impl<T> ToolTrait for Tool<T> 
+where
+    T: Send + Sync + std::fmt::Debug + Clone + 'static,
+{
+    fn name(&self) -> &str {
+        std::any::type_name::<T>()
+    }
+    
+    fn description(&self) -> &str {
+        "Generic tool"
+    }
+    
+    fn parameters(&self) -> &Value {
+        // Return the stored parameters
+        &self.parameters
+    }
+    
+    fn execute(&self, args: Value) -> AsyncStream<Value> {
+        let config = self.config.clone();
+        AsyncStream::with_channel(move |sender| {
+            // Execute tool with config and args
+            let mut result = config;
+            if let Value::Object(ref args_obj) = args {
+                for (key, value) in args_obj {
+                    result.insert(key.clone(), value.clone());
+                }
+            }
+            let _ = sender.send(Value::Object(result.into_iter().collect()));
+        })
+    }
+}
+
+// Implement Tool trait for NamedTool
+impl ToolTrait for NamedTool {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    
+    fn description(&self) -> &str {
+        self.description.as_deref().unwrap_or("Named tool")
+    }
+    
+    fn parameters(&self) -> &Value {
+        // Return stored parameters
+        &self.parameters
+    }
+    
+    fn execute(&self, args: Value) -> AsyncStream<Value> {
+        let name = self.name.clone();
+        let bin_path = self.bin_path.clone();
+        let _description = self.description.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Execute named tool using configured path and args
+            let command = bin_path.as_deref().unwrap_or(&name);
+            
+            // Build command with args if provided
+            let mut cmd_args = Vec::new();
+            if let Value::Object(ref args_obj) = args {
+                for (key, value) in args_obj {
+                    cmd_args.push(format!("--{}", key));
+                    if let Value::String(val) = value {
+                        cmd_args.push(val.clone());
+                    }
+                }
+            }
+            
+            // Execute command and capture output
+            let output = std::process::Command::new(command)
+                .args(&cmd_args)
+                .output();
+                
+            let result = match output {
+                Ok(output) => {
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    
+                    if output.status.success() {
+                        Value::String(stdout.into_owned())
+                    } else {
+                        Value::Object(serde_json::Map::from_iter([
+                            ("error".to_string(), Value::String(stderr.into_owned())),
+                            ("exit_code".to_string(), Value::Number(output.status.code().unwrap_or(-1).into()))
+                        ]))
+                    }
+                }
+                Err(e) => {
+                    Value::Object(serde_json::Map::from_iter([
+                        ("error".to_string(), Value::String(format!("Failed to execute {}: {}", command, e))),
+                        ("exit_code".to_string(), Value::Number((-1).into()))
+                    ]))
+                }
+            };
+            
+            let _ = sender.send(result);
+        })
+    }
 }
 
 // Send + Sync are automatically implemented for these types

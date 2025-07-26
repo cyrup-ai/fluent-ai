@@ -18,6 +18,7 @@
 use thiserror::Error;
 use arrayvec::ArrayString;
 use std::fmt;
+use fluent_ai_http3::HttpError;
 
 /// Result type alias for AI21 operations
 pub type Result<T> = std::result::Result<T, AI21Error>;

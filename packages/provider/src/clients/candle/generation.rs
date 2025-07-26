@@ -4,6 +4,8 @@
 //! atomic statistics tracking, and memory-efficient token processing.
 
 use std::collections::VecDeque;
+use arrayvec::ArrayVec;
+use std::collections::HashMap;
 
 use crossbeam::atomic::AtomicCell;
 use rand::prelude::*;
@@ -542,7 +544,6 @@ impl TextGenerator {
         // Update RNG seed if changed
         if new_config.seed != self.config.seed {
             let seed = new_config.seed.unwrap_or_else(|| {
-                use std::time::{SystemTime, UNIX_EPOCH};
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()

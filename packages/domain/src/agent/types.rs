@@ -4,7 +4,6 @@
 
 use crate::ZeroOneOrMany;
 use crate::chat::MessageRole;
-use crate::context::chunk::ChatMessageChunk;
 
 /// Placeholder for Stdio type
 pub struct Stdio;
@@ -55,14 +54,6 @@ impl AgentConversationMessage {
     }
 }
 
-/// Agent with conversation history - domain data structure
-pub struct AgentWithHistory {
-    #[allow(dead_code)] // TODO: Use for accessing agent role configuration during chat
-    inner: Box<dyn std::any::Any + Send + Sync>,
-    /// Handler function for processing chat message chunks during streaming
-    pub chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
-    #[allow(dead_code)] // TODO: Use for loading previous conversation context during chat
-    conversation_history: Option<ZeroOneOrMany<(MessageRole, String)>>}
 
 /// Trait for context arguments - moved to fluent-ai/src/builders/
 pub trait ContextArgs {

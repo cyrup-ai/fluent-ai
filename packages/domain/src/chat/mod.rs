@@ -33,7 +33,7 @@ pub mod templates;
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use commands::{CommandExecutor, CommandRegistry, ImmutableChatCommand};
 pub use config::{ChatConfig, PersonalityConfig};
-pub use conversation::{Conversation, ConversationBuilder, ConversationImpl};
+pub use conversation::{Conversation, ConversationImpl};
 pub use export::{ExportData, ExportFormat};
 pub use formatting::{FormatStyle, StreamingMessageFormatter};
 pub use integrations::{IntegrationConfig, IntegrationManager};

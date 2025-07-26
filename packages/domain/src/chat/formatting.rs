@@ -15,22 +15,39 @@ use thiserror::Error;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ImmutableMessageContent {
     /// Plain text content
-    Plain { text: String },
+    Plain { 
+        /// The plain text content
+        text: String 
+    },
     /// Markdown formatted content
     Markdown {
+        /// The raw markdown content
         content: String,
-        rendered_html: Option<String>},
+        /// Optional pre-rendered HTML version
+        rendered_html: Option<String>,
+    },
     /// Code block with syntax highlighting
     Code {
+        /// The source code content
         content: String,
+        /// Programming language for syntax highlighting
         language: String,
-        highlighted: Option<String>},
+        /// Optional pre-highlighted HTML version
+        highlighted: Option<String>,
+    },
     /// Formatted content with inline styling
     Formatted {
+        /// The base content text
         content: String,
-        styles: Vec<FormatStyle>},
+        /// Applied formatting styles
+        styles: Vec<FormatStyle>,
+    },
     /// Composite content with multiple parts
-    Composite { parts: Vec<ImmutableMessageContent> }}
+    Composite { 
+        /// Individual content parts making up the composite
+        parts: Vec<ImmutableMessageContent> 
+    },
+}
 
 impl ImmutableMessageContent {
     /// Get content as borrowed string (zero allocation)
@@ -148,14 +165,31 @@ impl FormatStyle {
 /// Available style types with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum StyleType {
+    /// Bold text formatting
     Bold,
+    /// Italic text formatting
     Italic,
+    /// Underlined text formatting
     Underline,
+    /// Strikethrough text formatting
     Strikethrough,
+    /// Inline code formatting
     Code,
-    Link { url: String },
-    Color { rgb: u32 },
-    Background { rgb: u32 }}
+    /// Hyperlink with URL
+    Link { 
+        /// URL target for the link
+        url: String 
+    },
+    /// Text color formatting
+    Color { 
+        /// RGB color value (24-bit)
+        rgb: u32 
+    },
+    /// Background color formatting
+    Background { 
+        /// RGB background color value (24-bit)
+        rgb: u32 
+    }}
 
 impl StyleType {
     /// Get style name as static string (zero allocation)
@@ -185,26 +219,63 @@ impl StyleType {
 /// Formatting errors with owned strings
 #[derive(Error, Debug, Clone)]
 pub enum FormatError {
+    /// Invalid markdown syntax encountered
     #[error("Invalid markdown syntax: {detail}")]
-    InvalidMarkdown { detail: String },
+    InvalidMarkdown { 
+        /// Details about the syntax error
+        detail: String 
+    },
+    /// Programming language not supported for syntax highlighting
     #[error("Unsupported language: {language}")]
-    UnsupportedLanguage { language: String },
+    UnsupportedLanguage { 
+        /// The unsupported language identifier
+        language: String 
+    },
+    /// Error occurred during parsing
     #[error("Parse error: {detail}")]
-    ParseError { detail: String },
+    ParseError { 
+        /// Details about the parsing error
+        detail: String 
+    },
+    /// Error occurred during rendering
     #[error("Render error: {detail}")]
-    RenderError { detail: String },
+    RenderError { 
+        /// Details about the rendering error
+        detail: String 
+    },
+    /// Content validation failed
     #[error("Invalid content: {detail}")]
-    InvalidContent { detail: String },
+    InvalidContent { 
+        /// Details about the content validation failure
+        detail: String 
+    },
+    /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { detail: String },
+    ConfigurationError { 
+        /// Details about the configuration error
+        detail: String 
+    },
+    /// Input/output operation failed
     #[error("IO error: {detail}")]
-    IoError { detail: String },
+    IoError { 
+        /// Details about the IO error
+        detail: String 
+    },
+    /// Operation timed out
     #[error("Timeout error")]
     Timeout,
+    /// Required resource was not found
     #[error("Resource not found: {resource}")]
-    ResourceNotFound { resource: String },
+    ResourceNotFound { 
+        /// Name of the missing resource
+        resource: String 
+    },
+    /// Internal system error occurred
     #[error("Internal error: {detail}")]
-    InternalError { detail: String }}
+    InternalError { 
+        /// Details about the internal error
+        detail: String 
+    }}
 
 /// Result type for formatting operations
 pub type FormatResult<T> = Result<T, FormatError>;
@@ -563,27 +634,41 @@ impl ImmutableCustomFormatRule {
 pub enum FormattingEvent {
     /// Formatting started
     Started {
+        /// Unique identifier for the content being formatted
         content_id: u64,
+        /// Type of content being formatted
         content_type: String,
+        /// Timestamp when formatting started (nanoseconds)
         timestamp_nanos: u64},
     /// Formatting progress
     Progress {
+        /// Unique identifier for the content being formatted
         content_id: u64,
+        /// Progress percentage (0.0 to 100.0)
         progress_percent: f32,
+        /// Current formatting stage description
         stage: String},
     /// Formatting completed
     Completed {
+        /// Unique identifier for the content that was formatted
         content_id: u64,
+        /// Final formatted content result
         result: ImmutableMessageContent,
+        /// Total formatting duration in nanoseconds
         duration_nanos: u64},
     /// Formatting failed
     Failed {
+        /// Unique identifier for the content that failed to format
         content_id: u64,
+        /// Error that caused the formatting to fail
         error: FormatError,
+        /// Duration before failure occurred (nanoseconds)
         duration_nanos: u64},
     /// Partial result available
     PartialResult {
+        /// Unique identifier for the content being formatted
         content_id: u64,
+        /// Partially formatted content available so far
         partial_content: String}}
 
 /// Streaming message formatter with atomic state tracking
@@ -741,9 +826,13 @@ impl StreamingMessageFormatter {
 /// Formatter statistics
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FormatterStats {
+    /// Number of currently active formatting operations
     pub active_operations: u64,
+    /// Total number of formatting operations attempted
     pub total_operations: u64,
+    /// Number of operations that completed successfully
     pub successful_operations: u64,
+    /// Number of operations that failed
     pub failed_operations: u64}
 
 impl FormatterStats {
@@ -766,15 +855,20 @@ impl FormatterStats {
 }
 
 /// Legacy compatibility type aliases (deprecated)
+/// 
+/// Deprecated alias for ImmutableMessageContent - use ImmutableMessageContent instead for zero-allocation streaming
 #[deprecated(note = "Use ImmutableMessageContent instead for zero-allocation streaming")]
 pub type MessageContent = ImmutableMessageContent;
 
+/// Deprecated alias for ImmutableFormatOptions - use ImmutableFormatOptions instead for zero-allocation streaming
 #[deprecated(note = "Use ImmutableFormatOptions instead for zero-allocation streaming")]
 pub type FormatOptions = ImmutableFormatOptions;
 
+/// Deprecated alias for ImmutableColorScheme - use ImmutableColorScheme instead for zero-allocation streaming
 #[deprecated(note = "Use ImmutableColorScheme instead for zero-allocation streaming")]
 pub type ColorScheme = ImmutableColorScheme;
 
+/// Deprecated alias for ImmutableCustomFormatRule - use ImmutableCustomFormatRule instead for zero-allocation streaming
 #[deprecated(note = "Use ImmutableCustomFormatRule instead for zero-allocation streaming")]
 pub type CustomFormatRule = ImmutableCustomFormatRule;
 

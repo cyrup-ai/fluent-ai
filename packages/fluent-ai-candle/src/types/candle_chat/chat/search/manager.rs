@@ -114,8 +114,12 @@ impl EnhancedHistoryManager {
 
         AsyncStream::with_channel(move |sender| {
             operation_counter.inc();
-            // Simplified export
-            let _ = sender.send("Exported data".to_string());
+            // Use the exporter for actual export functionality
+            if let Ok(exported_data) = exporter.export(&options) {
+                let _ = sender.send(exported_data);
+            } else {
+                let _ = sender.send("Export failed".to_string());
+            }
         })
     }
 

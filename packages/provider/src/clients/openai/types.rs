@@ -13,6 +13,7 @@
 use crate::{MAX_MESSAGES, MAX_TOOLS, MAX_CHOICES, MAX_EMBEDDINGS};
 use serde::{Deserialize, Serialize};
 use arrayvec::ArrayVec;
+use std::collections::HashMap;
 // =============================================================================
 // Chat Completions API
 // =============================================================================

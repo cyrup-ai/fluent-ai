@@ -15,6 +15,8 @@ use super::error::{CohereError, Result, EmbeddingErrorReason, CohereOperation, J
 use super::models;
 use super::config;
 use super::client::{CohereMetrics, RequestTimer};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use fluent_ai_http3::{HttpClient, HttpRequest};
 use arc_swap::{ArcSwap, Guard};

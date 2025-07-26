@@ -28,6 +28,11 @@ pub const GEMINI_1_5_PRO_8B: &str = "gemini-1.5-pro-8b";
 pub const GEMINI_1_0_PRO: &str = "gemini-1.0-pro";
 
 use std::convert::TryFrom;
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
+use std::collections::HashMap;
 
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
@@ -466,7 +471,6 @@ impl GeminiCompletionBuilder {
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
 
             while let Some(event) = sse_stream.next().await {

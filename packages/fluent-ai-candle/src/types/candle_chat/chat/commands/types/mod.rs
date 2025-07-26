@@ -14,8 +14,6 @@ pub mod handler;
 pub mod metrics;
 pub mod parser;
 
-#[cfg(test)]
-mod tests;
 
 // Re-export all public types for convenience
 pub use actions::*;

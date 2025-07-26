@@ -4,6 +4,7 @@
 
 // BadTraitImpl trait removed - not needed for provider error handling
 use std::fmt;
+use fluent_ai_http3::HttpError;
 
 use serde::{Deserialize, Serialize};
 

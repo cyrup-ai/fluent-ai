@@ -15,96 +15,107 @@ use serde_json::Value;
 pub struct DocumentChunk {
     /// Optional path to the source file
     pub path: Option<PathBuf>,
-
     /// The content of this chunk
     pub content: String,
-
     /// Byte range in the original file
     pub byte_range: Option<(usize, usize)>,
-
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>
+}
 
 /// Image format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ImageFormat {
+    /// Portable Network Graphics format
     PNG,
+    /// Joint Photographic Experts Group format
     JPEG,
+    /// Graphics Interchange Format
     GIF,
+    /// WebP image format
     WebP,
+    /// Bitmap image format
     BMP,
-    TIFF}
+    /// Tagged Image File Format
+    TIFF
+}
 
 /// Chunk of image data for streaming image operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageChunk {
     /// Raw image data
     pub data: Vec<u8>,
-
     /// Image format
     pub format: ImageFormat,
-
     /// Optional dimensions (width, height)
     pub dimensions: Option<(u32, u32)>,
-
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>
+}
 
 /// Audio format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum AudioFormat {
+    /// MPEG Audio Layer III format
     MP3,
+    /// Waveform Audio File Format
     WAV,
+    /// Free Lossless Audio Codec
     FLAC,
+    /// Ogg Vorbis format
     OGG,
+    /// MPEG-4 Audio format
     M4A,
-    OPUS}
+    /// Opus audio codec
+    OPUS
+}
 
 /// Chunk of audio/voice data for streaming audio operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceChunk {
     /// Raw audio data
     pub audio_data: Vec<u8>,
-
     /// Audio format
     pub format: AudioFormat,
-
     /// Duration in milliseconds
     pub duration_ms: Option<u64>,
-
     /// Sample rate in Hz
     pub sample_rate: Option<u32>,
-
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>
+}
 
 /// Chunk of chat message for streaming responses
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessageChunk {
     /// Partial message content
     pub content: String,
-
     /// Role of the message sender
     pub role: crate::types::candle_chat::message::CandleMessageRole,
-
     /// Whether this is the final chunk
     pub is_final: bool,
-
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>
+}
 
 /// Reason why a completion finished
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum FinishReason {
+    /// Completion stopped naturally at end token
     Stop,
+    /// Completion stopped due to maximum length reached
     Length,
+    /// Completion stopped due to content filtering
     ContentFilter,
+    /// Completion stopped to make tool calls
     ToolCalls,
-    Error}
+    /// Completion stopped due to error
+    Error,
+}
 
 /// Comprehensive completion chunk supporting all streaming features
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,28 +125,46 @@ pub enum CompletionChunk {
     Text(String),
 
     /// Tool call started
-    ToolCallStart { id: String, name: String },
+    ToolCallStart { 
+        /// Unique identifier for the tool call
+        id: String, 
+        /// Name of the tool being called
+        name: String 
+    },
 
     /// Partial tool call with streaming input
     ToolCall {
+        /// Unique identifier for the tool call
         id: String,
+        /// Name of the tool being called
         name: String,
-        partial_input: String},
+        /// Partial input parameters being streamed
+        partial_input: String,
+    },
 
     /// Tool call completed
     ToolCallComplete {
+        /// Unique identifier for the tool call
         id: String,
+        /// Name of the tool being called
         name: String,
-        input: String},
+        /// Complete input parameters
+        input: String,
+    },
 
     /// Completion finished with final information
     Complete {
+        /// Final text content
         text: String,
+        /// Reason why completion finished
         finish_reason: Option<FinishReason>,
-        usage: Option<crate::types::CandleUsage>},
+        /// Token usage statistics
+        usage: Option<crate::types::CandleUsage>,
+    },
 
     /// Error occurred during streaming
-    Error(String)}
+    Error(String),
+}
 
 /// Chunk of embedding data for streaming embeddings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -196,6 +225,7 @@ pub struct SpeechChunk {
 
 // Convenience constructors
 impl DocumentChunk {
+    /// Create a new document chunk with content
     pub fn new(content: impl Into<String>) -> Self {
         Self {
             path: None,
@@ -206,6 +236,7 @@ impl DocumentChunk {
 }
 
 impl ChatMessageChunk {
+    /// Create a new chat message chunk
     pub fn new(
         content: impl Into<String>,
         role: crate::types::candle_chat::message::CandleMessageRole,

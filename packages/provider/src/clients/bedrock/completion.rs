@@ -8,6 +8,8 @@
 //! - Streaming and non-streaming execution
 
 use std::sync::Arc;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use arrayvec::{ArrayString};
 use fluent_ai_domain::chunk::CompletionChunk;

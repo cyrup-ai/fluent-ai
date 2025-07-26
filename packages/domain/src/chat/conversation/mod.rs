@@ -26,9 +26,13 @@ pub struct ImmutableMessage {
 /// Message role in conversation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MessageRole {
+    /// Message from the user
     User,
+    /// Message from the AI assistant
     Assistant,
-    System}
+    /// System message for configuration and control
+    System,
+}
 
 impl ImmutableMessage {
     /// Create a new immutable message
@@ -102,9 +106,13 @@ pub enum ConversationEvent {
     Cleared,
     /// Conversation statistics updated
     StatsUpdated {
+        /// Total number of messages in the conversation
         total_messages: u64,
+        /// Number of user messages
         user_messages: u64,
+        /// Number of assistant messages
         assistant_messages: u64,
+        /// Number of system messages
         system_messages: u64}}
 
 /// Immutable conversation with streaming updates
@@ -386,9 +394,13 @@ impl Default for StreamingConversation {
 /// Conversation statistics snapshot
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConversationStats {
+    /// Total number of messages in the conversation
     pub total_messages: u64,
+    /// Number of messages from users
     pub user_messages: u64,
+    /// Number of messages from assistants
     pub assistant_messages: u64,
+    /// Number of system messages
     pub system_messages: u64}
 
 impl ConversationStats {
@@ -490,99 +502,4 @@ impl Conversation for ConversationImpl {
     }
 }
 
-/// Builder for creating streaming conversations
-#[derive(Debug, Default)]
-pub struct ConversationBuilder {
-    enable_streaming: bool,
-    initial_messages: Vec<(String, MessageRole)>}
 
-impl ConversationBuilder {
-    /// Create a new conversation builder
-    #[inline]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Enable event streaming
-    #[inline]
-    pub fn with_streaming(mut self) -> Self {
-        self.enable_streaming = true;
-        self
-    }
-
-    /// Add initial user message
-    #[inline]
-    pub fn with_user_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages
-            .push((message.into(), MessageRole::User));
-        self
-    }
-
-    /// Add initial assistant message
-    #[inline]
-    pub fn with_assistant_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages
-            .push((message.into(), MessageRole::Assistant));
-        self
-    }
-
-    /// Add initial system message
-    #[inline]
-    pub fn with_system_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages
-            .push((message.into(), MessageRole::System));
-        self
-    }
-
-    /// Build the conversation
-    #[inline]
-    pub fn build(self) -> StreamingConversation {
-        let mut conversation = if self.enable_streaming {
-            let (conv, _stream) = StreamingConversation::with_streaming();
-            conv
-        } else {
-            StreamingConversation::new()
-        };
-
-        // Add initial messages
-        for (content, role) in self.initial_messages {
-            match role {
-                MessageRole::User => {
-                    conversation.add_user_message(content);
-                }
-                MessageRole::Assistant => {
-                    conversation.add_assistant_message(content);
-                }
-                MessageRole::System => {
-                    conversation.add_system_message(content);
-                }
-            }
-        }
-
-        conversation
-    }
-
-    /// Build with streaming enabled, returning both conversation and event stream
-    #[inline]
-    pub fn build_with_stream(mut self) -> (StreamingConversation, AsyncStream<ConversationEvent>) {
-        self.enable_streaming = true;
-        let (mut conversation, stream) = StreamingConversation::with_streaming();
-
-        // Add initial messages
-        for (content, role) in self.initial_messages {
-            match role {
-                MessageRole::User => {
-                    conversation.add_user_message(content);
-                }
-                MessageRole::Assistant => {
-                    conversation.add_assistant_message(content);
-                }
-                MessageRole::System => {
-                    conversation.add_system_message(content);
-                }
-            }
-        }
-
-        (conversation, stream)
-    }
-}

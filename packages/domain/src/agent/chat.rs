@@ -11,7 +11,6 @@ use once_cell::sync::Lazy;
 // Removed unused import: use tokio_stream::StreamExt;
 
 use crate::agent::role::AgentRoleImpl;
-use crate::memory::primitives::node::MemoryNodeBuilder;
 use crate::memory::primitives::{MemoryContent, MemoryTypeEnum};
 use crate::memory::{Memory, MemoryError, MemoryNode};
 use crate::memory::{MemoryTool, MemoryToolError};
@@ -205,12 +204,8 @@ impl AgentRoleImpl {
     ) -> Result<ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>, ChatError> {
         let mut memorized_nodes = ArrayVec::new();
 
-        // Create memory node for user message using builder pattern
-        let user_memory = MemoryNodeBuilder::new()
-            .with_memory_type(MemoryTypeEnum::Episodic)
-            .with_content(MemoryContent::text(user_message))
-            .build()
-            .map_err(|e| ChatError::Memory(e.into()))?;
+        // Create memory node for user message using direct constructor
+        let user_memory = MemoryNode::new(MemoryTypeEnum::Episodic, MemoryContent::text(user_message));
 
         // Store user memory with zero-allocation error handling - PURE STREAMING
         let store_stream = memory_tool.memory().store_memory(&user_memory);

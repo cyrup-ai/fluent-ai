@@ -13,6 +13,8 @@ use super::types::{
 use fluent_ai_http3::{Http3, HttpResult};
 use crate::utils::{HttpUtils, Provider};
 use serde_json::{Value, json};
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpError;
 
 use super::client::Client;
 use crate::completion_provider::{CompletionError, CompletionResponse as DomainCompletionResponse};

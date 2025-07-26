@@ -25,54 +25,85 @@ use crate::chat::message::{Message, MessageRole};
 pub enum RealTimeEvent {
     /// User started typing
     TypingStarted {
+        /// ID of the user who started typing
         user_id: String,
+        /// Session where typing occurred
         session_id: String,
+        /// Timestamp when typing started
         timestamp: u64},
     /// User stopped typing
     TypingStopped {
+        /// ID of the user who stopped typing
         user_id: String,
+        /// Session where typing stopped
         session_id: String,
+        /// Timestamp when typing stopped
         timestamp: u64},
     /// New message received
     MessageReceived {
+        /// The message that was received
         message: Message,
+        /// Session where message was received
         session_id: String,
+        /// Timestamp when message was received
         timestamp: u64},
     /// Message updated
     MessageUpdated {
+        /// ID of the updated message
         message_id: String,
+        /// New content of the message
         content: String,
+        /// Session where message was updated
         session_id: String,
+        /// Timestamp when message was updated
         timestamp: u64},
     /// Message deleted
     MessageDeleted {
+        /// ID of the deleted message
         message_id: String,
+        /// Session where message was deleted
         session_id: String,
+        /// Timestamp when message was deleted
         timestamp: u64},
     /// User joined session
     UserJoined {
+        /// ID of the user who joined
         user_id: String,
+        /// Session that was joined
         session_id: String,
+        /// Timestamp when user joined
         timestamp: u64},
     /// User left session
     UserLeft {
+        /// ID of the user who left
         user_id: String,
+        /// Session that was left
         session_id: String,
+        /// Timestamp when user left
         timestamp: u64},
     /// Connection status changed
     ConnectionStatusChanged {
+        /// ID of the user whose connection changed
         user_id: String,
+        /// New connection status
         status: ConnectionStatus,
+        /// Timestamp when status changed
         timestamp: u64},
     /// Heartbeat received
     HeartbeatReceived {
+        /// ID of the user who sent heartbeat
         user_id: String,
+        /// Session where heartbeat was received
         session_id: String,
+        /// Timestamp when heartbeat was received
         timestamp: u64},
     /// System notification
     SystemNotification {
+        /// Notification message content
         message: String,
+        /// Severity level of the notification
         level: NotificationLevel,
+        /// Timestamp when notification was created
         timestamp: u64}}
 
 /// Connection status enumeration
@@ -414,9 +445,13 @@ impl std::fmt::Debug for TypingIndicator {
 /// Typing statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypingStatistics {
+    /// Number of users currently typing
     pub active_users: usize,
+    /// Total typing events processed
     pub total_typing_events: usize,
+    /// Duration before typing indicators expire (seconds)
     pub expiry_duration: u64,
+    /// Interval between cleanup operations (seconds)
     pub cleanup_interval: u64}
 
 /// Live update message with metadata
@@ -475,11 +510,17 @@ pub struct LiveUpdateSystem {
 /// Live update statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveUpdateStatistics {
+    /// Total messages processed through live updates
     pub total_messages: usize,
+    /// Number of active subscribers to live updates
     pub active_subscribers: usize,
+    /// Current size of the message queue
     pub queue_size: usize,
+    /// Number of backpressure events triggered
     pub backpressure_events: usize,
+    /// Messages processed per second
     pub processing_rate: f64,
+    /// Timestamp of last update (nanoseconds)
     pub last_update: u64}
 
 impl LiveUpdateSystem {
@@ -796,13 +837,21 @@ impl ConnectionState {
 /// Connection statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionStatistics {
+    /// Unique identifier for the user
     pub user_id: String,
+    /// Session identifier for this connection
     pub session_id: String,
+    /// Current connection status
     pub status: ConnectionStatus,
+    /// Timestamp of last heartbeat received
     pub last_heartbeat: u64,
+    /// Total duration of this connection (seconds)
     pub connection_duration: u64,
+    /// Number of heartbeats received
     pub heartbeat_count: u64,
+    /// Number of reconnection attempts made
     pub reconnection_attempts: u64,
+    /// Whether the connection is healthy
     pub is_healthy: bool}
 
 /// Connection manager with heartbeat and health monitoring
@@ -1067,10 +1116,15 @@ impl ConnectionManager {
 /// Connection manager statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionManagerStatistics {
+    /// Total number of connections handled
     pub total_connections: usize,
+    /// Total number of heartbeats processed
     pub total_heartbeats: usize,
+    /// Number of connections that failed
     pub failed_connections: usize,
+    /// Timeout duration for heartbeats (seconds)
     pub heartbeat_timeout: u64,
+    /// Interval between health checks (seconds)
     pub health_check_interval: u64}
 
 /// Real-time system combining all components
@@ -1101,10 +1155,15 @@ impl std::fmt::Debug for RealTimeSystem {
 /// Real-time system statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealTimeSystemStatistics {
+    /// Statistics for typing indicators
     pub typing_stats: TypingStatistics,
+    /// Statistics for live updates
     pub live_update_stats: LiveUpdateStatistics,
+    /// Statistics for connection management
     pub connection_stats: ConnectionManagerStatistics,
+    /// Total events processed by the system
     pub total_events: usize,
+    /// System uptime in seconds
     pub system_uptime: u64}
 
 impl RealTimeSystem {
@@ -1204,139 +1263,61 @@ impl Default for RealTimeSystem {
 /// Real-time system errors
 #[derive(Debug, thiserror::Error)]
 pub enum RealTimeError {
+    /// Backpressure limit exceeded
     #[error("Backpressure exceeded: current size {current_size}, limit {limit}")]
-    BackpressureExceeded { current_size: usize, limit: usize },
+    BackpressureExceeded { 
+        /// Current queue size that triggered the limit
+        current_size: usize, 
+        /// Maximum allowed queue size
+        limit: usize 
+    },
+    /// User connection not found
     #[error("Connection not found: {user_id}:{session_id}")]
-    ConnectionNotFound { user_id: String, session_id: String },
+    ConnectionNotFound { 
+        /// ID of the user whose connection was not found
+        user_id: String, 
+        /// Session ID where connection was expected
+        session_id: String 
+    },
+    /// Event subscription failed
     #[error("Subscription failed: {reason}")]
-    SubscriptionFailed { reason: String },
+    SubscriptionFailed { 
+        /// Reason why subscription failed
+        reason: String 
+    },
+    /// Message delivery failed
     #[error("Message delivery failed: {reason}")]
-    MessageDeliveryFailed { reason: String },
+    MessageDeliveryFailed { 
+        /// Reason why message delivery failed
+        reason: String 
+    },
+    /// System operation timed out
     #[error("System timeout: {operation}")]
-    SystemTimeout { operation: String },
+    SystemTimeout { 
+        /// Name of the operation that timed out
+        operation: String 
+    },
+    /// Message format is invalid
     #[error("Invalid message format: {details}")]
-    InvalidMessageFormat { details: String },
+    InvalidMessageFormat { 
+        /// Details about the format validation failure
+        details: String 
+    },
+    /// Rate limit exceeded
     #[error("Rate limit exceeded: {current_rate}/{limit}")]
-    RateLimitExceeded { current_rate: usize, limit: usize },
+    RateLimitExceeded { 
+        /// Current rate that exceeded the limit
+        current_rate: usize, 
+        /// Maximum allowed rate per second
+        limit: usize 
+    },
+    /// System overloaded
     #[error("System overload: {resource}")]
-    SystemOverload { resource: String }}
+    SystemOverload { 
+        /// Name of the overloaded resource
+        resource: String 
+    }}
 
-/// Real-time system builder for ergonomic configuration
-pub struct RealTimeSystemBuilder {
-    typing_expiry: u64,
-    typing_cleanup_interval: u64,
-    queue_size_limit: usize,
-    backpressure_threshold: usize,
-    processing_rate: u64,
-    heartbeat_timeout: u64,
-    health_check_interval: u64}
-
-impl RealTimeSystemBuilder {
-    /// Create a new builder
-    pub fn new() -> Self {
-        Self {
-            typing_expiry: 30,
-            typing_cleanup_interval: 10,
-            queue_size_limit: 10000,
-            backpressure_threshold: 8000,
-            processing_rate: 100,
-            heartbeat_timeout: 60,
-            health_check_interval: 30}
-    }
-
-    /// Set typing expiry duration
-    pub fn typing_expiry(mut self, seconds: u64) -> Self {
-        self.typing_expiry = seconds;
-        self
-    }
-
-    /// Set typing cleanup interval
-    pub fn typing_cleanup_interval(mut self, seconds: u64) -> Self {
-        self.typing_cleanup_interval = seconds;
-        self
-    }
-
-    /// Set queue size limit
-    pub fn queue_size_limit(mut self, limit: usize) -> Self {
-        self.queue_size_limit = limit;
-        self
-    }
-
-    /// Set backpressure threshold
-    pub fn backpressure_threshold(mut self, threshold: usize) -> Self {
-        self.backpressure_threshold = threshold;
-        self
-    }
-
-    /// Set processing rate
-    pub fn processing_rate(mut self, rate: u64) -> Self {
-        self.processing_rate = rate;
-        self
-    }
-
-    /// Set heartbeat timeout
-    pub fn heartbeat_timeout(mut self, seconds: u64) -> Self {
-        self.heartbeat_timeout = seconds;
-        self
-    }
-
-    /// Set health check interval
-    pub fn health_check_interval(mut self, seconds: u64) -> Self {
-        self.health_check_interval = seconds;
-        self
-    }
-
-    /// Build the real-time system
-    pub fn build(self) -> RealTimeSystem {
-        let typing_indicator = Arc::new(TypingIndicator::new(
-            self.typing_expiry,
-            self.typing_cleanup_interval,
-        ));
-        let live_update_system = Arc::new(LiveUpdateSystem::new(
-            self.queue_size_limit,
-            self.backpressure_threshold,
-            self.processing_rate,
-        ));
-        let connection_manager = Arc::new(ConnectionManager::new(
-            self.heartbeat_timeout,
-            self.health_check_interval,
-        ));
-        let (event_broadcaster, _) = broadcast::channel(1000);
-
-        RealTimeSystem {
-            typing_indicator,
-            live_update_system,
-            connection_manager,
-            event_broadcaster,
-            statistics: Arc::new(RwLock::new(RealTimeSystemStatistics {
-                typing_stats: TypingStatistics {
-                    active_users: 0,
-                    total_typing_events: 0,
-                    expiry_duration: self.typing_expiry,
-                    cleanup_interval: self.typing_cleanup_interval},
-                live_update_stats: LiveUpdateStatistics {
-                    total_messages: 0,
-                    active_subscribers: 0,
-                    queue_size: 0,
-                    backpressure_events: 0,
-                    processing_rate: self.processing_rate as f64,
-                    last_update: 0},
-                connection_stats: ConnectionManagerStatistics {
-                    total_connections: 0,
-                    total_heartbeats: 0,
-                    failed_connections: 0,
-                    heartbeat_timeout: self.heartbeat_timeout,
-                    health_check_interval: self.health_check_interval},
-                total_events: 0,
-                system_uptime: 0}))}
-    }
-}
-
-impl Default for RealTimeSystemBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 /// Real-time chat configuration for managing real-time features
 ///
@@ -1665,11 +1646,7 @@ impl Default for RealtimeConfig {
 impl RealtimeChat {
     /// Create a new real-time chat system
     pub fn new(config: RealtimeConfig) -> Self {
-        let rt_system = RealTimeSystemBuilder::new()
-            .typing_expiry(config.typing_timeout_seconds)
-            .heartbeat_timeout(config.heartbeat_interval_seconds)
-            .queue_size_limit(config.message_buffer_size)
-            .build();
+        let rt_system = RealTimeSystem::new();
 
         let (message_broadcaster, _) = broadcast::channel(config.message_buffer_size);
 

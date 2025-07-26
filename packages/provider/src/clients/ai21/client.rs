@@ -18,6 +18,8 @@ use super::models;
 use super::config;
 use super::endpoints;
 use super::utils;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use crate::completion_provider::{CompletionProvider, CompletionError};
 use crate::client::{CompletionClient, ProviderClient};

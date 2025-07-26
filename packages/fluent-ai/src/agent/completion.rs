@@ -216,10 +216,52 @@ impl<M: CompletionModelTrait> Chat for Agent<M> {
         &self,
         prompt: impl Into<Message> + Send,
         mut chat_history: Vec<Message>,
-    ) -> AsyncTask<Result<String, PromptError>> {
+    ) -> AsyncStream<ChatMessageChunk> {
         let prompt_request = PromptRequest::new(self, prompt).with_history(&mut chat_history);
 
-        crate::async_task::spawn_async(async move { prompt_request.await })
+        AsyncStream::with_channel(move |sender| {
+            // Use the actual drive implementation directly
+            let agent = prompt_request.agent;
+            let mut local_hist = Vec::new();
+            let hist = chat_history;
+            let mut depth = 0usize;
+            let mut prompt = prompt_request.prompt.clone();
+            
+            loop {
+                depth += 1;
+                // Build provider request (static + dyn context/tools)
+                let completion_task = agent.completion(prompt.clone(), hist.clone());
+                
+                // Execute completion and get response
+                let resp = match completion_task.and_then(|builder| builder.send()) {
+                    Ok(response) => response,
+                    Err(_) => break,
+                };
+                
+                // Check for plain-text reply
+                if let Some(text) = resp
+                    .choice
+                    .iter()
+                    .filter_map(|c| c.as_text())
+                    .map(|t| t.text.clone())
+                    .reduce(|a, b| a + "\n" + &b)
+                {
+                    let chunk = ChatMessageChunk { text, done: true };
+                    let _ = sender.send(chunk);
+                    break;
+                }
+                
+                // Handle tool calls
+                prompt = match agent.tools.handle_tool_calls(&resp, &hist) {
+                    Ok(new_prompt) => new_prompt,
+                    Err(_) => break,
+                };
+                
+                if depth > prompt_request.max_depth {
+                    break;
+                }
+            }
+        })
     }
 }
 

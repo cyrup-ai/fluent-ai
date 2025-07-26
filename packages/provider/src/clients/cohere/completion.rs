@@ -16,6 +16,8 @@ use super::error::{CohereError, Result, ChatErrorReason, CohereOperation, JsonOp
 use super::models;
 use super::streaming::CohereStream;
 use super::client::{CohereMetrics, RequestTimer};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use fluent_ai_http3::{HttpClient, HttpRequest};
 use fluent_ai_domain::{AsyncTask, AsyncStream};

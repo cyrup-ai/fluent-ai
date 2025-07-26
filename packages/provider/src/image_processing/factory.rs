@@ -6,6 +6,13 @@
 use super::*;
 use crate::image_processing::candle_backend::CandleImageProcessor;
 
+/// Macro for handling errors with logging
+macro_rules! handle_error {
+    ($error:expr, $message:expr) => {
+        log::error!("{}: {:?}", $message, $error);
+    };
+}
+
 /// Factory for creating image processing backends
 pub struct ImageProcessingFactory;
 

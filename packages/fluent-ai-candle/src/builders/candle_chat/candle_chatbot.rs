@@ -15,6 +15,7 @@ use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use crate::types::{CandleChat, CandleCompletionError, CandleMessage};
 
 /// Cyrup.ai color theme
+#[allow(dead_code)]
 mod theme {
     use termcolor::Color;
     

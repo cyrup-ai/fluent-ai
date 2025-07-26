@@ -4,6 +4,8 @@
 //! Anthropic tool execution with lock-free streaming and compile-time safety.
 
 use std::{any::TypeId, collections::HashMap, marker::PhantomData};
+use arrayvec::ArrayVec;
+use std::collections::HashMap;
 
 use fluent_ai_async::AsyncStream;
 use fluent_ai_async::channel;
@@ -417,7 +419,6 @@ where
         let dependency = self.dependency.clone();
         tokio::spawn(async move {
             let result = async move {
-                use tokio_stream::StreamExt;
                 let handler_stream =
                     invocation_handler(conversation, emitter, request, &dependency);
                 let mut results = handler_stream.collect::<Vec<_>>().await;
@@ -503,7 +504,6 @@ impl<const N: usize> ToolExecutor<N> {
             let emitter = Emitter::new(tx.clone());
             let mut stream = tool.execute(&conversation, &emitter, input);
             tokio::spawn(async move {
-                use tokio_stream::StreamExt;
                 while let Some(result) = stream.next().await {
                     // Handle result
                 }
@@ -517,7 +517,6 @@ impl<const N: usize> ToolExecutor<N> {
                     context: None};
                 let mut stream = cylo.execute(request);
                 tokio::spawn(async move {
-                    use tokio_stream::StreamExt;
                     while let Some(result) = stream.next().await {
                         let result = if let Some(result) = results.pop() {
                             result

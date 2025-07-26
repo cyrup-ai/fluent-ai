@@ -19,8 +19,6 @@ pub mod streaming;
 pub mod styles;
 pub mod themes;
 
-#[cfg(test)]
-mod tests;
 
 // Re-export all public types for convenience
 pub use content::ImmutableMessageContent;

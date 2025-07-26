@@ -151,7 +151,7 @@ let stream = FluentAi::agent_role("rusty-squire")
     .conversation_history(MessageRole::User => "What time is it in Paris, France",
             MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
             MessageRole::Assistant => "It’s 1:45 AM CEST on July 7, 2025, in Paris, France. That’s 9 hours ahead of your current time in Las Vegas.")
-    .chat("Hello")? // AsyncStream<MessageChunk
+    .chat("Hello") // AsyncStream<MessageChunk
     .collect()
 ```
 
@@ -206,7 +206,7 @@ let stream = FluentAi::agent_role("rusty-squire")
     .conversation_history(MessageRole::User => "What time is it in Paris, France",
             MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
             MessageRole::Assistant => "It’s 1:45 AM CEST on July 7, 2025, in Paris, France. That’s 9 hours ahead of your current time in Las Vegas.")
-    .chat("Hello")? // AsyncStream<MessageChunk
+    .chat("Hello") // AsyncStream<MessageChunk
     .collect();
 // DO NOT MODIFY !!!  DO NOT MODIFY !!!
 ```

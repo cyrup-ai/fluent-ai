@@ -12,6 +12,7 @@
 //!     .prompt("Hello world")
 //! ```
 
+use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::spawn_async;
@@ -27,6 +28,8 @@ use super::types::{
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use log;
 use serde_json::Value;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use super::messages::ContentBlock;
 use crate::{
@@ -485,7 +488,6 @@ impl AnthropicCompletionBuilder {
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
 
             while let Some(event) = sse_stream.next().await {

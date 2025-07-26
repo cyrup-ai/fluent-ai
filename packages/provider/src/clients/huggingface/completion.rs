@@ -20,6 +20,10 @@ use fluent_ai_domain::{Document, Message};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use crate::{
     AsyncStream,
@@ -399,7 +403,6 @@ impl HuggingFaceCompletionBuilder {
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
 
             while let Some(event) = sse_stream.next().await {

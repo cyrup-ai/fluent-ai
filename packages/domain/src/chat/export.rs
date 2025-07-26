@@ -99,16 +99,34 @@ pub struct ExportMetadata {
 /// Export errors
 #[derive(Error, Debug, Clone)]
 pub enum ExportError {
+    /// Serialization of data failed during export
     #[error("Serialization failed: {detail}")]
-    SerializationError { detail: Arc<str> },
+    SerializationError { 
+        /// Details about the serialization failure
+        detail: Arc<str> 
+    },
+    /// Invalid export format was specified
     #[error("Invalid format: {format}")]
-    InvalidFormat { format: Arc<str> },
+    InvalidFormat { 
+        /// The invalid format that was specified
+        format: Arc<str> 
+    },
+    /// Export data exceeds maximum allowed size
     #[error("Export too large: {size_bytes} bytes")]
-    ExportTooLarge { size_bytes: usize },
+    ExportTooLarge { 
+        /// Size of the export data in bytes
+        size_bytes: usize 
+    },
+    /// No messages available to export
     #[error("No messages to export")]
     NoMessages,
+    /// Input/output error occurred during export
     #[error("IO error: {detail}")]
-    IoError { detail: Arc<str> }}
+    IoError { 
+        /// Details about the IO error
+        detail: Arc<str> 
+    },
+}
 
 /// Result type for export operations
 pub type ExportResult<T> = Result<T, ExportError>;

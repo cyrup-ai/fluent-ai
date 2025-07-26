@@ -331,7 +331,6 @@ impl AsyncStream<CompletionChunk> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fluent_ai_http3::HttpResponse;
     
     #[test]
     fn test_streaming_chunk_parsing() {

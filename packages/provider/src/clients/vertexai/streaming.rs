@@ -13,6 +13,7 @@ use serde_json;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::sync::LazyLock;
+use fluent_ai_http3::HttpError;
 
 /// Global streaming metrics
 static STREAM_EVENTS_PROCESSED: RelaxedCounter = RelaxedCounter::new(0);

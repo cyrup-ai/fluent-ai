@@ -14,9 +14,9 @@ use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, Compl
 use super::types::{
     TogetherChatRequest, TogetherChatResponse, TogetherChoice, TogetherContent,
     TogetherFunction, TogetherMessage, TogetherResponseMessage, TogetherStreamingChunk,
-    TogetherTool, TogetherUsage,
-    validation::{ValidateRequest, ValidationResult}};
+    TogetherTool, TogetherUsage};
 use serde_json::json;
+use arrayvec::ArrayVec;
 
 use super::client::{Client, together_ai_api_types::ApiResponse};
 use crate::streaming::StreamingCompletionResponse;

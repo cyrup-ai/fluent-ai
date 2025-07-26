@@ -9,6 +9,8 @@ use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 use futures_util::StreamExt;
 // Note: runtime module doesn't exist - using tokio equivalents
 use tokio::{self as runtime, task::JoinHandle as AsyncTask};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 // Re-export OpenAI streaming response type since DeepSeek uses the same format
 pub use crate::clients::openai::StreamingCompletionResponse;

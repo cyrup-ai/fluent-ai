@@ -19,6 +19,7 @@
 //! for context preservation and #[repr(u8)] for minimal memory footprint.
 
 use std::fmt;
+use fluent_ai_http3::HttpError;
 
 use arrayvec::ArrayString;
 use thiserror::Error;

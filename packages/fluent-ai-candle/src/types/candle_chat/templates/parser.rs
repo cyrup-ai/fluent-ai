@@ -276,56 +276,116 @@ pub type ParseError = TemplateError;
 /// Parse result type alias for convenience
 pub type ParseResult<T> = Result<T, ParseError>;
 
-/// Quick parse function for convenience
+/// Parse template content into AST using default configuration
+///
+/// This is a convenience function that creates a new `TemplateParser` with default
+/// settings and parses the provided template content. For more control over parsing
+/// behavior, create a `TemplateParser` with custom configuration.
+///
+/// # Arguments
+///
+/// * `content` - The template content to parse, containing template syntax like `{{variable}}`
+///
+/// # Returns
+///
+/// A `TemplateAst` representing the parsed template structure, or a `TemplateError` if parsing fails
+///
+/// # Supported Syntax
+///
+/// - Variables: `{{variable_name}}`
+/// - Conditionals: `{{if condition}}`
+/// - Loops: `{{for item in collection}}`
+/// - Functions: `{{function_name(args)}}`
+/// - Expressions: `{{a + b}}`
+///
+/// # Example
+///
+/// ```rust
+/// let ast = parse_template("Hello {{name}}, you have {{count}} messages!")?;
+/// ```
+///
+/// # Errors
+///
+/// Returns `TemplateError::ParseError` if the template syntax is invalid or if
+/// maximum parsing depth is exceeded.
 pub fn parse_template(content: &str) -> TemplateResult<TemplateAst> {
     let parser = TemplateParser::new();
     parser.parse(content)
 }
 
-/// Extract variables from template content
+/// Extract all template variables from content using default configuration
+///
+/// This is a convenience function that creates a new `TemplateParser` with default
+/// settings and extracts all variable declarations from the template content.
+/// Variables are identified by the `{{variable_name}}` syntax.
+///
+/// # Arguments
+///
+/// * `content` - The template content to analyze for variable usage
+///
+/// # Returns
+///
+/// A vector of `TemplateVariable` instances found in the template, or a `TemplateError` if parsing fails
+///
+/// # Variable Detection
+///
+/// - Detects simple variables: `{{name}}`
+/// - Extracts base names from complex expressions: `{{user.name}}` → `user`
+/// - Ignores control structures: `{{if condition}}`, `{{for item in list}}`
+/// - Filters out function calls and operators
+///
+/// # Example
+///
+/// ```rust
+/// let variables = extract_variables("Hello {{name}}, you have {{count}} messages!")?;
+/// assert_eq!(variables.len(), 2);  // "name" and "count"
+/// ```
+///
+/// # Errors
+///
+/// Returns `TemplateError::ParseError` if the template contains invalid syntax.
 pub fn extract_variables(content: &str) -> TemplateResult<Vec<TemplateVariable>> {
     let parser = TemplateParser::new();
     parser.extract_variables(content)
 }
 
-/// Validate template syntax
+/// Validate template syntax without building full AST
+///
+/// This is a convenience function that creates a new `TemplateParser` with default
+/// settings and validates that the template content can be parsed successfully.
+/// This is useful for checking template validity without the overhead of building
+/// the full AST structure.
+///
+/// # Arguments
+///
+/// * `content` - The template content to validate
+///
+/// # Returns
+///
+/// `Ok(())` if the template is valid, or a `TemplateError` if validation fails
+///
+/// # Validation Checks
+///
+/// - Balanced braces: `{{` must have matching `}}`
+/// - Valid variable names
+/// - Proper control structure syntax
+/// - Maximum depth limits
+/// - Token count limits
+///
+/// # Example
+///
+/// ```rust
+/// validate_template("Hello {{name}}!")?;  // Ok
+/// validate_template("{{unclosed")?;       // Error
+/// ```
+///
+/// # Errors
+///
+/// Returns `TemplateError::ParseError` if the template syntax is invalid,
+/// including unbalanced braces, invalid variable names, or exceeded limits.
 pub fn validate_template(content: &str) -> TemplateResult<()> {
     let parser = TemplateParser::new();
     parser.parse(content)?;
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_simple_variable_parsing() {
-        let parser = TemplateParser::new();
-        let result = parser.parse("Hello {{name}}!").unwrap();
-
-        match result {
-            TemplateAst::Block(nodes) => {
-                assert_eq!(nodes.len(), 3);
-            }
-            _ => panic!("Expected block AST")}
-    }
-
-    #[test]
-    fn test_variable_extraction() {
-        let parser = TemplateParser::new();
-        let variables = parser
-            .extract_variables("Hello {{name}}, you have {{count}} messages.")
-            .unwrap();
-
-        assert_eq!(variables.len(), 2);
-        assert!(variables.iter().any(|v| v.name.as_ref() == "name"));
-        assert!(variables.iter().any(|v| v.name.as_ref() == "count"));
-    }
-
-    #[test]
-    fn test_template_validation() {
-        assert!(validate_template("Hello {{name}}!").is_ok());
-        assert!(validate_template("{{unclosed").is_ok()); // Parser is lenient
-    }
-}

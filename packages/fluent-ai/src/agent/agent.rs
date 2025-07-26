@@ -12,6 +12,8 @@ use crate::{
     domain::tool::ToolSet,
     runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
+use fluent_ai_domain::{MessageRole, ChatMessageChunk as MessageChunk, AgentConversation, ZeroOneOrMany};
+use crate::chat::ChatLoop;
 
 // ============================================================================
 // Configuration constants
@@ -43,7 +45,10 @@ pub struct Agent<M: CompletionModel> {
     max_tokens: Option<u64>,
     additional_params: Option<serde_json::Value>,
     extended_thinking: bool,
-    prompt_cache: bool}
+    prompt_cache: bool,
+    conversation_history: ZeroOneOrMany<(MessageRole, String)>,
+    chunk_handler: Option<Box<dyn Fn(MessageChunk) -> MessageChunk + Send + Sync>>}
+
 
 impl<M: CompletionModel> Agent<M> {
     /// Create a new AgentBuilder for the given provider model
@@ -78,7 +83,9 @@ impl<M: CompletionModel> Agent<M> {
             max_tokens,
             additional_params,
             extended_thinking,
-            prompt_cache}
+            prompt_cache,
+            conversation_history: ZeroOneOrMany::None,
+            chunk_handler: None}
     }
 
     /// Start a prompt request - returns async stream
@@ -145,6 +152,88 @@ impl<M: CompletionModel> Agent<M> {
     /// Get extended thinking
     pub fn extended_thinking(&self) -> bool {
         self.extended_thinking
+    }
+
+    /// Set conversation history - EXACT syntax from ARCHITECTURE.md
+    /// Supports: .conversation_history(MessageRole::User => "content", MessageRole::System => "content", ...)
+    pub fn conversation_history<H>(mut self, history: H) -> Self
+    where
+        H: Into<ZeroOneOrMany<(MessageRole, String)>>,
+    {
+        self.conversation_history = history.into();
+        self
+    }
+
+    /// Simple chat method - EXACT syntax: .chat("Hello")
+    pub fn chat(&self, message: impl Into<String>) -> AsyncStream<MessageChunk, { cfg::CHAT_CAPACITY }> {
+        let message_text = message.into();
+        
+        // Create a message with the chat content
+        let user_message = Message::user(message_text);
+        
+        // Convert conversation history to Message format
+        let history: Vec<Message> = match &self.conversation_history {
+            ZeroOneOrMany::None => Vec::new(),
+            ZeroOneOrMany::One((role, content)) => {
+                vec![match role {
+                    MessageRole::User => Message::user(content.clone()),
+                    MessageRole::Assistant => Message::assistant(content.clone()),
+                    MessageRole::System => Message::system(content.clone()),
+                    _ => Message::user(content.clone()), // Fallback for other roles
+                }]
+            }
+            ZeroOneOrMany::Many(items) => items
+                .iter()
+                .map(|(role, content)| match role {
+                    MessageRole::User => Message::user(content.clone()),
+                    MessageRole::Assistant => Message::assistant(content.clone()),
+                    MessageRole::System => Message::system(content.clone()),
+                    _ => Message::user(content.clone()), // Fallback for other roles
+                })
+                .collect(),
+        };
+
+        // Create a completion request and convert to MessageChunk stream
+        let completion_stream = self.completion(user_message, history);
+        
+        // Transform completion stream to MessageChunk stream
+        // This is a simplified implementation that would need proper conversion
+        AsyncStream::empty() // TODO: Implement proper completion to MessageChunk conversion
+    }
+
+    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop)  
+    pub fn chat_with_closure<F>(&self, closure: F) -> Result<(), Box<dyn std::error::Error>>
+    where
+        F: FnOnce(&AgentConversation) -> ChatLoop,
+    {
+        // Create conversation from current history
+        let conversation = AgentConversation {
+            messages: match &self.conversation_history {
+                ZeroOneOrMany::None => None,
+                _ => Some(self.conversation_history.clone()),
+            }
+        };
+        
+        // Execute closure to get ChatLoop decision
+        let chat_result = closure(&conversation);
+        
+        match chat_result {
+            ChatLoop::Break => Ok(()),
+            ChatLoop::Reprompt(response) => {
+                // Process reprompt - this would integrate with the chat system
+                println!("Reprompt: {}", response);
+                Ok(())
+            }
+            ChatLoop::UserPrompt(prompt) => {
+                // Handle user prompt request
+                if let Some(prompt_text) = prompt {
+                    println!("User prompt: {}", prompt_text);
+                } else {
+                    println!("Waiting for user input...");
+                }
+                Ok(())
+            }
+        }
     }
 }
 

@@ -8,6 +8,8 @@
 
 use arrayvec::ArrayVec;
 
+pub mod adapter;
+pub mod integration;
 pub mod loader;
 pub mod model;
 pub mod tokenizer;

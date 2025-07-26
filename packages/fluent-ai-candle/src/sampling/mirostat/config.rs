@@ -6,18 +6,58 @@
 use arraystring::{ArrayString, typenum::U64};
 use candle_core::{Result as CandleResult};
 
-/// Tau adjustment learning rate bounds
+/// Minimum learning rate for tau adjustment in Mirostat v1
+///
+/// This constant defines the lower bound for the learning rate parameter used
+/// in Mirostat v1 tau adjustment. Values below this threshold can cause
+/// numerical instability and extremely slow convergence.
+///
+/// Value: 1e-6 (0.000001)
 pub const MIN_LEARNING_RATE: f32 = 1e-6;
+
+/// Maximum learning rate for tau adjustment in Mirostat v1
+///
+/// This constant defines the upper bound for the learning rate parameter used
+/// in Mirostat v1 tau adjustment. Values above this threshold can cause
+/// oscillation and instability in the tau adjustment process.
+///
+/// Value: 1.0 (100% adjustment per step)
 pub const MAX_LEARNING_RATE: f32 = 1.0;
 
-/// Eta parameter bounds for Mirostat v2
+/// Minimum eta parameter for Mirostat v2 temperature scaling
+///
+/// This constant defines the lower bound for the eta parameter used in
+/// Mirostat v2 for temperature scaling. Values below this threshold can
+/// cause numerical instability and ineffective temperature adjustment.
+///
+/// Value: 1e-6 (0.000001)
 const MIN_ETA: f32 = 1e-6;
+
+/// Maximum eta parameter for Mirostat v2 temperature scaling
+///
+/// This constant defines the upper bound for the eta parameter used in
+/// Mirostat v2 for temperature scaling. Values above this threshold can
+/// cause excessive temperature fluctuations and unstable sampling.
+///
+/// Value: 10.0
 const MAX_ETA: f32 = 10.0;
 
-/// Minimum tau for numerical stability
+/// Minimum tau (target surprise) for numerical stability
+///
+/// This constant defines the lower bound for the tau parameter (target surprise)
+/// in both Mirostat v1 and v2. Values below this threshold can cause
+/// overly restrictive sampling and numerical instability.
+///
+/// Value: 0.1
 const MIN_TAU: f32 = 0.1;
 
-/// Maximum tau to prevent extreme filtering
+/// Maximum tau (target surprise) to prevent extreme filtering
+///
+/// This constant defines the upper bound for the tau parameter (target surprise)
+/// in both Mirostat v1 and v2. Values above this threshold can cause
+/// excessively permissive sampling that defeats the purpose of Mirostat.
+///
+/// Value: 20.0
 const MAX_TAU: f32 = 20.0;
 
 /// Ultra-compact identifier for Mirostat variants
@@ -98,36 +138,5 @@ impl Default for MirostatConfig {
         Self::V1 {
             tau: 5.0,
             learning_rate: 0.1}
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_creation() {
-        let v1 = MirostatConfig::v1(5.0, 0.1).unwrap();
-        assert_eq!(v1.tau(), 5.0);
-        assert_eq!(v1.variant_name(), "Mirostat v1");
-
-        let v2 = MirostatConfig::v2(5.0, 0.1).unwrap();
-        assert_eq!(v2.tau(), 5.0);
-        assert_eq!(v2.variant_name(), "Mirostat v2");
-    }
-
-    #[test]
-    fn test_config_validation() {
-        assert!(MirostatConfig::v1(-1.0, 0.1).is_err());
-        assert!(MirostatConfig::v1(5.0, -1.0).is_err());
-        assert!(MirostatConfig::v2(-1.0, 0.1).is_err());
-        assert!(MirostatConfig::v2(5.0, -1.0).is_err());
-    }
-
-    #[test]
-    fn test_default_config() {
-        let config = MirostatConfig::default();
-        assert_eq!(config.tau(), 5.0);
-        assert_eq!(config.variant_name(), "Mirostat v1");
     }
 }

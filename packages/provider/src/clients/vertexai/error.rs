@@ -3,6 +3,7 @@
 //! Zero-allocation error types with detailed context and recovery information.
 
 use thiserror::Error;
+use fluent_ai_http3::HttpError;
 
 /// Result type for VertexAI operations
 pub type VertexAIResult<T> = Result<T, VertexAIError>;

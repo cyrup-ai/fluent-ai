@@ -274,7 +274,6 @@ pub mod endpoints {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     
     #[test]
     fn test_model_classification() {
@@ -315,3 +314,4 @@ mod tests {
         assert!(utils::validate_api_key("invalid@key").is_err());
     }
 }
+pub mod types;

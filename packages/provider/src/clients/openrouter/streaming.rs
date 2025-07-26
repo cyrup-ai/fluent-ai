@@ -17,6 +17,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering};
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant, SystemTime};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use arc_swap::ArcSwap;
 use arrayvec::{ArrayString};

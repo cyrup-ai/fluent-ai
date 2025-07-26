@@ -1,6 +1,7 @@
 //! Export types and configuration structures
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Export format options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,3 +103,38 @@ impl Default for ExportOptions {
             include_attachments: true}
     }
 }
+
+/// Export operation errors
+#[derive(Debug, Clone)]
+pub enum ExportError {
+    /// Format handler not found or invalid
+    InvalidFormat(String),
+    /// Header generation failed
+    HeaderGeneration(String),
+    /// Footer generation failed  
+    FooterGeneration(String),
+    /// Message formatting failed
+    MessageFormatting(String),
+    /// I/O operation failed
+    IoError(String),
+    /// Export operation cancelled
+    Cancelled,
+    /// Internal processing error
+    InternalError(String),
+}
+
+impl fmt::Display for ExportError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExportError::InvalidFormat(msg) => write!(f, "Invalid format: {}", msg),
+            ExportError::HeaderGeneration(msg) => write!(f, "Header generation failed: {}", msg),
+            ExportError::FooterGeneration(msg) => write!(f, "Footer generation failed: {}", msg),
+            ExportError::MessageFormatting(msg) => write!(f, "Message formatting failed: {}", msg),
+            ExportError::IoError(msg) => write!(f, "I/O error: {}", msg),
+            ExportError::Cancelled => write!(f, "Export operation cancelled"),
+            ExportError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ExportError {}

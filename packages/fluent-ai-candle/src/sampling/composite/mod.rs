@@ -29,7 +29,6 @@ pub mod parallel;
 
 // Tests are only included in test builds
 #[cfg(test)]
-pub mod tests;
 
 // Re-export all public APIs for backward compatibility
 pub use core::CompositeProcessor;

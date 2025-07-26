@@ -10,6 +10,7 @@
 //! ```
 
 use std::sync::Arc;
+use fluent_ai_http3::HttpClient;
 
 use arc_swap::ArcSwap;
 use fluent_ai_domain::AsyncTask;

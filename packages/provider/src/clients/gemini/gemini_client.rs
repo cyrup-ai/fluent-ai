@@ -5,6 +5,10 @@
 
 use std::convert::TryFrom;
 use std::sync::Arc;
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};

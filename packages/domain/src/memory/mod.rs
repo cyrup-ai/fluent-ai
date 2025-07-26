@@ -147,129 +147,56 @@ impl Default for MemorySystemConfig {
     }
 }
 
-/// Memory system builder for ergonomic configuration
-#[derive(Debug, Default)]
-pub struct MemorySystemBuilder {
-    database_config: Option<DatabaseConfig>,
-    vector_config: Option<VectorStoreConfig>,
-    llm_config: Option<LLMConfig>,
-    enable_cognitive: bool,
-    compatibility_mode: CompatibilityMode}
-
-impl MemorySystemBuilder {
-    /// Create new memory system builder
-    #[inline]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set database configuration
-    #[inline]
-    pub fn with_database_config(mut self, config: DatabaseConfig) -> Self {
-        self.database_config = Some(config);
-        self
-    }
-
-    /// Set vector store configuration
-    #[inline]
-    pub fn with_vector_config(mut self, config: VectorStoreConfig) -> Self {
-        self.vector_config = Some(config);
-        self
-    }
-
-    /// Set LLM configuration
-    #[inline]
-    pub fn with_llm_config(mut self, config: LLMConfig) -> Self {
-        self.llm_config = Some(config);
-        self
-    }
-
-    /// Enable cognitive features
-    #[inline]
-    pub fn with_cognitive(mut self, enabled: bool) -> Self {
-        self.enable_cognitive = enabled;
-        self
-    }
-
-    /// Set compatibility mode
-    #[inline]
-    pub fn with_compatibility_mode(mut self, mode: CompatibilityMode) -> Self {
-        self.compatibility_mode = mode;
-        self
-    }
-
-    /// Build memory system configuration
-    pub fn build(self) -> crate::memory::primitives::MemoryResult<MemorySystemConfig> {
-        let config = MemorySystemConfig {
-            database: self.database_config.unwrap_or_default(),
-            vector_store: self.vector_config.unwrap_or_default(),
-            llm: self.llm_config.unwrap_or_default(),
-            enable_cognitive: self.enable_cognitive,
-            compatibility_mode: self.compatibility_mode};
-
-        config.validate()?;
-        Ok(config)
-    }
-}
 
 /// Convenience functions for creating memory system configurations
 impl MemorySystemConfig {
-    /// Create builder for memory system configuration
-    #[inline]
-    pub fn builder() -> MemorySystemBuilder {
-        MemorySystemBuilder::new()
-    }
 
     /// Create configuration optimized for semantic search
     pub fn for_semantic_search() -> crate::memory::primitives::MemoryResult<Self> {
-        Ok(Self::builder()
-            .with_vector_config(
-                VectorStoreConfig::new(
-                    VectorStoreType::FAISS,
-                    EmbeddingConfig::high_performance(),
-                    3072,
-                )?
-                .with_distance_metric(DistanceMetric::Cosine)
-                .with_simd_config(SimdConfig::optimized()),
-            )
-            .with_cognitive(true)
-            .build()?)
+        Ok(Self {
+            database: DatabaseConfig::default(),
+            vector_store: VectorStoreConfig::new(
+                VectorStoreType::FAISS,
+                EmbeddingConfig::high_performance(),
+                3072,
+            )?
+            .with_distance_metric(DistanceMetric::Cosine)
+            .with_simd_config(SimdConfig::optimized()),
+            llm: LLMConfig::default(),
+            enable_cognitive: true,
+            compatibility_mode: CompatibilityMode::Hybrid,
+        })
     }
 
     /// Create configuration optimized for real-time chat
     pub fn for_realtime_chat() -> crate::memory::primitives::MemoryResult<Self> {
-        Ok(Self::builder()
-            .with_database_config(
-                DatabaseConfig::new(DatabaseType::Memory, "memory", "chat", "realtime")?
-                    .with_pool_config(PoolConfig::minimal()),
-            )
-            .with_vector_config(
-                VectorStoreConfig::new(VectorStoreType::Memory, EmbeddingConfig::default(), 1536)?
-                    .with_performance_config(PerformanceConfig::minimal()),
-            )
-            .with_llm_config(LLMConfig::new(LLMProvider::OpenAI, "gpt-4")?.with_streaming(true))
-            .with_cognitive(false)
-            .build()?)
+        Ok(Self {
+            database: DatabaseConfig::new(DatabaseType::Memory, "memory", "chat", "realtime")?
+                .with_pool_config(PoolConfig::minimal()),
+            vector_store: VectorStoreConfig::new(VectorStoreType::Memory, EmbeddingConfig::default(), 1536)?
+                .with_performance_config(PerformanceConfig::minimal()),
+            llm: LLMConfig::new(LLMProvider::OpenAI, "gpt-4")?.with_streaming(true),
+            enable_cognitive: false,
+            compatibility_mode: CompatibilityMode::Hybrid,
+        })
     }
 
     /// Create configuration optimized for large-scale data processing
     pub fn for_large_scale() -> crate::memory::primitives::MemoryResult<Self> {
-        Ok(Self::builder()
-            .with_database_config(
-                DatabaseConfig::new(
-                    DatabaseType::PostgreSQL,
-                    "postgresql://localhost:5432/fluent_ai",
-                    "production",
-                    "memory_large",
-                )?
-                .with_pool_config(PoolConfig::optimized(DatabaseType::PostgreSQL)),
-            )
-            .with_vector_config(
-                VectorStoreConfig::new(VectorStoreType::FAISS, EmbeddingConfig::default(), 1536)?
-                    .with_index_config(IndexConfig::optimized(IndexType::IVFPQ, 1536, 1000000))
-                    .with_performance_config(PerformanceConfig::optimized(VectorStoreType::FAISS)),
-            )
-            .with_cognitive(true)
-            .build()?)
+        Ok(Self {
+            database: DatabaseConfig::new(
+                DatabaseType::PostgreSQL,
+                "postgresql://localhost:5432/fluent_ai",
+                "production",
+                "memory_large",
+            )?
+            .with_pool_config(PoolConfig::optimized(DatabaseType::PostgreSQL)),
+            vector_store: VectorStoreConfig::new(VectorStoreType::FAISS, EmbeddingConfig::default(), 1536)?
+                .with_index_config(IndexConfig::optimized(IndexType::IVFPQ, 1536, 1000000))
+                .with_performance_config(PerformanceConfig::optimized(VectorStoreType::FAISS)),
+            llm: LLMConfig::default(),
+            enable_cognitive: true,
+            compatibility_mode: CompatibilityMode::Hybrid,
+        })
     }
 }

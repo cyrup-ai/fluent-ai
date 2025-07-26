@@ -5,6 +5,7 @@ use super::types::{
 use fluent_ai_http3::{Http3, HttpResult};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use arrayvec::ArrayVec;
 
 use super::client::{ApiErrorResponse, ApiResponse, Client, Usage};
 use super::streaming::{FinalCompletionResponse, StreamingCompletionResponse};

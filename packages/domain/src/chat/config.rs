@@ -470,22 +470,59 @@ pub enum ConfigurationChangeType {
 /// Configuration validation error
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ConfigurationValidationError {
+    /// Invalid personality configuration detected
     #[error("Invalid personality configuration: {detail}")]
-    InvalidPersonality { detail: Arc<str> },
+    InvalidPersonality { 
+        /// Details of the invalid personality configuration
+        detail: Arc<str> 
+    },
+    /// Invalid behavior configuration detected
     #[error("Invalid behavior configuration: {detail}")]
-    InvalidBehavior { detail: Arc<str> },
+    InvalidBehavior { 
+        /// Details of the invalid behavior configuration
+        detail: Arc<str> 
+    },
+    /// Invalid UI configuration detected
     #[error("Invalid UI configuration: {detail}")]
-    InvalidUI { detail: Arc<str> },
+    InvalidUI { 
+        /// Details of the invalid UI configuration
+        detail: Arc<str> 
+    },
+    /// Invalid integration configuration detected
     #[error("Invalid integration configuration: {detail}")]
-    InvalidIntegration { detail: Arc<str> },
+    InvalidIntegration { 
+        /// Details of the invalid integration configuration
+        detail: Arc<str> 
+    },
+    /// Configuration conflict between settings
     #[error("Configuration conflict: {detail}")]
-    Conflict { detail: Arc<str> },
+    Conflict { 
+        /// Details of the configuration conflict
+        detail: Arc<str> 
+    },
+    /// Schema validation failed for configuration
     #[error("Schema validation failed: {detail}")]
-    SchemaValidation { detail: Arc<str> },
+    SchemaValidation { 
+        /// Details of the schema validation failure
+        detail: Arc<str> 
+    },
+    /// Range validation failed for a field
     #[error("Range validation failed: {field} must be between {min} and {max}")]
-    RangeValidation { field: Arc<str>, min: f32, max: f32 },
+    RangeValidation { 
+        /// Field name that failed range validation
+        field: Arc<str>, 
+        /// Minimum allowed value
+        min: f32, 
+        /// Maximum allowed value
+        max: f32 
+    },
+    /// Required field is missing from configuration
     #[error("Required field missing: {field}")]
-    RequiredField { field: Arc<str> }}
+    RequiredField { 
+        /// Name of the missing required field
+        field: Arc<str> 
+    },
+}
 
 /// Configuration validation result
 pub type ConfigurationValidationResult<T> = Result<T, ConfigurationValidationError>;
@@ -1321,132 +1358,15 @@ impl ConfigurationManager {
 /// Configuration statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigurationStatistics {
+    /// Total number of configuration changes made
     pub total_changes: usize,
+    /// Current configuration version number
     pub current_version: usize,
+    /// Duration since last modification
     pub last_modified: Duration,
+    /// Number of active validators
     pub validators_count: usize,
-    pub auto_save_enabled: bool}
-
-/// Configuration builder for ergonomic configuration creation
-pub struct ConfigurationBuilder {
-    config: ChatConfig}
-
-impl ConfigurationBuilder {
-    /// Create a new configuration builder
-    pub fn new() -> Self {
-        Self {
-            config: ChatConfig::default()}
-    }
-
-    /// Set personality configuration
-    pub fn personality(mut self, personality: PersonalityConfig) -> Self {
-        self.config.personality = personality;
-        self
-    }
-
-    /// Set behavior configuration
-    pub fn behavior(mut self, behavior: BehaviorConfig) -> Self {
-        self.config.behavior = behavior;
-        self
-    }
-
-    /// Set UI configuration
-    pub fn ui(mut self, ui: UIConfig) -> Self {
-        self.config.ui = ui;
-        self
-    }
-
-    /// Set integration configuration
-    pub fn integration(mut self, integration: IntegrationConfig) -> Self {
-        self.config.integration = integration;
-        self
-    }
-
-    /// Build the configuration
-    pub fn build(self) -> ChatConfig {
-        self.config
-    }
+    /// Whether auto-save is currently enabled
+    pub auto_save_enabled: bool,
 }
 
-impl Default for ConfigurationBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Personality configuration builder
-pub struct PersonalityConfigBuilder {
-    config: PersonalityConfig}
-
-impl PersonalityConfigBuilder {
-    /// Create a new personality configuration builder
-    pub fn new() -> Self {
-        Self {
-            config: PersonalityConfig::default()}
-    }
-
-    /// Set tone
-    pub fn tone(mut self, tone: impl Into<Arc<str>>) -> Self {
-        self.config.tone = tone.into();
-        self
-    }
-
-    /// Set creativity level
-    pub fn creativity(mut self, creativity: f64) -> Self {
-        self.config.creativity = creativity.clamp(0.0, 1.0);
-        self
-    }
-
-    /// Set formality level
-    pub fn formality(mut self, formality: f64) -> Self {
-        self.config.formality = formality.clamp(0.0, 1.0);
-        self
-    }
-
-    /// Set expertise level
-    pub fn expertise(mut self, expertise: impl Into<Arc<str>>) -> Self {
-        self.config.expertise_level = expertise.into();
-        self
-    }
-
-    /// Add personality trait
-    pub fn trait_name(mut self, trait_name: impl Into<Arc<str>>) -> Self {
-        self.config.traits.push(trait_name.into());
-        self
-    }
-
-    /// Set response style
-    pub fn response_style(mut self, style: impl Into<Arc<str>>) -> Self {
-        self.config.response_style = style.into();
-        self
-    }
-
-    /// Set humor level
-    pub fn humor(mut self, humor: f64) -> Self {
-        self.config.humor = humor.clamp(0.0, 1.0);
-        self
-    }
-
-    /// Set empathy level
-    pub fn empathy(mut self, empathy: f64) -> Self {
-        self.config.empathy = empathy.clamp(0.0, 1.0);
-        self
-    }
-
-    /// Set verbosity level
-    pub fn verbosity(mut self, verbosity: impl Into<Arc<str>>) -> Self {
-        self.config.verbosity = verbosity.into();
-        self
-    }
-
-    /// Build the personality configuration
-    pub fn build(self) -> PersonalityConfig {
-        self.config
-    }
-}
-
-impl Default for PersonalityConfigBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}

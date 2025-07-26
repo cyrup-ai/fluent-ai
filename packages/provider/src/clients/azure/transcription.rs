@@ -69,6 +69,7 @@ impl TranscriptionModel {
         request: transcription::TranscriptionRequest,
     ) -> impl crate::http3_streaming::TranscriptionChunk {
         use crate::http3_streaming::TranscriptionChunkImpl;
+use std::collections::HashMap;
 
         // Build form data for transcription request
         let mut form_data = HashMap::new();

@@ -26,6 +26,6 @@ pub use candle::{
 // Type aliases for convenience
 pub type CompletionResult<T> = CompletionCoreResult<T>;
 pub type StreamingResponse = StreamingCoreResponse;
-pub use request::{CompletionRequest, CompletionRequestBuilder, CompletionRequestError};
-pub use response::{CompactCompletionResponse, CompletionResponse, CompletionResponseBuilder};
+pub use request::{CompletionRequest, CompletionRequestError};
+pub use response::{CompactCompletionResponse, CompletionResponse};
 pub use types::{CompletionParams, ModelParams, ToolDefinition};

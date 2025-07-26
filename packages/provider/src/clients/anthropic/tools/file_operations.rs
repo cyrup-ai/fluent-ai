@@ -4,6 +4,8 @@
 //! using the Anthropic Files API with fluent_ai_http3 for optimal performance.
 
 use std::path::Path;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use bytes::Bytes;
 use fluent_ai_async::AsyncStream;

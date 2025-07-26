@@ -5,6 +5,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayString;

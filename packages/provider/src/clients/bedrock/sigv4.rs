@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use arrayvec::ArrayVec;
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayString;

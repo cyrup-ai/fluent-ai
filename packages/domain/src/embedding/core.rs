@@ -36,10 +36,14 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     }
 }
 
+/// Embedding structure containing document text and its vector representation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Embedding {
+    /// The source document text that was embedded
     pub document: String,
-    pub vec: ZeroOneOrMany<f64>}
+    /// The embedding vector(s) as floating point values
+    pub vec: ZeroOneOrMany<f64>,
+}
 
 /// Response format for embedding operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

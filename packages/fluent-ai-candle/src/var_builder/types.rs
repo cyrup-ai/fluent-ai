@@ -4,7 +4,35 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use arrayvec::ArrayString;
 use candle_core::{DType, Device};
 
-/// Convert safetensors Dtype to candle DType
+/// Convert safetensors Dtype to candle DType with optimal mapping
+///
+/// Converts data types from the safetensors format to candle's native data types,
+/// using the most appropriate candle type for each safetensors type. Some mappings
+/// require promotion to larger types since candle has a more limited set of data types.
+///
+/// # Arguments
+///
+/// * `dtype` - The safetensors data type to convert
+///
+/// # Returns
+///
+/// The corresponding candle `DType`, with fallback to `F32` for unknown types
+///
+/// # Type Mappings
+///
+/// - `BOOL` → `U8` (candle doesn't have native bool)
+/// - `I8`, `I16`, `I32` → `I64` (promoted to I64)
+/// - `U16` → `U32` (promoted to U32)
+/// - `U64` → `U32` (demoted to U32, candle doesn't support U64)
+/// - `F16`, `BF16`, `F32`, `F64` → direct mapping
+/// - Unknown types → `F32` (default fallback)
+///
+/// # Example
+///
+/// ```rust
+/// let candle_dtype = convert_dtype(safetensors::Dtype::F32);
+/// assert_eq!(candle_dtype, DType::F32);
+/// ```
 pub fn convert_dtype(dtype: safetensors::Dtype) -> DType {
     match dtype {
         safetensors::Dtype::BOOL => DType::U8, // Candle doesn't have native bool, use U8
@@ -25,34 +53,107 @@ pub fn convert_dtype(dtype: safetensors::Dtype) -> DType {
 }
 
 /// Maximum tensor name length for stack allocation
+///
+/// This constant defines the maximum length for tensor names when using
+/// stack-allocated `ArrayString` for zero-allocation tensor name storage.
+/// Tensor names longer than this will require heap allocation.
 pub const MAX_TENSOR_NAME_LEN: usize = 256;
 
 /// Maximum number of tensors for stack allocation
+///
+/// This constant defines the maximum number of tensors that can be handled
+/// using stack-based data structures for optimal performance. Models with
+/// more tensors will use dynamic allocation.
 pub const MAX_TENSORS: usize = 2048;
 
-/// Maximum configuration entries
+/// Maximum configuration entries for stack allocation
+///
+/// This constant defines the maximum number of configuration key-value pairs
+/// that can be stored using stack-based data structures for zero-allocation
+/// configuration management.
 pub const MAX_CONFIG_ENTRIES: usize = 128;
 
 /// Maximum file paths for sharded models
+///
+/// This constant defines the maximum number of file paths that can be handled
+/// for sharded model loading, where a single model is split across multiple
+/// safetensors files.
 pub const MAX_FILE_PATHS: usize = 32;
 
-/// Cache line size for alignment
+/// Cache line size for alignment optimization
+///
+/// This constant defines the cache line size used for aligning data structures
+/// to optimize memory access patterns and reduce cache misses. This value is
+/// typically 64 bytes on modern x86_64 architectures.
 pub const CACHE_LINE_SIZE: usize = 64;
 
-/// Static error messages (zero allocation)
+/// Error message for tensor not found in model
+///
+/// This static string is used for zero-allocation error reporting when
+/// a requested tensor name is not found in the loaded model.
 pub const ERR_TENSOR_NOT_FOUND: &str = "Tensor not found";
+
+/// Error message for invalid tensor shape
+///
+/// This static string is used for zero-allocation error reporting when
+/// a tensor has an invalid or unexpected shape that doesn't match requirements.
 pub const ERR_INVALID_SHAPE: &str = "Invalid tensor shape";
+
+/// Error message for device mismatch
+///
+/// This static string is used for zero-allocation error reporting when
+/// tensors are placed on incompatible devices or device transfer fails.
 pub const ERR_DEVICE_MISMATCH: &str = "Device mismatch";
+
+/// Error message for model loading failure
+///
+/// This static string is used for zero-allocation error reporting when
+/// model loading operations fail due to file system, format, or other issues.
 pub const ERR_MODEL_LOADING: &str = "Model loading failed";
+
+/// Error message for metadata parsing failure
+///
+/// This static string is used for zero-allocation error reporting when
+/// model metadata cannot be parsed or is in an unexpected format.
 pub const ERR_METADATA_PARSING: &str = "Metadata parsing failed";
 
-/// Ultra-compact tensor name (stack allocated)
+/// Ultra-compact tensor name with stack allocation
+///
+/// A stack-allocated string type for tensor names that avoids heap allocation
+/// for improved performance. Can store tensor names up to `MAX_TENSOR_NAME_LEN`
+/// characters without any dynamic memory allocation.
+///
+/// # Examples
+///
+/// ```rust
+/// let tensor_name: TensorName = "model.layers.0.weight".try_into().unwrap();
+/// ```
 pub type TensorName = ArrayString<MAX_TENSOR_NAME_LEN>;
 
-/// Ultra-compact configuration key
+/// Ultra-compact configuration key with stack allocation
+///
+/// A stack-allocated string type for configuration keys that avoids heap
+/// allocation. Can store configuration keys up to 64 characters without
+/// any dynamic memory allocation.
+///
+/// # Examples
+///
+/// ```rust
+/// let config_key: ConfigKey = "device_type".try_into().unwrap();
+/// ```
 pub type ConfigKey = ArrayString<64>;
 
-/// Ultra-compact configuration value  
+/// Ultra-compact configuration value with stack allocation
+///
+/// A stack-allocated string type for configuration values that avoids heap
+/// allocation. Can store configuration values up to 256 characters without
+/// any dynamic memory allocation.
+///
+/// # Examples
+///
+/// ```rust
+/// let config_value: ConfigValue = "cuda:0".try_into().unwrap();
+/// ```
 pub type ConfigValue = ArrayString<256>;
 
 /// Tensor loading strategy for memory optimization

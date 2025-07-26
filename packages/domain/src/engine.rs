@@ -24,33 +24,49 @@ macro_rules! handle_error {
 #[derive(Error, Debug, Clone)]
 pub enum EngineError {
     #[error("Provider not available")]
+    /// The requested AI provider is not available or not configured
     ProviderNotAvailable,
 
     #[error("Model not found")]
+    /// The specified model was not found in the provider
     ModelNotFound,
 
     #[error("Configuration error: {0}")]
+    /// Engine configuration is invalid or incomplete
     ConfigurationError(String),
 
     #[error("Authentication failed")]
+    /// Authentication with the AI provider failed
     AuthenticationFailed,
 
     #[error("Rate limit exceeded, retry after {retry_after_seconds}s")]
-    RateLimitExceeded { retry_after_seconds: u64 },
+    /// Rate limit was exceeded by the provider
+    RateLimitExceeded { 
+        /// Number of seconds to wait before retrying
+        retry_after_seconds: u64 
+    },
 
     #[error("Request timeout after {timeout_seconds}s")]
-    RequestTimeout { timeout_seconds: u64 },
+    /// Request timed out after the specified duration
+    RequestTimeout { 
+        /// Number of seconds the request waited before timing out
+        timeout_seconds: u64 
+    },
 
     #[error("Network error: {0}")]
+    /// Network communication error occurred
     NetworkError(String),
 
     #[error("Invalid input")]
+    /// The provided input is invalid or malformed
     InvalidInput,
 
     #[error("Service unavailable")]
+    /// The engine service is temporarily unavailable
     ServiceUnavailable,
 
     #[error("Internal error: {0}")]
+    /// An unexpected internal error occurred
     InternalError(String)}
 
 /// Result type for engine operations

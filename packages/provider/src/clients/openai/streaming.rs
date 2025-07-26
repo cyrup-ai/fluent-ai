@@ -4,6 +4,8 @@
 //! and tool use with comprehensive SSE parsing and no unsafe operations.
 
 use std::time::SystemTime;
+use fluent_ai_http3::HttpClient;
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 

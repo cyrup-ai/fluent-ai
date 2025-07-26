@@ -4,6 +4,7 @@
 //! optimal performance, lock-free operations, and elegant ergonomics.
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::collections::HashMap;
 
 use bytes::Bytes;
 use crossbeam_channel as channel;

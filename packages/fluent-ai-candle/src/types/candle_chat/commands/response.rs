@@ -470,22 +470,91 @@ pub enum ResponseError {
 static GLOBAL_FORMATTER: once_cell::sync::Lazy<ResponseFormatter> =
     once_cell::sync::Lazy::new(ResponseFormatter::new);
 
-/// Get global response formatter
+/// Get the global response formatter instance
+///
+/// Returns a reference to the globally shared `ResponseFormatter` that can be used
+/// throughout the application for consistent response formatting.
+///
+/// # Returns
+///
+/// A static reference to the global `ResponseFormatter` instance
+///
+/// # Example
+///
+/// ```rust
+/// let formatter = get_global_formatter();
+/// let formatted = formatter.format_output(&output)?;
+/// ```
 pub fn get_global_formatter() -> &'static ResponseFormatter {
     &GLOBAL_FORMATTER
 }
 
-/// Format output using global formatter
+/// Format command output using the global response formatter
+///
+/// This is a convenience function that uses the global formatter to format
+/// command output. It's equivalent to calling `get_global_formatter().format_output(output)`.
+///
+/// # Arguments
+///
+/// * `output` - The command output to format
+///
+/// # Returns
+///
+/// A formatted string representation of the output, or a `ResponseError` if formatting fails
+///
+/// # Example
+///
+/// ```rust
+/// let formatted = format_global_output(&command_output)?;
+/// println!("{}", formatted);
+/// ```
 pub fn format_global_output(output: &CommandOutput) -> Result<String, ResponseError> {
     get_global_formatter().format_output(output)
 }
 
-/// Format error using global formatter
+/// Format command error using the global response formatter
+///
+/// This is a convenience function that uses the global formatter to format
+/// command errors. It's equivalent to calling `get_global_formatter().format_error(error)`.
+///
+/// # Arguments
+///
+/// * `error` - The command error to format
+///
+/// # Returns
+///
+/// A formatted string representation of the error, or a `ResponseError` if formatting fails
+///
+/// # Example
+///
+/// ```rust
+/// let formatted = format_global_error(&command_error)?;
+/// eprintln!("{}", formatted);
+/// ```
 pub fn format_global_error(error: &CommandError) -> Result<String, ResponseError> {
     get_global_formatter().format_error(error)
 }
 
-/// Format help using global formatter
+/// Format help information using the global response formatter
+///
+/// This is a convenience function that uses the global formatter to format
+/// help information for available commands. It's equivalent to calling
+/// `get_global_formatter().format_help(commands)`.
+///
+/// # Arguments
+///
+/// * `commands` - A slice of command information to format
+///
+/// # Returns
+///
+/// A formatted string representation of the help information, or a `ResponseError` if formatting fails
+///
+/// # Example
+///
+/// ```rust
+/// let help_text = format_global_help(&available_commands)?;
+/// println!("{}", help_text);
+/// ```
 pub fn format_global_help(commands: &[CommandInfo]) -> Result<String, ResponseError> {
     get_global_formatter().format_help(commands)
 }

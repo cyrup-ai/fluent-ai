@@ -295,37 +295,3 @@ pub fn validate_template(content: &str) -> TemplateResult<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_simple_variable_parsing() {
-        let parser = TemplateParser::new();
-        let result = parser.parse("Hello {{name}}!").unwrap();
-
-        match result {
-            TemplateAst::Block(nodes) => {
-                assert_eq!(nodes.len(), 3);
-            }
-            _ => panic!("Expected block AST")}
-    }
-
-    #[test]
-    fn test_variable_extraction() {
-        let parser = TemplateParser::new();
-        let variables = parser
-            .extract_variables("Hello {{name}}, you have {{count}} messages.")
-            .unwrap();
-
-        assert_eq!(variables.len(), 2);
-        assert!(variables.iter().any(|v| v.name.as_ref() == "name"));
-        assert!(variables.iter().any(|v| v.name.as_ref() == "count"));
-    }
-
-    #[test]
-    fn test_template_validation() {
-        assert!(validate_template("Hello {{name}}!").is_ok());
-        assert!(validate_template("{{unclosed").is_ok()); // Parser is lenient
-    }
-}

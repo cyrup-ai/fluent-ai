@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::collections::HashMap;
 
 use arc_swap::ArcSwap;
 use crossbeam::atomic::AtomicCell;

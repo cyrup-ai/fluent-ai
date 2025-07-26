@@ -6,6 +6,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
+use fluent_ai_http3::HttpResponse;
 
 use fluent_ai_domain::{AsyncTask, chunk::CompletionChunk, spawn_async};
 use fluent_ai_http3::{HttpClient, HttpRequest, HttpResponse};

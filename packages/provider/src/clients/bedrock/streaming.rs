@@ -8,6 +8,7 @@
 //! - Error recovery and partial response handling
 
 use std::collections::VecDeque;
+use fluent_ai_http3::HttpClient;
 
 use arrayvec::ArrayString;
 use fluent_ai_domain::AsyncStream;

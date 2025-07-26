@@ -8,13 +8,16 @@ use std::hash::{Hash, Hasher};
 
 use fluent_ai_async::AsyncStream;
 
-// Error type for vector store operations
+/// Error type for vector store operations
 #[derive(Debug, thiserror::Error)]
 pub enum VectorStoreError {
+    /// Requested item was not found in the vector store
     #[error("Not found")]
     NotFound,
+    /// Vector store operation failed with detailed error message
     #[error("Operation failed: {0}")]
-    OperationFailed(String)}
+    OperationFailed(String),
+}
 
 /// Production-ready embedding service trait with zero-allocation methods
 pub trait EmbeddingService: Send + Sync {

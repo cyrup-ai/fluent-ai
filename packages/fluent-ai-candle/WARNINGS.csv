@@ -1,0 +1,31 @@
+File,Line,Type,Description,Status
+
+
+
+src/sampling/mirostat/perplexity.rs,115,unused_methods,methods `sample_count` `history_length` and `ema_alpha` are never used,pending
+src/sampling/mirostat/processor.rs,216,unused_method,method `apply_mirostat_sampling` is never used,pending
+src/streaming/decoder/error.rs,87,unused_trait,trait `ErrorExt` is never used,pending
+src/types/candle_chat/chat/commands/execution.rs,146,unused_methods,multiple methods are never used,pending
+src/types/candle_chat/chat/config/config_manager.rs,107,unused_field,field `last_persistence` is never read,pending
+src/types/candle_chat/chat/integrations/external.rs,24,unused_fields,fields `client` and `plugin_manager` are never read,pending
+src/types/candle_chat/chat/integrations/external.rs,107,unused_methods,methods `execute_http_request` `execute_plugin_request` and `execute_service_request` are never used,pending
+src/types/candle_chat/chat/macros/actions.rs,132,unused_fields,fields `config` `history` and `stats` are never read,pending
+src/types/candle_chat/chat/macros/actions.rs,194,unused_fields,fields `config` `history` and `stats` are never read,pending
+src/types/candle_chat/chat/macros/execution.rs,24,unused_field,field `evaluator` is never read,pending
+src/types/candle_chat/chat/macros/processor.rs,250,unused_method,method `execute_macro_impl` is never used,pending
+src/types/candle_chat/chat/macros/system.rs,285,unused_future,unused pinned boxed implementer of `std::future::Future` that must be used,pending
+src/types/candle_chat/chat/macros/system.rs,335,unused_future,unused pinned boxed implementer of `std::future::Future` that must be used,pending
+src/types/candle_chat/chat/macros/system.rs,378,unused_methods,methods `execute_action_internal` `resolve_variables` and `evaluate_condition` are never used,pending
+src/types/candle_chat/chat/search/manager.rs,111,unused_variable,unused variable: `options`,pending
+src/types/candle_chat/chat/search/manager.rs,112,unused_variable,unused variable: `exporter`,pending
+src/types/candle_chat/chat/search/searcher.rs,158,unused_variable,unused variable: `search_stream`,pending
+src/types/candle_chat/commands/execution.rs,146,unused_methods,multiple methods are never used,pending
+src/types/candle_chat/macros/playback.rs,167,unused_methods,methods `execute_single_action_sync` and `get_macro` are never used,pending
+src/types/candle_chat/realtime/config.rs,110,unused_fields,fields `connections` `message_broadcaster` and `event_handlers` are never read,pending
+src/types/candle_chat/realtime/connections.rs,153,unused_field,field `health_check_task` is never read,pending
+src/types/candle_chat/realtime/streaming.rs,44,unused_field,field `backpressure_threshold` is never read,pending
+src/types/candle_chat/search/index/indexing.rs,24,unused_variable,unused variable: `index`,pending
+src/types/candle_chat/search/index/utils.rs,84,unused_method,method `cartesian_product` is never used,pending
+src/types/candle_context/extraction/error.rs,39,unused_type,type alias `ExtractionResult` is never used,pending
+src/types/candle_context/extraction/extractor.rs,89,unused_functions,associated functions `execute_extraction` `process_extraction_result` and `parse_json_response` are never used,pending
+src/var_builder/builder.rs,29,unused_variant,variant `MemoryMapped` is never constructed,pending

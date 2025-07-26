@@ -419,7 +419,8 @@ impl ModelResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::info::ModelInfoBuilder;
+    // Import ModelInfo::builder() from fluent-ai
+    use fluent_ai::builders::ModelInfoBuilder;
 
     struct TestModel {
         info: &'static ModelInfo}

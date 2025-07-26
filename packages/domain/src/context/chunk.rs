@@ -31,11 +31,17 @@ pub struct DocumentChunk {
 /// Image format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ImageFormat {
+    /// Portable Network Graphics format
     PNG,
+    /// Joint Photographic Experts Group format
     JPEG,
+    /// Graphics Interchange Format
     GIF,
+    /// WebP image format by Google
     WebP,
+    /// Bitmap image format
     BMP,
+    /// Tagged Image File Format
     TIFF}
 
 /// Chunk of image data for streaming image operations
@@ -57,11 +63,17 @@ pub struct ImageChunk {
 /// Audio format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum AudioFormat {
+    /// MPEG-1 Audio Layer III compressed audio format
     MP3,
+    /// Waveform Audio File Format (uncompressed)
     WAV,
+    /// Free Lossless Audio Codec
     FLAC,
+    /// Ogg Vorbis compressed audio format
     OGG,
+    /// MPEG-4 Audio compressed format (AAC)
     M4A,
+    /// Opus low-latency audio codec
     OPUS}
 
 /// Chunk of audio/voice data for streaming audio operations
@@ -102,10 +114,15 @@ pub struct ChatMessageChunk {
 /// Reason why a completion finished
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum FinishReason {
+    /// Completion finished naturally at a stopping point
     Stop,
+    /// Completion reached maximum token length limit
     Length,
+    /// Completion was filtered due to content policy
     ContentFilter,
+    /// Completion finished to execute tool calls
     ToolCalls,
+    /// Completion failed due to an error
     Error}
 
 /// Comprehensive completion chunk supporting all streaming features

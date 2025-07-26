@@ -1,4 +1,8 @@
 use std::{convert::Infallible, str::FromStr};
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use async_stream::stream;
 use fluent_ai_domain::completion::{
@@ -906,7 +910,6 @@ impl MistralCompletionBuilder {
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
 
             while let Some(event) = sse_stream.next().await {
@@ -1204,9 +1207,7 @@ pub const fn available_mistral_models() -> &'static [&'static str] {
 
 #[cfg(test)]
 mod new_completion_tests {
-    use cyrup_sugars::ZeroOneOrMany;
 
-    use super::*;
 
     #[test]
     fn test_new_mistral_completion_builder_creation() {

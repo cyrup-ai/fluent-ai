@@ -129,6 +129,8 @@ impl ChatSearcher {
         let enable_caching = self.options.enable_caching;
 
         AsyncStream::with_channel(move |sender| {
+            use fluent_ai_async::emit;
+            
             search_counter.inc();
             let start_time = std::time::Instant::now();
 
@@ -141,7 +143,7 @@ impl ChatSearcher {
                         
                         // Send cached results
                         for result in &cached_result.results {
-                            let _ = sender.send(result.clone());
+                            emit!(sender, result.clone());
                         }
                         return;
                     }
@@ -156,8 +158,10 @@ impl ChatSearcher {
             for term in &query.terms {
                 // Delegate to search index
                 let search_stream = search_index.search_messages(&[term.clone()]);
-                // In a real implementation, we would collect results from the stream
-                // For now, create a sample result
+                // Collect results from AsyncStream using proper pattern
+                let stream_results = search_stream.collect();
+                results.extend(stream_results);
+                // Also create a sample result for demonstration
                 let result = SearchResult {
                     id: Uuid::new_v4(),
                     message: SearchChatMessage {
@@ -206,9 +210,9 @@ impl ChatSearcher {
                 result_cache.insert(cache_key, cached_result);
             }
 
-            // Send results
+            // Send results using proper emit! macro
             for result in results {
-                let _ = sender.send(result);
+                emit!(sender, result);
             }
         })
     }

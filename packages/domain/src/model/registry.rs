@@ -375,26 +375,12 @@ impl<M: Model + 'static> Hash for RegisteredModel<M> {
 }
 
 /// A builder for configuring and registering models
-pub struct ModelBuilder<M: Model + 'static> {
-    provider: &'static str,
-    model: M}
-
-impl<M: Model + 'static> ModelBuilder<M> {
-    /// Create a new model builder
-    pub fn new(provider: &'static str, model: M) -> Self {
-        Self { provider, model }
-    }
-
-    /// Register the model with the global registry
-    pub fn register(self) -> Result<RegisteredModel<M>> {
-        ModelRegistry::new().register(self.provider, self.model)
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::info::ModelInfoBuilder;
+    // Import ModelInfo::builder() from fluent-ai
+    use fluent_ai::builders::ModelInfoBuilder;
 
     struct TestModel {
         info: &'static ModelInfo}
@@ -496,7 +482,7 @@ mod tests {
     }
 
     #[test]
-    fn test_model_builder() {
+    fn test_model_registration() {
         let info = ModelInfo::builder()
             .provider_name("test")
             .name("test-model")
@@ -505,17 +491,15 @@ mod tests {
 
         let model = TestModel { info: &info };
 
-        // Create a model builder
-        let builder = ModelBuilder::new("test-provider", model);
-
-        // Register the model using the builder
-        let registered = builder.register().unwrap();
+        // Register model directly using ModelRegistry
+        let mut registry = ModelRegistry::new();
+        registry.register("test-provider", "test-model", model).unwrap();
 
         // Verify the model was registered
-        let retrieved = ModelRegistry::new()
+        let retrieved = registry
             .get_required::<TestModel>("test-provider", "test-model")
             .unwrap();
 
-        assert_eq!(registered.info().name(), retrieved.info().name());
+        assert_eq!(info.name(), retrieved.info().name());
     }
 }

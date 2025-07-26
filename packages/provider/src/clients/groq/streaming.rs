@@ -9,6 +9,8 @@ use futures_util::Stream;
 use futures_util::StreamExt;
 use serde_json::Value;
 use tokio_stream;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 // Re-export OpenAI streaming response type since Groq uses the same format
 pub use crate::clients::openai::StreamingCompletionResponse;

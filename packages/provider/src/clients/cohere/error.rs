@@ -13,6 +13,7 @@
 use arrayvec::ArrayString;
 use smallvec::SmallVec;
 use thiserror::Error;
+use fluent_ai_http3::HttpError;
 
 /// Result type for all Cohere operations
 pub type Result<T> = std::result::Result<T, CohereError>;

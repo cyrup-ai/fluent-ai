@@ -4,6 +4,7 @@
 //! error chains, and semantic error handling without unwrap/expect usage.
 
 use std::fmt;
+use fluent_ai_http3::HttpError;
 
 use crate::completion_provider::CompletionError as ProviderError;
 

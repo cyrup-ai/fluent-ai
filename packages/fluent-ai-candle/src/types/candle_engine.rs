@@ -352,7 +352,40 @@ impl Engine {
         })
     }
 
-    /// Process completion request as stream (new primary API)
+    /// Process completion request as a streaming response (primary API)
+    ///
+    /// Processes a completion request and returns a stream of response chunks.
+    /// This is the preferred method for handling AI completions as it provides
+    /// lower latency and better user experience.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The completion request to process
+    ///
+    /// # Returns
+    ///
+    /// An `AsyncStream` of response chunks as they're generated
+    ///
+    /// # Benefits
+    ///
+    /// - Lower perceived latency
+    /// - Ability to process partial responses
+    /// - Better resource utilization
+    /// - Cancellation support
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let request = CandleCompletionRequest {
+    ///     system_prompt: "You are a helpful assistant".into(),
+    ///     // ... other fields
+    /// };
+    /// 
+    /// let mut stream = engine.process_completion_stream(request);
+    /// while let Some(chunk) = stream.next().await {
+    ///     print!("{}", chunk.content);
+    /// }
+    /// ```
     #[inline]
     pub fn process_completion_stream(
         &self,

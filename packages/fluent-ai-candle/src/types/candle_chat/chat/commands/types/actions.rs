@@ -5,105 +5,175 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Search-related enums
+/// Search scope for search commands
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchScope {
+    /// Search all available content
     All,
+    /// Search only current session
     Current,
+    /// Search recent conversations
     Recent,
-    Bookmarked}
+    /// Search bookmarked items only
+    Bookmarked
+}
 
-/// Template-related enums
+/// Template management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TemplateAction {
+    /// List available templates
     List,
+    /// Create a new template
     Create,
+    /// Delete an existing template
     Delete,
+    /// Edit an existing template
     Edit,
-    Use}
+    /// Use/apply a template
+    Use
+}
 
-/// Macro-related enums
+/// Macro management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MacroAction {
+    /// List available macros
     List,
+    /// Create a new macro
     Create,
+    /// Delete an existing macro
     Delete,
+    /// Edit an existing macro
     Edit,
-    Execute}
+    /// Execute a macro
+    Execute
+}
 
-/// Branch-related enums
+/// Branch management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BranchAction {
+    /// List available branches
     List,
+    /// Create a new branch
     Create,
+    /// Switch to a different branch
     Switch,
+    /// Merge branches together
     Merge,
-    Delete}
+    /// Delete an existing branch
+    Delete
+}
 
-/// Session-related enums
+/// Session management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionAction {
+    /// List available sessions
     List,
+    /// Create a new session
     New,
+    /// Switch to a different session
     Switch,
+    /// Delete an existing session
     Delete,
+    /// Export session data
     Export,
-    Import}
+    /// Import session data
+    Import
+}
 
-/// Tool-related enums
+/// Tool management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ToolAction {
+    /// List available tools
     List,
+    /// Install a new tool
     Install,
+    /// Remove an existing tool
     Remove,
+    /// Configure tool settings
     Configure,
+    /// Update tool to latest version
     Update,
-    Execute}
+    /// Execute a tool command
+    Execute
+}
 
-/// Stats-related enums
+/// Statistics type for stats commands
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatsType {
+    /// Usage statistics
     Usage,
+    /// Performance metrics
     Performance,
+    /// Historical data
     History,
+    /// Token usage statistics
     Tokens,
+    /// Cost and billing information
     Costs,
-    Errors}
+    /// Error statistics
+    Errors
+}
 
-/// Theme-related enums
+/// Theme management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeAction {
+    /// Set active theme
     Set,
+    /// List available themes
     List,
+    /// Create a new theme
     Create,
+    /// Export theme configuration
     Export,
+    /// Import theme configuration
     Import,
-    Edit}
+    /// Edit existing theme
+    Edit
+}
 
-/// Debug-related enums
+/// Debug information actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DebugAction {
+    /// Show system information
     Info,
+    /// Display log files
     Logs,
+    /// Show performance metrics
     Performance,
+    /// Display memory usage
     Memory,
+    /// Show network statistics
     Network,
-    Cache}
+    /// Display cache information
+    Cache
+}
 
-/// History-related enums
+/// History management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryAction {
+    /// Show conversation history
     Show,
+    /// Search through history
     Search,
+    /// Clear history data
     Clear,
+    /// Export history to file
     Export,
+    /// Import history from file
     Import,
-    Backup}
+    /// Create history backup
+    Backup
+}
 
-/// Import-related enums
+/// Import data type for import commands
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImportType {
+    /// Chat conversation data
     Chat,
+    /// Configuration settings
     Config,
+    /// Template definitions
     Templates,
-    Macros}
+    /// Macro definitions
+    Macros
+}

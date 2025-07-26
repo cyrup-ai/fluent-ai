@@ -46,7 +46,75 @@ pub struct ProcessingEngine {
     metrics: ProcessingMetrics}
 
 impl ProcessingEngine {
-    /// Create new processing engine with configuration
+    /// Creates a new ProcessingEngine with default configuration
+    /// 
+    /// Initializes a high-performance logits processing engine with production-ready
+    /// defaults suitable for most text generation tasks.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `vocab_size` - Size of the model vocabulary (must be ≤ 128,000)
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<ProcessingEngine, ProcessingError>` containing:
+    /// - `Ok(engine)` - Configured processing engine ready for use
+    /// - `Err(ProcessingError::InvalidConfiguration)` - If vocab_size exceeds limits
+    /// 
+    /// # Default Configuration
+    /// 
+    /// - **Context Size**: 1,024 tokens (DEFAULT_CONTEXT_SIZE)
+    /// - **Processor Chain**: Empty (no processing steps)
+    /// - **Metrics**: Initialized for performance tracking
+    /// - **Memory**: Pre-allocated for zero-allocation processing
+    /// 
+    /// # Performance Characteristics
+    /// 
+    /// - **Zero Allocation**: Pre-allocates all required memory
+    /// - **Lock-Free**: Uses atomic operations for metrics
+    /// - **Bounded**: Vocabulary and context size limits prevent OOM
+    /// - **Cache Friendly**: Contiguous memory layout
+    /// 
+    /// # Vocabulary Limits
+    /// 
+    /// Maximum supported vocabulary size is 128,000 tokens to ensure:
+    /// - Reasonable memory usage (< 1MB for f32 logits)
+    /// - Cache-friendly processing
+    /// - Bounded allocation guarantees
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use fluent_ai_candle::processing::ProcessingEngine;
+    /// 
+    /// // Standard model vocabulary
+    /// let engine = ProcessingEngine::new(50_257)?;  // GPT-2 vocab size
+    /// 
+    /// // Large modern model
+    /// let engine = ProcessingEngine::new(100_000)?; // Large vocabulary
+    /// 
+    /// // Error case - vocabulary too large
+    /// let result = ProcessingEngine::new(200_000);
+    /// assert!(result.is_err());
+    /// ```
+    /// 
+    /// # Custom Configuration
+    /// 
+    /// For advanced configurations, use the builder pattern:
+    /// ```rust
+    /// use fluent_ai_candle::processing::ProcessingEngineBuilder;
+    /// 
+    /// let engine = ProcessingEngineBuilder::new(50_257)
+    ///     .context_size(2048)
+    ///     .temperature(0.8)?
+    ///     .top_p(0.9)?
+    ///     .build()?;
+    /// ```
+    /// 
+    /// # Thread Safety
+    /// 
+    /// The engine is thread-safe for metrics but requires external synchronization
+    /// for logits processing operations.
     #[inline(always)]
     pub fn new(vocab_size: usize) -> Result<Self, ProcessingError> {
         if vocab_size > MAX_VOCABULARY_SIZE {
@@ -66,7 +134,102 @@ impl ProcessingEngine {
             metrics})
     }
 
-    /// Create processing engine with custom context size
+    /// Creates a new ProcessingEngine with custom context window size
+    /// 
+    /// Advanced constructor allowing precise control over token history tracking
+    /// for context-aware processing like repetition penalty and frequency analysis.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `vocab_size` - Size of the model vocabulary (must be ≤ 128,000)
+    /// * `context_size` - Number of recent tokens to track (must be ≤ 8,192)
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<ProcessingEngine, ProcessingError>` with validation:
+    /// - `Ok(engine)` - Configured engine with custom context size
+    /// - `Err(ProcessingError::InvalidConfiguration)` - If parameters exceed limits
+    /// 
+    /// # Context Size Impact
+    /// 
+    /// ## Memory Usage
+    /// ```
+    /// memory_bytes = context_size * sizeof(u32)  // Token storage
+    ///              + context_size * vocab_size * sizeof(u32)  // Frequency tracking
+    /// ```
+    /// 
+    /// ## Processing Features
+    /// - **Repetition Penalty**: Tracks token frequency over context window
+    /// - **Frequency Analysis**: Maintains occurrence counts for penalty calculation
+    /// - **Presence Penalty**: Binary tracking of token presence
+    /// - **Pattern Detection**: Identifies repetitive sequences
+    /// 
+    /// # Context Size Guidelines
+    /// 
+    /// - **Small (64-256)**: Code completion, short responses
+    /// - **Medium (512-1024)**: Standard text generation
+    /// - **Large (2048-4096)**: Long-form content, conversation
+    /// - **Maximum (8192)**: Research, complex analysis
+    /// 
+    /// # Performance Characteristics
+    /// 
+    /// - **Linear Memory**: O(context_size) memory usage
+    /// - **Constant Time**: O(1) token addition and lookup
+    /// - **Cache Efficient**: Circular buffer implementation
+    /// - **Zero Allocation**: Pre-allocated context buffers
+    /// 
+    /// # Examples
+    /// 
+    /// ## Memory-Constrained Environment
+    /// ```rust
+    /// use fluent_ai_candle::processing::ProcessingEngine;
+    /// 
+    /// // Small context for low memory usage
+    /// let engine = ProcessingEngine::with_context_size(50_257, 256)?;
+    /// 
+    /// // Estimated memory: 256 * 4 + 256 * 50_257 * 4 ≈ 51MB
+    /// ```
+    /// 
+    /// ## Long-Form Generation
+    /// ```rust
+    /// // Large context for document generation
+    /// let engine = ProcessingEngine::with_context_size(100_000, 4096)?;
+    /// 
+    /// // Can track repetition patterns over 4K tokens
+    /// ```
+    /// 
+    /// ## Real-Time Chat
+    /// ```rust
+    /// // Moderate context for conversation
+    /// let engine = ProcessingEngine::with_context_size(32_000, 1024)?;
+    /// 
+    /// // Good balance of memory usage and context awareness
+    /// ```
+    /// 
+    /// ## Error Handling
+    /// ```rust
+    /// match ProcessingEngine::with_context_size(200_000, 10_000) {
+    ///     Err(ProcessingError::InvalidConfiguration(msg)) => {
+    ///         eprintln!("Configuration error: {}", msg);
+    ///         // Fall back to default configuration
+    ///         ProcessingEngine::new(50_257)?
+    ///     },
+    ///     Ok(engine) => engine,
+    ///     Err(e) => return Err(e),
+    /// }
+    /// ```
+    /// 
+    /// # Context Management
+    /// 
+    /// The context automatically manages token history:
+    /// - Circular buffer prevents memory growth
+    /// - Oldest tokens evicted when context fills
+    /// - Frequency counts updated incrementally
+    /// - Reset functionality for new sequences
+    /// 
+    /// # Thread Safety
+    /// 
+    /// Context access requires external synchronization for multi-threaded usage.
     #[inline(always)]
     pub fn with_context_size(
         vocab_size: usize,
@@ -96,13 +259,267 @@ impl ProcessingEngine {
             metrics})
     }
 
-    /// Set the processor chain
+    /// Sets the logits processor chain for this engine
+    /// 
+    /// Replaces the current processing pipeline with a new composite processor,
+    /// allowing dynamic reconfiguration of sampling strategies.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `processor` - CompositeProcessor containing the processing pipeline
+    ///   with ordered sequence of transformations (temperature, top-k, top-p, etc.)
+    /// 
+    /// # Processing Pipeline
+    /// 
+    /// The processor chain typically includes:
+    /// 1. **Repetition Penalty** - Context-aware repetition reduction
+    /// 2. **Temperature Scaling** - Probability distribution adjustment
+    /// 3. **Top-K Filtering** - Vocabulary limitation by rank
+    /// 4. **Top-P Sampling** - Nucleus sampling by cumulative probability
+    /// 
+    /// # Performance Impact
+    /// 
+    /// - **Zero Allocation**: Processor replacement without memory allocation
+    /// - **Immediate Effect**: Next `process_logits()` call uses new processor
+    /// - **No Validation**: Assumes processor is properly configured
+    /// - **Thread Safety**: Requires external synchronization
+    /// 
+    /// # Examples
+    /// 
+    /// ## Dynamic Reconfiguration
+    /// ```rust
+    /// use fluent_ai_candle::processing::{
+    ///     ProcessingEngine, CompositeProcessor, TemperatureProcessor
+    /// };
+    /// 
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// 
+    /// // Start with temperature-only processing
+    /// let temp_processor = CompositeProcessor::new()
+    ///     .add_processor(Box::new(TemperatureProcessor::new(0.8)?));
+    /// engine.set_processor(temp_processor);
+    /// 
+    /// // Process some logits
+    /// engine.process_logits(&mut logits1)?;
+    /// 
+    /// // Switch to more conservative settings
+    /// let conservative_processor = CompositeProcessor::new()
+    ///     .add_processor(Box::new(TemperatureProcessor::new(0.2)?))
+    ///     .add_processor(Box::new(TopKProcessor::new(20)?));
+    /// engine.set_processor(conservative_processor);
+    /// 
+    /// // Next processing uses new settings
+    /// engine.process_logits(&mut logits2)?;
+    /// ```
+    /// 
+    /// ## Runtime Adaptation
+    /// ```rust
+    /// // Adapt processing based on generation quality
+    /// if generation_quality < threshold {
+    ///     // Use more focused sampling
+    ///     let focused = CompositeProcessor::new()
+    ///         .add_processor(Box::new(TemperatureProcessor::new(0.1)?))
+    ///         .add_processor(Box::new(TopKProcessor::new(5)?));
+    ///     engine.set_processor(focused);
+    /// } else {
+    ///     // Use more creative sampling
+    ///     let creative = CompositeProcessor::new()
+    ///         .add_processor(Box::new(TemperatureProcessor::new(1.2)?))
+    ///         .add_processor(Box::new(TopPProcessor::new(0.95)?));
+    ///     engine.set_processor(creative);
+    /// }
+    /// ```
+    /// 
+    /// ## User Preference Switching
+    /// ```rust
+    /// match user_preference {
+    ///     "creative" => {
+    ///         let processor = creative_writing_processor()?;
+    ///         engine.set_processor(processor);
+    ///     },
+    ///     "precise" => {
+    ///         let processor = code_generation_processor()?;
+    ///         engine.set_processor(processor);
+    ///     },
+    ///     "balanced" => {
+    ///         let processor = conversation_processor()?;
+    ///         engine.set_processor(processor);
+    ///     },
+    /// }
+    /// ```
+    /// 
+    /// # Processor Validation
+    /// 
+    /// The method does not validate the processor configuration.
+    /// Ensure the processor is properly configured before setting:
+    /// ```rust
+    /// // Validate processor before setting
+    /// let processor = CompositeProcessor::new();
+    /// if processor.is_empty() {
+    ///     eprintln!("Warning: Empty processor chain");
+    /// }
+    /// engine.set_processor(processor);
+    /// ```
+    /// 
+    /// # Thread Safety
+    /// 
+    /// This method is not thread-safe. Ensure exclusive access when
+    /// modifying the processor chain in multi-threaded environments.
     #[inline(always)]
     pub fn set_processor(&mut self, processor: CompositeProcessor) {
         self.processor = processor;
     }
 
-    /// Process logits with full pipeline
+    /// Processes logits through the complete transformation pipeline
+    /// 
+    /// Applies all configured processing steps (temperature, top-k, top-p, repetition penalty)
+    /// to the input logits array, transforming raw model outputs into a sampling-ready
+    /// probability distribution.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `logits` - Mutable slice of raw logits from model (length must equal vocab_size)
+    ///   Values are transformed in-place for zero-allocation processing
+    /// 
+    /// # Returns
+    /// 
+    /// `ProcessingResult<()>` indicating success or failure:
+    /// - `Ok(())` - Logits processed successfully and ready for sampling
+    /// - `Err(ProcessingError::InvalidConfiguration)` - Logits array size mismatch
+    /// - `Err(ProcessingError::NumericalError)` - Numerical instability detected
+    /// - `Err(ProcessingError::ProcessingFailed)` - Pipeline processing failed
+    /// 
+    /// # Processing Pipeline
+    /// 
+    /// The processing occurs in this order:
+    /// 1. **Input Validation** - Size and numerical stability checks
+    /// 2. **Context Integration** - Incorporates token history for repetition handling
+    /// 3. **Processor Chain** - Applies all configured transformations
+    /// 4. **Metrics Collection** - Records timing and performance data
+    /// 
+    /// # Performance Characteristics
+    /// 
+    /// - **In-Place Processing**: Logits modified directly, no allocation
+    /// - **SIMD Optimized**: Uses vectorized operations where possible
+    /// - **Numerical Stability**: Handles extreme values gracefully
+    /// - **Bounded Execution**: Processing time scales linearly with vocab size
+    /// 
+    /// # Error Conditions
+    /// 
+    /// ## Size Mismatch
+    /// ```rust
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// let mut wrong_size_logits = vec![0.0; 30_000];  // Wrong size
+    /// 
+    /// match engine.process_logits(&mut wrong_size_logits) {
+    ///     Err(ProcessingError::InvalidConfiguration(msg)) => {
+    ///         eprintln!("Size error: {}", msg);
+    ///     },
+    ///     _ => unreachable!(),
+    /// }
+    /// ```
+    /// 
+    /// ## Numerical Issues
+    /// ```rust
+    /// let mut logits = vec![f32::NAN; 50_257];  // Invalid logits
+    /// 
+    /// match engine.process_logits(&mut logits) {
+    ///     Err(ProcessingError::NumericalError(_)) => {
+    ///         // Handle numerical instability
+    ///         logits.fill(0.0);  // Reset to neutral
+    ///         engine.process_logits(&mut logits)?;  // Retry
+    ///     },
+    ///     result => result?,
+    /// }
+    /// ```
+    /// 
+    /// # Examples
+    /// 
+    /// ## Basic Processing
+    /// ```rust
+    /// use fluent_ai_candle::processing::ProcessingEngine;
+    /// 
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// let mut logits = model.forward(&tokens)?;  // Raw model output
+    /// 
+    /// // Transform logits for sampling
+    /// engine.process_logits(&mut logits)?;
+    /// 
+    /// // Logits now ready for token sampling
+    /// let token_id = sample_from_logits(&logits)?;
+    /// ```
+    /// 
+    /// ## Performance Monitoring
+    /// ```rust
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// 
+    /// for batch in batches {
+    ///     let start = std::time::Instant::now();
+    ///     engine.process_logits(&mut batch.logits)?;
+    ///     
+    ///     println!("Processing took: {:?}", start.elapsed());
+    ///     println!("Average time: {:?}", engine.metrics().average_processing_time());
+    /// }
+    /// ```
+    /// 
+    /// ## Error Recovery
+    /// ```rust
+    /// fn robust_process_logits(
+    ///     engine: &mut ProcessingEngine,
+    ///     logits: &mut [f32]
+    /// ) -> ProcessingResult<()> {
+    ///     match engine.process_logits(logits) {
+    ///         Ok(()) => Ok(()),
+    ///         Err(ProcessingError::InvalidConfiguration(_)) => {
+    ///             return Err(ProcessingError::InvalidConfiguration(
+    ///                 "Logits size mismatch - check model compatibility".to_string()
+    ///             ));
+    ///         },
+    ///         Err(ProcessingError::NumericalError(_)) => {
+    ///             // Attempt to recover by normalizing
+    ///             normalize_logits(logits);
+    ///             engine.process_logits(logits)  // Retry once
+    ///         },
+    ///         Err(e) => Err(e),
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// ## Context-Aware Processing
+    /// ```rust
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// 
+    /// // Configure repetition penalty processor
+    /// let processor = CompositeProcessor::new()
+    ///     .add_processor(Box::new(RepetitionPenaltyProcessor::new(
+    ///         1.1,    // repetition_penalty
+    ///         0.1,    // frequency_penalty
+    ///         0.05,   // presence_penalty
+    ///         512,    // context_window
+    ///     )?));
+    /// engine.set_processor(processor);
+    /// 
+    /// // Processing will use token history for repetition control
+    /// for token_id in generated_tokens {
+    ///     engine.add_token(token_id)?;
+    ///     let mut logits = model.forward(&context)?;
+    ///     engine.process_logits(&mut logits)?;
+    /// }
+    /// ```
+    /// 
+    /// # Logits Transformation
+    /// 
+    /// The logits undergo these transformations:
+    /// - **Raw Logits**: Model output (unbounded real numbers)
+    /// - **After Temperature**: Scaled for sharpness/smoothness
+    /// - **After Top-K**: Limited vocabulary (others set to -inf)
+    /// - **After Top-P**: Nucleus sampling preparation
+    /// - **Ready for Sampling**: Probability distribution ready
+    /// 
+    /// # Thread Safety
+    /// 
+    /// This method modifies engine state (metrics, context) and requires
+    /// exclusive access. Use external synchronization for multi-threaded usage.
     #[inline(always)]
     pub fn process_logits(&mut self, logits: &mut [f32]) -> ProcessingResult<()> {
         let start_time = std::time::Instant::now();
@@ -126,7 +543,148 @@ impl ProcessingEngine {
         Ok(())
     }
 
-    /// Add token to context after generation
+    /// Adds a generated token to the processing context for history tracking
+    /// 
+    /// Updates the context with a newly generated token, maintaining token history
+    /// for context-aware processing like repetition penalty and frequency analysis.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `token_id` - The generated token ID to add to the context
+    ///   (must be valid for the model's vocabulary)
+    /// 
+    /// # Returns
+    /// 
+    /// `ProcessingResult<()>` indicating success or failure:
+    /// - `Ok(())` - Token added successfully to context
+    /// - `Err(ProcessingError::InvalidToken)` - Token ID exceeds vocabulary size
+    /// - `Err(ProcessingError::ContextFull)` - Context window is full (shouldn't happen with circular buffer)
+    /// 
+    /// # Context Management
+    /// 
+    /// ## Token History
+    /// - Maintains circular buffer of recent tokens
+    /// - Updates frequency counts for repetition penalty
+    /// - Tracks presence information for presence penalty
+    /// - Automatically evicts oldest tokens when context fills
+    /// 
+    /// ## Frequency Tracking
+    /// - Increments occurrence count for this token
+    /// - Updates frequency-based penalty calculations
+    /// - Maintains running statistics for context window
+    /// 
+    /// # Performance Characteristics
+    /// 
+    /// - **Constant Time**: O(1) token addition and frequency update
+    /// - **Memory Bounded**: Context size prevents unbounded growth
+    /// - **Cache Friendly**: Circular buffer with good locality
+    /// - **Zero Allocation**: Updates existing data structures in-place
+    /// 
+    /// # Usage Pattern
+    /// 
+    /// The typical generation loop includes:
+    /// 1. Process logits with current context
+    /// 2. Sample token from processed distribution
+    /// 3. Add sampled token to context
+    /// 4. Repeat for next token
+    /// 
+    /// # Examples
+    /// 
+    /// ## Basic Generation Loop
+    /// ```rust
+    /// use fluent_ai_candle::processing::ProcessingEngine;
+    /// 
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// let mut generated_tokens = Vec::new();
+    /// 
+    /// for _ in 0..max_tokens {
+    ///     // Get logits from model
+    ///     let mut logits = model.forward(&context)?;
+    ///     
+    ///     // Process with current context
+    ///     engine.process_logits(&mut logits)?;
+    ///     
+    ///     // Sample next token
+    ///     let token_id = sample_from_logits(&logits)?;
+    ///     generated_tokens.push(token_id);
+    ///     
+    ///     // Add to context for next iteration
+    ///     engine.add_token(token_id)?;
+    ///     
+    ///     // Check for end token
+    ///     if token_id == eos_token_id {
+    ///         break;
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// ## Error Handling
+    /// ```rust
+    /// match engine.add_token(token_id) {
+    ///     Ok(()) => {
+    ///         // Token added successfully
+    ///         context.push(token_id);
+    ///     },
+    ///     Err(ProcessingError::InvalidToken(msg)) => {
+    ///         eprintln!("Invalid token {}: {}", token_id, msg);
+    ///         // Skip this token or use fallback
+    ///         continue;
+    ///     },
+    ///     Err(e) => return Err(e),
+    /// }
+    /// ```
+    /// 
+    /// ## Batch Processing
+    /// ```rust
+    /// // Process multiple sequences
+    /// for sequence in sequences {
+    ///     engine.reset();  // Clear context for new sequence
+    ///     
+    ///     for token_id in sequence.initial_tokens {
+    ///         engine.add_token(token_id)?;
+    ///     }
+    ///     
+    ///     // Continue generation with established context
+    ///     let mut logits = model.forward(&sequence.context)?;
+    ///     engine.process_logits(&mut logits)?;
+    /// }
+    /// ```
+    /// 
+    /// ## Metrics Monitoring
+    /// ```rust
+    /// let initial_tokens = engine.metrics().total_tokens();
+    /// 
+    /// for token_id in new_tokens {
+    ///     engine.add_token(token_id)?;
+    /// }
+    /// 
+    /// let added_count = engine.metrics().total_tokens() - initial_tokens;
+    /// println!("Added {} tokens to context", added_count);
+    /// println!("Current sequence length: {}", engine.metrics().sequence_length());
+    /// ```
+    /// 
+    /// ## Context Inspection
+    /// ```rust
+    /// // Add token and inspect context state
+    /// engine.add_token(token_id)?;
+    /// 
+    /// let context = engine.context();
+    /// println!("Context size: {}/{}", context.current_length(), context.capacity());
+    /// println!("Token frequency: {}", context.token_frequency(token_id));
+    /// println!("Is token present: {}", context.is_token_present(token_id));
+    /// ```
+    /// 
+    /// # Repetition Control
+    /// 
+    /// Token addition directly affects repetition penalty calculations:
+    /// - Higher frequency tokens get stronger penalties
+    /// - Recently used tokens are penalized more heavily
+    /// - Context window limits penalty scope
+    /// 
+    /// # Thread Safety
+    /// 
+    /// This method modifies internal state and requires exclusive access.
+    /// Use external synchronization for concurrent usage.
     #[inline(always)]
     pub fn add_token(&mut self, token_id: u32) -> ProcessingResult<()> {
         self.context.add_token(token_id)?;
@@ -134,20 +692,478 @@ impl ProcessingEngine {
         Ok(())
     }
 
-    /// Reset engine for new sequence
+    /// Resets the processing engine for a new generation sequence
+    /// 
+    /// Clears all context history and sequence-specific metrics while preserving
+    /// processor configuration and cumulative statistics.
+    /// 
+    /// # Reset Operations
+    /// 
+    /// ## Context Clearing
+    /// - **Token History**: Clears all stored tokens from context buffer
+    /// - **Frequency Counts**: Resets all token frequency counters to zero
+    /// - **Presence Flags**: Clears all token presence indicators
+    /// - **Context Length**: Resets current context length to zero
+    /// 
+    /// ## Metrics Reset
+    /// - **Sequence Length**: Resets to zero for new sequence
+    /// - **Cumulative Stats**: Preserves total operations and processing time
+    /// - **Performance Tracking**: Maintains historical averages
+    /// 
+    /// ## Preserved State
+    /// - **Processor Chain**: Keeps all configured processors
+    /// - **Engine Configuration**: Maintains vocab size and context capacity
+    /// - **Global Metrics**: Preserves lifetime statistics
+    /// 
+    /// # Performance Characteristics
+    /// 
+    /// - **Fast Reset**: O(1) circular buffer reset, no memory deallocation
+    /// - **Zero Allocation**: Reuses existing memory allocations
+    /// - **Immediate Effect**: Next operations start with clean state
+    /// - **Cache Friendly**: Maintains memory layout and locality
+    /// 
+    /// # When to Reset
+    /// 
+    /// ## New Generation Session
+    /// - Starting generation for a different prompt
+    /// - Switching between unrelated conversations
+    /// - Beginning batch processing of new sequences
+    /// 
+    /// ## Context Contamination
+    /// - After processing errors or invalid tokens
+    /// - When context contains inappropriate content
+    /// - For clean state in testing scenarios
+    /// 
+    /// ## Memory Management
+    /// - Preventing context from affecting unrelated generations
+    /// - Ensuring repetition penalties don't carry over
+    /// - Maintaining isolation between processing sessions
+    /// 
+    /// # Examples
+    /// 
+    /// ## Batch Processing
+    /// ```rust
+    /// use fluent_ai_candle::processing::ProcessingEngine;
+    /// 
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// 
+    /// for prompt in prompts {
+    ///     // Reset for new prompt
+    ///     engine.reset();
+    ///     
+    ///     // Process prompt tokens to establish context
+    ///     for &token_id in &prompt.tokens {
+    ///         engine.add_token(token_id)?;
+    ///     }
+    ///     
+    ///     // Generate response with clean context
+    ///     let response = generate_response(&mut engine, &prompt)?;
+    ///     results.push(response);
+    /// }
+    /// ```
+    /// 
+    /// ## Conversation Management
+    /// ```rust
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// 
+    /// for conversation in conversations {
+    ///     engine.reset();  // Start fresh for each conversation
+    ///     
+    ///     for turn in conversation.turns {
+    ///         // Add user message to context
+    ///         for &token in &turn.user_tokens {
+    ///             engine.add_token(token)?;
+    ///         }
+    ///         
+    ///         // Generate assistant response
+    ///         let mut logits = model.forward(&turn.context)?;
+    ///         engine.process_logits(&mut logits)?;
+    ///         
+    ///         let response_token = sample_from_logits(&logits)?;
+    ///         engine.add_token(response_token)?;
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// ## Error Recovery
+    /// ```rust
+    /// match engine.process_logits(&mut logits) {
+    ///     Ok(()) => { /* Continue processing */ },
+    ///     Err(ProcessingError::ContextCorrupted(_)) => {
+    ///         eprintln!("Context corrupted, resetting engine");
+    ///         engine.reset();
+    ///         
+    ///         // Restart with clean context
+    ///         engine.process_logits(&mut logits)?;
+    ///     },
+    ///     Err(e) => return Err(e),
+    /// }
+    /// ```
+    /// 
+    /// ## Testing Scenarios
+    /// ```rust
+    /// #[test]
+    /// fn test_generation_independence() {
+    ///     let mut engine = ProcessingEngine::new(1000)?;
+    ///     
+    ///     // First generation
+    ///     engine.add_token(100)?;
+    ///     let result1 = generate_tokens(&mut engine)?;
+    ///     
+    ///     // Reset for independent generation
+    ///     engine.reset();
+    ///     
+    ///     // Second generation should not be affected by first
+    ///     engine.add_token(100)?;
+    ///     let result2 = generate_tokens(&mut engine)?;
+    ///     
+    ///     // Results should be identical (no context carryover)
+    ///     assert_eq!(result1, result2);
+    /// }
+    /// ```
+    /// 
+    /// ## Performance Monitoring
+    /// ```rust
+    /// let mut engine = ProcessingEngine::new(50_257)?;
+    /// 
+    /// // Check metrics before reset
+    /// println!("Before reset:");
+    /// println!("  Sequence length: {}", engine.metrics().sequence_length());
+    /// println!("  Total operations: {}", engine.metrics().total_operations());
+    /// 
+    /// engine.reset();
+    /// 
+    /// // Check metrics after reset
+    /// println!("After reset:");
+    /// println!("  Sequence length: {}", engine.metrics().sequence_length());  // Should be 0
+    /// println!("  Total operations: {}", engine.metrics().total_operations()); // Preserved
+    /// ```
+    /// 
+    /// ## Context State Verification
+    /// ```rust
+    /// // Verify clean state after reset
+    /// engine.reset();
+    /// 
+    /// let context = engine.context();
+    /// assert_eq!(context.current_length(), 0);
+    /// assert_eq!(engine.metrics().sequence_length(), 0);
+    /// 
+    /// // Verify processor chain is preserved
+    /// assert!(!engine.processor.is_empty());  // Processors still configured
+    /// ```
+    /// 
+    /// # Thread Safety
+    /// 
+    /// Reset operations modify internal state and require exclusive access.
+    /// Ensure no concurrent processing occurs during reset.
     #[inline(always)]
     pub fn reset(&mut self) {
         self.context.reset();
         self.metrics.reset_sequence();
     }
 
-    /// Get processing context
+    /// Returns a reference to the processing context for inspection
+    /// 
+    /// Provides read-only access to the current processing context containing
+    /// token history, frequency counts, and context management state.
+    /// 
+    /// # Returns
+    /// 
+    /// `&ProcessingContext` containing:
+    /// - **Token History**: Circular buffer of recent tokens
+    /// - **Frequency Counts**: Per-token occurrence statistics
+    /// - **Presence Flags**: Binary indicators of token presence
+    /// - **Context Metadata**: Size, capacity, and state information
+    /// 
+    /// # Context Information
+    /// 
+    /// ## Available Methods
+    /// - `vocab_size()` - Model vocabulary size
+    /// - `capacity()` - Maximum context window size
+    /// - `current_length()` - Number of tokens currently stored
+    /// - `token_frequency(token_id)` - Occurrence count for specific token
+    /// - `is_token_present(token_id)` - Whether token appears in context
+    /// - `recent_tokens(n)` - Last n tokens from history
+    /// 
+    /// ## Memory Layout
+    /// - **Circular Buffer**: Efficient O(1) token storage
+    /// - **Frequency Map**: Hash table for occurrence counting
+    /// - **Presence Set**: Bit vector for presence tracking
+    /// 
+    /// # Use Cases
+    /// 
+    /// ## Context Analysis
+    /// ```rust
+    /// let context = engine.context();
+    /// 
+    /// println!("Context utilization: {}/{}", 
+    ///          context.current_length(), context.capacity());
+    /// println!("Vocabulary coverage: {:.1}%", 
+    ///          context.unique_tokens() as f32 / context.vocab_size() as f32 * 100.0);
+    /// ```
+    /// 
+    /// ## Repetition Analysis
+    /// ```rust
+    /// let context = engine.context();
+    /// let mut repeated_tokens = Vec::new();
+    /// 
+    /// for token_id in 0..context.vocab_size() {
+    ///     let frequency = context.token_frequency(token_id as u32);
+    ///     if frequency > 3 {  // Repeated more than 3 times
+    ///         repeated_tokens.push((token_id, frequency));
+    ///     }
+    /// }
+    /// 
+    /// println!("Highly repeated tokens: {:?}", repeated_tokens);
+    /// ```
+    /// 
+    /// ## Context Window Analysis
+    /// ```rust
+    /// let context = engine.context();
+    /// 
+    /// // Analyze recent token patterns
+    /// if let Some(recent) = context.recent_tokens(10) {
+    ///     println!("Last 10 tokens: {:?}", recent);
+    ///     
+    ///     // Check for immediate repetition
+    ///     let unique_recent: HashSet<_> = recent.iter().collect();
+    ///     if unique_recent.len() < recent.len() / 2 {
+    ///         println!("Warning: High repetition in recent tokens");
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// ## Debug Information
+    /// ```rust
+    /// let context = engine.context();
+    /// 
+    /// println!("Context Debug Info:");
+    /// println!("  Size: {}/{}", context.current_length(), context.capacity());
+    /// println!("  Unique tokens: {}", context.unique_tokens());
+    /// println!("  Most frequent token: {:?}", context.most_frequent_token());
+    /// println!("  Average frequency: {:.2}", context.average_frequency());
+    /// ```
+    /// 
+    /// ## Context Health Check
+    /// ```rust
+    /// fn check_context_health(engine: &ProcessingEngine) -> bool {
+    ///     let context = engine.context();
+    ///     
+    ///     // Check for reasonable diversity
+    ///     let diversity_ratio = context.unique_tokens() as f32 / context.current_length() as f32;
+    ///     if diversity_ratio < 0.3 {  // Less than 30% unique tokens
+    ///         return false;
+    ///     }
+    ///     
+    ///     // Check for extreme repetition
+    ///     for token_id in 0..context.vocab_size() {
+    ///         let frequency = context.token_frequency(token_id as u32);
+    ///         let relative_freq = frequency as f32 / context.current_length() as f32;
+    ///         if relative_freq > 0.5 {  // Single token > 50% of context
+    ///             return false;
+    ///         }
+    ///     }
+    ///     
+    ///     true
+    /// }
+    /// ```
+    /// 
+    /// ## Performance Analysis
+    /// ```rust
+    /// let context = engine.context();
+    /// 
+    /// // Analyze context efficiency
+    /// let utilization = context.current_length() as f32 / context.capacity() as f32;
+    /// 
+    /// match utilization {
+    ///     x if x < 0.1 => println!("Context underutilized ({:.1}%)", x * 100.0),
+    ///     x if x > 0.9 => println!("Context nearly full ({:.1}%)", x * 100.0),
+    ///     x => println!("Context utilization: {:.1}%", x * 100.0),
+    /// }
+    /// ```
+    /// 
+    /// # Thread Safety
+    /// 
+    /// The returned reference is immutable and safe for concurrent read access.
+    /// Multiple threads can inspect the context simultaneously without synchronization.
+    /// 
+    /// # Lifetime
+    /// 
+    /// The context reference is valid as long as the engine exists.
+    /// Context state may change between calls due to token additions or resets.
     #[inline(always)]
     pub fn context(&self) -> &ProcessingContext {
         &self.context
     }
 
-    /// Get processing metrics
+    /// Returns a reference to the processing metrics for performance monitoring
+    /// 
+    /// Provides read-only access to comprehensive performance statistics including
+    /// timing, throughput, and operational metrics collected during processing.
+    /// 
+    /// # Returns
+    /// 
+    /// `&ProcessingMetrics` containing:
+    /// - **Operation Counts**: Total processing operations performed
+    /// - **Timing Statistics**: Cumulative and average processing times
+    /// - **Token Metrics**: Token generation counts and throughput
+    /// - **Sequence State**: Current sequence length and progress
+    /// 
+    /// # Available Metrics
+    /// 
+    /// ## Performance Timing
+    /// - `total_operations()` - Number of logits processing operations
+    /// - `average_processing_time()` - Mean time per processing operation
+    /// - `tokens_per_second()` - Token generation throughput
+    /// 
+    /// ## Token Statistics
+    /// - `total_tokens()` - Cumulative tokens processed across all sequences
+    /// - `sequence_length()` - Current sequence length (resets per sequence)
+    /// 
+    /// ## Operational Health
+    /// - Processing consistency and performance trends
+    /// - Memory usage patterns and allocation efficiency
+    /// - Error rates and recovery statistics
+    /// 
+    /// # Use Cases
+    /// 
+    /// ## Performance Monitoring
+    /// ```rust
+    /// let metrics = engine.metrics();
+    /// 
+    /// println!("Processing Performance:");
+    /// println!("  Operations: {}", metrics.total_operations());
+    /// println!("  Avg time: {:?}", metrics.average_processing_time());
+    /// println!("  Throughput: {:.1} tokens/sec", metrics.tokens_per_second());
+    /// println!("  Current sequence: {} tokens", metrics.sequence_length());
+    /// ```
+    /// 
+    /// ## Performance Profiling
+    /// ```rust
+    /// let before_ops = engine.metrics().total_operations();
+    /// let before_time = std::time::Instant::now();
+    /// 
+    /// // Process batch of logits
+    /// for logits in batch {
+    ///     engine.process_logits(logits)?;
+    /// }
+    /// 
+    /// let elapsed = before_time.elapsed();
+    /// let ops_performed = engine.metrics().total_operations() - before_ops;
+    /// 
+    /// println!("Batch processing:");
+    /// println!("  Operations: {}", ops_performed);
+    /// println!("  Wall time: {:?}", elapsed);
+    /// println!("  CPU time: {:?}", 
+    ///          engine.metrics().average_processing_time() * ops_performed as u32);
+    /// ```
+    /// 
+    /// ## Throughput Analysis
+    /// ```rust
+    /// let metrics = engine.metrics();
+    /// let throughput = metrics.tokens_per_second();
+    /// 
+    /// match throughput {
+    ///     x if x > 100.0 => println!("Excellent throughput: {:.1} tok/s", x),
+    ///     x if x > 50.0 => println!("Good throughput: {:.1} tok/s", x),
+    ///     x if x > 10.0 => println!("Moderate throughput: {:.1} tok/s", x),
+    ///     x => println!("Low throughput: {:.1} tok/s - consider optimization", x),
+    /// }
+    /// ```
+    /// 
+    /// ## Performance Benchmarking
+    /// ```rust
+    /// // Compare different processor configurations
+    /// let baseline_metrics = engine.metrics().clone();
+    /// 
+    /// // Test configuration A
+    /// engine.set_processor(config_a_processor);
+    /// run_benchmark(&mut engine)?;
+    /// let metrics_a = engine.metrics();
+    /// 
+    /// // Test configuration B
+    /// engine.set_processor(config_b_processor);
+    /// run_benchmark(&mut engine)?;
+    /// let metrics_b = engine.metrics();
+    /// 
+    /// println!("Configuration A: {:.1} tok/s", metrics_a.tokens_per_second());
+    /// println!("Configuration B: {:.1} tok/s", metrics_b.tokens_per_second());
+    /// ```
+    /// 
+    /// ## Resource Usage Monitoring
+    /// ```rust
+    /// fn monitor_resource_usage(engine: &ProcessingEngine) {
+    ///     let metrics = engine.metrics();
+    ///     
+    ///     // Check processing efficiency
+    ///     let avg_time = metrics.average_processing_time().as_nanos() as f64;
+    ///     let efficiency = 1_000_000.0 / avg_time;  // Operations per millisecond
+    ///     
+    ///     println!("Processing efficiency: {:.2} ops/ms", efficiency);
+    ///     
+    ///     // Monitor sequence progress
+    ///     let sequence_len = metrics.sequence_length();
+    ///     if sequence_len > 1000 {
+    ///         println!("Long sequence detected: {} tokens", sequence_len);
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// ## Error Rate Analysis
+    /// ```rust
+    /// fn analyze_error_patterns(engine: &ProcessingEngine) {
+    ///     let metrics = engine.metrics();
+    ///     
+    ///     // Calculate success rate
+    ///     let total_attempts = metrics.total_operations();
+    ///     let successful_tokens = metrics.total_tokens();
+    ///     
+    ///     if total_attempts > 0 {
+    ///         let success_rate = successful_tokens as f64 / total_attempts as f64;
+    ///         println!("Success rate: {:.2}%", success_rate * 100.0);
+    ///         
+    ///         if success_rate < 0.95 {
+    ///             println!("Warning: Low success rate detected");
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// ## Real-Time Monitoring
+    /// ```rust
+    /// use tokio::time::{interval, Duration};
+    /// 
+    /// let engine = Arc::new(Mutex::new(engine));
+    /// let monitor_engine = Arc::clone(&engine);
+    /// 
+    /// tokio::spawn(async move {
+    ///     let mut interval = interval(Duration::from_secs(10));
+    ///     
+    ///     loop {
+    ///         interval.tick().await;
+    ///         
+    ///         if let Ok(engine) = monitor_engine.lock() {
+    ///             let metrics = engine.metrics();
+    ///             println!("[Monitor] {} ops, {:.1} tok/s, {} seq_len",
+    ///                      metrics.total_operations(),
+    ///                      metrics.tokens_per_second(),
+    ///                      metrics.sequence_length());
+    ///         }
+    ///     }
+    /// });
+    /// ```
+    /// 
+    /// # Thread Safety
+    /// 
+    /// Metrics use atomic operations and are safe for concurrent read access.
+    /// Multiple threads can inspect metrics simultaneously without synchronization.
+    /// 
+    /// # Performance Impact
+    /// 
+    /// Metrics collection has minimal overhead:
+    /// - Atomic operations for counters (nanosecond scale)
+    /// - No memory allocation for metric updates
+    /// - Lazy calculation of derived metrics
     #[inline(always)]
     pub fn metrics(&self) -> &ProcessingMetrics {
         &self.metrics

@@ -22,6 +22,8 @@ use super::models;
 use super::endpoints;
 use super::config;
 use super::ModelType;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use fluent_ai_domain::{AsyncTask, AsyncStream};

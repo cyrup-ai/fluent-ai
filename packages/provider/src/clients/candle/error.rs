@@ -178,6 +178,31 @@ pub enum CacheType {
     KvCache = 2,
     Embedding = 3}
 
+/// Inference error codes for detailed error classification
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InferenceErrorCode {
+    InvalidInput = 0,
+    ModelNotLoaded = 1,
+    TokenizerError = 2,
+    OutOfMemory = 3,
+    ComputeError = 4,
+    InvalidSequenceLength = 5,
+    KvCacheError = 6,
+    AttentionError = 7}
+
+/// Inference stages for error reporting
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InferenceStage {
+    PreProcessing = 0,
+    ForwardPass = 1,
+    Attention = 2,
+    LayerNorm = 3,
+    PostProcessing = 4,
+    Sampling = 5,
+    KvCacheUpdate = 6}
+
 impl CandleError {
     /// Create configuration error with validation context
     #[inline]
@@ -341,6 +366,22 @@ impl CandleError {
             stream_id,
             chunk_index,
             buffer_size}
+    }
+
+    /// Create inference error with stage and error code
+    #[inline]
+    pub fn inference(message: &str, stage: InferenceStage, error_code: InferenceErrorCode) -> Self {
+        Self::Generation {
+            context: ErrorContext::new(
+                ErrorCategory::Generation,
+                "inference_engine",
+                &format!("{:?}", stage),
+                "successful inference",
+                message,
+            ),
+            tokens_processed: 0,
+            sequence_length: 0,
+            sampling_step: ArrayString::from(&format!("{:?}:{:?}", stage, error_code)).unwrap_or_default()}
     }
 
     /// Get error category for fast filtering

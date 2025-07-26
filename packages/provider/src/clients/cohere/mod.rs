@@ -327,7 +327,6 @@ impl Default for CohereProvider {
 /// Performance optimization utilities
 pub mod utils {
     use super::models;
-    use arrayvec::ArrayString;
     
     /// Optimized model lookup with compile-time branching
     #[inline]

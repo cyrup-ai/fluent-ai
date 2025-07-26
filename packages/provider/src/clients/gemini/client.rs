@@ -6,6 +6,9 @@
 
 use std::sync::LazyLock;
 use std::time::Duration;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use arc_swap::ArcSwap;
 use arrayvec::{ArrayString};

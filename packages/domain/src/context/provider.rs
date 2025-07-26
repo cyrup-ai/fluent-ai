@@ -30,53 +30,73 @@ use crate::{ZeroOneOrMany, context::Document};
 // Macros now imported from fluent_ai_async - removed local definitions
 
 /// Marker types for Context
+/// Marker type for file-based context operations. Used in typestate pattern to ensure compile-time safety for file context providers.
 pub struct File;
+/// Marker type for multi-file context operations. Enables batch processing of multiple files with zero-allocation streaming patterns.
 pub struct Files;
+/// Marker type for directory-based context indexing. Provides recursive directory traversal with configurable depth limits and filtering.
 pub struct Directory;
+/// Marker type for GitHub repository context integration. Enables GitHub API integration with rate limiting and authentication.
 pub struct Github;
 
 /// Comprehensive error types for context operations with zero allocations
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
 pub enum ContextError {
     #[error("Context not found: {0}")]
+    /// Context resource could not be located. Occurs when file paths, directories, or repository references are invalid or inaccessible.
     ContextNotFound(String),
     #[error("Invalid path: {0}")]
+    /// Path validation failed due to invalid characters, encoding, or filesystem constraints. Includes both local and remote path validation.
     InvalidPath(String),
     #[error("IO error: {0}")]
+    /// Filesystem I/O operation failed. Wraps underlying std::io::Error with context-specific information for debugging.
     IoError(String),
     #[error("Pattern error: {0}")]
+    /// Regular expression or glob pattern compilation failed. Occurs during context filtering and search operations.
     PatternError(String),
     #[error("Memory integration error: {0}")]
+    /// Memory integration subsystem error. Indicates failure in vector embeddings, storage, or retrieval operations.
     MemoryError(String),
     #[error("Validation error: {0}")]
+    /// Input validation failed during context operations. Includes size limits, format validation, and content restrictions.
     ValidationError(String),
     #[error("Performance threshold exceeded: {0}")]
+    /// Operation exceeded configured performance thresholds. Used for timeout, memory usage, or processing limits.
     PerformanceThresholdExceeded(String),
     #[error("Provider unavailable: {0}")]
+    /// Context provider service is temporarily or permanently unavailable. Includes network, API, and resource availability issues.
     ProviderUnavailable(String)}
 
 /// Provider-specific error types
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
 pub enum ProviderError {
     #[error("File provider error: {0}")]
+    /// File system provider specific error. Handles file reading, parsing, and metadata extraction failures.
     FileProvider(String),
     #[error("Directory provider error: {0}")]
+    /// Directory provider specific error. Manages recursive traversal, filtering, and indexing failures.
     DirectoryProvider(String),
     #[error("GitHub provider error: {0}")]
+    /// GitHub API provider specific error. Handles authentication, rate limiting, and repository access issues.
     GithubProvider(String),
     #[error("Embedding provider error: {0}")]
+    /// Vector embedding provider error. Manages embedding generation, storage, and retrieval failures.
     EmbeddingProvider(String)}
 
 /// Validation error types with semantic meaning
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
 pub enum ValidationError {
     #[error("Invalid input: {0}")]
+    /// Generic input validation failure. Used when input doesn't meet format, type, or semantic requirements.
     InvalidInput(String),
     #[error("Path validation failed: {0}")]
+    /// Path-specific validation error. Handles invalid characters, length limits, and security restrictions.
     PathValidation(String),
     #[error("Pattern validation failed: {0}")]
+    /// Pattern syntax validation failed. Occurs during regex or glob pattern parsing with detailed error information.
     PatternValidation(String),
     #[error("Size limit exceeded: {0}")]
+    /// Content size exceeds configured limits. Includes file size, directory depth, and processing constraints.
     SizeLimitExceeded(String)}
 
 /// Context events for real-time streaming monitoring
@@ -84,62 +104,99 @@ pub enum ValidationError {
 pub enum ContextEvent {
     /// Provider lifecycle events
     ProviderStarted {
+        /// Type of provider that was started (File, Directory, Github, etc.)
         provider_type: String,
+        /// Unique identifier for this provider instance
         provider_id: String,
+        /// When the provider was started
         timestamp: SystemTime},
     ProviderStopped {
+        /// Type of provider that was stopped (File, Directory, Github, etc.)
         provider_type: String,
+        /// Unique identifier for this provider instance
         provider_id: String,
+        /// When the provider was stopped
         timestamp: SystemTime},
 
     /// Operation events
     ContextLoadStarted {
+        /// Type of context being loaded (file, directory, github, etc.)
         context_type: String,
+        /// Source path or identifier for the context
         source: String,
+        /// When the context loading operation started
         timestamp: SystemTime},
     ContextLoadCompleted {
+        /// Type of context that was loaded (file, directory, github, etc.)
         context_type: String,
+        /// Source path or identifier for the context
         source: String,
+        /// Number of documents successfully loaded
         documents_loaded: usize,
+        /// Duration of the loading operation in nanoseconds
         duration_nanos: u64,
+        /// When the context loading operation completed
         timestamp: SystemTime},
     ContextLoadFailed {
+        /// Type of context that failed to load (file, directory, github, etc.)
         context_type: String,
+        /// Source path or identifier for the context
         source: String,
+        /// Error message describing the failure
         error: String,
+        /// When the context loading operation failed
         timestamp: SystemTime},
 
     /// Memory integration events
     MemoryCreated {
+        /// Unique identifier for the created memory entry
         memory_id: String,
+        /// Hash of the content for deduplication and integrity verification
         content_hash: String,
+        /// When the memory entry was created
         timestamp: SystemTime},
     MemorySearchCompleted {
+        /// Search query that was executed
         query: String,
+        /// Number of results returned by the search
         results_count: usize,
+        /// Duration of the search operation in nanoseconds
         duration_nanos: u64,
+        /// When the search operation completed
         timestamp: SystemTime},
 
     /// Performance events
     PerformanceThresholdBreached {
+        /// Name of the performance metric that exceeded threshold
         metric: String,
+        /// Configured threshold value that was exceeded
         threshold: f64,
+        /// Actual measured value that exceeded the threshold
         actual: f64,
+        /// When the threshold breach was detected
         timestamp: SystemTime},
 
     /// Validation events
     ValidationFailed {
+        /// Type of validation that failed (path, pattern, size, etc.)
         validation_type: String,
+        /// Error message describing the validation failure
         error: String,
+        /// When the validation failure occurred
         timestamp: SystemTime}}
 
 /// Memory node representation with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryNode {
+    /// Unique identifier for this memory node
     pub id: String,
+    /// Content stored in this memory node
     pub content: String,
+    /// Metadata key-value pairs associated with this node
     pub metadata: HashMap<String, String>,
+    /// Optional vector embedding for similarity search
     pub embedding: Option<Vec<f32>>,
+    /// When this memory node was created or last updated
     pub timestamp: SystemTime}
 
 /// Immutable file context with owned strings and atomic tracking

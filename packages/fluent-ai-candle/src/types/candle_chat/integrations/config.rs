@@ -136,7 +136,41 @@ pub struct IntegrationResponse {
     /// Success indicator
     pub success: bool}
 
-/// Create a webhook integration configuration
+/// Create a webhook integration configuration with default settings
+///
+/// Creates a new `IntegrationConfig` configured for webhook integration.
+/// Webhooks are used for receiving notifications and events from external services.
+/// The configuration uses default timeout (30s) and retry settings (3 attempts).
+///
+/// # Arguments
+///
+/// * `name` - A human-readable name for the webhook integration
+/// * `endpoint` - The webhook URL where events will be sent
+///
+/// # Returns
+///
+/// An `IntegrationConfig` with webhook-specific settings and default values for
+/// timeout, retries, and other configuration options.
+///
+/// # Example
+///
+/// ```rust
+/// let webhook = create_webhook_integration(
+///     "github_notifications",
+///     "https://api.myapp.com/webhooks/github"
+/// );
+/// assert_eq!(webhook.integration_type, IntegrationType::Webhook);
+/// assert_eq!(webhook.timeout_seconds, 30);
+/// ```
+///
+/// # Default Configuration
+///
+/// - Type: `IntegrationType::Webhook`
+/// - Timeout: 30 seconds
+/// - Retry attempts: 3
+/// - Enabled: true
+/// - No authentication token
+/// - No custom headers
 pub fn create_webhook_integration(
     name: impl Into<Arc<str>>,
     endpoint: impl Into<Arc<str>>,
@@ -149,7 +183,47 @@ pub fn create_webhook_integration(
     }
 }
 
-/// Create a REST API integration configuration
+/// Create a REST API integration configuration with authentication support
+///
+/// Creates a new `IntegrationConfig` configured for REST API integration.
+/// REST APIs are used for bidirectional communication with external services,
+/// supporting both sending requests and receiving responses.
+///
+/// # Arguments
+///
+/// * `name` - A human-readable name for the REST API integration
+/// * `endpoint` - The base URL of the REST API service
+/// * `auth_token` - Optional authentication token for API requests
+///
+/// # Returns
+///
+/// An `IntegrationConfig` with REST API-specific settings and default values for
+/// timeout, retries, and other configuration options.
+///
+/// # Authentication
+///
+/// If an `auth_token` is provided, it will be included in API requests. The exact
+/// authentication method depends on the API implementation (Bearer token, API key, etc.).
+///
+/// # Example
+///
+/// ```rust
+/// let api = create_rest_api_integration(
+///     "slack_api",
+///     "https://api.slack.com/api",
+///     Some(Arc::from("xoxb-your-token"))
+/// );
+/// assert_eq!(api.integration_type, IntegrationType::RestApi);
+/// assert!(api.auth_token.is_some());
+/// ```
+///
+/// # Default Configuration
+///
+/// - Type: `IntegrationType::RestApi`
+/// - Timeout: 30 seconds
+/// - Retry attempts: 3
+/// - Enabled: true
+/// - No custom headers
 pub fn create_rest_api_integration(
     name: impl Into<Arc<str>>,
     endpoint: impl Into<Arc<str>>,
@@ -164,7 +238,47 @@ pub fn create_rest_api_integration(
     }
 }
 
-/// Create a plugin integration configuration
+/// Create a plugin integration configuration for internal plugins
+///
+/// Creates a new `IntegrationConfig` configured for plugin integration.
+/// Plugins are internal extensions that provide additional functionality
+/// within the system. The plugin ID is stored in the endpoint field.
+///
+/// # Arguments
+///
+/// * `name` - A human-readable name for the plugin integration
+/// * `plugin_id` - A unique identifier for the plugin (stored as endpoint)
+///
+/// # Returns
+///
+/// An `IntegrationConfig` with plugin-specific settings and default values for
+/// timeout, retries, and other configuration options.
+///
+/// # Plugin System
+///
+/// The plugin system allows extending functionality through internal modules.
+/// The `plugin_id` should be a unique identifier that the plugin system can
+/// use to locate and load the appropriate plugin.
+///
+/// # Example
+///
+/// ```rust
+/// let plugin = create_plugin_integration(
+///     "sentiment_analyzer",
+///     "com.myapp.plugins.sentiment"
+/// );
+/// assert_eq!(plugin.integration_type, IntegrationType::Plugin);
+/// assert_eq!(plugin.endpoint.as_ref(), "com.myapp.plugins.sentiment");
+/// ```
+///
+/// # Default Configuration
+///
+/// - Type: `IntegrationType::Plugin`
+/// - Timeout: 30 seconds (for plugin initialization/execution)
+/// - Retry attempts: 3
+/// - Enabled: true
+/// - No authentication token
+/// - No custom headers
 pub fn create_plugin_integration(
     name: impl Into<Arc<str>>,
     plugin_id: impl Into<Arc<str>>,

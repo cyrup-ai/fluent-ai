@@ -25,32 +25,49 @@ use crate::chat::commands::ImmutableChatCommand;
 pub enum MacroAction {
     /// Send a message with content
     SendMessage {
+        /// Message content to send
         content: Arc<str>,
+        /// Type of message being sent
         message_type: Arc<str>,
+        /// Timestamp when action was recorded
         timestamp: Duration},
     /// Execute a command
     ExecuteCommand {
+        /// Command to execute
         command: ImmutableChatCommand,
+        /// Timestamp when action was recorded
         timestamp: Duration},
     /// Wait for a specified duration
     Wait {
+        /// Duration to wait
         duration: Duration,
+        /// Timestamp when action was recorded
         timestamp: Duration},
     /// Set a variable value
     SetVariable {
+        /// Variable name to set
         name: Arc<str>,
+        /// Value to assign to the variable
         value: Arc<str>,
+        /// Timestamp when action was recorded
         timestamp: Duration},
     /// Conditional execution based on variable
     Conditional {
+        /// Condition expression to evaluate
         condition: Arc<str>,
+        /// Actions to execute if condition is true
         then_actions: Arc<[MacroAction]>,
+        /// Actions to execute if condition is false
         else_actions: Option<Arc<[MacroAction]>>,
+        /// Timestamp when action was recorded
         timestamp: Duration},
     /// Loop execution
     Loop {
+        /// Number of iterations to perform
         iterations: u32,
+        /// Actions to execute in each iteration
         actions: Arc<[MacroAction]>,
+        /// Timestamp when action was recorded
         timestamp: Duration}}
 
 /// Macro recording state
@@ -82,89 +99,145 @@ pub enum MacroPlaybackState {
 /// Macro execution context with variable substitution
 #[derive(Debug, Clone)]
 pub struct MacroExecutionContext {
+    /// Variables available for substitution during execution
     pub variables: HashMap<Arc<str>, Arc<str>>,
+    /// Unique identifier for this execution
     pub execution_id: Uuid,
+    /// When execution started
     pub start_time: Instant,
+    /// Current action index being executed
     pub current_action: usize,
+    /// Stack of nested loop contexts
     pub loop_stack: Vec<LoopContext>}
 
 /// Loop execution context
 #[derive(Debug, Clone)]
 pub struct LoopContext {
+    /// Current iteration number (0-based)
     pub iteration: u32,
+    /// Maximum number of iterations for this loop
     pub max_iterations: u32,
+    /// Index of the first action in the loop
     pub start_action: usize,
+    /// Index of the last action in the loop
     pub end_action: usize}
 
 /// Macro metadata and statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MacroMetadata {
+    /// Unique identifier for the macro
     pub id: Uuid,
+    /// Human-readable name of the macro
     pub name: Arc<str>,
+    /// Description of what the macro does
     pub description: Arc<str>,
+    /// When the macro was first created
     pub created_at: Duration,
+    /// When the macro was last modified
     pub updated_at: Duration,
+    /// Version number of the macro
     pub version: u32,
+    /// Tags for categorizing and searching macros
     pub tags: Arc<[Arc<str>]>,
+    /// Author who created the macro
     pub author: Arc<str>,
+    /// Number of times this macro has been executed
     pub execution_count: u64,
+    /// When the macro was last executed
     pub last_execution: Option<Duration>,
+    /// Average execution duration
     pub average_duration: Duration,
+    /// Success rate of executions (0.0 to 1.0)
     pub success_rate: f64,
+    /// Category this macro belongs to
     pub category: Arc<str>,
+    /// Whether this macro is private to the user
     pub is_private: bool}
 
 /// Complete macro definition with actions and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMacro {
+    /// Metadata and statistics for the macro
     pub metadata: MacroMetadata,
+    /// Sequence of actions to execute
     pub actions: Arc<[MacroAction]>,
+    /// Default variables for macro execution
     pub variables: HashMap<Arc<str>, Arc<str>>,
+    /// Triggers that can activate this macro
     pub triggers: Arc<[Arc<str>]>,
+    /// Conditions that must be met for execution
     pub conditions: Arc<[Arc<str>]>,
+    /// Other macros this macro depends on
     pub dependencies: Arc<[Arc<str>]>,
+    /// Configuration for how this macro executes
     pub execution_config: MacroExecutionConfig}
 
 /// Macro execution configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MacroExecutionConfig {
+    /// Maximum time allowed for macro execution
     pub max_execution_time: Duration,
+    /// Number of times to retry on failure
     pub retry_count: u32,
+    /// Delay between retry attempts
     pub retry_delay: Duration,
+    /// Whether to abort execution on any error
     pub abort_on_error: bool,
+    /// Whether actions can be executed in parallel
     pub parallel_execution: bool,
+    /// Execution priority (0-255, higher = more priority)
     pub priority: u8,
+    /// Resource limits for macro execution
     pub resource_limits: ResourceLimits}
 
 /// Resource limits for macro execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceLimits {
+    /// Maximum memory usage in megabytes
     pub max_memory_mb: u32,
+    /// Maximum CPU usage percentage (0-100)
     pub max_cpu_percent: u8,
+    /// Maximum number of network requests allowed
     pub max_network_requests: u32,
+    /// Maximum number of file operations allowed
     pub max_file_operations: u32}
 
 /// Macro recording session
 #[derive(Debug)]
 pub struct MacroRecordingSession {
+    /// Unique identifier for this recording session
     pub id: Uuid,
+    /// Name of the macro being recorded
     pub name: Arc<str>,
+    /// When recording started
     pub start_time: Instant,
+    /// Queue of recorded actions (lock-free)
     pub actions: SegQueue<MacroAction>,
+    /// Current recording state
     pub state: MacroRecordingState,
+    /// Variables captured during recording
     pub variables: HashMap<Arc<str>, Arc<str>>,
+    /// Metadata for the macro being recorded
     pub metadata: MacroMetadata}
 
 /// Macro playback session
 #[derive(Debug)]
 pub struct MacroPlaybackSession {
+    /// Unique identifier for this playback session
     pub id: Uuid,
+    /// ID of the macro being played back
     pub macro_id: Uuid,
+    /// When playback started
     pub start_time: Instant,
+    /// Execution context with variables and state
     pub context: MacroExecutionContext,
+    /// Current playback state
     pub state: MacroPlaybackState,
+    /// Index of the currently executing action
     pub current_action: usize,
+    /// Total number of actions in the macro
     pub total_actions: usize,
+    /// Error message if playback failed
     pub error: Option<Arc<str>>}
 
 /// High-performance macro system with lock-free operations
@@ -185,11 +258,17 @@ pub struct MacroSystem {
 /// Macro execution statistics
 #[derive(Debug, Default)]
 pub struct ExecutionStats {
+    /// Total number of macro executions attempted
     pub total_executions: ConsistentCounter,
+    /// Number of successful macro executions
     pub successful_executions: ConsistentCounter,
+    /// Number of failed macro executions
     pub failed_executions: ConsistentCounter,
+    /// Total time spent executing macros
     pub total_duration: parking_lot::Mutex<Duration>,
+    /// Average execution duration per macro
     pub average_duration: parking_lot::Mutex<Duration>,
+    /// Timestamp of the last macro execution
     pub last_execution: parking_lot::Mutex<Option<Instant>>}
 
 impl Clone for ExecutionStats {
@@ -638,32 +717,46 @@ impl MacroSystem {
 /// Result of macro action execution
 #[derive(Debug)]
 pub enum ActionExecutionResult {
+    /// Action executed successfully
     Success,
+    /// Wait for specified duration before continuing
     Wait(Duration),
+    /// Skip to the specified action index
     SkipToAction(usize),
+    /// Execution failed with error message
     Error(Arc<str>)}
 
 /// Result of macro playback operation
 #[derive(Debug)]
 pub enum MacroPlaybackResult {
+    /// Single action was executed successfully
     ActionExecuted,
+    /// Macro playback completed successfully
     Completed,
+    /// Macro playback failed
     Failed,
+    /// Playback session is not active
     SessionNotActive}
 
 /// Macro system errors
 #[derive(Debug, thiserror::Error)]
 pub enum MacroSystemError {
+    /// Requested macro session was not found
     #[error("Recording session not found")]
     SessionNotFound,
+    /// Macro recording is not currently active
     #[error("Recording not active")]
     RecordingNotActive,
+    /// Requested macro does not exist
     #[error("Macro not found")]
     MacroNotFound,
+    /// System time operation failed
     #[error("System time error")]
     SystemTimeError,
+    /// Error occurred during macro execution
     #[error("Execution error: {0}")]
     ExecutionError(String),
+    /// Macro validation failed
     #[error("Validation error: {0}")]
     ValidationError(String)}
 
@@ -673,110 +766,6 @@ impl Default for MacroSystem {
     }
 }
 
-/// Builder for creating macros programmatically
-pub struct MacroBuilder {
-    name: Option<Arc<str>>,
-    description: Option<Arc<str>>,
-    actions: Vec<MacroAction>,
-    variables: HashMap<Arc<str>, Arc<str>>,
-    triggers: Vec<Arc<str>>,
-    conditions: Vec<Arc<str>>,
-    dependencies: Vec<Arc<str>>,
-    execution_config: MacroExecutionConfig}
-
-impl MacroBuilder {
-    /// Create a new macro builder
-    pub fn new() -> Self {
-        Self {
-            name: None,
-            description: None,
-            actions: Vec::new(),
-            variables: HashMap::new(),
-            triggers: Vec::new(),
-            conditions: Vec::new(),
-            dependencies: Vec::new(),
-            execution_config: MacroExecutionConfig::default()}
-    }
-
-    /// Set the macro name
-    pub fn name(mut self, name: Arc<str>) -> Self {
-        self.name = Some(name);
-        self
-    }
-
-    /// Set the macro description
-    pub fn description(mut self, description: Arc<str>) -> Self {
-        self.description = Some(description);
-        self
-    }
-
-    /// Add an action to the macro
-    pub fn add_action(mut self, action: MacroAction) -> Self {
-        self.actions.push(action);
-        self
-    }
-
-    /// Add a variable to the macro
-    pub fn add_variable(mut self, name: Arc<str>, value: Arc<str>) -> Self {
-        self.variables.insert(name, value);
-        self
-    }
-
-    /// Set execution configuration
-    pub fn execution_config(mut self, config: MacroExecutionConfig) -> Self {
-        self.execution_config = config;
-        self
-    }
-
-    /// Build the macro
-    pub fn build(self) -> Result<ChatMacro, MacroSystemError> {
-        let name = self
-            .name
-            .ok_or_else(|| MacroSystemError::ExecutionError("Name is required".to_string()))?;
-        let description = self.description.unwrap_or_else(|| Arc::from(""));
-
-        let metadata = MacroMetadata {
-            id: Uuid::new_v4(),
-            name,
-            description,
-            created_at: Duration::from_secs(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|_| MacroSystemError::SystemTimeError)?
-                    .as_secs(),
-            ),
-            updated_at: Duration::from_secs(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|_| MacroSystemError::SystemTimeError)?
-                    .as_secs(),
-            ),
-            version: 1,
-            tags: Arc::new([]),
-            author: Arc::from("builder"),
-            execution_count: 0,
-            last_execution: None,
-            average_duration: Duration::from_secs(0),
-            success_rate: 0.0,
-            category: Arc::from("programmatic"),
-            is_private: false};
-
-        Ok(ChatMacro {
-            metadata,
-            actions: self.actions.into(),
-            variables: self.variables,
-            triggers: self.triggers.into(),
-            conditions: self.conditions.into(),
-            dependencies: self.dependencies.into(),
-            execution_config: self.execution_config})
-    }
-}
-
-impl Default for MacroBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 /// Macro processor for executing and managing chat macros
 ///

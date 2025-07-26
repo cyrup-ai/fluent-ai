@@ -18,6 +18,7 @@ use sha2::{Digest, Sha256};
 use smallvec::SmallVec;
 
 use super::models::{CandleDevice, CandleModel};
+use hf_hub;
 
 /// Model loading state with atomic transitions
 #[repr(u8)]

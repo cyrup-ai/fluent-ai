@@ -18,6 +18,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::task;
 use tokio_stream;
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use super::client::Client;
 use super::streaming;

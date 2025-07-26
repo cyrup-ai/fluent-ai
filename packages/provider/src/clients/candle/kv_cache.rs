@@ -4,6 +4,7 @@
 //! with zero-allocation patterns, cache-aligned data structures, and atomic operations.
 
 use std::sync::Arc;
+use arrayvec::ArrayVec;
 
 use arc_swap::ArcSwap;
 use crossbeam::atomic::AtomicCell;

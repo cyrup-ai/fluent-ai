@@ -12,91 +12,209 @@ use uuid::Uuid;
 
 // Removed unused handle_error macro
 
-/// Plugin manager for handling dynamic plugins
+/// Plugin manager for handling dynamic plugins with zero-allocation streaming
+///
+/// Provides comprehensive plugin management including loading, unloading,
+/// execution, registry management, and performance monitoring with
+/// zero-allocation async streaming patterns.
 pub struct PluginManager {
-    /// Loaded plugins
+    /// Loaded plugins indexed by UUID
+    ///
+    /// HashMap containing all currently loaded plugin instances,
+    /// indexed by their unique identifiers for fast lookup.
     pub plugins: HashMap<Uuid, LoadedPlugin>,
-    /// Plugin registry
+    /// Plugin registry for available plugins
+    ///
+    /// Registry containing metadata about available plugins that can be
+    /// downloaded, installed, and loaded into the system.
     pub registry: PluginRegistry,
-    /// Manager configuration
+    /// Manager configuration settings
+    ///
+    /// Configuration controlling plugin manager behavior including
+    /// security policies, resource limits, and operational parameters.
     pub config: PluginManagerConfig,
-    /// Plugin statistics
+    /// Plugin statistics and metrics
+    ///
+    /// Aggregated statistics about plugin usage, performance, and
+    /// system-wide plugin metrics for monitoring and optimization.
     pub stats: PluginManagerStats,
-    /// Event listeners
+    /// Event listeners for plugin lifecycle events
+    ///
+    /// Collection of event listeners that receive notifications about
+    /// plugin lifecycle events like loading, unloading, and errors.
     pub event_listeners: Vec<PluginEventListener>}
 
-/// Plugin configuration
+/// Plugin configuration containing all plugin settings and metadata
+///
+/// Comprehensive configuration structure that defines a plugin's identity,
+/// capabilities, dependencies, permissions, and operational parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginConfig {
-    /// Plugin ID
+    /// Unique plugin identifier
+    ///
+    /// UUID that uniquely identifies this plugin instance across
+    /// the entire system and persists across restarts.
     pub id: Uuid,
-    /// Plugin name
+    /// Human-readable plugin name
+    ///
+    /// Display name for the plugin used in user interfaces and logs.
+    /// Should be descriptive and unique within the plugin ecosystem.
     pub name: Arc<str>,
-    /// Plugin version
+    /// Plugin version string
+    ///
+    /// Version identifier following semantic versioning (e.g., "1.2.3")
+    /// used for compatibility checking and update management.
     pub version: String,
-    /// Plugin description
+    /// Optional plugin description
+    ///
+    /// Detailed description of the plugin's functionality, purpose,
+    /// and usage instructions for users and administrators.
     pub description: Option<String>,
-    /// Plugin author
+    /// Optional plugin author information
+    ///
+    /// Author or organization responsible for developing and maintaining
+    /// the plugin, used for attribution and support contact.
     pub author: Option<String>,
-    /// Plugin entry point
+    /// Plugin entry point module or function
+    ///
+    /// Path or identifier for the main plugin entry point that will be
+    /// called when the plugin is loaded and executed.
     pub entry_point: String,
-    /// Plugin dependencies
+    /// Plugin dependencies list
+    ///
+    /// List of other plugins, system libraries, or services that this
+    /// plugin requires to function properly.
     pub dependencies: Vec<PluginDependency>,
-    /// Plugin permissions
+    /// Plugin permission requirements
+    ///
+    /// List of system permissions the plugin needs to operate,
+    /// used for security validation and access control.
     pub permissions: Vec<PluginPermission>,
-    /// Plugin settings
+    /// Plugin configuration settings
+    ///
+    /// Key-value pairs of plugin-specific settings that can be
+    /// customized by users or administrators.
     pub settings: HashMap<String, serde_json::Value>,
-    /// Plugin enabled flag
+    /// Whether plugin is enabled
+    ///
+    /// Flag controlling whether the plugin should be loaded and executed.
+    /// Disabled plugins are ignored during plugin loading.
     pub enabled: bool,
-    /// Plugin priority
+    /// Plugin execution priority
+    ///
+    /// Priority value determining execution order when multiple plugins
+    /// handle the same events. Higher values execute first.
     pub priority: i32,
-    /// Plugin metadata
+    /// Additional plugin metadata
+    ///
+    /// Extensible key-value pairs for plugin-specific metadata that
+    /// doesn't fit into other configuration fields.
     pub metadata: HashMap<String, String>,
-    /// Created timestamp
+    /// Plugin creation timestamp
+    ///
+    /// UTC timestamp when this plugin configuration was first created,
+    /// used for tracking and auditing purposes.
     pub created_at: chrono::DateTime<chrono::Utc>,
-    /// Updated timestamp
+    /// Plugin last update timestamp
+    ///
+    /// UTC timestamp when this plugin configuration was last modified,
+    /// used for change tracking and synchronization.
     pub updated_at: chrono::DateTime<chrono::Utc>}
 
-/// Plugin dependency
+/// Plugin dependency specification
+///
+/// Defines a dependency that a plugin requires to function properly,
+/// including version constraints and dependency classification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginDependency {
-    /// Dependency name
+    /// Dependency name identifier
+    ///
+    /// Name of the dependency (plugin, library, or service) that
+    /// this plugin requires to function properly.
     pub name: String,
-    /// Version requirement
+    /// Version requirement specification
+    ///
+    /// Version constraint string (e.g., "^1.0.0", ">=2.1.0") that
+    /// specifies which versions of the dependency are compatible.
     pub version_requirement: String,
     /// Whether dependency is optional
+    ///
+    /// If true, the plugin can function without this dependency but
+    /// may have reduced functionality. If false, dependency is required.
     pub optional: bool,
-    /// Dependency type
+    /// Type of dependency
+    ///
+    /// Classification of what kind of dependency this is (system library,
+    /// plugin, service, etc.) for proper dependency resolution.
     pub dependency_type: DependencyType}
 
-/// Type of plugin dependency
+/// Type classification for plugin dependencies
+///
+/// Categorizes different types of dependencies that plugins can have,
+/// enabling appropriate dependency resolution and validation strategies.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DependencyType {
-    /// System library
+    /// System library or OS component
+    ///
+    /// Dependency on system-level libraries, operating system features,
+    /// or installed software that must be available on the host system.
     System,
-    /// Another plugin
+    /// Another plugin dependency
+    ///
+    /// Dependency on another plugin that must be loaded and available
+    /// before this plugin can function properly.
     Plugin,
-    /// External service
+    /// External service dependency
+    ///
+    /// Dependency on external network services, APIs, or remote systems
+    /// that must be accessible for the plugin to function.
     Service,
     /// Configuration requirement
+    ///
+    /// Dependency on specific configuration values or settings that
+    /// must be present in the system configuration.
     Config}
 
-/// Plugin permission
+/// Plugin permission types for security and access control
+///
+/// Defines the types of system permissions that plugins can request,
+/// enabling fine-grained security control and access management.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PluginPermission {
-    /// Read file system
+    /// File system read access
+    ///
+    /// Permission to read files and directories from the file system.
+    /// Essential for plugins that need to access configuration files or data.
     ReadFileSystem,
-    /// Write file system
+    /// File system write access
+    ///
+    /// Permission to create, modify, or delete files and directories.
+    /// Required for plugins that need to persist data or generate output.
     WriteFileSystem,
-    /// Network access
+    /// Network communication access
+    ///
+    /// Permission to make outbound network connections and communicate
+    /// with external services, APIs, or remote systems.
     NetworkAccess,
     /// System information access
+    ///
+    /// Permission to read system information like hardware details,
+    /// process information, or system performance metrics.
     SystemInfo,
-    /// Process execution
+    /// Process execution permission
+    ///
+    /// Permission to execute external processes or system commands.
+    /// High-risk permission that should be carefully controlled.
     ProcessExecution,
-    /// Database access
+    /// Database access permission
+    ///
+    /// Permission to connect to and interact with database systems
+    /// for data storage and retrieval operations.
     DatabaseAccess,
-    /// Custom permission
+    /// Custom permission type
+    ///
+    /// Application-specific permission type with custom name for
+    /// permissions not covered by standard types.
     Custom(String)}
 
 /// Loaded plugin instance

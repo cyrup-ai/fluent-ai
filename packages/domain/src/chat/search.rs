@@ -32,6 +32,7 @@ macro_rules! handle_error {
 
 /// Stream collection trait to provide .collect() method for future-like behavior
 pub trait StreamCollect<T> {
+    /// Collect stream items into a vector asynchronously
     fn collect_sync(self) -> AsyncStream<Vec<T>>;
 }
 
@@ -86,7 +87,10 @@ pub enum QueryOperator {
     /// Exact phrase match
     Phrase,
     /// Proximity search
-    Proximity { distance: u32 }}
+    Proximity { 
+        /// Distance value for proximity-based ranking
+        distance: u32 
+    }}
 
 /// Date range filter
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1387,9 +1391,13 @@ impl Default for ConversationTagger {
 /// Tagging statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TaggingStatistics {
+    /// Total number of unique tags in the system
     pub total_tags: usize,
+    /// Total number of tag applications across all messages
     pub total_taggings: usize,
+    /// Number of currently active tags
     pub active_tags: usize,
+    /// The most frequently used tag
     pub most_used_tag: Option<Arc<str>>}
 
 /// Export format enumeration
@@ -1439,10 +1447,15 @@ pub struct HistoryExporter {
 /// Export statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExportStatistics {
+    /// Total number of exports performed
     pub total_exports: usize,
+    /// Total number of messages exported across all operations
     pub total_messages_exported: usize,
+    /// The most frequently used export format
     pub most_popular_format: Option<ExportFormat>,
+    /// Average time taken per export operation (seconds)
     pub average_export_time: f64,
+    /// Timestamp of the last export operation
     pub last_export_time: u64}
 
 #[allow(dead_code)]
@@ -2083,18 +2096,42 @@ impl Default for HistoryExporter {
 /// Search system errors
 #[derive(Debug, thiserror::Error)]
 pub enum SearchError {
+    /// Index-related error occurred
     #[error("Index error: {reason}")]
-    IndexError { reason: Arc<str> },
+    IndexError { 
+        /// Details about the index error that occurred
+        reason: Arc<str> 
+    },
+    /// Search query parsing or execution failed  
     #[error("Search error: {reason}")]
-    SearchQueryError { reason: Arc<str> },
+    SearchQueryError { 
+        /// Details about the search query error
+        reason: Arc<str> 
+    },
+    /// Tag processing error occurred
     #[error("Tag error: {reason}")]
-    TagError { reason: Arc<str> },
+    TagError { 
+        /// Details about the tag processing error
+        reason: Arc<str> 
+    },
+    /// Export operation failed
     #[error("Export error: {reason}")]
-    ExportError { reason: Arc<str> },
+    ExportError { 
+        /// Details about the export failure
+        reason: Arc<str> 
+    },
+    /// Invalid or malformed query provided
     #[error("Invalid query: {details}")]
-    InvalidQuery { details: Arc<str> },
+    InvalidQuery { 
+        /// Specific details about the invalid query
+        details: Arc<str> 
+    },
+    /// System resource overload encountered
     #[error("System overload: {resource}")]
-    SystemOverload { resource: Arc<str> }}
+    SystemOverload { 
+        /// Name of the overloaded system resource
+        resource: Arc<str> 
+    }}
 
 /// Enhanced history management system
 #[derive(Clone)]
@@ -2111,10 +2148,15 @@ pub struct EnhancedHistoryManager {
 /// History manager statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HistoryManagerStatistics {
+    /// Search operation statistics
     pub search_stats: SearchStatistics,
+    /// Tagging operation statistics  
     pub tagging_stats: TaggingStatistics,
+    /// Export operation statistics
     pub export_stats: ExportStatistics,
+    /// Total number of operations performed
     pub total_operations: usize,
+    /// System uptime in seconds
     pub system_uptime: u64}
 
 impl EnhancedHistoryManager {
@@ -2312,78 +2354,6 @@ impl Default for EnhancedHistoryManager {
 }
 
 /// History manager builder for ergonomic configuration
-pub struct HistoryManagerBuilder {
-    simd_threshold: usize,
-    auto_tagging_enabled: bool,
-    compression_enabled: bool}
-
-impl HistoryManagerBuilder {
-    /// Create a new builder
-    pub fn new() -> Self {
-        Self {
-            simd_threshold: 8,
-            auto_tagging_enabled: true,
-            compression_enabled: true}
-    }
-
-    /// Set SIMD threshold
-    pub fn simd_threshold(mut self, threshold: usize) -> Self {
-        self.simd_threshold = threshold;
-        self
-    }
-
-    /// Enable auto-tagging
-    pub fn auto_tagging(mut self, enabled: bool) -> Self {
-        self.auto_tagging_enabled = enabled;
-        self
-    }
-
-    /// Enable compression
-    pub fn compression(mut self, enabled: bool) -> Self {
-        self.compression_enabled = enabled;
-        self
-    }
-
-    /// Build the history manager
-    pub fn build(self) -> EnhancedHistoryManager {
-        let search_index = Arc::new(ChatSearchIndex::new());
-        search_index
-            .simd_threshold
-            .store(self.simd_threshold, Ordering::Relaxed);
-
-        EnhancedHistoryManager {
-            search_index,
-            tagger: Arc::new(ConversationTagger::new()),
-            exporter: Arc::new(HistoryExporter::new()),
-            statistics: Arc::new(RwLock::new(HistoryManagerStatistics {
-                search_stats: SearchStatistics {
-                    total_messages: 0,
-                    total_terms: 0,
-                    total_queries: 0,
-                    average_query_time: 0.0,
-                    index_size: 0,
-                    last_index_update: 0},
-                tagging_stats: TaggingStatistics {
-                    total_tags: 0,
-                    total_taggings: 0,
-                    active_tags: 0,
-                    most_used_tag: None},
-                export_stats: ExportStatistics {
-                    total_exports: 0,
-                    total_messages_exported: 0,
-                    most_popular_format: None,
-                    average_export_time: 0.0,
-                    last_export_time: 0},
-                total_operations: 0,
-                system_uptime: 0}))}
-    }
-}
-
-impl Default for HistoryManagerBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 /// Search options for configuring chat search behavior
 ///

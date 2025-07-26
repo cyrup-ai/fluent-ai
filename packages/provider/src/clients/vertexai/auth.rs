@@ -11,6 +11,8 @@ use base64;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 /// Global token manager with hot-swappable credentials
 static TOKEN_MANAGER: LazyLock<ArcSwap<TokenManager>> = LazyLock::new(|| {

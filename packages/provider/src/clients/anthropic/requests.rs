@@ -4,6 +4,10 @@
 //! after initial setup and no locking requirements.
 
 use fluent_ai_http3::Http3;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
+use fluent_ai_http3::HttpResponse;
+use std::collections::HashMap;
 
 use super::completion::AnthropicCompletionRequest;
 use super::config::AnthropicConfig;

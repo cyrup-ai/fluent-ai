@@ -15,3 +15,4 @@ pub mod streaming;
 
 pub use client::{Client, PerplexityCompletionBuilder};
 pub use completion::{CompletionModel, SONAR, SONAR_PRO};
+pub mod types;

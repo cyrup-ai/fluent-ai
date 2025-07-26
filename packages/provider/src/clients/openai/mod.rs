@@ -564,7 +564,6 @@ pub mod metadata {
 pub mod utils {
     use arrayvec::ArrayString;
 
-    use super::*;
 
     /// Get user agent string for OpenAI requests
     #[inline(always)]
@@ -665,7 +664,6 @@ pub mod utils {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_model_classification() {

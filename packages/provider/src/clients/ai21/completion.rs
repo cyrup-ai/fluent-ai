@@ -26,6 +26,8 @@ use super::error::{AI21Error, Result, RequestType, JsonOperation};
 use super::models;
 use super::streaming::AI21Stream;
 use super::client::{AI21Metrics, RequestTimer};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use fluent_ai_http3::{HttpClient, HttpRequest};
 use fluent_ai_domain::{AsyncTask, AsyncStream};

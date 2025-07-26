@@ -16,7 +16,6 @@ fn merge(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::V
         other
     }
 }
-use crate::streaming::StreamingCompletionResponse;
 
 impl CompletionModel {
     pub(crate) async fn stream(

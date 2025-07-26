@@ -880,6 +880,10 @@ impl CompletionProvider for VertexAICompletionBuilder {
             match self.execute_streaming_completion(prompt).await {
                 Ok(mut stream) => {
                     use futures_util::StreamExt;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
+use std::collections::HashMap;
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(chunk) => {

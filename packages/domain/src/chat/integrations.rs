@@ -57,20 +57,41 @@ impl Default for IntegrationConfig {
 /// Integration error types
 #[derive(Error, Debug, Clone)]
 pub enum IntegrationError {
+    /// Connection to external service failed
     #[error("Connection error: {detail}")]
-    ConnectionError { detail: Arc<str> },
+    ConnectionError { 
+        /// Details about the connection failure
+        detail: Arc<str> 
+    },
 
+    /// Authentication with external service failed
     #[error("Authentication error: {detail}")]
-    AuthenticationError { detail: Arc<str> },
+    AuthenticationError { 
+        /// Details about the authentication failure
+        detail: Arc<str> 
+    },
 
+    /// Operation timed out
     #[error("Timeout error: {detail}")]
-    TimeoutError { detail: Arc<str> },
+    TimeoutError { 
+        /// Details about the timeout
+        detail: Arc<str> 
+    },
 
+    /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { detail: Arc<str> },
+    ConfigurationError { 
+        /// Details about the configuration issue
+        detail: Arc<str> 
+    },
 
+    /// Plugin-specific error occurred
     #[error("Plugin error: {detail}")]
-    PluginError { detail: Arc<str> }}
+    PluginError { 
+        /// Details about the plugin error
+        detail: Arc<str> 
+    },
+}
 
 /// Result type for integration operations
 pub type IntegrationResult<T> = Result<T, IntegrationError>;

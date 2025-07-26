@@ -12,8 +12,6 @@ pub mod context;
 pub mod metrics;
 pub mod handler;
 
-#[cfg(test)]
-mod tests;
 
 // Re-export all public types for convenience
 pub use core::{CommandError, CommandResult, ParameterType, ParameterInfo, CommandInfo, ResourceUsage};

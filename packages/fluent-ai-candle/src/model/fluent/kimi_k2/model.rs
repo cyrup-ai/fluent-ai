@@ -14,51 +14,83 @@ use serde::Deserialize;
 /// Kimi K2 model configuration matching the HuggingFace config.json
 #[derive(Debug, Clone, Deserialize)]
 pub struct KimiK2Config {
+    /// Size of the vocabulary
     pub vocab_size: usize,
+    /// Hidden dimension size (7168 for Kimi K2)
     pub hidden_size: usize,
+    /// Intermediate layer size for feed-forward networks
     pub intermediate_size: usize,
+    /// Number of transformer layers (61 for Kimi K2)
     pub num_hidden_layers: usize,
+    /// Number of attention heads (64 for Kimi K2)
     pub num_attention_heads: usize,
+    /// Number of key-value heads for grouped query attention
     pub num_key_value_heads: usize,
+    /// Maximum sequence length supported (131k for Kimi K2)
     pub max_position_embeddings: usize,
+    /// RoPE theta parameter for rotary positional encoding
     pub rope_theta: f64,
+    /// Epsilon for RMS layer normalization
     pub rms_norm_eps: f64,
+    /// Whether to tie input and output embeddings
     pub tie_word_embeddings: bool,
+    /// PyTorch data type ("bfloat16" for efficiency)
     pub torch_dtype: String,
 
-    // MoE specific parameters
+    /// Number of routed experts in MoE layers (384 for Kimi K2)
     pub n_routed_experts: usize,
+    /// Number of shared experts always activated
     pub n_shared_experts: usize,
+    /// Number of experts activated per token (8 for Kimi K2)
     pub num_experts_per_tok: usize,
+    /// Intermediate size for MoE expert networks
     pub moe_intermediate_size: usize,
+    /// Frequency of MoE layers (1 = every layer)
     pub moe_layer_freq: usize,
+    /// Auxiliary loss weight for load balancing
     pub aux_loss_alpha: f64,
+    /// Scaling factor for routed expert outputs
     pub routed_scaling_factor: f64,
 
-    // KV-LoRA parameters
+    /// LoRA rank for key-value compression
     pub kv_lora_rank: usize,
+    /// LoRA rank for query compression
     pub q_lora_rank: usize,
+    /// Head dimension for non-positional components
     pub qk_nope_head_dim: usize,
+    /// Head dimension for RoPE components
     pub qk_rope_head_dim: usize,
+    /// Head dimension for value vectors
     pub v_head_dim: usize,
 
-    // RoPE scaling
+    /// Optional RoPE scaling configuration for extended context
     pub rope_scaling: Option<RopeScaling>,
 
-    // Dense layer replacement
-    pub first_k_dense_replace: usize}
+    /// Number of initial layers to use dense instead of MoE
+    pub first_k_dense_replace: usize
+}
 
+/// RoPE scaling configuration for extended context length
 #[derive(Debug, Clone, Deserialize)]
 pub struct RopeScaling {
+    /// Type of RoPE scaling ("yarn" for YARN scaling)
     pub r#type: String,
+    /// Scaling factor for context extension
     pub factor: f64,
+    /// Original maximum position embeddings before scaling
     pub original_max_position_embeddings: usize,
+    /// Beta parameter for fast frequency components
     pub beta_fast: f64,
+    /// Beta parameter for slow frequency components
     pub beta_slow: f64,
+    /// Magnitude scaling factor
     pub mscale: f64,
-    pub mscale_all_dim: f64}
+    /// Whether to apply magnitude scaling to all dimensions
+    pub mscale_all_dim: f64
+}
 
 impl Default for KimiK2Config {
+    /// Create default Kimi K2 configuration with production parameters
     fn default() -> Self {
         Self {
             vocab_size: 163840,
@@ -102,12 +134,17 @@ impl Default for KimiK2Config {
 
 /// Rotary Position Embedding with YARN scaling
 pub struct RotaryEmbedding {
+    /// Sine component of rotary embeddings
     sin: Tensor,
+    /// Cosine component of rotary embeddings
     cos: Tensor,
+    /// Dimension of each attention head
     #[allow(dead_code)] // Used in YARN scaling calculations but flagged incorrectly
-    head_dim: usize}
+    head_dim: usize,
+}
 
 impl RotaryEmbedding {
+    /// Create new rotary position embedding with YARN scaling support
     pub fn new(
         dtype: DType,
         config: &KimiK2Config,
@@ -136,6 +173,7 @@ impl RotaryEmbedding {
         Ok(Self { sin, cos, head_dim })
     }
 
+    /// Apply rotary position embeddings to query and key tensors
     pub fn apply_rotary_emb(
         &self,
         q: &Tensor,
@@ -155,6 +193,7 @@ impl RotaryEmbedding {
         Ok((q_embed, k_embed))
     }
 
+    /// Rotate half of the tensor dimensions for RoPE computation
     fn rotate_half(&self, x: &Tensor) -> Result<Tensor> {
         let last_dim = x.dim(D::Minus1)?;
         let x1 = x.narrow(D::Minus1, 0, last_dim / 2)?;
@@ -165,17 +204,28 @@ impl RotaryEmbedding {
 
 /// Multi-Head Attention with KV-LoRA compression
 pub struct KimiK2Attention {
+    /// Query projection layer
     q_proj: Linear,
+    /// Key projection layer with LoRA compression
     k_proj: Linear,
+    /// Value projection layer with LoRA compression
     v_proj: Linear,
+    /// Output projection layer
     o_proj: Linear,
+    /// Rotary position embedding module
     rotary_emb: RotaryEmbedding,
+    /// Number of attention heads
     num_heads: usize,
+    /// Number of key-value heads for grouped query attention
     num_kv_heads: usize,
+    /// Dimension per attention head
     head_dim: usize,
-    kv_lora_rank: usize}
+    /// LoRA rank for key-value compression
+    kv_lora_rank: usize
+}
 
 impl KimiK2Attention {
+    /// Create new attention layer with KV-LoRA compression
     pub fn new(config: &KimiK2Config, vb: VarBuilder, device: &Device) -> Result<Self> {
         let hidden_size = config.hidden_size;
         let num_heads = config.num_attention_heads;
@@ -203,6 +253,7 @@ impl KimiK2Attention {
             kv_lora_rank})
     }
 
+    /// Forward pass through multi-head attention with KV-LoRA
     pub fn forward(&self, x: &Tensor, position: usize) -> Result<Tensor> {
         let (batch_size, seq_len, _) = x.dims3()?;
 
@@ -256,13 +307,20 @@ impl KimiK2Attention {
 
 /// Mixture of Experts layer
 pub struct KimiK2MoE {
+    /// Gating network to select experts
     gate: Linear,
+    /// Collection of routed expert networks
     experts: Vec<KimiK2Expert>,
+    /// Optional shared expert always activated
     shared_expert: Option<KimiK2Expert>,
+    /// Number of experts to activate per token
     num_experts_per_tok: usize,
-    routed_scaling_factor: f64}
+    /// Scaling factor for routed expert outputs
+    routed_scaling_factor: f64
+}
 
 impl KimiK2MoE {
+    /// Create new Mixture of Experts layer
     pub fn new(config: &KimiK2Config, vb: VarBuilder) -> Result<Self> {
         let hidden_size = config.hidden_size;
         let n_routed_experts = config.n_routed_experts;
@@ -290,6 +348,7 @@ impl KimiK2MoE {
             routed_scaling_factor})
     }
 
+    /// Forward pass through the MoE layer with top-k expert routing
     pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
         let (batch_size, seq_len, hidden_size) = x.dims3()?;
         let x_flat = x.reshape((batch_size * seq_len, hidden_size))?;
@@ -361,12 +420,18 @@ impl KimiK2MoE {
 
 /// Individual expert in the MoE layer
 pub struct KimiK2Expert {
+    /// Gate projection layer for SwiGLU activation
     gate_proj: Linear,
+    /// Up projection layer to intermediate dimension
     up_proj: Linear,
+    /// Down projection layer back to hidden dimension
     down_proj: Linear,
-    act_fn: Activation}
+    /// Activation function (SiLU for Kimi K2)
+    act_fn: Activation,
+}
 
 impl KimiK2Expert {
+    /// Create new expert network for MoE layer
     pub fn new(config: &KimiK2Config, vb: VarBuilder) -> Result<Self> {
         let hidden_size = config.hidden_size;
         let intermediate_size = config.moe_intermediate_size;
@@ -383,6 +448,7 @@ impl KimiK2Expert {
             act_fn})
     }
 
+    /// Forward pass through the expert network
     pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
         let gate = self.act_fn.forward(&self.gate_proj.forward(x)?)?;
         let up = self.up_proj.forward(x)?;
@@ -393,14 +459,22 @@ impl KimiK2Expert {
 
 /// Kimi K2 Transformer Block
 pub struct KimiK2Block {
+    /// Multi-head attention layer with KV-LoRA compression
     self_attn: KimiK2Attention,
-    mlp: Option<Linear>,    // Dense layer for first k layers
-    moe: Option<KimiK2MoE>, // MoE layer for remaining layers
+    /// Dense MLP layer for first k layers
+    mlp: Option<Linear>,
+    /// Mixture of Experts layer for remaining layers
+    moe: Option<KimiK2MoE>,
+    /// Layer normalization before attention
     input_layernorm: RmsNorm,
+    /// Layer normalization after attention
     post_attention_layernorm: RmsNorm,
-    is_moe_layer: bool}
+    /// Whether this block uses MoE or dense MLP
+    is_moe_layer: bool,
+}
 
 impl KimiK2Block {
+    /// Create new transformer block (either dense or MoE)
     pub fn new(
         config: &KimiK2Config,
         layer_idx: usize,
@@ -436,6 +510,7 @@ impl KimiK2Block {
             is_moe_layer})
     }
 
+    /// Forward pass through the transformer block
     pub fn forward(&self, x: &Tensor, position: usize) -> Result<Tensor> {
         let residual = x.clone();
         let x = self.input_layernorm.forward(x)?;
@@ -458,14 +533,30 @@ impl KimiK2Block {
 
 /// Complete Kimi K2 model
 pub struct KimiK2Model {
+    /// Token embedding layer
     embed_tokens: Embedding,
+    /// Stack of transformer blocks (61 layers for Kimi K2)
     layers: Vec<KimiK2Block>,
+    /// Final layer normalization
     norm: RmsNorm,
+    /// Language modeling head for token prediction
     lm_head: Linear,
+    /// Model configuration for introspection
     #[allow(dead_code)] // Stored for future model introspection features
-    config: KimiK2Config}
+    config: KimiK2Config,
+}
 
 impl KimiK2Model {
+    /// Create placeholder Kimi K2 model for development
+    pub fn placeholder(config: &KimiK2Config, device: &Device) -> Result<Self> {
+        // Create dummy tensors for development - in production this would load actual weights
+        use candle_nn::{VarBuilder, VarMap};
+        let varmap = VarMap::new();
+        let vb = VarBuilder::from_varmap(&varmap, candle_core::DType::F32, device);
+        Self::new(config, vb, device)
+    }
+
+    /// Create new Kimi K2 model with full architecture
     pub fn new(config: &KimiK2Config, vb: VarBuilder, device: &Device) -> Result<Self> {
         let embed_tokens = embedding(config.vocab_size, config.hidden_size, vb.pp("embed_tokens"))?;
         let norm = rms_norm(config.hidden_size, config.rms_norm_eps, vb.pp("norm"))?;
@@ -494,6 +585,7 @@ impl KimiK2Model {
             config: config.clone()})
     }
 
+    /// Forward pass through the complete model
     pub fn forward(&self, input_ids: &Tensor, position: usize) -> Result<Tensor> {
         let mut x = self.embed_tokens.forward(input_ids)?;
 
@@ -507,6 +599,7 @@ impl KimiK2Model {
 }
 
 impl Module for KimiK2Model {
+    /// Standard Module trait implementation for Candle framework compatibility
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         self.forward(xs, 0)
     }

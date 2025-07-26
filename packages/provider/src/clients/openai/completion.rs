@@ -25,6 +25,10 @@ use super::types::{
 };
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::Value;
+use arrayvec::ArrayVec;
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpError;
+use fluent_ai_http3::HttpRequest;
 
 use crate::clients::openai::model_info::get_model_config;
 use crate::{
@@ -372,7 +376,6 @@ impl OpenAICompletionBuilder {
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
 
             while let Some(event) = sse_stream.next().await {

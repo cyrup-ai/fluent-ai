@@ -13,6 +13,8 @@ use serde_json::json;
 // Note: EmbeddingError not available - needs custom error type
 // Note: runtime and AsyncTask need to be replaced with tokio equivalents
 use tokio::{self as rt, task::spawn as AsyncTask};
+use fluent_ai_http3::HttpClient;
+use fluent_ai_http3::HttpRequest;
 
 use super::client::Client;
 
@@ -240,7 +242,6 @@ impl EmbeddingModel {
         anyhow::Error, // was fluent_ai_domain::embedding::EmbeddingError
     > {
         use anyhow::Error; // was fluent_ai_domain::embedding::EmbeddingError
-        use fluent_ai_http3::{HttpClient, HttpRequest};
 
         if documents.is_empty() {
             return Ok(Vec::new());

@@ -1,6 +1,5 @@
 //! Test to verify the EXACT API from ARCHITECTURE.md works
 
-use cyrup_sugars::hash_map_fn;
 use fluent_ai::*;
 use serde_json::Value;
 
@@ -33,25 +32,21 @@ async fn test_exact_architecture_api() {
 
         ~ Be Useful, Not Thorough")
         .context( // trait Context
-            (
-                Context::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
-                Context::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
-                Context::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-                Context::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
-            )
+            Context::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            Context::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+            Context::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+            Context::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait Tool
-            (
-                Tool::<Perplexity>::new(hash_map_fn!{
-                    "citations" => "true"
-                }),
-                Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
-            )
+            Tool::<Perplexity>::new({
+                "citations" => "true"
+            }),
+            Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
         ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
-        .additional_params(hash_map_fn!{"beta" => "true"})
+        .additional_params({"beta" => "true"})
         .memory(Library::named("obsidian_vault"))
-        .metadata(hash_map_fn!{ "key" => "val", "foo" => "bar" })
+        .metadata({ "key" => "val", "foo" => "bar" })
         .on_tool_result(|_results| {
             // do stuff
         })
@@ -64,11 +59,11 @@ async fn test_exact_architecture_api() {
             chunk
         })
         .into_agent() // Agent Now
-        .conversation_history(conversation_history![
-            MessageRole::User => "What time is it in Paris, France",
-            MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
-            MessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
-        ])
+        .conversation_history(
+            (MessageRole::User, "What time is it in Paris, France"),
+            (MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
+            (MessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
+        )
         .chat("Hello"); // AsyncStream<MessageChunk>
 
     // Note: removed the ? after .chat() because it returns Result<AsyncStream<T>, String>

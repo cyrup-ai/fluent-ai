@@ -12,26 +12,54 @@ use thiserror::Error;
 /// Core template error types
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum TemplateError {
+    /// Template was not found
     #[error("Template not found: {name}")]
-    NotFound { name: Arc<str> },
+    NotFound { 
+        /// Name of the template that was not found
+        name: Arc<str> 
+    },
 
+    /// Error occurred during template parsing
     #[error("Parse error: {message}")]
-    ParseError { message: Arc<str> },
+    ParseError { 
+        /// Details about the parsing error
+        message: Arc<str> 
+    },
 
+    /// Error occurred during template compilation
     #[error("Compile error: {message}")]
-    CompileError { message: Arc<str> },
+    CompileError { 
+        /// Details about the compilation error
+        message: Arc<str> 
+    },
 
+    /// Error occurred during template rendering
     #[error("Render error: {message}")]
-    RenderError { message: Arc<str> },
+    RenderError { 
+        /// Details about the rendering error
+        message: Arc<str> 
+    },
 
+    /// Error related to template variables
     #[error("Variable error: {message}")]
-    VariableError { message: Arc<str> },
+    VariableError { 
+        /// Details about the variable error
+        message: Arc<str> 
+    },
 
+    /// Operation was denied due to insufficient permissions
     #[error("Permission denied: {message}")]
-    PermissionDenied { message: Arc<str> },
+    PermissionDenied { 
+        /// Details about the permission denial
+        message: Arc<str> 
+    },
 
+    /// Error occurred during storage operations
     #[error("Storage error: {message}")]
-    StorageError { message: Arc<str> },
+    StorageError { 
+        /// Details about the storage error
+        message: Arc<str> 
+    },
 }
 
 /// Template result type
@@ -40,28 +68,46 @@ pub type TemplateResult<T> = Result<T, TemplateError>;
 /// Template information structure for metadata queries
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateInfo {
+    /// Unique identifier for the template
     pub id: Arc<str>,
+    /// Human-readable name of the template
     pub name: Arc<str>,
+    /// Category classification for organizational purposes
     pub category: TemplateCategory,
+    /// Size of the template content in bytes
     pub size: usize,
+    /// Number of template variables that can be substituted
     pub variable_count: usize,
+    /// Unix timestamp when the template was created
     pub created_at: i64,
+    /// Unix timestamp when the template was last modified
     pub modified_at: i64,
+    /// Version string for template versioning
     pub version: Arc<str>,
 }
 
 /// Template category enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TemplateCategory {
+    /// General chat conversation templates
     Chat,
+    /// System-level templates for internal operations
     System,
+    /// User-facing templates for user interactions
     User,
+    /// Assistant response templates
     Assistant,
+    /// Function call templates for structured operations
     Function,
+    /// Tool usage templates for external integrations
     Tool,
+    /// Context injection templates for conversation enhancement
     Context,
+    /// Prompt templates for guiding AI behavior
     Prompt,
+    /// Response formatting templates
     Response,
+    /// User-defined custom template category
     Custom,
 }
 
@@ -74,35 +120,55 @@ impl Default for TemplateCategory {
 /// Variable type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum VariableType {
+    /// String/text variable type
     String,
+    /// Numeric variable type (integers and floats)
     Number,
+    /// Boolean true/false variable type
     Boolean,
+    /// Array/list variable type
     Array,
+    /// Object/map variable type with key-value pairs
     Object,
+    /// Any type - accepts all variable types
     Any,
 }
 
 /// Template variable definition
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateVariable {
+    /// Name of the template variable (used for substitution)
     pub name: Arc<str>,
+    /// Human-readable description of the variable's purpose
     pub description: Arc<str>,
+    /// Data type of the variable (string, number, boolean, etc.)
     pub var_type: VariableType,
+    /// Default value to use if no value is provided
     pub default_value: Option<Arc<str>>,
+    /// Whether this variable must be provided for template rendering
     pub required: bool,
+    /// Regular expression pattern for validating variable values
     pub validation_pattern: Option<Arc<str>>,
+    /// List of valid values for enumeration-type variables
     pub valid_values: Option<Arc<[Arc<str>]>>,
+    /// Minimum value for numeric variables
     pub min_value: Option<f64>,
+    /// Maximum value for numeric variables
     pub max_value: Option<f64>,
 }
 
 /// Template permissions
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplatePermissions {
+    /// Whether the template can be read by users
     pub read: bool,
+    /// Whether the template can be modified by users
     pub write: bool,
+    /// Whether the template can be executed/rendered by users
     pub execute: bool,
+    /// Whether the template can be shared with other users
     pub share: bool,
+    /// Whether the template can be deleted by users
     pub delete: bool,
 }
 
@@ -121,28 +187,46 @@ impl Default for TemplatePermissions {
 /// Template metadata
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateMetadata {
+    /// Unique identifier for the template
     pub id: Arc<str>,
+    /// Human-readable name of the template
     pub name: Arc<str>,
+    /// Description of what the template does
     pub description: Arc<str>,
+    /// Author or creator of the template
     pub author: Arc<str>,
+    /// Version string of the template
     pub version: Arc<str>,
+    /// Category classification for the template
     pub category: TemplateCategory,
+    /// Tags associated with the template for search/filtering
     pub tags: Arc<[Arc<str>]>,
+    /// Timestamp when the template was created
     pub created_at: u64,
+    /// Timestamp when the template was last modified
     pub modified_at: u64,
+    /// Number of times this template has been used
     pub usage_count: u64,
+    /// User rating of the template (0.0 to 5.0)
     pub rating: f64,
+    /// Permission settings for the template
     pub permissions: TemplatePermissions,
 }
 
 /// Template value type for variables
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TemplateValue {
+    /// String value stored as Arc<str> for zero-allocation sharing
     String(Arc<str>),
+    /// Numeric value stored as 64-bit floating point
     Number(f64),
+    /// Boolean true/false value
     Boolean(bool),
+    /// Array of template values with shared ownership
     Array(Arc<[TemplateValue]>),
+    /// Object/map of key-value pairs with shared ownership
     Object(Arc<HashMap<Arc<str>, TemplateValue>>),
+    /// Null/empty value
     Null,
 }
 
@@ -173,7 +257,9 @@ impl From<bool> for TemplateValue {
 /// Template context for rendering
 #[derive(Clone)]
 pub struct TemplateContext {
+    /// Variables available during template rendering
     pub variables: HashMap<Arc<str>, TemplateValue>,
+    /// Functions available during template rendering
     pub functions: HashMap<
         Arc<str>,
         Arc<dyn Fn(&[TemplateValue]) -> TemplateResult<TemplateValue> + Send + Sync>,
@@ -181,6 +267,7 @@ pub struct TemplateContext {
 }
 
 impl TemplateContext {
+    /// Create a new empty template context
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
@@ -188,6 +275,7 @@ impl TemplateContext {
         }
     }
 
+    /// Add a variable to the context (builder pattern)
     pub fn with_variable(
         mut self,
         name: impl Into<Arc<str>>,
@@ -197,10 +285,12 @@ impl TemplateContext {
         self
     }
 
+    /// Set a variable in the context (mutating)
     pub fn set_variable(&mut self, name: impl Into<Arc<str>>, value: impl Into<TemplateValue>) {
         self.variables.insert(name.into(), value.into());
     }
 
+    /// Get a variable value by name
     pub fn get_variable(&self, name: &str) -> Option<&TemplateValue> {
         self.variables.get(name)
     }
@@ -220,25 +310,42 @@ impl Default for TemplateContext {
 /// Abstract syntax tree for templates
 #[derive(Debug, Clone, PartialEq)]
 pub enum TemplateAst {
+    /// Static text content
     Text(Arc<str>),
+    /// Variable reference
     Variable(Arc<str>),
+    /// Expression with operator and operands
     Expression {
+        /// The operator for this expression
         operator: Arc<str>,
+        /// The operands for this expression
         operands: Arc<[TemplateAst]>,
     },
+    /// Conditional (if/else) statement
     Conditional {
+        /// The condition to evaluate
         condition: Arc<TemplateAst>,
+        /// AST to execute if condition is true
         if_true: Arc<TemplateAst>,
+        /// Optional AST to execute if condition is false
         if_false: Option<Arc<TemplateAst>>,
     },
+    /// Loop statement
     Loop {
+        /// Loop variable name
         variable: Arc<str>,
+        /// The iterable expression to loop over
         iterable: Arc<TemplateAst>,
+        /// The body of the loop
         body: Arc<TemplateAst>,
     },
+    /// Block of multiple AST nodes
     Block(Arc<[TemplateAst]>),
+    /// Function call
     Function {
+        /// Function name
         name: Arc<str>,
+        /// Function arguments
         args: Arc<[TemplateAst]>,
     },
 }
@@ -246,13 +353,18 @@ pub enum TemplateAst {
 /// Compiled template representation
 #[derive(Debug, Clone)]
 pub struct CompiledTemplate {
+    /// Template metadata and information
     pub metadata: TemplateMetadata,
+    /// Compiled abstract syntax tree
     pub ast: TemplateAst,
+    /// Template variables and their definitions
     pub variables: Arc<[TemplateVariable]>,
+    /// Whether the template has been optimized for performance
     pub optimized: bool,
 }
 
 impl CompiledTemplate {
+    /// Create a new compiled template
     pub fn new(
         metadata: TemplateMetadata,
         ast: TemplateAst,
@@ -266,6 +378,7 @@ impl CompiledTemplate {
         }
     }
 
+    /// Render the template with the given context
     pub fn render(&self, context: &TemplateContext) -> TemplateResult<Arc<str>> {
         self.render_ast(&self.ast, context)
     }
@@ -321,13 +434,18 @@ impl CompiledTemplate {
 /// Main chat template structure
 #[derive(Debug, Clone)]
 pub struct ChatTemplate {
+    /// Template metadata and information
     pub metadata: TemplateMetadata,
+    /// Raw template content string
     pub content: Arc<str>,
+    /// Template variables and their definitions
     pub variables: Arc<[TemplateVariable]>,
+    /// Optional compiled template for faster rendering
     pub compiled: Option<CompiledTemplate>,
 }
 
 impl ChatTemplate {
+    /// Create a new chat template
     pub fn new(
         metadata: TemplateMetadata,
         content: Arc<str>,
@@ -341,6 +459,7 @@ impl ChatTemplate {
         }
     }
 
+    /// Render the template with provided variables
     pub fn render(&self, variables: &HashMap<Arc<str>, Arc<str>>) -> TemplateResult<Arc<str>> {
         let mut context = TemplateContext::new();
         for (key, value) in variables {
@@ -359,18 +478,22 @@ impl ChatTemplate {
         }
     }
 
+    /// Get the template ID
     pub fn get_id(&self) -> &Arc<str> {
         &self.metadata.id
     }
 
+    /// Get the template name
     pub fn get_name(&self) -> &Arc<str> {
         &self.metadata.name
     }
 
+    /// Get the template content
     pub fn get_content(&self) -> &Arc<str> {
         &self.content
     }
 
+    /// Get the template variables
     pub fn get_variables(&self) -> &Arc<[TemplateVariable]> {
         &self.variables
     }

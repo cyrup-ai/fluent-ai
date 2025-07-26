@@ -16,7 +16,94 @@ pub struct KVCacheBuilder {
     config: KVCacheConfig}
 
 impl KVCacheBuilder {
-    /// Create new builder with default configuration
+    /// Creates a new KVCacheBuilder with default configuration optimized for general use
+    /// 
+    /// Initializes a fluent builder for constructing KV cache configurations with
+    /// production-ready defaults suitable for most transformer models.
+    /// 
+    /// # Default Configuration
+    /// 
+    /// ## Memory Settings
+    /// - **Num Heads**: 8 (standard for many models)
+    /// - **Head Dimension**: 64 (common embedding dimension)
+    /// - **Max Sequence Length**: 2048 (balanced sequence support)
+    /// - **Memory Pool Size**: 256MB (reasonable default allocation)
+    /// - **Eviction Strategy**: LRU (predictable performance)
+    /// 
+    /// ## Feature Flags (All Disabled by Default)
+    /// - **Compression**: Disabled (prioritizes speed over memory)
+    /// - **Prefetching**: Disabled (prevents aggressive memory usage)
+    /// - **Statistics**: Disabled (reduces overhead)
+    /// - **Memory Pooling**: Disabled (simplifies memory management)
+    /// - **Batch Operations**: Disabled (reduces complexity)
+    /// 
+    /// # Performance Characteristics
+    /// 
+    /// - **Zero Allocation**: Builder uses const fn and stack allocation
+    /// - **Compile-time Optimization**: Const evaluation enables optimization
+    /// - **Inlined**: Method marked for aggressive inlining
+    /// - **Default Safety**: Conservative settings prevent resource exhaustion
+    /// 
+    /// # Builder Pattern Benefits
+    /// 
+    /// The fluent builder pattern provides:
+    /// - **Type Safety**: Compile-time validation of configuration combinations
+    /// - **Ergonomic API**: Intuitive method chaining for complex configurations
+    /// - **Flexibility**: Easy customization without breaking existing code
+    /// - **Documentation**: Self-documenting configuration intent
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use fluent_ai_candle::KVCacheBuilder;
+    /// 
+    /// // Basic usage with defaults
+    /// let cache = KVCacheBuilder::new()
+    ///     .build()?;
+    /// 
+    /// // Customized configuration
+    /// let cache = KVCacheBuilder::new()
+    ///     .num_heads(16)
+    ///     .head_dim(128)
+    ///     .max_sequence_length(4096)
+    ///     .enable_compression()
+    ///     .enable_prefetch()
+    ///     .build()?;
+    /// 
+    /// // Use model-specific presets
+    /// let cache = KVCacheBuilder::new()
+    ///     .gpt3()  // Apply GPT-3 specific settings
+    ///     .enable_statistics()
+    ///     .build()?;
+    /// ```
+    /// 
+    /// # Configuration Validation
+    /// 
+    /// The builder validates configuration parameters during construction:
+    /// - Head count and dimension combinations
+    /// - Memory requirements vs available resources
+    /// - Feature flag compatibility
+    /// - Sequence length practical limits
+    /// 
+    /// # Memory Estimation
+    /// 
+    /// ```rust
+    /// let builder = KVCacheBuilder::new()
+    ///     .num_heads(32)
+    ///     .head_dim(128)
+    ///     .max_sequence_length(8192);
+    /// 
+    /// println!("Estimated memory: {} MB", builder.estimated_memory_mb());
+    /// 
+    /// if builder.fits_in_memory(available_memory) {
+    ///     let cache = builder.build()?;
+    /// }
+    /// ```
+    /// 
+    /// # Thread Safety
+    /// 
+    /// The builder is immutable and thread-safe. Each method returns a new
+    /// builder instance, allowing safe concurrent configuration.
     #[inline(always)]
     pub const fn new() -> Self {
         Self {

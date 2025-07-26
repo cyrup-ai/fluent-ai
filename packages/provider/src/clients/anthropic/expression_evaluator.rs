@@ -4,6 +4,7 @@
 //! mathematical functions, constants, and variables with comprehensive error handling.
 
 use std::f64::consts;
+use std::collections::HashMap;
 
 use pest::Parser;
 use pest_derive::Parser;

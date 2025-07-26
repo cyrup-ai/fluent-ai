@@ -1,0 +1,102 @@
+warning: unused variable: `exporter`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/manager.rs:112:13
+warning: unused variable: `options`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/manager.rs:111:34
+warning: unused variable: `search_stream`
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/search/searcher.rs:158:21
+warning: unused variable: `index`
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/indexing.rs:24:17
+warning: method `load_from_hub_sync` is never used
+   --> packages/fluent-ai-candle/src/model/core/candle_model.rs:198:8
+warning: function `load_from_file_sync_impl` is never used
+   --> packages/fluent-ai-candle/src/model/core/candle_model.rs:227:4
+warning: methods `create_llama_model`, `create_mistral_model`, `create_gemma_model`, `create_phi_model`, and `create_qwen_model` are never used
+  --> packages/fluent-ai-candle/src/model/core/model_creators.rs:18:19
+warning: methods `sample_count`, `history_length`, and `ema_alpha` are never used
+   --> packages/fluent-ai-candle/src/sampling/mirostat/perplexity.rs:115:19
+warning: method `apply_mirostat_sampling` is never used
+   --> packages/fluent-ai-candle/src/sampling/mirostat/processor.rs:216:8
+warning: trait `ErrorExt` is never used
+  --> packages/fluent-ai-candle/src/streaming/decoder/error.rs:87:18
+warning: multiple methods are never used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/commands/execution.rs:146:8
+warning: field `last_persistence` is never read
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/config/config_manager.rs:107:5
+warning: fields `client` and `plugin_manager` are never read
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/integrations/external.rs:24:5
+warning: methods `execute_http_request`, `execute_plugin_request`, and `execute_service_request` are never used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/integrations/external.rs:107:14
+warning: fields `config`, `history`, and `stats` are never read
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/actions.rs:132:5
+warning: fields `config`, `history`, and `stats` are never read
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/actions.rs:194:5
+warning: field `evaluator` is never read
+  --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/execution.rs:24:5
+warning: method `execute_macro_impl` is never used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/processor.rs:250:8
+warning: methods `execute_action_internal`, `resolve_variables`, and `evaluate_condition` are never used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/system.rs:378:8
+warning: multiple methods are never used
+   --> packages/fluent-ai-candle/src/types/candle_chat/commands/execution.rs:146:8
+warning: methods `execute_single_action_sync` and `get_macro` are never used
+   --> packages/fluent-ai-candle/src/types/candle_chat/macros/playback.rs:167:8
+warning: field `backpressure_threshold` is never read
+  --> packages/fluent-ai-candle/src/types/candle_chat/realtime/streaming.rs:44:5
+warning: field `health_check_task` is never read
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/connections.rs:153:5
+warning: fields `connections`, `message_broadcaster`, and `event_handlers` are never read
+   --> packages/fluent-ai-candle/src/types/candle_chat/realtime/config.rs:110:5
+warning: method `cartesian_product` is never used
+  --> packages/fluent-ai-candle/src/types/candle_chat/search/index/utils.rs:84:19
+warning: type alias `ExtractionResult` is never used
+  --> packages/fluent-ai-candle/src/types/candle_context/extraction/error.rs:39:10
+warning: associated functions `execute_extraction`, `process_extraction_result`, and `parse_json_response` are never used
+   --> packages/fluent-ai-candle/src/types/candle_context/extraction/extractor.rs:89:8
+warning: variant `MemoryMapped` is never constructed
+  --> packages/fluent-ai-candle/src/var_builder/builder.rs:29:5
+warning: function `print_styled` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:20:4
+warning: function `print_header` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:33:4
+warning: constant `PRIMARY` is never used
+ --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:9:15
+warning: constant `SECONDARY` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:10:15
+warning: constant `ACCENT` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:11:15
+warning: constant `SUCCESS` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:12:15
+warning: constant `WARNING` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:13:15
+warning: constant `ERROR` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:14:15
+warning: constant `TEXT` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:15:15
+warning: constant `MUTED` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chat_loop.rs:16:15
+warning: constant `SECONDARY` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:22:15
+warning: constant `ACCENT` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:23:15
+warning: constant `SUCCESS` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:24:15
+warning: constant `WARNING` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:25:15
+warning: constant `ERROR` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:26:15
+warning: constant `TEXT` is never used
+  --> packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:27:15
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> packages/fluent-ai-candle/src/model/core/model_loader.rs:26:29
+warning: unused pinned boxed implementer of `std::future::Future` that must be used
+  --> packages/fluent-ai-candle/src/model/core/model_loader.rs:28:13
+warning: unused return value of `Box::<T>::pin` that must be used
+  --> packages/fluent-ai-candle/src/model/core/model_loader.rs:28:13
+warning: unused pinned boxed implementer of `std::future::Future` that must be used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/system.rs:285:13
+warning: unused return value of `Box::<T>::pin` that must be used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/system.rs:285:13
+warning: unused pinned boxed implementer of `std::future::Future` that must be used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/system.rs:335:13
+warning: unused return value of `Box::<T>::pin` that must be used
+   --> packages/fluent-ai-candle/src/types/candle_chat/chat/macros/system.rs:335:13

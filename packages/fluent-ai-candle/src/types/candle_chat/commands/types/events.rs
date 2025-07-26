@@ -13,155 +13,271 @@ use super::core::CommandError;
 pub enum CommandEvent {
     /// Command started executing
     Started {
+        /// The command being executed
         command: ImmutableChatCommand,
+        /// Unique execution identifier
         execution_id: u64,
-        timestamp_nanos: u64},
+        /// Start timestamp in nanoseconds
+        timestamp_nanos: u64
+    },
     /// Command execution progress
     Progress {
+        /// Execution identifier for tracking
         execution_id: u64,
+        /// Progress completion percentage (0.0-100.0)
         progress_percent: f32,
-        message: Option<String>},
+        /// Optional progress message
+        message: Option<String>
+    },
     /// Command produced output
     Output {
+        /// Execution identifier for tracking
         execution_id: u64,
+        /// Output content produced by command
         output: String,
-        output_type: OutputType},
+        /// Type classification of the output
+        output_type: OutputType
+    },
     /// Command completed successfully
     Completed {
+        /// Execution identifier for tracking
         execution_id: u64,
+        /// Final result of command execution
         result: CommandExecutionResult,
-        duration_nanos: u64},
+        /// Total execution duration in nanoseconds
+        duration_nanos: u64
+    },
     /// Command failed
     Failed {
+        /// Execution identifier for tracking
         execution_id: u64,
+        /// Error that caused the failure
         error: CommandError,
-        duration_nanos: u64},
+        /// Duration before failure in nanoseconds
+        duration_nanos: u64
+    },
     /// Command was cancelled
-    Cancelled { execution_id: u64, reason: String }}
+    Cancelled {
+        /// Execution identifier for tracking
+        execution_id: u64,
+        /// Reason for cancellation
+        reason: String
+    }
+}
 
 /// Command output type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputType {
+    /// Plain text output
     Text,
+    /// JSON formatted output
     Json,
+    /// HTML formatted output
     Html,
+    /// Markdown formatted output
     Markdown,
-    Binary}
+    /// Binary data output
+    Binary
+}
 
-/// Search-related enums
+/// Search scope for search commands
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchScope {
+    /// Search all available content
     All,
+    /// Search only current session
     Current,
+    /// Search recent conversations
     Recent,
-    Bookmarked}
+    /// Search bookmarked items only
+    Bookmarked
+}
 
-/// Template-related enums
+/// Template management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TemplateAction {
+    /// List available templates
     List,
+    /// Create a new template
     Create,
+    /// Delete an existing template
     Delete,
+    /// Edit an existing template
     Edit,
-    Use}
+    /// Use/apply a template
+    Use
+}
 
-/// Macro-related enums
+/// Macro management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MacroAction {
+    /// List available macros
     List,
+    /// Create a new macro
     Create,
+    /// Delete an existing macro
     Delete,
+    /// Edit an existing macro
     Edit,
-    Execute}
+    /// Execute a macro
+    Execute
+}
 
-/// Branch-related enums
+/// Branch management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BranchAction {
+    /// List available branches
     List,
+    /// Create a new branch
     Create,
+    /// Switch to a different branch
     Switch,
+    /// Merge branches together
     Merge,
-    Delete}
+    /// Delete an existing branch
+    Delete
+}
 
-/// Session-related enums
+/// Session management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionAction {
+    /// List available sessions
     List,
+    /// Create a new session
     New,
+    /// Switch to a different session
     Switch,
+    /// Delete an existing session
     Delete,
+    /// Export session data
     Export,
-    Import}
+    /// Import session data
+    Import
+}
 
-/// Tool-related enums
+/// Tool management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ToolAction {
+    /// List available tools
     List,
+    /// Install a new tool
     Install,
+    /// Remove an existing tool
     Remove,
+    /// Configure tool settings
     Configure,
+    /// Update tool to latest version
     Update,
-    Execute}
+    /// Execute a tool command
+    Execute
+}
 
-/// Stats-related enums
+/// Statistics type for stats commands
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatsType {
+    /// Usage statistics
     Usage,
+    /// Performance metrics
     Performance,
+    /// Historical data
     History,
+    /// Token usage statistics
     Tokens,
+    /// Cost and billing information
     Costs,
-    Errors}
+    /// Error statistics
+    Errors
+}
 
-/// Theme-related enums
+/// Theme management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeAction {
+    /// Set active theme
     Set,
+    /// List available themes
     List,
+    /// Create a new theme
     Create,
+    /// Export theme configuration
     Export,
+    /// Import theme configuration
     Import,
-    Edit}
+    /// Edit existing theme
+    Edit
+}
 
-/// Debug-related enums
+/// Debug information actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DebugAction {
+    /// Show system information
     Info,
+    /// Display log files
     Logs,
+    /// Show performance metrics
     Performance,
+    /// Display memory usage
     Memory,
+    /// Show network statistics
     Network,
-    Cache}
+    /// Display cache information
+    Cache
+}
 
-/// History-related enums
+/// History management actions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryAction {
+    /// Show conversation history
     Show,
+    /// Search through history
     Search,
+    /// Clear history data
     Clear,
+    /// Export history to file
     Export,
+    /// Import history from file
     Import,
-    Backup}
+    /// Create history backup
+    Backup
+}
 
-/// Import-related enums
+/// Import data type for import commands
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImportType {
+    /// Chat conversation data
     Chat,
+    /// Configuration settings
     Config,
+    /// Template definitions
     Templates,
-    Macros}
+    /// Macro definitions
+    Macros
+}
 
 /// Command execution result
 #[derive(Debug, Clone)]
 pub enum CommandExecutionResult {
     /// Simple success message
-    Success(String),
+    Success(
+        /// Success message text
+        String
+    ),
     /// Data result with structured output
-    Data(serde_json::Value),
+    Data(
+        /// Structured JSON data result
+        serde_json::Value
+    ),
     /// File result with path and metadata
     File {
+        /// File system path to the result file
         path: String,
+        /// Size of the file in bytes
         size_bytes: u64,
-        mime_type: String},
+        /// MIME type of the file content
+        mime_type: String
+    },
     /// Multiple results
-    Multiple(Vec<CommandExecutionResult>)}
+    Multiple(
+        /// Vector of multiple execution results
+        Vec<CommandExecutionResult>
+    )
+}

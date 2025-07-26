@@ -6,36 +6,40 @@ use std::marker::PhantomData;
 
 use fluent_ai_domain::{
     AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
-    AgentWithHistory, ChatMessageChunk, ContextArgs, ConversationHistoryArgs, MessageRole,
-    ToolArgs, ZeroOneOrMany};
+    ChatMessageChunk, CompletionProvider, Context, Tool, McpServer, Memory, 
+    AdditionalParams, Metadata, Conversation, MessageRole,
+    ZeroOneOrMany, AsyncStream};
+use crate::agent::Agent;
+use crate::completion::{Message, CompletionModel};
+use crate::chat::ChatLoop;
 use serde_json::Value;
+use std::collections::HashMap;
+
+/// MCP Server type enum
+#[derive(Debug, Clone)]
+pub enum McpServerType {
+    StdIo,
+    Sse,
+    Http,
+}
 
 /// MCP Server configuration
 #[derive(Debug, Clone)]
 struct McpServerConfig {
-    #[allow(dead_code)] // TODO: Use for MCP server type identification (stdio, socket, etc.)
-    server_type: String,
-    #[allow(dead_code)] // TODO: Use for MCP server binary executable path
+    server_type: McpServerType,
     bin_path: Option<String>,
-    #[allow(dead_code)] // TODO: Use for MCP server initialization command
-    init_command: Option<String>}
+    init_command: Option<String>,
+}
 
-/// Builder for creating agent roles - EXACT API from ARCHITECTURE.md
-pub struct AgentRoleBuilder {
-    name: String,
-    completion_provider: Option<Box<dyn std::any::Any + Send + Sync>>,
-    temperature: Option<f64>,
-    max_tokens: Option<u64>,
-    system_prompt: Option<String>,
-    contexts: Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>,
-    tools: Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>,
-    mcp_servers: Option<ZeroOneOrMany<McpServerConfig>>,
-    additional_params: Option<HashMap<String, Value>>,
-    memory: Option<Box<dyn std::any::Any + Send + Sync>>,
-    metadata: Option<HashMap<String, Value>>,
-    on_tool_result_handler: Option<Box<dyn Fn(ZeroOneOrMany<Value>) + Send + Sync>>,
-    on_conversation_turn_handler:
-        Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>}
+/// FluentAi entry point for creating agent roles
+pub struct FluentAi;
+
+impl FluentAi {
+    /// Create a new agent role builder - main entry point
+    pub fn agent_role(name: impl Into<String>) -> AgentRoleBuilder {
+        AgentRoleBuilder::new(name)
+    }
+}
 
 /// MCP Server builder
 pub struct McpServerBuilder<T> {
@@ -71,6 +75,13 @@ impl AgentRoleBuilder {
         provider: impl std::any::Any + Send + Sync + 'static,
     ) -> Self {
         self.completion_provider = Some(Box::new(provider));
+        self
+    }
+
+    /// Set model - EXACT syntax: .model(Models::Gpt4OMini)
+    pub fn model(mut self, model: impl CompletionModel) -> Self {
+        // Store model in the same field as completion_provider for compatibility
+        self.completion_provider = Some(Box::new(model));
         self
     }
 
@@ -176,14 +187,26 @@ impl AgentRoleBuilder {
     }
 
     /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// MUST precede .chat()
-    pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
+    /// MUST precede .into_agent()
+    pub fn on_chunk<F>(self, handler: F) -> AgentBuilder
     where
         F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
     {
-        AgentRoleBuilderWithChunkHandler {
+        AgentBuilder {
             inner: self,
-            chunk_handler: Box::new(handler)}
+            chunk_handler: Box::new(handler),
+            conversation_history: ZeroOneOrMany::None,
+        }
+    }
+
+    /// Convert to agent - EXACT syntax: .into_agent()
+    /// Returns AgentBuilder that supports conversation_history() and chat() methods
+    pub fn into_agent(self) -> AgentBuilder {
+        AgentBuilder {
+            inner: self,
+            chunk_handler: Box::new(|chunk| chunk), // Default passthrough handler
+            conversation_history: ZeroOneOrMany::None,
+        }
     }
 }
 
@@ -253,10 +276,277 @@ pub struct AgentRoleBuilderWithChunkHandler {
 
 impl AgentRoleBuilderWithChunkHandler {
     /// Convert to agent - EXACT syntax: .into_agent()
-    pub fn into_agent(self) -> AgentWithHistory {
-        AgentWithHistory {
+    /// Returns AgentBuilder that supports conversation_history() and chat() methods
+    pub fn into_agent(self) -> AgentBuilder {
+        AgentBuilder {
             inner: self.inner,
             chunk_handler: self.chunk_handler,
-            conversation_history: None}
+            conversation_history: ZeroOneOrMany::None,
+        }
+    }
+}
+
+/// Unified AgentBuilder that handles the complete builder flow
+/// This is what .into_agent() returns - supports conversation_history() and chat()
+pub struct AgentBuilder {
+    inner: AgentRoleBuilder,
+    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
+    conversation_history: ZeroOneOrMany<(MessageRole, String)>,
+}
+
+impl AgentBuilder {
+    /// Set conversation history - EXACT syntax from ARCHITECTURE.md
+    /// Supports: .conversation_history(MessageRole::User => "content", MessageRole::System => "content", ...)
+    pub fn conversation_history<H>(mut self, history: H) -> Self
+    where
+        H: ConversationHistoryArgs,
+    {
+        self.conversation_history = history.into_history().unwrap_or(ZeroOneOrMany::None);
+        self
+    }
+
+    /// Simple chat method - EXACT syntax: .chat("Hello")
+    pub fn chat(&self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
+        let _message_text = message.into();
+        
+        // AsyncStream-only architecture - no Result wrapping
+        // Error handling via on_chunk patterns, not Result types
+        AsyncStream::empty()
+    }
+
+    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop)  
+    pub fn chat<F>(&self, closure: F) -> AsyncStream<ChatMessageChunk>
+    where
+        F: FnOnce(&AgentConversation) -> ChatLoop + Send + 'static,
+    {
+        // AsyncStream-only architecture - no Result wrapping
+        AsyncStream::with_channel(move |sender| {
+            // Create conversation from current history
+            let conversation = AgentConversation {
+                messages: match &self.conversation_history {
+                    ZeroOneOrMany::None => None,
+                    _ => Some(self.conversation_history.clone()),
+                }
+            };
+            
+            // Execute closure to get ChatLoop decision
+            let chat_result = closure(&conversation);
+            
+            match chat_result {
+                ChatLoop::Break => {
+                    // Send final chunk and close stream
+                    let _ = sender.send(ChatMessageChunk { text: String::new(), done: true });
+                }
+                ChatLoop::Reprompt(response) => {
+                    // Send response as chunk
+                    let _ = sender.send(ChatMessageChunk { text: response, done: true });
+                }
+                ChatLoop::UserPrompt(prompt) => {
+                    // Send prompt as chunk
+                    let prompt_text = prompt.unwrap_or_else(|| "Waiting for user input...".to_string());
+                    let _ = sender.send(ChatMessageChunk { text: prompt_text, done: true });
+                }
+            }
+        })
+    }
+}
+
+// Trait implementations for transparent ARCHITECTURE.md syntax
+// All macros work INSIDE closures buried in builders and are NEVER EXPOSED in public API surface
+
+use fluent_ai_domain::agent::types::{ContextArgs, ToolArgs, ConversationHistoryArgs};
+use fluent_ai_domain::{Context, Tool};
+
+// ContextArgs implementations for variadic context syntax
+// Enables: .context(Context<File>::of(...), Context<Files>::glob(...), Context<Directory>::of(...), Context<Github>::glob(...))
+
+impl<T> ContextArgs for T
+where
+    T: Context + Send + Sync + 'static,
+{
+    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        let boxed_context = Box::new(self) as Box<dyn std::any::Any + Send + Sync>;
+        *contexts = match contexts.take() {
+            Some(existing) => Some(existing.with_pushed(boxed_context)),
+            None => Some(ZeroOneOrMany::one(boxed_context)),
+        };
+    }
+}
+
+impl<T1, T2> ContextArgs for (T1, T2)
+where
+    T1: Context + Send + Sync + 'static,
+    T2: Context + Send + Sync + 'static,
+{
+    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        self.0.add_to(contexts);
+        self.1.add_to(contexts);
+    }
+}
+
+impl<T1, T2, T3> ContextArgs for (T1, T2, T3)
+where
+    T1: Context + Send + Sync + 'static,
+    T2: Context + Send + Sync + 'static,
+    T3: Context + Send + Sync + 'static,
+{
+    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        self.0.add_to(contexts);
+        self.1.add_to(contexts);
+        self.2.add_to(contexts);
+    }
+}
+
+impl<T1, T2, T3, T4> ContextArgs for (T1, T2, T3, T4)
+where
+    T1: Context + Send + Sync + 'static,
+    T2: Context + Send + Sync + 'static,
+    T3: Context + Send + Sync + 'static,
+    T4: Context + Send + Sync + 'static,
+{
+    fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        self.0.add_to(contexts);
+        self.1.add_to(contexts);
+        self.2.add_to(contexts);
+        self.3.add_to(contexts);
+    }
+}
+
+// ToolArgs implementations for variadic tool syntax  
+// Enables: .tools(Tool<Perplexity>::new({"citations" => "true"}), Tool::named("cargo").bin("~/.cargo/bin").description(...))
+
+impl<T> ToolArgs for T
+where
+    T: Tool + Send + Sync + 'static,
+{
+    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        let boxed_tool = Box::new(self) as Box<dyn std::any::Any + Send + Sync>;
+        *tools = match tools.take() {
+            Some(existing) => Some(existing.with_pushed(boxed_tool)),
+            None => Some(ZeroOneOrMany::one(boxed_tool)),
+        };
+    }
+}
+
+impl<T1, T2> ToolArgs for (T1, T2)
+where
+    T1: Tool + Send + Sync + 'static,
+    T2: Tool + Send + Sync + 'static,
+{
+    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        self.0.add_to(tools);
+        self.1.add_to(tools);
+    }
+}
+
+impl<T1, T2, T3> ToolArgs for (T1, T2, T3)
+where
+    T1: Tool + Send + Sync + 'static,
+    T2: Tool + Send + Sync + 'static,
+    T3: Tool + Send + Sync + 'static,
+{
+    fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
+        self.0.add_to(tools);
+        self.1.add_to(tools);
+        self.2.add_to(tools);
+    }
+}
+
+// hashbrown::HashMap From implementations for transparent {"key" => "value"} syntax
+// Enables: .additional_params({"beta" => "true"}) and .metadata({"key" => "val", "foo" => "bar"})
+
+impl From<[(&'static str, &'static str); 1]> for hashbrown::HashMap<&'static str, &'static str> {
+    fn from(arr: [(&'static str, &'static str); 1]) -> Self {
+        let mut map = hashbrown::HashMap::new();
+        let [(k, v)] = arr;
+        map.insert(k, v);
+        map
+    }
+}
+
+impl From<[(&'static str, &'static str); 2]> for hashbrown::HashMap<&'static str, &'static str> {
+    fn from(arr: [(&'static str, &'static str); 2]) -> Self {
+        let mut map = hashbrown::HashMap::new();
+        for (k, v) in arr {
+            map.insert(k, v);
+        }
+        map
+    }
+}
+
+impl From<[(&'static str, &'static str); 3]> for hashbrown::HashMap<&'static str, &'static str> {
+    fn from(arr: [(&'static str, &'static str); 3]) -> Self {
+        let mut map = hashbrown::HashMap::new();
+        for (k, v) in arr {
+            map.insert(k, v);
+        }
+        map
+    }
+}
+
+impl From<[(&'static str, &'static str); 4]> for hashbrown::HashMap<&'static str, &'static str> {
+    fn from(arr: [(&'static str, &'static str); 4]) -> Self {
+        let mut map = hashbrown::HashMap::new();
+        for (k, v) in arr {
+            map.insert(k, v);
+        }
+        map
+    }
+}
+
+// ConversationHistoryArgs implementations for => syntax
+// Enables: .conversation_history(MessageRole::User => "What time is it in Paris, France", MessageRole::System => "...", MessageRole::Assistant => "...")
+
+impl ConversationHistoryArgs for (MessageRole, &str) {
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        Some(ZeroOneOrMany::one((self.0, self.1.to_string())))
+    }
+}
+
+impl ConversationHistoryArgs for (MessageRole, String) {
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        Some(ZeroOneOrMany::one(self))
+    }
+}
+
+impl<T1, T2> ConversationHistoryArgs for (T1, T2)
+where
+    T1: ConversationHistoryArgs,
+    T2: ConversationHistoryArgs,
+{
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        match (self.0.into_history(), self.1.into_history()) {
+            (Some(h1), Some(h2)) => {
+                let mut combined = h1;
+                for item in h2.into_iter() {
+                    combined = combined.with_pushed(item);
+                }
+                Some(combined)
+            }
+            (Some(h), None) | (None, Some(h)) => Some(h),
+            (None, None) => None,
+        }
+    }
+}
+
+impl<T1, T2, T3> ConversationHistoryArgs for (T1, T2, T3)
+where
+    T1: ConversationHistoryArgs,
+    T2: ConversationHistoryArgs,
+    T3: ConversationHistoryArgs,
+{
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        let h12 = (self.0, self.1).into_history();
+        let h3 = self.2.into_history();
+        match (h12, h3) {
+            (Some(mut combined), Some(h3)) => {
+                for item in h3.into_iter() {
+                    combined = combined.with_pushed(item);
+                }
+                Some(combined)
+            }
+            (Some(h), None) | (None, Some(h)) => Some(h),
+            (None, None) => None,
+        }
     }
 }

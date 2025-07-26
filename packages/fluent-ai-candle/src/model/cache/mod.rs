@@ -26,9 +26,24 @@ pub struct CacheKey {
     /// Position range start for efficient range queries
     position_start: u32,
     /// Position range end for efficient range queries
-    position_end: u32}
+    position_end: u32
+}
 
 impl CacheKey {
+    /// Create new cache key with sequence isolation and position range
+    ///
+    /// Creates a composite cache key that provides efficient lookups and
+    /// supports per-sequence isolation. Position ranges enable efficient
+    /// range queries and cache invalidation.
+    ///
+    /// # Arguments
+    /// * `sequence_id` - Unique identifier for sequence isolation
+    /// * `layer_id` - Neural network layer identifier for hierarchical caching
+    /// * `position_start` - Starting position in the sequence
+    /// * `position_end` - Ending position in the sequence
+    ///
+    /// # Returns
+    /// A new CacheKey instance with optimal ordering for skiplist performance
     #[inline(always)]
     pub fn new(sequence_id: u64, layer_id: u32, position_start: u32, position_end: u32) -> Self {
         Self {
@@ -38,21 +53,46 @@ impl CacheKey {
             position_end}
     }
 
+    /// Get the sequence identifier for this cache entry
+    ///
+    /// Sequences provide isolation between different conversation contexts
+    /// or parallel processing streams. Each sequence maintains its own
+    /// independent cache state.
+    ///
+    /// # Returns
+    /// The sequence identifier as a 64-bit unsigned integer
     #[inline(always)]
     pub fn sequence_id(&self) -> u64 {
         self.sequence_id
     }
 
+    /// Get the neural network layer identifier
+    ///
+    /// Layer IDs enable hierarchical caching where each transformer
+    /// layer maintains separate key-value cache entries. This supports
+    /// efficient layer-specific cache operations and memory management.
+    ///
+    /// # Returns
+    /// The layer identifier as a 32-bit unsigned integer
     #[inline(always)]
     pub fn layer_id(&self) -> u32 {
         self.layer_id
     }
 
+    /// Get the position range (start, end) for this cache entry
+    ///
+    /// Position ranges define the token sequence span covered by this
+    /// cache entry. This enables efficient range-based operations like
+    /// partial cache invalidation and position-aware lookups.
+    ///
+    /// # Returns
+    /// A tuple containing (position_start, position_end)
     #[inline(always)]
     pub fn position_range(&self) -> (u32, u32) {
         (self.position_start, self.position_end)
     }
 
+    /// Calculate memory footprint of this cache key
     #[allow(dead_code)] // Part of CacheKey API for future memory monitoring
     #[inline(always)]
     fn memory_footprint(&self) -> usize {
@@ -87,6 +127,26 @@ pub struct KVCacheEntry {
     access_count: AtomicU64}
 
 impl KVCacheEntry {
+    /// Create a new KV cache entry with automatic memory tracking
+    ///
+    /// Constructs a cache entry containing key and value tensors with
+    /// atomic reference counting, memory usage tracking, and precise
+    /// LRU timestamp management for optimal cache performance.
+    ///
+    /// # Arguments
+    /// * `key_tensor` - The key tensor for attention computation
+    /// * `value_tensor` - The value tensor for attention computation
+    /// * `sequence_id` - Sequence identifier for isolation
+    /// * `layer_id` - Neural network layer identifier
+    /// * `position_start` - Starting token position
+    /// * `position_end` - Ending token position
+    ///
+    /// # Returns
+    /// Result containing the new KVCacheEntry or CandleError on failure
+    ///
+    /// # Performance
+    /// Memory usage is calculated upfront for efficient cache management.
+    /// Timestamps use nanosecond precision for accurate LRU ordering.
     #[inline(always)]
     pub fn new(
         key_tensor: Tensor,
@@ -121,16 +181,41 @@ impl KVCacheEntry {
             access_count: AtomicU64::new(0)})
     }
 
+    /// Get a reference to the key tensor for attention computation
+    ///
+    /// Returns an immutable reference to the cached key tensor used
+    /// in transformer attention mechanisms. The tensor remains valid
+    /// as long as this cache entry exists.
+    ///
+    /// # Returns
+    /// Immutable reference to the key tensor
     #[inline(always)]
     pub fn key_tensor(&self) -> &Tensor {
         &self.key_tensor
     }
 
+    /// Get a reference to the value tensor for attention computation
+    ///
+    /// Returns an immutable reference to the cached value tensor used
+    /// in transformer attention mechanisms. The tensor remains valid
+    /// as long as this cache entry exists.
+    ///
+    /// # Returns
+    /// Immutable reference to the value tensor
     #[inline(always)]
     pub fn value_tensor(&self) -> &Tensor {
         &self.value_tensor
     }
 
+    /// Update the last access timestamp and increment access counter
+    ///
+    /// Marks this cache entry as recently used for LRU eviction policy.
+    /// Updates both the nanosecond-precision timestamp and access count
+    /// atomically for thread-safe operation.
+    ///
+    /// # Thread Safety
+    /// This method is lock-free and safe to call from multiple threads
+    /// concurrently. Uses relaxed atomic ordering for optimal performance.
     #[inline(always)]
     pub fn touch(&self) {
         let now_nanos = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -144,31 +229,86 @@ impl KVCacheEntry {
         self.access_count.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Atomically increment the reference count
+    ///
+    /// Increases the reference count to prevent premature eviction
+    /// while the entry is in use. Uses acquire ordering to ensure
+    /// proper memory synchronization.
+    ///
+    /// # Returns
+    /// The previous reference count value
+    ///
+    /// # Thread Safety
+    /// Atomic operation safe for concurrent access
     #[inline(always)]
     pub fn add_ref(&self) -> u32 {
         self.ref_count.fetch_add(1, Ordering::Acquire)
     }
 
+    /// Atomically decrement the reference count
+    ///
+    /// Decreases the reference count when finished using the entry.
+    /// When the count reaches zero, the entry becomes eligible for
+    /// eviction. Uses release ordering for proper memory synchronization.
+    ///
+    /// # Returns
+    /// The previous reference count value
+    ///
+    /// # Thread Safety
+    /// Atomic operation safe for concurrent access
     #[inline(always)]
     pub fn release_ref(&self) -> u32 {
         self.ref_count.fetch_sub(1, Ordering::Release)
     }
 
+    /// Get the current reference count
+    ///
+    /// Returns the current reference count for this cache entry.
+    /// Entries with reference count > 1 are protected from eviction.
+    ///
+    /// # Returns
+    /// Current reference count as a 32-bit unsigned integer
+    ///
+    /// # Thread Safety
+    /// Uses acquire ordering for consistent reads
     #[inline(always)]
     pub fn ref_count(&self) -> u32 {
         self.ref_count.load(Ordering::Acquire)
     }
 
+    /// Get the total memory usage in bytes
+    ///
+    /// Returns the combined memory usage of both key and value tensors
+    /// in bytes. This value is calculated once at creation time for
+    /// efficient memory management operations.
+    ///
+    /// # Returns
+    /// Total memory usage in bytes as a 64-bit unsigned integer
     #[inline(always)]
     pub fn memory_usage(&self) -> u64 {
         self.memory_bytes.load(Ordering::Relaxed)
     }
 
+    /// Get the last access timestamp in nanoseconds
+    ///
+    /// Returns the nanosecond-precision timestamp of when this entry
+    /// was last accessed via touch(). Used for LRU eviction decisions.
+    ///
+    /// # Returns
+    /// Unix timestamp in nanoseconds as a 64-bit unsigned integer
     #[inline(always)]
     pub fn last_access(&self) -> u64 {
         self.last_access_nanos.load(Ordering::Relaxed)
     }
 
+    /// Calculate the age of this cache entry in nanoseconds
+    ///
+    /// Computes the time elapsed since entry creation using
+    /// nanosecond precision. Useful for age-based eviction policies
+    /// and cache performance analysis.
+    ///
+    /// # Returns
+    /// Age in nanoseconds since creation, or 0 if system time is unavailable
     #[inline(always)]
     pub fn age_nanos(&self) -> u64 {
         let now = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
@@ -178,6 +318,14 @@ impl KVCacheEntry {
         now.saturating_sub(creation_time)
     }
 
+    /// Get the total number of times this entry has been accessed
+    ///
+    /// Returns the cumulative access count incremented by each call
+    /// to touch(). Useful for cache hit frequency analysis and
+    /// performance monitoring.
+    ///
+    /// # Returns
+    /// Total access count as a 64-bit unsigned integer
     #[inline(always)]
     pub fn access_count(&self) -> u64 {
         self.access_count.load(Ordering::Relaxed)
@@ -204,6 +352,17 @@ pub struct KVCacheConfig {
     pub max_memory_per_sequence: u64}
 
 impl Default for KVCacheConfig {
+    /// Create default KV cache configuration with production-ready settings
+    ///
+    /// Provides sensible defaults for most use cases:
+    /// - 1GB total memory limit
+    /// - 64 concurrent sequences
+    /// - 90% high watermark, 70% low watermark for eviction
+    /// - 32-entry eviction batches for efficiency
+    /// - Per-sequence limits enabled with 16MB per sequence
+    ///
+    /// # Returns
+    /// KVCacheConfig with balanced performance and memory settings
     #[inline(always)]
     fn default() -> Self {
         Self {
@@ -221,13 +380,21 @@ impl Default for KVCacheConfig {
 /// Cache statistics for monitoring and optimization
 #[derive(Debug, Clone)]
 pub struct KVCacheStats {
+    /// Total number of entries currently in cache
     pub total_entries: u64,
+    /// Total memory usage in bytes across all entries
     pub total_memory_bytes: u64,
+    /// Number of active sequences with cache entries
     pub active_sequences: u32,
+    /// Total number of successful cache lookups
     pub cache_hits: u64,
+    /// Total number of failed cache lookups
     pub cache_misses: u64,
+    /// Cache hit rate as a percentage (0.0 to 1.0)
     pub hit_rate: f32,
+    /// Total number of entries evicted due to memory pressure
     pub eviction_count: u64,
+    /// Memory utilization as a percentage of configured limit (0.0 to 1.0)
     pub memory_utilization: f32}
 
 /// Lock-free KV cache manager with atomic operations
@@ -252,6 +419,21 @@ pub struct KVCacheManager {
     sequence_memory: SkipMap<u64, AtomicU64>}
 
 impl KVCacheManager {
+    /// Create a new KV cache manager with the specified configuration
+    ///
+    /// Initializes a lock-free cache manager using crossbeam-skiplist
+    /// for optimal concurrent performance. All atomic counters start
+    /// at zero and sequence IDs begin at 1.
+    ///
+    /// # Arguments
+    /// * `config` - Cache configuration including memory limits and eviction settings
+    ///
+    /// # Returns
+    /// A new KVCacheManager instance ready for use
+    ///
+    /// # Performance
+    /// Uses lock-free data structures for maximum throughput under
+    /// concurrent access patterns typical in ML inference workloads.
     #[inline(always)]
     pub fn new(config: KVCacheConfig) -> Self {
         Self {
@@ -266,6 +448,17 @@ impl KVCacheManager {
             sequence_memory: SkipMap::new()}
     }
 
+    /// Create a new sequence and return its unique identifier
+    ///
+    /// Allocates a new sequence ID and initializes per-sequence memory
+    /// tracking if enabled in configuration. Each sequence provides
+    /// isolation for independent conversation contexts or processing streams.
+    ///
+    /// # Returns
+    /// A unique 64-bit sequence identifier
+    ///
+    /// # Thread Safety
+    /// Atomically increments sequence counter for thread-safe ID generation
     #[inline(always)]
     pub fn new_sequence(&self) -> u64 {
         let seq_id = self.next_sequence_id.fetch_add(1, Ordering::Relaxed);
@@ -276,6 +469,22 @@ impl KVCacheManager {
         seq_id
     }
 
+    /// Retrieve a cache entry by key with automatic LRU update
+    ///
+    /// Performs a lock-free lookup in the skip-list cache. If found,
+    /// automatically updates the entry's access timestamp and increments
+    /// its reference count to prevent premature eviction.
+    ///
+    /// # Arguments
+    /// * `key` - The cache key to look up
+    ///
+    /// # Returns
+    /// Some(Arc<KVCacheEntry>) if found, None if not in cache
+    ///
+    /// # Side Effects
+    /// - Updates cache hit/miss statistics
+    /// - Updates entry LRU timestamp if found
+    /// - Increments entry reference count if found
     #[inline(always)]
     pub fn get_entry(&self, key: &CacheKey) -> Option<Arc<KVCacheEntry>> {
         match self.cache.get(key) {
@@ -292,6 +501,27 @@ impl KVCacheManager {
         }
     }
 
+    /// Insert a new cache entry with automatic memory management
+    ///
+    /// Creates and inserts a new KV cache entry, checking memory limits
+    /// and triggering eviction if necessary. Supports both per-sequence
+    /// and global memory limits with high/low watermark eviction.
+    ///
+    /// # Arguments
+    /// * `key` - The cache key for this entry
+    /// * `key_tensor` - The key tensor to cache
+    /// * `value_tensor` - The value tensor to cache
+    ///
+    /// # Returns
+    /// Result containing Arc<KVCacheEntry> on success or CandleError on failure
+    ///
+    /// # Memory Management
+    /// - Checks per-sequence memory limits if enabled
+    /// - Triggers LRU eviction when high watermark is exceeded
+    /// - Updates atomic memory usage counters
+    ///
+    /// # Performance
+    /// Memory usage is calculated upfront to avoid repeated tensor queries
     #[inline(always)]
     pub fn insert_entry(
         &self,
@@ -338,6 +568,23 @@ impl KVCacheManager {
         Ok(arc_entry)
     }
 
+    /// Clear all cache entries for a specific sequence
+    ///
+    /// Removes all cache entries belonging to the specified sequence,
+    /// freeing their memory and updating all relevant counters.
+    /// This is typically called when a conversation or processing
+    /// context is completed.
+    ///
+    /// # Arguments
+    /// * `sequence_id` - The sequence identifier to clear
+    ///
+    /// # Returns
+    /// Result indicating success or failure
+    ///
+    /// # Side Effects
+    /// - Removes all entries for the sequence from cache
+    /// - Updates global and per-sequence memory counters
+    /// - Decrements active sequence count
     #[inline(always)]
     pub fn clear_sequence(&self, sequence_id: u64) -> Result<(), CandleError> {
         let mut keys_to_remove = Vec::new();
@@ -469,6 +716,18 @@ impl KVCacheManager {
         Ok(())
     }
 
+    /// Get comprehensive cache performance statistics
+    ///
+    /// Returns detailed statistics including memory usage, hit rates,
+    /// eviction counts, and utilization metrics. All values are
+    /// atomically consistent at the time of the call.
+    ///
+    /// # Returns
+    /// KVCacheStats struct containing current cache metrics
+    ///
+    /// # Performance
+    /// Statistics are computed on-demand from atomic counters,
+    /// providing zero-overhead monitoring when not called.
     #[inline(always)]
     pub fn get_stats(&self) -> KVCacheStats {
         KVCacheStats {
@@ -491,6 +750,16 @@ impl KVCacheManager {
                 / self.config.max_memory_bytes as f32}
     }
 
+    /// Clear all cache entries and reset all statistics
+    ///
+    /// Removes all cache entries from all sequences and resets
+    /// all atomic counters to zero. This is a complete cache
+    /// reset operation typically used for testing or cleanup.
+    ///
+    /// # Side Effects
+    /// - Clears main cache and per-sequence memory tracking
+    /// - Resets all atomic counters to zero
+    /// - Invalidates all existing cache entry references
     #[inline(always)]
     pub fn clear_all(&self) {
         self.cache.clear();
