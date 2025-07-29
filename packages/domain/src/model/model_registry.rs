@@ -4,37 +4,16 @@
 //! AI model information and capabilities.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use ahash::RandomState;
+use arrayvec::ArrayVec;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use smallvec::SmallVec;
 
-// Temporarily commented out to break circular dependency
-// use model_info::{Provider, ModelInfo as ModelInfoProvider, ProviderTrait};
-
-// Temporary placeholder types to replace model-info dependencies
-#[derive(Debug, Clone)]
-pub struct ModelInfoProvider {
-    pub name: String,
-    pub max_context: u64,
-    pub pricing_input: f64,
-    pub pricing_output: f64,
-    pub is_thinking: bool,
-    pub required_temperature: Option<f64>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Provider {
-    OpenAi,
-    Mistral,
-    Anthropic,
-    Together,
-    OpenRouter,
-    HuggingFace,
-    Xai,
-}
-
-use crate::model::error::ModelError;
+// Use model-info as single source of truth for model types
+use model_info::{Provider, ModelInfo, ModelError, Result};
 
 /// Provider names for efficient lookups
 const PROVIDER_NAMES: &[&str] = &[
@@ -65,15 +44,15 @@ pub struct ModelFilter {
 }
 
 /// Efficient model query result with zero-allocation for small results
-pub type ModelQueryResult = SmallVec<[Arc<ModelInfoProvider>; 16]>;
+pub type ModelQueryResult = SmallVec<Arc<ModelInfo>, 16>;
 
 /// Internal registry data structure
 struct RegistryData {
     /// All models indexed by provider name
-    models_by_provider: DashMap<String, SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER]>, RandomState>,
+    models_by_provider: DashMap<String, SmallVec<Arc<ModelInfo>, MAX_MODELS_PER_PROVIDER>, RandomState>,
     
     /// All models in a flat list for fast iteration
-    all_models: parking_lot::RwLock<Vec<Arc<ModelInfoProvider>>>,
+    all_models: parking_lot::RwLock<Vec<Arc<ModelInfo>>>,
     
     /// Provider instances for dynamic queries
     providers: ArrayVec<Provider, 7>,
@@ -88,14 +67,14 @@ impl Default for RegistryData {
     fn default() -> Self {
         let mut providers = ArrayVec::new();
         
-        // Initialize all providers (zero allocation)
-        let _ = providers.try_push(Provider::OpenAi);
-        let _ = providers.try_push(Provider::Mistral);
-        let _ = providers.try_push(Provider::Anthropic);
-        let _ = providers.try_push(Provider::Together);
-        let _ = providers.try_push(Provider::OpenRouter);
-        let _ = providers.try_push(Provider::HuggingFace);
-        let _ = providers.try_push(Provider::Xai);
+        // Initialize all providers (zero allocation) - using unit variants for now
+        let _ = providers.try_push(Provider::OpenAI);
+        let _ = providers.try_push(Provider::Azure);
+        let _ = providers.try_push(Provider::VertexAI);
+        let _ = providers.try_push(Provider::Gemini);
+        let _ = providers.try_push(Provider::Bedrock);
+        let _ = providers.try_push(Provider::Cohere);
+        let _ = providers.try_push(Provider::Ollama);
         
         Self {
             models_by_provider: DashMap::with_hasher(RandomState::default()),
@@ -140,7 +119,7 @@ impl ModelRegistry {
     /// # Returns
     /// The model information if found, or None if not available
     #[inline]
-    pub fn get_model(&self, provider: &str, name: &str) -> Option<Arc<ModelInfoProvider>> {
+    pub fn get_model(&self, provider: &str, name: &str) -> Option<Arc<ModelInfo>> {
         let models = REGISTRY.models_by_provider.get(provider)?;
         models.iter().find(|model| model.name == name).cloned()
     }
@@ -153,7 +132,7 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// The model information or an error if not found
-    pub fn get_model_required(&self, provider: impl Into<String>, name: impl Into<String>) -> Result<Arc<ModelInfoProvider>> {
+    pub fn get_model_required(&self, provider: impl Into<String>, name: impl Into<String>) -> Result<Arc<ModelInfo>> {
         let provider = provider.into();
         let name = name.into();
         self.get_model(&provider, &name)
@@ -167,7 +146,7 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// A vector of all available models
-    pub fn all_models(&self) -> Vec<Arc<ModelInfoProvider>> {
+    pub fn all_models(&self) -> Vec<Arc<ModelInfo>> {
         REGISTRY.all_models.read().clone()
     }
     
@@ -230,7 +209,7 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// The most cost-effective model meeting the requirements
-    pub fn find_cheapest_model(&self, min_context: Option<u64>, requires_thinking: bool) -> Option<Arc<ModelInfoProvider>> {
+    pub fn find_cheapest_model(&self, min_context: Option<u64>, requires_thinking: bool) -> Option<Arc<ModelInfo>> {
         let filter = ModelFilter {
             min_context,
             requires_thinking: Some(requires_thinking),
@@ -241,8 +220,8 @@ impl ModelRegistry {
         
         candidates.into_iter()
             .min_by(|a, b| {
-                let cost_a = a.pricing_input + a.pricing_output;
-                let cost_b = b.pricing_input + b.pricing_output;
+                let cost_a = a.input_price.unwrap_or(0.0) + a.output_price.unwrap_or(0.0);
+                let cost_b = b.input_price.unwrap_or(0.0) + b.output_price.unwrap_or(0.0);
                 cost_a.partial_cmp(&cost_b).unwrap_or(std::cmp::Ordering::Equal)
             })
     }
@@ -301,7 +280,7 @@ impl ModelRegistry {
                     total_refreshed += models.len();
                     
                     // Convert to Arc for efficient sharing
-                    let arc_models: SmallVec<[Arc<ModelInfoProvider>; MAX_MODELS_PER_PROVIDER]> = 
+                    let arc_models: SmallVec<Arc<ModelInfo>, MAX_MODELS_PER_PROVIDER> = 
                         models.into_iter().map(Arc::new).collect();
                     
                     // Add to all models list
@@ -345,39 +324,47 @@ impl ModelRegistry {
     
     /// Check if a model matches the given filter
     #[inline]
-    fn matches_filter(&self, model: &ModelInfoProvider, filter: &ModelFilter) -> bool {
-        if let Some(ref provider) = filter.provider {
-            // Extract provider from model name or use a provider field if available
-            // For now, we'll need to determine provider from context or model name
-            // This would need to be enhanced based on actual ModelInfo structure
+    fn matches_filter(&self, model: &ModelInfo, filter: &ModelFilter) -> bool {
+        if let Some(ref provider_filter) = filter.provider {
+            if model.provider_name != provider_filter {
+                return false;
+            }
         }
         
+        // Calculate total context from input + output tokens
+        let model_context = model.max_input_tokens.map(|t| t.get() as u64).unwrap_or(0) +
+                           model.max_output_tokens.map(|t| t.get() as u64).unwrap_or(0);
+        
         if let Some(min_context) = filter.min_context {
-            if model.max_context < min_context {
+            if model_context < min_context {
                 return false;
             }
         }
         
         if let Some(max_context) = filter.max_context {
-            if model.max_context > max_context {
+            if model_context > max_context {
                 return false;
             }
         }
         
         if let Some(max_input_price) = filter.max_input_price {
-            if model.pricing_input > max_input_price {
-                return false;
+            if let Some(input_price) = model.input_price {
+                if input_price > max_input_price {
+                    return false;
+                }
             }
         }
         
         if let Some(max_output_price) = filter.max_output_price {
-            if model.pricing_output > max_output_price {
-                return false;
+            if let Some(output_price) = model.output_price {
+                if output_price > max_output_price {
+                    return false;
+                }
             }
         }
         
         if let Some(requires_thinking) = filter.requires_thinking {
-            if model.is_thinking != requires_thinking {
+            if model.supports_thinking != requires_thinking {
                 return false;
             }
         }
@@ -394,7 +381,7 @@ impl ModelRegistry {
     }
     
     /// Fetch models from a specific provider
-    async fn fetch_provider_models(&self, provider: &Provider) -> Result<Vec<ModelInfoProvider>> {
+    async fn fetch_provider_models(&self, _provider: &Provider) -> Result<Vec<ModelInfo>> {
         // For now, return empty vec as we need to implement provider-specific model enumeration
         // This would be enhanced to actually fetch model lists from each provider
         Ok(Vec::new())
@@ -409,17 +396,21 @@ impl ModelRegistry {
         let all_models = REGISTRY.all_models.read();
         
         for model in all_models.iter() {
-            let model_key = format!("{}:{}", "provider", model.name); // Provider would be determined from context
+            let model_key = format!("{}:{}", model.provider_name, model.name);
             
-            if model.is_thinking {
+            if model.supports_thinking {
                 REGISTRY.thinking_models.insert(model_key.clone());
             }
             
-            if model.max_context > 100_000 {
+            // Calculate total context from input + output tokens
+            let model_context = model.max_input_tokens.map(|t| t.get() as u64).unwrap_or(0) +
+                               model.max_output_tokens.map(|t| t.get() as u64).unwrap_or(0);
+            
+            if model_context > 100_000 {
                 REGISTRY.high_context_models.insert(model_key.clone());
             }
             
-            let total_cost = model.pricing_input + model.pricing_output;
+            let total_cost = model.input_price.unwrap_or(0.0) + model.output_price.unwrap_or(0.0);
             if total_cost < 5.0 { // Under $5 per 1M tokens total
                 REGISTRY.low_cost_models.insert(model_key);
             }

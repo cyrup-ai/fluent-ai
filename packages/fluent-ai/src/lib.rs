@@ -40,9 +40,9 @@ pub mod workflow;
 pub mod message_processing;
 pub mod text_processing;
 
-// Re-export domain and provider types
+// Re-export domain types only - provider removed for direct http3 + model-info usage
 pub use fluent_ai_domain as domain;
-pub use fluent_ai_provider as provider;
+// pub use fluent_ai_provider as provider; // REMOVED: Use model-info + http3 directly
 pub mod engine;
 pub mod fluent;
 
@@ -155,12 +155,11 @@ pub use domain::context::{Directory, File, Files, Github};
 pub use domain::tool::ExecToText;
 // Re-export domain types
 pub use domain::{
-    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
-    audio::{AudioMediaType, ContentFormat as AudioContentFormat},
-    image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType}};
-// Re-export traits from domain
-pub use domain::{CompletionBackend, CompletionModel};
-pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
+    Document, Memory as Library, AdditionalParams as Context,
+    chat::message::{Message, MessageChunk, MessageRole},
+    completion::{CompletionRequest, CompletionBackend, CompletionModel},
+    tool::{NamedTool, Perplexity, Tool}
+};
 pub use engine::{CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage};
 // Re-export engine types
 pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
@@ -172,8 +171,8 @@ pub use engine::{get_default_engine, get_engine, register_engine, registry, set_
 
 // Master builder export
 pub use fluent::{Ai, FluentAi};
-// Re-export from fluent_ai_provider crate
-pub use fluent_ai_provider::{Model, ModelInfoData, Models, Provider, Providers};
+// CRITICAL ARCHITECTURE CHANGE: Model/provider info comes from model-info package only
+pub use model_info::{Model, Provider};
 // Note: cyrup_sugars is already re-exported at the top of the file
 
 #[cfg(test)]

@@ -3,7 +3,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 use fluent_ai_domain::chat::{
-    ChatMacro, MacroAction, MacroExecutionConfig, MacroMetadata, MacroSystemError
+    MacroAction,
+    macros::{ChatMacro, MacroExecutionConfig, MacroMetadata, MacroSystemError}
 };
 
 /// Builder for creating macros programmatically

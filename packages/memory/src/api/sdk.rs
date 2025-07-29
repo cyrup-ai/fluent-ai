@@ -11,9 +11,10 @@ use fluent_ai_domain::{
     completion::CompletionProvider,
     chat::Message,
     error::CompletionError};
-use fluent_ai_provider::{
-    openai::OpenAIClient,
-    anthropic::AnthropicClient};
+// REMOVED: fluent_ai_provider - use model-info + http3 directly
+// use fluent_ai_provider::{
+//     openai::OpenAIClient,
+//     anthropic::AnthropicClient};
 use crate::utils::error::Result;
 use crate::schema::memory_schema::Memory;
 use crate::schema::relationship_schema::Relationship;

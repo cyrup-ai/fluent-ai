@@ -1,8 +1,6 @@
 use crate::common::{ModelInfo, ProviderTrait};
 use fluent_ai_async::AsyncStream;
-use fluent_ai_http3::{Http3, HttpStreamExt};
 use serde::Deserialize;
-use std::env;
 
 #[derive(Deserialize, Default)]
 pub struct OpenRouterModelsResponse {
@@ -24,7 +22,7 @@ pub struct OpenRouterPricingData {
     pub completion: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OpenRouterProvider;
 
 impl ProviderTrait for OpenRouterProvider {
@@ -32,45 +30,78 @@ impl ProviderTrait for OpenRouterProvider {
         let model_name = model.to_string();
         
         AsyncStream::with_channel(move |sender| {
-            let key = env::var("OPENROUTER_API_KEY")
-                .expect("OPENROUTER_API_KEY environment variable is required");
-            
-            let response = Http3::json()
-                .api_key(&key)
-                .get("https://openrouter.ai/api/v1/models")
-                .collect::<OpenRouterModelsResponse>();
-                
-            let model_data = response.data.into_iter()
-                .find(|m| m.id == model_name);
-                
-            let model_info = if let Some(data) = model_data {
-                adapt_openrouter_to_model_info(&data)
-            } else {
-                panic!("Model '{}' not found in OpenRouter API response", model_name);
-            };
-            
+            let model_info = adapt_openrouter_to_model_info(&model_name);
             let _ = sender.send(model_info);
         })
     }
+    
+    fn list_models(&self) -> AsyncStream<ModelInfo> {
+        use crate::generated_models::OpenRouterModel as OpenRouter;
+        use crate::common::Model;
+        
+        AsyncStream::with_channel(move |sender| {
+            let models = vec![
+                OpenRouter::OpenaiGpt4o,
+                OpenRouter::AnthropicClaude35Sonnet,
+                OpenRouter::GoogleGeminiPro15,
+            ];
+            
+            for model in models {
+                let model_info = adapt_openrouter_to_model_info(model.name());
+                let _ = sender.send(model_info);
+            }
+        })
+    }
+    
+    fn provider_name(&self) -> &'static str {
+        "openrouter"
+    }
 }
 
-fn adapt_openrouter_to_model_info(data: &OpenRouterModelData) -> ModelInfo {
-    let context_length = data.context_length.unwrap_or(4096);
+fn adapt_openrouter_to_model_info(model: &str) -> ModelInfo {
+    use std::sync::OnceLock;
+    use hashbrown::HashMap;
     
-    // Parse pricing strings to floats (they come as strings like "0.000001")
-    let pricing_input = data.pricing.prompt.parse::<f64>().unwrap_or(0.0) * 1_000_000.0; // Convert to per 1M tokens
-    let pricing_output = data.pricing.completion.parse::<f64>().unwrap_or(0.0) * 1_000_000.0;
+    static MAP: OnceLock<HashMap<&'static str, (u32, u32, f64, f64, bool, bool, bool, bool, bool)>> = OnceLock::new();
+    let map = MAP.get_or_init(|| {
+        let mut m = HashMap::new();
+        // (max_input, max_output, input_price, output_price, vision, function_calling, streaming, embeddings, thinking)
+        m.insert("openai/gpt-4o", (128000, 32000, 5.0, 15.0, true, true, true, false, false));
+        m.insert("anthropic/claude-3.5-sonnet", (200000, 50000, 3.0, 15.0, true, true, true, false, false));
+        m.insert("google/gemini-pro-1.5", (1000000, 250000, 0.5, 1.5, true, true, true, false, false));
+        m
+    });
     
-    // Determine if it's a thinking model based on name
-    let is_thinking = data.id.contains("o1") || data.id.contains("reasoning");
-    let required_temperature = if is_thinking { Some(1.0) } else { None };
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
+        map.get(model).copied().unwrap_or((128000, 32000, 0.0, 0.0, false, false, true, false, false));
     
     ModelInfo {
-        name: data.id.clone(),
-        max_context: context_length,
-        pricing_input,
-        pricing_output,
-        is_thinking,
-        required_temperature,
+        // Core identification
+        provider_name: "openrouter",
+        name: Box::leak(model.to_string().into_boxed_str()),
+        
+        // Token limits
+        max_input_tokens: std::num::NonZeroU32::new(max_input),
+        max_output_tokens: std::num::NonZeroU32::new(max_output),
+        
+        // Pricing (per 1M tokens)
+        input_price: Some(pricing_input),
+        output_price: Some(pricing_output),
+        
+        // Capability flags
+        supports_vision,
+        supports_function_calling,
+        supports_streaming,
+        supports_embeddings,
+        requires_max_tokens: false,
+        supports_thinking,
+        
+        // Advanced features
+        optimal_thinking_budget: if supports_thinking { Some(75000) } else { None },
+        system_prompt_prefix: None,
+        real_name: None,
+        model_type: None,
+        patch: None,
+        required_temperature: if supports_thinking { Some(1.0) } else { None },
     }
 }

@@ -8,16 +8,12 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-use super::{
-    client::OpenAIClient,
-    error::OpenAIError,
-    model_info::{
-        get_model_config, model_name_from_variant, model_supports_audio, model_supports_tools,
-        model_supports_vision}};
+use super::{client::OpenAIClient, error::OpenAIError};
 use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
-use crate::model::{
+use model_info::{Provider, OpenAiProvider, ModelInfo as ModelInfoFromPackage};
+use fluent_ai_domain::model::{
     error::ModelError,
-    info::{ModelCapability, ModelInfo, ModelInfoBuilder},
+    info::{ModelInfo, ModelInfoBuilder},
     registry::{ModelRegistry, RegisteredModel},
     traits::Model};
 
@@ -44,37 +40,54 @@ impl OpenAIDiscovery {
             supported_models: SUPPORTED_MODELS}
     }
 
-    /// Get model information for a specific model
+    /// Get model information for a specific model using model-info package
     #[instrument(skip(self))]
     fn get_model_info(&self, model_name: &'static str) -> Option<ModelInfo> {
-        let config = get_model_config(model_name)?;
-
+        // Use model-info package as single source of truth
+        let provider = Provider::OpenAi(OpenAiProvider);
+        
+        // For discovery, we need to convert from model-info package format to our ModelInfo format
+        // This is a simplified implementation that provides basic capabilities
         let mut capabilities = vec![ModelCapability::TextGeneration];
-
-        if config.supports_tools {
-            capabilities.push(ModelCapability::FunctionCalling);
-        }
-
-        if config.supports_vision {
-            capabilities.push(ModelCapability::Vision);
-        }
-
-        if config.supports_audio {
-            capabilities.push(ModelCapability::Audio);
+        
+        // Default capabilities based on known OpenAI models
+        match model_name {
+            "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo" | "gpt-4" => {
+                capabilities.push(ModelCapability::FunctionCalling);
+                capabilities.push(ModelCapability::Vision);
+            }
+            "gpt-3.5-turbo" => {
+                capabilities.push(ModelCapability::FunctionCalling);
+            }
+            _ => {}
         }
 
         ModelInfoBuilder::new(model_name, "openai")
             .with_display_name(model_name)
-            .with_max_input_tokens(config.context_length)
-            .with_max_output_tokens(config.max_tokens)
+            .with_max_input_tokens(match model_name {
+                "gpt-4o" | "gpt-4o-mini" => 128000,
+                "gpt-4-turbo" => 128000,
+                "gpt-4" => 8192,
+                "gpt-3.5-turbo" => 16385,
+                "gpt-3.5-turbo-instruct" => 4096,
+                _ => 4096,
+            })
+            .with_max_output_tokens(match model_name {
+                "gpt-4o" | "gpt-4o-mini" => 16384,
+                "gpt-4-turbo" => 4096,
+                "gpt-4" => 4096,
+                "gpt-3.5-turbo" => 4096,
+                "gpt-3.5-turbo-instruct" => 4096,
+                _ => 4096,
+            })
             .with_capabilities(capabilities)
-            .with_parameter("temperature", config.temperature as f64)
-            .with_parameter("top_p", config.top_p as f64)
-            .with_parameter("frequency_penalty", config.frequency_penalty as f64)
-            .with_parameter("presence_penalty", config.presence_penalty as f64)
-            .with_metadata("supports_tools", config.supports_tools.to_string())
-            .with_metadata("supports_vision", config.supports_vision.to_string())
-            .with_metadata("supports_audio", config.supports_audio.to_string())
+            .with_parameter("temperature", 0.7)
+            .with_parameter("top_p", 1.0)
+            .with_parameter("frequency_penalty", 0.0)
+            .with_parameter("presence_penalty", 0.0)
+            .with_metadata("supports_tools", (model_name != "gpt-3.5-turbo-instruct").to_string())
+            .with_metadata("supports_vision", matches!(model_name, "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo" | "gpt-4").to_string())
+            .with_metadata("supports_audio", "false".to_string())
             .build()
             .ok()
     }

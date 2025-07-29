@@ -8,6 +8,9 @@ pub mod message_processing;
 // Re-export types for public API
 // Note: message_processing::* was unused, removed to fix compilation warnings
 
+// Re-export MessagePriority from realtime module
+pub use crate::chat::realtime::MessagePriority;
+
 /// Core message types
 pub mod types {
     use std::fmt;

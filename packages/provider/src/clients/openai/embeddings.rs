@@ -7,6 +7,14 @@ use serde::{Deserialize, Serialize};
 
 use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
+use fluent_ai_async::AsyncStream;
+
+/// OpenAI embedding client for text-embedding-3-large/small models
+#[derive(Debug, Clone)]
+pub struct OpenAIEmbeddingClient {
+    api_key: String,
+    base_url: String,
+}
 
 /// OpenAI embedding request
 #[derive(Debug, Clone, Serialize, Deserialize)]

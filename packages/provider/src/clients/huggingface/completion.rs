@@ -17,18 +17,18 @@ use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use fluent_ai_http3::{Http3, HttpError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use arrayvec::ArrayVec;
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpError;
-use fluent_ai_http3::HttpRequest;
+
+// CRITICAL: Import model information from model-info package (single source of truth)
+use model_info::{Provider, HuggingFaceProvider, ModelInfo as ModelInfoFromPackage};
 
 use crate::{
     AsyncStream,
     completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo}};
+        ChunkHandler, CompletionError, CompletionProvider}};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -37,11 +37,8 @@ const MAX_TOOLS: usize = 32;
 /// Maximum documents per request (compile-time bounded)
 const MAX_DOCUMENTS: usize = 64;
 
-/// Get ModelInfo configuration for HuggingFace models
-#[inline(always)]
-pub fn get_model_config(model_name: &'static str) -> &'static ModelConfig {
-    crate::model_info::get_model_config(model_name)
-}
+// ARCHITECTURAL COMPLIANCE: Local model enumeration eliminated
+// Model information now comes from model-info package via load_model_info() method
 
 /// Zero-allocation HuggingFace completion builder with perfect ergonomics
 #[derive(Clone)]
@@ -151,13 +148,27 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
     /// Create new HuggingFace completion builder with ModelInfo defaults
     #[inline(always)]
     fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
-            .map_err(|_| CompletionError::HttpError)?;
-
-        let config = get_model_config(model_name);
+        // Use default configuration - model info queries via load_model_info() method
+        let config = &ModelConfig {
+            max_tokens: 2048,
+            temperature: 0.7,
+            top_p: 1.0,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            context_length: 32768,
+            system_prompt: "You are a helpful assistant.",
+            supports_tools: true,
+            supports_vision: false,
+            supports_audio: false,
+            supports_thinking: false,
+            optimal_thinking_budget: 0,
+            provider: "huggingface",
+            model_name,
+        };
 
         Ok(Self {
-            client,
+            client: HttpClient::with_config(HttpConfig::streaming_optimized())
+                .map_err(|_| CompletionError::HttpError)?,
             api_key,
             explicit_api_key: None,
             base_url: "https://api-inference.huggingface.co/models",
@@ -326,7 +337,7 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
         spawn_async(async move {
             match self.execute_streaming_completion(prompt_text).await {
                 Ok(mut stream) => {
-                    use futures_util::StreamExt;
+                    // Removed AsyncStreamExt import - using pure AsyncStream patterns
                     while let Some(chunk_result) = stream.next().await {
                         // Apply cyrup_sugars pattern matching if handler provided
                         if let Some(ref handler) = self.chunk_handler {
@@ -377,51 +388,50 @@ impl HuggingFaceCompletionBuilder {
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
 
-        let request = HttpRequest::post(
-            &format!("{}/{}/v1/chat/completions", self.base_url, self.model_name),
-            body_bytes,
-        )
-        .map_err(|_| CompletionError::HttpError)?
-        .header("Content-Type", "application/json")
-        .header("Authorization", &format!("Bearer {}", auth_key));
+        // Use Http3::json() directly instead of HttpClient abstraction
+        let mut response_stream = Http3::json()
+            .api_key(auth_key)
+            .body(&request_body)
+            .post(&format!("{}/{}/v1/chat/completions", self.base_url, self.model_name));
 
-        let response = self
-            .client
-            .send(request)
-            .await
-            .map_err(|_| CompletionError::HttpError)?;
-
-        if !response.status().is_success() {
-            return Err(match response.status().as_u16() {
+        if !response_stream.is_success() {
+            return Err(match response_stream.status_code() {
                 401 => CompletionError::AuthError,
                 413 => CompletionError::RequestTooLarge,
                 429 => CompletionError::RateLimited,
-                _ => CompletionError::HttpError});
+                _ => CompletionError::HttpError,
+            });
         }
-
-        let sse_stream = response.sse();
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            let mut sse_stream = sse_stream;
-
-            while let Some(event) = sse_stream.next().await {
-                match event {
-                    Ok(sse_event) => {
-                        if let Some(data) = sse_event.data {
-                            if data.trim() == "[DONE]" {
-                                break;
-                            }
-
-                            match Self::parse_sse_chunk(data.as_bytes()) {
-                                Ok(chunk) => {
-                                    if chunk_sender.send(Ok(chunk)).is_err() {
-                                        break;
+            use fluent_ai_http3::HttpStreamExt;
+            
+            while let Some(chunk) = response_stream.next().await {
+                match chunk {
+                    Ok(http_chunk) => {
+                        if let fluent_ai_http3::HttpChunk::Body(data) = http_chunk {
+                            let data_str = String::from_utf8_lossy(&data);
+                            
+                            // Process SSE events
+                            for line in data_str.lines() {
+                                if line.starts_with("data: ") {
+                                    let data = &line[6..];
+                                    if data.trim() == "[DONE]" {
+                                        return;
                                     }
-                                }
-                                Err(e) => {
-                                    if chunk_sender.send(Err(e)).is_err() {
-                                        break;
+                                    
+                                    match Self::parse_sse_chunk(data.as_bytes()) {
+                                        Ok(chunk) => {
+                                            if chunk_sender.send(Ok(chunk)).is_err() {
+                                                return;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            if chunk_sender.send(Err(e)).is_err() {
+                                                return;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -429,7 +439,7 @@ impl HuggingFaceCompletionBuilder {
                     }
                     Err(_) => {
                         let _ = chunk_sender.send(Err(CompletionError::StreamError));
-                        break;
+                        return;
                     }
                 }
             }
@@ -673,6 +683,12 @@ impl HuggingFaceCompletionBuilder {
 
         Ok(CompletionChunk::text(""))
     }
+
+    /// Load model information from model-info package (single source of truth)
+    pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
+        let provider = Provider::HuggingFace(HuggingFaceProvider);
+        provider.get_model_info(self.model_name)
+    }
 }
 
 /// Public constructor for HuggingFace completion builder
@@ -684,27 +700,58 @@ pub fn completion_builder(
     HuggingFaceCompletionBuilder::new(api_key, model_name)
 }
 
-/// Get available HuggingFace models (compile-time constant)
-#[inline(always)]
-pub const fn available_models() -> &'static [&'static str] {
-    &[
-        "google/gemma-2-2b-it",
-        "meta-llama/Meta-Llama-3.1-8B-Instruct",
-        "microsoft/phi-4",
-        "PowerInfer/SmallThinker-3B-Preview",
-        "Qwen/Qwen2.5-7B-Instruct",
-        "Qwen/Qwen2.5-Coder-32B-Instruct",
-        "Qwen/Qwen2-VL-7B-Instruct",
-        "Qwen/QVQ-72B-Preview",
+// Available models are provided by model-info package - use model_info queries instead
+
+// Model information is provided by model-info package - no local constants needed
+
+// =============================================================================
+// Model Constants (for compatibility with existing imports)
+// =============================================================================
+
+/// Gemma 2 model variants
+pub const GEMMA_2: &str = "google/gemma-2-9b-it";
+
+/// Meta Llama 3.1 model variants  
+pub const META_LLAMA_3_1: &str = "meta-llama/Meta-Llama-3.1-8B-Instruct";
+
+/// Phi-4 model
+pub const PHI_4: &str = "microsoft/Phi-4";
+
+/// Qwen QVQ Preview model
+pub const QWEN_QVQ_PREVIEW: &str = "Qwen/QVQ-72B-Preview";
+
+/// Qwen 2.5 model variants
+pub const QWEN2_5: &str = "Qwen/Qwen2.5-72B-Instruct";
+
+/// Qwen 2.5 Coder model variants
+pub const QWEN2_5_CODER: &str = "Qwen/Qwen2.5-Coder-32B-Instruct";
+
+/// Qwen 2 VL model variants
+pub const QWEN2_VL: &str = "Qwen/Qwen2-VL-72B-Instruct";
+
+/// SmallThinker Preview model
+pub const SMALLTHINKER_PREVIEW: &str = "smallthinker-preview";
+
+/// Get list of available models
+pub fn available_models() -> Vec<&'static str> {
+    vec![
+        GEMMA_2,
+        META_LLAMA_3_1,
+        PHI_4,
+        QWEN_QVQ_PREVIEW,
+        QWEN2_5,
+        QWEN2_5_CODER,
+        QWEN2_VL,
+        SMALLTHINKER_PREVIEW,
     ]
 }
 
-// Model constants for exports
-pub const GEMMA_2: &str = "google/gemma-2-2b-it";
-pub const META_LLAMA_3_1: &str = "meta-llama/Meta-Llama-3.1-8B-Instruct";
-pub const PHI_4: &str = "microsoft/phi-4";
-pub const QWEN_QVQ_PREVIEW: &str = "Qwen/QVQ-72B-Preview";
-pub const QWEN2_5: &str = "Qwen/Qwen2.5-7B-Instruct";
-pub const QWEN2_5_CODER: &str = "Qwen/Qwen2.5-Coder-32B-Instruct";
-pub const QWEN2_VL: &str = "Qwen/Qwen2-VL-7B-Instruct";
-pub const SMALLTHINKER_PREVIEW: &str = "PowerInfer/SmallThinker-3B-Preview";
+/// Completion model alias for compatibility
+pub type CompletionModel = HuggingFaceCompletionBuilder;
+
+/// API response type for compatibility
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ApiResponse<T> {
+    pub data: T,
+    pub usage: Option<crate::completion_provider::Usage>,
+}

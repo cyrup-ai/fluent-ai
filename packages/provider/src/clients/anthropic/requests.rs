@@ -75,27 +75,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
         format!("{}{}", self.config.base_url(), endpoint)
     }
 
-    /// Build headers as HashMap for Http3::json() pattern
-    fn build_headers_map(&self) -> HashMap<String, String> {
-        let mut headers = HashMap::new();
-        headers.insert(
-            HEADER_CONTENT_TYPE.to_string(),
-            CONTENT_TYPE_JSON.to_string(),
-        );
-        headers.insert(
-            HEADER_AUTHORIZATION.to_string(),
-            self.config.api_key().to_string(),
-        );
-        headers.insert(
-            HEADER_ANTHROPIC_VERSION.to_string(),
-            self.config.anthropic_version().to_string(),
-        );
-        headers.insert(
-            HEADER_USER_AGENT.to_string(),
-            "fluent-ai-anthropic/1.0".to_string(),
-        );
-        headers
-    }
+
 
     /// Send a completion request
     pub async fn send_completion(
@@ -103,11 +83,16 @@ impl<'a> AnthropicRequestBuilder<'a> {
         request: &AnthropicCompletionRequest,
     ) -> AnthropicResult<serde_json::Value> {
         let url = self.build_url(ENDPOINT_MESSAGES);
+        let api_version = self.config.api_version();
 
         // Use new Http3::json() pattern with automatic serialization
         let response = Http3::json()
             .debug() // Enable debug logging
-            .headers(|| self.build_headers_map()) // Use headers from config
+            .api_key(self.config.api_key()) // Use built-in api_key method
+            .header(
+                http::HeaderName::from_static("anthropic-version"),
+                http::HeaderValue::from_str(api_version).unwrap_or(http::HeaderValue::from_static("2023-06-01"))
+            )
             .body(request) // Automatic serde serialization
             .post(&url)
             .collect::<serde_json::Value>() // Collect to JSON response
@@ -124,35 +109,27 @@ impl<'a> AnthropicRequestBuilder<'a> {
         request: &AnthropicCompletionRequest,
     ) -> AnthropicResult<HttpResponse> {
         let url = self.build_url(ENDPOINT_MESSAGES);
+        let api_version = self.config.api_version();
 
         // Create streaming request
         let mut streaming_request = request.clone();
         streaming_request.stream = Some(true);
 
-        // Serialize request body
-        let body = serde_json::to_vec(&streaming_request).map_err(|e| {
-            AnthropicError::SerializationError {
-                message: format!("Failed to serialize streaming request: {}", e)}
-        })?;
-
-        // Build HTTP request
-        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string()).with_body(body);
-
-        // Add headers
-        let headers = self.build_headers();
-        for (name, value) in headers {
-            http_request =
-                http_request
-                    .header(&name, &value)
-                    .map_err(|e| AnthropicError::NetworkError {
-                        message: format!("Failed to add header {}: {}", name, e)})?;
-        }
-
-        // Execute request
-        let response = self.http_client.execute(http_request).await.map_err(|e| {
-            AnthropicError::NetworkError {
-                message: format!("Failed to execute streaming request: {}", e)}
-        })?;
+        // Use Http3::json() pattern for streaming
+        let response = Http3::json()
+            .debug()
+            .api_key(self.config.api_key()) // Use built-in api_key method
+            .header(
+                http::HeaderName::from_static("anthropic-version"),
+                http::HeaderValue::from_str(api_version).unwrap_or(http::HeaderValue::from_static("2023-06-01"))
+            )
+            .body(&streaming_request)
+            .post(&url)
+            .stream() // Use streaming instead of collect
+            .await
+            .map_err(|e| AnthropicError::NetworkError {
+                message: format!("Failed to execute streaming request: {}", e)
+            })?;
 
         // Check for HTTP errors
         if !response.status.is_success() {
@@ -221,21 +198,21 @@ impl<'a> AnthropicRequestBuilder<'a> {
 
 /// Standalone function to send a completion request
 #[inline]
-pub async fn send_completion_request(
-    config: &AnthropicConfig,
-    http_client: &HttpClient,
-    request: &AnthropicCompletionRequest,
-) -> AnthropicResult<HttpResponse> {
+pub async fn send_completion_request<'a>(
+    config: &'a AnthropicConfig,
+    http_client: &'a HttpClient,
+    request: &'a AnthropicCompletionRequest,
+) -> AnthropicResult<serde_json::Value> {
     let builder = AnthropicRequestBuilder::new(config, http_client);
     builder.send_completion(request).await
 }
 
 /// Standalone function to send a streaming completion request
 #[inline]
-pub async fn send_streaming_completion_request(
-    config: &AnthropicConfig,
-    http_client: &HttpClient,
-    request: &AnthropicCompletionRequest,
+pub async fn send_streaming_completion_request<'a>(
+    config: &'a AnthropicConfig,
+    http_client: &'a HttpClient,
+    request: &'a AnthropicCompletionRequest,
 ) -> AnthropicResult<HttpResponse> {
     let builder = AnthropicRequestBuilder::new(config, http_client);
     builder.send_streaming_completion(request).await
@@ -243,9 +220,9 @@ pub async fn send_streaming_completion_request(
 
 /// Standalone function to test connection
 #[inline]
-pub async fn test_connection_request(
-    config: &AnthropicConfig,
-    http_client: &HttpClient,
+pub async fn test_connection_request<'a>(
+    config: &'a AnthropicConfig,
+    http_client: &'a HttpClient,
 ) -> AnthropicResult<HttpResponse> {
     let builder = AnthropicRequestBuilder::new(config, http_client);
     builder.test_connection().await

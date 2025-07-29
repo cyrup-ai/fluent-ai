@@ -1,4 +1,4 @@
-use fluent_ai_domain::completion::CompletionRequest;
+use crate::domain::completion::CompletionRequest;
 use serde_json::json;
 use super::completion::CompletionModel;
 use crate::clients::openai;

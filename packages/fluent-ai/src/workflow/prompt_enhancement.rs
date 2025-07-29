@@ -26,7 +26,30 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::Duration;
 
 use fluent_ai_domain::agent::Agent;
-use fluent_ai_domain::model::Models;
+
+// Simple model abstraction for cross-review workflow
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WorkflowModel {
+    OpenAiGpt4oMini,
+    AnthropicClaude3Haiku,
+    MistralSmall,
+    OpenAiGpt4o,
+    AnthropicClaude3Opus,
+    MistralLarge,
+}
+
+impl WorkflowModel {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::OpenAiGpt4oMini => "gpt-4o-mini",
+            Self::AnthropicClaude3Haiku => "claude-3-haiku",
+            Self::MistralSmall => "mistral-small",
+            Self::OpenAiGpt4o => "gpt-4o",
+            Self::AnthropicClaude3Opus => "claude-3-opus",
+            Self::MistralLarge => "mistral-large",
+        }
+    }
+}
 
 /// Content type flags for specialized review strategies (bit-packed)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -57,7 +80,7 @@ impl ContentType {
 #[derive(Debug, Clone, Copy)]
 pub struct CrossReviewConfig {
     /// Models to use for generation and review
-    pub models: &'static [Models],
+    pub models: &'static [WorkflowModel],
     /// Timeout for each model interaction in milliseconds
     pub timeout_ms: u32,
     /// Temperature for creative tasks (0.0-1.0)
@@ -70,9 +93,9 @@ impl Default for CrossReviewConfig {
     fn default() -> Self {
         Self {
             models: &[
-                Models::Claude3Haiku,
-                Models::GeminiFlash1_5,
-                Models::Llama3_8B,
+                WorkflowModel::OpenAiGpt4oMini,
+                WorkflowModel::AnthropicClaude3Haiku,
+                WorkflowModel::MistralSmall,
             ],
             timeout_ms: 5000,
             temperature: 0.7,
@@ -85,7 +108,7 @@ impl CrossReviewConfig {
     #[inline]
     pub const fn high_performance() -> Self {
         Self {
-            models: &[Models::Claude3Haiku, Models::GeminiFlash1_5],
+            models: &[WorkflowModel::OpenAiGpt4oMini, WorkflowModel::AnthropicClaude3Haiku],
             timeout_ms: 3000,
             temperature: 0.5,
             refinement_cycles: 1}
@@ -96,9 +119,9 @@ impl CrossReviewConfig {
     pub const fn high_quality() -> Self {
         Self {
             models: &[
-                Models::Claude3Opus,
-                Models::Gemini1_5Pro,
-                Models::Llama3_70B,
+                WorkflowModel::OpenAiGpt4o,
+                WorkflowModel::AnthropicClaude3Opus,
+                WorkflowModel::MistralLarge,
             ],
             timeout_ms: 15000,
             temperature: 0.3,
@@ -156,9 +179,9 @@ pub struct EnhancedPrompt {
 #[derive(Debug, Clone)]
 pub struct IndividualReview {
     /// The model that performed the review
-    pub reviewer: Models,
+    pub reviewer: WorkflowModel,
     /// The model whose work was reviewed
-    pub target: Models,
+    pub target: WorkflowModel,
     /// The review content
     pub review_text: Arc<str>,
     /// The score given (0-1000)
@@ -170,7 +193,7 @@ pub struct IndividualReview {
 #[derive(Debug, Clone)]
 pub struct CrossReviewMatrix {
     /// Stores (reviewer, target, score) tuples
-    review_pairs: Arc<[(Models, Models, u32)]>,
+    review_pairs: Arc<[(WorkflowModel, WorkflowModel, u32)]>,
     /// Number of unique models involved
     dimensions: u32}
 
@@ -196,7 +219,7 @@ impl CrossReviewMatrix {
 
     /// Get the average score for a specific target model
     #[inline]
-    pub fn average_score_for_target(&self, target: Models) -> f32 {
+    pub fn average_score_for_target(&self, target: WorkflowModel) -> f32 {
         let (total, count) = self
             .review_pairs
             .iter()
@@ -224,7 +247,7 @@ impl CrossReviewMatrix {
 
     /// Get all scores for a given target model
     #[inline]
-    pub fn scores_for_target(&self, target: Models) -> impl Iterator<Item = u32> + '_ {
+    pub fn scores_for_target(&self, target: WorkflowModel) -> impl Iterator<Item = u32> + '_ {
         self.review_pairs
             .iter()
             .filter(move |(_, t, _)| *t == target)
@@ -233,7 +256,7 @@ impl CrossReviewMatrix {
 
     /// Get all scores given by a specific reviewer
     #[inline]
-    pub fn scores_by_reviewer(&self, reviewer: Models) -> impl Iterator<Item = u32> + '_ {
+    pub fn scores_by_reviewer(&self, reviewer: WorkflowModel) -> impl Iterator<Item = u32> + '_ {
         self.review_pairs
             .iter()
             .filter(move |(r, _, _)| *r == reviewer)
@@ -282,8 +305,8 @@ impl CrossReviewMatrix {
 
     /// Get model performance ranking (by average scores received)
     #[inline]
-    pub fn model_performance_ranking(&self) -> Vec<(Models, f32)> {
-        let mut model_scores: std::collections::HashMap<Models, Vec<u32>> =
+    pub fn model_performance_ranking(&self) -> Vec<(WorkflowModel, f32)> {
+        let mut model_scores: std::collections::HashMap<WorkflowModel, Vec<u32>> =
             std::collections::HashMap::new();
 
         // Collect scores for each target model
@@ -292,7 +315,7 @@ impl CrossReviewMatrix {
         }
 
         // Calculate averages and sort
-        let mut rankings: Vec<(Models, f32)> = model_scores
+        let mut rankings: Vec<(WorkflowModel, f32)> = model_scores
             .into_iter()
             .map(|(model, scores)| {
                 let average = scores.iter().sum::<u32>() as f32 / scores.len() as f32;
@@ -306,8 +329,8 @@ impl CrossReviewMatrix {
 
     /// Get reviewer reliability ranking (by consistency of scores given)
     #[inline]
-    pub fn reviewer_reliability_ranking(&self) -> Vec<(Models, f32)> {
-        let mut reviewer_scores: std::collections::HashMap<Models, Vec<u32>> =
+    pub fn reviewer_reliability_ranking(&self) -> Vec<(WorkflowModel, f32)> {
+        let mut reviewer_scores: std::collections::HashMap<WorkflowModel, Vec<u32>> =
             std::collections::HashMap::new();
 
         // Collect scores by each reviewer
@@ -316,7 +339,7 @@ impl CrossReviewMatrix {
         }
 
         // Calculate consistency (inverse of variance) and sort
-        let mut rankings: Vec<(Models, f32)> = reviewer_scores
+        let mut rankings: Vec<(WorkflowModel, f32)> = reviewer_scores
             .into_iter()
             .map(|(model, scores)| {
                 if scores.len() <= 1 {
@@ -346,7 +369,7 @@ struct GenerationResult {
     /// Generated content
     content: Arc<str>,
     /// Model used
-    model: Models,
+    model: WorkflowModel,
     /// Generation time in microseconds
     generation_time_us: u64}
 
@@ -436,7 +459,7 @@ impl CrossProviderEnhancer {
 
     /// Execute a single generation task with timeout and retry logic
     async fn execute_generation(
-        model: Models,
+        model: WorkflowModel,
         prompt: &str,
         content_type: ContentType,
         timeout_ms: u32,
@@ -486,8 +509,8 @@ impl CrossProviderEnhancer {
 
     /// Execute a single cross-review task
     async fn execute_single_review(
-        reviewer: Models,
-        target: Models,
+        reviewer: WorkflowModel,
+        target: WorkflowModel,
         content: Arc<str>,
         config: CrossReviewConfig,
     ) -> CrossReviewResult<IndividualReview> {
@@ -528,7 +551,7 @@ impl CrossProviderEnhancer {
             .models
             .first()
             .copied()
-            .unwrap_or(Models::Claude3Haiku);
+            .unwrap_or(WorkflowModel::AnthropicClaude3Haiku);
         let review_summary = reviews
             .iter()
             .map(|r| format!("Review from {}:\n{}", r.reviewer.name(), r.review_text))
@@ -570,7 +593,7 @@ impl CrossProviderEnhancer {
 
     /// Get system prompt for reviewing
     #[inline(always)]
-    fn review_system_prompt(reviewer: Models, target: Models) -> String {
+    fn review_system_prompt(reviewer: WorkflowModel, target: WorkflowModel) -> String {
         format!(
             "You are {} reviewing {}'s response. Be thorough, constructive, and objective.",
             reviewer.name(),

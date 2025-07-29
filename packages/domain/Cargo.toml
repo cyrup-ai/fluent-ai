@@ -10,11 +10,11 @@ bincode-serialization = ["bincode"]
 rkyv-serialization = ["rkyv"]
 
 [dependencies]
-fluent-ai-async = { path = "../fluent-ai-async" }
+fluent_ai_async = { path = "../async-stream" }
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 model-info = { path = "../model-info" }
 
-serde = { version = "1.0.219", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive", "rc"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
 anyhow = "1.0"
 thiserror = "2.0.12"
@@ -68,18 +68,18 @@ html-escape = "0.2.13"
 # Additional dependencies for memory migration
 fastrand = "2.3.0"
 num_cpus = "1.17.0"
-bytes = "1.10.1"
+bytes = { version = "1.10.1", features = ["serde"] }
 toml = "0.9.2"
 rkyv = { version = "0.8.10", optional = true }
 bincode = { version = "2.0.1", optional = true }
 reqwest = { version = "0.12.22", features = ["json"] }
 md5 = "0.8.0"
-tokio = { version = "1.46.1", features = ["full"] }
+tokio = { version = "1.47.0", features = ["full"] }
 tokio-stream = "0.1.17"
 async-stream = "0.3.6"
 
 [dev-dependencies]
-fluent_ai_provider = { path = "../provider" }
+# fluent_ai_provider = { path = "../provider" } # REMOVED: Package deleted
 tracing-subscriber = "0.3.19"
 jemalloc-sys = "0.5.4"
 quanta = "0.12.6"
@@ -93,7 +93,3 @@ futures-util = "0.3.31"
 [lib]
 name = "fluent_ai_domain"
 path = "src/lib.rs"
-
-[[bench]]
-name = "model_performance"
-harness = false

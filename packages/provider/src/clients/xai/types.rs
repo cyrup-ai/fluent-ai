@@ -12,7 +12,7 @@ use crate::{MAX_MESSAGES, MAX_TOOLS, MAX_DOCUMENTS};
 // Re-export OpenAI types for compatibility
 // ============================================================================
 
-pub use crate::openai::{
+pub use crate::clients::openai::{
     OpenAIMessage as XAIMessage,
     OpenAIContent as XAIContent,
     OpenAIContentPart as XAIContentPart,
@@ -28,15 +28,73 @@ pub use crate::openai::{
     OpenAIResponseToolCall as XAIResponseToolCall,
     OpenAIResponseFunction as XAIResponseFunction,
     OpenAILogprobs as XAILogprobs,
-    OpenAIContentLogprob as XAIContentLogprob,
-    OpenAITopLogprob as XAITopLogprob,
-    OpenAIErrorResponse as XAIErrorResponse,
-    OpenAIError as XAIError,
-    OpenAIStreamingChunk as XAIStreamingChunk,
-    OpenAIStreamingChoice as XAIStreamingChoice,
-    OpenAIStreamingDelta as XAIStreamingDelta,
-    OpenAIStreamingToolCall as XAIStreamingToolCall,
-    OpenAIStreamingFunction as XAIStreamingFunction};
+};
+
+// Additional XAI-specific types that are needed
+pub use crate::clients::openai::{
+    OpenAIMessage as XaiMessage,
+    OpenAIContent as XaiContent,
+    OpenAITool as XaiTool,
+    OpenAIFunction as XaiFunction,
+    OpenAIToolCall as XaiToolCall,
+    OpenAIResponseMessage as XaiResponseMessage,
+};
+
+// XAI-specific request/response types
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct XaiChatRequest {
+    pub model: String,
+    pub messages: Vec<XaiMessage>,
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<u32>,
+    pub tools: Option<Vec<XaiTool>>,
+    pub stream: Option<bool>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct XaiChatResponse {
+    pub id: String,
+    pub object: String,
+    pub created: u64,
+    pub model: String,
+    pub choices: Vec<XaiChoice>,
+    pub usage: Option<XaiUsage>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct XaiChoice {
+    pub index: u32,
+    pub message: XaiResponseMessage,
+    pub finish_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct XaiUsage {
+    pub prompt_tokens: u32,
+    pub completion_tokens: u32,
+    pub total_tokens: u32,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct XaiStreamingChunk {
+    pub id: String,
+    pub object: String,
+    pub created: u64,
+    pub model: String,
+    pub choices: Vec<XaiChoice>,
+    pub usage: Option<XaiUsage>,
+}
+
+// Type aliases for OpenAI compatibility
+pub type XAIContentLogprob = OpenAIContentLogprob;
+pub type XAITopLogprob = OpenAITopLogprob;
+pub type XAIErrorResponse = OpenAIErrorResponse;
+pub type XAIError = OpenAIError;
+pub type XAIStreamingChunk = OpenAIStreamingChunk;
+pub type XAIStreamingChoice = OpenAIStreamingChoice;
+pub type XAIStreamingDelta = OpenAIStreamingDelta;
+pub type XAIStreamingToolCall = OpenAIStreamingToolCall;
+pub type XAIStreamingFunction = OpenAIStreamingFunction;
 
 // ============================================================================
 // Chat Completions API (OpenAI-compatible with xAI extensions)

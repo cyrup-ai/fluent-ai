@@ -5,7 +5,7 @@
 // Designed for absolute zero overhead on the critical path.
 // ============================================================================
 
-use fluent_ai_http3::async_task::AsyncStream;
+use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------

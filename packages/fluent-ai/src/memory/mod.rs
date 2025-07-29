@@ -10,12 +10,12 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures_util::Stream;
+use fluent_ai_async::AsyncStream;
 pub use library::{LibraryExt, LibraryMemoryService, LibraryServiceError, LibraryServiceResult};
 use parking_lot::RwLock;
-// Re-export key types from sweetmcp-memory
-pub use sweetmcp_memory::{
-    MemoryManager as MemoryManagerTrait, MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType};
+// TODO: Re-export key types from sweetmcp-memory when available
+// pub use sweetmcp_memory::{
+//     MemoryManager as MemoryManagerTrait, MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType};
 
 // Placeholder types until sweetmcp_memory is added
 #[derive(Debug, Clone)]
@@ -352,9 +352,9 @@ impl QueryMemory {
         match self.query_type {
             QueryType::All => {
                 tokio::spawn(async move {
-                    use futures_util::StreamExt;
-                    let mut stream = manager.query_by_type(MemoryType::Semantic);
-                    while let Some(result) = stream.next().await {
+                    let stream = manager.query_by_type(MemoryType::Semantic);
+                    let results = stream.collect();
+                    for result in results {
                         match result {
                             Ok(node) => {
                                 if tx.send(node).is_err() {
@@ -371,9 +371,9 @@ impl QueryMemory {
             }
             QueryType::ByType(memory_type) => {
                 tokio::spawn(async move {
-                    use futures_util::StreamExt;
-                    let mut stream = manager.query_by_type(memory_type);
-                    while let Some(result) = stream.next().await {
+                    let stream = manager.query_by_type(memory_type);
+                    let results = stream.collect();
+                    for result in results {
                         match result {
                             Ok(node) => {
                                 if tx.send(node).is_err() {
@@ -390,9 +390,9 @@ impl QueryMemory {
             }
             QueryType::ByContent(query) => {
                 tokio::spawn(async move {
-                    use futures_util::StreamExt;
-                    let mut stream = manager.search_by_content(&query);
-                    while let Some(result) = stream.next().await {
+                    let stream = manager.search_by_content(&query);
+                    let results = stream.collect();
+                    for result in results {
                         match result {
                             Ok(node) => {
                                 if tx.send(node).is_err() {
@@ -409,9 +409,9 @@ impl QueryMemory {
             }
             QueryType::ByVector(vector) => {
                 tokio::spawn(async move {
-                    use futures_util::StreamExt;
-                    let mut stream = manager.search_by_vector(vector, limit);
-                    while let Some(result) = stream.next().await {
+                    let stream = manager.search_by_vector(vector, limit);
+                    let results = stream.collect();
+                    for result in results {
                         match result {
                             Ok(node) => {
                                 if tx.send(node).is_err() {

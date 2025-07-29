@@ -9,7 +9,7 @@
 
 use std::future::IntoFuture;
 
-use fluent_ai_http3::async_task::AsyncStream;
+use fluent_ai_async::AsyncStream;
 
 use crate::{
     completion::message::Message,

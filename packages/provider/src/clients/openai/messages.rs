@@ -9,8 +9,8 @@ use serde_json::Value;
 
 use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
-use crate::domain::{
-    Message as DomainMessage, MessageRole, ToolCall as DomainToolCall, ToolFunction};
+use fluent_ai_domain::chat::{Message as DomainMessage, MessageRole};
+use fluent_ai_domain::http::{ToolCall as DomainToolCall, FunctionCall as ToolFunction};
 
 /// OpenAI message structure for chat completions
 #[derive(Debug, Clone, Serialize, Deserialize)]

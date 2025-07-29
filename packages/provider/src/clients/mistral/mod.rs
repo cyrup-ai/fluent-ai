@@ -5,11 +5,9 @@ pub mod model_info;
 
 pub use client::{Client, MistralCompletionBuilder};
 pub use completion::{
-    CODESTRAL, CODESTRAL_MAMBA, CompletionModel, MINISTRAL_3B, MINISTRAL_8B, MISTRAL_LARGE,
-    MISTRAL_NEMO, MISTRAL_SABA, MISTRAL_SMALL,
-    MistralCompletionBuilder as NewMistralCompletionBuilder, PIXTRAL_LARGE, PIXTRAL_SMALL,
-    available_mistral_models, mistral_completion_builder};
-pub use embedding::{EmbeddingModel, MISTRAL_EMBED};
-pub use model_info::{
-    Codestral, CodestralMamba, Ministral3B, Ministral8B, MistralLarge, MistralNemo, MistralSaba,
-    MistralSmall, PixtralLarge, PixtralSmall};
+    CompletionModel,
+    MistralCompletionBuilder as NewMistralCompletionBuilder, 
+    mistral_completion_builder};
+pub // Import EmbeddingModel from domain instead of local embedding module
+use fluent_ai_domain::context::provider::EmbeddingModel;
+// Model constants removed - use model-info package exclusively

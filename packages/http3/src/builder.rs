@@ -26,7 +26,9 @@ pub enum ContentType {
     /// text/plain content type
     TextPlain,
     /// text/html content type
-    TextHtml}
+    TextHtml,
+    /// multipart/form-data content type
+    MultipartFormData}
 
 impl ContentType {
     /// Convert content type to string representation
@@ -37,7 +39,8 @@ impl ContentType {
             ContentType::ApplicationFormUrlEncoded => "application/x-www-form-urlencoded",
             ContentType::ApplicationOctetStream => "application/octet-stream",
             ContentType::TextPlain => "text/plain",
-            ContentType::TextHtml => "text/html"}
+            ContentType::TextHtml => "text/html",
+            ContentType::MultipartFormData => "multipart/form-data"}
     }
 }
 
@@ -215,6 +218,36 @@ impl<S> Http3Builder<S> {
             Err(_) => self, // Skip invalid header value
         }
     }
+
+    /// Set cache control header
+    ///
+    /// # Arguments
+    /// * `value` - The cache control directive (e.g., "no-cache", "max-age=3600")
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
+    pub fn cache_control(self, value: &str) -> Self {
+        match HeaderValue::from_str(value) {
+            Ok(header_value) => self.header(header::CACHE_CONTROL, header_value),
+            Err(_) => self, // Skip invalid header value
+        }
+    }
+
+    /// Set max age cache control directive
+    ///
+    /// # Arguments
+    /// * `seconds` - Maximum age in seconds
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    #[must_use]
+    pub fn max_age(self, seconds: u64) -> Self {
+        let value = format!("max-age={}", seconds);
+        self.cache_control(&value)
+    }
+
+
 
     /// Set the request body
     ///
@@ -621,5 +654,9 @@ impl DownloadProgress {
     }
 }
 
+/// Provider-specific builders
+pub mod provider_builders;
+
 /// Re-export for convenience
 pub use Http3Builder as Builder;
+pub use provider_builders::Http3Builders;

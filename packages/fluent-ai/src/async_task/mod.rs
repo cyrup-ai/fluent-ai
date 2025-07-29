@@ -4,6 +4,9 @@
 
 pub mod task;
 pub use task::{AsyncTask, spawn_stream, spawn_task};
+
+// Compatibility alias for spawn_async -> spawn_task
+pub use task::spawn_task as spawn_async;
 pub mod stream;
 pub use stream::{AsyncStream, AsyncStreamSender};
 pub mod thread_pool;

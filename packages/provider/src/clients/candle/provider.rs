@@ -6,25 +6,12 @@ use super::models::CandleModel;
 
 /// Candle provider for local ML model inference
 #[derive(Debug, Clone)]
-pub struct CandleProvider {
-    /// Available Candle models
-    models: Vec<CandleModel>}
+pub struct CandleProvider;
 
 impl CandleProvider {
     /// Create a new Candle provider
     pub fn new() -> Self {
-        Self {
-            models: vec![
-                CandleModel::Llama2_7B,
-                CandleModel::Llama2_13B,
-                CandleModel::Mistral_7B,
-                CandleModel::CodeLlama_7B,
-            ]}
-    }
-
-    /// Create a provider with specific models
-    pub fn with_models(models: Vec<CandleModel>) -> Self {
-        Self { models }
+        Self
     }
 }
 
@@ -36,7 +23,9 @@ impl Provider for CandleProvider {
     }
 
     fn models(&self) -> ZeroOneOrMany<Self::Model> {
-        ZeroOneOrMany::Many(self.models.clone())
+        // NOTE: Model enumeration is handled by model-info package
+        // Providers should not enumerate models - they provide capabilities
+        ZeroOneOrMany::Many(vec![])
     }
 }
 

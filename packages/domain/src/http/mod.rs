@@ -66,6 +66,9 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
+// Import Provider from model-info (single source of truth)
+// Note: Provider import removed as it was unused
+
 // Core HTTP modules
 pub mod common;     // Task #7 - Shared HTTP Types - COMPLETED
 pub mod auth;       // Task #8 - Authentication Types - COMPLETED
@@ -248,207 +251,10 @@ pub fn global_stats() -> &'static HttpStats {
     &GLOBAL_STATS
 }
 
-/// Provider identification for request routing and statistics
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
-pub enum Provider {
-    /// OpenAI (GPT models, embeddings, audio, moderation)
-    OpenAI = 0,
-    /// Anthropic (Claude models with tool use)
-    Anthropic = 1,
-    /// Google Vertex AI (PaLM, Gemini via OAuth2)
-    VertexAI = 2,
-    /// Google Gemini (Direct API access)
-    Gemini = 3,
-    /// AWS Bedrock (Claude, Titan, Llama via AWS)
-    Bedrock = 4,
-    /// Cohere (Command, Embed, Rerank)
-    Cohere = 5,
-    /// Azure OpenAI (GPT models via Azure)
-    Azure = 6,
-    /// AI21 Labs (Jurassic models)
-    AI21 = 7,
-    /// Groq (Fast inference)
-    Groq = 8,
-    /// HuggingFace (Open models via inference API)
-    HuggingFace = 9,
-    /// Mistral AI (European models)
-    Mistral = 10,
-    /// Ollama (Local model serving)
-    Ollama = 11,
-    /// OpenRouter (Model aggregation)
-    OpenRouter = 12,
-    /// Perplexity (Search-augmented models)
-    Perplexity = 13,
-    /// Together AI (Open source models)
-    Together = 14,
-    /// xAI (Grok models)
-    XAI = 15,
-    /// DeepSeek (Code and reasoning models)
-    DeepSeek = 16}
-
-impl Provider {
-    /// Get provider name as string for logging and debugging
-    #[inline]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Provider::OpenAI => "openai",
-            Provider::Anthropic => "anthropic",
-            Provider::VertexAI => "vertex-ai",
-            Provider::Gemini => "gemini",
-            Provider::Bedrock => "bedrock",
-            Provider::Cohere => "cohere",
-            Provider::Azure => "azure",
-            Provider::AI21 => "ai21",
-            Provider::Groq => "groq",
-            Provider::HuggingFace => "huggingface",
-            Provider::Mistral => "mistral",
-            Provider::Ollama => "ollama",
-            Provider::OpenRouter => "openrouter",
-            Provider::Perplexity => "perplexity",
-            Provider::Together => "together",
-            Provider::XAI => "xai",
-            Provider::DeepSeek => "deepseek"}
-    }
-
-    /// Get all supported providers as a slice
-    #[inline]
-    pub const fn all() -> &'static [Provider] {
-        &[
-            Provider::OpenAI,
-            Provider::Anthropic,
-            Provider::VertexAI,
-            Provider::Gemini,
-            Provider::Bedrock,
-            Provider::Cohere,
-            Provider::Azure,
-            Provider::AI21,
-            Provider::Groq,
-            Provider::HuggingFace,
-            Provider::Mistral,
-            Provider::Ollama,
-            Provider::OpenRouter,
-            Provider::Perplexity,
-            Provider::Together,
-            Provider::XAI,
-            Provider::DeepSeek,
-        ]
-    }
-
-    /// Check if provider supports streaming responses
-    #[inline]
-    pub const fn supports_streaming(&self) -> bool {
-        match self {
-            Provider::OpenAI
-            | Provider::Anthropic
-            | Provider::VertexAI
-            | Provider::Gemini
-            | Provider::Bedrock
-            | Provider::Cohere
-            | Provider::Azure
-            | Provider::AI21
-            | Provider::Groq
-            | Provider::HuggingFace
-            | Provider::Mistral
-            | Provider::Ollama
-            | Provider::OpenRouter
-            | Provider::Perplexity
-            | Provider::Together
-            | Provider::XAI
-            | Provider::DeepSeek => true}
-    }
-
-    /// Check if provider supports function calling
-    #[inline]
-    pub const fn supports_function_calling(&self) -> bool {
-        match self {
-            Provider::OpenAI
-            | Provider::Anthropic
-            | Provider::VertexAI
-            | Provider::Gemini
-            | Provider::Bedrock
-            | Provider::Cohere
-            | Provider::Azure
-            | Provider::Groq
-            | Provider::Mistral
-            | Provider::Ollama
-            | Provider::Together
-            | Provider::XAI => true,
-            Provider::AI21
-            | Provider::HuggingFace
-            | Provider::OpenRouter
-            | Provider::Perplexity
-            | Provider::DeepSeek => false}
-    }
-
-    /// Get default base URL for provider
-    #[inline]
-    pub const fn default_base_url(&self) -> &'static str {
-        match self {
-            Provider::OpenAI => "https://api.openai.com/v1",
-            Provider::Anthropic => "https://api.anthropic.com/v1",
-            Provider::VertexAI => "https://us-central1-aiplatform.googleapis.com/v1",
-            Provider::Gemini => "https://generativelanguage.googleapis.com/v1beta",
-            Provider::Bedrock => "https://bedrock-runtime.us-east-1.amazonaws.com",
-            Provider::Cohere => "https://api.cohere.ai/v1",
-            Provider::Azure => "", // Requires custom URL
-            Provider::AI21 => "https://api.ai21.com/studio/v1",
-            Provider::Groq => "https://api.groq.com/openai/v1",
-            Provider::HuggingFace => "https://api-inference.huggingface.co",
-            Provider::Mistral => "https://api.mistral.ai/v1",
-            Provider::Ollama => "http://localhost:11434/api",
-            Provider::OpenRouter => "https://openrouter.ai/api/v1",
-            Provider::Perplexity => "https://api.perplexity.ai",
-            Provider::Together => "https://api.together.xyz/v1",
-            Provider::XAI => "https://api.x.ai/v1",
-            Provider::DeepSeek => "https://api.deepseek.com/v1"}
-    }
-}
-
-impl std::fmt::Display for Provider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for Provider {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "openai" => Ok(Provider::OpenAI),
-            "anthropic" => Ok(Provider::Anthropic),
-            "vertex-ai" | "vertexai" => Ok(Provider::VertexAI),
-            "gemini" => Ok(Provider::Gemini),
-            "bedrock" => Ok(Provider::Bedrock),
-            "cohere" => Ok(Provider::Cohere),
-            "azure" => Ok(Provider::Azure),
-            "ai21" => Ok(Provider::AI21),
-            "groq" => Ok(Provider::Groq),
-            "huggingface" | "hf" => Ok(Provider::HuggingFace),
-            "mistral" => Ok(Provider::Mistral),
-            "ollama" => Ok(Provider::Ollama),
-            "openrouter" => Ok(Provider::OpenRouter),
-            "perplexity" => Ok(Provider::Perplexity),
-            "together" => Ok(Provider::Together),
-            "xai" => Ok(Provider::XAI),
-            "deepseek" => Ok(Provider::DeepSeek),
-            _ => Err(format!("Unknown provider: {}", s))}
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_provider_string_conversion() {
-        for provider in Provider::all() {
-            let as_str = provider.as_str();
-            let parsed = as_str.parse::<Provider>().expect("Should parse back");
-            assert_eq!(*provider, parsed);
-        }
-    }
 
     #[test]
     fn test_http_stats_operations() {
@@ -465,17 +271,5 @@ mod tests {
         assert_eq!(snapshot.bytes_received, 200);
         assert_eq!(snapshot.success_rate(), 1.0);
         assert_eq!(snapshot.average_response_time_micros(), 1000);
-    }
-
-    #[test]
-    fn test_provider_capabilities() {
-        assert!(Provider::OpenAI.supports_streaming());
-        assert!(Provider::OpenAI.supports_function_calling());
-        assert!(Provider::Anthropic.supports_streaming());
-        assert!(Provider::Anthropic.supports_function_calling());
-        
-        // Test that non-function calling providers are correctly identified
-        assert!(!Provider::AI21.supports_function_calling());
-        assert!(!Provider::HuggingFace.supports_function_calling());
     }
 }

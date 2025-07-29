@@ -10,7 +10,7 @@
 
 #![allow(clippy::type_complexity)]
 
-use fluent_ai_provider::Model;
+use fluent_ai_domain::model::Model;
 use serde_json::json;
 
 use crate::{

@@ -17,116 +17,17 @@ use super::types::{
     TogetherTool, TogetherUsage};
 use serde_json::json;
 use arrayvec::ArrayVec;
+use fluent_ai_http3::Http3;
+
+// CRITICAL: Import model information from model-info package (single source of truth)
+use model_info::{Provider, TogetherProvider, ModelInfo as ModelInfoFromPackage};
 
 use super::client::{Client, together_ai_api_types::ApiResponse};
 use crate::streaming::StreamingCompletionResponse;
 use crate::{clients::openai, json_util};
 
-pub const YI_34B_CHAT: &str = "zero-one-ai/Yi-34B-Chat";
-pub const OLMO_7B_INSTRUCT: &str = "allenai/OLMo-7B-Instruct";
-pub const CHRONOS_HERMES_13B: &str = "Austism/chronos-hermes-13b";
-pub const ML318BR: &str = "carson/ml318br";
-pub const DOLPHIN_2_5_MIXTRAL_8X7B: &str = "cognitivecomputations/dolphin-2.5-mixtral-8x7b";
-pub const DBRX_INSTRUCT: &str = "databricks/dbrx-instruct";
-pub const DEEPSEEK_LLM_67B_CHAT: &str = "deepseek-ai/deepseek-llm-67b-chat";
-pub const DEEPSEEK_CODER_33B_INSTRUCT: &str = "deepseek-ai/deepseek-coder-33b-instruct";
-pub const PLATYPUS2_70B_INSTRUCT: &str = "garage-bAInd/Platypus2-70B-instruct";
-pub const GEMMA_2_9B_IT: &str = "google/gemma-2-9b-it";
-pub const GEMMA_2B_IT: &str = "google/gemma-2b-it";
-pub const GEMMA_2_27B_IT: &str = "google/gemma-2-27b-it";
-pub const GEMMA_7B_IT: &str = "google/gemma-7b-it";
-pub const LLAMA_3_70B_INSTRUCT_GRADIENT_1048K: &str =
-    "gradientai/Llama-3-70B-Instruct-Gradient-1048k";
-pub const MYTHOMAX_L2_13B: &str = "Gryphe/MythoMax-L2-13b";
-pub const MYTHOMAX_L2_13B_LITE: &str = "Gryphe/MythoMax-L2-13b-Lite";
-pub const LLAVA_NEXT_MISTRAL_7B: &str = "llava-hf/llava-v1.6-mistral-7b-hf";
-pub const ZEPHYR_7B_BETA: &str = "HuggingFaceH4/zephyr-7b-beta";
-pub const KOALA_7B: &str = "togethercomputer/Koala-7B";
-pub const VICUNA_7B_V1_3: &str = "lmsys/vicuna-7b-v1.3";
-pub const VICUNA_13B_V1_5_16K: &str = "lmsys/vicuna-13b-v1.5-16k";
-pub const VICUNA_13B_V1_5: &str = "lmsys/vicuna-13b-v1.5";
-pub const VICUNA_13B_V1_3: &str = "lmsys/vicuna-13b-v1.3";
-pub const KOALA_13B: &str = "togethercomputer/Koala-13B";
-pub const VICUNA_7B_V1_5: &str = "lmsys/vicuna-7b-v1.5";
-pub const CODE_LLAMA_34B_INSTRUCT: &str = "codellama/CodeLlama-34b-Instruct-hf";
-pub const LLAMA_3_8B_CHAT_HF_INT4: &str = "togethercomputer/Llama-3-8b-chat-hf-int4";
-pub const LLAMA_3_2_90B_VISION_INSTRUCT_TURBO: &str =
-    "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo";
-/// The `meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo` model - default for Together.
-pub const LLAMA_3_2_11B_VISION_INSTRUCT_TURBO: &str =
-    "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo";
-pub const LLAMA_3_2_3B_INSTRUCT_TURBO: &str = "meta-llama/Llama-3.2-3B-Instruct-Turbo";
-pub const LLAMA_3_8B_CHAT_HF_INT8: &str = "togethercomputer/Llama-3-8b-chat-hf-int8";
-pub const LLAMA_3_1_70B_INSTRUCT_TURBO: &str = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo";
-pub const LLAMA_2_13B_CHAT: &str = "meta-llama/Llama-2-13b-chat-hf";
-pub const LLAMA_3_70B_INSTRUCT_LITE: &str = "meta-llama/Meta-Llama-3-70B-Instruct-Lite";
-pub const LLAMA_3_8B_CHAT_HF: &str = "meta-llama/Llama-3-8b-chat-hf";
-pub const LLAMA_3_70B_CHAT_HF: &str = "meta-llama/Llama-3-70b-chat-hf";
-pub const LLAMA_3_8B_INSTRUCT_TURBO: &str = "meta-llama/Meta-Llama-3-8B-Instruct-Turbo";
-pub const LLAMA_3_8B_INSTRUCT_LITE: &str = "meta-llama/Meta-Llama-3-8B-Instruct-Lite";
-pub const LLAMA_3_1_405B_INSTRUCT_LITE_PRO: &str =
-    "meta-llama/Meta-Llama-3.1-405B-Instruct-Lite-Pro";
-pub const LLAMA_2_7B_CHAT: &str = "meta-llama/Llama-2-7b-chat-hf";
-pub const LLAMA_3_1_405B_INSTRUCT_TURBO: &str = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo";
-pub const LLAMA_VISION_FREE: &str = "meta-llama/Llama-Vision-Free";
-pub const LLAMA_3_70B_INSTRUCT_TURBO: &str = "meta-llama/Meta-Llama-3-70B-Instruct-Turbo";
-pub const LLAMA_3_1_8B_INSTRUCT_TURBO: &str = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo";
-pub const CODE_LLAMA_7B_INSTRUCT_TOGETHER: &str = "togethercomputer/CodeLlama-7b-Instruct";
-pub const CODE_LLAMA_34B_INSTRUCT_TOGETHER: &str = "togethercomputer/CodeLlama-34b-Instruct";
-pub const CODE_LLAMA_13B_INSTRUCT: &str = "codellama/CodeLlama-13b-Instruct-hf";
-pub const CODE_LLAMA_13B_INSTRUCT_TOGETHER: &str = "togethercomputer/CodeLlama-13b-Instruct";
-pub const LLAMA_2_13B_CHAT_TOGETHER: &str = "togethercomputer/llama-2-13b-chat";
-pub const LLAMA_2_7B_CHAT_TOGETHER: &str = "togethercomputer/llama-2-7b-chat";
-pub const LLAMA_3_8B_INSTRUCT: &str = "meta-llama/Meta-Llama-3-8B-Instruct";
-pub const LLAMA_3_70B_INSTRUCT: &str = "meta-llama/Meta-Llama-3-70B-Instruct";
-pub const CODE_LLAMA_70B_INSTRUCT: &str = "codellama/CodeLlama-70b-Instruct-hf";
-pub const LLAMA_2_70B_CHAT_TOGETHER: &str = "togethercomputer/llama-2-70b-chat";
-pub const LLAMA_3_1_8B_INSTRUCT_REFERENCE: &str = "meta-llama/Meta-Llama-3.1-8B-Instruct-Reference";
-pub const LLAMA_3_1_70B_INSTRUCT_REFERENCE: &str =
-    "meta-llama/Meta-Llama-3.1-70B-Instruct-Reference";
-pub const WIZARDLM_2_8X22B: &str = "microsoft/WizardLM-2-8x22B";
-pub const MISTRAL_7B_INSTRUCT_V0_1: &str = "mistralai/Mistral-7B-Instruct-v0.1";
-pub const MISTRAL_7B_INSTRUCT_V0_2: &str = "mistralai/Mistral-7B-Instruct-v0.2";
-pub const MISTRAL_7B_INSTRUCT_V0_3: &str = "mistralai/Mistral-7B-Instruct-v0.3";
-pub const MIXTRAL_8X7B_INSTRUCT_V0_1: &str = "mistralai/Mixtral-8x7B-Instruct-v0.1";
-pub const MIXTRAL_8X22B_INSTRUCT_V0_1: &str = "mistralai/Mixtral-8x22B-Instruct-v0.1";
-pub const NOUS_HERMES_2_MIXTRAL_8X7B_DPO: &str = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO";
-pub const NOUS_HERMES_LLAMA2_70B: &str = "NousResearch/Nous-Hermes-Llama2-70b";
-pub const NOUS_HERMES_2_MIXTRAL_8X7B_SFT: &str = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT";
-pub const NOUS_HERMES_LLAMA2_13B: &str = "NousResearch/Nous-Hermes-Llama2-13b";
-pub const NOUS_HERMES_2_MISTRAL_DPO: &str = "NousResearch/Nous-Hermes-2-Mistral-7B-DPO";
-pub const NOUS_HERMES_LLAMA2_7B: &str = "NousResearch/Nous-Hermes-llama-2-7b";
-pub const NOUS_CAPYBARA_V1_9: &str = "NousResearch/Nous-Capybara-7B-V1p9";
-pub const HERMES_2_THETA_LLAMA_3_70B: &str = "NousResearch/Hermes-2-Theta-Llama-3-70B";
-pub const OPENCHAT_3_5: &str = "openchat/openchat-3.5-1210";
-pub const OPENORCA_MISTRAL_7B_8K: &str = "Open-Orca/Mistral-7B-OpenOrca";
-pub const QWEN_2_72B_INSTRUCT: &str = "Qwen/Qwen2-72B-Instruct";
-pub const QWEN2_5_72B_INSTRUCT_TURBO: &str = "Qwen/Qwen2.5-72B-Instruct-Turbo";
-pub const QWEN2_5_7B_INSTRUCT_TURBO: &str = "Qwen/Qwen2.5-7B-Instruct-Turbo";
-pub const QWEN1_5_110B_CHAT: &str = "Qwen/Qwen1.5-110B-Chat";
-pub const QWEN1_5_72B_CHAT: &str = "Qwen/Qwen1.5-72B-Chat";
-pub const QWEN_2_1_5B_INSTRUCT: &str = "Qwen/Qwen2-1.5B-Instruct";
-pub const QWEN_2_7B_INSTRUCT: &str = "Qwen/Qwen2-7B-Instruct";
-pub const QWEN1_5_14B_CHAT: &str = "Qwen/Qwen1.5-14B-Chat";
-pub const QWEN1_5_1_8B_CHAT: &str = "Qwen/Qwen1.5-1.8B-Chat";
-pub const QWEN1_5_32B_CHAT: &str = "Qwen/Qwen1.5-32B-Chat";
-pub const QWEN1_5_7B_CHAT: &str = "Qwen/Qwen1.5-7B-Chat";
-pub const QWEN1_5_0_5B_CHAT: &str = "Qwen/Qwen1.5-0.5B-Chat";
-pub const QWEN1_5_4B_CHAT: &str = "Qwen/Qwen1.5-4B-Chat";
-pub const SNORKEL_MISTRAL_PAIRRM_DPO: &str = "snorkelai/Snorkel-Mistral-PairRM-DPO";
-pub const SNOWFLAKE_ARCTIC_INSTRUCT: &str = "Snowflake/snowflake-arctic-instruct";
-pub const ALPACA_7B: &str = "togethercomputer/alpaca-7b";
-pub const OPENHERMES_2_MISTRAL_7B: &str = "teknium/OpenHermes-2-Mistral-7B";
-pub const OPENHERMES_2_5_MISTRAL_7B: &str = "teknium/OpenHermes-2p5-Mistral-7B";
-pub const GUANACO_65B: &str = "togethercomputer/guanaco-65b";
-pub const GUANACO_13B: &str = "togethercomputer/guanaco-13b";
-pub const GUANACO_33B: &str = "togethercomputer/guanaco-33b";
-pub const GUANACO_7B: &str = "togethercomputer/guanaco-7b";
-pub const REMM_SLERP_L2_13B: &str = "Undi95/ReMM-SLERP-L2-13B";
-pub const TOPPY_M_7B: &str = "Undi95/Toppy-M-7B";
-pub const SOLAR_10_7B_INSTRUCT_V1: &str = "upstage/SOLAR-10.7B-Instruct-v1.0";
-pub const SOLAR_10_7B_INSTRUCT_V1_INT4: &str = "togethercomputer/SOLAR-10.7B-Instruct-v1.0-int4";
-pub const WIZARDLM_13B_V1_2: &str = "WizardLM/WizardLM-13B-V1.2";
+// Model constants removed - use model-info package exclusively
+// All Together AI model information is provided by ./packages/model-info
 
 // =================================================================
 // Rig Implementation Types
@@ -145,24 +46,36 @@ impl TogetherCompletionModel {
             model: model.to_string()}
     }
 
+    /// Load model information from model-info package (single source of truth)
+    pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
+        let provider = Provider::Together(TogetherProvider);
+        provider.get_model_info(&self.model)
+    }
+
     pub(crate) fn create_completion_request(
         &self,
         completion_request: completion::CompletionRequest,
     ) -> Result<TogetherChatRequest<'_>, CompletionError> {
-        // Use the centralized builder with validation
-        let builder = Http3Builders::together();
-        let mut chat_builder = builder.chat(&self.model);
+        let mut messages = ArrayVec::new();
 
         // Add preamble as system message if present
         if let Some(preamble) = &completion_request.preamble {
-            chat_builder = chat_builder.add_text_message("system", preamble);
+            messages
+                .try_push(TogetherMessage {
+                    role: "system",
+                    content: TogetherContent::Text(preamble)})
+                .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
 
         // Add documents as context
         if let Some(docs) = completion_request.normalized_documents() {
             for doc in docs {
                 let content = format!("Document: {}", doc.content());
-                chat_builder = chat_builder.add_text_message("user", &content);
+                messages
+                    .try_push(TogetherMessage {
+                        role: "user",
+                        content: TogetherContent::Text(Box::leak(content.into_boxed_str()))})
+                    .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
             }
         }
 
@@ -171,41 +84,40 @@ impl TogetherCompletionModel {
             match msg.role() {
                 fluent_ai_domain::message::MessageRole::User => {
                     if let Some(text) = msg.content().text() {
-                        chat_builder = chat_builder.add_text_message("user", text);
+                        messages
+                            .try_push(TogetherMessage {
+                                role: "user",
+                                content: TogetherContent::Text(text)})
+                            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
                     }
                 }
                 fluent_ai_domain::message::MessageRole::Assistant => {
                     if let Some(text) = msg.content().text() {
-                        chat_builder = chat_builder.add_text_message("assistant", text);
+                        messages
+                            .try_push(TogetherMessage {
+                                role: "assistant",
+                                content: TogetherContent::Text(text)})
+                            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
                     }
                 }
                 fluent_ai_domain::message::MessageRole::System => {
                     if let Some(text) = msg.content().text() {
-                        chat_builder = chat_builder.add_text_message("system", text);
+                        messages
+                            .try_push(TogetherMessage {
+                                role: "system",
+                                content: TogetherContent::Text(text)})
+                            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
                     }
                 }
             }
         }
 
-        // Set parameters with validation using centralized utilities
-        if let Some(temp) = completion_request.temperature {
-            chat_builder = chat_builder.temperature(
-                HttpUtils::validate_temperature(temp as f32, Provider::Together).map_err(|e| {
-                    CompletionError::InvalidRequest(format!("Invalid temperature: {}", e))
-                })? as f64,
-            );
-        }
-
-        if let Some(max_tokens) = completion_request.max_tokens {
-            chat_builder = chat_builder.max_tokens(
-                HttpUtils::validate_max_tokens(max_tokens, Provider::Together).map_err(|e| {
-                    CompletionError::InvalidRequest(format!("Invalid max_tokens: {}", e))
-                })?,
-            );
-        }
+        // Set parameters with direct validation - zero allocation
+        let temperature = completion_request.temperature.map(|temp| temp.clamp(0.0, 2.0));
+        let max_tokens = completion_request.max_tokens.map(|tokens| tokens.clamp(1, 8192));
 
         // Add tools if present
-        if !completion_request.tools.is_empty() {
+        let tools = if !completion_request.tools.is_empty() {
             let mut together_tools = arrayvec::ArrayVec::new();
             for tool in completion_request.tools.into_iter() {
                 if together_tools.len() < super::types::MAX_TOOLS {
@@ -218,16 +130,22 @@ impl TogetherCompletionModel {
                     let _ = together_tools.push(together_tool);
                 }
             }
-            chat_builder = chat_builder.with_tools(together_tools);
-        }
+            Some(together_tools)
+        } else {
+            None
+        };
 
-        // Build and validate the request
-        match chat_builder.build() {
-            Ok(request) => Ok(request),
-            Err(e) => Err(CompletionError::InvalidRequest(format!(
-                "Request building failed: {}",
-                e
-            )))}
+        Ok(TogetherChatRequest {
+            model: &self.model,
+            messages,
+            temperature,
+            max_tokens,
+            top_p: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            tools,
+            stream: Some(false),
+        })
     }
 }
 
@@ -235,86 +153,98 @@ impl completion::CompletionModel for TogetherCompletionModel {
     type Response = TogetherChatResponse;
     type StreamingResponse = openai::StreamingCompletionResponse;
 
-    #[cfg_attr(feature = "worker", worker::send)]
-    async fn completion(
+    fn completion(
         &self,
         completion_request: completion::CompletionRequest,
-    ) -> Result<completion::CompletionResponse<TogetherChatResponse>, CompletionError> {
-        let request_body = self.create_completion_request(completion_request)?;
-
-        // Use centralized serialization
-        let body_bytes = match serde_json::to_vec(&request_body) {
-            Ok(bytes) => bytes,
+    ) -> fluent_ai_async::AsyncStream<completion::CompletionResponse<TogetherChatResponse>> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let api_key = self.client.api_key().clone();
+        let base_url = self.client.base_url().clone();
+        let request_body = match self.create_completion_request(completion_request) {
+            Ok(body) => body,
             Err(e) => {
-                return Err(CompletionError::ProviderError(format!(
-                    "Serialization error: {}",
-                    e
-                )));
+                return AsyncStream::with_channel(|sender| {
+                    handle_error!(e, "Request creation failed");
+                });
             }
         };
 
-        let http_request = self
-            .client
-            .post("/v1/chat/completions", body_bytes)
-            .map_err(|e| {
-                CompletionError::ProviderError(format!("Failed to create request: {}", e))
-            })?;
+        AsyncStream::with_channel(move |sender| {
+            // Use Http3::json() directly without await - NO FUTURES
+            let response = Http3::json()
+                .api_key(&api_key)
+                .body(&request_body)
+                .post(&format!("{}/v1/chat/completions", base_url))
+                .collect();
 
-        let response = self
-            .client
-            .http_client
-            .send(http_request)
-            .await
-            .map_err(|e| CompletionError::ProviderError(format!("Request failed: {}", e)))?;
-
-        if response.status().is_success() {
-            let body = response.body();
-            tracing::debug!(target: "rig", "Together completion response: {}", String::from_utf8_lossy(body));
-
-            match serde_json::from_slice::<ApiResponse<TogetherChatResponse>>(body)? {
-                ApiResponse::Ok(response) => {
+            match response {
+                Ok(ApiResponse::Ok(completion_response)) => {
                     tracing::info!(target: "rig",
                         "Together completion token usage: {:?}",
-                        response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
+                        completion_response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
                     );
-                    response.try_into()
+                    match completion_response.try_into() {
+                        Ok(response) => emit!(sender, response),
+                        Err(e) => handle_error!(e, "Response conversion failed"),
+                    }
                 }
-                ApiResponse::Error(err) => Err(CompletionError::ProviderError(err.error))}
-        } else {
-            let error_body = String::from_utf8_lossy(response.body());
-            Err(CompletionError::ProviderError(error_body.to_string()))
-        }
+                Ok(ApiResponse::Error(err)) => {
+                    handle_error!(CompletionError::ProviderError(err.error), "API error");
+                }
+                Err(e) => {
+                    handle_error!(CompletionError::ProviderError(format!("Request failed: {}", e)), "HTTP request failed");
+                }
+            }
+        })
     }
 
-    #[cfg_attr(feature = "worker", worker::send)]
-    async fn stream(
+    fn stream(
         &self,
         request: CompletionRequest,
-    ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
-        let mut request_body = self.create_completion_request(request)?;
-
-        // Enable streaming in the centralized request
-        request_body.stream = Some(true);
-
-        // Use centralized serialization
-        let body_bytes = match serde_json::to_vec(&request_body) {
-            Ok(bytes) => bytes,
+    ) -> fluent_ai_async::AsyncStream<Self::StreamingResponse> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        let api_key = self.client.api_key().clone();
+        let base_url = self.client.base_url().clone();
+        let mut request_body = match self.create_completion_request(request) {
+            Ok(body) => body,
             Err(e) => {
-                return Err(CompletionError::ProviderError(format!(
-                    "Serialization error: {}",
-                    e
-                )));
+                return AsyncStream::with_channel(|sender| {
+                    handle_error!(e, "Request creation failed");
+                });
             }
         };
 
-        let http_request = self
-            .client
-            .post("/v1/chat/completions", body_bytes)
-            .map_err(|e| {
-                CompletionError::ProviderError(format!("Failed to create request: {}", e))
-            })?;
+        // Enable streaming in the request
+        request_body.stream = Some(true);
 
-        // Use OpenAI-compatible streaming since Together AI is OpenAI-compatible
-        openai::send_openai_streaming_request(self.client.http_client.clone(), http_request).await
+        AsyncStream::with_channel(move |sender| {
+            // Use Http3::json() for streaming with SSE handling - NO FUTURES
+            let mut response_stream = Http3::json()
+                .api_key(&api_key)
+                .body(&request_body)
+                .post(&format!("{}/v1/chat/completions", base_url));
+
+            // Process SSE stream using AsyncStream patterns
+            response_stream.on_chunk(|chunk| {
+                match chunk {
+                    Ok(sse_data) => {
+                        // Parse SSE data and emit streaming responses
+                        if let Ok(streaming_response) = parse_sse_chunk(&sse_data) {
+                            emit!(sender, streaming_response);
+                        }
+                    }
+                    Err(e) => handle_error!(e, "SSE chunk processing failed"),
+                }
+            });
+        })
     }
 }
+
+// =============================================================================
+// Model Constants (for compatibility with existing imports)
+// =============================================================================
+
+/// Llama 3.2 11B Vision Instruct Turbo model
+pub const LLAMA_3_2_11B_VISION_INSTRUCT_TURBO: &str = "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo";

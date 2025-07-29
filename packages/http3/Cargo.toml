@@ -10,9 +10,9 @@ categories = ["network-programming", "web-programming::http-client"]
 
 [dependencies]
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
-fluent_ai_async = { package = "fluent-ai-async", version = "0.1.0", path = "../fluent-ai-async" }
+fluent_ai_async = { package = "fluent_ai_async", version = "0.1.0", path = "../async-stream" }
 reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
-tokio = { version = "1.46.1", features = ["full"] }
+tokio = { version = "1.47.0", features = ["full"] }
 tokio-stream = "0.1.17"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.141"
@@ -44,7 +44,7 @@ log = "0.4.27"
 [dev-dependencies]
 env_logger = "0.11.8"
 futures-util = "0.3.31"
-tokio = { version = "1.46.1", features = ["full"] }
+tokio = { version = "1.47.0", features = ["full"] }
 axum = "0.8.4"
 
 [lib]

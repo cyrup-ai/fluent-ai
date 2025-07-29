@@ -12,7 +12,7 @@
 use std::io::{self, Write};
 use std::thread::yield_now;
 
-use futures_util::FutureExt; // for `now_or_never`
+// Removed futures_util::FutureExt - using AsyncStream patterns instead
 use termcolor::{ColoredMessage, colored_println, info_i};
 
 use crate::{
@@ -62,8 +62,9 @@ where
         let reply = loop {
             executor.drain(); // runs any ready tasks
 
-            if let Some(res) = handle.now_or_never() {
-                break res?; // propagate PromptError
+            // Non-blocking check with AsyncStream pattern
+            if handle.is_finished() {
+                break handle.await?; // propagate PromptError  
             }
 
             // Give other threads a chance (keeps CLI responsive on heavy load)

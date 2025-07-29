@@ -5,9 +5,6 @@
 // ============================================================================
 
 use std::sync::LazyLock;
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpError;
-use fluent_ai_http3::HttpRequest;
 
 use arc_swap::ArcSwap;
 use arrayvec::{ArrayString};
@@ -24,10 +21,10 @@ use super::{
     embedding::{EmbeddingModel, M2_BERT_80M_8K_RETRIEVAL}};
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient},
-    completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError},
-    json_util,
-    message::Message};
+    completion_provider::{CompletionError, CompletionProvider}};
+use fluent_ai_domain::{
+    completion::{CompletionRequest, CompletionRequestBuilder},
+    chat::message::Message};
 
 // ============================================================================
 // Together AI API Client with HTTP3 and dual-endpoint optimization

@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tokio::sync::RwLock;
 use fluent_ai_domain::chat::{
-    EnhancedHistoryManager, ChatSearchIndex, ConversationTagger, 
-    HistoryExporter, HistoryManagerStatistics, SearchStatistics
+    ChatSearchIndex,
+    search::{EnhancedHistoryManager, ConversationTagger, HistoryExporter, HistoryManagerStatistics, SearchStatistics}
 };
 
 /// Builder for creating history managers

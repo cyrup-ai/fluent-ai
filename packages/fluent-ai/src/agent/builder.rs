@@ -32,10 +32,9 @@ use fluent_ai_provider::Model;
 use crate::tool::McpTool;
 use crate::{
     completion::Document,
-    domain::mcp_tool::Tool,
-    domain::tool::ToolSet,
     runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
+use fluent_ai_domain::tool::{Tool, ToolSet};
 
 // ============================================================================
 // Error types for builder operations

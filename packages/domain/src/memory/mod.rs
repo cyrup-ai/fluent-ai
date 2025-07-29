@@ -16,6 +16,8 @@ pub mod config;
 pub use config::llm::{LLMConfig, LLMProvider};
 // Re-export manager types
 pub use manager::{MemoryManagerTrait as MemoryManager, SurrealDBMemoryManager};
+// Re-export library types
+pub use library::Library;
 
 /// Core memory management and configuration
 pub mod manager;
@@ -25,6 +27,9 @@ mod ops;
 
 /// Memory tool implementation for MCP integration
 mod tool;
+
+/// Library namespace management
+mod library;
 
 /// Cache implementation
 mod cache;
@@ -37,6 +42,9 @@ mod serialization;
 
 /// Memory workflow management
 mod workflow;
+
+/// Memory types and core data structures
+pub mod types;
 
 // Re-export all new domain types
 // Type aliases for migration compatibility
@@ -74,6 +82,7 @@ pub use primitives::*;
 // Re-export commonly used primitives types
 pub use primitives::{MemoryContent, MemoryTypeEnum};
 pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
+pub use types::{VectorStoreIndex, VectorStoreIndexDyn};
 
 // BoxFuture replaced with AsyncStream - use .collect() for Future-like behavior
 

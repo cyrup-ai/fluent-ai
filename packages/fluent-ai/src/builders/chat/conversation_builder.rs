@@ -1,4 +1,4 @@
-use fluent_ai_domain::chat::{MessageRole, StreamingConversation};
+use fluent_ai_domain::chat::{MessageRole, conversation::StreamingConversation};
 
 /// Builder for creating conversations
 pub struct ConversationBuilder {

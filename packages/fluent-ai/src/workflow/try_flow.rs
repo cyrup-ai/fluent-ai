@@ -6,9 +6,8 @@
 // across pipelined operations.
 // ============================================================================
 
-use fluent_ai_http3::async_task::AsyncStream;
-use futures_util::stream::{self, StreamExt, TryStreamExt};
-use futures_util::{join, try_join};
+use fluent_ai_async::AsyncStream;
+// Removed futures_util - using AsyncStream patterns with tokio::join! instead
 
 use super::{Map, Op, Then};
 

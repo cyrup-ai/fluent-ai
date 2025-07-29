@@ -3,7 +3,7 @@ use fluent_ai_async::AsyncStream;
 use hashbrown::HashMap;
 use std::sync::OnceLock;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AnthropicProvider;
 
 impl ProviderTrait for AnthropicProvider {
@@ -15,28 +15,72 @@ impl ProviderTrait for AnthropicProvider {
             let _ = sender.send(model_info);
         })
     }
+    
+    fn list_models(&self) -> AsyncStream<ModelInfo> {
+        use crate::generated_models::AnthropicModel as Anthropic;
+        use crate::common::Model;
+        
+        AsyncStream::with_channel(move |sender| {
+            let models = vec![
+                Anthropic::Claude35Sonnet20240620,
+                Anthropic::Claude3Haiku20240307,
+                Anthropic::Claude3Opus20240229,
+            ];
+            
+            for model in models {
+                let model_info = adapt_anthropic_to_model_info(model.name());
+                let _ = sender.send(model_info);
+            }
+        })
+    }
+    
+    fn provider_name(&self) -> &'static str {
+        "anthropic"
+    }
 }
 
 fn adapt_anthropic_to_model_info(model: &str) -> ModelInfo {
-    static MAP: OnceLock<HashMap<&'static str, (u64, f64, f64, bool, Option<f64>)>> = OnceLock::new();
+    static MAP: OnceLock<HashMap<&'static str, (u32, u32, f64, f64, bool, bool, bool, bool, bool)>> = OnceLock::new();
     let map = MAP.get_or_init(|| {
         let mut m = HashMap::new();
-        m.insert("claude-3-5-sonnet-20240620", (200000, 3.0, 15.0, false, None));
-        m.insert("claude-3-haiku-20240307", (200000, 0.25, 1.25, false, None));
-        m.insert("claude-3-opus-20240229", (200000, 15.0, 75.0, false, None));
-        m.insert("claude-3-sonnet-20240229", (200000, 3.0, 15.0, false, None));
+        // (max_input, max_output, input_price, output_price, vision, function_calling, streaming, embeddings, thinking)
+        m.insert("claude-3-5-sonnet-20240620", (200000, 50000, 3.0, 15.0, true, true, true, false, false));
+        m.insert("claude-3-haiku-20240307", (200000, 50000, 0.25, 1.25, true, true, true, false, false));
+        m.insert("claude-3-opus-20240229", (200000, 50000, 15.0, 75.0, true, true, true, false, false));
+        m.insert("claude-3-sonnet-20240229", (200000, 50000, 3.0, 15.0, true, true, true, false, false));
         m
     });
     
-    let (max_context, pricing_input, pricing_output, is_thinking, required_temperature) = 
-        map.get(model).copied().unwrap_or((200000, 0.0, 0.0, false, None));
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
+        map.get(model).copied().unwrap_or((200000, 50000, 0.0, 0.0, true, true, true, false, false));
     
     ModelInfo {
-        name: model.to_string(),
-        max_context,
-        pricing_input,
-        pricing_output,
-        is_thinking,
-        required_temperature,
+        // Core identification
+        provider_name: "anthropic",
+        name: Box::leak(model.to_string().into_boxed_str()),
+        
+        // Token limits
+        max_input_tokens: std::num::NonZeroU32::new(max_input),
+        max_output_tokens: std::num::NonZeroU32::new(max_output),
+        
+        // Pricing (per 1M tokens)
+        input_price: Some(pricing_input),
+        output_price: Some(pricing_output),
+        
+        // Capability flags
+        supports_vision,
+        supports_function_calling,
+        supports_streaming,
+        supports_embeddings,
+        requires_max_tokens: false,
+        supports_thinking,
+        
+        // Advanced features
+        optimal_thinking_budget: if supports_thinking { Some(75000) } else { None },
+        system_prompt_prefix: None,
+        real_name: None,
+        model_type: None,
+        patch: None,
+        required_temperature: None,
     }
 }

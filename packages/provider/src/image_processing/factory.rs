@@ -424,7 +424,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use crossbeam_queue::SegQueue;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
-use futures_util::stream::Stream;
+use fluent_ai_async::AsyncStream;
 use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
@@ -780,8 +780,6 @@ impl ImageStream {
 
     /// Read next chunk with fixed-size buffer
     pub async fn next_chunk(&mut self) -> ImageProcessingResult<Option<Vec<u8>>> {
-        use futures_util::StreamExt;
-
         if let Some(result) = self.inner.next().await {
             match result {
                 Ok(chunk) => {
@@ -1058,20 +1056,15 @@ pub mod batch_processing {
         urls: &[String],
         max_concurrent: usize,
     ) -> ImageProcessingResult<Vec<ProcessedImageStream>> {
-        use futures_util::stream::{FuturesUnordered, StreamExt};
-
-        let mut futures = FuturesUnordered::new();
+        // Sequential processing for now - TODO: implement concurrent AsyncStream pattern
         let mut results = Vec::with_capacity(urls.len());
 
         for url in urls.iter().take(max_concurrent) {
-            let future = async {
+            let result = async {
                 let stream = factory.fetch_image_stream(url).await?;
                 factory.process_image_stream(stream).await
-            };
-            futures.push(future);
-        }
-
-        while let Some(result) = futures.next().await {
+            }.await;
+            
             match result {
                 Ok(processed_stream) => {
                     results.push(processed_stream);

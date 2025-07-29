@@ -1,10 +1,12 @@
 //! Model capability utilities for filtering and querying
 //!
 //! This module provides utility types for working with model capabilities.
-//! ModelCapabilities is derived from ModelInfo (the single source of truth)
-//! which deserializes directly from the external models.yaml file.
+//! ModelCapabilities is imported from model-info (the single source of truth).
 
 use serde::{Deserialize, Serialize};
+
+// RE-EXPORT ModelCapabilities from model-info (single source of truth)
+pub use model_info::common::ModelCapabilities;
 
 /// Specific capabilities that models can support
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,78 +52,57 @@ pub enum Capability {
     /// Supports model pruning
     Pruning}
 
-/// Model capability flags for filtering and selection
+/// Domain-specific model capability flags for filtering and selection
 ///
 /// This is a utility struct derived from ModelInfo for capability-based filtering.
 /// ModelInfo (which deserializes from the external models.yaml) is the single source of truth.
 /// Use ModelInfo::to_capabilities() to create this struct.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub struct ModelCapabilities {
-    /// Whether the model supports vision/image inputs
-    pub supports_vision: bool,
-    /// Whether the model supports function/tool calling
-    pub supports_function_calling: bool,
-    /// Whether the model supports streaming responses
-    pub supports_streaming: bool,
-    /// Whether the model supports fine-tuning
-    pub supports_fine_tuning: bool,
-    /// Whether the model supports batch processing
-    pub supports_batch_processing: bool,
-    /// Whether the model supports real-time processing
-    pub supports_realtime: bool,
-    /// Whether the model supports multimodal inputs
-    pub supports_multimodal: bool,
-    /// Whether the model supports thinking/reasoning modes
-    pub supports_thinking: bool,
-    /// Whether the model supports embedding generation
-    pub supports_embedding: bool,
-    /// Whether the model supports code completion
-    pub supports_code_completion: bool,
-    /// Whether the model supports chat/conversation
-    pub supports_chat: bool,
-    /// Whether the model supports instruction following
-    pub supports_instruction_following: bool,
-    /// Whether the model supports few-shot learning
-    pub supports_few_shot_learning: bool,
-    /// Whether the model supports zero-shot learning
-    pub supports_zero_shot_learning: bool,
-    /// Whether the model has a long context window
-    pub has_long_context: bool,
-    /// Whether the model is optimized for low-latency inference
-    pub is_low_latency: bool,
-    /// Whether the model is optimized for high-throughput inference
-    pub is_high_throughput: bool,
-    /// Whether the model supports quantization
-    pub supports_quantization: bool,
-    /// Whether the model supports distillation
-    pub supports_distillation: bool,
-    /// Whether the model supports pruning
-    pub supports_pruning: bool}
+pub struct DomainModelCapabilities {
+    /// Supports vision/image understanding
+    pub vision: bool,
+    /// Supports function/tool calling  
+    pub function_calling: bool,
+    /// Supports streaming responses
+    pub streaming: bool,
+    /// Supports embeddings generation
+    pub embeddings: bool,
+    /// Supports thinking/reasoning
+    pub thinking: bool,
+}
 
-impl ModelCapabilities {
-    /// Create a new ModelCapabilities with all capabilities disabled
-    ///
-    /// **NOTE**: In most cases, you should use `ModelInfo::to_capabilities()` instead
-    /// of creating ModelCapabilities directly, since ModelInfo is the single source
-    /// of truth that deserializes from the external models.yaml file.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+/// Extension trait to add utility methods to ModelCapabilities from model-info
+pub trait ModelCapabilitiesExt {
     /// Enable a specific capability
-    pub fn with_capability(mut self, capability: Capability) -> Self {
+    fn with_capability(self, capability: Capability) -> Self;
+    /// Disable a specific capability  
+    fn without_capability(self, capability: Capability) -> Self;
+    /// Set a specific capability
+    fn set_capability(&mut self, capability: Capability, enabled: bool);
+    /// Check if a specific capability is enabled
+    fn has_capability(&self, capability: Capability) -> bool;
+    /// Check if all specified capabilities are enabled
+    fn has_all_capabilities(&self, capabilities: &[Capability]) -> bool;
+    /// Check if any of the specified capabilities are enabled
+    fn has_any_capability(&self, capabilities: &[Capability]) -> bool;
+    /// Get an iterator over all enabled capabilities
+    fn enabled_capabilities(&self) -> impl Iterator<Item = Capability> + '_;
+    /// Get all enabled capabilities as a vector
+    fn to_vec(&self) -> Vec<Capability>;
+}
+
+impl ModelCapabilitiesExt for ModelCapabilities {
+    fn with_capability(mut self, capability: Capability) -> Self {
         self.set_capability(capability, true);
         self
     }
 
-    /// Disable a specific capability
-    pub fn without_capability(mut self, capability: Capability) -> Self {
+    fn without_capability(mut self, capability: Capability) -> Self {
         self.set_capability(capability, false);
         self
     }
 
-    /// Set a specific capability
-    pub fn set_capability(&mut self, capability: Capability, enabled: bool) {
+    fn set_capability(&mut self, capability: Capability, enabled: bool) {
         match capability {
             Capability::Vision => self.supports_vision = enabled,
             Capability::FunctionCalling => self.supports_function_calling = enabled,
@@ -142,11 +123,11 @@ impl ModelCapabilities {
             Capability::HighThroughput => self.is_high_throughput = enabled,
             Capability::Quantization => self.supports_quantization = enabled,
             Capability::Distillation => self.supports_distillation = enabled,
-            Capability::Pruning => self.supports_pruning = enabled}
+            Capability::Pruning => self.supports_pruning = enabled,
+        }
     }
 
-    /// Check if a specific capability is enabled
-    pub fn has_capability(&self, capability: Capability) -> bool {
+    fn has_capability(&self, capability: Capability) -> bool {
         match capability {
             Capability::Vision => self.supports_vision,
             Capability::FunctionCalling => self.supports_function_calling,
@@ -167,21 +148,19 @@ impl ModelCapabilities {
             Capability::HighThroughput => self.is_high_throughput,
             Capability::Quantization => self.supports_quantization,
             Capability::Distillation => self.supports_distillation,
-            Capability::Pruning => self.supports_pruning}
+            Capability::Pruning => self.supports_pruning,
+        }
     }
 
-    /// Check if all specified capabilities are enabled
-    pub fn has_all_capabilities(&self, capabilities: &[Capability]) -> bool {
+    fn has_all_capabilities(&self, capabilities: &[Capability]) -> bool {
         capabilities.iter().all(|&cap| self.has_capability(cap))
     }
 
-    /// Check if any of the specified capabilities are enabled
-    pub fn has_any_capability(&self, capabilities: &[Capability]) -> bool {
+    fn has_any_capability(&self, capabilities: &[Capability]) -> bool {
         capabilities.iter().any(|&cap| self.has_capability(cap))
     }
 
-    /// Get an iterator over all enabled capabilities
-    pub fn enabled_capabilities(&self) -> impl Iterator<Item = Capability> + '_ {
+    fn enabled_capabilities(&self) -> impl Iterator<Item = Capability> + '_ {
         use Capability::*;
         [
             Vision,
@@ -210,8 +189,7 @@ impl ModelCapabilities {
         .copied()
     }
 
-    /// Get all enabled capabilities as a vector
-    pub fn to_vec(&self) -> Vec<Capability> {
+    fn to_vec(&self) -> Vec<Capability> {
         self.enabled_capabilities().collect()
     }
 }

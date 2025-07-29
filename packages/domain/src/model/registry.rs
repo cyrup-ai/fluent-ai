@@ -1,7 +1,6 @@
 //! Model registry for dynamic model discovery and lookup
 
 use std::any::{Any, TypeId};
-use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -10,7 +9,7 @@ use ahash::RandomState;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
-use crate::model::error::{ModelError, Result};
+use crate::model::{ModelError, Result};
 use crate::model::info::ModelInfo;
 use crate::model::traits::Model;
 
@@ -265,10 +264,10 @@ impl ModelRegistry {
 
         // Attempt to convert the handle to a boxed trait object
         // This is complex for ?Sized types and requires careful implementation
-        Err(ModelError::InvalidConfiguration(Cow::Owned(format!(
+        Err(ModelError::InvalidConfiguration(format!(
             "Boxed trait object conversion for model '{}' from provider '{}' requires additional implementation for ?Sized types",
             name, provider
-        ))))
+        )))
     }
 
     /// Get a model as a specific trait object, returning an error if not found

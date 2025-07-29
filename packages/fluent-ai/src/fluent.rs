@@ -2,7 +2,8 @@ use termcolor::{ThemeConfig, set_global_theme};
 
 use crate::domain::CompletionModel;
 use crate::domain::*;
-use crate::{Models, memory, workflow};
+use crate::{memory, workflow};
+use fluent_ai_domain::model::Model;
 
 /// Master builder for Fluent AI - semantic entry point for all builders
 pub struct FluentAi;
@@ -40,7 +41,7 @@ impl FluentAi {
     }
 
     /// Create an AI agent with persistent context and tools
-    pub fn agent(model: Models) -> agent::AgentBuilder {
+    pub fn agent(model: Model) -> agent::AgentBuilder {
         agent::Agent::with_model(model)
     }
 

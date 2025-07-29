@@ -16,10 +16,8 @@
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use fluent_ai_http3::async_task::AsyncStream;
-#[allow(unused_imports)] // used in downstream macro expansion
-use futures_util::join;
-use futures_util::stream;
+use fluent_ai_async::AsyncStream;
+// Removed futures_util - using AsyncStream patterns with tokio::join! instead
 
 use crate::prelude::*;
 use crate::{completion, vector_store};
@@ -79,10 +77,10 @@ where
         let step = self.step.clone();
 
         crate::async_task::spawn_async(async move {
-            use futures_util::StreamExt;
-            let mut step_stream = step.execute(input);
-            match step_stream.next().await {
-                Some(Ok(output)) => output,
+            let step_stream = step.execute(input);
+            let results = step_stream.collect();
+            match results.first() {
+                Some(Ok(output)) => output.clone(),
                 Some(Err(e)) => panic!("Workflow error: {}", e), /* Error handler was already called */
                 None => panic!("Workflow error: no output from step"), // Unexpected empty stream
             }
@@ -99,16 +97,16 @@ where
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         tokio::spawn(async move {
-            use futures_util::StreamExt;
-            let mut stream = inputs;
-
-            while let Some(input) = stream.next().await {
+            let input_results = inputs.collect();
+            
+            for input in input_results {
                 let step = step.clone();
-                let mut step_stream = step.execute(input);
-                if let Some(result) = step_stream.next().await {
+                let step_stream = step.execute(input);
+                let step_results = step_stream.collect();
+                if let Some(result) = step_results.first() {
                     match result {
                         Ok(output) => {
-                            if tx.send(output).is_err() {
+                            if tx.send(output.clone()).is_err() {
                                 break;
                             }
                         }
@@ -138,7 +136,7 @@ where
 
             let (tx, stream) = AsyncStream::channel();
             tokio::spawn(async move {
-                use futures_util::StreamExt;
+                // AsyncStreamExt removed - using collect() pattern
                 let mut stream1 = step1.execute(input);
                 if let Some(Ok(result1)) = stream1.next().await {
                     let mut stream2 = step2.execute(result1);
@@ -312,7 +310,7 @@ where
 
         let (tx, stream) = AsyncStream::channel();
         tokio::spawn(async move {
-            use futures_util::StreamExt;
+            // AsyncStreamExt removed - using collect() pattern
             let mut a_stream = a.call(input);
             if let Some(mid) = a_stream.next().await {
                 let mut b_stream = b.call(mid);
@@ -484,7 +482,7 @@ where
 
             let (tx, stream) = AsyncStream::channel();
             tokio::spawn(async move {
-                use futures_util::StreamExt;
+                // AsyncStreamExt removed - using collect() pattern
                 let mut prev_stream = prev.execute(input);
                 if let Some(Ok(result)) = prev_stream.next().await {
                     let mut next_stream = next.execute(result);
@@ -515,7 +513,7 @@ where
 
             let (tx, stream) = AsyncStream::channel();
             tokio::spawn(async move {
-                use futures_util::StreamExt;
+                // AsyncStreamExt removed - using collect() pattern
                 let mut prev_stream = prev.execute(input);
                 if let Some(Ok(result)) = prev_stream.next().await {
                     let mapped_result = mapper(result);
@@ -561,7 +559,7 @@ where
 
             let (tx, stream) = AsyncStream::channel();
             tokio::spawn(async move {
-                use futures_util::StreamExt;
+                // AsyncStreamExt removed - using collect() pattern
                 let mut step_stream = step.execute(input);
                 if let Some(result) = step_stream.next().await {
                     match result {
@@ -657,7 +655,7 @@ impl Workflow<(), ()> {
 
                 // Manually collect stream items since AsyncStream doesn't have collect()
                 let mut items = Vec::new();
-                use futures_util::StreamExt;
+                // AsyncStreamExt removed - using collect() pattern
                 let mut pinned_stream = std::pin::pin!(stream);
                 while let Some(item) = pinned_stream.next().await {
                     items.push(item);

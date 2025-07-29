@@ -628,3 +628,117 @@ impl<'a> AnthropicContentBlock<'a> {
             cache_control: None}
     }
 }
+
+// =============================================================================
+// Missing Types for Completion Module
+// =============================================================================
+
+/// Anthropic Chat API request structure
+#[derive(Debug, Serialize)]
+pub struct AnthropicChatRequest<'a> {
+    /// Model identifier
+    pub model: &'a str,
+    /// Maximum tokens to generate
+    pub max_tokens: u32,
+    /// Messages for the conversation
+    pub messages: ArrayVec<AnthropicMessage<'a>, MAX_MESSAGES>,
+    /// System message(s)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system: Option<AnthropicSystemMessage<'a>>,
+    /// Temperature for randomness
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    /// Top-p sampling
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f32>,
+    /// Available tools
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<ArrayVec<AnthropicTool<'a>, MAX_TOOLS>>,
+    /// Enable streaming
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<bool>,
+    /// Thinking configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<AnthropicThinkingConfig>,
+}
+
+/// Thinking configuration for Claude
+#[derive(Debug, Serialize)]
+pub struct AnthropicThinkingConfig {
+    /// Enable thinking mode
+    pub enabled: bool,
+    /// Maximum thinking tokens
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+}
+
+/// Tool definition for Anthropic API
+#[derive(Debug, Serialize)]
+pub struct AnthropicTool<'a> {
+    /// Tool name
+    pub name: &'a str,
+    /// Tool description
+    pub description: &'a str,
+    /// Input schema
+    pub input_schema: serde_json::Value,
+}
+
+/// Tool result content
+#[derive(Debug, Serialize)]
+pub struct AnthropicToolResult<'a> {
+    /// Tool use ID
+    pub tool_use_id: &'a str,
+    /// Result content
+    pub content: &'a str,
+    /// Whether this is an error
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
+}
+
+/// Tool use instruction
+#[derive(Debug, Serialize)]
+pub struct AnthropicToolUse<'a> {
+    /// Tool use ID
+    pub id: &'a str,
+    /// Tool name
+    pub name: &'a str,
+    /// Tool input
+    pub input: serde_json::Value,
+}
+
+/// Streaming completion chunk
+#[derive(Debug, Deserialize)]
+pub struct AnthropicStreamingChunk {
+    /// Event type
+    #[serde(rename = "type")]
+    pub event_type: String,
+    /// Message delta
+    pub delta: Option<AnthropicStreamingDelta>,
+    /// Message content
+    pub message: Option<serde_json::Value>,
+    /// Usage information
+    pub usage: Option<AnthropicUsage>,
+}
+
+/// Streaming delta information
+#[derive(Debug, Deserialize)]
+pub struct AnthropicStreamingDelta {
+    /// Delta type
+    #[serde(rename = "type")]
+    pub delta_type: String,
+    /// Text content
+    pub text: Option<String>,
+    /// Partial JSON
+    pub partial_json: Option<String>,
+}
+
+/// Streaming choice information
+#[derive(Debug, Deserialize)]
+pub struct AnthropicStreamingChoice {
+    /// Choice index
+    pub index: u32,
+    /// Delta information
+    pub delta: AnthropicStreamingDelta,
+    /// Finish reason
+    pub finish_reason: Option<String>,
+}

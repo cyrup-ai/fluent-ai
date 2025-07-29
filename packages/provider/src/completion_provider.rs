@@ -9,27 +9,49 @@
 use std::env;
 
 use cyrup_sugars::ZeroOneOrMany;
-use fluent_ai_domain::chunk::CompletionChunk;
-use fluent_ai_domain::completion::CompletionCoreError;
-use fluent_ai_domain::tool::ToolDefinition;
-use fluent_ai_domain::{Document, Message};
+use fluent_ai_domain::context::chunk::CompletionChunk;
+use fluent_ai_domain::completion::CompletionRequestError as CompletionCoreError;
+use fluent_ai_domain::completion::types::ToolDefinition;
+use fluent_ai_domain::context::Document;
+use fluent_ai_domain::chat::Message;
 use serde_json::Value;
 
-use crate::AsyncStream;
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
-/// Typestate: Builder needs prompt to complete
-#[derive(Debug, Clone, Copy)]
-pub struct NeedsPrompt;
 
-/// Typestate: Builder ready to execute  
-#[derive(Debug, Clone, Copy)]
-pub struct Ready;
 
-/// Re-export domain completion error for provider use
-pub use CompletionCoreError as CompletionError;
+/// Provider-specific completion error
+#[derive(Debug, thiserror::Error)]
+pub enum CompletionError {
+    #[error("Authentication error")]
+    AuthError,
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+    #[error("Model error: {0}")]
+    ModelError(String),
+    #[error("Timeout error")]
+    Timeout,
+    #[error("Rate limit exceeded")]
+    RateLimit,
+    #[error("Parsing error: {0}")]
+    ParseError(String),
+    #[error("Provider unavailable: {0}")]
+    ProviderUnavailable(String),
+    #[error("Internal error: {0}")]
+    Internal(String),
+}
+
+// Conversion from domain error if needed
+impl From<CompletionCoreError> for CompletionError {
+    fn from(err: CompletionCoreError) -> Self {
+        CompletionError::ModelError(format!("{:?}", err))
+    }
+}
 
 /// Chunk handler with cyrup_sugars pattern matching
-pub type ChunkHandler = Box<dyn Fn(CompletionChunk) + Send + Sync>;
+pub type ChunkHandler = Box<dyn Fn(Result<CompletionChunk, CompletionError>) -> Result<(), CompletionError> + Send + Sync>;
 
 /// Automatic API key discovery using provider's env_api_keys() method
 #[inline(always)]
@@ -69,10 +91,10 @@ pub fn discover_api_key_for_provider<T: CompletionProvider>(provider: &T) -> Opt
 
 /// Universal completion provider trait
 ///
-/// All parameters use ZeroOneOrMany with ModelInfo defaults
+/// All parameters use ZeroOneOrMany with ModelConfigInfo defaults
 /// Enables blazing-fast zero-allocation streaming completions
 pub trait CompletionProvider: Clone + Send + Sync + 'static {
-    /// Create new builder with ModelInfo defaults loaded at compile time
+    /// Create new builder with ModelConfigInfo defaults loaded at compile time
     fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError>;
 
     /// Set explicit API key (takes priority over environment variables)
@@ -137,24 +159,24 @@ pub trait CompletionProvider: Clone + Send + Sync + 'static {
 ///
 /// Enables: `Model::MistralMagistral.prompt("What time is it in Paris?")`
 /// Each model variant knows its provider and configuration at compile time
-pub trait ModelPrompt: ModelInfo {
+pub trait ModelPrompt: ModelConfigInfo {
     /// Associated provider type for this model
     type Provider: CompletionProvider;
 
-    /// Direct prompt execution with ModelInfo defaults
+    /// Direct prompt execution with ModelConfigInfo defaults
     /// Zero allocation, blazing-fast streaming
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk>
     where
-        Self: Sized + ModelInfo,
+        Self: Sized + ModelConfigInfo,
     {
         // Create temporary provider to get env_api_keys list
         let temp_provider = match Self::Provider::new("temp".to_string(), self.name()) {
             Ok(provider) => provider,
             Err(e) => {
-                // Return error stream
-                let (sender, receiver) = crate::channel();
-                let _ = sender.send(CompletionChunk::error(&e.to_string()));
-                return receiver;
+                // Return error stream using AsyncStream
+                return AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
+                    let _ = sender.send(CompletionChunk::error(&e.to_string()));
+                });
             }
         };
 
@@ -163,9 +185,9 @@ pub trait ModelPrompt: ModelInfo {
             Some(key) => key,
             None => {
                 // Return error stream - discovery function already logged the error
-                let (sender, receiver) = crate::channel();
-                let _ = sender.send(CompletionChunk::error("Missing API key"));
-                return receiver;
+                return AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
+                    let _ = sender.send(CompletionChunk::error("Missing API key"));
+                });
             }
         };
 
@@ -174,18 +196,18 @@ pub trait ModelPrompt: ModelInfo {
             Ok(provider) => provider.prompt(text),
             Err(e) => {
                 // Return error stream
-                let (sender, receiver) = crate::channel();
-                let _ = sender.send(CompletionChunk::error(&e.to_string()));
-                receiver
+                AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
+                    let _ = sender.send(CompletionChunk::error(&e.to_string()));
+                })
             }
         }
     }
 
     /// Create completion builder for advanced configuration
-    /// All parameters default from ModelInfo - zero allocation setup
+    /// All parameters default from ModelConfigInfo - zero allocation setup
     fn completion(self) -> Result<Self::Provider, CompletionError>
     where
-        Self: Sized + ModelInfo,
+        Self: Sized + ModelConfigInfo,
     {
         // Create temporary provider to get env_api_keys list
         let temp_provider = Self::Provider::new("temp".to_string(), self.name())?;
@@ -195,246 +217,161 @@ pub trait ModelPrompt: ModelInfo {
             CompletionError::ProviderUnavailable("Missing API key".to_string()),
         )?;
 
-        // Create provider with discovered API key and ModelInfo defaults
+        // Create provider with discovered API key and ModelConfigInfo defaults
         Self::Provider::new(api_key, self.name())
     }
 }
 
-/// Compile-time model configuration (zero allocation constants)
-#[derive(Debug, Clone, Copy)]
+
+/// Universal model config trait using model-info package
+///
+/// All model configurations come from model-info package
+/// for blazing-fast zero-allocation initialization
+pub trait ModelConfigInfo: model_info::common::Model {
+    /// Get model name (zero allocation string literal)
+    #[inline(always)]
+    fn name(&self) -> &'static str {
+        self.name()
+    }
+
+    /// Get context length from model-info
+    #[inline(always)]
+    fn context_length(&self) -> u64 {
+        self.max_context_length()
+    }
+
+    /// Get pricing information from model-info
+    #[inline(always)]
+    fn pricing_input(&self) -> f64 {
+        self.pricing_input()
+    }
+
+    /// Get pricing information from model-info
+    #[inline(always)]
+    fn pricing_output(&self) -> f64 {
+        self.pricing_output()
+    }
+
+    /// Check if thinking model from model-info
+    #[inline(always)]
+    fn is_thinking(&self) -> bool {
+        self.is_thinking()  
+    }
+
+    /// Get required temperature from model-info
+    #[inline(always)]
+    fn required_temperature(&self) -> Option<f64> {
+        self.required_temperature()
+    }
+}
+
+
+
+
+
+
+
+
+
+
+/// Model configuration structure
 pub struct ModelConfig {
     pub max_tokens: u32,
     pub temperature: f64,
     pub top_p: f64,
     pub frequency_penalty: f64,
     pub presence_penalty: f64,
-    pub context_length: u32,
-    pub system_prompt: &'static str,
+    pub context_length: u64,
+    pub system_prompt: String,
     pub supports_tools: bool,
     pub supports_vision: bool,
     pub supports_audio: bool,
     pub supports_thinking: bool,
     pub optimal_thinking_budget: u32,
-    pub provider: &'static str,
-    pub model_name: &'static str}
+    pub provider: String,
+    pub model_name: String,
+}
 
-/// Universal model info trait for compile-time defaults
-///
-/// All model configurations are const and known at compile time
-/// for blazing-fast zero-allocation initialization
+impl ModelConfig {
+    pub fn default() -> Self {
+        Self {
+            max_tokens: 4096,
+            temperature: 0.7,
+            top_p: 1.0,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            context_length: 128000,
+            system_prompt: "".to_string(),
+            supports_tools: true,
+            supports_vision: true,
+            supports_audio: false,
+            supports_thinking: false,
+            optimal_thinking_budget: 0,
+            provider: "openai".to_string(),
+            model_name: "gpt-4o".to_string(),
+        }
+    }
+}
+
+/// Stub for ModelInfo trait
 pub trait ModelInfo {
-    /// Compile-time model configuration (zero allocation)
-    const CONFIG: ModelConfig;
-
-    /// Get model name (zero allocation string literal)
-    #[inline(always)]
-    fn name(&self) -> &'static str {
-        Self::CONFIG.model_name
-    }
-
-    /// Get provider name (zero allocation string literal)
-    #[inline(always)]
-    fn provider(&self) -> &'static str {
-        Self::CONFIG.provider
-    }
-
-    /// Check tool support at compile time
-    #[inline(always)]
-    fn supports_tools() -> bool {
-        Self::CONFIG.supports_tools
-    }
-
-    /// Check vision support at compile time
-    #[inline(always)]
-    fn supports_vision() -> bool {
-        Self::CONFIG.supports_vision
-    }
-
-    /// Check audio support at compile time
-    #[inline(always)]
-    fn supports_audio() -> bool {
-        Self::CONFIG.supports_audio
-    }
-
-    /// Get context length at compile time
-    #[inline(always)]
-    fn context_length() -> u32 {
-        Self::CONFIG.context_length
-    }
-
-    /// Get max output tokens at compile time
-    #[inline(always)]
-    fn max_output_tokens() -> u32 {
-        Self::CONFIG.max_tokens
-    }
-
-    /// Get default temperature at compile time
-    #[inline(always)]
-    fn default_temperature() -> f64 {
-        Self::CONFIG.temperature
-    }
-
-    /// Get default system prompt at compile time
-    #[inline(always)]
-    fn default_system_prompt() -> &'static str {
-        Self::CONFIG.system_prompt
-    }
+    fn config(&self) -> ModelConfig;
 }
 
-/// Zero-allocation completion response wrapper
-///
-/// Provides a unified interface for completion responses across all providers
-/// while maintaining zero-allocation semantics and lock-free access patterns.
+/// Response metadata for completion operations
 #[derive(Debug, Clone)]
-pub struct CompletionResponse<T> {
-    /// The raw provider-specific response
-    pub raw_response: T,
-    /// Processed completion content
-    pub content: ZeroOneOrMany<String>,
-    /// Token usage information (if available)
-    pub token_usage: Option<TokenUsage>,
-    /// Response metadata
-    pub metadata: ResponseMetadata}
-
-impl<T> CompletionResponse<T> {
-    /// Create a new completion response with zero allocations
-    #[inline(always)]
-    pub fn new(raw_response: T, content: ZeroOneOrMany<String>) -> Self {
-        Self {
-            raw_response,
-            content,
-            token_usage: None,
-            metadata: ResponseMetadata::default()}
-    }
-
-    /// Add token usage information
-    #[inline(always)]
-    pub fn with_token_usage(mut self, usage: TokenUsage) -> Self {
-        self.token_usage = Some(usage);
-        self
-    }
-
-    /// Add metadata
-    #[inline(always)]
-    pub fn with_metadata(mut self, metadata: ResponseMetadata) -> Self {
-        self.metadata = metadata;
-        self
-    }
-
-    /// Get the primary completion text (zero-allocation)
-    #[inline(always)]
-    pub fn text(&self) -> Option<&str> {
-        match &self.content {
-            ZeroOneOrMany::Zero => None,
-            ZeroOneOrMany::One(text) => Some(text),
-            ZeroOneOrMany::Many(texts) => texts.first().map(|s| s.as_str())}
-    }
-
-    /// Get all completion texts
-    #[inline(always)]
-    pub fn texts(&self) -> &[String] {
-        self.content.as_slice()
-    }
-}
-
-/// Zero-allocation streaming response wrapper
-///
-/// Provides a unified streaming interface for real-time completion responses
-/// with lock-free channel communication and zero-copy token processing.
-pub struct StreamingResponse<T> {
-    /// The raw provider-specific streaming response
-    pub raw_response: T,
-    /// Stream of completion chunks
-    pub stream: AsyncStream<CompletionChunk>,
-    /// Response metadata (filled as chunks arrive)
-    pub metadata: ResponseMetadata}
-
-impl<T> StreamingResponse<T> {
-    /// Create a new streaming response
-    #[inline(always)]
-    pub fn new(
-        raw_response: T,
-        stream: AsyncStream<CompletionChunk>,
-    ) -> Self {
-        Self {
-            raw_response,
-            stream,
-            metadata: ResponseMetadata::default()}
-    }
-
-    /// Add metadata
-    #[inline(always)]
-    pub fn with_metadata(mut self, metadata: ResponseMetadata) -> Self {
-        self.metadata = metadata;
-        self
-    }
-}
-
-/// Token usage information
-#[derive(Debug, Clone, Default)]
-pub struct TokenUsage {
-    /// Number of tokens in the prompt
-    pub prompt_tokens: u32,
-    /// Number of tokens in the completion
-    pub completion_tokens: u32,
-    /// Total tokens used
-    pub total_tokens: u32}
-
-impl TokenUsage {
-    /// Create new token usage info
-    #[inline(always)]
-    pub fn new(prompt_tokens: u32, completion_tokens: u32) -> Self {
-        Self {
-            prompt_tokens,
-            completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens}
-    }
-}
-
-/// Response metadata for tracking request/response details
-#[derive(Debug, Clone, Default)]
 pub struct ResponseMetadata {
-    /// Request ID (if provided by the API)
     pub request_id: Option<String>,
-    /// Model used for the completion
-    pub model: Option<String>,
-    /// Response time in milliseconds
-    pub response_time_ms: Option<u64>,
-    /// Additional provider-specific metadata
-    pub provider_metadata: Option<Value>}
+    pub model: String,
+    pub usage: Option<Usage>,
+    pub finish_reason: Option<String>,
+}
 
-impl ResponseMetadata {
-    /// Create new response metadata
-    #[inline(always)]
-    pub fn new() -> Self {
-        Self::default()
+impl Default for ResponseMetadata {
+    fn default() -> Self {
+        Self {
+            request_id: None,
+            model: "unknown".to_string(),
+            usage: None,
+            finish_reason: None,
+        }
     }
+}
 
-    /// Set request ID
-    #[inline(always)]
-    pub fn with_request_id(mut self, request_id: String) -> Self {
-        self.request_id = Some(request_id);
+/// Usage information for completion operations
+#[derive(Debug, Clone)]
+pub struct Usage {
+    pub prompt_tokens: u32,
+    pub completion_tokens: u32,
+    pub total_tokens: u32,
+}
+
+/// Completion response containing generated content and metadata
+#[derive(Debug, Clone)]
+pub struct CompletionResponse {
+    pub id: String,
+    pub content: String,
+    pub metadata: ResponseMetadata,
+    pub chunks: Vec<CompletionChunk>,
+}
+
+impl CompletionResponse {
+    pub fn new(id: String, content: String) -> Self {
+        Self {
+            id,
+            content,
+            metadata: ResponseMetadata::default(),
+            chunks: Vec::new(),
+        }
+    }
+    
+    pub fn with_metadata(mut self, metadata: ResponseMetadata) -> Self {
+        self.metadata = metadata;
         self
     }
-
-    /// Set model name
-    #[inline(always)]
-    pub fn with_model(mut self, model: String) -> Self {
-        self.model = Some(model);
-        self
-    }
-
-    /// Set response time
-    #[inline(always)]
-    pub fn with_response_time(mut self, response_time_ms: u64) -> Self {
-        self.response_time_ms = Some(response_time_ms);
-        self
-    }
-
-    /// Set provider metadata
-    #[inline(always)]
-    pub fn with_provider_metadata(mut self, metadata: Value) -> Self {
-        self.provider_metadata = Some(metadata);
+    
+    pub fn with_chunks(mut self, chunks: Vec<CompletionChunk>) -> Self {
+        self.chunks = chunks;
         self
     }
 }

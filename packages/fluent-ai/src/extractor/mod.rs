@@ -18,7 +18,8 @@ use serde_json::json;
 use crate::{
     agent::{Agent, AgentBuilder},
     completion::{CompletionError, CompletionModel, ToolDefinition},
-    domain::message::{AssistantContent, Message, ToolCall, ToolFunction},
+    completion::{AssistantContent, ToolFunction},
+    domain::message::{Message, ToolCall},
     domain::tool::Tool,
     runtime::{AsyncTask, spawn_async}};
 

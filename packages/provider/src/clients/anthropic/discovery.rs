@@ -91,13 +91,28 @@ impl AnthropicDiscovery {
     }
 }
 
-#[async_trait]
 impl ProviderModelDiscovery for AnthropicDiscovery {
-    fn provider_name(&self) -> &'static str {
+    fn discover_models(&self) -> DiscoveryResult<Vec<String>> {
+        Ok(self.supported_models.iter().map(|s| s.to_string()).collect())
+    }
+
+    fn get_model_info(&self, model_name: &str) -> DiscoveryResult<ModelInfo> {
+        // Implementation for getting model info
+        todo!("Implement get_model_info for Anthropic models")
+    }
+
+    fn is_model_available(&self, model_name: &str) -> bool {
+        self.supported_models.contains(&model_name)
+    }
+}
+
+// Legacy implementation for backwards compatibility
+impl AnthropicDiscovery {
+    pub fn provider_name(&self) -> &'static str {
         "anthropic"
     }
 
-    async fn discover_and_register(&self) -> DiscoveryResult<()> {
+    pub async fn discover_and_register(&self) -> DiscoveryResult<()> {
         info!("Starting Anthropic model discovery");
         let registry = ModelRegistry::global();
 
@@ -124,7 +139,7 @@ impl ProviderModelDiscovery for AnthropicDiscovery {
         Ok(())
     }
 
-    fn supported_models(&self) -> &'static [&'static str] {
+    pub fn supported_models(&self) -> &'static [&'static str] {
         self.supported_models
     }
 }

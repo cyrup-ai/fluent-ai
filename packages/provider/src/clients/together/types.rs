@@ -13,7 +13,7 @@ use crate::{MAX_MESSAGES, MAX_TOOLS, MAX_DOCUMENTS};
 // Re-export OpenAI types for compatibility
 // ============================================================================
 
-pub use crate::openai::{
+pub use crate::clients::openai::{
     OpenAIMessage as TogetherMessage,
     OpenAIContent as TogetherContent,
     OpenAIContentPart as TogetherContentPart,

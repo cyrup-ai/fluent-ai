@@ -1,5 +1,8 @@
 use std::sync::Arc;
-use fluent_ai_domain::chat::{ChatTemplate, TemplateCategory, core};
+use fluent_ai_domain::chat::{
+    ChatTemplate, 
+    templates::{TemplateCategory, core}
+};
 
 /// Template builder struct
 #[derive(Debug, Clone)]

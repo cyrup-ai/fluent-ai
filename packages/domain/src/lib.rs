@@ -61,6 +61,7 @@ pub use hashbrown::HashMap;
 
 pub use chat::message;
 pub use context::chunk;
+pub use context::chunk::ChatMessageChunk;
 pub use model::usage;
 // Alias for backward compatibility - people expect async_task module
 pub use fluent_ai_async as async_task;
@@ -76,40 +77,44 @@ pub use {
         PersonalityConfig},
 
     // Completion system
-    completion::{CompletionModel},
+    completion::{CompletionModel, CompletionBackend as CompletionProvider},
 
     // Concurrency primitives
     concurrency::{Channel, IntoTask, OneshotChannel},
 
     // Context system
-    context::{ContentFormat, Document, DocumentLoader, DocumentMediaType},
+    context::{ContentFormat, Document, DocumentLoader, DocumentMediaType,
+              provider::{ImmutableFileContext as Context}},
     // Core types
     core::{DomainInitError, execute_with_circuit_breaker},
 
     // HTTP types
-    http::{Provider},
+    http::{ToolCall, FunctionCall},
 
     // Streaming primitives from fluent-ai-async
     fluent_ai_async::{AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task},
+
+    // Memory system
+    memory::{Library, VectorStoreIndex, VectorStoreIndexDyn},
 
     // Core initialization and management
     init::{
         get_default_memory_config, get_from_pool, initialize_domain, initialize_domain_with_config,
         pool_size, return_to_pool},
 
-    // Model system
+    // Model system - primarily from model-info package
     model::{
-        Capability, Model, ModelCapabilities, ModelInfo, ModelPerformance, Usage, UseCase,
+        // Domain-specific capabilities and validation
+        Capability, DomainModelCapabilities, ModelPerformance, Usage, UseCase,
         ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
-        // Adapter infrastructure - unified model interface
-        ModelAdapter, ModelAdapterCollection, AdapterRegistry, convert,
+        // Core model types from model-info (single source of truth)
+        OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai, Model,
+        ModelInfo, ModelInfoBuilder, ProviderTrait, ModelError, Result, Provider,
+
         UnifiedModelRegistry, RegistryStats,
-        // Legacy model-info integration
+        // Domain-specific model-info integration
         LegacyModelRegistry, ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
-        CacheStats, CacheConfig, BatchValidationResult,
-        // Re-exported model-info types - REAL AI MODEL DATA
-        ModelInfoTrait, RealModelInfo, ModelInfoProviderTrait,
-        OpenAiModel, MistralModel, AnthropicModel, TogetherModel, OpenRouterModel, HuggingFaceModel, XaiModel
+        CacheStats, CacheConfig, BatchValidationResult
         },
 
     // Prompt system
@@ -119,7 +124,20 @@ pub use {
     voice::{Audio, AudioMediaType, transcription::Transcription},
 
     // Workflow system
-    workflow::{StepType, Workflow, WorkflowStep}};
+    workflow::{StepType, Workflow, WorkflowStep},
+
+    // Agent system
+    agent::{AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl},
+
+    // Tool system
+    tool::{Tool, NamedTool, McpTool, McpClient as McpServer, McpToolData}};
+
+// Additional legacy compatibility aliases
+pub use context::provider::ImmutableFileContext as FileContext;
+pub use memory::Library as Memory;
+pub use util::json_util as AdditionalParams;
+pub use util::json_util as Metadata;
+pub use chat::ConversationImpl as Conversation;
 
 /// Extension trait to add missing methods to ZeroOneOrMany
 pub trait ZeroOneOrManyExt<T> {

@@ -1,0 +1,1040 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Checking fluent_ai_candle v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/candle)
+error[E0283]: type annotations needed
+   --> packages/candle/src/builders/agent_role.rs:675:9
+    |
+675 |         CandleAgentRoleBuilderImpl::new(name)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `F1` declared on the struct `CandleAgentRoleBuilderImpl`
+    |
+note: multiple `impl`s or `where` clauses satisfying `_: FnMut(std::string::String)` found
+   --> packages/candle/src/builders/agent_role.rs:672:8
+    |
+672 |     F: FnMut(String) + Send + 'static,
+    |        ^^^^^^^^^^^^^
+    = note: and more `impl`s found in the following crates: `alloc`, `core`:
+            - impl<A, F> FnMut<A> for &F
+              where A: Tuple, F: Fn<A>, F: ?Sized;
+            - impl<A, F> FnMut<A> for &mut F
+              where A: Tuple, F: FnMut<A>, F: ?Sized;
+            - impl<Args, F, A> FnMut<Args> for Box<F, A>
+              where Args: Tuple, F: FnMut<Args>, A: Allocator, F: ?Sized;
+            - impl<F, Args> FnMut<Args> for Exclusive<F>
+              where F: FnMut<Args>, Args: Tuple;
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/candle/src/builders/agent_role.rs:318:9
+    |
+316 | struct CandleAgentRoleBuilderImpl<F1 = fn(String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+317 | where
+318 |     F1: FnMut(String) + Send + Sync + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+help: consider specifying the generic arguments
+    |
+675 |         CandleAgentRoleBuilderImpl::<F1, F2>::new(name)
+    |                                   ++++++++++
+
+error[E0283]: type annotations needed
+   --> packages/candle/src/builders/agent_role.rs:675:9
+    |
+675 |         CandleAgentRoleBuilderImpl::new(name)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `F2` declared on the struct `CandleAgentRoleBuilderImpl`
+    |
+note: multiple `impl`s or `where` clauses satisfying `for<'a, 'b> _: Fn(&'a CandleAgentConversation, &'b CandleAgentRoleAgent)` found
+   --> packages/candle/src/builders/agent_role.rs:671:9
+    |
+671 |     F2: Fn(&CandleAgentConversation, &CandleAgentRoleAgent) + Send + Sync + 'static,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: and more `impl`s found in the following crates: `alloc`, `core`:
+            - impl<A, F> Fn<A> for &F
+              where A: Tuple, F: Fn<A>, F: ?Sized;
+            - impl<Args, F, A> Fn<Args> for Box<F, A>
+              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/candle/src/builders/agent_role.rs:319:9
+    |
+316 | struct CandleAgentRoleBuilderImpl<F1 = fn(String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+...
+319 |     F2: Fn(&CandleAgentConversation, &CandleAgentRoleAgent) + Send + Sync + 'static,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+help: consider specifying the generic arguments
+    |
+675 |         CandleAgentRoleBuilderImpl::<F, F2>::new(name)
+    |                                   +++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:678:54
+    |
+678 |     fn completion_provider<P>(self, _provider: P) -> impl CandleAgentRoleBuilder
+    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:681:37
+    |
+681 |     fn model<M>(self, _model: M) -> impl CandleAgentRoleBuilder
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:684:41
+    |
+684 |     fn temperature(self, _temp: f64) -> impl CandleAgentRoleBuilder { self }
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:685:39
+    |
+685 |     fn max_tokens(self, _max: u64) -> impl CandleAgentRoleBuilder { self }
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:686:59
+    |
+686 |     fn system_prompt(self, _prompt: impl Into<String>) -> impl CandleAgentRoleBuilder { self }
+    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:687:60
+    |
+687 |     fn context(self, _contexts: impl CandleContextArgs) -> impl CandleAgentRoleBuilder { self }
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:688:52
+    |
+688 |     fn tools(self, _tools: impl CandleToolArgs) -> impl CandleAgentRoleBuilder { self }
+    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:690:50
+    |
+690 |     fn additional_params<P>(self, _params: P) -> impl CandleAgentRoleBuilder
+    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:692:39
+    |
+692 |     fn memory<M>(self, _memory: M) -> impl CandleAgentRoleBuilder
+    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:694:43
+    |
+694 |     fn metadata<M>(self, _metadata: M) -> impl CandleAgentRoleBuilder
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:696:48
+    |
+696 |     fn on_tool_result<G>(self, _handler: G) -> impl CandleAgentRoleBuilder
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:698:54
+    |
+698 |     fn on_conversation_turn<G>(self, _handler: G) -> impl CandleAgentRoleBuilder
+    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0283]: type annotations needed
+   --> packages/candle/src/builders/agent_role.rs:752:9
+    |
+752 |         CandleAgentRoleBuilderImpl::new(name)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `F1` declared on the struct `CandleAgentRoleBuilderImpl`
+    |
+    = note: multiple `impl`s satisfying `_: FnMut(std::string::String)` found in the following crates: `alloc`, `core`:
+            - impl<A, F> FnMut<A> for &F
+              where A: Tuple, F: Fn<A>, F: ?Sized;
+            - impl<A, F> FnMut<A> for &mut F
+              where A: Tuple, F: FnMut<A>, F: ?Sized;
+            - impl<Args, F, A> FnMut<Args> for Box<F, A>
+              where Args: Tuple, F: FnMut<Args>, A: Allocator, F: ?Sized;
+            - impl<F, Args> FnMut<Args> for Exclusive<F>
+              where F: FnMut<Args>, Args: Tuple;
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/candle/src/builders/agent_role.rs:318:9
+    |
+316 | struct CandleAgentRoleBuilderImpl<F1 = fn(String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+317 | where
+318 |     F1: FnMut(String) + Send + Sync + 'static,
+    |         ^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+help: consider specifying the generic arguments
+    |
+752 |         CandleAgentRoleBuilderImpl::<F1, F2>::new(name)
+    |                                   ++++++++++
+
+error[E0283]: type annotations needed
+   --> packages/candle/src/builders/agent_role.rs:752:9
+    |
+752 |         CandleAgentRoleBuilderImpl::new(name)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `F2` declared on the struct `CandleAgentRoleBuilderImpl`
+    |
+    = note: multiple `impl`s satisfying `for<'a, 'b> _: Fn(&'a CandleAgentConversation, &'b CandleAgentRoleAgent)` found in the following crates: `alloc`, `core`:
+            - impl<A, F> Fn<A> for &F
+              where A: Tuple, F: Fn<A>, F: ?Sized;
+            - impl<Args, F, A> Fn<Args> for Box<F, A>
+              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+note: required by a bound in `CandleAgentRoleBuilderImpl`
+   --> packages/candle/src/builders/agent_role.rs:319:9
+    |
+316 | struct CandleAgentRoleBuilderImpl<F1 = fn(String), F2 = fn(&CandleAgentConversation, &CandleAgentRoleAgent)>
+    |        -------------------------- required by a bound in this struct
+...
+319 |     F2: Fn(&CandleAgentConversation, &CandleAgentRoleAgent) + Send + Sync + 'static,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `CandleAgentRoleBuilderImpl`
+help: consider specifying the generic arguments
+    |
+752 |         CandleAgentRoleBuilderImpl::<F, F2>::new(name)
+    |                                   +++++++++
+
+warning: impl trait in impl method signature does not match trait method signature
+   --> packages/candle/src/builders/agent_role.rs:555:41
+    |
+307 |     fn on_chunk<F>(self, handler: F) -> impl CandleAgentRoleBuilder
+    |                                         --------------------------- return type from trait method defined here
+...
+555 |     fn on_chunk<F>(self, handler: F) -> CandleAgentRoleBuilderWithChunkHandler<F1, F2, F>
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+    = note: `#[warn(refining_impl_trait_internal)]` on by default
+help: replace the return type so that it matches the trait
+    |
+555 -     fn on_chunk<F>(self, handler: F) -> CandleAgentRoleBuilderWithChunkHandler<F1, F2, F>
+555 +     fn on_chunk<F>(self, handler: F) -> impl CandleAgentRoleBuilder
+    |
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:678:5
+    |
+678 | /     fn completion_provider<P>(self, _provider: P) -> impl CandleAgentRoleBuilder
+679 | |     where P: CandleCompletionProvider + Send + Sync + 'static { self }
+    | |_____________________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:681:5
+    |
+681 | /     fn model<M>(self, _model: M) -> impl CandleAgentRoleBuilder
+682 | |     where M: CandleCompletionModel + Send + Sync + 'static { self }
+    | |__________________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:684:5
+    |
+684 |     fn temperature(self, _temp: f64) -> impl CandleAgentRoleBuilder { self }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:685:5
+    |
+685 |     fn max_tokens(self, _max: u64) -> impl CandleAgentRoleBuilder { self }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:686:5
+    |
+686 |     fn system_prompt(self, _prompt: impl Into<String>) -> impl CandleAgentRoleBuilder { self }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:687:5
+    |
+687 |     fn context(self, _contexts: impl CandleContextArgs) -> impl CandleAgentRoleBuilder { self }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:688:5
+    |
+688 |     fn tools(self, _tools: impl CandleToolArgs) -> impl CandleAgentRoleBuilder { self }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:689:5
+    |
+689 |     fn mcp_server<T>(self) -> CandleMcpServerBuilder<T> { todo!("mcp_server for handler builder") }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:690:5
+    |
+690 | /     fn additional_params<P>(self, _params: P) -> impl CandleAgentRoleBuilder
+691 | |     where P: Into<std::collections::HashMap<&'static str, &'static str>> { self }
+    | |________________________________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:692:5
+    |
+692 | /     fn memory<M>(self, _memory: M) -> impl CandleAgentRoleBuilder
+693 | |     where M: CandleMemory + Send + Sync + 'static { self }
+    | |_________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:694:5
+    |
+694 | /     fn metadata<M>(self, _metadata: M) -> impl CandleAgentRoleBuilder
+695 | |     where M: Into<std::collections::HashMap<&'static str, &'static str>> { self }
+    | |________________________________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:696:5
+    |
+696 | /     fn on_tool_result<G>(self, _handler: G) -> impl CandleAgentRoleBuilder
+697 | |     where G: FnMut(String) + Send + 'static { self }
+    | |___________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:698:5
+    |
+698 | /     fn on_conversation_turn<G>(self, _handler: G) -> impl CandleAgentRoleBuilder
+699 | |     where G: Fn(&CandleAgentConversation, &CandleAgentRoleAgent) + Send + Sync + 'static { self }
+    | |________________________________________________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `G` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:700:42
+    |
+700 |     fn on_error<G>(self, _handler: G) -> CandleAgentRoleBuilderWithHandler<F1, F2, G>
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `G` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `G` with trait `Sync`
+    |
+701 |     where G: FnMut(String) + Send + 'static + std::marker::Sync { todo!("nested error handler") }
+    |                                             +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:702:5
+    |
+702 | /     fn on_chunk<G>(self, handler: G) -> CandleAgentRoleBuilderWithChunkHandler<F1, F2, G>
+703 | |     where G: Fn(CandleMessageChunk) -> CandleMessageChunk + Send + Sync + 'static {
+    | |_________________________________________________________________________________^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:709:5
+    |
+709 |     fn into_agent(self) -> impl CandleAgentBuilder {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:668:44
+    |
+668 | impl<F1, F2, F> CandleAgentRoleBuilder for CandleAgentRoleBuilderWithHandler<F1, F2, F>
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `G` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:777:42
+    |
+777 |     fn on_error<G>(self, _handler: G) -> CandleAgentRoleBuilderWithHandler<F1, F2, G>
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `G` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `G` with trait `Sync`
+    |
+778 |     where G: FnMut(String) + Send + 'static + std::marker::Sync { todo!("error handler for chunk builder") }
+    |                                             +++++++++++++++++++
+
+warning: impl trait in impl method signature does not match trait method signature
+   --> packages/candle/src/builders/agent_role.rs:779:41
+    |
+307 |     fn on_chunk<F>(self, handler: F) -> impl CandleAgentRoleBuilder
+    |                                         --------------------------- return type from trait method defined here
+...
+779 |     fn on_chunk<G>(self, handler: G) -> CandleAgentRoleBuilderWithChunkHandler<F1, F2, G>
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+    = note: `#[warn(refining_impl_trait_reachable)]` on by default
+help: replace the return type so that it matches the trait
+    |
+779 -     fn on_chunk<G>(self, handler: G) -> CandleAgentRoleBuilderWithChunkHandler<F1, F2, G>
+779 +     fn on_chunk<G>(self, handler: G) -> impl CandleAgentRoleBuilder
+    |
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:678:31
+    |
+678 |     fn completion_provider<P>(self, _provider: P) -> impl CandleAgentRoleBuilder
+    |                               ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:681:17
+    |
+681 |     fn model<M>(self, _model: M) -> impl CandleAgentRoleBuilder
+    |                 ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:684:20
+    |
+684 |     fn temperature(self, _temp: f64) -> impl CandleAgentRoleBuilder { self }
+    |                    ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:685:19
+    |
+685 |     fn max_tokens(self, _max: u64) -> impl CandleAgentRoleBuilder { self }
+    |                   ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:686:22
+    |
+686 |     fn system_prompt(self, _prompt: impl Into<String>) -> impl CandleAgentRoleBuilder { self }
+    |                      ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:687:16
+    |
+687 |     fn context(self, _contexts: impl CandleContextArgs) -> impl CandleAgentRoleBuilder { self }
+    |                ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:688:14
+    |
+688 |     fn tools(self, _tools: impl CandleToolArgs) -> impl CandleAgentRoleBuilder { self }
+    |              ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:689:22
+    |
+689 |     fn mcp_server<T>(self) -> CandleMcpServerBuilder<T> { todo!("mcp_server for handler builder") }
+    |                      ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:690:29
+    |
+690 |     fn additional_params<P>(self, _params: P) -> impl CandleAgentRoleBuilder
+    |                             ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:692:18
+    |
+692 |     fn memory<M>(self, _memory: M) -> impl CandleAgentRoleBuilder
+    |                  ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:694:20
+    |
+694 |     fn metadata<M>(self, _metadata: M) -> impl CandleAgentRoleBuilder
+    |                    ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:696:26
+    |
+696 |     fn on_tool_result<G>(self, _handler: G) -> impl CandleAgentRoleBuilder
+    |                          ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:698:32
+    |
+698 |     fn on_conversation_turn<G>(self, _handler: G) -> impl CandleAgentRoleBuilder
+    |                                ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:700:20
+    |
+700 |     fn on_error<G>(self, _handler: G) -> CandleAgentRoleBuilderWithHandler<F1, F2, G>
+    |                    ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:702:20
+    |
+702 |     fn on_chunk<G>(self, handler: G) -> CandleAgentRoleBuilderWithChunkHandler<F1, F2, G>
+    |                    ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+error[E0277]: `F` cannot be shared between threads safely
+   --> packages/candle/src/builders/agent_role.rs:709:19
+    |
+709 |     fn into_agent(self) -> impl CandleAgentBuilder {
+    |                   ^^^^ `F` cannot be shared between threads safely
+    |
+note: required by a bound in `CandleAgentRoleBuilderWithHandler`
+   --> packages/candle/src/builders/agent_role.rs:624:31
+    |
+620 | pub struct CandleAgentRoleBuilderWithHandler<F1, F2, F = fn(String)>
+    |            --------------------------------- required by a bound in this struct
+...
+624 |     F: FnMut(String) + Send + Sync + 'static,
+    |                               ^^^^ required by this bound in `CandleAgentRoleBuilderWithHandler`
+help: consider further restricting type parameter `F` with trait `Sync`
+    |
+672 |     F: FnMut(String) + Send + 'static + std::marker::Sync,
+    |                                       +++++++++++++++++++
+
+Some errors have detailed explanations: E0277, E0283.
+For more information about an error, try `rustc --explain E0277`.
+warning: `fluent_ai_candle` (lib) generated 2 warnings
+error: could not compile `fluent_ai_candle` (lib) due to 50 previous errors; 2 warnings emitted

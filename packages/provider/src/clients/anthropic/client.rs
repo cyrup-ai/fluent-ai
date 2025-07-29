@@ -9,7 +9,7 @@
 //!     .prompt("Hello world")
 //! ```
 
-use fluent_ai_domain::AsyncTask;
+use crate::AsyncTask;
 
 use super::completion::AnthropicCompletionBuilder;
 use crate::client::{CompletionClient, ProviderClient};

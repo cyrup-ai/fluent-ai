@@ -1,0 +1,333 @@
+use super::adapter::{ModelAdapter, ModelAdapterCollection};
+use super::ModelInfo;
+use model_info::{OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai};
+use model_info::common::Model;
+
+// OpenAI Model Adapter Implementation
+impl ModelAdapter for OpenAi {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "openai",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <OpenAi as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(OpenAi::Gpt4o) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "openai"
+    }
+}
+
+impl ModelAdapterCollection<OpenAi> for OpenAi {
+    fn all_models() -> Vec<OpenAi> {
+        OpenAi::all_variants().to_vec()
+    }
+}
+
+// Mistral Model Adapter Implementation
+impl ModelAdapter for Mistral {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "mistral",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <Mistral as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(Mistral::MistralLarge2407) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "mistral"
+    }
+}
+
+impl ModelAdapterCollection<Mistral> for Mistral {
+    fn all_models() -> Vec<Mistral> {
+        Mistral::all_models()
+    }
+}
+
+// Anthropic Model Adapter Implementation
+impl ModelAdapter for Anthropic {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "anthropic",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <Anthropic as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(Anthropic::Claude35Sonnet20240620) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "anthropic"
+    }
+}
+
+impl ModelAdapterCollection<Anthropic> for Anthropic {
+    fn all_models() -> Vec<Anthropic> {
+        Anthropic::all_models()
+    }
+}
+
+// Together Model Adapter Implementation
+impl ModelAdapter for Together {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "together",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <Together as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(Together::MetaLlamaLlama38bChatHf) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "together"
+    }
+}
+
+impl ModelAdapterCollection<Together> for Together {
+    fn all_models() -> Vec<Together> {
+        Together::all_models()
+    }
+}
+
+// OpenRouter Model Adapter Implementation
+impl ModelAdapter for OpenRouter {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "openrouter",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <OpenRouter as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(OpenRouter::OpenaiGpt4o) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "openrouter"
+    }
+}
+
+impl ModelAdapterCollection<OpenRouter> for OpenRouter {
+    fn all_models() -> Vec<OpenRouter> {
+        OpenRouter::all_models()
+    }
+}
+
+// HuggingFace Model Adapter Implementation
+impl ModelAdapter for HuggingFace {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "huggingface",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <HuggingFace as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(HuggingFace::MetaLlamaMetaLlama38bInstruct) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "huggingface"
+    }
+}
+
+impl ModelAdapterCollection<HuggingFace> for HuggingFace {
+    fn all_models() -> Vec<HuggingFace> {
+        HuggingFace::all_models()
+    }
+}
+
+// XAI Model Adapter Implementation
+impl ModelAdapter for Xai {
+    fn to_model_info(&self) -> ModelInfo {
+        ModelInfo {
+            provider_name: "xai",
+            name: <Self as Model>::name(self),
+            max_input_tokens: <Self as Model>::max_input_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            max_output_tokens: <Self as Model>::max_output_tokens(self).and_then(std::num::NonZeroU32::new).or_else(|| std::num::NonZeroU32::new(4096)),
+            input_price: <Self as Model>::pricing_input(self),
+            output_price: <Self as Model>::pricing_output(self),
+            supports_vision: false,
+            supports_function_calling: true,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: <Self as Model>::supports_thinking(self),
+            optimal_thinking_budget: <Self as Model>::optimal_thinking_budget(self),
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
+            required_temperature: <Self as Model>::required_temperature(self),
+        }
+    }
+
+    fn from_model_info(info: &ModelInfo) -> Self {
+        Self::all_models().into_iter()
+            .find(|model| <Xai as Model>::name(model) == info.name)
+            .or_else(|| Self::all_models().into_iter().next())
+            .unwrap_or(Xai::Grok4) // Safe fallback to known variant - no panic
+    }
+
+    fn model_name(&self) -> &'static str {
+        <Self as Model>::name(self)
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "xai"
+    }
+}
+
+impl ModelAdapterCollection<Xai> for Xai {
+    fn all_models() -> Vec<Xai> {
+        Xai::all_variants().to_vec()
+    }
+}

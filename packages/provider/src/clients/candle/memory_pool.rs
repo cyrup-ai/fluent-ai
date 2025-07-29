@@ -474,8 +474,8 @@ impl MemoryPoolManager {
     }
 
     /// Create optimized manager for Candle operations
-    pub fn for_candle() -> Self {
-        Self::new(PoolConfig::for_candle()).unwrap()
+    pub fn for_candle() -> CandleResult<Self> {
+        Self::new(PoolConfig::for_candle())
     }
 
     /// Acquire tensor memory from appropriate pool

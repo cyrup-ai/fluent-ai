@@ -25,6 +25,13 @@ pub const M2_BERT_80M_8K_RETRIEVAL: &str = "togethercomputer/m2-bert-80M-8k-retr
 pub const SENTENCE_BERT: &str = "sentence-transformers/msmarco-bert-base-dot-v5";
 pub const UAE_LARGE_V1: &str = "WhereIsAI/UAE-Large-V1";
 
+/// Together AI embedding model
+#[derive(Debug, Clone)]
+pub struct EmbeddingModel {
+    pub name: String,
+    pub dimensions: u32,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct EmbeddingResponse {
     pub model: String,

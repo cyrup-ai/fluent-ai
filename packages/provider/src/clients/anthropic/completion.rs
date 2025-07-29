@@ -14,10 +14,14 @@
 
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-use fluent_ai_domain::spawn_async;
-use fluent_ai_domain::tool::ToolDefinition;
-use fluent_ai_domain::{Document, Message};
+use fluent_ai_domain::context::chunk::{CompletionChunk, FinishReason};
+use fluent_ai_domain::completion::types::ToolDefinition;
+use fluent_ai_domain::context::Document;
+use fluent_ai_domain::chat::Message;
+use crate::completion_provider::Usage;
+use crate::spawn_async;
+// Use model-info package as single source of truth for model information
+use model_info::{Provider, AnthropicProvider, ModelInfo as ModelInfoFromPackage};
 // Use local Anthropic request/response types
 use super::types::{
     AnthropicCacheControl, AnthropicChatRequest, AnthropicContent, AnthropicContentBlock,
@@ -25,17 +29,15 @@ use super::types::{
     AnthropicStreamingDelta, AnthropicSystemMessage, AnthropicThinkingConfig, AnthropicTool,
     AnthropicToolResult, AnthropicToolUse, AnthropicUsage
 };
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use fluent_ai_http3::{Http3, HttpError};
 use log;
 use serde_json::Value;
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpRequest;
 
 use super::messages::ContentBlock;
 use crate::{
     AsyncStream,
     completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo}};
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfigInfo}};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -46,11 +48,7 @@ const MAX_DOCUMENTS: usize = 64;
 /// Maximum search results per request (compile-time bounded)
 const MAX_SEARCH_RESULTS: usize = 16;
 
-/// Get ModelInfo configuration for Anthropic models
-#[inline(always)]
-pub fn get_model_config(model_name: &'static str) -> &'static ModelConfig {
-    crate::model_info::get_model_config(model_name)
-}
+
 
 /// Search result data for citation support (using centralized types)
 #[derive(Debug, Clone)]
@@ -62,7 +60,6 @@ pub struct SearchResultData {
 /// Zero-allocation Anthropic completion builder with perfect ergonomics
 #[derive(Clone)]
 pub struct AnthropicCompletionBuilder {
-    client: HttpClient,
     api_key: String,
     explicit_api_key: Option<String>, // .api_key() override takes priority
     base_url: &'static str,
@@ -112,25 +109,36 @@ impl CompletionProvider for AnthropicCompletionBuilder {
     /// Create new Anthropic completion builder with ModelInfo defaults
     #[inline(always)]
     fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|_| {
-            CompletionError::ProviderUnavailable("HTTP client initialization failed".to_string())
-        })?;
-
-        let config = get_model_config(model_name);
+        // Use blazing-fast default configuration - model info loaded from model-info package when needed
+        let default_config = ModelConfig {
+            max_tokens: 4096,
+            temperature: 0.7,
+            top_p: 1.0,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            context_length: 200000,
+            system_prompt: "",
+            supports_tools: true,
+            supports_vision: true,
+            supports_audio: false,
+            supports_thinking: true,
+            optimal_thinking_budget: 20000,
+            provider: "anthropic",
+            model_name,
+        };
 
         Ok(Self {
-            client,
             api_key,
             explicit_api_key: None,
             base_url: "https://api.anthropic.com/v1",
             model_name,
-            config,
-            system_prompt: config.system_prompt.to_string(),
-            temperature: config.temperature,
-            max_tokens: config.max_tokens,
-            top_p: config.top_p,
-            frequency_penalty: config.frequency_penalty,
-            presence_penalty: config.presence_penalty,
+            config: default_config,
+            system_prompt: default_config.system_prompt.to_string(),
+            temperature: default_config.temperature,
+            max_tokens: default_config.max_tokens,
+            top_p: default_config.top_p,
+            frequency_penalty: default_config.frequency_penalty,
+            presence_penalty: default_config.presence_penalty,
             chat_history: ArrayVec::new(),
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
@@ -300,7 +308,7 @@ impl CompletionProvider for AnthropicCompletionBuilder {
         spawn_async(async move {
             match self.execute_streaming_completion(prompt_string).await {
                 Ok(mut stream) => {
-                    use futures_util::StreamExt;
+                    // AsyncStream already has .next() method
 
                     while let Some(result) = stream.next().await {
                         match result {
@@ -389,133 +397,77 @@ impl AnthropicCompletionBuilder {
     }
 
     /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
-    /// Returns AsyncStream<Result<CompletionChunk, CompletionError>> with proper error handling
+    /// Returns AsyncStream<CompletionChunk> with proper error handling
     #[inline(always)]
     async fn execute_streaming_completion(
         &self,
         prompt: String,
-    ) -> Result<AsyncStream<CompletionChunk>, CompletionError> {
+    ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
         let request_body = self.build_request(&prompt)?;
-
-        // Use centralized serialization with zero allocation where possible
-        let body_bytes = match request_body.to_json_bytes() {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                return Err(CompletionError::Internal(format!(
-                    "Serialization error: {}",
-                    e
-                )));
-            }
-        };
 
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
 
-        // Create auth method using centralized utilities (Anthropic uses x-api-key header)
-        let auth = match AuthMethod::api_key(auth_key) {
-            Ok(auth) => auth,
-            Err(e) => {
-                return Err(CompletionError::ProviderUnavailable(format!(
-                    "Auth setup failed: {}",
-                    e
-                )));
-            }
-        };
+        // Use Http3::json() directly instead of HttpClient abstraction
+        let mut response_stream = Http3::json()
+            .headers(|| {
+                use std::collections::HashMap;
+                let mut map = HashMap::new();
+                map.insert("x-api-key", auth_key);
+                map.insert("anthropic-version", "2023-06-01");
+                map.insert("Content-Type", "application/json");
+                map
+            })
+            .body(&request_body)
+            .post(&format!("{}/messages", self.base_url));
 
-        // Build headers using centralized utilities
-        let mut headers =
-            match HttpUtils::standard_headers(Provider::Anthropic, ContentTypes::JSON, Some(&auth))
-            {
-                Ok(headers) => headers,
-                Err(e) => {
-                    return Err(CompletionError::ProviderUnavailable(format!(
-                        "Header setup failed: {}",
-                        e
-                    )));
-                }
-            };
-
-        // Add Anthropic-specific headers
-        let anthropic_version_header = (
-            ArrayString::from("anthropic-version").map_err(|_| {
-                CompletionError::ProviderUnavailable("Header name too long".to_string())
-            })?,
-            ArrayString::from("2023-06-01").map_err(|_| {
-                CompletionError::ProviderUnavailable("Header value too long".to_string())
-            })?,
-        );
-        if headers.try_push(anthropic_version_header).is_err() {
-            return Err(CompletionError::ProviderUnavailable(
-                "Too many headers".to_string(),
-            ));
+        if !response_stream.is_success() {
+            return Err(match response_stream.status_code() {
+                401 => CompletionError::AuthError,
+                413 => CompletionError::RequestTooLarge,
+                429 => CompletionError::RateLimited,
+                _ => CompletionError::HttpError,
+            });
         }
 
-        // Build request using centralized URL building
-        let endpoint_url = match HttpUtils::build_endpoint(self.base_url, "/messages") {
-            Ok(url) => url,
-            Err(e) => {
-                return Err(CompletionError::ProviderUnavailable(format!(
-                    "URL building failed: {}",
-                    e
-                )));
-            }
-        };
-
-        let mut request =
-            HttpRequest::post(&endpoint_url, body_bytes.as_slice()).map_err(|_| {
-                CompletionError::ProviderUnavailable("HTTP request creation failed".to_string())
-            })?;
-
-        // Add headers from centralized header collection
-        for (name, value) in headers {
-            request = request.header(name.as_str(), value.as_str());
-        }
-
-        let response =
-            self.client.send(request).await.map_err(|_| {
-                CompletionError::ProviderUnavailable("HTTP request failed".to_string())
-            })?;
-
-        if !response.status().is_success() {
-            return Err(match response.status().as_u16() {
-                401 => CompletionError::ProviderUnavailable("Authentication failed".to_string()),
-                413 => CompletionError::InvalidRequest("Request too large".to_string()),
-                429 => CompletionError::RateLimitExceeded,
-                _ => CompletionError::ProviderUnavailable("HTTP error".to_string())});
-        }
-
-        let sse_stream = response.sse();
         let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
-            let mut sse_stream = sse_stream;
-
-            while let Some(event) = sse_stream.next().await {
-                match event {
-                    Ok(sse_event) => {
-                        if let Some(data) = sse_event.data {
-                            if data.trim() == "[DONE]" {
-                                break;
-                            }
-
-                            match Self::parse_sse_chunk(data.as_bytes()) {
-                                Ok(chunk) => {
-                                    if chunk_sender.send(Ok(chunk)).is_err() {
-                                        break;
+            use fluent_ai_http3::HttpStreamExt;
+            
+            while let Some(chunk) = response_stream.next().await {
+                match chunk {
+                    Ok(http_chunk) => {
+                        if let fluent_ai_http3::HttpChunk::Body(data) = http_chunk {
+                            let data_str = String::from_utf8_lossy(&data);
+                            
+                            // Process SSE events
+                            for line in data_str.lines() {
+                                if line.starts_with("data: ") {
+                                    let data = &line[6..];
+                                    if data.trim() == "[DONE]" {
+                                        return;
                                     }
-                                }
-                                Err(e) => {
-                                    if chunk_sender.send(Err(e)).is_err() {
-                                        break;
+                                    
+                                    match Self::parse_sse_chunk(data.as_bytes()) {
+                                        Ok(chunk) => {
+                                            if chunk_sender.send(Ok(chunk)).is_err() {
+                                                return;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            if chunk_sender.send(Err(e)).is_err() {
+                                                return;
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                     Err(_) => {
-                        let _ = chunk_sender
-                            .send(Err(CompletionError::Internal("Stream error".to_string())));
-                        break;
+                        let _ = chunk_sender.send(Err(CompletionError::StreamError));
+                        return;
                     }
                 }
             }
@@ -524,84 +476,70 @@ impl AnthropicCompletionBuilder {
         Ok(chunk_receiver)
     }
 
-    /// Build Anthropic request using centralized builder pattern (zero allocation where possible)
+    /// Build Anthropic request with zero allocation where possible
     #[inline(always)]
     fn build_request(&self, prompt: &str) -> Result<AnthropicChatRequest<'_>, CompletionError> {
-        // Use the centralized builder with validation
-        let builder = Http3Builders::anthropic();
-        let mut chat_builder = builder.chat(self.model_name);
-
-        // Set system prompt if present
-        if !self.system_prompt.is_empty() {
-            chat_builder = chat_builder.system_prompt(&self.system_prompt);
-        }
+        let mut messages = ArrayVec::new();
 
         // Add documents as context
         for doc in &self.documents {
             let content = format!("Document: {}", doc.content());
-            chat_builder =
-                chat_builder.add_text_message("user", Box::leak(content.into_boxed_str()));
+            messages
+                .try_push(AnthropicMessage {
+                    role: "user",
+                    content: AnthropicContent::Text(Box::leak(content.into_boxed_str()))})
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add chat history
         for msg in &self.chat_history {
             match self.convert_domain_message_to_content(msg) {
                 Ok((role, content)) => {
-                    chat_builder = chat_builder.add_message(role, content);
+                    messages
+                        .try_push(AnthropicMessage { role, content })
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
-                Err(e) => return Err(e)}
-        }
-
-        // Add user prompt
-        chat_builder = chat_builder.add_text_message("user", prompt);
-
-        // Set parameters with validation using centralized utilities
-        chat_builder = chat_builder
-            .temperature(
-                HttpUtils::validate_temperature(self.temperature as f32, Provider::Anthropic)
-                    .map_err(|e| {
-                        CompletionError::InvalidRequest(format!("Invalid temperature: {}", e))
-                    })? as f64,
-            )
-            .max_tokens(
-                HttpUtils::validate_max_tokens(self.max_tokens, Provider::Anthropic).map_err(
-                    |e| CompletionError::InvalidRequest(format!("Invalid max_tokens: {}", e)),
-                )?,
-            )
-            .top_p(
-                HttpUtils::validate_top_p(self.top_p as f32)
-                    .map_err(|e| CompletionError::InvalidRequest(format!("Invalid top_p: {}", e)))?
-                    as f64,
-            )
-            .stream(true);
-
-        // Add tools if present
-        if !self.tools.is_empty() {
-            let anthropic_tools = self.convert_tools()?;
-            chat_builder = chat_builder.with_tools(anthropic_tools);
-        }
-
-        // Enable thinking mode if configured
-        if self.thinking_enabled {
-            if let Some(config) = &self.thinking_config {
-                chat_builder = chat_builder.enable_thinking_with_config(config.clone());
-            } else {
-                chat_builder = chat_builder.enable_thinking();
+                Err(e) => return Err(e)
             }
         }
 
-        // Enable prompt caching if configured
-        if self.prompt_caching_enabled {
-            chat_builder = chat_builder.enable_prompt_caching();
-        }
+        // Add user prompt
+        messages
+            .try_push(AnthropicMessage {
+                role: "user",
+                content: AnthropicContent::Text(prompt)})
+            .map_err(|_| CompletionError::RequestTooLarge)?;
 
-        // Build and validate the request
-        match chat_builder.build() {
-            Ok(request) => Ok(request),
-            Err(e) => Err(CompletionError::InvalidRequest(format!(
-                "Request building failed: {}",
-                e
-            )))}
+        let tools = if self.tools.is_empty() {
+            None
+        } else {
+            Some(self.convert_tools()?)
+        };
+
+        let system_message = if self.system_prompt.is_empty() {
+            None
+        } else {
+            Some(AnthropicSystemMessage {
+                text: &self.system_prompt,
+                cache_control: if self.prompt_caching_enabled {
+                    Some(AnthropicCacheControl { r#type: "ephemeral" })
+                } else {
+                    None
+                }
+            })
+        };
+
+        Ok(AnthropicChatRequest {
+            model: self.model_name,
+            max_tokens: self.max_tokens.clamp(1, 200000),
+            messages,
+            system: system_message,
+            temperature: Some(self.temperature.clamp(0.0, 1.0)),
+            top_p: Some(self.top_p.clamp(0.0, 1.0)),
+            tools,
+            stream: Some(true),
+            thinking_config: self.thinking_config.clone(),
+        })
     }
 
     /// Convert domain Message to Anthropic content (zero allocation)
@@ -654,6 +592,12 @@ impl AnthropicCompletionBuilder {
         Ok(tools)
     }
 
+    /// Load model information from model-info package (single source of truth)
+    pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
+        let provider = Provider::Anthropic(AnthropicProvider);
+        provider.get_model_info(self.model_name)
+    }
+
     /// Parse Anthropic SSE chunk using centralized deserialization (blazing-fast)
     #[inline(always)]
     fn parse_sse_chunk(data: &[u8]) -> Result<CompletionChunk, CompletionError> {
@@ -667,31 +611,23 @@ impl AnthropicCompletionBuilder {
             "content_block_delta" => {
                 if let Some(delta) = anthropic_chunk.delta {
                     let content = delta.text.unwrap_or_default();
-                    Ok(CompletionChunk::new(
-                        "anthropic_chunk".to_string(),
-                        anthropic_chunk.index.unwrap_or(0),
-                        content,
-                        None,
-                        None,
-                    ))
+                    Ok(CompletionChunk::text(&content))
                 } else {
                     Err(CompletionError::ParseError)
                 }
             }
-            "content_block_stop" => Ok(CompletionChunk::new(
-                "anthropic_chunk".to_string(),
-                anthropic_chunk.index.unwrap_or(0),
-                String::new(),
-                Some(FinishReason::Stop),
-                None,
-            )),
+            "content_block_stop" => {
+                Ok(CompletionChunk::Complete {
+                    text: String::new(),
+                    finish_reason: Some(FinishReason::Stop),
+                    usage: None,
+                })
+            }
             "message_delta" => {
-                let usage = anthropic_chunk.usage.map(|u| {
-                    Usage::new(
-                        u.input_tokens,
-                        u.output_tokens,
-                        u.input_tokens + u.output_tokens,
-                    )
+                let usage = anthropic_chunk.usage.map(|u| Usage {
+                    prompt_tokens: u.input_tokens,
+                    completion_tokens: u.output_tokens,
+                    total_tokens: u.input_tokens + u.output_tokens,
                 });
                 let finish_reason =
                     anthropic_chunk
@@ -701,25 +637,17 @@ impl AnthropicCompletionBuilder {
                             "end_turn" => FinishReason::Stop,
                             "max_tokens" => FinishReason::Length,
                             "tool_use" => FinishReason::ToolCalls,
-                            _ => FinishReason::Other});
+                            _ => FinishReason::Stop});
 
-                Ok(CompletionChunk::new(
-                    "anthropic_chunk".to_string(),
-                    0,
-                    String::new(),
+                Ok(CompletionChunk::Complete {
+                    text: String::new(),
                     finish_reason,
                     usage,
-                ))
+                })
             }
             _ => {
                 // Skip other chunk types (message_start, content_block_start, etc.)
-                Ok(CompletionChunk::new(
-                    "anthropic_chunk".to_string(),
-                    0,
-                    String::new(),
-                    None,
-                    None,
-                ))
+                Ok(CompletionChunk::text(""))
             }
         }
     }
@@ -733,3 +661,10 @@ pub fn completion_builder(
 ) -> Result<AnthropicCompletionBuilder, CompletionError> {
     AnthropicCompletionBuilder::new(api_key, model_name)
 }
+
+// =============================================================================
+// Missing Types for Requests Module Compatibility
+// =============================================================================
+
+/// Anthropic completion request (alias for compatibility)
+pub type AnthropicCompletionRequest<'a> = super::types::AnthropicChatRequest<'a>;

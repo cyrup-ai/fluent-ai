@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 
-use futures_util::FutureExt; // for `.map()` on AsyncTask
+// Removed futures_util::FutureExt - using AsyncStream patterns instead
 use serde_json::Value;
 use thiserror::Error;
 

@@ -6,14 +6,15 @@ use std::marker::PhantomData;
 use std::collections::HashMap;
 
 use fluent_ai_domain::{
-    AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
-    ChatMessageChunk, CompletionProvider, Context, Tool, McpServer, Memory, 
-    AdditionalParams, Metadata, Conversation, MessageRole,
-    ZeroOneOrMany, AsyncStream,
-    agent::Agent,
-    completion::{Message, CompletionModel},
-    chat::ChatLoop,
+    agent::{AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl},
+    chat::{Conversation, Message, MessageRole},
+    completion::CompletionModel,
+    context::chunk::ChatMessageChunk,
+    tool::Tool,
+    AdditionalParams, Metadata, Memory,
+    ZeroOneOrMany,
 };
+use fluent_ai_async::AsyncStream;
 use serde_json::Value;
 
 /// MCP Server type enum

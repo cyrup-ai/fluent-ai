@@ -69,6 +69,27 @@ pub struct OpenAICompletionRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_logprobs: Option<u32>}
 
+/// OpenAI chat completion response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAICompletionResponse {
+    /// Unique identifier for the completion response
+    pub id: String,
+    /// Object type (always "chat.completion")
+    pub object: String,
+    /// Unix timestamp when the completion was created
+    pub created: u64,
+    /// Model that generated the completion
+    pub model: String,
+    /// Array of completion choices
+    pub choices: ArrayVec<OpenAIChoice, MAX_CHOICES>,
+    /// Usage statistics for the completion request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<OpenAIUsage>,
+    /// System fingerprint for reproducibility
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_fingerprint: Option<String>,
+}
+
 /// Tool choice configuration for function calling
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]

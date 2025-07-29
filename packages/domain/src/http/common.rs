@@ -45,6 +45,7 @@
 use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use model_info::Provider;
 
 /// Maximum number of messages in a conversation (compile-time bounded)
 pub const MAX_MESSAGES: usize = 128;
@@ -591,10 +592,10 @@ impl fmt::Display for HttpMethod {
 /// 
 /// Contains information about AI provider capabilities and configuration
 /// for optimal request routing and feature detection.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ProviderMetadata {
     /// Provider identifier
-    pub provider: super::Provider,
+    pub provider: Provider,
     /// Base URL for API requests
     pub base_url: String,
     /// Maximum tokens supported by this provider
@@ -611,23 +612,29 @@ pub struct ProviderMetadata {
 impl ProviderMetadata {
     /// Create new provider metadata
     #[inline]
-    pub fn new(provider: super::Provider) -> Self {
+    pub fn new(provider: Provider) -> Self {
+        let base_url = provider.default_base_url().to_string();
+        let max_tokens_supported = match &provider {
+            Provider::OpenAi(_) | Provider::OpenAI | Provider::Azure => 128_000,
+            Provider::Anthropic(_) => 200_000,
+            Provider::VertexAI | Provider::Gemini => 2_000_000,
+            _ => 32_000, // Conservative default
+        };
+        let supports_streaming = provider.supports_streaming();
+        let supports_function_calling = provider.supports_function_calling();
+        let supports_vision = matches!(&provider, 
+            Provider::OpenAI | Provider::Azure | 
+            Provider::VertexAI | Provider::Gemini |
+            Provider::Anthropic(_)
+        );
+        
         Self {
-            provider,
-            base_url: provider.default_base_url().to_string(),
-            max_tokens_supported: match provider {
-                super::Provider::OpenAI | super::Provider::Azure => 128_000,
-                super::Provider::Anthropic => 200_000,
-                super::Provider::VertexAI | super::Provider::Gemini => 2_000_000,
-                _ => 32_000, // Conservative default
-            },
-            supports_streaming: provider.supports_streaming(),
-            supports_function_calling: provider.supports_function_calling(),
-            supports_vision: matches!(provider, 
-                super::Provider::OpenAI | super::Provider::Azure | 
-                super::Provider::VertexAI | super::Provider::Gemini |
-                super::Provider::Anthropic
-            ),
+            provider: provider.clone(),
+            base_url,
+            max_tokens_supported,
+            supports_streaming,
+            supports_function_calling,
+            supports_vision,
             default_timeout_ms: 60_000, // 60 seconds default
         }
     }

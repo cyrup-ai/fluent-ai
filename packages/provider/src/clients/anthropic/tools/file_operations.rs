@@ -4,8 +4,6 @@
 //! using the Anthropic Files API with fluent_ai_http3 for optimal performance.
 
 use std::path::Path;
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpRequest;
 
 use bytes::Bytes;
 use fluent_ai_async::AsyncStream;
@@ -75,8 +73,9 @@ impl FileOperationsTool {
     }
 
     /// Create a new HTTP client with AI-optimized settings
-    fn create_http_client() -> HttpClient {
-        HttpClient::new(HttpConfig::ai_optimized()).unwrap()
+    fn create_http_client() -> Result<HttpClient, String> {
+        HttpClient::new(HttpConfig::ai_optimized())
+            .map_err(|e| format!("Failed to create HTTP client: {}", e))
     }
 }
 
@@ -98,7 +97,12 @@ impl ToolExecutor for FileOperationsTool {
         tokio::spawn(async move {
             let result = async {
                 let operation = input["operation"].as_str().unwrap_or_default();
-                let client = Self::create_http_client();
+                let client = Self::create_http_client().map_err(|e| {
+                    ToolOutput::Error {
+                        message: e,
+                        code: Some("HTTP_CLIENT_ERROR".to_string())
+                    }
+                })?;
 
                 match operation {
                     "upload" => {

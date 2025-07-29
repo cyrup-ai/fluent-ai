@@ -1,6 +1,4 @@
-use super::adapter::{ModelAdapter, ModelAdapterCollection};
-use super::ModelInfo as DomainModelInfo;
-use crate::model::{OpenAiModel, MistralModel, AnthropicModel, TogetherModel, OpenRouterModel, HuggingFaceModel, XaiModel};
+use model_info::{ModelInfo, OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai, common::Model};
 use fluent_ai_async::{AsyncStream, emit};
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -8,7 +6,7 @@ use std::sync::OnceLock;
 /// Unified model registry supporting both static enum lookup and dynamic provider calls
 /// ALL STREAMS architecture - no Result types, only unwrapped values and streaming patterns
 pub struct UnifiedModelRegistry {
-    static_cache: HashMap<String, DomainModelInfo>,
+    static_cache: HashMap<String, ModelInfo>,
     provider_cache: HashMap<String, Vec<String>>,
 }
 
@@ -34,78 +32,78 @@ impl UnifiedModelRegistry {
     /// Register all static model enum data
     fn register_static_models(&mut self) {
         // Register OpenAI models
-        for model in OpenAiModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in OpenAi::all_models() {
+            let info = <OpenAi as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("openai".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
         
         // Register Mistral models
-        for model in MistralModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in Mistral::all_models() {
+            let info = <Mistral as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("mistral".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
         
         // Register Anthropic models
-        for model in AnthropicModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in Anthropic::all_models() {
+            let info = <Anthropic as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("anthropic".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
         
         // Register Together models
-        for model in TogetherModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in Together::all_models() {
+            let info = <Together as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("together".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
         
         // Register OpenRouter models
-        for model in OpenRouterModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in OpenRouter::all_models() {
+            let info = <OpenRouter as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("openrouter".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
         
         // Register HuggingFace models
-        for model in HuggingFaceModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in HuggingFace::all_models() {
+            let info = <HuggingFace as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("huggingface".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
         
         // Register XAI models
-        for model in XaiModel::all_models() {
-            let info = model.to_model_info();
-            self.static_cache.insert(model.model_name().to_string(), info);
+        for model in Xai::all_models() {
+            let info = <Xai as Model>::to_model_info(&model);
+            self.static_cache.insert(model.name().to_string(), info);
             self.provider_cache
                 .entry("xai".to_string())
                 .or_insert_with(Vec::new)
-                .push(model.model_name().to_string());
+                .push(model.name().to_string());
         }
     }
     
     /// Resolve model by name - returns default if not found (no Option)
-    pub fn resolve_model(&self, name: &str) -> DomainModelInfo {
+    pub fn resolve_model(&self, name: &str) -> ModelInfo {
         // First try static cache
         if let Some(info) = self.static_cache.get(name) {
             return info.clone();
@@ -113,12 +111,24 @@ impl UnifiedModelRegistry {
         
         // TODO: Try dynamic provider lookup here
         // For now return default fallback
-        DomainModelInfo {
-            name: name.to_string(),
-            max_context: 4096,
-            pricing_input: 0.0,
-            pricing_output: 0.0,
-            is_thinking: false,
+        ModelInfo {
+            provider_name: "unknown",
+            name: Box::leak(name.to_string().into_boxed_str()),
+            max_input_tokens: Some(std::num::NonZeroU32::new(4096).unwrap()),
+            max_output_tokens: Some(std::num::NonZeroU32::new(4096).unwrap()),
+            input_price: Some(0.0),
+            output_price: Some(0.0),
+            supports_vision: false,
+            supports_function_calling: false,
+            supports_streaming: true,
+            supports_embeddings: false,
+            requires_max_tokens: false,
+            supports_thinking: false,
+            optimal_thinking_budget: None,
+            system_prompt_prefix: None,
+            real_name: None,
+            model_type: None,
+            patch: None,
             required_temperature: None,
         }
     }
@@ -169,8 +179,8 @@ impl UnifiedModelRegistry {
     }
     
     /// Stream all model info
-    pub fn stream_all_model_info(&self) -> AsyncStream<DomainModelInfo> {
-        let all_info: Vec<DomainModelInfo> = self.static_cache.values().cloned().collect();
+    pub fn stream_all_model_info(&self) -> AsyncStream<ModelInfo> {
+        let all_info: Vec<ModelInfo> = self.static_cache.values().cloned().collect();
         AsyncStream::with_channel(move |sender| {
             for info in all_info {
                 emit!(sender, info);

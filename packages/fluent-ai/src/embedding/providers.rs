@@ -814,32 +814,7 @@ pub trait CognitiveMemoryManagerTrait: Send + Sync {
     }
 }
 
-/// Trait for quantum router integration - NO FUTURES!
-pub trait QuantumRouterTrait: Send + Sync {
-    fn enhance_embedding_with_quantum_coherence(
-        &self,
-        embedding: &mut [f32],
-        coherence_score: f64,
-    ) -> fluent_ai_domain::AsyncStream<Result<f64, String>> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        tokio::spawn(async move {
-            let _ = tx.send(Ok(coherence_score));
-        });
-        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
-    }
 
-    fn calculate_quantum_coherence(
-        &self,
-        text: &str,
-        embedding: &[f32],
-    ) -> fluent_ai_domain::AsyncStream<Result<f64, String>> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        tokio::spawn(async move {
-            let _ = tx.send(Ok(0.8)); // Default coherence score
-        });
-        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
-    }
-}
 
 /// Query intent classification for cognitive enhancement
 #[derive(Debug, Clone, PartialEq)]

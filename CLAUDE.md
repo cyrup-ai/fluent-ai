@@ -1,56 +1,73 @@
 # Domain Model Architecture
 
-## CRITICAL RULE: ALL DOMAIN MODELS MUST LIVE IN fluent_ai_domain
+## CRITICAL RULE: PACKAGE ISOLATION AND STANDALONE REQUIREMENTS
 
-**MANDATORY**: ALL domain models, types, traits, and abstractions MUST be defined in the `fluent_ai_domain` package. NO other packages should define domain models.
+### fluent-ai-candle: STANDALONE PACKAGE
 
-### Domain Model Centralization
+**MANDATORY**: `fluent-ai-candle` is a STANDALONE package that:
 
-- **CompletionProvider trait**: Lives in `fluent_ai_domain::completion`
-- **ModelConfig struct**: Lives in `fluent_ai_domain::model` 
-- **All completion types**: Live in `fluent_ai_domain::completion`
-- **All model types**: Live in `fluent_ai_domain::model`
-- **Message types**: Live in `fluent_ai_domain::chat`
-- **Error types**: Live in `fluent_ai_domain::error`
+- **CANNOT depend on** `./packages/domain` (fluent_ai_domain)
+- **CANNOT depend on** `./packages/fluent-ai` 
+- **MUST define its own domain types** with "Candle" prefixes
+- **MUST use ONLY** `./packag../async-stream` for streaming
+- **MUST use ONLY** `./packages/http3` for HTTP operations
+- **NO FUTURES architecture** - AsyncStream only
+- **Zero allocation, lock-free patterns** throughout
 
-### Import Pattern for REAL LLM Calls
+### Required Dependencies ONLY
 
-```rust
-// CORRECT: Import domain types and provider clients
-use fluent_ai_domain::{
-    completion::CompletionProvider,  // Trait definition
-    model::ModelConfig,
-    chat::Message,
-    error::CompletionError,
-};
-
-// CORRECT: Import actual completion clients for REAL calls
-use fluent_ai_provider::{
-    openai::OpenAIClient,           // Real OpenAI client
-    anthropic::AnthropicClient,     // Real Anthropic client
-};
-
-// WRONG: Defining domain models in other packages
-use fluent_ai_memory::ModelConfig; // WRONG PACKAGE
+```toml
+[dependencies]
+fluent_ai_async = { path = "../async-stream" }
+fluent-ai-http3 = { path = "../http3" }
+# NO OTHER fluent-ai-* dependencies allowed
 ```
 
-### Package Dependency Chain
+### Standalone Domain Types (Candle-Prefixed)
 
-**CRITICAL DEPENDENCY ORDER**: `fluent_ai` -> `fluent_ai_memory` -> `fluent_ai_provider` -> `fluent_ai_domain`
+`fluent-ai-candle` MUST define its own versions of ALL domain types:
+
+```rust
+// fluent-ai-candle defines these (NOT imported from domain)
+pub struct CandleAgent { /* ... */ }
+pub trait CandleAgentRole { /* ... */ }
+pub struct CandleMessage { /* ... */ }
+pub enum CandleMessageRole { /* ... */ }
+pub trait CandleCompletionProvider { /* ... */ }
+// ... ALL domain types with "Candle" prefix
+```
+
+### Forbidden Imports
+
+**NEVER IMPORT**:
+```rust
+// FORBIDDEN - causes dependency on other packages
+use fluent_ai_domain::*;
+use fluent_ai::*;
+use fluent_ai_provider::*;
+use fluent_ai_memory::*;
+```
+
+### Required Import Pattern
+
+**ONLY ALLOWED**:
+```rust
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use fluent_ai_http3::{Http3, HttpClient, HttpConfig};
+// Local candle types only
+use crate::domain::{CandleMessage, CandleMessageRole, /* ... */};
+```
+
+### Legacy Package Rules (for reference)
+
+For NON-candle packages, the original domain centralization rules apply:
 
 - **fluent_ai_domain**: Domain models, types, traits (ONLY) - NO dependencies
-- **fluent_ai_provider**: Completion clients (OpenAI, Anthropic, etc.) using domain types
-- **fluent_ai_memory**: Memory implementations using BOTH domain types AND provider clients for REAL LLM calls
-- **fluent_ai**: Top-level package that orchestrates everything
+- **fluent_ai_provider**: Completion clients using domain types
+- **fluent_ai_memory**: Memory implementations using domain + provider types
+- **fluent_ai**: Top-level orchestration package
 
-### Zero Duplication Rule
-
-NO package except `fluent_ai_domain` should define:
-- Completion traits or types
-- Model configuration types
-- Message or chat types
-- Provider abstractions
-- Any domain model concepts
+But `fluent-ai-candle` is COMPLETELY ISOLATED from this hierarchy.
 
 # HTTP Client Configuration
 

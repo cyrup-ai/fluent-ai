@@ -10,5 +10,5 @@ pub mod types;
 // Re-export commonly used types
 pub use core::*;
 pub use chat::*;
-pub use role::*;
-// Removed unused import: types::*
+pub use role::{AgentRole, AgentRoleImpl};
+pub use types::{AgentConversation, AgentConversationMessage, AgentRoleAgent};

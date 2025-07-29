@@ -1,8 +1,6 @@
 use crate::common::{ModelInfo, ProviderTrait};
 use fluent_ai_async::AsyncStream;
-use fluent_ai_http3::{Http3, HttpStreamExt};
 use serde::Deserialize;
-use std::env;
 
 #[derive(Deserialize, Default)]
 pub struct HuggingFaceModelInfo {
@@ -14,7 +12,7 @@ pub struct HuggingFaceModelInfo {
     pub tags: Vec<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct HuggingFaceProvider;
 
 impl ProviderTrait for HuggingFaceProvider {
@@ -22,49 +20,78 @@ impl ProviderTrait for HuggingFaceProvider {
         let model_name = model.to_string();
         
         AsyncStream::with_channel(move |sender| {
-            let key = env::var("HUGGINGFACE_API_KEY")
-                .expect("HUGGINGFACE_API_KEY environment variable is required");
-            
-            let response = Http3::json()
-                .api_key(&key)
-                .get(&format!("https://huggingface.co/api/models/{}", model_name))
-                .collect::<HuggingFaceModelInfo>();
-                
-            let model_info = adapt_huggingface_to_model_info(&response);
+            let model_info = adapt_huggingface_to_model_info(&model_name);
             let _ = sender.send(model_info);
         })
     }
+    
+    fn list_models(&self) -> AsyncStream<ModelInfo> {
+        use crate::generated_models::HuggingFaceModel as HuggingFace;
+        use crate::common::Model;
+        
+        AsyncStream::with_channel(move |sender| {
+            let models = vec![
+                HuggingFace::MetaLlamaMetaLlama38bInstruct,
+                HuggingFace::MistralaiMistral7bInstructV03,
+                HuggingFace::GoogleGemma29bIt,
+            ];
+            
+            for model in models {
+                let model_info = adapt_huggingface_to_model_info(model.name());
+                let _ = sender.send(model_info);
+            }
+        })
+    }
+    
+    fn provider_name(&self) -> &'static str {
+        "huggingface"
+    }
 }
 
-fn adapt_huggingface_to_model_info(data: &HuggingFaceModelInfo) -> ModelInfo {
-    // Determine context length based on model type and tags
-    let max_context = if data.tags.iter().any(|tag| tag.contains("32k") || tag.contains("32768")) {
-        32768
-    } else if data.tags.iter().any(|tag| tag.contains("16k") || tag.contains("16384")) {
-        16384
-    } else if data.tags.iter().any(|tag| tag.contains("8k") || tag.contains("8192")) {
-        8192
-    } else if data.tags.iter().any(|tag| tag.contains("4k") || tag.contains("4096")) {
-        4096
-    } else {
-        2048 // Default for HuggingFace models
-    };
+fn adapt_huggingface_to_model_info(model: &str) -> ModelInfo {
+    use std::sync::OnceLock;
+    use hashbrown::HashMap;
     
-    // Check for reasoning/thinking capabilities
-    let is_thinking = data.tags.iter().any(|tag| 
-        tag.contains("reasoning") || 
-        tag.contains("cot") || 
-        tag.contains("chain-of-thought")
-    );
+    static MAP: OnceLock<HashMap<&'static str, (u32, u32, f64, f64, bool, bool, bool, bool, bool)>> = OnceLock::new();
+    let map = MAP.get_or_init(|| {
+        let mut m = HashMap::new();
+        // (max_input, max_output, input_price, output_price, vision, function_calling, streaming, embeddings, thinking)
+        m.insert("meta-llama/Meta-Llama-3-8B-Instruct", (8192, 2048, 0.0, 0.0, false, false, true, false, false));
+        m.insert("mistralai/Mistral-7B-Instruct-v0.3", (32768, 8192, 0.0, 0.0, false, false, true, false, false));
+        m.insert("google/gemma-2-9b-it", (8192, 2048, 0.0, 0.0, false, false, true, false, false));
+        m
+    });
     
-    let required_temperature = if is_thinking { Some(1.0) } else { None };
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
+        map.get(model).copied().unwrap_or((8192, 2048, 0.0, 0.0, false, false, true, false, false));
     
     ModelInfo {
-        name: data.model_id.clone(),
-        max_context,
-        pricing_input: 0.0,  // Many HF models are free
-        pricing_output: 0.0,
-        is_thinking,
-        required_temperature,
+        // Core identification
+        provider_name: "huggingface",
+        name: Box::leak(model.to_string().into_boxed_str()),
+        
+        // Token limits
+        max_input_tokens: std::num::NonZeroU32::new(max_input),
+        max_output_tokens: std::num::NonZeroU32::new(max_output),
+        
+        // Pricing (per 1M tokens) - many HF models are free
+        input_price: Some(pricing_input),
+        output_price: Some(pricing_output),
+        
+        // Capability flags
+        supports_vision,
+        supports_function_calling,
+        supports_streaming,
+        supports_embeddings,
+        requires_max_tokens: false,
+        supports_thinking,
+        
+        // Advanced features
+        optimal_thinking_budget: if supports_thinking { Some(50000) } else { None },
+        system_prompt_prefix: None,
+        real_name: None,
+        model_type: None,
+        patch: None,
+        required_temperature: None,
     }
 }

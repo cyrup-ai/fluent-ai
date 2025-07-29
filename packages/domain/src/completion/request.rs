@@ -13,7 +13,7 @@ use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition
 use crate::ZeroOneOrMany;
 use crate::chat::Message as ChatMessage;
 use crate::context::Document;
-use crate::model::{ValidationError, ValidationResult};
+use crate::model::ValidationError;
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,10 +46,114 @@ pub enum CompletionRequestError {
     #[error(transparent)]
     Validation(#[from] ValidationError)}
 
+/// Builder for creating CompletionRequest instances
+#[derive(Debug, Clone)]
+pub struct CompletionRequestBuilder {
+    system_prompt: String,
+    chat_history: ZeroOneOrMany<ChatMessage>,
+    documents: ZeroOneOrMany<Document>,
+    tools: ZeroOneOrMany<ToolDefinition>,
+    temperature: f64,
+    max_tokens: Option<NonZeroU64>,
+    chunk_size: Option<usize>,
+    additional_params: Option<Value>,
+}
+
+impl Default for CompletionRequestBuilder {
+    fn default() -> Self {
+        Self {
+            system_prompt: String::new(),
+            chat_history: crate::ZeroOneOrMany::None,
+            documents: crate::ZeroOneOrMany::None,
+            tools: crate::ZeroOneOrMany::None,
+            temperature: 1.0,
+            max_tokens: None,
+            chunk_size: None,
+            additional_params: None,
+        }
+    }
+}
+
+impl CompletionRequestBuilder {
+    /// Create a new builder
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set system prompt
+    pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system_prompt = prompt.into();
+        self
+    }
+
+    /// Set chat history
+    pub fn chat_history(mut self, history: ZeroOneOrMany<ChatMessage>) -> Self {
+        self.chat_history = history;
+        self
+    }
+
+    /// Set documents
+    pub fn documents(mut self, documents: ZeroOneOrMany<Document>) -> Self {
+        self.documents = documents;
+        self
+    }
+
+    /// Set tools
+    pub fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Self {
+        self.tools = tools;
+        self
+    }
+
+    /// Set temperature
+    pub fn temperature(mut self, temperature: f64) -> Self {
+        self.temperature = temperature;
+        self
+    }
+
+    /// Set max tokens
+    pub fn max_tokens(mut self, tokens: Option<NonZeroU64>) -> Self {
+        self.max_tokens = tokens;
+        self
+    }
+
+    /// Set chunk size
+    pub fn chunk_size(mut self, size: Option<usize>) -> Self {
+        self.chunk_size = size;
+        self
+    }
+
+    /// Set additional parameters
+    pub fn additional_params(mut self, params: Option<Value>) -> Self {
+        self.additional_params = params;
+        self
+    }
+
+    /// Build the request
+    pub fn build(self) -> Result<CompletionRequest, CompletionRequestError> {
+        let request = CompletionRequest {
+            system_prompt: self.system_prompt,
+            chat_history: self.chat_history,
+            documents: self.documents,
+            tools: self.tools,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            chunk_size: self.chunk_size,
+            additional_params: self.additional_params,
+        };
+
+        request.validate().map_err(CompletionRequestError::Validation)?;
+        Ok(request)
+    }
+}
+
 impl CompletionRequest {
+    /// Create a new builder
+    pub fn builder() -> CompletionRequestBuilder {
+        CompletionRequestBuilder::new()
+    }
 
     /// Validate the request parameters
-    pub fn validate(&self) -> ValidationResult<()> {
+    pub fn validate(&self) -> Result<(), ValidationError> {
         // Validate temperature
         if !TEMPERATURE_RANGE.contains(&self.temperature) {
             return Err(ValidationError::InvalidRange {

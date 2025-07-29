@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use futures_util::{FutureExt, Stream, StreamExt};
+use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -14,7 +14,7 @@ use crate::{
     OneOrMany,
     client::ProviderClient,
     completion::message::{AssistantContent, Message, ToolCall},
-    runtime::{AsyncStream, AsyncTask},
+    runtime::AsyncTask,
     streaming::{StreamingCompletionResponse, StreamingResult}};
 
 // ================================================================

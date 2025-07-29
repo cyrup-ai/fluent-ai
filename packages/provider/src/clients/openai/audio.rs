@@ -703,3 +703,19 @@ pub fn supports_transcription(model: &str) -> bool {
 pub fn supports_tts(model: &str) -> bool {
     matches!(model, "tts-1" | "tts-1-hd")
 }
+
+// =============================================================================
+// Missing Types for Module Compatibility
+// =============================================================================
+
+/// OpenAI Audio client for compatibility
+#[derive(Debug, Clone)]
+pub struct OpenAIAudioClient {
+    api_key: String,
+}
+
+impl OpenAIAudioClient {
+    pub fn new(api_key: String) -> Self {
+        Self { api_key }
+    }
+}

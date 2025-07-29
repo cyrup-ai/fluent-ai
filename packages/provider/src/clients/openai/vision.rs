@@ -10,6 +10,13 @@ use std::collections::HashMap;
 
 use super::{OpenAIError, OpenAIResult};
 
+/// OpenAI vision client for GPT-4V and GPT-4O models
+#[derive(Debug, Clone)]
+pub struct OpenAIVisionClient {
+    api_key: String,
+    base_url: String,
+}
+
 /// Image detail levels for vision models
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

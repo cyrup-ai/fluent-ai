@@ -6,10 +6,10 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use fluent_ai_domain::chunk::CompletionChunk;
-use futures_util::Stream;
+use fluent_ai_domain::context::chunk::CompletionChunk;
+use fluent_ai_async::AsyncStream;
 use serde::Deserialize;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+// Removed tokio_stream dependency - using pure AsyncStream patterns
 
 use crate::completion_provider::{CompletionError, ResponseMetadata};
 
@@ -27,30 +27,32 @@ pub trait StreamingCompletionResponse: Send + Sync {
     /// Get response metadata (filled as chunks arrive)
     fn metadata(&self) -> &ResponseMetadata;
 
-    /// Convert to a stream of completion chunks
-    fn into_stream(
-        self,
-    ) -> Pin<Box<dyn Stream<Item = Result<CompletionChunk, CompletionError>> + Send>>;
+    /// Convert to a stream of completion chunks - NO Result wrapper
+    fn into_stream(self) -> AsyncStream<CompletionChunk>;
 
-    /// Collect all chunks into a single completion (for non-streaming use)
-    async fn collect(self) -> Result<String, CompletionError>
+    /// Collect all chunks into a single completion - pure AsyncStream pattern
+    fn collect(self) -> AsyncStream<String>
     where
         Self: Sized,
     {
-        let mut stream = self.into_stream();
-        let mut content = String::new();
-
-        while let Some(chunk_result) = futures_util::StreamExt::next(&mut stream).await {
-            match chunk_result {
-                Ok(chunk) => {
-                    if let Some(text) = chunk.content.text() {
-                        content.push_str(text);
-                    }
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        
+        AsyncStream::with_channel(|sender| {
+            let stream = self.into_stream();
+            
+            // Collect all chunks first, then combine their text content
+            let chunks = stream.collect(); // This returns Vec<CompletionChunk>
+            let mut content = String::new();
+            
+            for chunk in chunks {
+                if let Some(text) = chunk.content.text() {
+                    content.push_str(text);
                 }
-                Err(e) => return Err(e)}
-        }
-
-        Ok(content)
+            }
+            
+            // Emit the final collected content
+            emit!(sender, content);
+        })
     }
 }
 
@@ -265,7 +267,7 @@ impl JsonLinesParser {
 /// Default implementation for the streaming completion response trait
 pub struct DefaultStreamingResponse<T> {
     pub raw_response: T,
-    pub stream: UnboundedReceiverStream<Result<CompletionChunk, CompletionError>>,
+    pub stream: AsyncStream<CompletionChunk>,
     pub metadata: ResponseMetadata}
 
 impl<T> DefaultStreamingResponse<T>
@@ -276,7 +278,7 @@ where
     #[inline(always)]
     pub fn new(
         raw_response: T,
-        stream: UnboundedReceiverStream<Result<CompletionChunk, CompletionError>>,
+        stream: AsyncStream<CompletionChunk>,
     ) -> Self {
         Self {
             raw_response,
@@ -308,10 +310,39 @@ where
         &self.metadata
     }
 
-    fn into_stream(
-        self,
-    ) -> Pin<Box<dyn Stream<Item = Result<CompletionChunk, CompletionError>> + Send>> {
-        Box::pin(self.stream)
+    fn into_stream(self) -> AsyncStream<CompletionChunk> {
+        // Simply return the AsyncStream directly - no conversion needed
+        self.stream
+    }
+}
+
+// =============================================================================
+// Missing Types for Provider Compatibility
+// =============================================================================
+
+/// Raw streaming choice for provider compatibility
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawStreamingChoice {
+    /// Choice index
+    pub index: u32,
+    /// Delta content
+    pub delta: serde_json::Value,
+    /// Finish reason
+    pub finish_reason: Option<String>,
+}
+
+impl RawStreamingChoice {
+    pub fn new(index: u32, delta: serde_json::Value) -> Self {
+        Self {
+            index,
+            delta,
+            finish_reason: None,
+        }
+    }
+    
+    pub fn with_finish_reason(mut self, reason: String) -> Self {
+        self.finish_reason = Some(reason);
+        self
     }
 }
 

@@ -1,0 +1,17 @@
+//! Provider traits and model types - RE-EXPORTS ONLY
+//!
+//! This module ONLY re-exports from model-info package.
+//! model-info is the single source of truth for all provider types.
+
+// Re-export Model trait and ProviderTrait from model-info
+pub use model_info::common::{Model, ProviderTrait};
+
+// Re-export all provider types from model-info
+pub use model_info::{OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai};
+
+// Re-export error and result types
+pub use model_info::{ModelError as ProviderError, Result as ProviderResult};
+
+// Type aliases for backward compatibility
+pub use model_info::common::Model as ProviderModel;
+pub use model_info::ModelInfo as ProviderModelInfo;

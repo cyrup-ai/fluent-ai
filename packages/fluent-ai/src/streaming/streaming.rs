@@ -12,7 +12,7 @@ use core::{
     pin::Pin,
     task::{Context, Poll}};
 
-use futures_util::{Stream, StreamExt};
+use fluent_ai_async::AsyncStream;
 use serde_json::Value;
 
 use crate::{
@@ -21,7 +21,6 @@ use crate::{
     completion::{
         CompletionError, CompletionModel, CompletionRequestBuilder, CompletionResponse, Message,
         message::{AssistantContent, ToolCall, ToolFunction}},
-    runtime::async_stream::AsyncStream,
     runtime::{AsyncTask, spawn_async}};
 
 // ============================================================================
@@ -240,7 +239,7 @@ pub fn stream_to_stdout<M: CompletionModel>(
                 }
             }
         }
-        colored_println!();
+        println!();
         Ok(())
     })
 }

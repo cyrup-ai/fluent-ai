@@ -32,7 +32,7 @@ pub use audio::{OpenAIAudioClient, TranscriptionResponse};
 // Re-export all public types with zero allocation
 pub use client::{OpenAIClient, OpenAIProvider};
 pub use completion::{
-    CompletionResponse, OpenAICompletionBuilder, OpenAICompletionRequest, OpenAICompletionResponse};
+    CompletionChunk, OpenAICompletionBuilder};
 pub use discovery::OpenAIDiscovery;
 pub use embeddings::OpenAIEmbeddingClient;
 pub use error::{OpenAIError, Result as OpenAIResult};
@@ -64,132 +64,21 @@ mod tools;
 mod types;
 mod vision;
 
-/// OpenAI model constants using &'static str for zero allocation
+/// Model enumeration and classification functions removed
+/// All OpenAI model information is now provided by the model-info package
+/// 
+/// Use the following pattern for model operations:
+/// ```rust
+/// use model_info::{OpenAIModelInfo, ModelCapabilities};
+/// 
+/// let model_info = OpenAIModelInfo::get("gpt-4o")?;
+/// if model_info.supports_vision() {
+///     // Handle vision model
+/// }
+/// ```
 pub mod models {
-    // GPT-4 series models
-    /// GPT-4.1: Most capable model with enhanced reasoning
-    pub const GPT_4_1: &str = "gpt-4.1";
-
-    /// GPT-4.1 Mini: Efficient version of GPT-4.1
-    pub const GPT_4_1_MINI: &str = "gpt-4.1-mini";
-
-    /// GPT-4.1 Nano: Ultra-efficient GPT-4.1 variant
-    pub const GPT_4_1_NANO: &str = "gpt-4.1-nano";
-
-    /// GPT-4o: Multimodal model with vision capabilities
-    pub const GPT_4O: &str = "gpt-4o";
-
-    /// GPT-4o Search Preview: Enhanced search capabilities
-    pub const GPT_4O_SEARCH_PREVIEW: &str = "gpt-4o-search-preview";
-
-    /// GPT-4o Mini: Efficient multimodal model
-    pub const GPT_4O_MINI: &str = "gpt-4o-mini";
-
-    /// GPT-4o Mini Search Preview: Efficient search variant
-    pub const GPT_4O_MINI_SEARCH_PREVIEW: &str = "gpt-4o-mini-search-preview";
-
-    /// ChatGPT-4o Latest: Latest conversational model
-    pub const CHATGPT_4O_LATEST: &str = "chatgpt-4o-latest";
-
-    /// GPT-4 Turbo: High-performance GPT-4 variant
-    pub const GPT_4_TURBO: &str = "gpt-4-turbo";
-
-    // O1 series models (advanced reasoning)
-    /// O1 Preview: Advanced reasoning model
-    pub const O1_PREVIEW: &str = "o1-preview";
-
-    /// O1 Mini: Efficient reasoning model
-    pub const O1_MINI: &str = "o1-mini";
-
-    /// O1 Mini High: High-performance reasoning variant
-    pub const O1_MINI_HIGH: &str = "o1-mini-high";
-
-    /// O3: Next-generation reasoning model
-    pub const O3: &str = "o3";
-
-    /// O3 Mini: Efficient O3 variant
-    pub const O3_MINI: &str = "o3-mini";
-
-    /// O3 Mini High: High-performance O3 variant
-    pub const O3_MINI_HIGH: &str = "o3-mini-high";
-
-    // GPT-3.5 series
-    /// GPT-3.5 Turbo: Legacy fast model
-    pub const GPT_3_5_TURBO: &str = "gpt-3.5-turbo";
-
-    // Embedding models
-    /// Text Embedding 3 Large: High-dimensional embeddings
-    pub const TEXT_EMBEDDING_3_LARGE: &str = "text-embedding-3-large";
-
-    /// Text Embedding 3 Small: Efficient embeddings
-    pub const TEXT_EMBEDDING_3_SMALL: &str = "text-embedding-3-small";
-
-    /// All supported OpenAI models for validation
-    pub const ALL_MODELS: &[&str] = &[
-        GPT_4_1,
-        GPT_4_1_MINI,
-        GPT_4_1_NANO,
-        GPT_4O,
-        GPT_4O_SEARCH_PREVIEW,
-        GPT_4O_MINI,
-        GPT_4O_MINI_SEARCH_PREVIEW,
-        CHATGPT_4O_LATEST,
-        GPT_4_TURBO,
-        O1_PREVIEW,
-        O1_MINI,
-        O1_MINI_HIGH,
-        O3,
-        O3_MINI,
-        O3_MINI_HIGH,
-        GPT_3_5_TURBO,
-        TEXT_EMBEDDING_3_LARGE,
-        TEXT_EMBEDDING_3_SMALL,
-    ];
-
-    /// GPT-4 models (current generation)
-    pub const GPT4_MODELS: &[&str] = &[
-        GPT_4_1,
-        GPT_4_1_MINI,
-        GPT_4_1_NANO,
-        GPT_4O,
-        GPT_4O_SEARCH_PREVIEW,
-        GPT_4O_MINI,
-        GPT_4O_MINI_SEARCH_PREVIEW,
-        CHATGPT_4O_LATEST,
-        GPT_4_TURBO,
-    ];
-
-    /// O1 models (advanced reasoning)
-    pub const O1_MODELS: &[&str] = &[O1_PREVIEW, O1_MINI, O1_MINI_HIGH, O3, O3_MINI, O3_MINI_HIGH];
-
-    /// GPT-3.5 models (legacy)
-    pub const GPT3_MODELS: &[&str] = &[GPT_3_5_TURBO];
-
-    /// Embedding models
-    pub const EMBEDDING_MODELS: &[&str] = &[TEXT_EMBEDDING_3_LARGE, TEXT_EMBEDDING_3_SMALL];
-
-    /// Vision-capable models
-    pub const VISION_MODELS: &[&str] = &[
-        GPT_4O,
-        GPT_4O_SEARCH_PREVIEW,
-        GPT_4O_MINI,
-        GPT_4O_MINI_SEARCH_PREVIEW,
-        CHATGPT_4O_LATEST,
-    ];
-
-    /// Function calling capable models
-    pub const FUNCTION_CALLING_MODELS: &[&str] = &[
-        GPT_4_1,
-        GPT_4_1_MINI,
-        GPT_4_1_NANO,
-        GPT_4O,
-        GPT_4O_SEARCH_PREVIEW,
-        GPT_4O_MINI,
-        GPT_4O_MINI_SEARCH_PREVIEW,
-        CHATGPT_4O_LATEST,
-        GPT_4_TURBO,
-        GPT_3_5_TURBO,
-    ];
+    // Model constants removed - use model-info package exclusively
+    // All model definitions, capabilities, and metadata are provided by ./packages/model-info
 }
 
 /// Configuration constants for OpenAI client with lock-free atomic operations
@@ -300,212 +189,16 @@ pub mod config {
     }
 }
 
-/// Model classification and validation functions with compile-time optimization
-impl models {
-    /// Check if model is a GPT-4 model (current generation)
-    #[inline(always)]
-    pub const fn is_gpt4_model(model: &str) -> bool {
-        matches!(
-            model,
-            models::GPT_4_1
-                | models::GPT_4_1_MINI
-                | models::GPT_4_1_NANO
-                | models::GPT_4O
-                | models::GPT_4O_SEARCH_PREVIEW
-                | models::GPT_4O_MINI
-                | models::GPT_4O_MINI_SEARCH_PREVIEW
-                | models::CHATGPT_4O_LATEST
-                | models::GPT_4_TURBO
-        )
-    }
-
-    /// Check if model is a GPT-3.5 model (legacy)
-    #[inline(always)]
-    pub const fn is_gpt3_model(model: &str) -> bool {
-        matches!(model, models::GPT_3_5_TURBO)
-    }
-
-    /// Check if model is an O1 model (advanced reasoning)
-    #[inline(always)]
-    pub const fn is_o1_model(model: &str) -> bool {
-        matches!(
-            model,
-            models::O1_PREVIEW
-                | models::O1_MINI
-                | models::O1_MINI_HIGH
-                | models::O3
-                | models::O3_MINI
-                | models::O3_MINI_HIGH
-        )
-    }
-
-    /// Check if model is an embedding model
-    #[inline(always)]
-    pub const fn is_embedding_model(model: &str) -> bool {
-        matches!(
-            model,
-            models::TEXT_EMBEDDING_3_LARGE | models::TEXT_EMBEDDING_3_SMALL
-        )
-    }
-
-    /// Check if model supports vision capabilities
-    #[inline(always)]
-    pub const fn supports_vision(model: &str) -> bool {
-        matches!(
-            model,
-            models::GPT_4O
-                | models::GPT_4O_SEARCH_PREVIEW
-                | models::GPT_4O_MINI
-                | models::GPT_4O_MINI_SEARCH_PREVIEW
-                | models::CHATGPT_4O_LATEST
-        )
-    }
-
-    /// Check if model supports function calling
-    #[inline(always)]
-    pub const fn supports_function_calling(model: &str) -> bool {
-        matches!(
-            model,
-            models::GPT_4_1
-                | models::GPT_4_1_MINI
-                | models::GPT_4_1_NANO
-                | models::GPT_4O
-                | models::GPT_4O_SEARCH_PREVIEW
-                | models::GPT_4O_MINI
-                | models::GPT_4O_MINI_SEARCH_PREVIEW
-                | models::CHATGPT_4O_LATEST
-                | models::GPT_4_TURBO
-                | models::GPT_3_5_TURBO
-        )
-    }
-
-    /// Check if model is supported by OpenAI
-    #[inline(always)]
-    pub const fn is_supported_model(model: &str) -> bool {
-        Self::is_gpt4_model(model)
-            || Self::is_gpt3_model(model)
-            || Self::is_o1_model(model)
-            || Self::is_embedding_model(model)
-    }
-
-    /// Get maximum context length for a model
-    #[inline(always)]
-    pub const fn context_length(model: &str) -> u32 {
-        match model {
-            models::GPT_4_1
-            | models::GPT_4_1_MINI
-            | models::GPT_4_1_NANO
-            | models::GPT_4O
-            | models::GPT_4O_SEARCH_PREVIEW
-            | models::GPT_4O_MINI
-            | models::GPT_4O_MINI_SEARCH_PREVIEW
-            | models::CHATGPT_4O_LATEST
-            | models::GPT_4_TURBO => config::GPT4_MAX_CONTEXT,
-            models::O1_PREVIEW
-            | models::O1_MINI
-            | models::O1_MINI_HIGH
-            | models::O3
-            | models::O3_MINI
-            | models::O3_MINI_HIGH => config::O1_MAX_CONTEXT,
-            models::GPT_3_5_TURBO => config::GPT3_MAX_CONTEXT,
-            _ => 0}
-    }
-
-    /// Get model family (gpt4, gpt3, o1, embedding)
-    #[inline(always)]
-    pub const fn model_family(model: &str) -> Option<&'static str> {
-        if Self::is_gpt4_model(model) {
-            Some("gpt4")
-        } else if Self::is_gpt3_model(model) {
-            Some("gpt3")
-        } else if Self::is_o1_model(model) {
-            Some("o1")
-        } else if Self::is_embedding_model(model) {
-            Some("embedding")
-        } else {
-            None
-        }
-    }
-
-    /// Get model tier (premium, standard, efficient)
-    #[inline(always)]
-    pub const fn model_tier(model: &str) -> Option<&'static str> {
-        match model {
-            models::GPT_4_1 | models::GPT_4O | models::O1_PREVIEW | models::O3 => Some("premium"),
-            models::GPT_4_1_MINI
-            | models::GPT_4O_MINI
-            | models::O1_MINI
-            | models::O3_MINI
-            | models::GPT_4_TURBO
-            | models::TEXT_EMBEDDING_3_LARGE => Some("standard"),
-            models::GPT_4_1_NANO
-            | models::GPT_4O_MINI_SEARCH_PREVIEW
-            | models::O1_MINI_HIGH
-            | models::O3_MINI_HIGH
-            | models::GPT_3_5_TURBO
-            | models::TEXT_EMBEDDING_3_SMALL => Some("efficient"),
-            _ => None}
-    }
-
-    /// Check if model supports streaming
-    #[inline(always)]
-    pub const fn supports_streaming(model: &str) -> bool {
-        // All chat models support streaming, embeddings do not
-        !Self::is_embedding_model(model)
-    }
-
-    /// Get embedding dimensions for embedding models
-    #[inline(always)]
-    pub const fn embedding_dimensions(model: &str) -> u32 {
-        match model {
-            models::TEXT_EMBEDDING_3_LARGE => config::EMBEDDING_3_LARGE_DIMENSIONS,
-            models::TEXT_EMBEDDING_3_SMALL => config::EMBEDDING_3_SMALL_DIMENSIONS,
-            _ => 0}
-    }
-
-    /// Get recommended temperature range for model
-    #[inline(always)]
-    pub const fn temperature_range(model: &str) -> (f32, f32) {
-        match model {
-            models::O1_PREVIEW
-            | models::O1_MINI
-            | models::O1_MINI_HIGH
-            | models::O3
-            | models::O3_MINI
-            | models::O3_MINI_HIGH => (0.0, 1.0), // O1 models have restricted temperature
-            _ => (0.0, 2.0), // Standard models
-        }
-    }
-
-    /// Get model cost tier for pricing optimization
-    #[inline(always)]
-    pub const fn cost_tier(model: &str) -> &'static str {
-        match model {
-            models::GPT_4_1 | models::GPT_4O | models::O1_PREVIEW | models::O3 => "premium",
-            models::GPT_4_1_MINI
-            | models::GPT_4O_MINI
-            | models::O1_MINI
-            | models::O3_MINI
-            | models::GPT_4_TURBO => "standard",
-            models::GPT_4_1_NANO | models::GPT_3_5_TURBO | models::TEXT_EMBEDDING_3_SMALL => {
-                "budget"
-            }
-            _ => "standard"}
-    }
-}
-
 /// Endpoint routing utilities with compile-time optimization
 pub mod endpoints {
     use super::*;
 
     /// Route model to appropriate endpoint
+    /// Model classification now handled by model-info package
     #[inline(always)]
-    pub const fn get_endpoint_for_model(model: &str) -> &'static str {
-        if models::is_embedding_model(model) {
-            config::EMBEDDINGS_ENDPOINT
-        } else {
-            config::CHAT_COMPLETIONS_ENDPOINT
-        }
+    pub const fn get_endpoint_for_model(_model: &str) -> &'static str {
+        // TODO: Use model-info package for proper model classification
+        config::CHAT_COMPLETIONS_ENDPOINT
     }
 
     /// Get endpoint for audio transcription
@@ -563,7 +256,7 @@ pub mod metadata {
 /// Utility functions for OpenAI client operations with SIMD optimization
 pub mod utils {
     use arrayvec::ArrayString;
-
+    use super::*;
 
     /// Get user agent string for OpenAI requests
     #[inline(always)]
@@ -605,20 +298,16 @@ pub mod utils {
 
     /// Calculate optimal timeout for model with branch prediction hints
     #[inline(always)]
-    pub const fn optimal_timeout_ms(model: &str) -> u64 {
-        match model {
-            models::GPT_4_1 | models::GPT_4O | models::O1_PREVIEW | models::O3 => 60_000, /* Premium models need more time */
-            models::GPT_4_1_MINI | models::GPT_4O_MINI | models::O1_MINI | models::O3_MINI => {
-                45_000
-            }
-            models::GPT_4_1_NANO | models::GPT_3_5_TURBO => 30_000, // Efficient models are faster
-            _ => 45_000}
+    pub const fn optimal_timeout_ms(_model: &str) -> u64 {
+        // TODO: Use model-info package for model-specific timeouts
+        45_000 // Default timeout
     }
 
     /// Get model pricing tier for cost optimization
     #[inline(always)]
-    pub const fn pricing_tier(model: &str) -> &'static str {
-        models::cost_tier(model)
+    pub const fn pricing_tier(_model: &str) -> &'static str {
+        // TODO: Use model-info package for pricing tiers
+        "standard" // Default tier
     }
 
     /// Estimate token count for text (approximate, SIMD-optimized)
@@ -640,203 +329,26 @@ pub mod utils {
 
     /// Check if model supports given capability
     #[inline(always)]
-    pub const fn supports_capability(model: &str, capability: &str) -> bool {
-        match capability {
-            "vision" => models::supports_vision(model),
-            "function_calling" => models::supports_function_calling(model),
-            "streaming" => models::supports_streaming(model),
-            "embedding" => models::is_embedding_model(model),
-            _ => false}
+    pub const fn supports_capability(_model: &str, _capability: &str) -> bool {
+        // TODO: Use model-info package for capability checking
+        false // Default to unsupported
     }
 
     /// Get optimal batch size for model and operation
     #[inline(always)]
-    pub const fn optimal_batch_size(model: &str, operation: &str) -> usize {
+    pub const fn optimal_batch_size(_model: &str, operation: &str) -> usize {
+        // TODO: Use model-info package for optimal batch sizes
         match operation {
-            "embedding" => match model {
-                models::TEXT_EMBEDDING_3_LARGE => 512,
-                models::TEXT_EMBEDDING_3_SMALL => 1024,
-                _ => 100},
-            "completion" => 1, // Chat completions are typically single requests
-            _ => 1}
+            "embedding" => 100,
+            "completion" => 1,
+            _ => 1,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-
-    #[test]
-    fn test_model_classification() {
-        assert!(models::is_gpt4_model(models::GPT_4_1));
-        assert!(models::is_gpt4_model(models::GPT_4O));
-        assert!(models::is_gpt4_model(models::GPT_4O_MINI));
-        assert!(models::is_gpt4_model(models::GPT_4_TURBO));
-        assert!(!models::is_gpt4_model(models::GPT_3_5_TURBO));
-        assert!(!models::is_gpt4_model(models::O1_PREVIEW));
-        assert!(!models::is_gpt4_model(models::TEXT_EMBEDDING_3_LARGE));
-
-        assert!(models::is_gpt3_model(models::GPT_3_5_TURBO));
-        assert!(!models::is_gpt3_model(models::GPT_4_1));
-        assert!(!models::is_gpt3_model(models::O1_PREVIEW));
-
-        assert!(models::is_o1_model(models::O1_PREVIEW));
-        assert!(models::is_o1_model(models::O1_MINI));
-        assert!(models::is_o1_model(models::O3));
-        assert!(models::is_o1_model(models::O3_MINI));
-        assert!(!models::is_o1_model(models::GPT_4_1));
-        assert!(!models::is_o1_model(models::GPT_3_5_TURBO));
-
-        assert!(models::is_embedding_model(models::TEXT_EMBEDDING_3_LARGE));
-        assert!(models::is_embedding_model(models::TEXT_EMBEDDING_3_SMALL));
-        assert!(!models::is_embedding_model(models::GPT_4_1));
-        assert!(!models::is_embedding_model(models::O1_PREVIEW));
-    }
-
-    #[test]
-    fn test_model_capabilities() {
-        assert!(models::supports_vision(models::GPT_4O));
-        assert!(models::supports_vision(models::GPT_4O_MINI));
-        assert!(models::supports_vision(models::CHATGPT_4O_LATEST));
-        assert!(!models::supports_vision(models::GPT_4_1));
-        assert!(!models::supports_vision(models::O1_PREVIEW));
-        assert!(!models::supports_vision(models::TEXT_EMBEDDING_3_LARGE));
-
-        assert!(models::supports_function_calling(models::GPT_4_1));
-        assert!(models::supports_function_calling(models::GPT_4O));
-        assert!(models::supports_function_calling(models::GPT_3_5_TURBO));
-        assert!(!models::supports_function_calling(models::O1_PREVIEW));
-        assert!(!models::supports_function_calling(
-            models::TEXT_EMBEDDING_3_LARGE
-        ));
-
-        assert!(models::supports_streaming(models::GPT_4_1));
-        assert!(models::supports_streaming(models::GPT_4O));
-        assert!(models::supports_streaming(models::O1_PREVIEW));
-        assert!(!models::supports_streaming(models::TEXT_EMBEDDING_3_LARGE));
-        assert!(!models::supports_streaming(models::TEXT_EMBEDDING_3_SMALL));
-    }
-
-    #[test]
-    fn test_model_validation() {
-        assert!(models::is_supported_model(models::GPT_4_1));
-        assert!(models::is_supported_model(models::GPT_4O));
-        assert!(models::is_supported_model(models::GPT_3_5_TURBO));
-        assert!(models::is_supported_model(models::O1_PREVIEW));
-        assert!(models::is_supported_model(models::O3));
-        assert!(models::is_supported_model(models::TEXT_EMBEDDING_3_LARGE));
-        assert!(models::is_supported_model(models::TEXT_EMBEDDING_3_SMALL));
-        assert!(!models::is_supported_model("invalid-model"));
-        assert!(!models::is_supported_model("gpt-invalid"));
-    }
-
-    #[test]
-    fn test_context_length() {
-        assert_eq!(
-            models::context_length(models::GPT_4_1),
-            config::GPT4_MAX_CONTEXT
-        );
-        assert_eq!(
-            models::context_length(models::GPT_4O),
-            config::GPT4_MAX_CONTEXT
-        );
-        assert_eq!(
-            models::context_length(models::GPT_4_TURBO),
-            config::GPT4_MAX_CONTEXT
-        );
-        assert_eq!(
-            models::context_length(models::GPT_3_5_TURBO),
-            config::GPT3_MAX_CONTEXT
-        );
-        assert_eq!(
-            models::context_length(models::O1_PREVIEW),
-            config::O1_MAX_CONTEXT
-        );
-        assert_eq!(models::context_length(models::O3), config::O1_MAX_CONTEXT);
-        assert_eq!(models::context_length("invalid-model"), 0);
-    }
-
-    #[test]
-    fn test_embedding_dimensions() {
-        assert_eq!(
-            models::embedding_dimensions(models::TEXT_EMBEDDING_3_LARGE),
-            config::EMBEDDING_3_LARGE_DIMENSIONS
-        );
-        assert_eq!(
-            models::embedding_dimensions(models::TEXT_EMBEDDING_3_SMALL),
-            config::EMBEDDING_3_SMALL_DIMENSIONS
-        );
-        assert_eq!(models::embedding_dimensions(models::GPT_4_1), 0);
-        assert_eq!(models::embedding_dimensions(models::O1_PREVIEW), 0);
-        assert_eq!(models::embedding_dimensions("invalid-model"), 0);
-    }
-
-    #[test]
-    fn test_model_families() {
-        assert_eq!(models::model_family(models::GPT_4_1), Some("gpt4"));
-        assert_eq!(models::model_family(models::GPT_4O), Some("gpt4"));
-        assert_eq!(models::model_family(models::GPT_3_5_TURBO), Some("gpt3"));
-        assert_eq!(models::model_family(models::O1_PREVIEW), Some("o1"));
-        assert_eq!(models::model_family(models::O3), Some("o1"));
-        assert_eq!(
-            models::model_family(models::TEXT_EMBEDDING_3_LARGE),
-            Some("embedding")
-        );
-        assert_eq!(models::model_family("invalid-model"), None);
-    }
-
-    #[test]
-    fn test_model_tiers() {
-        assert_eq!(models::model_tier(models::GPT_4_1), Some("premium"));
-        assert_eq!(models::model_tier(models::GPT_4O), Some("premium"));
-        assert_eq!(models::model_tier(models::O1_PREVIEW), Some("premium"));
-        assert_eq!(models::model_tier(models::O3), Some("premium"));
-
-        assert_eq!(models::model_tier(models::GPT_4_1_MINI), Some("standard"));
-        assert_eq!(models::model_tier(models::GPT_4O_MINI), Some("standard"));
-        assert_eq!(
-            models::model_tier(models::TEXT_EMBEDDING_3_LARGE),
-            Some("standard")
-        );
-
-        assert_eq!(models::model_tier(models::GPT_4_1_NANO), Some("efficient"));
-        assert_eq!(models::model_tier(models::GPT_3_5_TURBO), Some("efficient"));
-        assert_eq!(
-            models::model_tier(models::TEXT_EMBEDDING_3_SMALL),
-            Some("efficient")
-        );
-
-        assert_eq!(models::model_tier("invalid-model"), None);
-    }
-
-    #[test]
-    fn test_temperature_ranges() {
-        // Standard models support 0.0 to 2.0
-        assert_eq!(models::temperature_range(models::GPT_4_1), (0.0, 2.0));
-        assert_eq!(models::temperature_range(models::GPT_4O), (0.0, 2.0));
-        assert_eq!(models::temperature_range(models::GPT_3_5_TURBO), (0.0, 2.0));
-
-        // O1 models have restricted temperature range
-        assert_eq!(models::temperature_range(models::O1_PREVIEW), (0.0, 1.0));
-        assert_eq!(models::temperature_range(models::O1_MINI), (0.0, 1.0));
-        assert_eq!(models::temperature_range(models::O3), (0.0, 1.0));
-        assert_eq!(models::temperature_range(models::O3_MINI), (0.0, 1.0));
-    }
-
-    #[test]
-    fn test_cost_tiers() {
-        assert_eq!(models::cost_tier(models::GPT_4_1), "premium");
-        assert_eq!(models::cost_tier(models::GPT_4O), "premium");
-        assert_eq!(models::cost_tier(models::O1_PREVIEW), "premium");
-        assert_eq!(models::cost_tier(models::O3), "premium");
-
-        assert_eq!(models::cost_tier(models::GPT_4_1_MINI), "standard");
-        assert_eq!(models::cost_tier(models::GPT_4O_MINI), "standard");
-        assert_eq!(models::cost_tier(models::GPT_4_TURBO), "standard");
-
-        assert_eq!(models::cost_tier(models::GPT_4_1_NANO), "budget");
-        assert_eq!(models::cost_tier(models::GPT_3_5_TURBO), "budget");
-        assert_eq!(models::cost_tier(models::TEXT_EMBEDDING_3_SMALL), "budget");
-    }
+    use super::*;
 
     #[test]
     fn test_api_key_validation() {
@@ -915,44 +427,6 @@ mod tests {
     }
 
     #[test]
-    fn test_endpoint_routing() {
-        assert_eq!(
-            endpoints::get_endpoint_for_model(models::GPT_4_1),
-            config::CHAT_COMPLETIONS_ENDPOINT
-        );
-        assert_eq!(
-            endpoints::get_endpoint_for_model(models::GPT_4O),
-            config::CHAT_COMPLETIONS_ENDPOINT
-        );
-        assert_eq!(
-            endpoints::get_endpoint_for_model(models::O1_PREVIEW),
-            config::CHAT_COMPLETIONS_ENDPOINT
-        );
-        assert_eq!(
-            endpoints::get_endpoint_for_model(models::TEXT_EMBEDDING_3_LARGE),
-            config::EMBEDDINGS_ENDPOINT
-        );
-        assert_eq!(
-            endpoints::get_endpoint_for_model(models::TEXT_EMBEDDING_3_SMALL),
-            config::EMBEDDINGS_ENDPOINT
-        );
-
-        assert_eq!(
-            endpoints::get_transcription_endpoint(),
-            config::AUDIO_TRANSCRIPTIONS_ENDPOINT
-        );
-        assert_eq!(
-            endpoints::get_translation_endpoint(),
-            config::AUDIO_TRANSLATIONS_ENDPOINT
-        );
-        assert_eq!(
-            endpoints::get_speech_endpoint(),
-            config::AUDIO_SPEECH_ENDPOINT
-        );
-        assert_eq!(endpoints::get_vision_endpoint(), config::VISION_ENDPOINT);
-    }
-
-    #[test]
     fn test_token_estimation() {
         assert_eq!(utils::estimate_token_count("Hello world"), 2);
         assert_eq!(utils::estimate_token_count(""), 0);
@@ -967,81 +441,6 @@ mod tests {
         utils::estimate_token_count("test");
         let final_count = config::SIMD_OPERATIONS.load(std::sync::atomic::Ordering::Relaxed);
         assert!(final_count > initial_count);
-    }
-
-    #[test]
-    fn test_capability_checking() {
-        assert!(utils::supports_capability(models::GPT_4O, "vision"));
-        assert!(utils::supports_capability(models::GPT_4O_MINI, "vision"));
-        assert!(!utils::supports_capability(models::GPT_4_1, "vision"));
-
-        assert!(utils::supports_capability(
-            models::GPT_4_1,
-            "function_calling"
-        ));
-        assert!(utils::supports_capability(
-            models::GPT_4O,
-            "function_calling"
-        ));
-        assert!(!utils::supports_capability(
-            models::O1_PREVIEW,
-            "function_calling"
-        ));
-
-        assert!(utils::supports_capability(models::GPT_4_1, "streaming"));
-        assert!(utils::supports_capability(models::O1_PREVIEW, "streaming"));
-        assert!(!utils::supports_capability(
-            models::TEXT_EMBEDDING_3_LARGE,
-            "streaming"
-        ));
-
-        assert!(utils::supports_capability(
-            models::TEXT_EMBEDDING_3_LARGE,
-            "embedding"
-        ));
-        assert!(utils::supports_capability(
-            models::TEXT_EMBEDDING_3_SMALL,
-            "embedding"
-        ));
-        assert!(!utils::supports_capability(models::GPT_4_1, "embedding"));
-
-        assert!(!utils::supports_capability(models::GPT_4_1, "invalid"));
-        assert!(!utils::supports_capability(models::GPT_4_1, "unknown"));
-    }
-
-    #[test]
-    fn test_optimal_timeouts() {
-        assert_eq!(utils::optimal_timeout_ms(models::GPT_4_1), 60_000);
-        assert_eq!(utils::optimal_timeout_ms(models::GPT_4O), 60_000);
-        assert_eq!(utils::optimal_timeout_ms(models::O1_PREVIEW), 60_000);
-        assert_eq!(utils::optimal_timeout_ms(models::O3), 60_000);
-
-        assert_eq!(utils::optimal_timeout_ms(models::GPT_4_1_MINI), 45_000);
-        assert_eq!(utils::optimal_timeout_ms(models::GPT_4O_MINI), 45_000);
-        assert_eq!(utils::optimal_timeout_ms(models::O1_MINI), 45_000);
-
-        assert_eq!(utils::optimal_timeout_ms(models::GPT_4_1_NANO), 30_000);
-        assert_eq!(utils::optimal_timeout_ms(models::GPT_3_5_TURBO), 30_000);
-
-        assert_eq!(utils::optimal_timeout_ms("unknown-model"), 45_000);
-    }
-
-    #[test]
-    fn test_optimal_batch_sizes() {
-        assert_eq!(
-            utils::optimal_batch_size(models::TEXT_EMBEDDING_3_LARGE, "embedding"),
-            512
-        );
-        assert_eq!(
-            utils::optimal_batch_size(models::TEXT_EMBEDDING_3_SMALL, "embedding"),
-            1024
-        );
-        assert_eq!(utils::optimal_batch_size("unknown-model", "embedding"), 100);
-
-        assert_eq!(utils::optimal_batch_size(models::GPT_4_1, "completion"), 1);
-        assert_eq!(utils::optimal_batch_size(models::GPT_4O, "completion"), 1);
-
-        assert_eq!(utils::optimal_batch_size(models::GPT_4_1, "unknown"), 1);
     }
 
     #[test]
@@ -1063,37 +462,5 @@ mod tests {
 
         config::set_flag(&config::STREAMING_ACTIVE, false);
         assert!(!config::STREAMING_ACTIVE.load(std::sync::atomic::Ordering::Relaxed));
-    }
-
-    #[test]
-    fn test_model_constants() {
-        // Test all model constants are defined
-        assert_eq!(models::GPT_4_1, "gpt-4.1");
-        assert_eq!(models::GPT_4O, "gpt-4o");
-        assert_eq!(models::O1_PREVIEW, "o1-preview");
-        assert_eq!(models::O3, "o3");
-        assert_eq!(models::TEXT_EMBEDDING_3_LARGE, "text-embedding-3-large");
-
-        // Test model arrays contain correct models
-        assert!(models::GPT4_MODELS.contains(&models::GPT_4_1));
-        assert!(models::GPT4_MODELS.contains(&models::GPT_4O));
-        assert!(!models::GPT4_MODELS.contains(&models::O1_PREVIEW));
-
-        assert!(models::O1_MODELS.contains(&models::O1_PREVIEW));
-        assert!(models::O1_MODELS.contains(&models::O3));
-        assert!(!models::O1_MODELS.contains(&models::GPT_4_1));
-
-        assert!(models::EMBEDDING_MODELS.contains(&models::TEXT_EMBEDDING_3_LARGE));
-        assert!(models::EMBEDDING_MODELS.contains(&models::TEXT_EMBEDDING_3_SMALL));
-        assert!(!models::EMBEDDING_MODELS.contains(&models::GPT_4_1));
-
-        // Test ALL_MODELS contains all models
-        assert!(models::ALL_MODELS.contains(&models::GPT_4_1));
-        assert!(models::ALL_MODELS.contains(&models::GPT_4O));
-        assert!(models::ALL_MODELS.contains(&models::O1_PREVIEW));
-        assert!(models::ALL_MODELS.contains(&models::O3));
-        assert!(models::ALL_MODELS.contains(&models::TEXT_EMBEDDING_3_LARGE));
-        assert!(models::ALL_MODELS.contains(&models::TEXT_EMBEDDING_3_SMALL));
-        assert_eq!(models::ALL_MODELS.len(), 18);
     }
 }

@@ -57,7 +57,7 @@ use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::Provider;
+use model_info::Provider;
 use crate::http::common::{
     BaseMessage, CommonUsage, FinishReason, MAX_IDENTIFIER_LEN, MAX_TOOLS, ToolCall,
     ValidationError,
@@ -157,20 +157,20 @@ impl CompletionResponse {
         json: &Value,
     ) -> Result<Self, CompletionResponseError> {
         match provider {
-            Provider::OpenAI | Provider::Azure => Self::from_openai_json(json),
-            Provider::Anthropic => Self::from_anthropic_json(json),
+            Provider::OpenAi(_) | Provider::OpenAI | Provider::Azure => Self::from_openai_json(json),
+            Provider::Anthropic(_) => Self::from_anthropic_json(json),
             Provider::VertexAI | Provider::Gemini => Self::from_google_json(json),
             Provider::Bedrock => Self::from_bedrock_json(json),
             Provider::Cohere => Self::from_cohere_json(json),
             Provider::Ollama => Self::from_ollama_json(json),
-            Provider::Groq | Provider::OpenRouter | Provider::Together => {
+            Provider::Groq | Provider::OpenRouter(_) | Provider::Together(_) => {
                 Self::from_openai_compatible_json(json)
             }
             Provider::AI21 => Self::from_ai21_json(json),
-            Provider::Mistral => Self::from_mistral_json(json),
-            Provider::HuggingFace => Self::from_huggingface_json(json),
+            Provider::Mistral(_) => Self::from_mistral_json(json),
+            Provider::HuggingFace(_) => Self::from_huggingface_json(json),
             Provider::Perplexity => Self::from_perplexity_json(json),
-            Provider::XAI => Self::from_xai_json(json),
+            Provider::Xai(_) => Self::from_xai_json(json),
             Provider::DeepSeek => Self::from_deepseek_json(json),
         }
     }
@@ -833,20 +833,20 @@ impl CompletionChunk {
         data: &[u8],
     ) -> Result<Self, CompletionResponseError> {
         match provider {
-            Provider::OpenAI | Provider::Azure => Self::from_openai_chunk(data),
-            Provider::Anthropic => Self::from_anthropic_chunk(data),
+            Provider::OpenAi(_) | Provider::OpenAI | Provider::Azure => Self::from_openai_chunk(data),
+            Provider::Anthropic(_) => Self::from_anthropic_chunk(data),
             Provider::VertexAI | Provider::Gemini => Self::from_google_chunk(data),
             Provider::Bedrock => Self::from_bedrock_chunk(data),
             Provider::Cohere => Self::from_cohere_chunk(data),
             Provider::Ollama => Self::from_ollama_chunk(data),
-            Provider::Groq | Provider::OpenRouter | Provider::Together => {
+            Provider::Groq | Provider::OpenRouter(_) | Provider::Together(_) => {
                 Self::from_openai_chunk(data)
             }
             Provider::AI21 => Self::from_ai21_chunk(data),
-            Provider::Mistral => Self::from_mistral_chunk(data),
-            Provider::HuggingFace => Self::from_huggingface_chunk(data),
+            Provider::Mistral(_) => Self::from_mistral_chunk(data),
+            Provider::HuggingFace(_) => Self::from_huggingface_chunk(data),
             Provider::Perplexity => Self::from_perplexity_chunk(data),
-            Provider::XAI => Self::from_xai_chunk(data),
+            Provider::Xai(_) => Self::from_xai_chunk(data),
             Provider::DeepSeek => Self::from_deepseek_chunk(data),
         }
     }

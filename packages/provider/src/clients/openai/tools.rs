@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 
 use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
-use crate::domain::completion::ToolDefinition;
+use fluent_ai_domain::completion::types::ToolDefinition;
 
 /// OpenAI tool definition for function calling
 #[derive(Debug, Clone, Serialize, Deserialize)]

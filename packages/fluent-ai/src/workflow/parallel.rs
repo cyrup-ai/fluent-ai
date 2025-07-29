@@ -11,7 +11,7 @@
 // Every public function is `#[inline]` to let LLVM fuse trivial layers.
 // ============================================================================
 
-use futures_util::{join, try_join};
+// Removed futures_util - using AsyncStream patterns with tokio::join! instead
 
 use super::{Op, TryOp};
 
@@ -116,7 +116,8 @@ macro_rules! parallel_internal {
     };
 }
 
-// Internal macro - not exported
+// Exported macro for parallel execution
+#[macro_export]
 macro_rules! parallel {
     ($first:expr $(, $rest:expr)* $(,)?) => {
         $crate::parallel_internal!(
@@ -156,6 +157,7 @@ macro_rules! try_parallel_internal {
 }
 
 // Internal macro - not exported
+#[macro_export]
 macro_rules! try_parallel {
     ($first:expr $(, $rest:expr)* $(,)?) => {
         $crate::try_parallel_internal!(

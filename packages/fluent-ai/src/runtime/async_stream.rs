@@ -16,7 +16,7 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering}};
 
 use crossbeam_queue::ArrayQueue;
-use futures_core::Stream;
+use fluent_ai_async::AsyncStream as AsyncStreamTrait;
 use futures_util::task::AtomicWaker;
 
 pub struct AsyncStream<T, const CAP: usize> {

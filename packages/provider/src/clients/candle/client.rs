@@ -281,7 +281,7 @@ impl CandleCompletionClient {
                     StreamingCoordinator::new(self.config.streaming_config.clone());
 
                 // Initialize memory pool manager with optimized configuration
-                let memory_pool_manager = MemoryPoolManager::for_candle();
+                let memory_pool_manager = MemoryPoolManager::for_candle()?;
 
                 // Initialize performance optimizer with device-optimized configuration
                 let mut perf_config = PerformanceConfig::default();
@@ -831,7 +831,15 @@ impl CompletionModel for CandleCompletionClient {
                 } else {
                     // Subsequent tokens: use last token only (thanks to KV cache)
                     let mut single_token = SmallVec::new();
-                    single_token.push(*current_tokens.last().unwrap());
+                    if let Some(last_token) = current_tokens.last() {
+                        single_token.push(*last_token);
+                    } else {
+                        return Err(CandleError::generation(
+                            "No tokens in current_tokens for subsequent inference", 
+                            "stream_completion",
+                            "non-empty current_tokens"
+                        ));
+                    }
                     single_token
                 };
 

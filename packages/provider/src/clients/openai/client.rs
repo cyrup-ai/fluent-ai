@@ -15,12 +15,10 @@
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpRequest;
 
 use arc_swap::{ArcSwap, Guard};
 use arrayvec::{ArrayString};
-use fluent_ai_domain::AsyncTask;
+use crate::AsyncTask;
 use fluent_ai_domain::model::ModelInfo;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use smallvec::{SmallVec, smallvec};
@@ -928,3 +926,10 @@ impl std::fmt::Debug for OpenAIClient {
             .finish()
     }
 }
+
+// =============================================================================
+// Missing Types for Module Compatibility
+// =============================================================================
+
+/// OpenAI Provider alias for compatibility
+pub type OpenAIProvider = OpenAIClient;

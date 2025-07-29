@@ -6,16 +6,14 @@
 //! Lock-free bounded producer/consumer stream based on crossbeam_queue::ArrayQueue
 //! Zero-allocation streaming with proven performance
 
-use core::{
+use std::{
     pin::Pin,
-    task::{Context, Poll}};
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering}};
+    task::{Context, Poll, Waker},
+    sync::{Arc, Mutex, atomic::{AtomicUsize, Ordering}},
+    collections::VecDeque};
 
 use crossbeam_queue::ArrayQueue;
-use futures_util::Stream;
-use futures_util::task::AtomicWaker;
+use fluent_ai_async::AsyncStream as AsyncStreamTrait;
 
 /// Cyrup-agent's AsyncStream with const-generic capacity
 pub struct AsyncStream<T, const CAP: usize = 1024> {
@@ -27,7 +25,7 @@ pub struct AsyncStreamSender<T, const CAP: usize = 1024> {
 
 struct Inner<T, const CAP: usize> {
     q: ArrayQueue<T>,
-    waker: AtomicWaker,
+    waker: Mutex<Option<Waker>>,
     len: AtomicUsize, // optional runtime metric; not part of API
 }
 
@@ -37,7 +35,7 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
     pub fn channel() -> (AsyncStreamSender<T, CAP>, Self) {
         let inner = Arc::new(Inner {
             q: ArrayQueue::new(CAP),
-            waker: AtomicWaker::new(),
+            waker: Mutex::new(None),
             len: AtomicUsize::new(0)});
         (
             AsyncStreamSender {
@@ -87,7 +85,11 @@ impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
         match self.inner.q.push(val) {
             Ok(()) => {
                 self.inner.len.fetch_add(1, Ordering::Release);
-                self.inner.waker.wake();
+                if let Ok(mut waker_guard) = self.inner.waker.lock() {
+                    if let Some(waker) = waker_guard.take() {
+                        waker.wake();
+                    }
+                }
                 Ok(())
             }
             Err(v) => Err(v), // queue full → give caller its item back
@@ -115,7 +117,9 @@ impl<T, const CAP: usize> Stream for AsyncStream<T, CAP> {
         }
 
         // register waker then re-check to avoid missed notifications
-        self.inner.waker.register(cx.waker());
+        if let Ok(mut waker_guard) = self.inner.waker.lock() {
+            *waker_guard = Some(cx.waker().clone());
+        }
 
         match self.inner.q.pop() {
             Some(v) => {

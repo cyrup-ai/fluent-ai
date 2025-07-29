@@ -55,7 +55,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::HashMap;
-use crate::Provider;
+use model_info::Provider;
 use crate::http::common::{
     BaseMessage, MAX_IDENTIFIER_LEN, MAX_MESSAGES, MAX_STOP_SEQUENCE_LEN, MAX_STOP_SEQUENCES,
     MAX_TOOLS, ModelParameters, ValidationError,
@@ -378,20 +378,20 @@ impl CompletionRequest {
     #[inline]
     pub fn to_provider_format(&self, provider: Provider) -> Result<Value, CompletionRequestError> {
         match provider {
-            Provider::OpenAI | Provider::Azure => self.to_openai_format(),
-            Provider::Anthropic => self.to_anthropic_format(),
+            Provider::OpenAI | Provider::Azure | Provider::OpenAi(_) => self.to_openai_format(),
+            Provider::Anthropic(_) => self.to_anthropic_format(),
             Provider::VertexAI | Provider::Gemini => self.to_google_format(),
             Provider::Bedrock => self.to_bedrock_format(),
             Provider::Cohere => self.to_cohere_format(),
             Provider::Ollama => self.to_ollama_format(),
-            Provider::Groq | Provider::OpenRouter | Provider::Together => {
+            Provider::Groq | Provider::OpenRouter(_) | Provider::Together(_) => {
                 self.to_openai_compatible_format()
             }
             Provider::AI21 => self.to_ai21_format(),
-            Provider::Mistral => self.to_mistral_format(),
-            Provider::HuggingFace => self.to_huggingface_format(),
+            Provider::Mistral(_) => self.to_mistral_format(),
+            Provider::HuggingFace(_) => self.to_huggingface_format(),
             Provider::Perplexity => self.to_perplexity_format(),
-            Provider::XAI => self.to_xai_format(),
+            Provider::Xai(_) => self.to_xai_format(),
             Provider::DeepSeek => self.to_deepseek_format(),
         }
     }

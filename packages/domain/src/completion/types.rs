@@ -8,7 +8,7 @@ use std::ops::RangeInclusive;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::model::{ValidationError, ValidationResult};
+use crate::model::ValidationError;
 
 /// Temperature range for generation (0.0 to 2.0)
 pub const TEMPERATURE_RANGE: RangeInclusive<f64> = 0.0..=2.0;
@@ -47,7 +47,7 @@ impl CompletionParams {
     }
 
     /// Set the temperature
-    pub fn with_temperature(mut self, temperature: f64) -> ValidationResult<Self> {
+    pub fn with_temperature(mut self, temperature: f64) -> Result<Self, ValidationError> {
         if !TEMPERATURE_RANGE.contains(&temperature) {
             return Err(ValidationError::InvalidRange {
                 field: "temperature".into(),

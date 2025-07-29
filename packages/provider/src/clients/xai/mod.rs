@@ -15,4 +15,5 @@ pub mod streaming;
 pub mod types;
 
 pub use client::{Client, XAICompletionBuilder};
-pub use completion::{CompletionModel, GROK_3, GROK_3_MINI};
+pub use completion::CompletionModel;
+// Model constants removed - use model-info package exclusively

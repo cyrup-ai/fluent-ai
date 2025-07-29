@@ -11,7 +11,7 @@ use fluent_ai_domain::embedding::{Embedding, EmbeddingModel as DomainEmbeddingMo
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::AsyncStream;
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
 /// Trait for types that can be embedded
 pub trait Embed: Send + Sync {
@@ -411,7 +411,7 @@ impl<T> StreamingEmbeddingResponse<T> {
     pub async fn collect(mut self) -> Result<Vec<f32>> {
         let mut embedding = Vec::new();
 
-        while let Some(chunk) = futures_util::StreamExt::next(&mut self.stream).await {
+        while let Some(chunk) = self.stream.next().await {
             embedding.extend_from_slice(&chunk.vector);
         }
 

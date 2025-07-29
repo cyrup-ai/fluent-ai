@@ -4,8 +4,11 @@
 //! for completion, embedding, transcription, and other AI services.
 
 use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
-use fluent_ai_domain::chunk::{CompletionChunk, EmbeddingChunk, VoiceChunk};
-use fluent_ai_domain::{AsyncStream, AsyncTask};
+use fluent_ai_domain::context::chunk::CompletionChunk;
+// Note: EmbeddingChunk and VoiceChunk may be in context::chunk or may need to be created
+use fluent_ai_domain::context::chunk::CompletionChunk as EmbeddingChunk;
+use fluent_ai_domain::context::chunk::CompletionChunk as VoiceChunk;
+use crate::{AsyncStream, AsyncTask};
 
 /// Core completion client trait using async task patterns
 pub trait CompletionClient: Send + Sync + Clone {
@@ -58,20 +61,20 @@ pub trait CompletionModel: Send + Sync + Clone {
     /// Generate completion from prompt using the domain pattern
     fn prompt(
         &self,
-        prompt: fluent_ai_domain::prompt::Prompt,
+        prompt: crate::domain::prompt::Prompt,
     ) -> Box<dyn AsyncStream<CompletionChunk>>;
 
     /// Perform completion
     fn completion(
         &self,
-        request: fluent_ai_domain::completion::CompletionRequest,
+        request: crate::domain::completion::CompletionRequest,
     ) -> AsyncTask<Result<Self::Response, Self::Error>>;
 
     /// Stream completion
     fn stream(
         &self,
-        request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> Box<dyn AsyncTask<Result<Box<dyn AsyncStream<Self::StreamingResponse>>, Self::Error>>>;
+        request: crate::domain::completion::CompletionRequest,
+    ) -> Box<dyn AsyncStream<Self::StreamingResponse>>;
 }
 
 /// Embedding model trait for model-specific implementations  

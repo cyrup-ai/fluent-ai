@@ -10,7 +10,7 @@ use crate::context::Document;
 use crate::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
 use crate::memory::manager::MemoryConfig;
 use crate::memory::{Memory, MemoryError, MemoryTool, MemoryToolError};
-use crate::model::Model;
+use crate::model::ModelInfo;
 use crate::tool::McpToolData;
 
 /// Maximum number of tools per agent (const generic default)
@@ -43,7 +43,7 @@ pub enum AgentError {
 #[derive(Debug, Clone)]
 pub struct Agent {
     /// The model configuration and implementation to use for this agent
-    pub model: &'static dyn Model,
+    pub model: ModelInfo,
     /// System prompt that defines the agent's personality and behavior
     pub system_prompt: String,
     /// Context documents that provide background information
@@ -75,7 +75,7 @@ impl Agent {
     /// Zero allocation agent construction with lock-free memory manager sharing
     #[inline]
     pub async fn new(
-        model: &'static dyn Model,
+        model: ModelInfo,
         system_prompt: impl Into<String>,
     ) -> Result<Self, AgentError> {
         // Initialize memory system with cognitive settings optimized for performance
@@ -126,7 +126,7 @@ impl Agent {
     /// Zero allocation with custom cognitive settings
     #[inline]
     pub async fn with_memory_config(
-        model: &'static dyn Model,
+        model: ModelInfo,
         system_prompt: impl Into<String>,
         memory_config: ComprehensiveMemoryConfig,
     ) -> Result<Self, AgentError> {
@@ -177,7 +177,7 @@ impl Agent {
     /// Zero allocation with lock-free memory sharing between agents
     #[inline]
     pub async fn with_shared_memory(
-        model: &'static dyn Model,
+        model: ModelInfo,
         system_prompt: impl Into<String>,
         memory: Memory,
     ) -> Result<Self, AgentError> {

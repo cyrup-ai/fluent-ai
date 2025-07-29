@@ -258,3 +258,95 @@ impl Default for CandleModel {
         CandleModel::Devstral_22B
     }
 }
+
+/// Device configuration for Candle inference
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CandleDevice {
+    /// Use CPU for inference
+    Cpu,
+    /// Use CUDA GPU for inference
+    Cuda(u32),
+    /// Use Metal GPU for inference (Apple Silicon)
+    Metal,
+    /// Auto-detect best available device
+    Auto,
+}
+
+impl Default for CandleDevice {
+    fn default() -> Self {
+        CandleDevice::Auto
+    }
+}
+
+impl std::fmt::Display for CandleDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CandleDevice::Cpu => write!(f, "CPU"),
+            CandleDevice::Cuda(id) => write!(f, "CUDA:{}", id),
+            CandleDevice::Metal => write!(f, "Metal"),
+            CandleDevice::Auto => write!(f, "Auto"),
+        }
+    }
+}
+
+/// Extended model information for Candle models
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CandleModelInfo {
+    /// Base model information
+    pub model: CandleModel,
+    /// Device configuration
+    pub device: CandleDevice,
+    /// Model size in parameters
+    pub parameters: u64,
+    /// Context length
+    pub context_length: u32,
+    /// Whether the model supports function calling
+    pub supports_tools: bool,
+    /// Whether the model supports vision
+    pub supports_vision: bool,
+    /// Model file path or URL
+    pub model_path: Option<String>,
+    /// Tokenizer path or URL
+    pub tokenizer_path: Option<String>,
+}
+
+impl CandleModelInfo {
+    /// Create new model info
+    pub fn new(model: CandleModel, device: CandleDevice) -> Self {
+        let (parameters, context_length, supports_tools, supports_vision) = match model {
+            CandleModel::Devstral_22B => (22_000_000_000, 32768, true, false),
+            CandleModel::Llama2_7B => (7_000_000_000, 4096, false, false),
+            CandleModel::Llama2_13B => (13_000_000_000, 4096, false, false),
+            CandleModel::Mistral_7B => (7_000_000_000, 8192, true, false),
+            CandleModel::CodeLlama_7B => (7_000_000_000, 16384, false, false),
+            CandleModel::Phi3_Mini => (3_800_000_000, 128000, false, false),
+            CandleModel::Gemma_2B => (2_000_000_000, 8192, false, false),
+            CandleModel::Gemma_7B => (7_000_000_000, 8192, false, false),
+            CandleModel::KimiK2_FP16 => (2_600_000_000, 128000, true, true),
+            CandleModel::KimiK2_FP8 => (2_600_000_000, 128000, true, true),
+        };
+
+        Self {
+            model,
+            device,
+            parameters,
+            context_length,
+            supports_tools,
+            supports_vision,
+            model_path: None,
+            tokenizer_path: None,
+        }
+    }
+    
+    /// Set model file path
+    pub fn with_model_path(mut self, path: String) -> Self {
+        self.model_path = Some(path);
+        self
+    }
+    
+    /// Set tokenizer file path
+    pub fn with_tokenizer_path(mut self, path: String) -> Self {
+        self.tokenizer_path = Some(path);
+        self
+    }
+}

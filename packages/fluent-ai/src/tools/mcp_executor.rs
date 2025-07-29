@@ -220,7 +220,7 @@ async fn execute_with_secure_backend(
     args: &Value,
 ) -> Result<Result<Value, String>, String> {
     // Integrate with cylo secure execution backend
-    use crate::tools::cylo_integration;
+    use self::cylo_integration;
 
     match cylo_integration::execute_secure_tool(name, args).await {
         Ok(result) => Ok(Ok(result)),

@@ -9,8 +9,6 @@ use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 // NO FUTURES - pure streaming HTTP3 architecture
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpRequest;
 
 use super::AnthropicResult;
 use super::messages::ContentBlock;

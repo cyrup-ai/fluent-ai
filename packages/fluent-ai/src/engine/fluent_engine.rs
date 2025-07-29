@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use fluent_ai_domain::agent_role::AgentRole;
-use fluent_ai_provider::Models;
+use fluent_ai_domain::agent::role::AgentRole;
+use fluent_ai_domain::model::Model;
 use serde_json::Value;
 
 use crate::ZeroOneOrMany;
@@ -14,7 +14,7 @@ pub struct FluentEngine {
     /// The backend implementation for completions
     backend: Arc<dyn CompletionBackend + Send + Sync>,
     /// Engine configuration
-    model: Models,
+    model: Model,
     /// Default temperature for requests
     default_temperature: Option<f64>,
     /// Default max tokens for requests
@@ -22,7 +22,7 @@ pub struct FluentEngine {
 
 impl FluentEngine {
     /// Create a new FluentEngine with a completion backend
-    pub fn new(backend: Arc<dyn CompletionBackend + Send + Sync>, model: Models) -> Self {
+    pub fn new(backend: Arc<dyn CompletionBackend + Send + Sync>, model: Model) -> Self {
         Self {
             backend,
             model,

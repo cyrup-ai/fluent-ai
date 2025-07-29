@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::io::AsyncRead;
 
-use crate::AsyncStream;
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
 /// Trait for transcription models - unified interface across providers
 pub trait TranscriptionModel: Send + Sync + Clone {
@@ -660,7 +660,7 @@ impl<T> StreamingTranscriptionResponse<T> {
         let mut detected_language = None;
         let mut overall_confidence = None;
 
-        while let Some(chunk_result) = futures_util::StreamExt::next(&mut self.stream).await {
+        while let Some(chunk_result) = self.stream.next().await {
             match chunk_result {
                 Ok(chunk) => {
                     full_text.push_str(&chunk.text);

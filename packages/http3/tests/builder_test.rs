@@ -19,7 +19,9 @@ async fn test_fluent_builder_get_request() {
         .get(url);
 
     // The new API uses async collect
-    let body: serde_json::Value = HttpStreamExt::collect(stream);
+    let chunks: Vec<Vec<u8>> = HttpStreamExt::collect(stream);
+    let body_str = String::from_utf8_lossy(&chunks.concat()).to_string();
+    let body: serde_json::Value = serde_json::from_str(&body_str).expect("Failed to parse JSON");
 
     // Basic validation on the collected body
     assert!(body.is_object());
@@ -49,7 +51,9 @@ async fn basic_builder_flow() {
         .get(url);
 
     // The new API uses async collect, which consumes the stream.
-    let body: serde_json::Value = HttpStreamExt::collect(stream);
+    let chunks: Vec<Vec<u8>> = HttpStreamExt::collect(stream);
+    let body_str = String::from_utf8_lossy(&chunks.concat()).to_string();
+    let body: serde_json::Value = serde_json::from_str(&body_str).expect("Failed to parse JSON");
 
     // Basic validation on the collected body.
     assert!(body.is_object(), "Response body should be a JSON object");

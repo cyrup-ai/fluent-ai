@@ -182,3 +182,62 @@ mod tests {
         assert!(MistralProvider::models().contains(&MISTRAL_SMALL));
     }
 }
+
+// =============================================================================
+// Missing Types for Completion Module Compatibility
+// =============================================================================
+
+/// Client alias for backward compatibility
+pub type Client = MistralClient;
+
+/// Usage information for API responses
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Usage {
+    /// Number of tokens in the prompt
+    pub prompt_tokens: u32,
+    /// Number of tokens in the completion
+    pub completion_tokens: u32,
+    /// Total number of tokens used
+    pub total_tokens: u32,
+}
+
+impl Usage {
+    pub fn new(prompt_tokens: u32, completion_tokens: u32) -> Self {
+        Self {
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens + completion_tokens,
+        }
+    }
+}
+
+/// API response structure for compatibility
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ApiResponse<T> {
+    /// Response data
+    pub data: T,
+    /// Usage information
+    pub usage: Option<Usage>,
+    /// Request ID
+    pub id: Option<String>,
+}
+
+impl<T> ApiResponse<T> {
+    pub fn new(data: T) -> Self {
+        Self {
+            data,
+            usage: None,
+            id: None,
+        }
+    }
+    
+    pub fn with_usage(mut self, usage: Usage) -> Self {
+        self.usage = Some(usage);
+        self
+    }
+    
+    pub fn with_id(mut self, id: String) -> Self {
+        self.id = Some(id);
+        self
+    }
+}

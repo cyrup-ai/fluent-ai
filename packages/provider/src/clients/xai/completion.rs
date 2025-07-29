@@ -10,25 +10,20 @@ use fluent_ai_domain::completion::{self, CompletionRequest};
 use super::types::{
     XaiChatRequest, XaiChatResponse, XaiChoice, XaiContent, XaiFunction, XaiMessage,
     XaiResponseMessage, XaiStreamingChunk, XaiTool, XaiUsage};
-use fluent_ai_http3::{Http3, HttpResult};
-use crate::utils::{HttpUtils, Provider};
+use fluent_ai_http3::{Http3, HttpError};
 use serde_json::{Value, json};
 use arrayvec::ArrayVec;
-use fluent_ai_http3::HttpError;
+
+// CRITICAL: Import model information from model-info package (single source of truth)
+use model_info::{Provider, XaiProvider, ModelInfo as ModelInfoFromPackage};
 
 use super::client::Client;
 use crate::completion_provider::{CompletionError, CompletionResponse as DomainCompletionResponse};
 use crate::json_util;
 use crate::streaming::StreamingCompletionResponse;
 
-/// xAI completion models as of 2025-06-04
-pub const GROK_2_1212: &str = "grok-2-1212";
-pub const GROK_2_VISION_1212: &str = "grok-2-vision-1212";
-pub const GROK_3: &str = "grok-3";
-pub const GROK_3_FAST: &str = "grok-3-fast";
-pub const GROK_3_MINI: &str = "grok-3-mini";
-pub const GROK_3_MINI_FAST: &str = "grok-3-mini-fast";
-pub const GROK_2_IMAGE_1212: &str = "grok-2-image-1212";
+// Model constants removed - use model-info package exclusively
+// All xAI model information is provided by ./packages/model-info
 
 // =================================================================
 // Rig Implementation Types
@@ -45,20 +40,26 @@ impl XaiCompletionModel {
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
     ) -> Result<XaiChatRequest<'_>, CompletionError> {
-        // Use the centralized builder with validation
-        let builder = Http3Builders::xai();
-        let mut chat_builder = builder.chat(&self.model);
+        let mut messages = ArrayVec::new();
 
         // Add preamble as system message if present
         if let Some(preamble) = &completion_request.preamble {
-            chat_builder = chat_builder.add_text_message("system", preamble);
+            messages
+                .try_push(XaiMessage {
+                    role: "system",
+                    content: XaiContent::Text(preamble)})
+                .map_err(|_| CompletionError::RequestError("Request too large".to_string()))?;
         }
 
         // Add documents as context
         if let Some(docs) = completion_request.normalized_documents() {
             for doc in docs {
                 let content = format!("Document: {}", doc.content());
-                chat_builder = chat_builder.add_text_message("user", &content);
+                messages
+                    .try_push(XaiMessage {
+                        role: "user",
+                        content: XaiContent::Text(Box::leak(content.into_boxed_str()))})
+                    .map_err(|_| CompletionError::RequestError("Request too large".to_string()))?;
             }
         }
 
@@ -67,41 +68,40 @@ impl XaiCompletionModel {
             match msg.role() {
                 fluent_ai_domain::message::MessageRole::User => {
                     if let Some(text) = msg.content().text() {
-                        chat_builder = chat_builder.add_text_message("user", text);
+                        messages
+                            .try_push(XaiMessage {
+                                role: "user",
+                                content: XaiContent::Text(text)})
+                            .map_err(|_| CompletionError::RequestError("Request too large".to_string()))?;
                     }
                 }
                 fluent_ai_domain::message::MessageRole::Assistant => {
                     if let Some(text) = msg.content().text() {
-                        chat_builder = chat_builder.add_text_message("assistant", text);
+                        messages
+                            .try_push(XaiMessage {
+                                role: "assistant",
+                                content: XaiContent::Text(text)})
+                            .map_err(|_| CompletionError::RequestError("Request too large".to_string()))?;
                     }
                 }
                 fluent_ai_domain::message::MessageRole::System => {
                     if let Some(text) = msg.content().text() {
-                        chat_builder = chat_builder.add_text_message("system", text);
+                        messages
+                            .try_push(XaiMessage {
+                                role: "system",
+                                content: XaiContent::Text(text)})
+                            .map_err(|_| CompletionError::RequestError("Request too large".to_string()))?;
                     }
                 }
             }
         }
 
-        // Set parameters with validation using centralized utilities
-        if let Some(temp) = completion_request.temperature {
-            chat_builder = chat_builder.temperature(
-                HttpUtils::validate_temperature(temp as f32, Provider::XAI).map_err(|e| {
-                    CompletionError::RequestError(format!("Invalid temperature: {}", e))
-                })? as f64,
-            );
-        }
-
-        if let Some(max_tokens) = completion_request.max_tokens {
-            chat_builder = chat_builder.max_tokens(
-                HttpUtils::validate_max_tokens(max_tokens, Provider::XAI).map_err(|e| {
-                    CompletionError::RequestError(format!("Invalid max_tokens: {}", e))
-                })?,
-            );
-        }
+        // Set parameters with direct validation - zero allocation
+        let temperature = completion_request.temperature.map(|temp| temp.clamp(0.0, 2.0));
+        let max_tokens = completion_request.max_tokens.map(|tokens| tokens.clamp(1, 131072));
 
         // Add tools if present
-        if !completion_request.tools.is_empty() {
+        let tools = if !completion_request.tools.is_empty() {
             let mut xai_tools = arrayvec::ArrayVec::new();
             for tool in completion_request.tools.into_iter() {
                 if xai_tools.len() < super::types::MAX_TOOLS {
@@ -114,21 +114,33 @@ impl XaiCompletionModel {
                     let _ = xai_tools.push(xai_tool);
                 }
             }
-            chat_builder = chat_builder.with_tools(xai_tools);
-        }
+            Some(xai_tools)
+        } else {
+            None
+        };
 
-        // Build and validate the request
-        match chat_builder.build() {
-            Ok(request) => Ok(request),
-            Err(e) => Err(CompletionError::RequestError(format!(
-                "Request building failed: {}",
-                e
-            )))}
+        Ok(XaiChatRequest {
+            model: &self.model,
+            messages,
+            temperature,
+            max_tokens,
+            top_p: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            tools,
+            stream: Some(false),
+        })
     }
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
             model: model.to_string()}
+    }
+
+    /// Load model information from model-info package (single source of truth)
+    pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
+        let provider = Provider::Xai(XaiProvider);
+        provider.get_model_info(&self.model)
     }
 }
 
@@ -144,43 +156,26 @@ impl completion::CompletionModel for XaiCompletionModel {
         let request_body = self.create_completion_request(completion_request)?;
 
         // Use centralized serialization
-        let body_bytes = match serde_json::to_vec(&request_body) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                return Err(CompletionError::RequestError(format!(
-                    "Serialization error: {}",
-                    e
-                )));
-            }
-        };
-
-        let response = self
-            .client
-            .make_request("v1/chat/completions", body_bytes)
+        // Use Http3::json() directly instead of client abstraction
+        let completion_response: XaiChatResponse = Http3::json()
+            .api_key(&self.client.api_key())
+            .body(&request_body)
+            .post(&format!("{}/v1/chat/completions", self.client.base_url()))
+            .collect()
             .await
             .map_err(|e| CompletionError::HttpError(e.to_string()))?;
 
-        if response.status().is_success() {
-            let body = response.body();
-            let completion_response: XaiChatResponse =
-                serde_json::from_slice(body).map_err(|e| {
-                    CompletionError::ResponseError(format!("Deserialization error: {}", e))
-                })?;
+        tracing::info!(target: "rig",
+            "XAI completion token usage: {:?}",
+            completion_response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
+        );
 
-            tracing::info!(target: "rig",
-                "XAI completion token usage: {:?}",
-                completion_response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
-            );
-
-            Ok(DomainCompletionResponse {
-                raw_response: completion_response.clone(),
-                content: completion_response.try_into()?,
-                token_usage: None, // Token usage is in the raw_response
-                metadata: Default::default()})
-        } else {
-            let error_body = String::from_utf8_lossy(response.body());
-            Err(CompletionError::ProviderError(error_body.to_string()))
-        }
+        Ok(DomainCompletionResponse {
+            raw_response: completion_response.clone(),
+            content: completion_response.try_into()?,
+            token_usage: None, // Token usage is in the raw_response
+            metadata: Default::default(),
+        })
     }
 
     #[cfg_attr(feature = "worker", worker::send)]
@@ -193,30 +188,18 @@ impl completion::CompletionModel for XaiCompletionModel {
         // Enable streaming in the centralized request
         request_body.stream = Some(true);
 
-        // Use centralized serialization
-        let body_bytes = match serde_json::to_vec(&request_body) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                return Err(CompletionError::RequestError(format!(
-                    "Serialization error: {}",
-                    e
-                )));
-            }
-        };
+        // Use Http3::json() for streaming with direct SSE handling
+        let mut response_stream = Http3::json()
+            .api_key(&self.client.api_key())
+            .body(&request_body)
+            .post(&format!("{}/v1/chat/completions", self.client.base_url()));
 
-        let response = self
-            .client
-            .make_request("v1/chat/completions", body_bytes)
-            .await
-            .map_err(|e| CompletionError::HttpError(e.to_string()))?;
-
-        if !response.status().is_success() {
-            let error_body = String::from_utf8_lossy(response.body());
-            return Err(CompletionError::ProviderError(error_body.to_string()));
+        if !response_stream.is_success() {
+            return Err(CompletionError::HttpError("Request failed".to_string()));
         }
 
         // Create streaming response using the streaming module
-        let sse_stream = response.sse();
+        let sse_stream = response_stream.sse();
         Ok(crate::streaming::StreamingResponse::from_sse_stream(
             sse_stream,
         ))
@@ -246,3 +229,10 @@ impl TryFrom<XaiChatResponse> for crate::completion_provider::ZeroOneOrMany<Stri
 
 // TODO: Implement local XAI types to replace unauthorized fluent_ai_http_structs
 // All type aliases referencing fluent_ai_http_structs have been removed
+
+// =============================================================================
+// Model Constants (for compatibility with existing imports)
+// =============================================================================
+
+/// Grok-3 model
+pub const GROK_3: &str = "grok-3";

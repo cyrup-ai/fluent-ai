@@ -18,9 +18,8 @@
 ///   ring powering [`AsyncStream`].
 /// * concurrent fetches use `FuturesUnordered` which avoids intermediate `Vec`s
 ///   and allocates at most **once** for the task list.
-use futures_util::{
-    StreamExt, TryStreamExt,
-    stream::{self, FuturesUnordered}};
+use fluent_ai_async::AsyncStream;
+// Using AsyncStream with collect(), try_next() patterns instead of futures_util traits
 
 use crate::{
     agent::Agent,

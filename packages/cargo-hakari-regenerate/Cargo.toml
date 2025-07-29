@@ -23,7 +23,7 @@ cargo-hakari = "0.9"
 cargo_metadata = "0.21"
 
 # Async runtime
-tokio = { version = "1.46", features = ["rt", "sync", "macros", "rt-multi-thread", "fs"], default-features = false }
+tokio = { version = "1.47", features = ["rt", "sync", "macros", "rt-multi-thread", "fs"], default-features = false }
 
 # CLI and user interface
 clap = { version = "4.5", features = ["derive", "color", "suggestions"] }

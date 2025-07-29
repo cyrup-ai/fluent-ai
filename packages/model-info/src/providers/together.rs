@@ -16,7 +16,7 @@ pub struct TogetherPricingData {
     pub output: f64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TogetherProvider;
 
 impl ProviderTrait for TogetherProvider {
@@ -24,33 +24,78 @@ impl ProviderTrait for TogetherProvider {
         let model_name = model.to_string();
         
         AsyncStream::with_channel(move |sender| {
-            // For now, create dummy data to test the adapt function
-            let dummy_data = TogetherModelData {
-                id: model_name.clone(),
-                context_length: 32768,
-                pricing: TogetherPricingData {
-                    input: 0.0,
-                    output: 0.0,
-                },
-                description: "Default model".to_string(),
-            };
-            
-            let model_info = adapt_together_to_model_info(&dummy_data);
+            let model_info = adapt_together_to_model_info(&model_name);
             let _ = sender.send(model_info);
         })
     }
+    
+    fn list_models(&self) -> AsyncStream<ModelInfo> {
+        use crate::generated_models::TogetherModel as Together;
+        use crate::common::Model;
+        
+        AsyncStream::with_channel(move |sender| {
+            let models = vec![
+                Together::MetaLlamaLlama38bChatHf,
+                Together::MistralaiMixtral8x7bInstructV01,
+                Together::TogethercomputerCodellama34bInstruct,
+            ];
+            
+            for model in models {
+                let model_info = adapt_together_to_model_info(model.name());
+                let _ = sender.send(model_info);
+            }
+        })
+    }
+    
+    fn provider_name(&self) -> &'static str {
+        "together"
+    }
 }
 
-fn adapt_together_to_model_info(data: &TogetherModelData) -> ModelInfo {
-    let is_thinking = data.description.to_lowercase().contains("reasoning") || data.id.contains("reasoning");
-    let required_temperature = if is_thinking { Some(1.0) } else { None };
+fn adapt_together_to_model_info(model: &str) -> ModelInfo {
+    use std::sync::OnceLock;
+    use hashbrown::HashMap;
+    
+    static MAP: OnceLock<HashMap<&'static str, (u32, u32, f64, f64, bool, bool, bool, bool, bool)>> = OnceLock::new();
+    let map = MAP.get_or_init(|| {
+        let mut m = HashMap::new();
+        // (max_input, max_output, input_price, output_price, vision, function_calling, streaming, embeddings, thinking)
+        m.insert("meta-llama/Llama-3-8b-chat-hf", (8192, 2048, 0.2, 0.2, false, false, true, false, false));
+        m.insert("mistralai/Mixtral-8x7B-Instruct-v0.1", (32768, 8192, 0.27, 0.27, false, true, true, false, false));
+        m.insert("togethercomputer/CodeLlama-34b-Instruct", (16384, 4096, 0.5, 0.5, false, false, true, false, false));
+        m
+    });
+    
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
+        map.get(model).copied().unwrap_or((8192, 2048, 0.0, 0.0, false, false, true, false, false));
     
     ModelInfo {
-        name: data.id.clone(),
-        max_context: data.context_length,
-        pricing_input: data.pricing.input,
-        pricing_output: data.pricing.output,
-        is_thinking,
-        required_temperature,
+        // Core identification
+        provider_name: "together",
+        name: Box::leak(model.to_string().into_boxed_str()),
+        
+        // Token limits
+        max_input_tokens: std::num::NonZeroU32::new(max_input),
+        max_output_tokens: std::num::NonZeroU32::new(max_output),
+        
+        // Pricing (per 1M tokens)
+        input_price: Some(pricing_input),
+        output_price: Some(pricing_output),
+        
+        // Capability flags
+        supports_vision,
+        supports_function_calling,
+        supports_streaming,
+        supports_embeddings,
+        requires_max_tokens: false,
+        supports_thinking,
+        
+        // Advanced features
+        optimal_thinking_budget: if supports_thinking { Some(50000) } else { None },
+        system_prompt_prefix: None,
+        real_name: None,
+        model_type: None,
+        patch: None,
+        required_temperature: None,
     }
 }

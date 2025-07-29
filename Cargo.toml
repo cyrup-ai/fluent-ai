@@ -1,19 +1,39 @@
 [workspace]
 resolver = "2"
 members = [
-    "packages/fluent-ai-async",
+    "workspace-hack",
+    "packages/async-stream",
     "packages/fluent-ai",
-    "packages/fluent-ai-candle",
-    "packages/fluent-ai-simd",
-    "packages/provider",
-    "packages/domain", 
+    "packages/candle",
+    "packages/simd",
+    "packages/domain",
     "packages/memory",
     "packages/http3",
     "packages/yaml-model-info",
     "packages/cylo",
     "packages/termcolor",
     "packages/cargo-hakari-regenerate",
-    "workspace-hack", "packages/model-info",
+    "packages/model-info",
+    "packages/provider",
+    "packages/sweetmcp/packages/axum",
+    "packages/sweetmcp/packages/pingora",
+    "packages/sweetmcp/packages/daemon",
+    "packages/sweetmcp/packages/autoconfig",
+    "packages/sweetmcp/packages/plugin-builder",
+    "packages/sweetmcp/packages/voice-tools",
+    "packages/sweetmcp/plugins/arxiv",
+    "packages/sweetmcp/plugins/browser",
+    "packages/sweetmcp/plugins/eval-js",
+    "packages/sweetmcp/plugins/eval-py",
+    "packages/sweetmcp/plugins/eval-rs",
+    "packages/sweetmcp/plugins/eval-sh",
+    "packages/sweetmcp/plugins/fetch",
+    "packages/sweetmcp/plugins/fs",
+    "packages/sweetmcp/plugins/hash",
+    "packages/sweetmcp/plugins/ip",
+    "packages/sweetmcp/plugins/qr-code",
+    "packages/sweetmcp/plugins/reasoner",
+    "packages/sweetmcp/plugins/time",
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]
 
@@ -24,4 +44,3 @@ edition = "2024"
 license = "MIT"
 authors = ["CYRUP AI"]
 repository = "https://github.com/cyrup-ai/fluent-ai"
-

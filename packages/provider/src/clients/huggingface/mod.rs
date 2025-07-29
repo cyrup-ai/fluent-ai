@@ -31,7 +31,7 @@ pub use completion::{
     HuggingFaceDelta, HuggingFaceFunction, HuggingFaceFunctionDelta, HuggingFaceMessage,
     HuggingFaceStreamChunk, HuggingFaceToolCall, HuggingFaceToolCallDelta, HuggingFaceUsage,
     META_LLAMA_3_1, PHI_4, QWEN_QVQ_PREVIEW, QWEN2_5, QWEN2_5_CODER, QWEN2_VL,
-    SMALLTHINKER_PREVIEW, available_models, completion_builder, get_model_config};
+    SMALLTHINKER_PREVIEW, available_models, completion_builder};
 #[cfg(feature = "image")]
 pub use image_generation::{FLUX_1, KOLORS, STABLE_DIFFUSION_3};
 pub use transcription::{WHISPER_LARGE_V3, WHISPER_LARGE_V3_TURBO, WHISPER_SMALL};

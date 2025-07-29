@@ -515,7 +515,13 @@ impl TextGenerator {
         }
 
         // Fallback: return last token (should not happen with valid probabilities)
-        Ok(self.prob_cache.last().unwrap().token_id)
+        self.prob_cache.last()
+            .map(|prob| prob.token_id)
+            .ok_or_else(|| CandleError::generation(
+                "Empty probability cache",
+                "sample_from_distribution", 
+                "non-empty prob_cache"
+            ))
     }
 
     /// Check if generation should stop

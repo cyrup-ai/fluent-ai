@@ -4,9 +4,7 @@ use super::completion::CompletionModel;
 use crate::clients::openai;
 use crate::clients::openai::send_compatible_streaming_request;
 use crate::streaming::StreamingCompletionResponse;
-use crate::{
-    completion::{CompletionError, CompletionRequest},
-    json_util::merge};
+use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
 
 impl CompletionModel {
     pub(crate) async fn stream(

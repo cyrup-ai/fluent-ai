@@ -4,15 +4,15 @@ use serde_json::json;
 
 use super::client::{ApiResponse, Client, Usage};
 use crate::embeddings::{self, EmbeddingError};
+use fluent_ai_domain::context::provider::EmbeddingModel;
 
 // ================================================================
 // Mistral Embedding API
 // ================================================================
-/// `mistral-embed` embedding model
-pub const MISTRAL_EMBED: &str = "mistral-embed";
+// Model information is provided by model-info package - no local constants needed
 pub const MAX_DOCUMENTS: usize = 1024;
 
-// EmbeddingModel is now imported from fluent_ai_domain::model
+// EmbeddingModel is now imported from fluent_ai_domain::context::provider
 // Removed duplicated EmbeddingModel struct - use canonical domain type
 
 impl EmbeddingModel {

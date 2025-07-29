@@ -14,7 +14,7 @@ use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 use thiserror::Error;
-use futures_util::StreamExt;
+use fluent_ai_async::AsyncStreamExt;
 
 use candle_core::{Device, Tensor, DType};
 use candle_nn::{VarBuilder, Module};

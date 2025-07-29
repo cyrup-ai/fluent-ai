@@ -152,7 +152,7 @@ Act as an Objective QA Rust developer and rate the work performed previously on 
 Act as an Objective QA Rust developer and rate the work performed previously on fixing architecture-specific macro issues. Evaluate: (1) Proper cfg guards for x86/x86_64 architectures, (2) ARM64 alternatives provided where needed, (3) Cross-platform compatibility maintained, (4) SIMD feature detection works correctly, (5) Code compiles on all target architectures. Rate 1-10 and provide specific feedback. Any score below 9 requires rework.
 
 ### 15. Add Missing Candle Package Dependencies ⭐ LOW
-- **File**: `packages/fluent-ai-candle/Cargo.toml`
+- **File**: `packag../candle/Cargo.toml`
 - **Issue**: Missing `fastrand` and `rand` dependencies causing compilation failures
 - **Architecture**: Add required dependencies for random number generation in Candle package
 - **Implementation**:
@@ -161,7 +161,7 @@ Act as an Objective QA Rust developer and rate the work performed previously on 
   - Ensure versions are compatible with existing Candle dependencies
   - Use `cargo search` to find latest stable versions
 - **Files to Modify**:
-  - `packages/fluent-ai-candle/Cargo.toml` - Add missing dependencies
+  - `packag../candle/Cargo.toml` - Add missing dependencies
 - **Priority**: LOW - Fixes specific package compilation issues
 - **Command**: Use `cargo add fastrand rand` in fluent-ai-candle directory
 - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.

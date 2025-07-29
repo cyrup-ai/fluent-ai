@@ -11,34 +11,23 @@ pub const MAX_CHOICES: usize = 16;
 pub const MAX_EMBEDDINGS: usize = 2048;
 pub const MAX_IMAGES: usize = 16;
 
-// TEMPORARY: Include generated code from build script to break chicken-and-egg problem
-include!(concat!(env!("OUT_DIR"), "/providers.rs"));
-include!(concat!(env!("OUT_DIR"), "/models.rs"));
-
-// Re-export domain types for backward compatibility  
-pub use fluent_ai_domain::model::ModelInfo;
+// CRITICAL: Import model information from model-info package (single source of truth)
+pub use model_info::{Model, ModelInfo};
 
 // Provider client implementations
 pub mod clients;
 
-// Re-export commonly used client modules for type compatibility
-pub use clients::openai;
+// Provider discovery
+pub mod discovery;
 
 // Image processing implementations
 pub mod image_processing;
-
-// Model discovery and registration
-pub mod discovery;
-
-// HTTP utilities and validation
-pub mod utils;
 
 // Re-export Candle client for convenience
 #[cfg(feature = "candle")]
 pub use clients::candle::{CandleCompletionClient, CandleModel, CandleProvider};
 
-// Client factory for provider-to-client mapping
-pub mod client_factory;
+
 
 // Security and credential management
 pub mod security;
@@ -58,15 +47,11 @@ pub mod embeddings;
 // Transcription interface implementations
 pub mod transcription;
 
-// HTTP3 streaming trait architecture
-pub mod http3_streaming;
-
 // Re-export client traits for provider implementations
 pub use client::*;
 pub use completion_provider::*;
-pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
+pub use cyrup_sugars::*;
 pub use embeddings::*;
-pub use fluent_ai_async::AsyncStream;
 // Use canonical streaming types from fluent-ai-async
 pub use fluent_ai_async::{AsyncStreamSender, channel};
 // Re-export fluent-ai types for provider implementations
@@ -77,7 +62,7 @@ pub use fluent_ai_domain::AsyncTask;
 // Re-export json_util for provider implementations
 pub use fluent_ai_domain::json_util;
 pub use fluent_ai_domain::spawn_async;
-pub use http3_streaming::*;
+
 pub use streaming::*;
 pub use transcription::*;
 

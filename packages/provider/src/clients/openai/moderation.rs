@@ -3,11 +3,8 @@
 //! Provides comprehensive content safety analysis using OpenAI's moderation models
 //! with blazing-fast performance and no unsafe operations.
 
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde::{Deserialize, Serialize};
-use fluent_ai_http3::HttpClient;
-use fluent_ai_http3::HttpError;
-use fluent_ai_http3::HttpRequest;
 use std::collections::HashMap;
 
 use super::{OpenAIError, OpenAIResult};

@@ -11,15 +11,11 @@ use cyrup_sugars::{CompletionResponse, ResponseMetadata, TokenUsage};
 use fluent_ai_domain::async_task::AsyncStream;
 // Use domain types for traits and models
 use fluent_ai_domain::{chat::Message, completion::CompletionProvider, model::ModelConfig};
-// Use provider clients for completion services
-use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
+// REMOVED: fluent_ai_provider - use model-info + http3 directly
+// use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
 use serde::{Deserialize, Serialize};
 
-/// Message type for completion interactions
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Message {
-    pub role: String,
-    pub content: String}
+// REMOVED: Local Message struct - using fluent_ai_domain::chat::Message instead
 
 /// Core completion error type
 #[derive(Debug, Clone, thiserror::Error)]

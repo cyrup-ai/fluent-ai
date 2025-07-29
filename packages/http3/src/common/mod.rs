@@ -4,14 +4,18 @@
 //! headers, authentication, retry logic, caching, and metrics.
 
 pub mod auth;
+pub mod auth_method;
 pub mod cache;
+pub mod content_types;
 pub mod headers;
 pub mod metrics;
 pub mod retry;
 
 // Re-export commonly used types and utilities
 pub use auth::{ApiKey, AuthProvider, BasicAuth, BearerToken};
+pub use auth_method::AuthMethod;
 pub use cache::{CacheConfig, CacheEntry, CacheKey, CacheStats, ResponseCache};
+pub use content_types::ContentTypes;
 pub use headers::HeaderManager;
 pub use metrics::{MetricsCollector, OperationMetrics, RequestMetrics};
 pub use retry::{HttpRetryExecutor, RetryExecutor, RetryPolicy, RetryResult, RetryStats};

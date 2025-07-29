@@ -8,8 +8,8 @@ pub use cyrup_sugars::*;
 pub use hashbrown::HashMap;
 
 pub use crate::chat::chat_loop::ChatLoop;
-pub use crate::domain::conversation::{
-    Conversation as ConversationTrait, ConversationBuilder, ConversationImpl};
+pub use crate::domain::chat::{
+    Conversation as ConversationTrait, ConversationImpl};
 pub use crate::engine::*;
 pub use crate::fluent::*;
 // McpTool is now exported through domain module

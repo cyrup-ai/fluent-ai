@@ -10,7 +10,7 @@
 			"path": "../fluent-ai"
 		},
 		{
-			"path": "../fluent-ai-candle"
+			"path": "../candle"
 		},
 		{
 			"path": "../http3"
@@ -28,7 +28,7 @@
 			"path": "../../../fluent-voice"
 		},
 		{
-			"path": "../fluent-ai-simd"
+			"path": "../simd"
 		}
 	],
 	"settings": {}

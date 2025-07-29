@@ -1,4 +1,4 @@
-use fluent_ai_domain::model::{Model, ModelRegistry, RegisteredModel, Result};
+use fluent_ai_domain::model::{Model, ModelRegistry, registry::RegisteredModel, Result};
 
 /// Builder for registering models with the global registry
 pub struct ModelBuilder<M: Model + 'static> {

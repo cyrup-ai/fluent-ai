@@ -1,0 +1,489 @@
+3:warning: function `create_default_configuration` is never used
+11:warning: function `validate_existing_wildcard_cert` is never used
+17:warning: function `add_sweetmcp_host_entries` is never used
+23:warning: function `get_installed_daemon_path` is never used
+29:warning: field `timeout` is never read
+40:warning: multiple associated items are never used
+67:warning: struct `ConnectionStats` is never constructed
+73:warning: struct `BridgeConfig` is never constructed
+79:warning: struct `McpBridgeBuilder` is never constructed
+85:warning: multiple associated items are never used
+112:warning: multiple methods are never used
+142:warning: struct `ForwardingStats` is never constructed
+148:warning: methods `success_rate`, `failure_rate`, and `is_healthy` are never used
+163:warning: function `validate_batch_requests` is never used
+169:warning: function `validate_request_size` is never used
+175:warning: function `validate_security` is never used
+181:warning: function `get_json_depth` is never used
+187:warning: associated items `encode_multiple`, `comment`, and `keep_alive` are never used
+202:warning: associated items `data_only`, `message`, `error`, `is_ping`, and `is_error` are never used
+223:warning: fields `user_agent` and `connection_id` are never read
+237:warning: methods `remove_session` and `session_ids` are never used
+249:warning: variants `Windows` and `Linux` are never constructed
+263:warning: function `import_certificate` is never used
+269:warning: function `cleanup_keychain` is never used
+275:warning: multiple variants are never constructed
+301:warning: `sweetmcp-daemon` (bin "sweetmcp-daemon") generated 25 warnings
+304:warning: fields `provider` and `model_names` are never read
+317:warning: field `cleanup_handle` is never read
+326:warning: constant `VALIDATION_TIMEOUT` is never used
+332:warning: missing documentation for a struct field
+344:warning: missing documentation for a struct field
+350:warning: missing documentation for a struct field
+356:warning: missing documentation for a struct field
+362:warning: missing documentation for a struct field
+368:warning: missing documentation for a struct field
+374:warning: missing documentation for a variant
+380:warning: missing documentation for a variant
+386:warning: missing documentation for a variant
+392:warning: missing documentation for a variant
+398:warning: missing documentation for a struct field
+404:warning: missing documentation for a struct field
+410:warning: missing documentation for a struct field
+416:warning: missing documentation for a struct field
+422:warning: missing documentation for a struct field
+428:warning: missing documentation for a struct field
+434:warning: missing documentation for a struct field
+440:warning: missing documentation for an associated function
+446:warning: missing documentation for a method
+452:warning: missing documentation for a method
+458:warning: missing documentation for a struct field
+464:warning: missing documentation for a struct field
+470:warning: missing documentation for a struct field
+476:warning: missing documentation for a struct field
+482:warning: missing documentation for a struct field
+488:warning: missing documentation for an associated function
+494:warning: missing documentation for an associated function
+500:warning: missing documentation for a struct field
+506:warning: missing documentation for a struct field
+512:warning: missing documentation for a struct field
+518:warning: missing documentation for a struct field
+524:warning: missing documentation for a type alias
+530:warning: missing documentation for a type alias
+536:warning: missing documentation for a struct field
+542:warning: missing documentation for a struct field
+548:warning: missing documentation for a struct field
+554:warning: missing documentation for a struct field
+560:warning: missing documentation for a struct field
+566:warning: missing documentation for a struct field
+572:warning: missing documentation for a struct field
+578:warning: missing documentation for a struct field
+584:warning: missing documentation for a struct field
+590:warning: missing documentation for a struct field
+596:warning: missing documentation for a struct field
+602:warning: missing documentation for a struct field
+608:warning: missing documentation for a struct field
+614:warning: missing documentation for a struct field
+620:warning: missing documentation for a struct field
+626:warning: missing documentation for a struct field
+632:warning: missing documentation for an associated function
+638:warning: missing documentation for an associated function
+644:warning: missing documentation for a struct field
+650:warning: missing documentation for a struct field
+656:warning: missing documentation for a struct field
+662:warning: missing documentation for a struct field
+668:warning: missing documentation for a type alias
+674:warning: missing documentation for a type alias
+680:warning: missing documentation for a variant
+686:warning: missing documentation for a variant
+692:warning: missing documentation for a variant
+698:warning: missing documentation for a variant
+704:warning: missing documentation for a struct field
+710:warning: missing documentation for a struct field
+716:warning: missing documentation for a struct field
+722:warning: missing documentation for a struct field
+728:warning: missing documentation for a struct field
+734:warning: missing documentation for a struct field
+740:warning: missing documentation for a struct field
+746:warning: missing documentation for a struct field
+752:warning: missing documentation for a struct field
+758:warning: missing documentation for a struct field
+764:warning: missing documentation for a struct field
+770:warning: missing documentation for a struct field
+776:warning: missing documentation for a struct field
+782:warning: missing documentation for a struct field
+788:warning: missing documentation for a struct field
+794:warning: missing documentation for a struct field
+800:warning: missing documentation for a struct field
+806:warning: missing documentation for a struct field
+812:warning: missing documentation for a struct field
+818:warning: missing documentation for a struct field
+824:warning: missing documentation for a struct field
+830:warning: missing documentation for a struct field
+836:warning: missing documentation for a variant
+842:warning: missing documentation for a variant
+848:warning: missing documentation for a variant
+854:warning: missing documentation for a variant
+860:warning: missing documentation for a type alias
+866:warning: missing documentation for a type alias
+872:warning: missing documentation for a type alias
+878:warning: missing documentation for a trait
+884:warning: missing documentation for a trait
+890:warning: missing documentation for a variant
+896:warning: missing documentation for a variant
+902:warning: missing documentation for a variant
+908:warning: missing documentation for a struct field
+914:warning: missing documentation for a struct field
+920:warning: missing documentation for a struct field
+926:warning: missing documentation for a struct field
+932:warning: missing documentation for a struct field
+938:warning: missing documentation for a struct field
+944:warning: missing documentation for a struct field
+950:warning: missing documentation for a struct field
+956:warning: missing documentation for a struct field
+962:warning: missing documentation for a struct field
+968:warning: missing documentation for a method
+974:warning: missing documentation for a method
+980:warning: missing documentation for a method
+988:warning: missing documentation for a method
+994:warning: missing documentation for a method
+1000:warning: missing documentation for a method
+1006:warning: missing documentation for a struct field
+1018:warning: missing documentation for a struct field
+1024:warning: missing documentation for a struct field
+1036:warning: missing documentation for a static
+1042:warning: missing documentation for a constant
+1053:warning: missing documentation for an associated type
+1059:warning: missing documentation for an associated type
+1065:warning: missing documentation for a method
+1071:warning: missing documentation for a type alias
+1077:warning: missing documentation for a type alias
+1083:warning: missing documentation for a variant
+1089:warning: missing documentation for a struct
+1095:warning: missing documentation for a struct field
+1101:warning: missing documentation for a struct field
+1107:warning: missing documentation for a trait
+1113:warning: missing documentation for a struct
+1119:warning: missing documentation for a struct field
+1125:warning: missing documentation for a struct field
+1131:warning: missing documentation for a struct field
+1137:warning: missing documentation for a struct field
+1143:warning: missing documentation for a struct field
+1149:warning: missing documentation for a struct field
+1155:warning: missing documentation for a struct field
+1161:warning: missing documentation for a struct field
+1167:warning: missing documentation for a variant
+1173:warning: missing documentation for a variant
+1179:warning: missing documentation for a variant
+1185:warning: missing documentation for an associated function
+1191:warning: missing documentation for a struct field
+1197:warning: missing documentation for a struct field
+1203:warning: missing documentation for a struct field
+1209:warning: missing documentation for a struct field
+1215:warning: missing documentation for a struct field
+1221:warning: missing documentation for a struct field
+1227:warning: missing documentation for a struct field
+1233:warning: missing documentation for a struct field
+1239:warning: missing documentation for a struct field
+1245:warning: missing documentation for a module
+1251:warning: missing documentation for a module
+1257:warning: missing documentation for a struct field
+1263:warning: missing documentation for a struct field
+1269:warning: missing documentation for a struct field
+1275:warning: missing documentation for a struct field
+1281:warning: missing documentation for a struct field
+1287:warning: missing documentation for a struct field
+1293:warning: missing documentation for a struct field
+1299:warning: missing documentation for a struct field
+1305:warning: missing documentation for a struct field
+1311:warning: missing documentation for a struct field
+1317:warning: missing documentation for a struct field
+1323:warning: missing documentation for a struct field
+1329:warning: missing documentation for a struct field
+1335:warning: missing documentation for a struct field
+1341:warning: missing documentation for a struct field
+1347:warning: missing documentation for a struct field
+1353:warning: missing documentation for a struct field
+1359:warning: missing documentation for a struct field
+1365:warning: missing documentation for a struct field
+1371:warning: missing documentation for a struct field
+1377:warning: missing documentation for a struct field
+1383:warning: missing documentation for a struct field
+1389:warning: missing documentation for a struct field
+1395:warning: missing documentation for a struct field
+1401:warning: missing documentation for a struct field
+1407:warning: missing documentation for a struct field
+1413:warning: missing documentation for a struct field
+1419:warning: missing documentation for a struct field
+1425:warning: missing documentation for a struct field
+1431:warning: missing documentation for a struct field
+1437:warning: missing documentation for a struct field
+1443:warning: missing documentation for a struct
+1449:warning: missing documentation for a struct field
+1455:warning: missing documentation for a struct field
+1461:warning: missing documentation for a struct field
+1467:warning: missing documentation for a struct field
+1473:warning: missing documentation for a struct field
+1479:warning: missing documentation for a struct field
+1485:warning: missing documentation for an enum
+1491:warning: missing documentation for a variant
+1497:warning: missing documentation for a variant
+1503:warning: missing documentation for a variant
+1509:warning: missing documentation for a variant
+1515:warning: missing documentation for a variant
+1521:warning: missing documentation for a variant
+1527:warning: missing documentation for a variant
+1533:warning: missing documentation for a struct field
+1539:warning: missing documentation for a struct field
+1545:warning: missing documentation for a struct field
+1551:warning: missing documentation for a struct field
+1557:warning: missing documentation for a struct field
+1563:warning: missing documentation for a struct field
+1569:warning: missing documentation for a struct field
+1575:warning: missing documentation for a struct field
+1581:warning: missing documentation for a struct field
+1587:warning: missing documentation for a struct field
+1593:warning: missing documentation for a struct field
+1599:warning: missing documentation for a struct
+1605:warning: missing documentation for a struct field
+1611:warning: missing documentation for a struct field
+1617:warning: missing documentation for an associated function
+1623:warning: missing documentation for a method
+1629:warning: missing documentation for an associated function
+1635:warning: missing documentation for a method
+1641:warning: missing documentation for a variant
+1647:warning: missing documentation for a variant
+1653:warning: `fluent_ai_domain` (lib) generated 219 warnings
+6326:warning: unused import: `collections::VecDeque`
+6334:warning: unused import: `fluent_ai_async::AsyncStream as AsyncStreamTrait`
+6340:warning: unexpected `cfg` condition value: `pdf`
+6351:warning: unexpected `cfg` condition value: `pdf`
+6361:warning: unexpected `cfg` condition value: `epub`
+6371:warning: unexpected `cfg` condition value: `epub`
+6381:warning: unused import: `macros::*`
+6387:warning: unused import: `std::future::Future`
+6393:warning: unused import: `std::pin::Pin`
+6399:warning: unused import: `std::time::Instant`
+6405:warning: unused import: `tokio::sync::RwLock`
+6411:warning: unused import: `AtomicUsize`
+6417:warning: unused import: `std::time::Instant`
+6423:warning: unused import: `future::Future`
+6429:warning: unused import: `info`
+6435:warning: unused imports: `self` and `self`
+6444:warning: unused macro definition: `conditional`
+6452:warning: unused macro definition: `try_conditional`
+6458:warning: unused import: `conditional::*`
+6464:warning: unused macro definition: `parallel_op`
+6470:warning: unused macro definition: `tuple_pick`
+6476:warning: unused macro definition: `parallel_internal`
+6482:warning: unused macro definition: `try_parallel_internal`
+6488:warning: unused macro definition: `ok_err_wrapper`
+6494:warning: unused import: `std::cell::RefCell`
+6500:warning: unused import: `Instant`
+6506:warning: unused import: `SegQueue`
+6512:warning: unused import: `MessagePriority`
+6518:warning: unused import: `once_cell::sync::Lazy`
+6524:warning: unused imports: `AtomicU64` and `Ordering`
+6530:warning: unused import: `std::arch::aarch64::*`
+6536:warning: unused import: `std::sync::Arc`
+6542:warning: unnecessary parentheses around assigned value
+6555:warning: unused import: `serde_json::Value`
+6561:warning: unused import: `crate::ZeroOneOrMany`
+6567:warning: unused import: `AsyncTask`
+6573:warning: unused import: `crate::ZeroOneOrMany`
+6579:warning: unused import: `crate::domain::agent::Agent as DomainAgent`
+6585:warning: unused import: `self`
+6591:warning: unused import: `super::*`
+6597:warning: unused import: `Text`
+6603:warning: unused imports: `AsyncTask` and `CompletionRequest`
+6612:warning: unexpected `cfg` condition value: `mcp`
+6622:warning: unused import: `domain::tool::ToolSet`
+6628:warning: unused import: `runtime as rt`
+6634:warning: unused import: `crate::completion::Chat`
+6640:warning: ambiguous glob re-exports
+6650:warning: ambiguous glob re-exports
+6658:warning: unused import: `completion::*`
+6664:warning: unused import: `std::fmt`
+6670:warning: unused import: `agent::Agent`
+6676:warning: unused imports: `MAX_CHUNK_SIZE` and `ValidationResult`
+6685:warning: unused import: `Agent`
+6691:warning: unused import: `std::sync::Arc`
+6697:warning: unused import: `fluent_ai_async::AsyncStream`
+6703:warning: unused import: `StreamingResult`
+6709:warning: unused import: `core::cmp::max`
+6715:warning: unused import: `AtomicUsize`
+6721:warning: unused import: `Instant`
+6727:warning: unused import: `AtomicU32`
+6733:warning: unused import: `smallvec::SmallVec`
+6739:warning: unused imports: `AtomicU32`, `AtomicU64`, `AtomicU8`, `AtomicUsize`, and `Ordering`
+6745:warning: unused import: `crossbeam_utils::CachePadded`
+6751:warning: unused imports: `CoherenceTracker`, `Complex64`, `QuantumMemory`, and `SuperpositionState`
+6757:warning: unused import: `AtomicBool`
+6763:warning: unused import: `sleep`
+6769:warning: unused import: `fluent_ai_async::AsyncStream as AsyncStreamTrait`
+6775:warning: unused import: `super::executor::global`
+6781:warning: unused import: `std::future::Future`
+6787:warning: unused import: `std::pin::Pin`
+6793:warning: unused import: `MapAccess`
+7029:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7037:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7043:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7049:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7055:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7061:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7067:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7073:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7079:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7085:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7091:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7097:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7103:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7109:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7115:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7121:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7127:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7133:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7139:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7145:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7151:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7157:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7163:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7169:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7175:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7181:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7187:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7193:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7199:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7205:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7211:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7217:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7223:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7229:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7235:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7241:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7247:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7253:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7259:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7265:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7271:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7277:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7283:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7289:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7295:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7301:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7307:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7313:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7319:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7325:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7331:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+7337:warning: use of deprecated type alias `fluent_ai_domain::chat::commands::ChatCommand`: Use ImmutableChatCommand instead for zero-allocation streaming
+10485:warning: `fluent_ai` (lib) generated 123 warnings
+10487:warning: build failed, waiting for other jobs to finish...
+14004:warning: unused imports: `AnthropicContentBlock` and `AnthropicUsage`
+14015:warning: unused import: `HttpError`
+14021:warning: unused import: `fluent_ai_http3::HttpStreamExt`
+14027:warning: unused import: `fluent_ai_http3::HttpError`
+14046:warning: unexpected `cfg` condition value: `cylo`
+14057:warning: unused import: `any::TypeId`
+14063:warning: unused import: `fluent_ai_domain::tool::Tool`
+14069:warning: unexpected `cfg` condition value: `cylo`
+14079:warning: unexpected `cfg` condition value: `cylo`
+14089:warning: unexpected `cfg` condition value: `cylo`
+14112:warning: ambiguous glob re-exports
+14123:warning: ambiguous glob re-exports
+14132:warning: unused import: `DeviceInfo`
+14138:warning: unused import: `PoolConfig`
+14144:warning: unused import: `ModelState`
+14150:warning: unused import: `TokenStreamer`
+14156:warning: unused imports: `SpecialTokens` and `TokenizationResult`
+14162:warning: unused import: `std::sync::Arc`
+14168:warning: unused import: `arc_swap::ArcSwap`
+14174:warning: unused import: `AtomicU8`
+14180:warning: unused import: `Guard`
+14186:warning: unused import: `ErrorMetrics`
+14192:warning: unused import: `std::collections::HashMap`
+14198:warning: unused import: `Guard`
+14204:warning: unused import: `std::borrow::Cow`
+14210:warning: variant `Devstral_22B` should have an upper camel case name
+14218:warning: variant `Mistral_7B` should have an upper camel case name
+14224:warning: variant `CodeLlama_7B` should have an upper camel case name
+14230:warning: variant `Phi3_Mini` should have an upper camel case name
+14236:warning: variant `Gemma_2B` should have an upper camel case name
+14242:warning: variant `Gemma_7B` should have an upper camel case name
+14248:warning: variant `KimiK2_FP16` should have an upper camel case name
+14254:warning: variant `KimiK2_FP8` should have an upper camel case name
+14260:warning: unused import: `AsyncTask`
+14266:warning: unused import: `HttpError`
+14285:warning: unused import: `fluent_ai_http3::HttpStreamExt`
+14291:warning: unused import: `header`
+14297:warning: unexpected `cfg` condition value: `worker`
+14307:warning: unexpected `cfg` condition value: `worker`
+14317:warning: unexpected `cfg` condition value: `worker`
+14327:warning: unused import: `fluent_ai_domain::tool::ToolDefinition`
+14333:warning: unused import: `AsyncTask`
+14339:warning: unused import: `HttpError`
+14345:warning: unused import: `ModelInfo`
+14351:warning: unused import: `fluent_ai_http3::HttpStreamExt`
+14370:warning: unused import: `fluent_ai_domain::model::AnyEmbeddingCapable`
+14376:warning: unexpected `cfg` condition value: `worker`
+14386:warning: unused import: `completion::*`
+14392:warning: unused imports: `CompletionClient` and `ProviderClient`
+14398:warning: unused import: `CompletionProvider`
+14404:warning: unused import: `AsyncTask`
+14410:warning: unused imports: `OpenAIMessage`, `OpenAIResponseFormat`, `OpenAIStreamingChoice`, `OpenAIStreamingDelta`, and `OpenAIUsage`
+14418:warning: unused import: `HttpError`
+14424:warning: unused import: `once_cell::sync::Lazy`
+14430:warning: unused imports: `Deserialize` and `Serialize`
+14436:warning: unused import: `thiserror::Error`
+14442:warning: unused import: `trace`
+14448:warning: unused import: `error::OpenAIError`
+14454:warning: unused import: `ModelInfo as ModelInfoFromPackage`
+14460:warning: unused import: `fluent_ai_http3::HttpError`
+14466:warning: unused import: `Message as DomainMessage`
+14485:warning: unused import: `HttpError`
+14491:warning: unused import: `fluent_ai_http3::HttpClient`
+14497:warning: unused imports: `TogetherChoice` and `TogetherUsage`
+14506:warning: unused import: `serde_json::json`
+14512:warning: unused import: `json_util`
+14518:warning: unexpected `cfg` condition value: `worker`
+14528:warning: unused import: `crate::clients::openai::send_compatible_streaming_request`
+14534:warning: unused import: `task::JoinHandle as AsyncTaskHandle`
+14540:warning: unused import: `HttpError`
+14546:warning: unused imports: `Value` and `json`
+14552:warning: unused import: `crate::json_util`
+14558:warning: unexpected `cfg` condition value: `worker`
+14568:warning: unexpected `cfg` condition value: `worker`
+14578:warning: unused import: `header`
+14584:warning: unexpected `cfg` condition value: `generation`
+14594:warning: unexpected `cfg` condition value: `generation`
+14604:warning: unexpected `cfg` condition value: `generation`
+14614:warning: unused import: `std::sync::Arc`
+14620:warning: unused import: `DType`
+14626:warning: unused import: `candle_nn::VarBuilder`
+14632:warning: unexpected `cfg` condition value: `generation`
+14642:warning: unexpected `cfg` condition value: `generation`
+14652:warning: unexpected `cfg` condition value: `generation`
+14662:warning: unexpected `cfg` condition value: `generation`
+14672:warning: unexpected `cfg` condition value: `generation`
+14682:warning: unexpected `cfg` condition value: `generation`
+14692:warning: unexpected `cfg` condition value: `generation`
+14702:warning: unexpected `cfg` condition value: `generation`
+14712:warning: unexpected `cfg` condition value: `generation`
+14722:warning: unexpected `cfg` condition value: `generation`
+14732:warning: unused import: `fluent_ai_async::AsyncStream`
+14751:warning: unused import: `Zeroize`
+14757:warning: unused import: `sleep`
+14763:warning: unused import: `warn`
+14769:warning: unused import: `RotationConfig`
+14775:warning: unused import: `OneOrMany`
+14781:warning: unused import: `VoiceChunk`
+14787:warning: unused import: `std::pin::Pin`
+14793:warning: unused imports: `Context` and `Poll`
+14799:warning: unused import: `handle_error`
+14805:warning: unused import: `std::fmt`
+14811:warning: unused import: `cyrup_sugars::ZeroOneOrMany`
+14817:warning: unused import: `EmbeddingModel as DomainEmbeddingModel`
+14823:warning: unused import: `serde::Deserialize`
+14842:warning: ambiguous glob re-exports
+14851:warning: ambiguous glob re-exports
+16180:warning: unused import: `chat::Message`
+16188:warning: unused import: `fluent_ai_domain::async_task::AsyncStream`
+16194:warning: unused import: `crate::cognitive::types::EnhancedQuery`
+16200:warning: unused imports: `RoutingDecision` and `RoutingStrategy`
+16206:warning: unused import: `chat::Message`
+16212:warning: unused import: `fluent_ai_simd::smart_cosine_similarity`
+16218:warning: unused imports: `Receiver` and `Sender`
+16224:warning: unused import: `GraphQueryOptions`
+16230:warning: unused imports: `Receiver` and `Sender`
+16598:warning: `fluent_ai_provider` (lib) generated 107 warnings
+16630:warning: `fluent_ai_memory` (lib) generated 9 warnings

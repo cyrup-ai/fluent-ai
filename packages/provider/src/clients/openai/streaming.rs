@@ -12,9 +12,15 @@ use serde::{Deserialize, Serialize};
 use super::tools::{
     OpenAIFunctionCall as ToolsOpenAIFunctionCall, OpenAIToolCall as ToolsOpenAIToolCall};
 use super::{OpenAIError, OpenAIMessage, OpenAIResult};
-use crate::AsyncStream;
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use crate::ZeroOneOrMany;
-use crate::domain::chunk::CompletionChunk;
+use fluent_ai_domain::context::chunk::CompletionChunk;
+
+/// OpenAI streaming wrapper for real-time completions
+#[derive(Debug, Clone)]
+pub struct OpenAIStream {
+    stream: AsyncStream<OpenAIStreamChunk>,
+}
 
 /// OpenAI streaming completion chunk
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -670,7 +676,7 @@ pub fn stream_from_sse_events(events: AsyncStream<SSEEvent>) -> AsyncStream<Comp
 
     crate::async_task::spawn_async(async move {
         let mut events_iter = events;
-        while let Some(event) = futures_util::StreamExt::next(&mut events_iter).await {
+        while let Some(event) = events_iter.next().await {
             // Skip non-data events
             if event.event_type.as_deref() != Some("data") && event.event_type.is_some() {
                 continue;
@@ -716,7 +722,7 @@ pub fn optimize_stream_batching(
         let mut batch = Vec::with_capacity(batch_size);
         let mut last_batch_time = SystemTime::now();
 
-        while let Some(chunk) = futures_util::StreamExt::next(&mut stream_iter).await {
+        while let Some(chunk) = stream_iter.next().await {
             batch.push(chunk);
 
             let should_flush = batch.len() >= batch_size
@@ -768,7 +774,7 @@ pub async fn send_compatible_streaming_request(
 
     crate::async_task::spawn_async(async move {
         let mut sse_iter = sse_stream;
-        while let Some(event) = futures_util::StreamExt::next(&mut sse_iter).await {
+        while let Some(event) = sse_iter.next().await {
             match event {
                 Ok(sse_event) => {
                     if let Some(data) = sse_event.data {
