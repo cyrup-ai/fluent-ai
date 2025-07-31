@@ -1,5 +1,6 @@
 //! Index-aware query optimization
 
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::query::{QueryPlan, QueryStep, QueryType, Result};

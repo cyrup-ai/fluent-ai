@@ -27,7 +27,7 @@ impl AnthropicResponseProcessor {
     #[inline]
     pub fn process_completion_response(
         response: HttpResponse,
-    ) -> AnthropicResult<CompletionResponse> {
+    ) -> AnthropicResult<CompletionResponse<'static>> {
         // Validate response status
         if !response.status.is_success() {
             return Err(Self::process_error_response(response));
@@ -289,7 +289,7 @@ impl RateLimitInfo {
 
 /// Standalone function to process a completion response
 #[inline]
-pub fn process_completion_response(response: HttpResponse) -> AnthropicResult<CompletionResponse> {
+pub fn process_completion_response(response: HttpResponse) -> AnthropicResult<CompletionResponse<'static>> {
     AnthropicResponseProcessor::process_completion_response(response)
 }
 

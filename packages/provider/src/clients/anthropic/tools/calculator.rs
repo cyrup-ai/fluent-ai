@@ -11,8 +11,9 @@ use fluent_ai_async::AsyncStream;
 use serde_json::{Value, json};
 
 use super::{
-    core::{AnthropicError, AnthropicResult},
-    function_calling::{ToolExecutionContext, ToolExecutor}};
+    core::{ToolExecutor},
+    function_calling::{ToolExecutionContext}};
+use super::super::error::{AnthropicError, AnthropicResult};
 
 /// Expression evaluation errors
 #[derive(Debug, Clone)]

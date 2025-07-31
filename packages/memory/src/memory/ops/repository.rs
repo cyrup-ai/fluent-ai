@@ -1,6 +1,6 @@
 //! Memory repository for managing in-memory cache and indexing
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};

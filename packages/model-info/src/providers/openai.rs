@@ -103,7 +103,6 @@ fn adapt_openai_to_model_info(model: &str) -> ModelInfo {
         // Capability flags
         supports_vision: model.contains("gpt-4o"),
         supports_function_calling: model.contains("gpt-4") && !model.contains("3.5"),
-        supports_streaming: !model.contains("embedding"),
         supports_embeddings: model.contains("embedding"),
         requires_max_tokens: false,
         supports_thinking: is_thinking,
@@ -129,9 +128,6 @@ pub trait OpenAiModelExt {
     
     /// Check if model supports function calling
     fn supports_function_calling(&self) -> bool;
-    
-    /// Check if model supports streaming
-    fn supports_streaming(&self) -> bool;
     
     /// Check if model is an embedding model
     fn is_embedding_model(&self) -> bool;
@@ -177,12 +173,6 @@ impl OpenAiModelExt for OpenAi {
             OpenAi::Gpt41 | OpenAi::Gpt41Mini | 
             OpenAi::Gpt4o | OpenAi::Gpt4oMini
         )
-    }
-    
-    #[inline(always)]
-    fn supports_streaming(&self) -> bool {
-        // All chat models support streaming, embeddings do not
-        !self.is_embedding_model()
     }
     
     #[inline(always)]
@@ -276,14 +266,6 @@ pub mod string_utils {
         OpenAi::from_model_str(model)
             .map(|m| OpenAiModelExt::supports_function_calling(&m))
             .unwrap_or(model.contains("gpt-4") && !model.contains("3.5"))
-    }
-    
-    /// Check if string model name supports streaming (dynamic detection)
-    #[inline(always)]
-    pub fn supports_streaming(model: &str) -> bool {
-        OpenAi::from_model_str(model)
-            .map(|m| OpenAiModelExt::supports_streaming(&m))
-            .unwrap_or(!model.contains("embedding")) // Most models support streaming except embeddings
     }
     
     /// Check if string model name is embedding model (dynamic detection)
@@ -392,8 +374,8 @@ pub mod string_utils {
             TEXT_EMBEDDING_3_SMALL => 1536,
             _ if model.contains("embedding-3-large") => 3072,
             _ if model.contains("embedding-3-small") => 1536,
-            _ if model.contains("embedding") => 1536, // fallback for other embedding models
-            _ => 0, // non-embedding models
+            _ if model.contains("embedding") => 1536, // Default: standard embedding dimension for unspecified models
+            _ => 0, // Default: non-embedding models have zero embedding dimensions
         }
     }
     

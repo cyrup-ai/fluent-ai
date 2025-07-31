@@ -5,7 +5,7 @@
 //! including transitions, relationships between versions, and
 //! analysis of memory development patterns.
 
-use std::collections::{HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};

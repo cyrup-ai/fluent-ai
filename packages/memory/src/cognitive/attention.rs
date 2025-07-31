@@ -8,12 +8,13 @@
 //! - SIMD-optimized vector operations
 //! - Production-ready reliability patterns
 
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use crossbeam::channel::{Receiver, Sender, bounded, unbounded};
-use fluent_ai_simd::{compute_softmax, smart_cosine_similarity};
+use fluent_ai_simd::{softmax, smart_cosine_similarity};
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
@@ -487,6 +488,7 @@ impl AttentionMechanism {
         let syntactic_complexity = self.estimate_syntactic_complexity(text);
 
         TextFeatures {
+            avg_word_length,
             word_density,
             char_diversity,
             lexical_diversity,
@@ -590,6 +592,7 @@ impl AttentionMechanism {
 
 /// Comprehensive text features for embedding generation
 struct TextFeatures {
+    avg_word_length: f32,
     word_density: f32,
     char_diversity: f32,
     lexical_diversity: f32,

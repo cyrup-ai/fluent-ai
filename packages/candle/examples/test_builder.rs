@@ -1,7 +1,7 @@
 //! Test the working CandleFluentAi builder pattern
 //! This test verifies that the basic ARCHITECTURE.md syntax compiles
 
-use fluent_ai_candle::builders::agent_role_working::{
+use fluent_ai_candle::builders::agent_role::{
     CandleFluentAi, CandleMessageRole, CandleChatLoop, CandleStdio,
 };
 

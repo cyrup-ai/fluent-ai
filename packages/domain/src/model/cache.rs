@@ -484,7 +484,6 @@ impl ModelCache {
             output_price: Some(pricing_output),
             supports_vision: false,
             supports_function_calling: true,
-            supports_streaming: true,
             supports_embeddings: false,
             requires_max_tokens: false,
             supports_thinking: is_thinking,

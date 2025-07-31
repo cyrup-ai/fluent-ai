@@ -3,6 +3,7 @@
 //! Production-ready vector index implementations with zero-allocation design,
 //! lock-free concurrent access, and blazing-fast search performance.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use dashmap::DashMap;

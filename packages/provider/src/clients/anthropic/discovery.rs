@@ -106,7 +106,7 @@ impl ProviderModelDiscovery for AnthropicDiscovery {
     }
 }
 
-// Legacy implementation for backwards compatibility
+// Additional implementation for AnthropicDiscovery
 impl AnthropicDiscovery {
     pub fn provider_name(&self) -> &'static str {
         "anthropic"

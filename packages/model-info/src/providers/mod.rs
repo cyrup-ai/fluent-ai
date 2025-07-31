@@ -1,7 +1,16 @@
+pub mod ai21;
 pub mod anthropic;
+pub mod azure;
+pub mod bedrock;
+pub mod cohere;
+pub mod gemini;
+pub mod groq;
 pub mod huggingface;
 pub mod mistral;
+pub mod ollama;
 pub mod openai;
 pub mod openrouter;
+pub mod perplexity;
 pub mod together;
+pub mod vertexai;
 pub mod xai;

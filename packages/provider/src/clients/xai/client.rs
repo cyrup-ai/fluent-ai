@@ -15,19 +15,20 @@ use fluent_ai_domain::AsyncTask;
 use fluent_ai_domain::prompt::Prompt;
 use fluent_ai_domain::completion::{
     self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder};
+use fluent_ai_domain::context::document::Document;
 use fluent_ai_domain::memory::workflow::PromptError;
 use fluent_ai_domain::message::Message;
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest, HttpResponse};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 use tokio::sync::mpsc::channel;
 // Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
 use tokio::{task::JoinHandle as AsyncTaskHandle, task::spawn as spawn_async};
 
-use super::completion::{CompletionModel, GROK_3};
+use super::completion::{CompletionModel, XaiCompletionModel, GROK_3};
 use crate::{
-    client::{CompletionClient, ProviderClient},
-    json_util};
+    client::{CompletionClient, ProviderClient}};
+use fluent_ai_domain::util::json_util;
 
 // ============================================================================
 // xAI API Client with HTTP3 and zero-allocation patterns
@@ -161,7 +162,7 @@ impl Client {
         &self,
         path: &str,
         body: Vec<u8>,
-    ) -> Result<fluent_ai_http3::Response> {
+    ) -> Result<fluent_ai_http3::HttpResponse> {
         let url = format!("{}/{}", self.base_url, path);
 
         // Build headers with zero allocation
@@ -272,8 +273,8 @@ pub struct XAICompletionBuilder<'a, S> {
     stop: Option<Vec<String>>,
     preamble: Option<String>,
     chat_history: Vec<Message>,
-    documents: Vec<completion::Document>,
-    tools: Vec<completion::ToolDefinition>,
+    documents: Vec<fluent_ai_domain::context::Document>,
+    tools: Vec<fluent_ai_domain::completion::ToolDefinition>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
     _state: std::marker::PhantomData<S>}
@@ -365,13 +366,13 @@ impl<'a, S> XAICompletionBuilder<'a, S> {
     }
 
     #[inline(always)]
-    pub fn documents(mut self, docs: Vec<completion::Document>) -> Self {
+    pub fn documents(mut self, docs: Vec<fluent_ai_domain::context::Document>) -> Self {
         self.documents = docs;
         self
     }
 
     #[inline(always)]
-    pub fn tools(mut self, tools: Vec<completion::ToolDefinition>) -> Self {
+    pub fn tools(mut self, tools: Vec<fluent_ai_domain::completion::ToolDefinition>) -> Self {
         self.tools = tools;
         self
     }
@@ -473,7 +474,7 @@ impl<'a> XAICompletionBuilder<'a, HasPrompt> {
         self,
     ) -> AsyncTask<
         Result<
-            completion::CompletionResponse<super::completion::CompletionResponse>,
+            completion::CompletionResponse<'static>,
             CompletionError,
         >,
     > {

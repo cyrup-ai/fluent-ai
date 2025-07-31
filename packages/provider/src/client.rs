@@ -8,7 +8,7 @@ use fluent_ai_domain::context::chunk::CompletionChunk;
 // Note: EmbeddingChunk and VoiceChunk may be in context::chunk or may need to be created
 use fluent_ai_domain::context::chunk::CompletionChunk as EmbeddingChunk;
 use fluent_ai_domain::context::chunk::CompletionChunk as VoiceChunk;
-use crate::{AsyncStream, AsyncTask};
+use fluent_ai_async::{AsyncStream, AsyncTask};
 
 /// Core completion client trait using async task patterns
 pub trait CompletionClient: Send + Sync + Clone {

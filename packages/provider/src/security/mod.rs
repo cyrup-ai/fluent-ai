@@ -14,7 +14,10 @@ pub mod encryption;
 pub mod rotation;
 
 pub use audit::{AuditLogger, CredentialEvent, SecurityEvent};
-pub use credentials::{CredentialConfig, CredentialManager, SecureCredential};
+pub use credentials::{
+    CredentialConfig, CredentialManager, SecureCredential, 
+    CredentialSource, CredentialStatistics, CredentialMetadata
+};
 pub use encryption::EncryptionEngine;
 pub use rotation::{KeyRotationScheduler, RotationPolicy};
 use thiserror::Error;

@@ -1,272 +1,622 @@
-# Model-Info Domain Integration TODO
+# Model-Info Package TODO - Production Readiness Issues
 
-## CRITICAL: Fix Warnings First (112 warnings to resolve)
+## HIGH PRIORITY ISSUES
 
-### PRIORITY 1: Fix build.rs unused object fields
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/build.rs`
-- **Lines**: 15, 21, 27 (OpenAiModelsResponse, MistralModelsResponse, XaiModelsResponse)
-- **Implementation**: Rename `object: String` to `_object: String` to indicate intentional non-use while maintaining API compatibility
-- **Architecture**: Maintains serde compatibility with API responses while eliminating dead code warnings
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+### 1. Incomplete Provider Implementations (CRITICAL)
+**File:** `src/lib.rs` 
+**Lines:** 37, 123, 143
+**Issue:** "for now" comments indicate incomplete provider implementations - unit variants return empty streams instead of actual functionality
 
-### PRIORITY 1 QA: Verify build.rs object field fixes
-- **Action**: Act as an Objective QA Rust developer and rate the work on a scale of 1-10. Verify fields renamed to _object, API compatibility maintained, no additional changes made, warnings resolved.
-- **Status**: ⏳ TODO
+**Technical Solution:**
+```rust
+// CURRENT (NON-PRODUCTION):
+Provider::OpenAI | Provider::Azure | Provider::VertexAI | Provider::Gemini |
+Provider::Bedrock | Provider::Cohere | Provider::Ollama | Provider::Groq |
+Provider::AI21 | Provider::Perplexity | Provider::DeepSeek => {
+    AsyncStream::empty()  // for now
+}
 
-### PRIORITY 2: Remove unused Context imports 
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/src/providers/*.rs`
-- **Implementation**: Change `use anyhow::{anyhow, Context, Result}` to `use anyhow::{anyhow, Result}` where Context is unused
-- **Architecture**: Clean import declarations, only import what's actually used
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+// REQUIRED PRODUCTION SOLUTION:
+Provider::OpenAI => {
+    let provider = OpenAiProvider::new();
+    provider.get_model_info(model)
+},
+Provider::Azure => {
+    let provider = AzureProvider::new();
+    provider.get_model_info(model)
+},
+// ... implement for each provider
+```
 
-### PRIORITY 2 QA: Verify Context import removal
-- **Action**: Act as an Objective QA Rust developer and rate the unused Context import removal on a scale of 1-10. Verify only unused imports removed, used imports preserved, all provider files checked.
-- **Status**: ⏳ TODO
+**Implementation Steps:**
+1. Create concrete provider structs for each unit variant
+2. Implement ProviderTrait for each new provider
+3. Replace unit variants with concrete provider instances in Provider enum
+4. Ensure each provider has proper HTTP client integration with fluent_ai_http3
+5. Add comprehensive error handling for API failures
+6. Implement caching strategies for model metadata
+7. Add retry logic with exponential backoff
 
-### PRIORITY 3: Fix variant naming convention (98 warnings)
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/build.rs`
-- **Lines**: 71-82 (sanitize_ident function)
-- **Implementation**: Replace `.to_uppercase()` with proper PascalCase conversion: split on non-alphanumeric, capitalize first letter of each word, join without separators, handle leading digits
-- **Architecture**: Generate Rust-idiomatic enum variants following PascalCase convention
-- **Target examples**: `gpt-4.1` → `Gpt41`, `mistral-large-2407` → `MistralLarge2407`
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+### 2. Large File Decomposition Required
 
-### PRIORITY 3 QA: Verify variant naming fix
-- **Action**: Act as an Objective QA Rust developer and rate the variant naming fix on a scale of 1-10. Verify all variants use PascalCase, follows Rust conventions, generated code compiles, no SCREAMING_SNAKE_CASE remains.
-- **Status**: ⏳ TODO
+#### 2.1 common.rs (549 lines) - Critical Decomposition
+**Issue:** Single large file mixing multiple concerns - trait definitions, data structures, builders, error handling, capabilities
 
-### PRIORITY 4: Replace async fn in ProviderTrait
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/src/common.rs`
-- **Implementation**: Change `async fn get_model_info(&self, model: &str) -> Result<ModelInfo>` to sync method returning concrete async type per CLAUDE.md guidelines
-- **Architecture**: Follow CLAUDE.md constraint "never use async_trait" and "prefer sync methods that return concrete AsyncTask or AsyncStream"
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+**Decomposition Plan:**
+```
+src/common/
+├── mod.rs           - Public interface and re-exports (20 lines)
+├── model.rs         - Model trait definition only (50 lines)
+├── info.rs          - ModelInfo struct and core implementations (120 lines)
+├── builder.rs       - ModelInfoBuilder implementation (150 lines)
+├── capabilities.rs  - ModelCapabilities and capability logic (80 lines)
+├── error.rs         - ModelError enum and Result type (40 lines)
+├── provider.rs      - ProviderTrait and provider abstractions (60 lines)
+└── collections.rs   - ProviderModels and collection types (60 lines)
+```
 
-### PRIORITY 4 QA: Verify async fn replacement
-- **Action**: Act as an Objective QA Rust developer and rate the async fn trait replacement on a scale of 1-10. Verify trait uses concrete return types, follows CLAUDE.md guidelines, implementations compile correctly.
-- **Status**: ⏳ TODO
+**Implementation Steps:**
+1. Create `src/common/` directory structure
+2. Extract Model trait to `model.rs` with proper trait bounds
+3. Move ModelInfo struct and core impls to `info.rs`
+4. Extract builder pattern to dedicated `builder.rs`
+5. Separate capabilities logic into `capabilities.rs`
+6. Create focused error module in `error.rs`
+7. Extract provider abstractions to `provider.rs`
+8. Move collection types to `collections.rs`
+9. Create clean `mod.rs` with public re-exports
+10. Update all import statements across codebase
 
-### PRIORITY 5: Scan for unwrap/expect in src/*
-- **File**: All files in `/Volumes/samsung_t9/fluent-ai/packages/model-info/src/`
-- **Implementation**: Replace any unwrap() and expect() calls with proper error handling using ? operator and Result types
-- **Architecture**: Production-ready error handling that never panics in src/* code
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+#### 2.2 openai.rs (418 lines) - Decomposition Required
+**Issue:** Provider implementation, extensions, constants, and dynamic detection mixed in single file
 
-### PRIORITY 5 QA: Verify unwrap/expect removal
-- **Action**: Act as an Objective QA Rust developer and rate the unwrap/expect removal on a scale of 1-10. Verify no unwrap() in src/*, no expect() in src/*, proper error handling implemented.
-- **Status**: ⏳ TODO
+**Decomposition Plan:**
+```
+src/providers/openai/
+├── mod.rs        - Public interface and re-exports (20 lines)
+├── provider.rs   - OpenAiProvider implementation (100 lines)
+├── extensions.rs - OpenAiModelExt trait and implementations (200 lines)
+├── constants.rs  - Model constants and static data (50 lines)
+└── adapter.rs    - Model info adaptation logic (80 lines)
+```
 
-### PRIORITY 6: Final cargo check verification
-- **Implementation**: Run `cargo check` from workspace root and verify 0 errors, 0 warnings achieved
-- **Architecture**: Confirm all 112 warnings resolved, clean compilation across workspace
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+**Implementation Steps:**
+1. Create `src/providers/openai/` directory structure
+2. Extract provider implementation to `provider.rs`
+3. Move extension traits to `extensions.rs`
+4. Consolidate constants in `constants.rs`
+5. Extract adaptation logic to `adapter.rs`
+6. Update imports and re-exports in `mod.rs`
 
-### PRIORITY 6 QA: Verify final build quality
-- **Action**: Act as an Objective QA Rust developer and rate the final cargo check results on a scale of 1-10. Verify 0 errors achieved, 0 warnings achieved, all packages compile.
-- **Status**: ⏳ TODO
+## MEDIUM PRIORITY ISSUES
 
-## CRITICAL: Fix Build-Time Code Generation (Real API Integration)
+### 3. Language Accuracy Issues (False Positives)
 
-### PRIORITY 7: Revert incorrect runtime API implementations
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/src/providers/openai.rs`, `anthropic.rs`, `mistral.rs`, `together.rs`, `xai.rs`, `huggingface.rs`, `openrouter.rs`
-- **Implementation**: Remove AsyncStream runtime API call implementations incorrectly added. Restore provider modules to build-script helper purpose with data structures and adapter functions only.
-- **Architecture**: Provider modules should contain only serde structs and adapt_*_to_model_info functions for build.rs use, not runtime AsyncStream implementations
-- **Specific changes**: Remove Http3 imports, env imports, AsyncStream implementations, restore original simple provider pattern
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+#### 3.1 Legacy Comment in Mistral Provider
+**File:** `src/providers/mistral.rs`
+**Line:** 81
+**Issue:** "Legacy" comment is inaccurate - these are current model variants, not legacy ones
 
-### PRIORITY 7 QA: Verify runtime implementation reversion
-- **Action**: Act as an Objective QA Rust developer and rate the provider reversion on a scale of 1-10. Verify AsyncStream runtime code removed, build-script helper functions preserved, imports cleaned up, files compile.
-- **Status**: ⏳ TODO
+**Solution:** Replace comment with descriptive text:
+```rust
+// Legacy
+m.insert("mistral-large-latest", (128000, 32000, 8.0, 24.0, false, true, true, false, false));
 
-### PRIORITY 8: Implement real API calls in build.rs for 6 providers
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/build.rs`
-- **Lines**: 185-395 (OpenAI, Mistral, Together, OpenRouter, HuggingFace, XAI sections)
-- **Implementation**: Replace fallback static data with real HTTP calls to provider APIs during build. OpenAI: /v1/models, Mistral: /v1/models, Together: /v1/models, OpenRouter: /api/v1/models, HuggingFace: /models, XAI: /v1/models. Keep Anthropic static only.
-- **Architecture**: Build script makes HTTP calls during compilation, uses real API responses to generate model enums, graceful fallback to static data if API keys missing
-- **Error handling**: Never use unwrap() or expect(), handle HTTP failures gracefully with fallback to comprehensive static model data
-- **Performance**: Zero allocation HTTP patterns, concurrent API calls where possible, caching API responses during build
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+// CORRECTED:
+// Current generation models with latest API endpoints
+m.insert("mistral-large-latest", (128000, 32000, 8.0, 24.0, false, true, true, false, false));
+```
 
-### PRIORITY 8 QA: Verify real API implementation in build.rs
-- **Action**: Act as an Objective QA Rust developer and rate the build.rs API implementation on a scale of 1-10. Verify real HTTP calls made to 6 providers, Anthropic remains static, error handling proper, no unwrap/expect used.
-- **Status**: ⏳ TODO
+#### 3.2 Backward Compatibility Comment
+**File:** `src/common.rs`
+**Line:** 15
+**Issue:** "Backward compatibility" comment implies this is deprecated, but it's a legitimate derived method
 
-### PRIORITY 9: Fix syn code generation for valid enum output
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/build.rs`
-- **Lines**: 74-180 (generate_enum_code function and sanitize_ident)
-- **Implementation**: Ensure syn/quote generates syntactically correct Rust enums from API responses. Fix variant naming (PascalCase), trait implementations, type safety in generated code.
-- **Architecture**: Generated enums must implement Model trait correctly, follow Rust naming conventions, compile without warnings
-- **Specific fixes**: PascalCase enum variants, proper trait bounds, correct type annotations, valid Rust identifiers
-- **Status**: ⏳ TODO (complementary to Priority 3 variant naming)
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+**Solution:** Replace with accurate description:
+```rust
+// Backward compatibility
+fn max_context_length(&self) -> u64 {
 
-### PRIORITY 9 QA: Verify syn code generation quality
-- **Action**: Act as an Objective QA Rust developer and rate the syn code generation on a scale of 1-10. Verify generated enums are syntactically correct, follow Rust conventions, implement traits properly, compile cleanly.
-- **Status**: ⏳ TODO
+// CORRECTED:
+// Convenience method: total token capacity (input + output)
+fn max_context_length(&self) -> u64 {
+```
 
-### PRIORITY 10: Verify generated_models.rs file creation and include mechanism
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/model-info/build.rs` (lines 66-72), `/Volumes/samsung_t9/fluent-ai/packages/model-info/src/lib.rs` (line 11)
-- **Implementation**: Ensure generated_models.rs is properly written to OUT_DIR during build and include! macro correctly incorporates generated code. Verify file permissions, content validity, include path correctness.
-- **Architecture**: Build script writes to OUT_DIR, generated file contains valid Rust code, include! macro makes generated enums available at compile time
-- **Verification**: Check file exists after build, content is valid Rust, include works without errors
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+#### 3.3 Fallback Comment in OpenAI Provider
+**File:** `src/providers/openai.rs`
+**Line:** 395
+**Issue:** Comment suggests temporary solution, but this is proper default handling
 
-### PRIORITY 10 QA: Verify file generation mechanism
-- **Action**: Act as an Objective QA Rust developer and rate the file generation on a scale of 1-10. Verify generated_models.rs created in OUT_DIR, contains valid code, include! works properly, generated enums accessible.
-- **Status**: ⏳ TODO
+**Solution:** Replace with accurate description:
+```rust
+default
+_ => 0, // non-embedding models
 
-### PRIORITY 11: Test complete build-time code generation pipeline
-- **Implementation**: Run `cargo clean && cargo build --package model-info` with API keys set to verify complete pipeline: API calls → syn generation → file creation → compilation → generated enums available
-- **Architecture**: End-to-end validation of build-time code generation system working with real API data
-- **Verification**: Build succeeds, generated_models.rs contains real model enums, enums are usable in code, 0 errors and 0 warnings
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+// CORRECTED:
+// Default: non-embedding models have zero embedding dimensions
+_ => 0, // non-embedding models
+```
 
-### PRIORITY 11 QA: Verify complete pipeline functionality
-- **Action**: Act as an Objective QA Rust developer and rate the complete build-time pipeline on a scale of 1-10. Verify API calls work, syn generation produces valid code, file creation succeeds, compilation clean, enums accessible.
-- **Status**: ⏳ TODO
+## ARCHITECTURE IMPROVEMENTS
 
-## Core Integration Tasks
+### 4. Zero-Allocation Optimizations
+**Current Issues:** Multiple allocations in hot paths, string boxing, unnecessary clones
 
-### 1. Add model-info dependency to domain package
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/Cargo.toml`
-- **Line**: Add to dependencies section (around line 10-15)
-- **Implementation**: Add `model-info = { path = "../model-info" }` dependency
-- **Architecture**: Maintains dependency chain fluent_ai -> fluent_ai_memory -> fluent_ai_provider -> fluent_ai_domain, with domain now importing model-info
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+**Required Optimizations:**
+1. Replace `Box::leak(model.to_string().into_boxed_str())` with const string tables
+2. Use `&'static str` for all model names and provider names
+3. Implement copy-on-write semantics for optional strings
+4. Use stack-allocated arrays for model lists instead of Vec allocations
+5. Implement zero-copy model name parsing with const generics
 
-### 2. QA: Verify dependency integration
-- **Action**: Act as an Objective QA Rust developer and verify the dependency was added correctly, follows semantic versioning, maintains dependency chain integrity, and doesn't introduce circular dependencies
-- **Status**: ⏳ TODO
+### 5. Async Stream Optimization
+**Current Issues:** Inefficient channel usage, blocking operations
 
-### 3. Create unified model registry in domain package
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/model/registry.rs` (new file)
-- **Implementation**: Create `ModelRegistry` struct that aggregates all provider models from model-info, provides query functions by provider, model name, capabilities, and pricing ranges
-- **Architecture**: Central registry pattern that wraps model-info providers with domain-specific abstractions, uses lazy static initialization for performance
-- **Specific functions**: `all_models()`, `models_by_provider()`, `models_by_capability()`, `models_by_price_range()`, `find_model()`
-- **Error handling**: Return Result<T, ModelError> for all operations, never use unwrap() or expect()
-- **Performance**: Zero allocation query patterns, lock-free data structures, inlined happy paths
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+**Required Improvements:**
+1. Implement lock-free async streams using crossbeam-skiplist
+2. Replace channel-based streams with generator-style iterators
+3. Add back-pressure handling for large model lists
+4. Implement streaming HTTP responses for model discovery
+5. Add connection pooling for HTTP clients
 
-### 4. QA: Verify registry implementation
-- **Action**: Act as an Objective QA Rust developer and verify the registry provides comprehensive model access, uses proper error handling without unwrap/expect, follows domain architecture patterns, and provides ergonomic API for consumers
-- **Status**: ⏳ TODO
+### 6. Error Handling Enhancement
+**Current Issues:** Generic error types, missing context, no recovery strategies
 
-### 5. Add model caching layer for performance optimization
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/model/cache.rs` (new file)
-- **Implementation**: Thread-safe LRU cache using dashmap for model info, TTL-based invalidation (5 minutes default), cache-aside pattern for model data retrieval
-- **Architecture**: Caching layer between registry and model-info providers, uses Arc<DashMap> for thread safety, implements cache warming for frequently accessed models
-- **Specific implementation**: `ModelCache` struct with `get()`, `put()`, `invalidate()`, `clear()` methods, background TTL cleanup task
-- **Error handling**: Cache misses fall back to provider APIs, handle cache poisoning gracefully
-- **Performance**: Lock-free caching with atomic operations, zero-copy cache hits, async cache warming
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+**Production Requirements:**
+1. Implement structured error types with full context
+2. Add error recovery strategies for network failures
+3. Implement circuit breaker pattern for provider failures
+4. Add comprehensive error logging with tracing
+5. Implement retry logic with jitter and exponential backoff
 
-### 6. QA: Verify caching layer
-- **Action**: Act as an Objective QA Rust developer and verify the caching layer provides proper thread safety, implements TTL correctly, handles cache misses gracefully, and improves performance without compromising data freshness
-- **Status**: ⏳ TODO
+## TESTING INFRASTRUCTURE
 
-### 7. Create model validation functions for reliability
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/model/validation.rs` (new file)
-- **Implementation**: `ModelValidator` with functions to check model availability, validate API keys, test provider connectivity, verify model capabilities match requirements
-- **Architecture**: Validation layer that ensures models are accessible before use, integrates with provider health checks, provides detailed validation reports
-- **Specific functions**: `validate_model_exists()`, `validate_provider_access()`, `validate_model_capabilities()`, `batch_validate_models()`
-- **Error handling**: Return detailed validation errors with provider-specific error codes, never use unwrap() or expect()
-- **Performance**: Parallel validation for batch operations, cached validation results, circuit breaker pattern
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+### 7. Test Infrastructure Setup
+**Current State:** No dedicated test directory structure
 
-### 8. QA: Verify validation functions
-- **Action**: Act as an Objective QA Rust developer and verify the validation functions properly check model availability, handle network failures gracefully, provide actionable error messages, and integrate seamlessly with the registry
-- **Status**: ⏳ TODO
+**Required Implementation:**
+1. Bootstrap nextest for parallel test execution
+2. Create `tests/` directory structure:
+   ```
+   tests/
+   ├── integration/
+   │   ├── provider_tests.rs
+   │   ├── model_discovery.rs
+   │   └── api_integration.rs
+   ├── unit/
+   │   ├── common_tests.rs
+   │   ├── builder_tests.rs
+   │   └── capability_tests.rs
+   └── fixtures/
+       ├── mock_responses/
+       └── test_data/
+   ```
+3. Implement comprehensive test coverage (>90%)
+4. Add performance benchmarks for hot paths
+5. Create integration tests for all providers
+6. Add property-based testing for model validation
 
-### 9. Update domain model mod.rs to re-export model-info types
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/model/mod.rs`
-- **Lines**: Add re-exports section (around line 5-10)
-- **Implementation**: Re-export key types from model-info (Provider, ModelInfo, ProviderTrait), add mod declarations for registry, cache, validation modules
-- **Architecture**: Domain serves as facade for model-info, provides unified access point for all model-related functionality
-- **Specific re-exports**: `pub use model_info::{Provider, ModelInfo, ProviderTrait, OpenAIModels, AnthropicModels, etc.}`
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+### 8. Logging Infrastructure
+**Current State:** No structured logging
 
-### 10. QA: Verify re-exports
-- **Action**: Act as an Objective QA Rust developer and verify the re-exports maintain API compatibility, don't create naming conflicts, follow Rust module conventions, and provide clean access to model-info functionality
-- **Status**: ⏳ TODO
+**Required Implementation:**
+1. Replace any remaining println!/eprintln! with tracing macros
+2. Implement structured logging with context propagation
+3. Add performance metrics collection
+4. Implement distributed tracing for async operations
+5. Add configurable log levels per module
 
-### 11. Update domain lib.rs to expose model functionality
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/lib.rs`
-- **Lines**: Add pub mod model declaration and re-exports (around line 15-20)
-- **Implementation**: Ensure model module is properly exposed, re-export key model types at crate root for ergonomic access
-- **Architecture**: Clean crate-level API that makes model functionality easily discoverable and accessible
-- **Specific changes**: Ensure `pub mod model;` exists, add convenience re-exports like `pub use model::{ModelRegistry, ModelCache, ModelValidator}`
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+## PERFORMANCE OPTIMIZATIONS
 
-### 12. QA: Verify lib.rs integration
-- **Action**: Act as an Objective QA Rust developer and verify the lib.rs properly exposes model functionality, maintains clean API surface, follows crate organization best practices, and provides intuitive access to model features
-- **Status**: ⏳ TODO
+### 9. Caching Strategy
+**Required Features:**
+1. Implement LRU cache for model metadata with TTL
+2. Add memory-mapped cache files for persistence
+3. Implement cache invalidation strategies
+4. Add cache warming for frequently accessed models
+5. Implement distributed cache support for multi-instance deployments
 
-## Integration Quality Assurance
+### 10. Connection Management
+**Required Features:**
+1. Implement HTTP/3 connection pooling
+2. Add intelligent load balancing for provider endpoints
+3. Implement connection health monitoring
+4. Add automatic failover for provider outages
+5. Implement rate limiting compliance
 
-### 13. Create comprehensive integration tests for model functionality
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/tests/model_integration_tests.rs` (new file)
-- **Implementation**: Integration tests that verify registry queries work with real model data, caching improves performance, validation catches real errors, all provider models are accessible
-- **Architecture**: Test suite that validates end-to-end model functionality without mocking, uses real API keys from environment variables
-- **Specific tests**: Test model queries return real data, cache hits/misses work correctly, validation detects unavailable models, provider enumeration is complete
-- **Error handling**: Use expect() in tests for clear failure messages, test error propagation paths
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+## SECURITY ENHANCEMENTS
 
-### 14. QA: Verify integration tests
-- **Action**: Act as an Objective QA Rust developer and verify the integration tests comprehensively cover model functionality, use real data sources, provide clear failure diagnostics, and validate production-ready behavior
-- **Status**: ⏳ TODO
+### 11. API Key Management
+**Required Features:**
+1. Implement secure API key storage with encryption at rest
+2. Add API key rotation support
+3. Implement rate limiting per API key
+4. Add audit logging for API key usage
+5. Implement key validation and health checks
 
-### 15. Add performance benchmarks for model operations
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/benches/model_performance.rs` (new file)
-- **Implementation**: Criterion benchmarks for model registry queries, cache performance, validation speed, provider enumeration performance
-- **Architecture**: Benchmark suite that measures performance with and without caching, across different query patterns and data sizes
-- **Specific benchmarks**: Benchmark `all_models()`, `models_by_provider()`, cache hit/miss performance, validation overhead
-- **Performance targets**: Registry queries <1ms, cache hits <100μs, validation <500ms per model
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+### 12. Input Validation
+**Required Features:**
+1. Implement comprehensive input sanitization
+2. Add rate limiting for model discovery requests
+3. Implement request size limits
+4. Add CORS and security headers for HTTP responses
+5. Implement audit trails for all operations
 
-### 16. QA: Verify performance benchmarks
-- **Action**: Act as an Objective QA Rust developer and verify the benchmarks accurately measure performance, identify bottlenecks, provide meaningful metrics, and validate performance meets production requirements
-- **Status**: ⏳ TODO
+## COMPLIANCE AND MONITORING
 
-## Documentation and Examples
+### 13. Observability
+**Required Features:**
+1. Implement OpenTelemetry integration
+2. Add custom metrics for model usage patterns
+3. Implement health check endpoints
+4. Add performance monitoring with percentiles
+5. Implement alerting for provider failures
 
-### 17. Create comprehensive documentation for model functionality
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/model/README.md` (new file)
-- **Implementation**: Complete documentation covering registry usage, caching behavior, validation patterns, provider integration, error handling strategies
-- **Architecture**: User-focused documentation with practical examples, performance considerations, troubleshooting guides
-- **Specific sections**: Quick start guide, API reference, performance tuning, error handling, provider configuration
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+### 14. Documentation
+**Required Features:**
+1. Generate comprehensive API documentation
+2. Add usage examples for all public APIs
+3. Create troubleshooting guides
+4. Add performance tuning recommendations
+5. Create migration guides for breaking changes
 
-### 18. QA: Verify documentation
-- **Action**: Act as an Objective QA Rust developer and verify the documentation is comprehensive, accurate, includes working examples, follows documentation best practices, and enables developers to use the model functionality effectively
-- **Status**: ⏳ TODO
+---
 
-### 19. Create practical usage examples for model functionality
-- **File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/examples/model_usage.rs` (new file)
-- **Implementation**: Complete working examples showing registry queries, caching usage, model validation, provider-specific operations
-- **Architecture**: Real-world usage patterns that demonstrate best practices, error handling, performance optimization
-- **Specific examples**: Query models by capability, validate model before use, cache model info for performance, handle provider failures
-- **Error handling**: Never use expect() in examples, demonstrate proper error propagation
-- **Status**: ⏳ TODO
-- **Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.
+## IMMEDIATE EXECUTION PLAN
+*Concrete tasks ready for implementation - execute in order*
 
-### 20. QA: Verify usage examples
-- **Action**: Act as an Objective QA Rust developer and verify the examples are complete, demonstrate best practices, handle errors properly, use real functionality without mocking, and provide practical value to developers
-- **Status**: ⏳ TODO
+### PHASE 1: Language Fixes (Low Risk)
+**TASK 1.1:** Fix mistral.rs legacy comment
+- **File:** `src/providers/mistral.rs`  
+- **Line:** 81
+- **Action:** Replace `// Legacy` with `// Current generation models with latest API endpoints`
+
+**TASK 1.2:** Fix common.rs backward compatibility comment  
+- **File:** `src/common.rs`
+- **Line:** 15-16  
+- **Action:** Replace `// Backward compatibility` with `// Convenience method: total token capacity (input + output)`
+
+**TASK 1.3:** Fix openai.rs fallback comment
+- **File:** `src/providers/openai.rs`
+- **Line:** 395
+- **Action:** Replace `// fallback` with `// Default: non-embedding models have zero embedding dimensions`
+
+### PHASE 2: Common Module Decomposition
+**TASK 2.1:** Create common module directory
+- **Action:** Create `src/common/` directory structure
+
+**TASK 2.2:** Extract error handling module
+- **Source:** `src/common.rs` lines 117-133 (ModelError enum)
+- **Target:** `src/common/error.rs`
+- **Content:** ModelError enum, Result type, comprehensive error context
+
+**TASK 2.3:** Extract Model trait
+- **Source:** `src/common.rs` lines 5-52 (Model trait)  
+- **Target:** `src/common/model.rs`
+- **Content:** Core Model trait with zero-allocation trait bounds
+
+**TASK 2.4:** Extract ModelInfo struct  
+- **Source:** `src/common.rs` lines 75-116 (ModelInfo struct)
+- **Target:** `src/common/info.rs` 
+- **Content:** ModelInfo struct, Hash impl, core methods (150+ lines)
+
+**TASK 2.5:** Extract capabilities module
+- **Source:** `src/common.rs` lines 134-155 (ModelCapabilities)
+- **Target:** `src/common/capabilities.rs`
+- **Content:** ModelCapabilities struct, capability filtering logic
+
+**TASK 2.6:** Extract builder pattern
+- **Source:** `src/common.rs` lines 320-460 (ModelInfoBuilder)  
+- **Target:** `src/common/builder.rs`
+- **Content:** Complete builder implementation with zero allocations
+
+**TASK 2.7:** Extract provider abstractions
+- **Source:** Distributed across `src/common.rs` (ProviderTrait references)
+- **Target:** `src/common/provider.rs`
+- **Content:** ProviderTrait definition, provider abstractions
+
+**TASK 2.8:** Create collections module
+- **Target:** `src/common/collections.rs`
+- **Content:** ProviderModels, model collection types, efficient indexing
+
+**TASK 2.9:** Create mod.rs with re-exports
+- **Target:** `src/common/mod.rs`  
+- **Content:** Clean public interface, performance-optimized re-exports
+
+**TASK 2.10:** Update import statements
+- **Files:** All files importing from `src/common.rs`
+- **Action:** Update imports to use new module structure
+
+### PHASE 3: OpenAI Module Decomposition  
+**TASK 3.1:** Create openai module directory
+- **Action:** Create `src/providers/openai/` directory
+
+**TASK 3.2:** Extract constants
+- **Source:** `src/providers/openai.rs` lines 150-200 (model constants)
+- **Target:** `src/providers/openai/constants.rs`
+- **Content:** All model constants, zero-allocation const arrays
+
+**TASK 3.3:** Extract provider implementation
+- **Source:** `src/providers/openai.rs` lines 18-56 (OpenAiProvider)
+- **Target:** `src/providers/openai/provider.rs`  
+- **Content:** Provider struct, ProviderTrait implementation
+
+**TASK 3.4:** Extract model adaptation logic
+- **Source:** `src/providers/openai.rs` lines 57-118 (adapt_openai_to_model_info)
+- **Target:** `src/providers/openai/adapter.rs`
+- **Content:** Zero-allocation model info adaptation
+
+**TASK 3.5:** Extract extension traits  
+- **Source:** `src/providers/openai.rs` lines 119-418 (OpenAiModelExt)
+- **Target:** `src/providers/openai/extensions.rs`
+- **Content:** All extension traits with inline optimizations
+
+**TASK 3.6:** Create openai mod.rs
+- **Target:** `src/providers/openai/mod.rs`
+- **Content:** Public re-exports, clean interface
+
+**TASK 3.7:** Update openai imports
+- **Files:** Files importing from `src/providers/openai.rs`
+- **Action:** Update to use new module structure
+
+### PHASE 4: Provider Implementation (Critical)
+**TASK 4.1:** Create concrete provider structs  
+- **Files:** Create missing provider files in `src/providers/`
+- **Providers:** azure.rs, vertexai.rs, gemini.rs, bedrock.rs, cohere.rs, ollama.rs, groq.rs, ai21.rs, perplexity.rs, deepseek.rs
+- **Content:** Complete provider implementations with HTTP/3 integration
+
+**TASK 4.2:** Implement ProviderTrait for each
+- **Requirements:** Zero-allocation implementations, comprehensive error handling, retry logic
+
+**TASK 4.3:** Update Provider enum in lib.rs
+- **File:** `src/lib.rs` 
+- **Lines:** 26-50 (Provider enum), 123-146 (get_model_info match), 144-166 (list_models match)
+- **Action:** Replace unit variants with concrete provider instances
+
+### PHASE 5: Zero-Allocation Optimizations
+**TASK 5.1:** Implement const string tables
+- **Files:** All provider files using `Box::leak(model.to_string().into_boxed_str())`
+- **Action:** Replace with const lookup tables
+
+**TASK 5.2:** Optimize async streams  
+- **Files:** All files using AsyncStream::with_channel
+- **Action:** Implement lock-free stream patterns with crossbeam-skiplist
+
+**TASK 5.3:** Add performance-critical inlining
+- **Files:** Hot path methods across all modules
+- **Action:** Add `#[inline(always)]` to critical methods
+
+### PHASE 6: Test Infrastructure
+**TASK 6.1:** Create test directory structure
+- **Action:** Create complete `tests/` directory with integration and unit test structure
+
+**TASK 6.2:** Implement core test suites
+- **Files:** Create comprehensive test files for each module
+- **Coverage:** >90% test coverage requirement
+
+**TASK 6.3:** Add performance benchmarks
+- **Action:** Create criterion.rs benchmarks for hot paths
+
+---
+
+## VERIFICATION CRITERIA
+
+Each TODO item must meet these criteria before completion:
+- ✅ Zero allocation in hot paths
+- ✅ No unsafe code blocks
+- ✅ No locking mechanisms (lock-free only)
+- ✅ Comprehensive error handling
+- ✅ >90% test coverage
+- ✅ Production-grade documentation
+- ✅ Performance benchmarks passing
+- ✅ Security audit compliance
+- ✅ Zero warnings in cargo check
+- ✅ All APIs are ergonomic and intuitive
+
+## DEPENDENCIES
+
+Ensure all dependencies use latest stable versions:
+- fluent_ai_http3: latest (HTTP/3 support)
+- fluent_ai_async: latest (async streams)  
+- tokio: 1.47+ (async runtime)
+- serde: 1.0.219+ (serialization)
+- tracing: 0.1.41+ (structured logging)
+- thiserror: 2.0+ (error handling)
+- crossbeam-skiplist: latest (lock-free data structures)
+---
+
+# APPROVED ARCHITECTURE REFACTORING - UNFUCK MODEL-INFO PACKAGE
+
+## CRITICAL PRIORITY: Eliminate Monolithic Build Script and Hardcoded Fallbacks
+
+### ARCHITECTURE MILESTONE 1: Decompose Monolithic Build Script
+
+- [ ] Create `build/` directory structure with provider modules (decompose 595-line build.rs monolith)
+  - **Files:** Create build/mod.rs, build/providers/mod.rs, build/codegen.rs, build/http.rs
+  - **Architecture:** Strategy pattern with shared composition for syn/gen type stuff
+  - **Lines Impacted:** Replace entire build.rs (595 lines) with modular structure
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the modular architecture implementation against strategy pattern requirements and clean separation of concerns
+
+- [ ] Define common `ProviderBuilder` trait in `build/providers/mod.rs`
+  - **Implementation:** Define interface for `fetch_models()` and `generate_code()` 
+  - **Architecture:** Strategy pattern interface for all providers
+  - **Specification:** Zero-allocation trait with async stream returns
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the trait definition for completeness and proper abstraction of provider functionality
+
+- [ ] Create shared HTTP client in `build/http.rs`
+  - **Implementation:** Reusable HTTP3 client with proper error handling
+  - **Architecture:** Composition pattern for shared HTTP functionality  
+  - **Specification:** Use fluent_ai_http3 with connection pooling, no fallbacks
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the HTTP client implementation for proper error handling and HTTP3 usage compliance
+
+- [ ] Create shared codegen utilities in `build/codegen.rs`
+  - **Implementation:** Common syn/quote logic for generating model enums and impls
+  - **Architecture:** Utility functions for consistent code generation
+  - **Specification:** Zero-allocation code generation with const string optimization
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the codegen utilities for consistency and maintainability of generated code
+
+### ARCHITECTURE MILESTONE 2: Implement Dynamic Provider Modules
+
+- [ ] Implement `build/providers/openai.rs` with dynamic API fetching 
+  - **Files:** build/providers/openai.rs (NEW)
+  - **Lines to Remove:** build.rs lines 375-417 (hardcoded OpenAI fallback data)
+  - **Implementation:** Call OpenAI `/v1/models` endpoint, no fallback data
+  - **Architecture:** Pure dynamic fetching, fail build if API unavailable
+  - **API Endpoint:** https://api.openai.com/v1/models
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the OpenAI provider implementation for proper API integration and elimination of fallback data
+
+- [ ] Implement `build/providers/mistral.rs` with dynamic API fetching
+  - **Files:** build/providers/mistral.rs (NEW)  
+  - **Lines to Remove:** build.rs lines 408-454 (hardcoded Mistral fallback data)
+  - **Implementation:** Call Mistral models endpoint, no fallback data
+  - **Architecture:** Pure dynamic fetching, fail build if API unavailable
+  - **API Endpoint:** https://api.mistral.ai/v1/models
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the Mistral provider implementation for proper API integration and elimination of fallback data
+
+- [ ] Implement `build/providers/together.rs` with dynamic API fetching
+  - **Files:** build/providers/together.rs (NEW)
+  - **Lines to Remove:** build.rs lines 463-487 (hardcoded Together fallback data)  
+  - **Implementation:** Call Together models endpoint, no fallback data
+  - **Architecture:** Pure dynamic fetching, fail build if API unavailable
+  - **API Endpoint:** https://api.together.xyz/v1/models
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the Together provider implementation for proper API integration and elimination of fallback data
+
+- [ ] Implement `build/providers/openrouter.rs` with dynamic API fetching
+  - **Files:** build/providers/openrouter.rs (NEW)
+  - **Lines to Remove:** build.rs lines 489-514 (hardcoded OpenRouter fallback data)
+  - **Implementation:** Call OpenRouter models endpoint, no fallback data  
+  - **Architecture:** Pure dynamic fetching, fail build if API unavailable
+  - **API Endpoint:** https://openrouter.ai/api/v1/models
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the OpenRouter provider implementation for proper API integration and elimination of fallback data
+
+- [ ] Implement `build/providers/huggingface.rs` with dynamic API fetching
+  - **Files:** build/providers/huggingface.rs (NEW)
+  - **Lines to Remove:** build.rs lines 516-547 (hardcoded HuggingFace fallback data)
+  - **Implementation:** Call HuggingFace models endpoint, no fallback data
+  - **Architecture:** Pure dynamic fetching, fail build if API unavailable  
+  - **API Endpoint:** https://huggingface.co/api/models
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the HuggingFace provider implementation for proper API integration and elimination of fallback data
+
+- [ ] Implement `build/providers/xai.rs` with dynamic API fetching using X.AI official API
+  - **Files:** build/providers/xai.rs (NEW)
+  - **Lines to Remove:** build.rs lines 549-577 (hardcoded X.AI fallback data)
+  - **Implementation:** Call X.AI `/v1/models` endpoint per their official docs (https://docs.x.ai/docs/api-reference#list-models)
+  - **Architecture:** Pure dynamic fetching, fail build if API unavailable
+  - **API Endpoint:** https://api.x.ai/v1/models
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the X.AI provider implementation for compliance with official X.AI API documentation and elimination of fallback data
+
+- [ ] Implement `build/providers/anthropic.rs` with legitimate hardcoded data
+  - **Files:** build/providers/anthropic.rs (NEW)
+  - **Lines to Move:** build.rs lines 456-461 (legitimate Anthropic data - no API endpoint available)
+  - **Implementation:** Keep hardcoded since Anthropic has no models endpoint
+  - **Architecture:** Static data provider (only legitimate exception)
+  - **Justification:** Anthropic/Claude does not provide public models list endpoint
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the Anthropic provider implementation for proper hardcoded data handling (legitimate exception)
+
+### ARCHITECTURE MILESTONE 3: Complete Streaming Support Removal
+
+- [x] ✅ COMPLETED: Remove supports_streaming from generated model implementations in `generated_models.rs`
+  - **Files:** src/generated_models.rs
+  - **Result:** Successfully removed all 7 supports_streaming method implementations from all model enums
+  - **Architecture:** Aligned with streaming-only framework (no boolean needed)
+
+- [x] ✅ COMPLETED: Update all provider runtime files to remove supports_streaming references  
+  - **Files:** All `src/providers/*.rs` files
+  - **Result:** Successfully removed supports_streaming from ModelInfo assignments, changed to _supports_streaming in tuple destructuring
+  - **Architecture:** Framework is 100% streaming-only, eliminated streaming contradictions
+  
+- [x] ✅ COMPLETED: Remove supports_streaming special handling from `src/providers/openai.rs`
+  - **Files:** src/providers/openai.rs  
+  - **Result:** Successfully removed all supports_streaming trait methods, implementations, and utility functions
+  - **Architecture:** Eliminated streaming boolean from OpenAI provider entirely
+  - **Architecture:** Eliminate streaming boolean from OpenAI provider entirely
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the OpenAI special handling removal for consistency with framework streaming-only architecture
+
+### ARCHITECTURE MILESTONE 4: Integration and Quality Assurance
+
+- [ ] Replace monolithic build.rs with modular provider orchestrator
+  - **Files:** build.rs (REPLACE 595-line monolith)
+  - **Implementation:** Clean orchestrator that iterates through provider modules
+  - **Architecture:** Composition of modular providers with shared codegen utilities
+  - **Specification:** Zero-allocation orchestration with fail-fast error handling
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the build script orchestrator for clean integration of all provider modules
+
+- [ ] Implement fail-fast error handling with no fallback data anywhere
+  - **Files:** All new build/providers/*.rs modules
+  - **Implementation:** All API failures should fail the build, no fallback data
+  - **Architecture:** Fail-fast error handling throughout provider modules
+  - **Specification:** Zero tolerance for fallback/hardcoded data (except Anthropic)
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the error handling implementation for proper fail-fast behavior and elimination of all fallback mechanisms
+
+- [ ] Verify cargo check produces 0 warnings and 0 errors with production-quality code
+  - **Files:** Entire package after architectural refactoring
+  - **Implementation:** Run cargo check and fix any remaining issues
+  - **Architecture:** Production-quality code with no clippy warnings
+  - **Specification:** Zero warnings, zero errors, production-ready code quality
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] Act as an Objective QA Rust developer and rate the final implementation for production quality, zero warnings, and adherence to all architectural requirements
+
+## NEW SECTION: Provider Dynamic Conversion and Polish Improvements
+**STATUS: WORKING**
+
+This section merges recommendations from the audit and study of the model-info package. It focuses on converting hard-coded model details to dynamic where possible, enhancing the strategy pattern, improving code generation with syn/quote, and adding caching for ergonomics. These build on existing milestones without duplication. Research sources: Provider API docs (e.g., https://platform.openai.com/docs/api-reference/models, https://huggingface.co/docs/api/models).
+
+### TASK 1: Enhance Strategy Pattern for Extensibility
+**SUB-STATUS: WORKING**
+- [ ] Update ProviderBuilder trait in `buildlib/providers/mod.rs` to include a registration method (e.g., static DashMap for runtime provider addition).
+  - Architecture: Allows users to add custom providers without code changes. Pros: Extensible; Cons: Adds minor runtime overhead (mitigated by once_cell).
+
+### TASK 2: Convert Hard-Coded Details to Dynamic Fetches
+**SUB-STATUS: WORKING**
+- [ ] For OpenAI (`buildlib/providers/openai.rs`): Add per-model detail fetches using `/v1/models/{id}`; load non-API fields from build-time JSON.
+  - Status: Partial - List dynamic, details inferred.
+- [ ] For Mistral (`buildlib/providers/mistral.rs`): Similar to OpenAI; use JSON for statics.
+- [ ] For HuggingFace (`buildlib/providers/huggingface.rs`): Enhance with per-model fetches from `https://huggingface.co/api/models/{id}` for better inferences.
+- [ ] For XAI (`buildlib/providers/xai.rs`): Add per-model fetches; use JSON for statics.
+- [ ] For Anthropic: Keep static, add update script in `buildlib/scripts/anthropic_update.rs` to check docs.
+
+### TASK 3: Improve Code Generation with Syn/Quote
+**SUB-STATUS: WORKING**
+- [ ] Refactor `buildlib/codegen.rs` to use quote! and prettyplease for generation.
+  - Architecture: Generate unified Model enum; ensures syntax safety.
+
+### TASK 4: Add Build-Time Caching and Runtime Refresh
+**SUB-STATUS: WORKING**
+- [ ] In `buildlib/mod.rs`, add JSON caching (e.g., `build/cache/{provider}.json` with TTL).
+- [ ] Generate runtime refresh streams in `src/generated_models.rs`.
+
+### TASK 5: Verification and Testing
+**SUB-STATUS: WORKING**
+- [ ] Add tests for fetches/caching in `tests/providers/`.
+- [ ] Run cargo check post-changes.
+
+**STATUS: WORKING** (Proceeding with execution).

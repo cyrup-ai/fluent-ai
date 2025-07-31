@@ -1,6 +1,7 @@
 // src/schema/relationship_schema.rs
 //! Relationship schema definition.
 
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use surrealdb::RecordId;

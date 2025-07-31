@@ -7,6 +7,7 @@
 //! - Emotional valence modeling
 //! - High-performance state lookup and management
 
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};

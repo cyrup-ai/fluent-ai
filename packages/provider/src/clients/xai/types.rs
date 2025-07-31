@@ -238,7 +238,7 @@ pub struct XAIEmbeddingUsage {
     pub total_tokens: u32}
 
 // ============================================================================
-// Text Completions API (Legacy)
+// Text Completions API
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

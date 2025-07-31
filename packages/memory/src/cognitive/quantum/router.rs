@@ -7,7 +7,7 @@
 //! - SIMD-optimized routing decisions
 //! - NO FUTURES OR ASYNC ANYWHERE
 
-use std::collections::{VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};

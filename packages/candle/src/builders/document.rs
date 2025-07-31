@@ -56,7 +56,7 @@ pub trait DocumentBuilder: Sized {
     /// Add metadata property - EXACT syntax: .property("key", "value")
     fn property(self, key: impl Into<String>, value: impl Into<Value>) -> impl DocumentBuilder;
     
-    /// Add multiple properties - EXACT syntax: .properties(hash_map!{"key" => "value"})
+    /// Add multiple properties - EXACT syntax: .properties([("key", "value")])
     fn properties<F>(self, f: F) -> impl DocumentBuilder
     where
         F: FnOnce() -> BTreeMap<String, Value>;
@@ -261,7 +261,7 @@ where
         self
     }
 
-    /// Add multiple properties - EXACT syntax: .properties(hash_map!{"key" => "value"})
+    /// Add multiple properties - EXACT syntax: .properties([("key", "value")])
     fn properties<F>(mut self, f: F) -> impl DocumentBuilder
     where
         F: FnOnce() -> BTreeMap<String, Value>,

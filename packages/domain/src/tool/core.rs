@@ -1,7 +1,7 @@
 //! Core Tool Implementation - EXACT API from ARCHITECTURE.md
 //!
 //! This module provides the Tool trait and implementations that support
-//! the transparent JSON syntax: Tool<Perplexity>::new({"citations" => "true"})
+//! the transparent array-tuples syntax: Tool<Perplexity>::new([("citations", "true")])
 //!
 //! The syntax works automatically without exposing any macros to users.
 
@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use serde_json::Value;
 use hashbrown::HashMap;
 
-// Note: The transparent JSON syntax {"key" => "value"} should work automatically
+// Note: The transparent array-tuples syntax [("key", "value")] should work automatically
 // through cyrup_sugars transformation without requiring explicit macro imports
 
 /// Marker type for Perplexity
@@ -58,19 +58,20 @@ pub struct Tool<T> {
 }
 
 impl<T> Tool<T> {
-    /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
+    /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new([("citations", "true")])
     ///
-    /// This method accepts the transparent JSON syntax {"key" => "value"} which is
+    /// This method accepts the transparent array-tuples syntax [("key", "value")] which is
     /// automatically transformed by cyrup_sugars into the appropriate HashMap.
     ///
     /// Examples:
     /// ```rust
     /// // Single parameter
-    /// Tool::<Perplexity>::new({"citations" => "true"})
+    /// Tool::<Perplexity>::new([("citations", "true")])
     ///
     /// // Multiple parameters
-    /// Tool::<CustomTool>::new({"param1" => "value1", "param2" => "value2"})
+    /// Tool::<CustomTool>::new([("param1", "value1"), ("param2", "value2")])
     /// ```
+    #[cyrup_sugars::macros::json_syntax]
     #[inline]
     pub fn new<P>(config: P) -> Self
     where

@@ -100,7 +100,7 @@ pub mod response;
 pub mod stream;
 
 pub use builder::{
-    ContentType, DownloadBuilder, DownloadProgress, Http3Builder, Http3Builders, HttpStreamExt, header};
+    ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt, header};
 
 // Provider compatibility types for legacy code
 pub use common::{AuthMethod, ContentTypes};
@@ -148,3 +148,4 @@ pub fn init_global_client(_config: HttpConfig) -> HttpResult<()> {
     // Users should create their own client instances if they need custom configuration
     Ok(())
 }
+

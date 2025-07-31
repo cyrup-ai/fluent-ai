@@ -187,7 +187,7 @@ mod tests {
 // Missing Types for Completion Module Compatibility
 // =============================================================================
 
-/// Client alias for backward compatibility
+/// Client alias
 pub type Client = MistralClient;
 
 /// Usage information for API responses

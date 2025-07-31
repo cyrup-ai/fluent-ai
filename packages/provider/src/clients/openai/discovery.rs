@@ -10,10 +10,9 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 use super::{client::OpenAIClient, error::OpenAIError};
 use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
-use model_info::{Provider, OpenAiProvider, ModelInfo as ModelInfoFromPackage};
+use model_info::{discovery::Provider, ModelInfo, ModelInfoBuilder};
 use fluent_ai_domain::model::{
     error::ModelError,
-    info::{ModelInfo, ModelInfoBuilder},
     registry::{ModelRegistry, RegisteredModel},
     traits::Model};
 
@@ -43,28 +42,11 @@ impl OpenAIDiscovery {
     /// Get model information for a specific model using model-info package
     #[instrument(skip(self))]
     fn get_model_info(&self, model_name: &'static str) -> Option<ModelInfo> {
-        // Use model-info package as single source of truth
-        let provider = Provider::OpenAi(OpenAiProvider);
-        
-        // For discovery, we need to convert from model-info package format to our ModelInfo format
-        // This is a simplified implementation that provides basic capabilities
-        let mut capabilities = vec![ModelCapability::TextGeneration];
-        
-        // Default capabilities based on known OpenAI models
-        match model_name {
-            "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo" | "gpt-4" => {
-                capabilities.push(ModelCapability::FunctionCalling);
-                capabilities.push(ModelCapability::Vision);
-            }
-            "gpt-3.5-turbo" => {
-                capabilities.push(ModelCapability::FunctionCalling);
-            }
-            _ => {}
-        }
-
-        ModelInfoBuilder::new(model_name, "openai")
-            .with_display_name(model_name)
-            .with_max_input_tokens(match model_name {
+        // Create model info using the new model-info package architecture
+        ModelInfoBuilder::new()
+            .provider_name("openai")
+            .name(model_name)
+            .max_input_tokens(match model_name {
                 "gpt-4o" | "gpt-4o-mini" => 128000,
                 "gpt-4-turbo" => 128000,
                 "gpt-4" => 8192,
@@ -72,7 +54,7 @@ impl OpenAIDiscovery {
                 "gpt-3.5-turbo-instruct" => 4096,
                 _ => 4096,
             })
-            .with_max_output_tokens(match model_name {
+            .max_output_tokens(match model_name {
                 "gpt-4o" | "gpt-4o-mini" => 16384,
                 "gpt-4-turbo" => 4096,
                 "gpt-4" => 4096,
@@ -80,26 +62,48 @@ impl OpenAIDiscovery {
                 "gpt-3.5-turbo-instruct" => 4096,
                 _ => 4096,
             })
-            .with_capabilities(capabilities)
-            .with_parameter("temperature", 0.7)
-            .with_parameter("top_p", 1.0)
-            .with_parameter("frequency_penalty", 0.0)
-            .with_parameter("presence_penalty", 0.0)
-            .with_metadata("supports_tools", (model_name != "gpt-3.5-turbo-instruct").to_string())
-            .with_metadata("supports_vision", matches!(model_name, "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo" | "gpt-4").to_string())
-            .with_metadata("supports_audio", "false".to_string())
+            .with_function_calling(match model_name {
+                "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo" | "gpt-4" | "gpt-3.5-turbo" => true,
+                _ => false,
+            })
+            .with_vision(match model_name {
+                "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo" | "gpt-4" => true,
+                _ => false,
+            })
+            .with_streaming(true) // All OpenAI models support streaming
             .build()
             .ok()
     }
 }
 
-#[async_trait]
 impl ProviderModelDiscovery for OpenAIDiscovery {
-    fn provider_name(&self) -> &'static str {
+    fn discover_models(&self) -> DiscoveryResult<Vec<String>> {
+        Ok(self.supported_models.iter().map(|&s| s.to_string()).collect())
+    }
+
+    fn get_model_info(&self, model_name: &str) -> DiscoveryResult<ModelInfo> {
+        // Implementation for getting model info
+        if self.supported_models.contains(&model_name) {
+            // Use the internal get_model_info method
+            self.get_model_info(model_name)
+                .ok_or_else(|| DiscoveryError::ModelNotFound(model_name.to_string()))
+        } else {
+            Err(DiscoveryError::ModelNotFound(model_name.to_string()))
+        }
+    }
+
+    fn is_model_available(&self, model_name: &str) -> bool {
+        self.supported_models.contains(&model_name)
+    }
+}
+
+// Additional implementation for OpenAI-specific functionality
+impl OpenAIDiscovery {
+    pub fn provider_name(&self) -> &'static str {
         "openai"
     }
 
-    async fn discover_and_register(&self) -> DiscoveryResult<()> {
+    pub async fn discover_and_register(&self) -> DiscoveryResult<()> {
         info!("Starting OpenAI model discovery");
         let registry = ModelRegistry::global();
 
@@ -167,7 +171,7 @@ mod tests {
         let model_info = discovery.get_model_info("gpt-4o").unwrap();
         assert_eq!(model_info.name(), "gpt-4o");
         assert_eq!(model_info.provider(), "openai");
-        assert!(model_info.has_capability(ModelCapability::TextGeneration));
+        assert!(model_info.has_streaming()); // All models support streaming
 
         // Test model registration
         let result = discovery.discover_and_register().await;
@@ -199,9 +203,9 @@ mod tests {
         let model_info = discovery.get_model_info("gpt-4o").unwrap();
         assert_eq!(model_info.name(), "gpt-4o");
         assert_eq!(model_info.provider(), "openai");
-        assert!(model_info.has_capability(ModelCapability::TextGeneration));
-        assert!(model_info.has_capability(ModelCapability::FunctionCalling));
-        assert!(model_info.has_capability(ModelCapability::Vision));
+        assert!(model_info.has_streaming());
+        assert!(model_info.has_function_calling());
+        assert!(model_info.has_vision());
 
         // Test with unsupported model
         assert!(discovery.get_model_info("unsupported-model").is_none());

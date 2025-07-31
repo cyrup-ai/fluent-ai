@@ -38,14 +38,14 @@ pub struct HuggingFaceTranscriptionModel {
     client: Client,
     model: String}
 
-impl TranscriptionModel {
+impl HuggingFaceTranscriptionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
             model: model.to_string()}
     }
 }
-impl transcription::TranscriptionModel for TranscriptionModel {
+impl transcription::TranscriptionModel for HuggingFaceTranscriptionModel {
     type Response = TranscriptionResponse;
 
     #[cfg_attr(feature = "worker", worker::send)]

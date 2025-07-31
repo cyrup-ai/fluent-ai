@@ -15,8 +15,9 @@ use serde_json::{Value, json};
 use tokio::fs;
 
 use super::{
-    core::{AnthropicError, AnthropicResult},
-    function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput}};
+    core::{ToolExecutor},
+    function_calling::{ToolExecutionContext, ToolOutput}};
+use super::super::error::{AnthropicError, AnthropicResult};
 
 /// Built-in file operations tool for Anthropic Files API
 pub struct FileOperationsTool;
@@ -210,30 +211,4 @@ impl ToolExecutor for FileOperationsTool {
         stream
     }
 
-    fn definition(&self) -> Tool {
-        Tool::new(
-            "file_operations",
-            "Manage files using Anthropic's Files API. Upload local files to Anthropic's cloud storage, list uploaded files, retrieve file metadata, delete files, and download file content. Files can be referenced in subsequent API calls using their file_id.",
-            json!({
-                "type": "object",
-                "properties": {
-                    "operation": {
-                        "type": "string",
-                        "enum": ["upload", "list", "retrieve", "delete", "download"],
-                        "description": "Type of file operation to perform"
-                    },
-                    "file_path": {
-                        "type": "string",
-                        "description": "Path to local file to upload (required for upload operation)"
-                    },
-                    "file_id": {
-                        "type": "string",
-                        "description": "Unique identifier for the file (required for retrieve, delete, and download operations)"
-                    }
-                },
-                "required": ["operation"],
-                "additionalProperties": false
-            }),
-        )
-    }
 }

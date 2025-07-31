@@ -109,7 +109,7 @@ impl AnthropicStreamingProcessor {
     #[inline(always)]
     pub fn new() -> AnthropicResult<Self> {
         let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|e| {
-            crate::providers::anthropic::AnthropicError::RequestError(format!(
+            super::error::AnthropicError::RequestError(format!(
                 "Failed to create HTTP3 client: {}",
                 e
             ))
@@ -143,7 +143,7 @@ impl AnthropicStreamingProcessor {
                     Ok(handle) => handle,
                     Err(_) => {
                         let _ = tx.try_send(Err(
-                            crate::providers::anthropic::AnthropicError::RequestError(
+                            super::error::AnthropicError::RequestError(
                                 "No tokio runtime available".to_string(),
                             ),
                         ));
@@ -153,7 +153,7 @@ impl AnthropicStreamingProcessor {
 
                 rt.block_on(async {
                     client.send(http3_request).await.map_err(|e| {
-                        crate::providers::anthropic::AnthropicError::RequestError(e.to_string())
+                        super::error::AnthropicError::RequestError(e.to_string())
                     })
                 })
             };
@@ -184,7 +184,7 @@ impl AnthropicStreamingProcessor {
                         Ok(chunk) => chunk,
                         Err(e) => {
                             let _ = tx.try_send(Err(
-                                crate::providers::anthropic::AnthropicError::DeserializationError(
+                                super::error::AnthropicError::DeserializationError(
                                     format!("Failed to parse Anthropic SSE chunk: {}", e),
                                 ),
                             ));
@@ -243,7 +243,7 @@ fn process_anthropic_chunk(
     chunk: &StreamingChunk,
     content_accumulator: &mut String,
     current_usage: &mut Option<StreamingUsage>,
-) -> Result<Option<AnthropicStreamChunk>, crate::providers::anthropic::AnthropicError> {
+) -> Result<Option<AnthropicStreamChunk>, super::error::AnthropicError> {
     match &chunk.data {
         StreamingData::MessageStart { message } => {
             // Initialize usage tracking

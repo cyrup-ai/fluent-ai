@@ -106,7 +106,7 @@ impl ModelCapabilitiesExt for ModelCapabilities {
         match capability {
             Capability::Vision => self.supports_vision = enabled,
             Capability::FunctionCalling => self.supports_function_calling = enabled,
-            Capability::Streaming => self.supports_streaming = enabled,
+            Capability::Streaming => {}, // Always enabled in streaming-only architecture
             Capability::FineTuning => self.supports_fine_tuning = enabled,
             Capability::BatchProcessing => self.supports_batch_processing = enabled,
             Capability::Realtime => self.supports_realtime = enabled,
@@ -131,7 +131,7 @@ impl ModelCapabilitiesExt for ModelCapabilities {
         match capability {
             Capability::Vision => self.supports_vision,
             Capability::FunctionCalling => self.supports_function_calling,
-            Capability::Streaming => self.supports_streaming,
+            Capability::Streaming => true, // Always enabled in streaming-only architecture
             Capability::FineTuning => self.supports_fine_tuning,
             Capability::BatchProcessing => self.supports_batch_processing,
             Capability::Realtime => self.supports_realtime,

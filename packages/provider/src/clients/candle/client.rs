@@ -8,10 +8,10 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use fluent_ai_domain::{
-    async_task::{AsyncStream, AsyncTask},
-    chunk::CompletionChunk,
+    http::CompletionChunk,
     completion::{CompletionModel, CompletionParams},
     prompt::Prompt};
+use fluent_ai_async::{AsyncStream, AsyncTask};
 use smallvec::SmallVec;
 use tokio::sync::OnceCell;
 
@@ -704,9 +704,9 @@ pub struct CandleStatistics {
     /// Performance optimization statistics
     pub performance_stats: super::performance::PerformanceStatistics,
     /// Global configuration metrics
-    pub global_config_metrics: super::config::ConfigMetrics,
+    pub global_config_metrics: super::config::PerformanceMetrics,
     /// Real-time system metrics
-    pub realtime_metrics: super::config::RuntimeMetrics}
+    pub realtime_metrics: super::config::MemoryMetrics}
 
 impl CompletionModel for CandleCompletionClient {
     fn prompt<'a>(
@@ -720,10 +720,9 @@ impl CompletionModel for CandleCompletionClient {
                 Ok(comp) => comp,
                 Err(e) => {
                     // Yield error chunk
-                    let error_chunk = CompletionChunk {
-                        text: format!("Initialization error: {}", e).into(),
-                        finish_reason: Some("error".to_string()),
-                        usage: None};
+                    let error_chunk = CompletionChunk::Error(
+                        format!("Initialization error: {}", e)
+                    );
                     yield error_chunk;
                     return;
                 }
@@ -955,10 +954,9 @@ impl CompletionModel for CandleCompletionClient {
                     FinishReason::MaxLength => "length",
                     FinishReason::StopToken => "stop",
                     _ => "error"}.to_string()),
-                usage: Some(fluent_ai_domain::usage::CompletionUsage {
-                    prompt_tokens: input_tokens.len() as u32,
-                    completion_tokens: token_count as u32,
-                    total_tokens: (input_tokens.len() + token_count) as u32})};
+                usage: Some(fluent_ai_domain::http::CommonUsage::new(
+                    input_tokens.len() as u32,
+                    token_count as u32))};
             yield final_chunk;
         })
     }
@@ -987,9 +985,9 @@ pub enum CandleClientError {
     #[error("Invalid configuration: {0}")]
     ConfigError(String)}
 
-impl From<CandleClientError> for fluent_ai_domain::CompletionError {
+impl From<CandleClientError> for fluent_ai_domain::completion::CompletionCoreError {
     fn from(err: CandleClientError) -> Self {
-        fluent_ai_domain::CompletionError::ProviderError(err.to_string())
+        fluent_ai_domain::completion::CompletionCoreError::ProviderError(err.to_string())
     }
 }
 

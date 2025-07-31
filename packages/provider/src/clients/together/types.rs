@@ -111,7 +111,7 @@ pub struct TogetherChoiceLogprobs {
     pub text_offset: ArrayVec<u32, 1024>}
 
 // ============================================================================
-// Text Completions API (Legacy)
+// Text Completions API
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

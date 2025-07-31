@@ -8,12 +8,66 @@ use std::sync::Arc;
 
 use ahash::RandomState;
 use arrayvec::ArrayVec;
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
+use parking_lot;
 use smallvec::SmallVec;
 
-// Use model-info as single source of truth for model types
-use model_info::{Provider, ModelInfo, ModelError, Result};
+// Use local model-info types and async streaming primitives
+use crate::common::{ModelInfo, ModelError, Result};
+use fluent_ai_async::AsyncStream;
+
+/// Provider enumeration for the registry
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Provider {
+    OpenAI,
+    Azure,
+    VertexAI,
+    Gemini,
+    Bedrock,
+    Cohere,
+    Ollama,
+    Anthropic,
+    Together,
+    XAI,
+    Mistral,
+    Huggingface,
+}
+
+impl Provider {
+    /// Get the default base URL for this provider
+    pub fn default_base_url(&self) -> &'static str {
+        match self {
+            Provider::OpenAI => "https://api.openai.com/v1",
+            Provider::Azure => "https://api.openai.com/v1", // Will be overridden with deployment URL
+            Provider::VertexAI => "https://aiplatform.googleapis.com/v1",
+            Provider::Gemini => "https://generativelanguage.googleapis.com/v1",
+            Provider::Bedrock => "https://bedrock-runtime.amazonaws.com",
+            Provider::Cohere => "https://api.cohere.ai/v1",
+            Provider::Ollama => "http://localhost:11434/api",
+            Provider::Anthropic => "https://api.anthropic.com/v1",
+            Provider::Together => "https://api.together.xyz/v1",
+            Provider::XAI => "https://api.x.ai/v1",
+            Provider::Mistral => "https://api.mistral.ai/v1",
+            Provider::Huggingface => "https://api-inference.huggingface.co/models",
+        }
+    }
+    
+    
+    /// Check if this provider supports function calling
+    pub fn supports_function_calling(&self) -> bool {
+        match self {
+            Provider::OpenAI | Provider::Azure | Provider::VertexAI | Provider::Gemini |
+            Provider::Cohere | Provider::Anthropic | Provider::Together | Provider::XAI => true,
+            Provider::Bedrock | Provider::Ollama | Provider::Mistral | Provider::Huggingface => false,
+        }
+    }
+    
+    /// Get model information for a specific model (stub implementation)
+    pub fn get_model_info(&self, _model: &str) -> fluent_ai_async::AsyncStream<ModelInfo> {
+        fluent_ai_async::AsyncStream::empty()
+    }
+}
 
 /// Provider names for efficient lookups
 const PROVIDER_NAMES: &[&str] = &[
@@ -55,7 +109,7 @@ struct RegistryData {
     all_models: parking_lot::RwLock<Vec<Arc<ModelInfo>>>,
     
     /// Provider instances for dynamic queries
-    providers: ArrayVec<Provider, 7>,
+    providers: ArrayVec<Provider, 12>,
     
     /// Capability-based indices for fast filtering
     thinking_models: DashSet<String, RandomState>,
@@ -67,7 +121,7 @@ impl Default for RegistryData {
     fn default() -> Self {
         let mut providers = ArrayVec::new();
         
-        // Initialize all providers (zero allocation) - using unit variants for now
+        // Initialize all providers (zero allocation)
         let _ = providers.try_push(Provider::OpenAI);
         let _ = providers.try_push(Provider::Azure);
         let _ = providers.try_push(Provider::VertexAI);
@@ -75,6 +129,11 @@ impl Default for RegistryData {
         let _ = providers.try_push(Provider::Bedrock);
         let _ = providers.try_push(Provider::Cohere);
         let _ = providers.try_push(Provider::Ollama);
+        let _ = providers.try_push(Provider::Anthropic);
+        let _ = providers.try_push(Provider::Together);
+        let _ = providers.try_push(Provider::XAI);
+        let _ = providers.try_push(Provider::Mistral);
+        let _ = providers.try_push(Provider::Huggingface);
         
         Self {
             models_by_provider: DashMap::with_hasher(RandomState::default()),
@@ -101,9 +160,9 @@ static REGISTRY: Lazy<RegistryData> = Lazy::new(Default::default);
 /// - Efficient capability-based filtering
 /// - Thread-safe concurrent access
 #[derive(Clone, Default)]
-pub struct ModelRegistry;
+pub struct ModelDiscoveryRegistry;
 
-impl ModelRegistry {
+impl ModelDiscoveryRegistry {
     /// Create a new model registry instance
     #[inline]
     pub fn new() -> Self {
@@ -250,67 +309,65 @@ impl ModelRegistry {
         self.models_by_capabilities(&filter)
     }
     
-    /// Refresh model data from all providers
+    /// Refresh model data from all providers using streaming
     ///
-    /// This method fetches fresh model information from all provider APIs.
+    /// This method fetches fresh model information from all provider APIs using AsyncStream.
     /// It should be called periodically to ensure data freshness.
     ///
     /// # Returns
-    /// The number of models successfully refreshed
-    pub async fn refresh_models(&self) -> Result<usize> {
-        let mut total_refreshed = 0;
-        
-        // Temporary storage for new model data
-        let mut new_models_by_provider = HashMap::with_capacity(PROVIDER_NAMES.len());
-        let mut all_new_models = Vec::new();
-        
-        // Fetch from all providers concurrently
-        let tasks: Vec<_> = REGISTRY.providers.iter()
-            .map(|provider| async move {
-                self.fetch_provider_models(provider).await
+    /// A stream of refresh status updates and final count
+    pub fn refresh_models(&self) -> AsyncStream<usize> {
+        AsyncStream::with_channel(move |sender| {
+            Box::pin(async move {
+                let mut total_refreshed = 0;
+                
+                // Temporary storage for new model data
+                let mut new_models_by_provider = HashMap::with_capacity(PROVIDER_NAMES.len());
+                let mut all_new_models = Vec::new();
+                
+                // Fetch from all providers using streams - collect models from each provider stream
+                for (provider_name, provider) in PROVIDER_NAMES.iter().zip(REGISTRY.providers.iter()) {
+                    let model_stream = self.fetch_provider_models(provider);
+                    let models = model_stream.collect::<Vec<_>>().await;
+                    
+                    if !models.is_empty() {
+                        total_refreshed += models.len();
+                        
+                        // Convert to Arc for efficient sharing
+                        let arc_models: SmallVec<Arc<ModelInfo>, MAX_MODELS_PER_PROVIDER> = 
+                            models.into_iter().map(Arc::new).collect();
+                        
+                        // Add to all models list
+                        all_new_models.extend(arc_models.iter().cloned());
+                        
+                        // Store by provider
+                        new_models_by_provider.insert((*provider_name).to_string(), arc_models);
+                        
+                        // Send progress update
+                        let _ = sender.send(total_refreshed).await;
+                    }
+                }
+                
+                // Atomically update the registry
+                {
+                    let mut all_models = REGISTRY.all_models.write();
+                    *all_models = all_new_models;
+                }
+                
+                // Update provider-specific maps
+                for (provider_name, models) in new_models_by_provider {
+                    REGISTRY.models_by_provider.insert(provider_name, models);
+                }
+                
+                // Update capability indices
+                self.rebuild_capability_indices();
+                
+                // Send final count
+                let _ = sender.send(total_refreshed).await;
+                
+                Ok(())
             })
-            .collect();
-        
-        let results = futures_util::future::join_all(tasks).await;
-        
-        // Process results
-        for (provider_name, result) in PROVIDER_NAMES.iter().zip(results.into_iter()) {
-            match result {
-                Ok(models) => {
-                    total_refreshed += models.len();
-                    
-                    // Convert to Arc for efficient sharing
-                    let arc_models: SmallVec<Arc<ModelInfo>, MAX_MODELS_PER_PROVIDER> = 
-                        models.into_iter().map(Arc::new).collect();
-                    
-                    // Add to all models list
-                    all_new_models.extend(arc_models.iter().cloned());
-                    
-                    // Store by provider
-                    new_models_by_provider.insert((*provider_name).to_string(), arc_models);
-                }
-                Err(e) => {
-                    // Log error but continue with other providers
-                    eprintln!("Failed to refresh models for provider {}: {}", provider_name, e);
-                }
-            }
-        }
-        
-        // Atomically update the registry
-        {
-            let mut all_models = REGISTRY.all_models.write();
-            *all_models = all_new_models;
-        }
-        
-        // Update provider-specific maps
-        for (provider_name, models) in new_models_by_provider {
-            REGISTRY.models_by_provider.insert(provider_name, models);
-        }
-        
-        // Update capability indices
-        self.rebuild_capability_indices().await;
-        
-        Ok(total_refreshed)
+        })
     }
     
     /// Get the list of all supported providers
@@ -380,15 +437,15 @@ impl ModelRegistry {
         true
     }
     
-    /// Fetch models from a specific provider
-    async fn fetch_provider_models(&self, _provider: &Provider) -> Result<Vec<ModelInfo>> {
-        // For now, return empty vec as we need to implement provider-specific model enumeration
-        // This would be enhanced to actually fetch model lists from each provider
-        Ok(Vec::new())
+    /// Fetch models from a specific provider as a stream
+    fn fetch_provider_models(&self, _provider: &Provider) -> fluent_ai_async::AsyncStream<ModelInfo> {
+        // For now, return empty stream as we need to implement provider-specific model enumeration
+        // This would be enhanced to actually fetch model lists from each provider using AsyncStream
+        fluent_ai_async::AsyncStream::empty()
     }
     
     /// Rebuild capability-based indices for fast filtering
-    async fn rebuild_capability_indices(&self) {
+    fn rebuild_capability_indices(&self) {
         REGISTRY.thinking_models.clear();
         REGISTRY.high_context_models.clear();
         REGISTRY.low_cost_models.clear();
@@ -418,10 +475,6 @@ impl ModelRegistry {
     }
 }
 
-// Add missing imports
-use dashmap::DashSet;
-use parking_lot;
-
 /// Statistics about the model registry
 #[derive(Debug, Clone)]
 pub struct RegistryStats {
@@ -432,7 +485,7 @@ pub struct RegistryStats {
     pub low_cost_models: usize,
 }
 
-impl ModelRegistry {
+impl ModelDiscoveryRegistry {
     /// Get statistics about the current registry state
     ///
     /// # Returns

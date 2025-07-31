@@ -4,6 +4,8 @@
 //! supporting both embedding generation and image generation through various backends.
 //! The default backend uses Candle ML framework for high-performance computer vision.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

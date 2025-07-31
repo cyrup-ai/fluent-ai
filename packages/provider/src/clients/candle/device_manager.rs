@@ -4,7 +4,7 @@
 //! Candle ML inference with zero-allocation patterns and lock-free atomic operations.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, Guard};
@@ -31,7 +31,7 @@ impl From<CandleDevice> for DeviceType {
         match device {
             CandleDevice::Cpu => DeviceType::Cpu,
             CandleDevice::Cuda(_) => DeviceType::CudaGpu,
-            CandleDevice::Metal(_) => DeviceType::MetalGpu}
+            CandleDevice::Metal => DeviceType::MetalGpu}
     }
 }
 
@@ -138,7 +138,7 @@ impl DeviceInfo {
 #[derive(Debug)]
 struct DeviceManagerState {
     /// Available devices (discovered during initialization)
-    available_devices: SmallVec<[DeviceInfo; 8]>,
+    available_devices: SmallVec<DeviceInfo, 8>,
     /// Currently selected device index
     current_device_index: usize,
     /// Whether manager is initialized
@@ -146,7 +146,7 @@ struct DeviceManagerState {
     /// Last device scan timestamp
     last_scan_timestamp: u64,
     /// Device preference order
-    preference_order: SmallVec<[DeviceType; 4]>}
+    preference_order: SmallVec<DeviceType, 4>}
 
 impl Default for DeviceManagerState {
     fn default() -> Self {

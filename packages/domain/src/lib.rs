@@ -67,6 +67,8 @@ pub use model::usage;
 pub use fluent_ai_async as async_task;
 // Re-export from cyrup_sugars for convenience
 pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
+// Re-export JSON syntax macros from cyrup_sugars
+pub use cyrup_sugars::macros::*;
 pub use fluent_ai_async::spawn_task as spawn_async; // Alias for backward compatibility
 pub use util::json_util;
 pub use {
@@ -108,12 +110,11 @@ pub use {
         Capability, DomainModelCapabilities, ModelPerformance, Usage, UseCase,
         ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
         // Core model types from model-info (single source of truth)
-        OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai, Model,
-        ModelInfo, ModelInfoBuilder, ProviderTrait, ModelError, Result, Provider,
+        Provider, Model, ModelInfo, ModelInfoBuilder, ProviderTrait, ModelError, Result,
 
         UnifiedModelRegistry, RegistryStats,
         // Domain-specific model-info integration
-        LegacyModelRegistry, ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
+        ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
         CacheStats, CacheConfig, BatchValidationResult
         },
 
@@ -139,32 +140,4 @@ pub use util::json_util as AdditionalParams;
 pub use util::json_util as Metadata;
 pub use chat::ConversationImpl as Conversation;
 
-/// Extension trait to add missing methods to ZeroOneOrMany
-pub trait ZeroOneOrManyExt<T> {
-    /// Convert to Vec, always returning a Vec regardless of variant
-    fn to_vec(self) -> Vec<T>;
 
-    /// Get the length/count of items
-    fn len(&self) -> usize;
-
-    /// Check if empty
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-impl<T> ZeroOneOrManyExt<T> for ZeroOneOrMany<T> {
-    fn to_vec(self) -> Vec<T> {
-        match self {
-            ZeroOneOrMany::None => vec![],
-            ZeroOneOrMany::One(item) => vec![item],
-            ZeroOneOrMany::Many(items) => items}
-    }
-
-    fn len(&self) -> usize {
-        match self {
-            ZeroOneOrMany::None => 0,
-            ZeroOneOrMany::One(_) => 1,
-            ZeroOneOrMany::Many(items) => items.len()}
-    }
-}

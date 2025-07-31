@@ -3,6 +3,8 @@
 //! This module provides a factory pattern for creating and configuring
 //! image processing backends based on available features and system capabilities.
 
+use std::collections::HashMap;
+
 use super::*;
 use crate::image_processing::candle_backend::CandleImageProcessor;
 
@@ -545,7 +547,7 @@ pub struct AdvancedProcessingConfig {
     pub enable_streaming: bool,
     pub enable_caching: bool,
     pub memory_limit_mb: Option<usize>,
-    pub supported_formats: SmallVec<[ImageFormat; 4]>,
+    pub supported_formats: SmallVec<ImageFormat, 4>,
     pub quality_settings: QualitySettings}
 
 impl Default for AdvancedProcessingConfig {
@@ -591,7 +593,7 @@ impl Default for QualitySettings {
 pub struct AdvancedImageProcessingFactory {
     config: AdvancedProcessingConfig,
     http_client: HttpClient,
-    processors: SmallVec<[Arc<dyn StreamingImageProcessor + Send + Sync>; 8]>,
+    processors: SmallVec<Arc<dyn StreamingImageProcessor + Send + Sync>, 8>,
     format_cache: Arc<SegQueue<(String, ImageFormat)>>}
 
 impl AdvancedImageProcessingFactory {

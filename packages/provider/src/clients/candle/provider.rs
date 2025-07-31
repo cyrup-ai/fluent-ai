@@ -1,6 +1,7 @@
 //! Candle provider implementation that complies with domain traits
 
-use fluent_ai_domain::{Provider, ZeroOneOrMany};
+use fluent_ai_async::AsyncStream;
+use model_info::{ProviderTrait, ModelInfo};
 
 use super::models::CandleModel;
 
@@ -15,17 +16,17 @@ impl CandleProvider {
     }
 }
 
-impl Provider for CandleProvider {
-    type Model = CandleModel;
-
-    fn name(&self) -> &'static str {
-        "candle"
+impl ProviderTrait for CandleProvider {
+    fn get_model_info(&self, model: &str) -> AsyncStream<ModelInfo> {
+        AsyncStream::empty() // TODO: Implement actual model info retrieval
     }
 
-    fn models(&self) -> ZeroOneOrMany<Self::Model> {
-        // NOTE: Model enumeration is handled by model-info package
-        // Providers should not enumerate models - they provide capabilities
-        ZeroOneOrMany::Many(vec![])
+    fn list_models(&self) -> AsyncStream<ModelInfo> {
+        AsyncStream::empty() // TODO: Implement actual model listing
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "candle"
     }
 }
 

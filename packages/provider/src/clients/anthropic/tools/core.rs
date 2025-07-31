@@ -12,7 +12,8 @@ use fluent_ai_domain::AsyncStream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::super::{AnthropicError, AnthropicResult, Message};
+use super::super::error::{AnthropicError, AnthropicResult};
+use super::super::types::AnthropicMessage;
 
 /// Schema type specification for tool parameter definitions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +110,7 @@ pub trait ToolExecutor: Send + Sync {
 /// Tool execution context with zero-allocation access to conversation state
 pub struct ToolExecutionContext {
     /// Conversation messages (borrowed, no allocation)
-    pub messages: &'static [Message],
+    pub messages: &'static [AnthropicMessage<'static>],
     /// Current tool name being executed
     pub tool_name: &'static str,
     /// Tool execution metadata
@@ -152,7 +153,7 @@ pub enum ChunkType {
 /// Conversation state for tool execution context
 pub struct Conversation {
     /// Message history (zero-copy access)
-    pub messages: Vec<Message>,
+    pub messages: Vec<AnthropicMessage<'static>>,
     /// Conversation metadata
     pub metadata: HashMap<String, Value>,
     /// Active tool tracking

@@ -4,6 +4,7 @@
 //! with zero-allocation audio processing and consistent interfaces
 //! across all provider implementations.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 

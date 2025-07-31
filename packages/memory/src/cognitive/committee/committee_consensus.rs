@@ -3,6 +3,7 @@
 //! This module provides comprehensive consensus building capabilities for committee evaluations
 //! using zero-allocation patterns and production-ready error handling.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

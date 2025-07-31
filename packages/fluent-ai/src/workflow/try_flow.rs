@@ -10,6 +10,7 @@ use fluent_ai_async::AsyncStream;
 // Removed futures_util - using AsyncStream patterns with tokio::join! instead
 
 use super::{Map, Op, Then};
+use tokio::{join, try_join};
 
 // ================================================================
 // 0. Core trait – any `Op` that yields a `Result` automatically

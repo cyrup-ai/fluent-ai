@@ -1,19 +1,19 @@
 // src/cognitive/common/models.rs
-//! Defines the Model and ModelType for completion provider interactions.
+//! Defines the Model and ModelType for completion provider interactions using HTTP3 + model-info architecture.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::env;
 
-// Removed fluent_ai_domain import to break circular dependency
-// Define local types instead of importing from domain
-
-// Import response types from cyrup_sugars
-use cyrup_sugars::{CompletionResponse, ResponseMetadata, TokenUsage};
-use fluent_ai_domain::async_task::AsyncStream;
-// Use domain types for traits and models
-use fluent_ai_domain::{chat::Message, completion::CompletionProvider, model::ModelConfig};
-// REMOVED: fluent_ai_provider - use model-info + http3 directly
-// use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
+use fluent_ai_async::AsyncStream;
+use fluent_ai_domain::{
+    chat::{Message, MessageRole}, 
+    completion::CompletionResponse,
+    http::common::CommonUsage as TokenUsage};
+use fluent_ai_http3::{Http3, HttpError, HttpClient, HttpConfig, HttpChunk};
+use model_info::{Provider, ModelInfo, ModelInfoBuilder};
+use model_info::providers::anthropic::AnthropicProvider;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 // REMOVED: Local Message struct - using fluent_ai_domain::chat::Message instead
 
@@ -25,7 +25,8 @@ pub enum CompletionCoreError {
     #[error("Request failed: {0}")]
     RequestFailed(String),
     #[error("Parse error: {0}")]
-    ParseError(String)}
+    ParseError(String),
+}
 
 /// Model type for completion provider interactions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,7 +41,8 @@ pub enum ModelType {
     GeminiPro,
     Mixtral8x7B,
     Llama270B,
-    Llama3}
+    Llama3,
+}
 
 impl ModelType {
     pub fn display_name(&self) -> &'static str {
@@ -55,7 +57,8 @@ impl ModelType {
             ModelType::GeminiPro => "gemini-pro",
             ModelType::Mixtral8x7B => "mixtral-8x7b-instruct",
             ModelType::Llama270B => "llama-2-70b-chat",
-            ModelType::Llama3 => "llama-3"}
+            ModelType::Llama3 => "llama-3",
+        }
     }
 
     pub fn provider_name(&self) -> &'static str {
@@ -67,49 +70,86 @@ impl ModelType {
                 "anthropic"
             }
             ModelType::GeminiPro => "google",
-            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => "huggingface"}
+            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => "huggingface",
+        }
+    }
+    
+    pub fn from_name_and_provider(name: &str, provider: Provider) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        match (provider, name) {
+            (Provider::OpenAI, "gpt-3.5-turbo") => Ok(ModelType::Gpt35Turbo),
+            (Provider::OpenAI, "gpt-4") => Ok(ModelType::Gpt4),
+            (Provider::OpenAI, "gpt-4o") => Ok(ModelType::Gpt4O),
+            (Provider::OpenAI, "gpt-4-turbo") => Ok(ModelType::Gpt4Turbo),
+            (Provider::Anthropic(_), "claude-3-opus-20240229") => Ok(ModelType::Claude3Opus),
+            (Provider::Anthropic(_), "claude-3-sonnet-20240229") => Ok(ModelType::Claude3Sonnet),
+            (Provider::Anthropic(_), "claude-3-haiku-20240307") => Ok(ModelType::Claude3Haiku),
+            _ => Err(format!("Unsupported model: {} for provider: {:?}", name, provider).into()),
+        }
     }
 }
 
-/// Simple model wrapper for completion providers using Provider package
+/// Model wrapper using HTTP3 + model-info architecture
 #[derive(Debug, Clone)]
 pub struct Model {
-    model_type: ModelType,
-    provider: Arc<dyn CompletionProvider>}
+    provider: Provider,
+    model_info: ModelInfo,
+    api_key: String,
+    http_client: HttpClient}
 
 impl Model {
     pub async fn create(
+        model_name: &'static str,
+        provider: Provider,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let api_key_env = match provider {
+            Provider::OpenAI => "OPENAI_API_KEY",
+            Provider::Anthropic(_) => "ANTHROPIC_API_KEY",  
+            _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
+        };
+        
+        // Alternative constructor for backward compatibility with ModelType
+        Self::create_with_model_type(ModelType::from_name_and_provider(model_name, provider)?).await
+    }
+    
+    pub async fn create_with_model_type(
         model_type: ModelType,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        // Create REAL completion clients using Provider package
-        let provider: Arc<dyn CompletionProvider> = match model_type {
+        let provider = match model_type {
             ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O | ModelType::Gpt4Turbo => {
-                let api_key = std::env::var("OPENAI_API_KEY")
-                    .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
-
-                let client = OpenAIClient::new(api_key, model_type.display_name())
-                    .map_err(|e| format!("Failed to create OpenAI client: {}", e))?;
-                Arc::new(client)
+                Provider::OpenAI
             }
             ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
-                let api_key = std::env::var("ANTHROPIC_API_KEY")
-                    .map_err(|_| "ANTHROPIC_API_KEY environment variable not set")?;
-
-                let client = AnthropicClient::new(api_key, model_type.display_name())
-                    .map_err(|e| format!("Failed to create Anthropic client: {}", e))?;
-                Arc::new(client)
+                Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider)
             }
-            ModelType::GeminiPro
-            | ModelType::Mixtral8x7B
-            | ModelType::Llama270B
-            | ModelType::Llama3 => {
-                return Err(format!("Model type {:?} is not yet implemented", model_type).into());
-            }
+            _ => return Err(format!("Model type {:?} is not yet implemented", model_type).into()),
+        };
+        
+        let api_key_env = match provider {
+            Provider::OpenAI => "OPENAI_API_KEY",
+            Provider::Anthropic(_) => "ANTHROPIC_API_KEY",  
+            _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
         };
 
+        let api_key = env::var(api_key_env)
+            .map_err(|_| format!("{} environment variable not set", api_key_env))?;
+
+        // Create HTTP3 client optimized for AI operations
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| format!("Failed to create HTTP3 client: {}", e))?;
+
+        // Create model info using model-info package
+        let model_info = ModelInfoBuilder::new()
+            .provider_name(model_type.provider_name())
+            .name(model_type.display_name())
+            .with_streaming(true) // All models support streaming
+            .build()
+            .map_err(|e| format!("Failed to create model info: {}", e))?;
+
         Ok(Self {
-            model_type,
-            provider})
+            provider,
+            model_info,
+            api_key,
+            http_client})
     }
 
     pub fn available_types() -> Vec<ModelType> {
@@ -122,77 +162,247 @@ impl Model {
             ModelType::Claude3Haiku,
         ]
     }
+    
+    pub fn available_models() -> Vec<(&'static str, Provider)> {
+        vec![
+            ("gpt-3.5-turbo", Provider::OpenAI),
+            ("gpt-4", Provider::OpenAI),
+            ("gpt-4o", Provider::OpenAI),
+            ("claude-3-opus-20240229", Provider::Anthropic),
+            ("claude-3-sonnet-20240229", Provider::Anthropic),
+            ("claude-3-haiku-20240307", Provider::Anthropic),
+        ]
+    }
 
-    /// Complete a request using the Provider package streaming interface
+    /// Complete a request using HTTP3 + model-info architecture
     pub async fn complete(
         &self,
         messages: Vec<Message>,
     ) -> Result<CompletionResponse<String>, Box<dyn std::error::Error + Send + Sync>> {
-        // Convert messages to the last user message for simple completion
-        let user_message = messages
-            .iter()
-            .filter(|msg| msg.role == "user")
-            .last()
-            .ok_or("No user message found in completion request")?;
-
-        // Use completion provider streaming interface
-        let stream = self.provider.prompt(&user_message.content);
-
-        // Collect all chunks to form complete response
-        let mut collected_text = String::new();
-        let mut stream = stream;
-
-        use futures_util::StreamExt;
-        while let Some(chunk) = stream.next().await {
-            if let Some(content) = chunk.content {
-                collected_text.push_str(&content);
+        let base_url = self.provider.default_base_url();
+        let endpoint = match self.provider {
+            Provider::OpenAI | Provider::Anthropic(_) => "/chat/completions",
+            _ => return Err("Provider not implemented".into()),
+        };
+        
+        let url = format!("{}{}", base_url, endpoint);
+        
+        // Build request payload based on provider
+        let request_body = match self.provider {
+            Provider::OpenAI => {
+                json!({
+                    "model": self.model_info.name,
+                    "messages": messages.iter().map(|m| {
+                        json!({"role": m.role, "content": m.content})
+                    }).collect::<Vec<_>>(),
+                    "stream": false
+                })
             }
-        }
+            Provider::Anthropic(_) => {
+                let system_msgs: Vec<_> = messages.iter().filter(|m| m.role == "system").collect();
+                let user_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
+                
+                json!({
+                    "model": self.model_info.name,
+                    "max_tokens": 4096,
+                    "messages": user_msgs.iter().map(|m| {
+                        json!({"role": m.role, "content": m.content})
+                    }).collect::<Vec<_>>(),
+                    "system": system_msgs.first().map(|m| &m.content).unwrap_or(""),
+                })
+            }
+            _ => return Err("Provider not implemented".into()),
+        };
 
-        Ok(CompletionResponse::new(
-            collected_text.clone(),
-            cyrup_sugars::ZeroOneOrMany::One(collected_text),
-        )
-        .with_token_usage(TokenUsage::new(0, 0)) // Placeholder - would need actual tracking
-        .with_metadata(
-            ResponseMetadata::new().with_model(self.model_type.display_name().to_string()),
-        ))
+        // Make HTTP3 request
+        let response = Http3::json()
+            .api_key(&self.api_key)
+            .body(&request_body)
+            .post(&url)
+            .collect::<serde_json::Value>()
+            .await
+            .map_err(|e| format!("HTTP3 request failed: {}", e))?;
+
+        // Parse response based on provider
+        let content = match self.provider {
+            Provider::OpenAI => {
+                response["choices"][0]["message"]["content"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string()
+            }
+            Provider::Anthropic(_) => {
+                response["content"][0]["text"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string()
+            }
+            _ => return Err("Provider not implemented".into()),
+        };
+
+        // Extract usage information if available
+        let usage = if let Some(usage_data) = response.get("usage") {
+            TokenUsage::new(
+                usage_data["prompt_tokens"].as_u64().unwrap_or(0) as u32,
+                usage_data["completion_tokens"].as_u64().unwrap_or(0) as u32,
+            )
+        } else {
+            TokenUsage::new(0, 0)
+        };
+
+        // Create completion response using domain types
+        let mut completion_response = CompletionResponse::text(content.clone());
+        completion_response.set_token_usage(usage);
+        
+        Ok(completion_response)
     }
 
-    /// Simple prompt interface
+    /// Simple prompt interface using HTTP3 + model-info
     pub async fn prompt(
         &self,
         prompt: &str,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        // Use provider streaming interface and collect result
-        let stream = self.provider.prompt(prompt);
+        // Convert prompt to messages format
+        let messages = vec![Message {
+            role: MessageRole::User,
+            content: prompt.to_string(),
+            id: Some(uuid::Uuid::new_v4().to_string()),
+            timestamp: Some(chrono::Utc::now().timestamp() as u64),
+        }];
 
-        let mut result = String::new();
-        let mut stream = stream;
-
-        use futures_util::StreamExt;
-        while let Some(chunk) = stream.next().await {
-            if let Some(content) = chunk.content {
-                result.push_str(&content);
-            }
-        }
-
-        Ok(result)
+        // Use complete method and extract text
+        let response = self.complete(messages).await?;
+        Ok(response.text().unwrap_or_default().to_string())
     }
 
-    /// Get the model type
-    pub fn model_type(&self) -> &ModelType {
-        &self.model_type
+    /// Stream completions using AsyncStream
+    pub fn stream_complete(&self, messages: Vec<Message>) -> AsyncStream<String> {
+        let model_info = self.model_info.clone();
+        let provider = self.provider.clone();
+        let api_key = self.api_key.clone();
+        let http_client = self.http_client.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            Box::pin(async move {
+                let base_url = provider.default_base_url();
+                let endpoint = match provider {
+                    Provider::OpenAI | Provider::Anthropic(_) => "/chat/completions",
+                    _ => {
+                        eprintln!("Provider not implemented for streaming");
+                        return Ok(());
+                    }
+                };
+                
+                let url = format!("{}{}", base_url, endpoint);
+                
+                // Build streaming request payload
+                let request_body = match provider {
+                    Provider::OpenAI => {
+                        json!({
+                            "model": model_info.name,
+                            "messages": messages.iter().map(|m| {
+                                json!({"role": m.role, "content": m.content})
+                            }).collect::<Vec<_>>(),
+                            "stream": true
+                        })
+                    }
+                    Provider::Anthropic(_) => {
+                        let system_msgs: Vec<_> = messages.iter().filter(|m| m.role == "system").collect();
+                        let user_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
+                        
+                        json!({
+                            "model": model_info.name,
+                            "max_tokens": 4096,
+                            "messages": user_msgs.iter().map(|m| {
+                                json!({"role": m.role, "content": m.content})
+                            }).collect::<Vec<_>>(),
+                            "system": system_msgs.first().map(|m| &m.content).unwrap_or(""),
+                            "stream": true
+                        })
+                    }
+                    _ => {
+                        eprintln!("Provider not implemented for streaming");
+                        return Ok(());
+                    }
+                };
+
+                // Stream HTTP3 response
+                let mut stream = Http3::json()
+                    .api_key(&api_key)
+                    .body(&request_body)
+                    .post(&url)
+                    .stream();
+
+                while let Some(chunk_result) = stream.next().await {
+                    match chunk_result {
+                        Ok(HttpChunk::Body(chunk_bytes)) => {
+                            // Parse SSE chunk and extract content
+                            if let Some(content) = Self::parse_streaming_chunk(&chunk_bytes, &provider) {
+                                let _ = sender.send(content).await;
+                            }
+                        }
+                        Ok(HttpChunk::Head(_, _)) => {
+                            // Headers received, continue
+                            continue;
+                        }
+                        Err(e) => {
+                            eprintln!("Stream error: {}", e);
+                            break;
+                        }
+                    }
+                }
+                
+                Ok(())
+            })
+        })
+    }
+
+    /// Parse streaming chunk based on provider format
+    fn parse_streaming_chunk(chunk_bytes: &[u8], provider: &Provider) -> Option<String> {
+        let chunk_str = std::str::from_utf8(chunk_bytes).ok()?;
+        
+        // Handle Server-Sent Events format
+        for line in chunk_str.lines() {
+            if line.starts_with("data: ") {
+                let data = &line[6..];
+                if data == "[DONE]" {
+                    break;
+                }
+                
+                if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(data) {
+                    return match provider {
+                        Provider::OpenAI => {
+                            json_data["choices"][0]["delta"]["content"]
+                                .as_str()
+                                .map(|s| s.to_string())
+                        }
+                        Provider::Anthropic(_) => {
+                            json_data["delta"]["text"]
+                                .as_str()
+                                .map(|s| s.to_string())
+                        }
+                        _ => None,
+                    };
+                }
+            }
+        }
+        
+        None
+    }
+
+    /// Get the model info
+    pub fn model_info(&self) -> &ModelInfo {
+        &self.model_info
     }
 
     /// Get the model display name
     pub fn display_name(&self) -> &'static str {
-        self.model_type.display_name()
+        self.model_info.name
     }
 
     /// Get the provider name
     pub fn provider_name(&self) -> &'static str {
-        self.model_type.provider_name()
+        self.provider.provider_name()
     }
 }
 
@@ -222,22 +432,4 @@ impl CompletionRequest {
     }
 }
 
-/// Usage statistics for backward compatibility
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Usage {
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
-    pub total_tokens: u32,
-    pub processing_time_ms: Option<u64>,
-    pub cache_hit_ratio: Option<f64>}
-
-impl From<TokenUsage> for Usage {
-    fn from(token_usage: TokenUsage) -> Self {
-        Self {
-            prompt_tokens: token_usage.prompt_tokens,
-            completion_tokens: token_usage.completion_tokens,
-            total_tokens: token_usage.total_tokens,
-            processing_time_ms: None,
-            cache_hit_ratio: None}
-    }
-}
+// REMOVED: Usage struct - using fluent_ai_domain::http::common::CommonUsage (TokenUsage) instead

@@ -1,5 +1,6 @@
 //! Quantum error correction implementation
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::cognitive::quantum::{

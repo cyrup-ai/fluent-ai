@@ -11,25 +11,19 @@ impl ProviderTrait for AzureProvider {
         let model_name = model.to_string();
         
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                let model_info = adapt_azure_to_model_info(&model_name);
-                let _ = sender.send(model_info).await;
-                Ok(())
-            })
+            let model_info = adapt_azure_to_model_info(&model_name);
+            let _ = sender.send(model_info);
         })
     }
     
     fn list_models(&self) -> AsyncStream<ModelInfo> {
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                let models = vec!["gpt-4o", "gpt-4-turbo", "gpt-35-turbo", "gpt-4-vision-preview"];
-                
-                for model in models {
-                    let model_info = adapt_azure_to_model_info(model);
-                    let _ = sender.send(model_info).await;
-                }
-                Ok(())
-            })
+            let models = vec!["gpt-4o", "gpt-4-turbo", "gpt-35-turbo", "gpt-4-vision-preview"];
+            
+            for model in models {
+                let model_info = adapt_azure_to_model_info(model);
+                let _ = sender.send(model_info);
+            }
         })
     }
     
@@ -50,7 +44,7 @@ fn adapt_azure_to_model_info(model: &str) -> ModelInfo {
         m
     });
     
-    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, _supports_streaming, supports_embeddings, supports_thinking) = 
         map.get(model).copied().unwrap_or((16385, 4096, 2.5, 10.0, false, true, true, false, false));
     
     ModelInfo {
@@ -62,7 +56,6 @@ fn adapt_azure_to_model_info(model: &str) -> ModelInfo {
         output_price: Some(pricing_output),
         supports_vision,
         supports_function_calling,
-        supports_streaming,
         supports_embeddings,
         requires_max_tokens: false,
         supports_thinking,

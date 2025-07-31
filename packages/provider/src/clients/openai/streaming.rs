@@ -15,6 +15,7 @@ use super::{OpenAIError, OpenAIMessage, OpenAIResult};
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use crate::ZeroOneOrMany;
 use fluent_ai_domain::context::chunk::CompletionChunk;
+use fluent_ai_domain::http::common::{CommonUsage, FinishReason};
 
 /// OpenAI streaming wrapper for real-time completions
 #[derive(Debug, Clone)]
@@ -298,16 +299,17 @@ impl StreamAccumulator {
         let completion_chunk = if !self.content.is_empty() {
             CompletionChunk::Text(self.content.clone())
         } else if let Some(finish_reason) = &self.finish_reason {
-            let usage = self.usage.as_ref().map(|u| crate::domain::chunk::Usage {
-                prompt_tokens: u.prompt_tokens,
-                completion_tokens: u.completion_tokens,
-                total_tokens: u.total_tokens});
+            let usage = self.usage.as_ref().map(|u| CommonUsage::from_openai(
+                u.prompt_tokens,
+                u.completion_tokens,
+                u.total_tokens
+            ));
 
             let reason = match finish_reason.as_str() {
-                "stop" => Some(crate::domain::chunk::FinishReason::Stop),
-                "length" => Some(crate::domain::chunk::FinishReason::Length),
-                "content_filter" => Some(crate::domain::chunk::FinishReason::ContentFilter),
-                "tool_calls" => Some(crate::domain::chunk::FinishReason::ToolCalls),
+                "stop" => Some(FinishReason::Stop),
+                "length" => Some(FinishReason::Length),
+                "content_filter" => Some(FinishReason::ContentFilter),
+                "tool_calls" => Some(FinishReason::ToolCalls),
                 _ => Some(crate::domain::chunk::FinishReason::Stop)};
 
             CompletionChunk::Complete {
@@ -461,10 +463,10 @@ impl StreamAccumulator {
             ZeroOneOrMany::None => None,
             ZeroOneOrMany::One(call) => {
                 // Convert from tools::OpenAIToolCall to messages::OpenAIToolCall
-                let messages_call = crate::providers::openai::messages::OpenAIToolCall {
+                let messages_call = super::OpenAIToolCall {
                     id: call.id,
                     call_type: call.call_type,
-                    function: crate::providers::openai::messages::OpenAIFunctionCall {
+                    function: super::OpenAIFunctionCall {
                         name: call.function.name,
                         arguments: call.function.arguments}};
                 Some(vec![messages_call])
@@ -473,10 +475,10 @@ impl StreamAccumulator {
                 // Convert vector of tools::OpenAIToolCall to messages::OpenAIToolCall
                 let messages_calls: Vec<_> = calls
                     .into_iter()
-                    .map(|call| crate::providers::openai::messages::OpenAIToolCall {
+                    .map(|call| super::OpenAIToolCall {
                         id: call.id,
                         call_type: call.call_type,
-                        function: crate::providers::openai::messages::OpenAIFunctionCall {
+                        function: super::OpenAIFunctionCall {
                             name: call.function.name,
                             arguments: call.function.arguments}})
                     .collect();
@@ -489,7 +491,7 @@ impl StreamAccumulator {
             content: if self.content.is_empty() {
                 None
             } else {
-                Some(crate::providers::openai::OpenAIContent::Text(
+                Some(super::OpenAIContent::Text(
                     self.content.clone(),
                 ))
             },
@@ -497,7 +499,7 @@ impl StreamAccumulator {
             tool_calls: tool_calls_vec,
             tool_call_id: None,
             function_call: self.function_call.as_ref().map(|fc| {
-                crate::providers::openai::messages::OpenAIFunctionCall {
+                super::OpenAIFunctionCall {
                     name: fc.name.clone().unwrap_or_default(),
                     arguments: fc.arguments.clone()}
             })}
@@ -674,7 +676,7 @@ pub fn stream_from_sse_events(events: AsyncStream<SSEEvent>) -> AsyncStream<Comp
     let (sender, stream) = AsyncStream::channel();
     let mut accumulator = StreamAccumulator::new();
 
-    crate::async_task::spawn_async(async move {
+    crate::spawn_async(async move {
         let mut events_iter = events;
         while let Some(event) = events_iter.next().await {
             // Skip non-data events
@@ -717,7 +719,7 @@ pub fn optimize_stream_batching(
 ) -> AsyncStream<ZeroOneOrMany<CompletionChunk>> {
     let (sender, optimized_stream) = AsyncStream::channel();
 
-    crate::async_task::spawn_async(async move {
+    crate::spawn_async(async move {
         let mut stream_iter = stream;
         let mut batch = Vec::with_capacity(batch_size);
         let mut last_batch_time = SystemTime::now();
@@ -772,7 +774,7 @@ pub async fn send_compatible_streaming_request(
 
     let (sender, stream) = AsyncStream::channel();
 
-    crate::async_task::spawn_async(async move {
+    crate::spawn_async(async move {
         let mut sse_iter = sse_stream;
         while let Some(event) = sse_iter.next().await {
             match event {

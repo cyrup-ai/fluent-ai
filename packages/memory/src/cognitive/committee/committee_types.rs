@@ -8,6 +8,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
+use arrayvec::ArrayVec;
+
 use arc_swap::ArcSwap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -421,7 +423,7 @@ pub struct Model {
     pub timeout_ms: u64,
     pub max_retries: u8,
     pub rate_limit_per_minute: u32,
-    pub provider: Arc<dyn fluent_ai_domain::completion::CompletionProvider>,
+    pub provider: Arc<dyn fluent_ai_domain::completion::CompletionBackend>,
     pub health_status: Arc<RwLock<HealthStatus>>,
     pub metrics: Arc<RwLock<ModelMetrics>>}
 
@@ -431,7 +433,7 @@ impl Model {
     pub fn new(
         model_type: ModelType,
         api_key: Arc<str>,
-        provider: Arc<dyn fluent_ai_domain::completion::CompletionProvider>,
+        provider: Arc<dyn fluent_ai_domain::completion::CompletionBackend>,
     ) -> Self {
         Self {
             model_type,

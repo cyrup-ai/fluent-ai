@@ -3,9 +3,9 @@
 //! This module provides high-performance text generation with advanced sampling strategies,
 //! atomic statistics tracking, and memory-efficient token processing.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use std::time::{SystemTime, UNIX_EPOCH};
 use arrayvec::ArrayVec;
-use std::collections::HashMap;
 
 use crossbeam::atomic::AtomicCell;
 use rand::prelude::*;
@@ -24,7 +24,7 @@ const MAX_CONTEXT_LENGTH: usize = 32_768;
 const SAMPLING_CACHE_SIZE: usize = 1024;
 
 /// Efficient logits buffer with zero-allocation patterns
-pub type LogitsBuffer = SmallVec<[f32; SAMPLING_CACHE_SIZE]>;
+pub type LogitsBuffer = SmallVec<f32, SAMPLING_CACHE_SIZE>;
 
 /// Token probability for sampling operations
 #[derive(Debug, Clone, Copy, PartialEq)]

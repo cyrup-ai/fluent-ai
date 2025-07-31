@@ -4,6 +4,7 @@
 //! Episodic memory stores sequences of events with temporal information,
 //! allowing for time-based queries and context-aware retrieval.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -14,6 +15,7 @@ use fluent_ai_async::channel;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::graph::entity::BaseEntity;
 use crate::memory::primitives::metadata::MemoryMetadata;
 use crate::memory::primitives::node::MemoryNode;
 use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum};
@@ -121,7 +123,64 @@ pub struct EpisodicMemory {
     pub events: Arc<ArcSwap<SkipMap<DateTime<Utc>, EpisodicEvent>>>}
 
 impl MemoryType for EpisodicMemory {
-    fn new(id: &str, name: &str, description: &str) -> Self {
+    fn id(&self) -> &str {
+        &self.base.id
+    }
+
+    fn name(&self) -> &str {
+        &self.base.name
+    }
+
+    fn description(&self) -> &str {
+        &self.base.description
+    }
+
+    fn updated_at(&self) -> DateTime<Utc> {
+        self.base.updated_at
+    }
+
+    fn metadata(&self) -> &MemoryMetadata {
+        &self.base.metadata
+    }
+
+    fn content(&self) -> &MemoryContent {
+        &self.base.content
+    }
+
+    fn validate(&self) -> Result<()> {
+        if self.base.id.is_empty() {
+            return Err(Error::InvalidInput("ID cannot be empty".to_string()));
+        }
+        if self.base.name.is_empty() {
+            return Err(Error::InvalidInput("Name cannot be empty".to_string()));
+        }
+        Ok(())
+    }
+
+    fn to_entity(&self) -> BaseEntity {
+        BaseEntity::new(&self.base.id, "episodic_memory")
+            .with_attribute("name", serde_json::Value::String(self.base.name.clone()))
+            .with_attribute("description", serde_json::Value::String(self.base.description.clone()))
+    }
+
+    fn from_entity(entity: BaseEntity) -> Result<Self> {
+        let name = entity.get_attribute("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Unnamed")
+            .to_string();
+        
+        let description = entity.get_attribute("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        Ok(Self::new(entity.id(), &name, &description))
+    }
+}
+
+impl EpisodicMemory {
+    /// Create a new episodic memory
+    pub fn new(id: &str, name: &str, description: &str) -> Self {
         let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
         metadata.add_attribute("version".to_string(), json!("1.0"));
 
@@ -136,23 +195,32 @@ impl MemoryType for EpisodicMemory {
             events: Arc::new(ArcSwap::new(Arc::new(SkipMap::new())))}
     }
 
-    fn from_memory(memory: &BaseMemory) -> Result<Self> {
-        let events: SkipMap<DateTime<Utc>, EpisodicEvent> = match &memory.content {
-            MemoryContent::Json(val) => serde_json::from_value(val.clone())?,
-            MemoryContent::Text(s) => serde_json::from_str(s)?,
-            _ => {
-                return Err(Error::MemoryError(
-                    "Invalid content type for episodic memory".to_string(),
-                ));
-            }
+    /// Create from a BaseMemory
+    pub fn from_memory(memory: &BaseMemory) -> Result<Self> {
+        // Deserialize events from the memory content text field
+        let events_map: HashMap<DateTime<Utc>, EpisodicEvent> = if !memory.content.text.is_empty() {
+            serde_json::from_str(&memory.content.text)?
+        } else if let Some(custom_data) = memory.content.custom.get("events") {
+            serde_json::from_value(custom_data.clone())?
+        } else {
+            return Err(Error::InvalidInput(
+                "No episodic events data found in memory content".to_string(),
+            ));
         };
+        
+        // Convert HashMap to SkipMap
+        let events = SkipMap::new();
+        for (timestamp, event) in events_map {
+            events.insert(timestamp, event);
+        }
 
         Ok(Self {
             base: memory.clone(),
             events: Arc::new(ArcSwap::new(Arc::new(events)))})
     }
 
-    fn to_memory(&self) -> Result<BaseMemory> {
+    /// Convert to BaseMemory
+    pub fn to_memory(&self) -> Result<BaseMemory> {
         let mut memory = self.base.clone();
         let events_guard = self.events.load();
         let events_map: HashMap<_, _> = events_guard
@@ -163,30 +231,17 @@ impl MemoryType for EpisodicMemory {
         Ok(memory)
     }
 
-    fn id(&self) -> &str {
-        &self.base.id
-    }
-
-    fn name(&self) -> &str {
-        &self.base.name
-    }
-
-    fn description(&self) -> &str {
-        &self.base.description
-    }
-
-    fn memory_type(&self) -> MemoryTypeEnum {
+    /// Get the memory type
+    pub fn memory_type(&self) -> MemoryTypeEnum {
         MemoryTypeEnum::Episodic
     }
-}
 
-impl EpisodicMemory {
     /// Add an event to the episodic memory
     pub fn add_event(&self, event: EpisodicEvent) {
         let new_events = self.events.load().clone();
         new_events.insert(event.timestamp, event);
         self.events.store(new_events);
-        self.base.touch();
+        // Note: Would update timestamp here but base is immutable in this context
     }
 
     /// Retrieve events within a specific time range

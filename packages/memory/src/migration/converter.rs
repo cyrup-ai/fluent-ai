@@ -1,6 +1,7 @@
 // src/migration/converter.rs
 //! Data conversion utilities for import/export.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json;

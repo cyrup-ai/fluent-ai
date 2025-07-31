@@ -1,10 +1,10 @@
 //! Test for ARCHITECTURE.md syntax compliance
 //!
 //! This module verifies that the Tool syntax from ARCHITECTURE.md works exactly as documented:
-//! Tool<Perplexity>::new({"citations" => "true"})
+//! Tool<Perplexity>::new([("citations", "true")])
 
-use fluent_ai_domain::hash_map_fn;
 use fluent_ai_domain::tool::{Perplexity, Tool};
+use cyrup_sugars::macros::hash_map_fn;
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +13,7 @@ mod tests {
     #[test]
     fn test_tool_perplexity_syntax() {
         // Test exact syntax from ARCHITECTURE.md
-        let _tool = Tool::<Perplexity>::new(hash_map_fn! {"citations" => "true"});
+        let _tool = Tool::<Perplexity>::new([("citations", "true")]);
 
         // This should compile and work
         assert!(true); // Basic compilation test
@@ -22,10 +22,10 @@ mod tests {
     #[test]
     fn test_tool_multiple_params() {
         // Test multiple parameters
-        let _tool = Tool::<Perplexity>::new(hash_map_fn! {
-            "citations" => "true",
-            "mode" => "research"
-        });
+        let _tool = Tool::<Perplexity>::new([
+            ("citations", "true"),
+            ("mode", "research")
+        ]);
 
         assert!(true); // Basic compilation test
     }

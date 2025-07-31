@@ -89,7 +89,7 @@ pub trait AgentRoleBuilder: Sized {
     /// Add MCP server - EXACT syntax: .mcp_server<Stdio>().bin(...).init(...)
     fn mcp_server<T>(self) -> McpServerBuilder<T>;
     
-    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    /// Set additional parameters - EXACT syntax: .additional_params([("beta", "true")])
     fn additional_params<P>(self, params: P) -> impl AgentRoleBuilder
     where
         P: Into<hashbrown::HashMap<&'static str, &'static str>>;
@@ -99,7 +99,7 @@ pub trait AgentRoleBuilder: Sized {
     where
         M: Memory + Send + Sync + 'static;
     
-    /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
+    /// Set metadata - EXACT syntax: .metadata([("key", "val"), ("foo", "bar")])
     fn metadata<M>(self, metadata: M) -> impl AgentRoleBuilder
     where
         M: Into<hashbrown::HashMap<&'static str, &'static str>>;
@@ -245,7 +245,8 @@ where
         self
     }
 
-    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    /// Set additional parameters - EXACT syntax: .additional_params([("beta", "true")])
+    #[cyrup_sugars::macros::json_syntax]
     fn additional_params<P>(mut self, params: P) -> impl AgentRoleBuilder
     where
         P: Into<hashbrown::HashMap<&'static str, &'static str>>,
@@ -272,7 +273,8 @@ where
         self
     }
 
-    /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
+    /// Set metadata - EXACT syntax: .metadata([("key", "val"), ("foo", "bar")])
+    #[cyrup_sugars::macros::json_syntax]
     fn metadata<M>(mut self, metadata: M) -> impl AgentRoleBuilder
     where
         M: Into<hashbrown::HashMap<&'static str, &'static str>>,
@@ -596,7 +598,7 @@ where
 }
 
 // ToolArgs implementations for variadic tool syntax  
-// Enables: .tools(Tool<Perplexity>::new({"citations" => "true"}), Tool::named("cargo").bin("~/.cargo/bin").description(...))
+// Enables: .tools(Tool<Perplexity>::new([("citations", "true")]), Tool::named("cargo").bin("~/.cargo/bin").description(...))
 
 impl<T> ToolArgs for T
 where
@@ -632,47 +634,8 @@ where
     }
 }
 
-// hashbrown::HashMap From implementations for transparent {"key" => "value"} syntax
-// Enables: .additional_params({"beta" => "true"}) and .metadata({"key" => "val", "foo" => "bar"})
-
-impl From<[(&'static str, &'static str); 1]> for hashbrown::HashMap<&'static str, &'static str> {
-    fn from(arr: [(&'static str, &'static str); 1]) -> Self {
-        let mut map = hashbrown::HashMap::new();
-        let [(k, v)] = arr;
-        map.insert(k, v);
-        map
-    }
-}
-
-impl From<[(&'static str, &'static str); 2]> for hashbrown::HashMap<&'static str, &'static str> {
-    fn from(arr: [(&'static str, &'static str); 2]) -> Self {
-        let mut map = hashbrown::HashMap::new();
-        for (k, v) in arr {
-            map.insert(k, v);
-        }
-        map
-    }
-}
-
-impl From<[(&'static str, &'static str); 3]> for hashbrown::HashMap<&'static str, &'static str> {
-    fn from(arr: [(&'static str, &'static str); 3]) -> Self {
-        let mut map = hashbrown::HashMap::new();
-        for (k, v) in arr {
-            map.insert(k, v);
-        }
-        map
-    }
-}
-
-impl From<[(&'static str, &'static str); 4]> for hashbrown::HashMap<&'static str, &'static str> {
-    fn from(arr: [(&'static str, &'static str); 4]) -> Self {
-        let mut map = hashbrown::HashMap::new();
-        for (k, v) in arr {
-            map.insert(k, v);
-        }
-        map
-    }
-}
+// Note: hashbrown::HashMap From implementations are provided by cyrup_sugars
+// No need for duplicate implementations
 
 // ConversationHistoryArgs implementations for => syntax
 // Enables: .conversation_history(MessageRole::User => "What time is it in Paris, France", MessageRole::System => "...", MessageRole::Assistant => "...")

@@ -1,0 +1,17 @@
+{
+  "mistral-large-latest": {"max_tokens": 128000, "input_price": 2.0, "output_price": 6.0, "supports_thinking": false, "required_temp": null},
+  "mistral-large-2407": {"max_tokens": 128000, "input_price": 2.0, "output_price": 6.0, "supports_thinking": false, "required_temp": null},
+  "mistral-large-2402": {"max_tokens": 32000, "input_price": 4.0, "output_price": 12.0, "supports_thinking": false, "required_temp": null},
+  "mistral-medium-latest": {"max_tokens": 32000, "input_price": 2.7, "output_price": 8.1, "supports_thinking": false, "required_temp": null},
+  "mistral-small-latest": {"max_tokens": 32000, "input_price": 1.0, "output_price": 3.0, "supports_thinking": false, "required_temp": null},
+  "mistral-tiny": {"max_tokens": 32000, "input_price": 0.14, "output_price": 0.42, "supports_thinking": false, "required_temp": null},
+  "mistral-embed": {"max_tokens": 8192, "input_price": 0.1, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "codestral-latest": {"max_tokens": 32000, "input_price": 0.2, "output_price": 0.6, "supports_thinking": false, "required_temp": null},
+  "codestral-2405": {"max_tokens": 32000, "input_price": 0.2, "output_price": 0.6, "supports_thinking": false, "required_temp": null},
+  "default_embed": {"max_tokens": 8192, "input_price": 0.1, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "default_large": {"max_tokens": 128000, "input_price": 2.0, "output_price": 6.0, "supports_thinking": false, "required_temp": null},
+  "default_medium": {"max_tokens": 32000, "input_price": 2.7, "output_price": 8.1, "supports_thinking": false, "required_temp": null},
+  "default_small": {"max_tokens": 32000, "input_price": 1.0, "output_price": 3.0, "supports_thinking": false, "required_temp": null},
+  "default_codestral": {"max_tokens": 32000, "input_price": 0.2, "output_price": 0.6, "supports_thinking": false, "required_temp": null},
+  "default": {"max_tokens": 32000, "input_price": 1.0, "output_price": 3.0, "supports_thinking": false, "required_temp": null}
+}

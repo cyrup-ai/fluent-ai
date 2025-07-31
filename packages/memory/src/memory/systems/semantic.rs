@@ -5,6 +5,7 @@
 //! and semantic information, with support for concepts, relationships,
 //! and reasoning capabilities.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};

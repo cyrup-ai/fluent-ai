@@ -4,20 +4,27 @@
 //! completion providers to perform assessment tasks. Each evaluator manages a single
 //! model instance and handles prompt generation, response parsing, and error recovery.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
+
+use arrayvec::ArrayVec;
 
 // AtomicCounter trait no longer needed since we use local RelaxedCounter
 use crossbeam_queue::SegQueue;
 // Use domain types for traits and models
 use fluent_ai_domain::{
-    chat::Message,
-    completion::{CompletionError, CompletionProvider}};
-// Use provider clients for completion services
-use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
+    chat::{Message, MessageRole},
+    completion::{CompletionCoreError, CompletionBackend, CompletionRequest, CompletionResponse}};
+// Use HTTP3 + model-info architecture instead of provider clients
+use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
+use model_info::{Provider, ModelInfo, ModelInfoBuilder};
+use fluent_ai_async::{AsyncTask, AsyncStream};
+use serde_json::json;
 use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
+use chrono::Utc;
 
 pub use super::committee_types::{
     CommitteeError, CommitteeEvaluation, CommitteeResult, EvaluationPrompt, HealthStatus,
@@ -25,6 +32,148 @@ pub use super::committee_types::{
 // Import additional types for zero allocation patterns
 pub use crate::cognitive::committee::committee_evaluators_extension::{
     EvaluationSessionMetrics, EvaluationTask, EvaluatorPoolMetrics};
+
+/// HTTP3-based completion backend implementation
+/// Uses HTTP3 + model-info architecture instead of provider clients
+#[derive(Debug, Clone)]
+struct Http3CompletionBackend {
+    provider: Provider,
+    model_info: ModelInfo,
+    api_key: String,
+    http_client: HttpClient,
+}
+
+impl Http3CompletionBackend {
+    #[inline]
+    async fn new(
+        model_type: &ModelType,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let (provider, model_name) = match model_type {
+            ModelType::Gpt35Turbo => (Provider::OpenAI, "gpt-3.5-turbo"),
+            ModelType::Gpt4O => (Provider::OpenAI, "gpt-4o"),
+            ModelType::Gpt4Turbo => (Provider::OpenAI, "gpt-4-turbo"),
+            ModelType::Claude3Opus => (Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider), "claude-3-opus-20240229"),
+            ModelType::Claude3Sonnet => (Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider), "claude-3-sonnet-20240229"),
+            ModelType::Claude3Haiku => (Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider), "claude-3-haiku-20240307"),
+            _ => return Err(format!("Model type {:?} is not yet implemented", model_type).into()),
+        };
+
+        let api_key_env = match provider {
+            Provider::OpenAI => "OPENAI_API_KEY",
+            Provider::Anthropic(_) => "ANTHROPIC_API_KEY",
+            _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
+        };
+
+        let api_key = std::env::var(api_key_env)
+            .map_err(|_| format!("{} environment variable not set", api_key_env))?;
+
+        // Create HTTP3 client optimized for AI operations
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| format!("Failed to create HTTP3 client: {}", e))?;
+
+        // Create model info using model-info package
+        let model_info = ModelInfoBuilder::new()
+            .provider_name(match provider {
+                Provider::OpenAI => "openai",
+                Provider::Anthropic(_) => "anthropic",
+                _ => return Err("Unsupported provider".into()),
+            })
+            .name(model_name)
+            .with_streaming(true) // All models support streaming
+            .build()
+            .map_err(|e| format!("Failed to create model info: {}", e))?;
+
+        Ok(Self {
+            provider,
+            model_info,
+            api_key,
+            http_client,
+        })
+    }
+}
+
+impl CompletionBackend for Http3CompletionBackend {
+    #[inline]
+    fn submit_completion<'a>(
+        &'a self,
+        request: CompletionRequest,
+    ) -> AsyncTask<CompletionResponse<'a>> {
+        let provider = self.provider.clone();
+        let model_info = self.model_info.clone();
+        let api_key = self.api_key.clone();
+        let http_client = self.http_client.clone();
+
+        AsyncTask::spawn(async move {
+            let base_url = provider.default_base_url();
+            let endpoint = match provider {
+                Provider::OpenAI | Provider::Anthropic(_) => "/chat/completions",
+                _ => return Err(CompletionCoreError::ProviderUnavailable("Provider not implemented".to_string())),
+            };
+
+            let url = format!("{}{}", base_url, endpoint);
+
+            // Convert request to messages format with proper Message structure
+            let messages = vec![Message {
+                role: MessageRole::User,
+                content: request.prompt().content().to_string(),
+                id: Some(Uuid::new_v4().to_string()),
+                timestamp: Some(Utc::now().timestamp() as u64),
+            }];
+
+            // Build request payload based on provider
+            let request_body = match provider {
+                Provider::OpenAI => {
+                    json!({
+                        "model": model_info.name,
+                        "messages": messages.iter().map(|m| {
+                            json!({"role": m.role.to_string().to_lowercase(), "content": m.content})
+                        }).collect::<Vec<_>>(),
+                        "stream": false
+                    })
+                }
+                Provider::Anthropic(_) => {
+                    json!({
+                        "model": model_info.name,
+                        "max_tokens": 4096,
+                        "messages": messages.iter().map(|m| {
+                            json!({"role": m.role.to_string().to_lowercase(), "content": m.content})
+                        }).collect::<Vec<_>>(),
+                    })
+                }
+                _ => return Err(CompletionCoreError::ProviderUnavailable("Provider not implemented".to_string())),
+            };
+
+            // Make HTTP3 request
+            let response = Http3::json()
+                .api_key(&api_key)
+                .body(&request_body)
+                .post(&url)
+                .collect::<serde_json::Value>()
+                .await
+                .map_err(|e| CompletionCoreError::RequestFailed(format!("HTTP3 request failed: {}", e)))?;
+
+            // Parse response based on provider
+            let content = match provider {
+                Provider::OpenAI => {
+                    response["choices"][0]["message"]["content"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string()
+                }
+                Provider::Anthropic(_) => {
+                    response["content"][0]["text"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string()
+                }
+                _ => return Err(CompletionCoreError::ProviderUnavailable("Provider not implemented".to_string())),
+            };
+
+            // Create completion response using domain types
+            Ok(CompletionResponse::text(content))
+        })
+    }
+}
 use crate::cognitive::types::OptimizationSpec;
 
 /// Individual provider evaluator managing a single model instance
@@ -175,26 +324,18 @@ impl ProviderEvaluator {
         &self.model.model_type
     }
 
-    /// Create appropriate provider for model type
+
+
+    /// Create appropriate provider for model type using HTTP3 + model-info architecture
     async fn create_provider(
         model_type: &ModelType,
-    ) -> Result<Arc<dyn CompletionProvider>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<Arc<dyn CompletionBackend>, Box<dyn std::error::Error + Send + Sync>> {
         match model_type {
-            ModelType::Gpt35Turbo | ModelType::Gpt4O | ModelType::Gpt4Turbo => {
-                // Create OpenAI provider using Provider package
-                let api_key = std::env::var("OPENAI_API_KEY")
-                    .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
-                let provider = OpenAIClient::new(api_key, model_type.display_name())
-                    .map_err(|e| format!("Failed to create OpenAI client: {}", e))?;
-                Ok(Arc::new(provider))
-            }
-            ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
-                // Create Anthropic provider using Provider package
-                let api_key = std::env::var("ANTHROPIC_API_KEY")
-                    .map_err(|_| "ANTHROPIC_API_KEY environment variable not set")?;
-                let provider = AnthropicClient::new(api_key, model_type.display_name())
-                    .map_err(|e| format!("Failed to create Anthropic client: {}", e))?;
-                Ok(Arc::new(provider))
+            ModelType::Gpt35Turbo | ModelType::Gpt4O | ModelType::Gpt4Turbo
+            | ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
+                // Create HTTP3-based completion backend
+                let backend = Http3CompletionBackend::new(model_type).await?;
+                Ok(Arc::new(backend))
             }
             ModelType::GeminiPro
             | ModelType::Mixtral8x7B

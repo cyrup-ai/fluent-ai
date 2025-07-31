@@ -26,15 +26,15 @@ let stream = CandleFluentAi::agent_role("rusty-squire")
     )
     .mcp_server<CandleStdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait CandleTool
-        CandleTool<CandlePerplexity>::new({
-            "citations" => "true"
-        }),
+        CandleTool<CandlePerplexity>::new([
+            ("citations", "true")
+        ]),
         CandleTool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     ) // CandleZeroOneOrMany `CandleTool` || `CandleMcpTool` || CandleNamedTool (WASM)
 
-    .additional_params({"beta" =>  "true"})
+    .additional_params([("beta", "true")])
     .memory(CandleLibrary::named("obsidian_vault"))
-    .metadata({ "key" => "val", "foo" => "bar" })
+    .metadata([("key", "val"), ("foo", "bar")])
     .on_tool_result(|results| {
         // do stuff
     })
@@ -130,15 +130,15 @@ let stream = CandleFluentAi::agent_role("rusty-squire")
     )
     .mcp_server<CandleStdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait CandleTool
-        CandleTool<CandlePerplexity>::new({
-            "citations" => "true"
-        }),
+        CandleTool<CandlePerplexity>::new([
+            ("citations", "true")
+        ]),
         CandleTool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     ) // CandleZeroOneOrMany `CandleTool` || `CandleMcpTool` || CandleNamedTool (WASM)
 
-    .additional_params({"beta" =>  "true"})
+    .additional_params([("beta", "true")])
     .memory(CandleLibrary::named("obsidian_vault"))
-    .metadata({ "key" => "val", "foo" => "bar" })
+    .metadata([("key", "val"), ("foo", "bar")])
     .on_tool_result(|results| {
         // do stuff
     })
@@ -187,15 +187,15 @@ let stream = CandleFluentAi::agent_role("rusty-squire")
     )
     .mcp_server<CandleStdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait CandleTool
-        CandleTool<CandlePerplexity>::new({
-            "citations" => "true"
-        }),
+        CandleTool<CandlePerplexity>::new([
+            ("citations", "true")
+        ]),
         CandleTool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     ) // CandleZeroOneOrMany `CandleTool` || `CandleMcpTool` || CandleNamedTool (WASM)
 
-    .additional_params({"beta" =>  "true"})
+    .additional_params([("beta", "true")])
     .memory(CandleLibrary::named("obsidian_vault"))
-    .metadata({ "key" => "val", "foo" => "bar" })
+    .metadata([("key", "val"), ("foo", "bar")])
     .on_tool_result(|results| {
         // do stuff
     })

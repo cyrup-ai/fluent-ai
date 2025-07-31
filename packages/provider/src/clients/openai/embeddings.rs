@@ -234,7 +234,7 @@ impl EmbeddingConfig {
             normalize: true}
     }
 
-    /// Create config for ada-002 (legacy)
+    /// Create config for ada-002
     #[inline(always)]
     pub fn ada_002() -> Self {
         Self {

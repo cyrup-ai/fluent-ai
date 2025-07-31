@@ -1,6 +1,7 @@
 // src/cognitive/quantum_orchestrator.rs
 //! Quantum orchestrator for managing recursive improvement loops
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use num_complex::Complex64;

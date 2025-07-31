@@ -328,7 +328,7 @@ pub trait CandleAgentRoleBuilder: Sized {
     /// Add MCP server - EXACT syntax: .mcp_server<Stdio>().bin(...).init(...)
     fn mcp_server<T>(self) -> CandleMcpServerBuilder<T>;
     
-    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    /// Set additional parameters - EXACT syntax: .additional_params([("beta", "true")])
     fn additional_params<P>(self, params: P) -> impl CandleAgentRoleBuilder
     where
         P: Into<std::collections::HashMap<&'static str, &'static str>>;
@@ -338,7 +338,7 @@ pub trait CandleAgentRoleBuilder: Sized {
     where
         M: CandleMemory + Send + Sync + 'static;
     
-    /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
+    /// Set metadata - EXACT syntax: .metadata([("key", "val"), ("foo", "bar")])
     fn metadata<M>(self, metadata: M) -> impl CandleAgentRoleBuilder
     where
         M: Into<std::collections::HashMap<&'static str, &'static str>>;
@@ -505,7 +505,7 @@ where
         self
     }
 
-    /// Set additional parameters - EXACT syntax: .additional_params({"beta" => "true"})
+    /// Set additional parameters - EXACT syntax: .additional_params([("beta", "true")])
     fn additional_params<P>(mut self, params: P) -> impl CandleAgentRoleBuilder
     where
         P: Into<std::collections::HashMap<&'static str, &'static str>>,
@@ -532,7 +532,7 @@ where
         self
     }
 
-    /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
+    /// Set metadata - EXACT syntax: .metadata([("key", "val"), ("foo", "bar")])
     fn metadata<M>(mut self, metadata: M) -> impl CandleAgentRoleBuilder
     where
         M: Into<std::collections::HashMap<&'static str, &'static str>>,
@@ -922,7 +922,7 @@ where
 }
 
 // ToolArgs implementations for variadic tool syntax  
-// Enables: .tools(Tool<Perplexity>::new({"citations" => "true"}), Tool::named("cargo").bin("~/.cargo/bin").description(...))
+// Enables: .tools(Tool<Perplexity>::new([("citations", "true")]), Tool::named("cargo").bin("~/.cargo/bin").description(...))
 
 impl<T> CandleToolArgs for T
 where

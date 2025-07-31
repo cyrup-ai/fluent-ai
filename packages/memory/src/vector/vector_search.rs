@@ -8,6 +8,7 @@
 //! - Advanced filtering and ranking algorithms
 
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 

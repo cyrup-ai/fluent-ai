@@ -14,7 +14,7 @@ anyhow = "1.0.98"
 serde = { version = "1.0.219", features = ["derive"] }
 tracing = "0.1.41"
 thiserror = "2.0.12"
-clap = { version = "4.5.41", features = ["derive", "cargo"] }
+clap = { version = "4.5", features = ["derive", "cargo"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tempfile = "3.20.0"
 chrono = { version = "0.4.41", features = ["serde"] }
@@ -22,6 +22,7 @@ uuid = { version = "1.17.0", features = ["v4", "serde"] }
 tokio = { version = "1.47.0", features = ["full"] }
 termcolor = { path = "../termcolor" }
 # fluent_ai_domain = { path = "../domain" } # Removed to avoid circular dependency
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 
 # Regular dependencies
 nix = { version = "0.30.1", features = ["user", "sched"] }

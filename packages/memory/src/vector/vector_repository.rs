@@ -1,5 +1,6 @@
 //! Vector repository for managing vector collections
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};

@@ -1,16 +1,17 @@
 use serde_json::json;
 
-use super::completion::CompletionModel;
+use super::completion::TogetherCompletionModel;
 use crate::clients::openai;
 use crate::clients::openai::send_compatible_streaming_request;
-use crate::streaming::StreamingCompletionResponse;
+use crate::clients::xai::streaming::merge;
+use crate::streaming::DefaultStreamingResponse;
 use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
 
-impl CompletionModel {
+impl TogetherCompletionModel {
     pub(crate) async fn stream(
         &self,
         completion_request: CompletionRequest,
-    ) -> Result<StreamingCompletionResponse<openai::StreamingCompletionResponse>, CompletionError>
+    ) -> Result<DefaultStreamingResponse<openai::StreamingCompletionResponse>, CompletionError>
     {
         let mut request = self.create_completion_request(completion_request)?;
 

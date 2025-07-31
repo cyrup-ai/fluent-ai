@@ -45,7 +45,10 @@
 use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use model_info::Provider;
+use crate::model::Provider;
+
+// Import and re-export canonical MessageRole from chat module
+pub use crate::chat::message::MessageRole;
 
 /// Maximum number of messages in a conversation (compile-time bounded)
 pub const MAX_MESSAGES: usize = 128;
@@ -159,41 +162,7 @@ impl BaseMessage {
     }
 }
 
-/// Message role in a conversation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum MessageRole {
-    /// User input message
-    User,
-    /// Assistant response message
-    Assistant,
-    /// System instruction message
-    System,
-    /// Tool execution result message
-    Tool}
 
-impl fmt::Display for MessageRole {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            MessageRole::User => "user",
-            MessageRole::Assistant => "assistant",
-            MessageRole::System => "system",
-            MessageRole::Tool => "tool"};
-        write!(f, "{s}")
-    }
-}
-
-impl From<&str> for MessageRole {
-    fn from(s: &str) -> Self {
-        match s {
-            "user" => MessageRole::User,
-            "assistant" => MessageRole::Assistant,
-            "system" => MessageRole::System,
-            "tool" => MessageRole::Tool,
-            _ => MessageRole::User, // Default fallback
-        }
-    }
-}
 
 /// Tool call representation for function calling
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -615,17 +584,17 @@ impl ProviderMetadata {
     pub fn new(provider: Provider) -> Self {
         let base_url = provider.default_base_url().to_string();
         let max_tokens_supported = match &provider {
-            Provider::OpenAi(_) | Provider::OpenAI | Provider::Azure => 128_000,
-            Provider::Anthropic(_) => 200_000,
+            Provider::OpenAI | Provider::Azure => 128_000,
+            Provider::Anthropic => 200_000,
             Provider::VertexAI | Provider::Gemini => 2_000_000,
             _ => 32_000, // Conservative default
         };
-        let supports_streaming = provider.supports_streaming();
+        let supports_streaming = true; // All providers support streaming in this architecture
         let supports_function_calling = provider.supports_function_calling();
         let supports_vision = matches!(&provider, 
             Provider::OpenAI | Provider::Azure | 
             Provider::VertexAI | Provider::Gemini |
-            Provider::Anthropic(_)
+            Provider::Anthropic
         );
         
         Self {

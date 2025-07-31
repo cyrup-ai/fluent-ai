@@ -13,8 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::core::{
-    AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType};
+    ChainControl, Emitter, ErrorHandler, InvocationHandler,
+    ResultHandler, SchemaType};
+use super::super::error::{AnthropicError, AnthropicResult};
+use super::super::types::AnthropicMessage;
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 
@@ -26,13 +28,13 @@ pub struct ToolExecutionContext {
     pub metadata: HashMap<String, Value>,
     pub timeout_ms: Option<u64>,
     pub max_retries: u32,
-    pub message_history: Vec<Message>}
+    pub message_history: Vec<AnthropicMessage>}
 
 /// Conversation context for tool execution
 pub struct Conversation<'a> {
-    pub messages: &'a [Message],
+    pub messages: &'a [AnthropicMessage],
     pub context: &'a ToolExecutionContext,
-    pub last_message: &'a Message}
+    pub last_message: &'a AnthropicMessage}
 
 /// Tool execution result with timing and status information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -499,7 +501,7 @@ impl<const N: usize> ToolExecutor<N> {
             let conversation = Conversation {
                 messages: &[],
                 context: &ToolExecutionContext::default(),
-                last_message: &Message::default()};
+                last_message: &AnthropicMessage::default()};
             let emitter = Emitter::new(tx.clone());
             let mut stream = tool.execute(&conversation, &emitter, input);
             tokio::spawn(async move {

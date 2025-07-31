@@ -103,7 +103,7 @@ impl Usage {
     }
 }
 // Use model-info package as single source of truth for model information
-use model_info::{Provider, OpenAiProvider, ModelInfo as ModelInfoFromPackage};
+use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 // Use local OpenAI request/response types
 use super::types::{
     OpenAIMessage, OpenAIMessageContent, OpenAIStreamChunk, OpenAIChoice, 
@@ -583,7 +583,7 @@ impl OpenAICompletionBuilder {
     #[inline(always)]
     pub fn load_model_info(&self) -> AsyncStream<ModelInfoFromPackage> {
         // Use model-info package as single source of truth for model information
-        let provider = Provider::OpenAi(OpenAiProvider);
+        let provider = Provider::OpenAI;
         provider.get_model_info(self.model_name)
     }
 

@@ -17,11 +17,11 @@ use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::context::chunk::{CompletionChunk, FinishReason};
 use fluent_ai_domain::completion::types::ToolDefinition;
 use fluent_ai_domain::context::Document;
-use fluent_ai_domain::chat::Message;
+use fluent_ai_domain::chat::{Message, config::ModelConfig};
 use crate::completion_provider::Usage;
 use crate::spawn_async;
 // Use model-info package as single source of truth for model information
-use model_info::{Provider, AnthropicProvider, ModelInfo as ModelInfoFromPackage};
+use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 // Use local Anthropic request/response types
 use super::types::{
     AnthropicCacheControl, AnthropicChatRequest, AnthropicContent, AnthropicContentBlock,
@@ -519,7 +519,8 @@ impl AnthropicCompletionBuilder {
         let system_message = if self.system_prompt.is_empty() {
             None
         } else {
-            Some(AnthropicSystemMessage {
+            Some(AnthropicSystemMessage::Structured {
+                message_type: "text",
                 text: &self.system_prompt,
                 cache_control: if self.prompt_caching_enabled {
                     Some(AnthropicCacheControl { r#type: "ephemeral" })
@@ -594,7 +595,7 @@ impl AnthropicCompletionBuilder {
 
     /// Load model information from model-info package (single source of truth)
     pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
-        let provider = Provider::Anthropic(AnthropicProvider);
+        let provider = Provider::Anthropic;
         provider.get_model_info(self.model_name)
     }
 

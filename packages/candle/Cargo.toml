@@ -25,7 +25,7 @@ metal = [
 # ONLY ALLOWED fluent-ai dependencies: fluent-ai-async and fluent_ai_http3
 fluent_ai_async = { path = "../async-stream" }
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
-cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 fluent_ai_http3 = { path = "../http3" }
 
 # Candle framework for local model inference
@@ -84,8 +84,8 @@ html-escape = "0.2.13"
 fastrand = "2.3.0"
 num_cpus = "1.17.0"
 bytes = "1.10.1"
-toml = "0.9.2"
-rkyv = { version = "0.8.10", optional = true }
+toml = "0.9"
+rkyv = { version = "0.8", optional = true }
 bincode = { version = "2.0.1", optional = true }
 reqwest = { version = "0.12.22", features = ["json"] }
 md5 = "0.8.0"

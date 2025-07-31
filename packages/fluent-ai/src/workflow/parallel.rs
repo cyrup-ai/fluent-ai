@@ -14,6 +14,7 @@
 // Removed futures_util - using AsyncStream patterns with tokio::join! instead
 
 use super::{Op, TryOp};
+use tokio::{join, try_join};
 
 // ================================================================
 // 0. Two-way primitive used by the variadic macros

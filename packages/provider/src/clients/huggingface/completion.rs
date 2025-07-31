@@ -13,17 +13,18 @@
 //! ```
 
 use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::chat::config::ModelConfig;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message};
-use fluent_ai_http3::{Http3, HttpError};
+use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use arrayvec::ArrayVec;
 
 // CRITICAL: Import model information from model-info package (single source of truth)
-use model_info::{Provider, HuggingFaceProvider, ModelInfo as ModelInfoFromPackage};
+use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 
 use crate::{
     AsyncStream,
@@ -686,7 +687,7 @@ impl HuggingFaceCompletionBuilder {
 
     /// Load model information from model-info package (single source of truth)
     pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
-        let provider = Provider::HuggingFace(HuggingFaceProvider);
+        let provider = Provider::Huggingface;
         provider.get_model_info(self.model_name)
     }
 }

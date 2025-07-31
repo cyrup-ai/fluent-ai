@@ -142,6 +142,12 @@ pub async fn download_yaml_with_cache<P: AsRef<Path>>(cache_dir: P) -> Result<St
             Ok(fluent_ai_http3::HttpChunk::Body(bytes)) => {
                 response_body.extend_from_slice(&bytes);
             }
+            Ok(fluent_ai_http3::HttpChunk::Deserialized(_)) => {
+                // Skip deserialized chunks for raw download
+            }
+            Ok(fluent_ai_http3::HttpChunk::Error(e)) => {
+                return Err(DownloadError::HttpError(format!("HTTP chunk error: {}", e)));
+            }
             Err(e) => {
                 return Err(DownloadError::HttpError(format!("Stream error: {}", e)));
             }

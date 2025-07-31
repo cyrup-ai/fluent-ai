@@ -1,6 +1,6 @@
 //! Quantum entanglement graph management
 
-use std::collections::{VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};

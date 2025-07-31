@@ -14,8 +14,10 @@ pub mod function_calling;
 
 // Re-export core types for API compatibility
 pub use core::{
-    AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError};
+    ChainControl, Emitter, ErrorHandler, InvocationHandler,
+    ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError, ToolExecutor};
+pub use super::error::{AnthropicError, AnthropicResult};
+pub use super::types::AnthropicMessage;
 
 // Note: ToolError not available - using anyhow::Error instead
 

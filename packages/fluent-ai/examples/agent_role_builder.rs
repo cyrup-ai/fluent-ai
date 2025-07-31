@@ -22,15 +22,15 @@ let stream = FluentAi::agent_role("rusty-squire")
     )
     .mcp_server<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait Tool
-        Tool<Perplexity>::new({
-            "citations" => "true"
-        }),
+        Tool<Perplexity>::new([
+            ("citations", "true")
+        ]),
         Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
 
-    .additional_params({"beta" =>  "true"})
+    .additional_params([("beta", "true")])
     .memory(Library::named("obsidian_vault"))
-    .metadata({ "key" => "val", "foo" => "bar" })
+    .metadata([("key", "val"), ("foo", "bar")])
     .on_tool_result(|results| {
         // do stuff
     })
@@ -39,15 +39,26 @@ let stream = FluentAi::agent_role("rusty-squire")
         agent.chat(process_turn()) // your custom logic
     })
     .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
-        chunk
+        Ok => chunk.into(),
+        Err(error) => {
+            eprintln!("Error: {}", error);
+            BadChunk::from_err(error);
+        }
     })
     .into_agent() // Agent Now
-    .conversation_history(
-        MessageRole::User => "What time is it in Paris, France",
-        MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
-        MessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
-    )
-    .chat("Hello") // AsyncStream<MessageChunk
+    .conversation_history([
+        (MessageRole::User, "What time is it in Paris, France"),
+        (MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
+        (MessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
+    ])
+    .chat(|conversation| {
+        let user_input = conversation.latest_user_message();
+
+        if user_input.contains("finished") {
+            ChatLoop::Break
+        } else {
+            ChatLoop::Reprompt("continue. use sequential thinking")
+        }
+    })
     .collect();
 // DO NOT MODIFY !!!  DO NOT MODIFY !!!

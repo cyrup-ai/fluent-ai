@@ -15,15 +15,18 @@ use serde_json::{Value, json};
 use arrayvec::ArrayVec;
 
 // CRITICAL: Import model information from model-info package (single source of truth)
-use model_info::{Provider, XaiProvider, ModelInfo as ModelInfoFromPackage};
+use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 
 use super::client::Client;
 use crate::completion_provider::{CompletionError, CompletionResponse as DomainCompletionResponse};
-use crate::json_util;
-use crate::streaming::StreamingCompletionResponse;
+use crate::streaming_completion_provider::{StreamingCompletionProvider, ConnectionStatus};
+use fluent_ai_domain::util::json_util;
 
 // Model constants removed - use model-info package exclusively
 // All xAI model information is provided by ./packages/model-info
+
+// Type aliases for domain types used in client builders
+pub use fluent_ai_domain::context::document::Document;
 
 // =================================================================
 // Rig Implementation Types
@@ -139,72 +142,269 @@ impl XaiCompletionModel {
 
     /// Load model information from model-info package (single source of truth)
     pub fn load_model_info(&self) -> fluent_ai_async::AsyncStream<ModelInfoFromPackage> {
-        let provider = Provider::Xai(XaiProvider);
+        let provider = Provider::XAI;
         provider.get_model_info(&self.model)
     }
 }
 
 impl completion::CompletionModel for XaiCompletionModel {
-    type Response = XaiChatResponse;
-    type StreamingResponse = StreamingCompletionResponse;
-
-    #[cfg_attr(feature = "worker", worker::send)]
-    async fn completion(
+    fn prompt(
         &self,
-        completion_request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> Result<DomainCompletionResponse<XaiChatResponse>, CompletionError> {
-        let request_body = self.create_completion_request(completion_request)?;
-
-        // Use centralized serialization
-        // Use Http3::json() directly instead of client abstraction
-        let completion_response: XaiChatResponse = Http3::json()
-            .api_key(&self.client.api_key())
-            .body(&request_body)
-            .post(&format!("{}/v1/chat/completions", self.client.base_url()))
-            .collect()
-            .await
-            .map_err(|e| CompletionError::HttpError(e.to_string()))?;
-
-        tracing::info!(target: "rig",
-            "XAI completion token usage: {:?}",
-            completion_response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
-        );
-
-        Ok(DomainCompletionResponse {
-            raw_response: completion_response.clone(),
-            content: completion_response.try_into()?,
-            token_usage: None, // Token usage is in the raw_response
-            metadata: Default::default(),
+        prompt: fluent_ai_domain::Prompt,
+        params: &fluent_ai_domain::completion::types::CompletionParams,
+    ) -> fluent_ai_async::AsyncStream<fluent_ai_domain::context::CompletionChunk> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        use fluent_ai_http3::Http3;
+        use serde_json::json;
+        
+        let client = self.client.clone();
+        let model = self.model.clone();
+        
+        // Streaming-only completion using proper architecture - NO FUTURES
+        AsyncStream::with_channel(move |sender| {
+            // Convert domain prompt to XAI-compatible chat messages format
+            let messages = match prompt {
+                fluent_ai_domain::Prompt::Text(text) => {
+                    vec![json!({"role": "user", "content": text})]
+                }
+                fluent_ai_domain::Prompt::Messages(msgs) => {
+                    msgs.into_iter().map(|msg| {
+                        json!({
+                            "role": msg.role,
+                            "content": msg.content
+                        })
+                    }).collect()
+                }
+                fluent_ai_domain::Prompt::SystemUserAssistant { system, user, assistant } => {
+                    let mut messages = Vec::with_capacity(3);
+                    if let Some(sys) = system {
+                        messages.push(json!({"role": "system", "content": sys}));
+                    }
+                    messages.push(json!({"role": "user", "content": user}));
+                    if let Some(asst) = assistant {
+                        messages.push(json!({"role": "assistant", "content": asst}));
+                    }
+                    messages
+                }
+            };
+            
+            // Build optimized XAI request payload
+            let request_body = json!({
+                "model": model,
+                "messages": messages,
+                "stream": true,
+                "temperature": params.temperature.unwrap_or(0.7),
+                "max_tokens": params.max_tokens.unwrap_or(4096),
+                "top_p": params.top_p.unwrap_or(1.0)
+            });
+            
+            // Use Http3 streaming patterns from examples - NO async/await
+            let response_stream = Http3::json()
+                .api_key(&client.api_key)
+                .body(&request_body)
+                .post("https://api.x.ai/v1/chat/completions");
+                
+            // Process chunks using streaming-only patterns
+            response_stream.on_chunk(|chunk| {
+                match chunk {
+                    Ok(chunk_bytes) => {
+                        // Parse Server-Sent Events format with zero allocation
+                        if let Some(completion_chunk) = Self::parse_xai_sse_chunk(&chunk_bytes) {
+                            emit!(sender, completion_chunk);
+                        }
+                    }
+                    Err(e) => {
+                        handle_error!(e, "XAI streaming HTTP error");
+                    }
+                }
+            });
         })
     }
-
-    #[cfg_attr(feature = "worker", worker::send)]
-    async fn stream(
-        &self,
-        request: CompletionRequest,
-    ) -> Result<crate::streaming::StreamingResponse<Self::StreamingResponse>, CompletionError> {
-        let mut request_body = self.create_completion_request(request)?;
-
-        // Enable streaming in the centralized request
-        request_body.stream = Some(true);
-
-        // Use Http3::json() for streaming with direct SSE handling
-        let mut response_stream = Http3::json()
-            .api_key(&self.client.api_key())
-            .body(&request_body)
-            .post(&format!("{}/v1/chat/completions", self.client.base_url()));
-
-        if !response_stream.is_success() {
-            return Err(CompletionError::HttpError("Request failed".to_string()));
+    
+    /// Parse XAI Server-Sent Events chunk with zero-allocation optimization
+    /// 
+    /// # Performance Features
+    /// - Minimal heap allocations
+    /// - Fast byte-level parsing
+    /// - Early exit optimizations
+    #[inline]
+    fn parse_xai_sse_chunk(chunk_bytes: &[u8]) -> Option<fluent_ai_domain::context::CompletionChunk> {
+        let chunk_str = std::str::from_utf8(chunk_bytes).ok()?;
+        
+        // Process SSE format with zero allocation
+        for line in chunk_str.lines() {
+            if line.len() > 6 && line.starts_with("data: ") {
+                let json_data = &line[6..];
+                
+                // Handle termination marker
+                if json_data == "[DONE]" {
+                    return Some(fluent_ai_domain::context::CompletionChunk {
+                        content: None,
+                        finish_reason: Some("stop".to_string()),
+                        ..Default::default()
+                    });
+                }
+                
+                // Fast JSON parsing for XAI format
+                if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(json_data) {
+                    // Extract content from XAI streaming response format
+                    if let Some(choices) = json_value.get("choices").and_then(|c| c.as_array()) {
+                        if let Some(first_choice) = choices.first() {
+                            if let Some(delta) = first_choice.get("delta") {
+                                if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
+                                    if !content.is_empty() {
+                                        return Some(fluent_ai_domain::context::CompletionChunk {
+                                            content: Some(content.to_string()),
+                                            finish_reason: None,
+                                            ..Default::default()
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            // Check for completion finish
+                            if let Some(finish_reason) = first_choice.get("finish_reason").and_then(|fr| fr.as_str()) {
+                                return Some(fluent_ai_domain::context::CompletionChunk {
+                                    content: None,
+                                    finish_reason: Some(finish_reason.to_string()),
+                                    ..Default::default()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
         }
-
-        // Create streaming response using the streaming module
-        let sse_stream = response_stream.sse();
-        Ok(crate::streaming::StreamingResponse::from_sse_stream(
-            sse_stream,
-        ))
+        
+        None
     }
 }
+
+// =============================================================================
+// StreamingCompletionProvider Implementation (Enforces Architecture)
+// =============================================================================
+
+impl StreamingCompletionProvider for XaiCompletionModel {
+    fn stream_completion(&self, request: CompletionRequest) -> fluent_ai_async::AsyncStream<fluent_ai_domain::context::CompletionChunk> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        use fluent_ai_http3::Http3;
+        
+        let client = self.client.clone();
+        let model = self.model.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Create XAI request from domain request
+            let xai_request = match XaiCompletionModel::build_xai_request(&request, &model) {
+                Ok(req) => req,
+                Err(e) => {
+                    handle_error!(e, "Failed to build XAI request");
+                    return;
+                }
+            };
+            
+            // Stream completion using Http3 patterns
+            let response_stream = Http3::json()
+                .api_key(&client.api_key)
+                .body(&xai_request)
+                .post("https://api.x.ai/v1/chat/completions");
+                
+            // Process streaming response chunks
+            response_stream.on_chunk(|chunk| {
+                match chunk {
+                    Ok(chunk_bytes) => {
+                        if let Some(completion_chunk) = crate::streaming_completion_provider::utils::parse_sse_chunk(&chunk_bytes) {
+                            emit!(sender, completion_chunk);
+                        }
+                    }
+                    Err(e) => {
+                        handle_error!(e, "XAI HTTP streaming error");
+                    }
+                }
+            });
+        })
+    }
+    
+    fn provider_name(&self) -> &'static str {
+        "xai"
+    }
+    
+    fn test_connection(&self) -> fluent_ai_async::AsyncStream<ConnectionStatus> {
+        use fluent_ai_async::{AsyncStream, emit, handle_error};
+        use fluent_ai_http3::Http3;
+        
+        let client = self.client.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            emit!(sender, ConnectionStatus::Testing);
+            
+            // Test connection with simple model list request
+            let response_stream = Http3::json()
+                .api_key(&client.api_key)
+                .get("https://api.x.ai/v1/models");
+                
+            response_stream.on_chunk(|chunk| {
+                match chunk {
+                    Ok(_) => {
+                        emit!(sender, ConnectionStatus::Connected);
+                    }
+                    Err(e) => {
+                        emit!(sender, ConnectionStatus::Failed(format!("Connection test failed: {}", e)));
+                    }
+                }
+            });
+        })
+    }
+}
+
+// Helper methods for XAI request building
+impl XaiCompletionModel {
+    /// Build XAI-compatible request from domain CompletionRequest
+    fn build_xai_request(request: &CompletionRequest, model: &str) -> Result<serde_json::Value, CompletionError> {
+        use serde_json::json;
+        
+        // Convert domain messages to XAI format
+        let mut messages = Vec::new();
+        
+        // Add preamble as system message if present
+        if let Some(preamble) = &request.preamble {
+            messages.push(json!({"role": "system", "content": preamble}));
+        }
+        
+        // Add chat history
+        for msg in &request.chat_history {
+            let role = match msg.role() {
+                fluent_ai_domain::message::MessageRole::User => "user",
+                fluent_ai_domain::message::MessageRole::Assistant => "assistant", 
+                fluent_ai_domain::message::MessageRole::System => "system",
+            };
+            
+            if let Some(text) = msg.content().text() {
+                messages.push(json!({"role": role, "content": text}));
+            }
+        }
+        
+        // Add main prompt message
+        if let Some(text) = request.prompt.content().text() {
+            let role = match request.prompt.role() {
+                fluent_ai_domain::message::MessageRole::User => "user",
+                fluent_ai_domain::message::MessageRole::Assistant => "assistant",
+                fluent_ai_domain::message::MessageRole::System => "system",
+            };
+            messages.push(json!({"role": role, "content": text}));
+        }
+        
+        // Build XAI request payload
+        Ok(json!({
+            "model": model,
+            "messages": messages,
+            "stream": true,
+            "temperature": request.temperature.unwrap_or(0.7),
+            "max_tokens": request.max_tokens.unwrap_or(4096),
+            "top_p": request.top_p.unwrap_or(1.0)
+        }))
+    }
+}
+
 
 impl TryFrom<XaiChatResponse> for crate::completion_provider::ZeroOneOrMany<String> {
     type Error = CompletionError;

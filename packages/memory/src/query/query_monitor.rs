@@ -1,5 +1,6 @@
 //! Query monitoring and performance tracking
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};

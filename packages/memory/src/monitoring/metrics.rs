@@ -1,5 +1,6 @@
 //! Metrics collection and export
 
+use std::collections::HashMap;
 use prometheus::{self, Counter, Gauge, Histogram, HistogramOpts, Registry};
 
 /// Metric types

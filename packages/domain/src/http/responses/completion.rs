@@ -57,7 +57,7 @@ use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use model_info::Provider;
+use model_info::DiscoveryProvider as Provider;
 use crate::http::common::{
     BaseMessage, CommonUsage, FinishReason, MAX_IDENTIFIER_LEN, MAX_TOOLS, ToolCall,
     ValidationError,
@@ -157,21 +157,16 @@ impl CompletionResponse {
         json: &Value,
     ) -> Result<Self, CompletionResponseError> {
         match provider {
-            Provider::OpenAi(_) | Provider::OpenAI | Provider::Azure => Self::from_openai_json(json),
-            Provider::Anthropic(_) => Self::from_anthropic_json(json),
+            Provider::OpenAI | Provider::Azure => Self::from_openai_json(json),
+            Provider::Anthropic => Self::from_anthropic_json(json),
             Provider::VertexAI | Provider::Gemini => Self::from_google_json(json),
             Provider::Bedrock => Self::from_bedrock_json(json),
             Provider::Cohere => Self::from_cohere_json(json),
             Provider::Ollama => Self::from_ollama_json(json),
-            Provider::Groq | Provider::OpenRouter(_) | Provider::Together(_) => {
-                Self::from_openai_compatible_json(json)
-            }
-            Provider::AI21 => Self::from_ai21_json(json),
-            Provider::Mistral(_) => Self::from_mistral_json(json),
-            Provider::HuggingFace(_) => Self::from_huggingface_json(json),
-            Provider::Perplexity => Self::from_perplexity_json(json),
-            Provider::Xai(_) => Self::from_xai_json(json),
-            Provider::DeepSeek => Self::from_deepseek_json(json),
+            Provider::Together => Self::from_openai_compatible_json(json),
+            Provider::Mistral => Self::from_mistral_json(json),
+            Provider::Huggingface => Self::from_huggingface_json(json),
+            Provider::XAI => Self::from_xai_json(json),
         }
     }
 
@@ -436,37 +431,6 @@ impl CompletionResponse {
         Self::from_openai_json(json)
     }
 
-    /// Parse AI21 response format
-    #[inline]
-    fn from_ai21_json(json: &Value) -> Result<Self, CompletionResponseError> {
-        let model = json
-            .get("model")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
-
-        let usage = CommonUsage::new(0, 0); // AI21 may have different usage format
-
-        let mut choices = Vec::new();
-        if let Some(completions) = json.get("completions").and_then(|v| v.as_array()) {
-            for (index, completion) in completions.iter().enumerate() {
-                if let Some(text) = completion
-                    .get("data")
-                    .and_then(|d| d.get("text"))
-                    .and_then(|v| v.as_str())
-                {
-                    let choice = CompletionChoice {
-                        index: index as u32,
-                        message: BaseMessage::assistant(text),
-                        finish_reason: Some(FinishReason::Stop),
-                        logprobs: None,
-                    };
-                    choices.push(choice);
-                }
-            }
-        }
-
-        Self::new("ai21-response", model, choices, usage)
-    }
 
     /// Parse Mistral response format
     #[inline]
@@ -482,12 +446,6 @@ impl CompletionResponse {
         Self::from_openai_json(json)
     }
 
-    /// Parse Perplexity response format
-    #[inline]
-    fn from_perplexity_json(json: &Value) -> Result<Self, CompletionResponseError> {
-        // Perplexity is OpenAI-compatible
-        Self::from_openai_json(json)
-    }
 
     /// Parse xAI response format
     #[inline]
@@ -496,12 +454,6 @@ impl CompletionResponse {
         Self::from_openai_json(json)
     }
 
-    /// Parse DeepSeek response format
-    #[inline]
-    fn from_deepseek_json(json: &Value) -> Result<Self, CompletionResponseError> {
-        // DeepSeek is OpenAI-compatible
-        Self::from_openai_json(json)
-    }
 
     /// Parse Anthropic tool use block
     #[inline]
@@ -833,21 +785,16 @@ impl CompletionChunk {
         data: &[u8],
     ) -> Result<Self, CompletionResponseError> {
         match provider {
-            Provider::OpenAi(_) | Provider::OpenAI | Provider::Azure => Self::from_openai_chunk(data),
-            Provider::Anthropic(_) => Self::from_anthropic_chunk(data),
+            Provider::OpenAI | Provider::Azure => Self::from_openai_chunk(data),
+            Provider::Anthropic => Self::from_anthropic_chunk(data),
             Provider::VertexAI | Provider::Gemini => Self::from_google_chunk(data),
             Provider::Bedrock => Self::from_bedrock_chunk(data),
             Provider::Cohere => Self::from_cohere_chunk(data),
             Provider::Ollama => Self::from_ollama_chunk(data),
-            Provider::Groq | Provider::OpenRouter(_) | Provider::Together(_) => {
-                Self::from_openai_chunk(data)
-            }
-            Provider::AI21 => Self::from_ai21_chunk(data),
-            Provider::Mistral(_) => Self::from_mistral_chunk(data),
-            Provider::HuggingFace(_) => Self::from_huggingface_chunk(data),
-            Provider::Perplexity => Self::from_perplexity_chunk(data),
-            Provider::Xai(_) => Self::from_xai_chunk(data),
-            Provider::DeepSeek => Self::from_deepseek_chunk(data),
+            Provider::Together => Self::from_openai_chunk(data),
+            Provider::Mistral => Self::from_mistral_chunk(data),
+            Provider::Huggingface => Self::from_huggingface_chunk(data),
+            Provider::XAI => Self::from_xai_chunk(data),
         }
     }
 
@@ -1586,16 +1533,16 @@ impl fmt::Display for CompletionResponseError {
             Self::SystemTimeError => write!(f, "System time error"),
             Self::InternalError => write!(f, "Internal processing error"),
             Self::ValidationError(e) => write!(f, "Validation error: {}", e),
-            Self::UnsupportedProvider(provider) => write!(f, "Unsupported provider: {}", provider),
+            Self::UnsupportedProvider(provider) => write!(f, "Unsupported provider: {:?}", provider),
             Self::ProviderError {
                 provider,
                 message,
                 status_code,
             } => {
                 if let Some(code) = status_code {
-                    write!(f, "Provider {} error ({}): {}", provider, code, message)
+                    write!(f, "Provider {:?} error ({}): {}", provider, code, message)
                 } else {
-                    write!(f, "Provider {} error: {}", provider, message)
+                    write!(f, "Provider {:?} error: {}", provider, message)
                 }
             }
         }

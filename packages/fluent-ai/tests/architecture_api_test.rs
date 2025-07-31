@@ -39,14 +39,14 @@ async fn test_exact_architecture_api() {
         )
         .mcp_server<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait Tool
-            Tool<Perplexity>::new({
-                "citations" => "true"
-            }),
+            Tool<Perplexity>::new([
+                ("citations", "true")
+            ]),
             Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
         ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
-        .additional_params({"beta" => "true"})
+        .additional_params([("beta", "true")])
         .memory(Library::named("obsidian_vault"))
-        .metadata({ "key" => "val", "foo" => "bar" })
+        .metadata([("key", "val"), ("foo", "bar")])
         .on_tool_result(|_results| {
             // do stuff
         })

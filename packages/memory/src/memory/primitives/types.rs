@@ -1,6 +1,7 @@
 // src/memory/memory_type.rs
 //! Memory type definitions and traits for the memory system.
 
+use std::collections::HashMap;
 use std::fmt::{self, Debug};
 
 use base64::Engine;

@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 // Removed unused import: wide::f32x8
 use crate::chat::message::{MessageRole, SearchChatMessage};
+use crate::ZeroOneOrMany;
 
 // Streaming architecture macros for zero-futures implementation
 
@@ -53,7 +54,7 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchQuery {
     /// Search terms
-    pub terms: Vec<Arc<str>>,
+    pub terms: ZeroOneOrMany<Arc<str>>,
     /// Boolean operator (AND, OR, NOT)
     pub operator: QueryOperator,
     /// Date range filter
@@ -63,7 +64,7 @@ pub struct SearchQuery {
     /// Session filter
     pub session_filter: Option<Arc<str>>,
     /// Tag filter
-    pub tag_filter: Option<Vec<Arc<str>>>,
+    pub tag_filter: ZeroOneOrMany<Arc<str>>,
     /// Content type filter
     pub content_type_filter: Option<Arc<str>>,
     /// Fuzzy matching enabled
@@ -1434,7 +1435,7 @@ pub struct ExportOptions {
     /// User filter
     pub user_filter: Option<Arc<str>>,
     /// Tag filter
-    pub tag_filter: Option<Vec<Arc<str>>>}
+    pub tag_filter: ZeroOneOrMany<Arc<str>>}
 
 /// History exporter with zero-allocation streaming
 #[derive(Clone)]

@@ -1,7 +1,7 @@
 // src/cognitive/evolution.rs
 //! Self-optimizing component using MCTS with committee evaluation
 
-use std::collections::{VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;

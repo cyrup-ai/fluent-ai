@@ -26,9 +26,9 @@ fn main() {
     
     println!("✅ Context syntax patterns:");
     println!("   CandleContext<CandleFile>::of('/path/to/file.pdf')");
-    println!("   CandleContext<CandleFiles>::glob('/path/**/*.{md,txt}')");
+    println!("   CandleContext<CandleFiles>::glob('/path/**/*.{{md,txt}}')");
     println!("   CandleContext<CandleDirectory>::of('/path/to/dir')");
-    println!("   CandleContext<CandleGithub>::glob('/path/**/*.{rs,md}')");
+    println!("   CandleContext<CandleGithub>::glob('/path/**/*.{{rs,md}}')");
     
     println!("✅ MCP server syntax:");
     println!("   .mcp_server<CandleStdio>().bin('/usr/local/bin/sweetmcp')");
@@ -59,13 +59,13 @@ fn main() {
     println!("           CandleMessageRole::System => 'The USER is inquiring...',");
     println!("           CandleMessageRole::Assistant => 'It's 1:45 AM CEST...'");
     println!("       )");
-    println!("       .chat(|conversation| {");
-    println!("           if conversation.latest_user_message().contains('finished') {");
+    println!("       .chat(|conversation| {{");
+    println!("           if conversation.latest_user_message().contains('finished') {{");
     println!("               CandleChatLoop::Break");
-    println!("           } else {");
+    println!("           }} else {{");
     println!("               CandleChatLoop::Reprompt('continue. use sequential thinking')");
-    println!("           }");
-    println!("       })");
+    println!("           }}");
+    println!("       }})");
     println!("       .collect();");
     
     println!();

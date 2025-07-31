@@ -59,11 +59,14 @@ impl ProviderTrait for MistralProvider {
     }
 }
 
+// Type alias for complex provider data tuple to improve readability
+type ProviderModelData = (u32, u32, f64, f64, bool, bool, bool, bool, bool);
+
 fn adapt_mistral_to_model_info(model: &str) -> ModelInfo {
     use std::sync::OnceLock;
     use hashbrown::HashMap;
     
-    static MAP: OnceLock<HashMap<&'static str, (u32, u32, f64, f64, bool, bool, bool, bool, bool)>> = OnceLock::new();
+    static MAP: OnceLock<HashMap<&'static str, ProviderModelData>> = OnceLock::new();
     let map = MAP.get_or_init(|| {
         let mut m = HashMap::new();
         // (max_input, max_output, input_price, output_price, vision, function_calling, streaming, embeddings, thinking)
@@ -78,13 +81,13 @@ fn adapt_mistral_to_model_info(model: &str) -> ModelInfo {
         m.insert("mistral-small", (32000, 8000, 2.0, 6.0, false, true, true, false, false));
         m.insert("mistral-medium", (32000, 8000, 8.0, 24.0, false, true, true, false, false));
         m.insert("mistral-large", (32000, 8000, 20.0, 60.0, false, true, true, false, false));
-        // Legacy aliases
+        // Current generation models with latest API endpoints
         m.insert("mistral-large-latest", (128000, 32000, 8.0, 24.0, false, true, true, false, false));
         m.insert("codestral-latest", (32000, 8000, 0.8, 2.5, false, false, true, false, false));
         m
     });
     
-    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, _supports_streaming, supports_embeddings, supports_thinking) = 
         map.get(model).copied().unwrap_or((32000, 8000, 0.0, 0.0, false, false, true, false, false));
     
     ModelInfo {
@@ -103,7 +106,6 @@ fn adapt_mistral_to_model_info(model: &str) -> ModelInfo {
         // Capability flags
         supports_vision,
         supports_function_calling,
-        supports_streaming,
         supports_embeddings,
         requires_max_tokens: false,
         supports_thinking,

@@ -11,6 +11,9 @@ use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 // REMOVED: use fluent_ai_async::AsyncStream::with_channel;
 use crate::ZeroOneOrMany;
 
+// Import canonical MessageRole from chat message module
+use crate::chat::message::MessageRole;
+
 /// Immutable message in a conversation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImmutableMessage {
@@ -23,16 +26,6 @@ pub struct ImmutableMessage {
     /// Message sequence number
     pub sequence: u64}
 
-/// Message role in conversation
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MessageRole {
-    /// Message from the user
-    User,
-    /// Message from the AI assistant
-    Assistant,
-    /// System message for configuration and control
-    System,
-}
 
 impl ImmutableMessage {
     /// Create a new immutable message

@@ -4,6 +4,7 @@
 //! to graph nodes, with support for attributes, validation, and serialization.
 //! All operations are synchronous and thread-safe for maximum performance.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::thread;
@@ -129,12 +130,6 @@ impl Entity for BaseEntity {
         &self.attributes
     }
 
-    /// Builder pattern method to set an attribute and return self
-    fn with_attribute(mut self, name: &str, value: Value) -> Self {
-        self.attributes.insert(name.to_string(), value);
-        self
-    }
-
     fn validate(&self) -> Result<()> {
         // Basic validation - ensure ID and type are not empty
         if self.id.is_empty() {
@@ -191,6 +186,14 @@ impl Entity for BaseEntity {
             id,
             entity_type,
             attributes})
+    }
+}
+
+impl BaseEntity {
+    /// Builder pattern method to set an attribute and return self
+    pub fn with_attribute(mut self, name: &str, value: Value) -> Self {
+        self.attributes.insert(name.to_string(), value);
+        self
     }
 }
 

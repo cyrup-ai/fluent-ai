@@ -415,9 +415,9 @@ impl PoolStatistics {
 #[derive(Debug)]
 pub struct MemoryPoolManager {
     /// Memory pools by size class
-    pools: ArcSwap<SmallVec<[Arc<MemoryPool>; MAX_SIZE_CLASSES]>>,
+    pools: ArcSwap<SmallVec<Arc<MemoryPool>, MAX_SIZE_CLASSES>>,
     /// Size classes (in number of f32 elements)
-    size_classes: SmallVec<[usize; MAX_SIZE_CLASSES]>,
+    size_classes: SmallVec<usize, MAX_SIZE_CLASSES>,
     /// Pool configuration
     config: PoolConfig,
     /// Global statistics

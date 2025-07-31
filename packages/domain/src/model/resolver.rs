@@ -17,11 +17,7 @@ use serde::{Deserialize, Serialize};
 use strsim;
 
 use crate::model::{ModelError, Result};
-use crate::model::info::ModelInfo;
-use crate::model::registry::ModelRegistry;
-// Removed unused import: strsim::jaro_winkler
-use crate::model::registry::RegisteredModel;
-use crate::model::traits::Model;
+use crate::model::{ModelInfo, ModelRegistry, RegisteredModel, Model};
 
 /// A pattern that can be used to match model names
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

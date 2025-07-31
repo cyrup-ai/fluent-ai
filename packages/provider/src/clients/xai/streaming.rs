@@ -1,12 +1,12 @@
 use crate::domain::completion::CompletionRequest;
 use serde_json::json;
-use super::completion::CompletionModel;
+use super::completion::XaiCompletionModel;
 use crate::clients::openai;
 use crate::completion_provider::CompletionError;
-use crate::streaming::StreamingCompletionResponse;
+use crate::streaming::DefaultStreamingResponse;
 use fluent_ai_http3::{Http3, header};
 /// Helper function to merge two JSON values
-fn merge(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
+pub fn merge(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
     if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) =
         (&mut base, other)
     {
@@ -17,11 +17,11 @@ fn merge(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::V
     }
 }
 
-impl CompletionModel {
+impl XaiCompletionModel {
     pub(crate) async fn stream(
         &self,
         completion_request: CompletionRequest,
-    ) -> Result<StreamingCompletionResponse<openai::StreamingCompletionResponse>, CompletionError>
+    ) -> Result<DefaultStreamingResponse<openai::StreamingCompletionResponse>, CompletionError>
     {
         let mut request = self.create_completion_request(completion_request)?;
 
@@ -34,6 +34,8 @@ impl CompletionModel {
             .body(&request)
             .post(&url);
         
-        openai::process_openai_compatible_streaming_response(stream).await
+        // XAI uses OpenAI-compatible streaming, so we can use similar parsing
+        // TODO: Implement proper XAI streaming response parsing
+        Err(CompletionError::ProviderError("XAI streaming not yet implemented".to_string()))
     }
 }

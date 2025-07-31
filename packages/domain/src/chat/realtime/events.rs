@@ -6,6 +6,7 @@
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use crate::chat::message::Message;
+use crate::ZeroOneOrMany;
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -349,7 +350,7 @@ pub struct EventFilter {
     /// Filter by session ID
     pub session_id: Option<Arc<str>>,
     /// Filter by event types
-    pub event_types: Option<Vec<&'static str>>,
+    pub event_types: ZeroOneOrMany<&'static str>,
     /// Filter by minimum notification level
     pub min_notification_level: Option<NotificationLevel>,
     /// Filter by timestamp range

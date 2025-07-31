@@ -1,4 +1,4 @@
-use model_info::{ModelInfo, OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai, common::Model};
+use model_info::ModelInfo;
 use fluent_ai_async::{AsyncStream, emit};
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -31,75 +31,9 @@ impl UnifiedModelRegistry {
     
     /// Register all static model enum data
     fn register_static_models(&mut self) {
-        // Register OpenAI models
-        for model in OpenAi::all_models() {
-            let info = <OpenAi as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("openai".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
-        
-        // Register Mistral models
-        for model in Mistral::all_models() {
-            let info = <Mistral as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("mistral".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
-        
-        // Register Anthropic models
-        for model in Anthropic::all_models() {
-            let info = <Anthropic as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("anthropic".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
-        
-        // Register Together models
-        for model in Together::all_models() {
-            let info = <Together as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("together".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
-        
-        // Register OpenRouter models
-        for model in OpenRouter::all_models() {
-            let info = <OpenRouter as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("openrouter".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
-        
-        // Register HuggingFace models
-        for model in HuggingFace::all_models() {
-            let info = <HuggingFace as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("huggingface".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
-        
-        // Register XAI models
-        for model in Xai::all_models() {
-            let info = <Xai as Model>::to_model_info(&model);
-            self.static_cache.insert(model.name().to_string(), info);
-            self.provider_cache
-                .entry("xai".to_string())
-                .or_insert_with(Vec::new)
-                .push(model.name().to_string());
-        }
+        // TODO: Reimplement using model-info registry after provider-specific enums are available
+        // The individual provider enums (OpenAi, Mistral, etc.) are not yet available in model-info
+        // For now, this registry starts empty and will be populated dynamically
     }
     
     /// Resolve model by name - returns default if not found (no Option)
@@ -120,7 +54,6 @@ impl UnifiedModelRegistry {
             output_price: Some(0.0),
             supports_vision: false,
             supports_function_calling: false,
-            supports_streaming: true,
             supports_embeddings: false,
             requires_max_tokens: false,
             supports_thinking: false,

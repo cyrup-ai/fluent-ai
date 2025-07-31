@@ -1,6 +1,8 @@
 // src/cognitive/common/types.rs
 //! Defines common data structures for the cognitive evaluation committee.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::cognitive::types::{ImpactFactors, OptimizationSpec, RoutingDecision};

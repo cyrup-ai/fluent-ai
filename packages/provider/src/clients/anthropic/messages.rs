@@ -63,7 +63,7 @@ pub enum ContentBlock {
     ToolUse {
         id: String,
         name: String,
-        #[serde(with = "crate::util::json_util::stringified_json")]
+        #[serde(with = "fluent_ai_domain::util::json_util::stringified_json")]
         input: Value},
     /// Tool result block for function responses
     ToolResult {
@@ -108,7 +108,7 @@ pub struct ToolCall {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionCall {
     pub name: String,
-    #[serde(with = "crate::util::json_util::stringified_json")]
+    #[serde(with = "fluent_ai_domain::util::json_util::stringified_json")]
     pub arguments: Value}
 
 /// Tool definition for Anthropic API

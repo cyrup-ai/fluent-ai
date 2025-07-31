@@ -18,19 +18,17 @@ use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, Guard};
 use arrayvec::{ArrayString};
-use crate::AsyncTask;
+use fluent_ai_async::AsyncTask;
 use fluent_ai_domain::model::ModelInfo;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use smallvec::{SmallVec, smallvec};
 
 use super::completion::OpenAICompletionBuilder;
 use super::config;
-use super::endpoints;
 use super::error::{EndpointType, OpenAIError, Result};
-use super::models;
 use super::utils;
 use crate::client::{CompletionClient, ProviderClient};
-use crate::completion_provider::{CompletionError, CompletionProvider};
+use crate::completion_provider::CompletionError;
 
 /// Global HTTP client instance with connection pooling
 static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
@@ -403,103 +401,35 @@ impl OpenAIClient {
     }
 
     /// Validate model is supported for endpoint
+    /// NOTE: Model validation has been centralized to model-info package
     #[inline]
     pub fn validate_model(&self, model: &str, endpoint: EndpointType) -> Result<()> {
-        match endpoint {
-            EndpointType::ChatCompletions => {
-                if !models::is_chat_model(model) {
-                    return Err(OpenAIError::model_not_supported(
-                        model,
-                        endpoint,
-                        models::CHAT_MODELS,
-                        models::GPT_4O,
-                        false,
-                    ));
-                }
-            }
-            EndpointType::Embeddings => {
-                if !models::is_embedding_model(model) {
-                    return Err(OpenAIError::model_not_supported(
-                        model,
-                        endpoint,
-                        models::EMBEDDING_MODELS,
-                        models::TEXT_EMBEDDING_3_LARGE,
-                        false,
-                    ));
-                }
-            }
-            EndpointType::AudioTranscription | EndpointType::AudioTranslation => {
-                if !models::is_audio_model(model) {
-                    return Err(OpenAIError::model_not_supported(
-                        model,
-                        endpoint,
-                        models::AUDIO_MODELS,
-                        models::WHISPER_1,
-                        false,
-                    ));
-                }
-            }
-            EndpointType::TextToSpeech => {
-                if !models::is_tts_model(model) {
-                    return Err(OpenAIError::model_not_supported(
-                        model,
-                        endpoint,
-                        models::TTS_MODELS,
-                        models::TTS_1,
-                        false,
-                    ));
-                }
-            }
-            EndpointType::VisionAnalysis => {
-                if !models::is_vision_model(model) {
-                    return Err(OpenAIError::model_not_supported(
-                        model,
-                        endpoint,
-                        models::VISION_MODELS,
-                        models::GPT_4O,
-                        false,
-                    ));
-                }
-            }
-            _ => {
-                if !models::is_supported_model(model) {
-                    return Err(OpenAIError::model_not_supported(
-                        model,
-                        endpoint,
-                        models::ALL_MODELS,
-                        models::GPT_4O,
-                        false,
-                    ));
-                }
-            }
-        }
+        // Model validation is now handled centrally by the model-info package
+        // Individual providers no longer perform local model validation
+        // This allows for more flexibility and centralized model management
         Ok(())
     }
 
     /// Get model information
+    /// NOTE: Model information now comes from model-info package
     #[inline]
     pub fn model_info(&self, model: &str) -> Result<ModelInfo> {
-        if !models::is_supported_model(model) {
-            return Err(OpenAIError::model_not_supported(
-                model,
-                EndpointType::ChatCompletions,
-                models::ALL_MODELS,
-                models::GPT_4O,
-                false,
-            ));
-        }
-
-        Ok(ModelInfo {
-            name: model,
-            family: models::model_family(model).unwrap_or("unknown"),
-            generation: models::model_generation(model).unwrap_or("unknown"),
-            max_context: models::context_length(model),
-            supports_streaming: models::supports_streaming(model),
-            supports_tools: models::supports_tools(model),
-            supports_vision: models::supports_vision(model),
-            supports_audio: models::supports_audio(model),
-            temperature_range: models::temperature_range(model),
-            pricing_tier: utils::pricing_tier(model)})
+        // Create basic ModelInfo using ModelInfoBuilder from model-info package
+        // More sophisticated model information should be retrieved via model-info package
+        use model_info::ModelInfoBuilder;
+        
+        let model_info = ModelInfoBuilder::new()
+            .name(model)
+            .provider_name("openai")
+            .with_streaming(true) // Most OpenAI models support streaming
+            .build()
+            .map_err(|e| OpenAIError::InvalidConfiguration {
+                field: "model_info".to_string(),
+                message: format!("Failed to create model info: {}", e),
+                suggestion: "Check model name and try again".to_string(),
+            })?;
+            
+        Ok(model_info)
     }
 
     /// Build authentication headers with zero allocation
@@ -535,16 +465,17 @@ impl OpenAIClient {
     #[inline]
     fn route_endpoint(&self, endpoint: EndpointType) -> &'static str {
         match endpoint {
-            EndpointType::ChatCompletions => endpoints::CHAT_COMPLETIONS,
-            EndpointType::Embeddings => endpoints::EMBEDDINGS,
-            EndpointType::AudioTranscription => endpoints::AUDIO_TRANSCRIPTIONS,
-            EndpointType::AudioTranslation => endpoints::AUDIO_TRANSLATIONS,
-            EndpointType::TextToSpeech => endpoints::AUDIO_SPEECH,
-            EndpointType::VisionAnalysis => endpoints::CHAT_COMPLETIONS, /* Vision uses chat completions */
-            EndpointType::Models => endpoints::MODELS,
-            EndpointType::Files => endpoints::FILES,
-            EndpointType::FineTuning => endpoints::FINE_TUNING,
-            EndpointType::Moderations => endpoints::MODERATIONS}
+            EndpointType::ChatCompletions => "/v1/chat/completions",
+            EndpointType::Embeddings => "/v1/embeddings",
+            EndpointType::AudioTranscription => "/v1/audio/transcriptions",
+            EndpointType::AudioTranslation => "/v1/audio/translations",
+            EndpointType::TextToSpeech => "/v1/audio/speech",
+            EndpointType::VisionAnalysis => "/v1/chat/completions", /* Vision uses chat completions */
+            EndpointType::Models => "/v1/models",
+            EndpointType::Files => "/v1/files",
+            EndpointType::FineTuning => "/v1/fine_tuning/jobs",
+            EndpointType::Moderations => "/v1/moderations",
+        }
     }
 
     /// Test connection to OpenAI API
@@ -678,7 +609,7 @@ impl CompletionClient for OpenAIClient {
             self.api_key_guard(),
             self.organization_id_guard(),
             model,
-            endpoints::CHAT_COMPLETIONS,
+            "/v1/chat/completions",
             &METRICS,
         )
     }

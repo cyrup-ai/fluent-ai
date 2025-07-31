@@ -6,14 +6,10 @@
 // Domain-specific modules (not duplicating model-info functionality)
 pub mod unified_registry;
 pub mod capabilities;
-pub mod registry;
 pub mod resolver;
 pub mod traits;
 pub mod usage;
 pub mod validation;
-
-// New modules for model-info integration
-pub mod model_registry;
 pub mod cache;
 pub mod model_validation;
 
@@ -25,27 +21,36 @@ pub mod models;
 // PRIMARY: Re-export all model types from model-info (single source of truth)
 pub use model_info::{
     // Core types
-    ModelInfo, ProviderTrait, Model, ModelInfoBuilder, ModelError, Result, Provider,
-    // Generated model enums
-    OpenAi, Mistral, Anthropic, Together, OpenRouter, HuggingFace, Xai,
-    // Common module
-    common,
+    ModelInfo, ProviderTrait, Model, ModelInfoBuilder, ModelError, Result,
+    // Discovery Provider enum (unit variants like Provider::Anthropic)
+    DiscoveryProvider as Provider,
+    // Registry functionality
+    ModelRegistry, RegisteredModel,
+    // Discovery functionality
+    ModelDiscoveryRegistry, ModelFilter, ModelQueryResult, RegistryStats as ModelInfoRegistryStats,
+    // Capabilities
+    ModelCapabilities, ProviderModels,
 };
+
+// Create error module that re-exports from model-info for backward compatibility
+pub mod error {
+    pub use model_info::{ModelError, Result};
+}
 
 // Domain-specific capabilities
 pub use capabilities::{Capability, DomainModelCapabilities, ModelPerformance, UseCase};
 pub use usage::Usage;
 pub use validation::*;
 
+// Provider is already re-exported from model_info above and now has the required methods
+
 // Model registry functionality 
 pub use unified_registry::{UnifiedModelRegistry, RegistryStats};
 
 // Model-info integration modules
-pub use model_registry::{ModelRegistry as LegacyModelRegistry, ModelFilter, ModelQueryResult};
 pub use cache::{ModelCache, CacheStats, CacheConfig};
 pub use model_validation::{ModelValidator, ValidationResult, BatchValidationResult};
 
-// Legacy registry (domain-specific)
-pub use registry::ModelRegistry;
+// Other domain-specific functionality
 pub use resolver::*;
 pub use traits::*;

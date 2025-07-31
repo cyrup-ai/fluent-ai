@@ -4,6 +4,7 @@
 //! This module provides a specialized memory type for storing action sequences
 //! and procedural knowledge, with support for steps, conditions, and execution.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};

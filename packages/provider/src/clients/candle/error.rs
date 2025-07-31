@@ -88,7 +88,7 @@ pub enum CandleError {
         context: ErrorContext,
         device: CandleDevice,
         capability: ArrayString<64>,
-        available: SmallVec<[CandleDevice; 4]>},
+        available: SmallVec<CandleDevice, 4>},
 
     /// Tokenization and text processing errors
     Tokenizer {

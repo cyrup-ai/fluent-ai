@@ -1,20 +1,15 @@
 //! Integration tests for the fluent HTTP/3 builder.
 
 use fluent_ai_http3::{Http3, HttpStreamExt};
-use http::HeaderName;
 
 #[tokio::test]
 async fn test_fluent_builder_get_request() {
     // This test uses httpbin.org, a public testing service.
     let url = "https://httpbin.org/get";
 
-    let stream = Http3::json()
+    let stream = Http3::json::<serde_json::Value>()
         .url(url)
-        .headers(|| {
-            let mut map = std::collections::HashMap::new();
-            map.insert(HeaderName::from_static("x-custom-header"), "Cascade-Test");
-            map
-        })
+        .headers([("x-custom-header", "Cascade-Test")])
         .api_key("test-api-key")
         .get(url);
 
@@ -40,13 +35,9 @@ async fn basic_builder_flow() {
     // This test uses httpbin.org, a public testing service.
     let url = "https://httpbin.org/get";
 
-    let stream = Http3::json()
+    let stream = Http3::json::<serde_json::Value>()
         .url(url)
-        .headers(|| {
-            let mut map = std::collections::HashMap::new();
-            map.insert(HeaderName::from_static("x-custom-header"), "Cascade-Test");
-            map
-        })
+        .headers([("x-custom-header", "Cascade-Test")])
         .api_key("test-api-key")
         .get(url);
 

@@ -12,10 +12,15 @@ use fluent_ai_domain::context::provider::EmbeddingModel;
 // Model information is provided by model-info package - no local constants needed
 pub const MAX_DOCUMENTS: usize = 1024;
 
-// EmbeddingModel is now imported from fluent_ai_domain::context::provider
-// Removed duplicated EmbeddingModel struct - use canonical domain type
+/// Concrete Mistral embedding model implementation
+#[derive(Debug, Clone)]
+pub struct MistralEmbeddingModel {
+    client: Client,
+    model: String,
+    ndims: usize,
+}
 
-impl EmbeddingModel {
+impl MistralEmbeddingModel {
     pub fn new(client: Client, model: &str, ndims: usize) -> Self {
         Self {
             client,
@@ -24,7 +29,7 @@ impl EmbeddingModel {
     }
 }
 
-impl embeddings::EmbeddingModel for EmbeddingModel {
+impl embeddings::EmbeddingModel for MistralEmbeddingModel {
     const MAX_DOCUMENTS: usize = MAX_DOCUMENTS;
     fn ndims(&self) -> usize {
         self.ndims

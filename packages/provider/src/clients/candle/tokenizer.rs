@@ -24,13 +24,13 @@ const MAX_ENCODE_BATCH: usize = 512;
 pub type TokenString = ArrayString<MAX_TOKEN_TEXT_LEN>;
 
 /// Cache-efficient token ID collection
-pub type TokenIds = SmallVec<[u32; MAX_ENCODE_BATCH]>;
+pub type TokenIds = SmallVec<u32, MAX_ENCODE_BATCH>;
 
 /// Streaming text buffer for decode operations
 #[derive(Debug, Clone)]
 pub struct TextBuffer {
     /// Internal buffer for accumulating decoded text
-    buffer: SmallVec<[u8; 1024]>,
+    buffer: SmallVec<u8, 1024>,
     /// Current write position
     write_pos: usize}
 
@@ -209,7 +209,7 @@ pub struct TokenizationResult {
     /// Token IDs from encoding
     tokens: TokenIds,
     /// Attention mask for variable-length sequences
-    attention_mask: SmallVec<[u8; MAX_ENCODE_BATCH]>,
+    attention_mask: SmallVec<u8, MAX_ENCODE_BATCH>,
     /// Whether this result contains special tokens
     has_special_tokens: bool,
     /// Original text length for metrics
@@ -230,7 +230,7 @@ impl TokenizationResult {
     /// Create result with attention mask
     pub fn with_attention_mask(
         tokens: TokenIds,
-        attention_mask: SmallVec<[u8; MAX_ENCODE_BATCH]>,
+        attention_mask: SmallVec<u8, MAX_ENCODE_BATCH>,
         original_length: usize,
     ) -> Self {
         Self {
@@ -361,7 +361,7 @@ pub struct CandleTokenizer {
 #[derive(Debug, Clone)]
 struct StreamingState {
     /// Partial UTF-8 sequence buffer
-    partial_utf8: SmallVec<[u8; 4]>,
+    partial_utf8: SmallVec<u8, 4>,
     /// Current decoding position
     decode_position: u32,
     /// Whether streaming is active

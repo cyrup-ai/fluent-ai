@@ -4,6 +4,7 @@
 //! This module provides versioning and history tracking for memory nodes,
 //! with support for evolution tracking, history queries, and diff/merge operations.
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};

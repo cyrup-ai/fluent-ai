@@ -3,6 +3,9 @@ use fluent_ai_async::AsyncStream;
 use hashbrown::HashMap;
 use std::sync::OnceLock;
 
+// Type alias for complex provider data tuple to improve readability
+type ProviderModelData = (u32, u32, f64, f64, bool, bool, bool, bool);
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnthropicProvider;
 
@@ -40,19 +43,19 @@ impl ProviderTrait for AnthropicProvider {
 }
 
 fn adapt_anthropic_to_model_info(model: &str) -> ModelInfo {
-    static MAP: OnceLock<HashMap<&'static str, (u32, u32, f64, f64, bool, bool, bool, bool, bool)>> = OnceLock::new();
+    static MAP: OnceLock<HashMap<&'static str, ProviderModelData>> = OnceLock::new();
     let map = MAP.get_or_init(|| {
         let mut m = HashMap::new();
-        // (max_input, max_output, input_price, output_price, vision, function_calling, streaming, embeddings, thinking)
-        m.insert("claude-3-5-sonnet-20240620", (200000, 50000, 3.0, 15.0, true, true, true, false, false));
-        m.insert("claude-3-haiku-20240307", (200000, 50000, 0.25, 1.25, true, true, true, false, false));
-        m.insert("claude-3-opus-20240229", (200000, 50000, 15.0, 75.0, true, true, true, false, false));
-        m.insert("claude-3-sonnet-20240229", (200000, 50000, 3.0, 15.0, true, true, true, false, false));
+        // (max_input, max_output, input_price, output_price, vision, function_calling, embeddings, thinking)
+        m.insert("claude-3-5-sonnet-20240620", (200000, 50000, 3.0, 15.0, true, true, false, false));
+        m.insert("claude-3-haiku-20240307", (200000, 50000, 0.25, 1.25, true, true, false, false));
+        m.insert("claude-3-opus-20240229", (200000, 50000, 15.0, 75.0, true, true, false, false));
+        m.insert("claude-3-sonnet-20240229", (200000, 50000, 3.0, 15.0, true, true, false, false));
         m
     });
     
-    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_streaming, supports_embeddings, supports_thinking) = 
-        map.get(model).copied().unwrap_or((200000, 50000, 0.0, 0.0, true, true, true, false, false));
+    let (max_input, max_output, pricing_input, pricing_output, supports_vision, supports_function_calling, supports_embeddings, supports_thinking) = 
+        map.get(model).copied().unwrap_or((200000, 50000, 0.0, 0.0, true, true, false, false));
     
     ModelInfo {
         // Core identification
@@ -70,7 +73,6 @@ fn adapt_anthropic_to_model_info(model: &str) -> ModelInfo {
         // Capability flags
         supports_vision,
         supports_function_calling,
-        supports_streaming,
         supports_embeddings,
         requires_max_tokens: false,
         supports_thinking,

@@ -7,6 +7,7 @@
 //! - Automatic key expiration
 //! - Comprehensive audit logging
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 

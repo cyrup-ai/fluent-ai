@@ -8,9 +8,9 @@ edition = "2024"
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
 serde = { version = "1.0.219", features = ["derive"] }
-cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 fluent_ai_async = { path = "../async-stream" }
-fluent_ai_domain = { version = "0.1.0", path = "../domain", default-features = false }
+fluent_ai_domain = { path = "../domain", default-features = false }
 fluent_ai_http3 = { path = "../http3" }
 # CRITICAL: Model/provider information comes from model-info package only
 model-info = { path = "../model-info" }
@@ -60,9 +60,9 @@ zeroize = { version = "1.8.1", features = ["derive"] }
 chacha20poly1305 = "0.11.0-rc.0"
 hf-hub = "0.4.3"
 # Missing dependencies causing compilation errors
-async-trait = "0.1.83"
-tempfile = "3.14.0"
-uuid = { version = "1.11.0", features = ["v4"] }
+async-trait = "0.1"
+tempfile = "3.20"
+uuid = { version = "1.17", features = ["v4"] }
 # Candle ML framework dependencies (from fluent-ai-candle)
 candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
 candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }

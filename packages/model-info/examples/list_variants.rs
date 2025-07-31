@@ -1,4 +1,4 @@
-use model_info::*;
+use model_info::generated_models::AnthropicModel;
 
 fn main() {
     println!("=== OpenAI Models ===");

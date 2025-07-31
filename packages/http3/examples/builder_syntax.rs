@@ -1,5 +1,7 @@
 //! Example usage of Http3 builder with exact user syntax patterns
 
+use std::collections::HashMap;
+
 use axum::http::Request;
 use axum::{
     Router,
@@ -8,21 +10,23 @@ use axum::{
     http::{HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{Json as ResponseJson, Response},
-    routing::{get, post, put}};
-use fluent_ai_http3::{ContentType, Http3, HttpStreamExt, header};
+    routing::{get, post, put},
+};
+use fluent_ai_http3::{ContentType, Http3, HttpStreamExt};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tokio::net::TcpListener;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SerdeRequestType {
     message: String,
-    data: Vec<String>}
+    data: Vec<String>,
+}
 
 #[derive(Deserialize, Serialize, Debug, Default)]
 struct SerdeResponseType {
     result: String,
-    count: u32}
+    count: u32,
+}
 
 // JSON request/response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -30,7 +34,8 @@ struct JsonRequest {
     user_id: u64,
     username: String,
     permissions: Vec<String>,
-    metadata: std::collections::HashMap<String, String>}
+    metadata: std::collections::HashMap<String, String>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct JsonResponse {
@@ -38,7 +43,8 @@ struct JsonResponse {
     user_id: u64,
     created_at: String,
     roles: Vec<String>,
-    settings: std::collections::HashMap<String, i32>}
+    settings: std::collections::HashMap<String, i32>,
+}
 
 // Form request/response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -46,7 +52,8 @@ struct FormRequest {
     product_id: String,
     quantity: i32,
     price: f64,
-    category: String}
+    category: String,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct FormResponse {
@@ -54,7 +61,8 @@ struct FormResponse {
     total_cost: f64,
     estimated_delivery: String,
     items: Vec<String>,
-    discount_applied: bool}
+    discount_applied: bool,
+}
 
 // Binary/Text request/response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -62,14 +70,16 @@ struct BinaryRequest {
     file_name: String,
     file_size: u64,
     checksum: String,
-    mime_type: String}
+    mime_type: String,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct BinaryResponse {
     upload_id: String,
     status: String,
     bytes_processed: u64,
-    validation_result: bool}
+    validation_result: bool,
+}
 
 // Handler for test server that logs received payload and headers
 async fn handle_post(
@@ -89,7 +99,8 @@ async fn handle_post(
 
     let response = SerdeResponseType {
         result: format!("Processed: {}", payload.message),
-        count: payload.data.len() as u32};
+        count: payload.data.len() as u32,
+    };
 
     println!("📤 Server responding with: {:#?}", response);
     Ok(ResponseJson(response))
@@ -129,7 +140,8 @@ async fn handle_put_json(
             .into_iter()
             .map(|p| format!("role_{}", p))
             .collect(),
-        settings};
+        settings,
+    };
 
     println!("📤 PUT JSON responding: {:#?}", response);
     Ok(ResponseJson(response))
@@ -162,7 +174,8 @@ async fn handle_put_form(
         total_cost: price * quantity as f64,
         estimated_delivery: "2025-01-30".to_string(),
         items: vec![format!("{} x{}", product_id, quantity)],
-        discount_applied: quantity > 5};
+        discount_applied: quantity > 5,
+    };
 
     println!("📤 PUT Form responding: {:#?}", response);
     Ok(ResponseJson(response))
@@ -181,7 +194,8 @@ async fn handle_put_binary(
         upload_id: format!("UPLOAD-{}", chrono::Utc::now().timestamp()),
         status: "processed".to_string(),
         bytes_processed: payload.file_size,
-        validation_result: payload.checksum.len() > 10};
+        validation_result: payload.checksum.len() > 10,
+    };
 
     println!("📤 PUT Binary responding: {:#?}", response);
     Ok(ResponseJson(response))
@@ -203,7 +217,8 @@ async fn requestbin_logger(
     for (name, value) in headers.iter() {
         match value.to_str() {
             Ok(value_str) => println!("   {}: {}", name, value_str),
-            Err(_) => println!("   {}: <binary_data>", name)}
+            Err(_) => println!("   {}: <binary_data>", name),
+        }
     }
 
     // Extract and log the body
@@ -220,7 +235,8 @@ async fn requestbin_logger(
         println!("📤 Body ({} bytes):", body_bytes.len());
         match std::str::from_utf8(&body_bytes) {
             Ok(body_str) => println!("{}", body_str),
-            Err(_) => println!("<binary_data>")}
+            Err(_) => println!("<binary_data>"),
+        }
     } else {
         println!("📤 Body: <empty>");
     }
@@ -271,7 +287,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create test request
     let request = SerdeRequestType {
         message: "Hello HTTP3 Builder!".to_string(),
-        data: vec!["test".to_string(), "data".to_string()]};
+        data: vec!["test".to_string(), "data".to_string()],
+    };
 
     let server_url = format!("http://{}/test", local_addr);
 
@@ -284,22 +301,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Stream of HttpChunk or mixed BadHttpChunk
     Http3::json()
         .debug() // Enable debug logging
-        .headers(|| {
-                        let mut map = HashMap::new();
-            map.insert(header::X_API_KEY, "abc123");
-            map
-        })
+        .headers([
+            ("x-api-key", "abc123")
+        ])
         .body(&request)
         .post(&server_url);
 
     // collect to Serde mapped type
     let response_data = Http3::json()
         .accept(ContentType::ApplicationJson)
-        .headers(|| {
-                        let mut map = HashMap::new();
-            map.insert(header::X_API_KEY, "abc123");
-            map
-        })
+        .headers([
+            ("x-api-key", "abc123")
+        ])
         .body(&request)
         .post(&server_url)
         .collect::<SerdeResponseType>();
@@ -315,40 +328,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // shorthand
     let _serde_response_type = Http3::form_urlencoded()
-        .basic_auth(|| {
-                        let mut map = HashMap::new();
-            map.insert("user", "password");
-            map
-        })
+        .basic_auth([("user", "password")])
         .body(&request)
         .post(&server_url)
         .collect::<SerdeResponseType>();
 
     // Stream of HttpChunk may have mixed BadHttpChunk
-    let error_response = Http3::json()
-        .headers(|| {
-                        let mut map = HashMap::new();
-            map.insert(header::X_API_KEY, "abc123");
-            map
-        })
+    let error_response = Http3::json::<JsonRequest>()
+        .headers([
+            ("foo", "bar"),
+            ("fizz", "buzz")
+        ])
         .body(&request)
         .post(&server_url)
+        .on_chunk( |chunk| {
+            match chunk {
+                Ok(chunk) => chunk.into(),
+                Err(e) => BadChunk::from_err(e)
+            }
+        })
         .collect_or_else(|e| {
             println!("Error: {}", e);
             SerdeResponseType {
                 result: "error".to_string(),
-                count: 0}
+                count: 0,
+            }
         });
     println!("📥 Error response: {:?}", error_response);
 
     // Download file example with proper URL
     let csv_url = format!("http://{}/download/file.csv", local_addr);
     let download_result = Http3::json()
-        .headers(|| {
-                        let mut map = HashMap::new();
-            map.insert(header::X_API_KEY, "abc123");
-            map
-        })
+        .headers([
+            ("x-api-key", "abc123")
+        ])
         .download_file(&csv_url)
         .save("/tmp/some.csv")
         .await; // polymorphic path for download specific semantics
@@ -368,7 +381,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             map.insert("department".to_string(), "engineering".to_string());
             map.insert("location".to_string(), "remote".to_string());
             map
-        }};
+        },
+    };
 
     let json_url = format!("http://{}/put/json", local_addr);
     let json_response = Http3::json()
@@ -399,7 +413,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         file_name: "document.pdf".to_string(),
         file_size: 1024000,
         checksum: "sha256:abc123def456".to_string(),
-        mime_type: "application/pdf".to_string()};
+        mime_type: "application/pdf".to_string(),
+    };
 
     let binary_url = format!("http://{}/put/binary", local_addr);
     let binary_response = Http3::json() // Send as JSON

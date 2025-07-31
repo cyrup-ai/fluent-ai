@@ -5,6 +5,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::model::{Usage, info::ModelInfo};
+use crate::ZeroOneOrMany;
 
 /// Core trait for all AI models
 ///
@@ -54,7 +55,7 @@ pub trait Model: Send + Sync + std::fmt::Debug + 'static {
     /// Check if the model supports streaming
     #[inline]
     fn supports_streaming(&self) -> bool {
-        self.info().has_streaming()
+        true // All models support streaming in this architecture
     }
 
     /// Check if the model requires max_tokens to be specified
@@ -82,8 +83,7 @@ pub enum ChatMessage {
         /// An optional name for the participant
         name: Option<String>,
         /// Optional list of image URLs or base64-encoded images
-        #[serde(skip_serializing_if = "Option::is_none")]
-        images: Option<Vec<String>>},
+        images: ZeroOneOrMany<String>},
 
     /// A message from the assistant
     Assistant {
@@ -92,8 +92,7 @@ pub enum ChatMessage {
         /// An optional name for the participant
         name: Option<String>,
         /// Function calls made by the assistant
-        #[serde(skip_serializing_if = "Option::is_none")]
-        function_calls: Option<Vec<FunctionCall>>},
+        function_calls: ZeroOneOrMany<FunctionCall>},
 
     /// A function call result
     Function {
@@ -142,7 +141,7 @@ pub struct GenerationParams {
     pub presence_penalty: Option<f32>,
 
     /// Stop sequences where the API will stop generating further tokens
-    pub stop_sequences: Option<Vec<String>>,
+    pub stop_sequences: ZeroOneOrMany<String>,
 
     /// Whether to stream the response
     pub stream: bool}
@@ -173,17 +172,17 @@ pub struct TextGenerationRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ChatCompletionRequest {
     /// The conversation messages
-    pub messages: Vec<ChatMessage>,
+    pub messages: ZeroOneOrMany<ChatMessage>,
     /// Generation parameters
     pub params: GenerationParams,
     /// Optional function definitions
-    pub functions: Option<Vec<FunctionDefinition>>}
+    pub functions: ZeroOneOrMany<FunctionDefinition>}
 
 /// Request for embedding generation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EmbeddingRequest {
     /// The text(s) to embed
-    pub texts: Vec<String>}
+    pub texts: ZeroOneOrMany<String>}
 
 /// An embedding result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -1,5 +1,7 @@
 //! Memory filtering functionality
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

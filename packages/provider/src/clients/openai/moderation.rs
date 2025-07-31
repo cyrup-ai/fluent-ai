@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::{OpenAIError, OpenAIResult};
-use crate::AsyncTask;
+use fluent_ai_async::AsyncTask;
 use crate::ZeroOneOrMany;
 
 /// Content moderation request
@@ -250,9 +250,9 @@ impl ModerationRequest {
             model: Some("text-moderation-latest".to_string())}
     }
 
-    /// Create with legacy model
+    /// Create with stable model
     #[inline(always)]
-    pub fn with_legacy_model(input: ModerationInput) -> Self {
+    pub fn with_stable_model(input: ModerationInput) -> Self {
         Self {
             input,
             model: Some("text-moderation-stable".to_string())}
@@ -641,7 +641,7 @@ pub fn batch_moderate(
 ) -> AsyncTask<ZeroOneOrMany<SafetyAssessment>> {
     let owned_policy = policy.clone();
     let owned_context = context.clone();
-    crate::async_task::spawn_async(async move {
+    crate::spawn_async(async move {
         match texts {
             ZeroOneOrMany::None => ZeroOneOrMany::None,
             ZeroOneOrMany::One(text) => {

@@ -3,7 +3,7 @@
 //! This module provides CandleTool and CandleMcpTool traits that exactly match
 //! domain/src/tool/traits.rs with zero over-engineering.
 //!
-//! Supports ARCHITECTURE.md syntax: CandleTool<CandlePerplexity>::new({"citations" => "true"})
+//! Supports ARCHITECTURE.md syntax: CandleTool<CandlePerplexity>::new([("citations", "true")])
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -55,7 +55,7 @@ pub struct CandleToolImpl<T> {
 }
 
 impl<T> CandleToolImpl<T> {
-    /// Create new tool with config - EXACT ARCHITECTURE.md syntax: CandleTool<CandlePerplexity>::new({"citations" => "true"})
+    /// Create new tool with config - EXACT ARCHITECTURE.md syntax: CandleTool<CandlePerplexity>::new([("citations", "true")])
     #[inline]
     pub fn new<P>(config: P) -> Self
     where
@@ -226,24 +226,7 @@ impl CandleTool for CandleNamedTool {
     }
 }
 
-/// Extension trait for executing strings as shell commands and returning text output
-pub trait CandleExecToText {
-    /// Execute the string as a shell command and return the stdout as a String
-    fn exec_to_text(&self) -> String;
-}
 
-impl CandleExecToText for &str {
-    fn exec_to_text(&self) -> String {
-        match std::process::Command::new("sh")
-            .arg("-c")
-            .arg(self)
-            .output()
-        {
-            Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
-            Err(_) => format!("Failed to execute: {}", self),
-        }
-    }
-}
 
 impl CandleExecToText for String {
     fn exec_to_text(&self) -> String {
@@ -254,8 +237,8 @@ impl CandleExecToText for String {
 /// Re-export for ARCHITECTURE.md syntax compatibility
 pub type CandleToolType<T> = CandleToolImpl<T>;
 
-/// From implementations for transparent {"key" => "value"} syntax in ARCHITECTURE.md
-/// Helper function for transparent {"key" => "value"} syntax in ARCHITECTURE.md
+/// From implementations for transparent [("key", "value")] syntax in ARCHITECTURE.md
+/// Helper function for transparent [("key", "value")] syntax in ARCHITECTURE.md
 pub fn candle_tool_params_from_array<const N: usize>(arr: [(&'static str, &'static str); N]) -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     for (k, v) in arr {

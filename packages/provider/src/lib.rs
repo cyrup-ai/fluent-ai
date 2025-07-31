@@ -38,6 +38,9 @@ pub mod client;
 // Universal completion provider trait
 pub mod completion_provider;
 
+// Streaming-only completion provider trait (enforces architecture)
+pub mod streaming_completion_provider;
+
 // Streaming interface implementations
 pub mod streaming;
 
@@ -50,6 +53,7 @@ pub mod transcription;
 // Re-export client traits for provider implementations
 pub use client::*;
 pub use completion_provider::*;
+pub use streaming_completion_provider::*;
 pub use cyrup_sugars::*;
 pub use embeddings::*;
 // Use canonical streaming types from fluent-ai-async

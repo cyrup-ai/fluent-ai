@@ -7,6 +7,7 @@
 //! - Comprehensive audit logging for rotation events
 //! - Health monitoring and alerting
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 

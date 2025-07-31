@@ -1,5 +1,7 @@
 //! Core cognitive types and structures
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

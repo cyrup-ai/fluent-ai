@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use std::str::FromStr;
 
 use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
+use fluent_ai_domain::util::json_util;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

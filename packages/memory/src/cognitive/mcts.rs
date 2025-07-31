@@ -1,6 +1,7 @@
 // src/cognitive/mcts.rs
 //! MCTS for exploring code modifications with committee-based evaluation
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use rand::Rng;

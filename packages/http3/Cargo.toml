@@ -10,7 +10,7 @@ categories = ["network-programming", "web-programming::http-client"]
 
 [dependencies]
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
-fluent_ai_async = { package = "fluent_ai_async", version = "0.1.0", path = "../async-stream" }
+fluent_ai_async = { package = "fluent_ai_async", path = "../async-stream" }
 reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
 tokio = { version = "1.47.0", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -31,8 +31,6 @@ crossbeam = "0.8.4"
 crossbeam-skiplist = "0.1.3"
 chrono = { version = "0.4.41", features = ["serde"] }
 async-stream = "0.3.6"
-cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", package = "cyrup_sugars", branch = "main", features = ["all"] }
-sugars_macros = { git = "https://github.com/cyrup-ai/cyrup-sugars", package = "sugars_macros", branch = "main" }
 base64 = "0.22.1"
 crossbeam-queue = "0.3.12"
 crossbeam-channel = "0.5.15"
@@ -40,6 +38,7 @@ futures-util = "0.3.31"
 lazy_static = "1.5.0"
 urlencoding = "2.1.3"
 log = "0.4.27"
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 
 [dev-dependencies]
 env_logger = "0.11.8"

@@ -47,7 +47,7 @@ pub use streaming::{
 pub use vision::OpenAIVisionClient;
 
 use crate::client::{CompletionClient, ProviderClient};
-use crate::completion_provider::{CompletionError, CompletionProvider};
+use crate::completion_provider::CompletionError;
 
 // Internal modules
 mod audio;

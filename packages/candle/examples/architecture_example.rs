@@ -147,15 +147,7 @@ mod syntax_verification {
         }
     }
     
-    pub trait ExecToText {
-        fn exec_to_text(&self) -> String;
-    }
-    
-    impl ExecToText for &str {
-        fn exec_to_text(&self) -> String {
-            self.to_string()
-        }
-    }
+
     
     // Demonstrate the exact syntax patterns work
     pub fn example_usage() {

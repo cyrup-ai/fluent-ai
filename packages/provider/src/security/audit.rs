@@ -7,6 +7,7 @@
 //! - Compliance-ready audit trails
 //! - Zero-allocation event handling
 
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;

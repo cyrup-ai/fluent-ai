@@ -12,19 +12,21 @@ use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_async::channel;
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest, HttpResponse};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 
 use super::{
-    completion::{CompletionModel, LLAMA_3_2_11B_VISION_INSTRUCT_TURBO},
+    completion::{self, CompletionModel, LLAMA_3_2_11B_VISION_INSTRUCT_TURBO},
     embedding::{EmbeddingModel, M2_BERT_80M_8K_RETRIEVAL}};
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient},
     completion_provider::{CompletionError, CompletionProvider}};
 use fluent_ai_domain::{
-    completion::{CompletionRequest, CompletionRequestBuilder},
-    chat::message::Message};
+    completion::{CompletionRequest, CompletionRequestBuilder, CompletionRequestError, types::ToolDefinition},
+    context::document::Document,
+    chat::message::Message,
+    util::json_util};
 
 // ============================================================================
 // Together AI API Client with HTTP3 and dual-endpoint optimization
@@ -147,7 +149,7 @@ impl Client {
         &self,
         endpoint: &str,
         body: Vec<u8>,
-    ) -> Result<fluent_ai_http3::Response, HttpError> {
+    ) -> Result<fluent_ai_http3::HttpResponse, HttpError> {
         let url = format!("{}/{}", self.base_url, endpoint);
 
         let response = self
@@ -162,7 +164,7 @@ impl Client {
     pub(crate) async fn embedding_request(
         &self,
         body: Vec<u8>,
-    ) -> Result<fluent_ai_http3::Response, HttpError> {
+    ) -> Result<fluent_ai_http3::HttpResponse, HttpError> {
         let url = format!("{}/embeddings", self.base_url);
 
         let response = self
@@ -179,7 +181,7 @@ impl Client {
         client: &HttpClient,
         url: &str,
         body: Vec<u8>,
-    ) -> Result<fluent_ai_http3::Response, HttpError> {
+    ) -> Result<fluent_ai_http3::HttpResponse, HttpError> {
         // Build headers with zero allocation
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
 
@@ -347,8 +349,8 @@ pub struct TogetherCompletionBuilder<'a, S> {
     stop: Option<Vec<String>>,
     preamble: Option<String>,
     chat_history: Vec<Message>,
-    documents: Vec<completion::Document>,
-    tools: Vec<completion::ToolDefinition>,
+    documents: Vec<fluent_ai_domain::context::Document>,
+    tools: Vec<fluent_ai_domain::completion::ToolDefinition>,
     additional_params: serde_json::Value,
     prompt: Option<Message>, // present only when S = HasPrompt
     _state: std::marker::PhantomData<S>}
@@ -440,13 +442,13 @@ impl<'a, S> TogetherCompletionBuilder<'a, S> {
     }
 
     #[inline(always)]
-    pub fn documents(mut self, docs: Vec<completion::Document>) -> Self {
+    pub fn documents(mut self, docs: Vec<fluent_ai_domain::context::Document>) -> Self {
         self.documents = docs;
         self
     }
 
     #[inline(always)]
-    pub fn tools(mut self, tools: Vec<completion::ToolDefinition>) -> Self {
+    pub fn tools(mut self, tools: Vec<fluent_ai_domain::completion::ToolDefinition>) -> Self {
         self.tools = tools;
         self
     }
@@ -489,11 +491,11 @@ impl<'a> TogetherCompletionBuilder<'a, NeedsPrompt> {
 // ============================================================================
 impl<'a> TogetherCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
-    fn build_request(&self) -> Result<CompletionRequest, PromptError> {
+    fn build_request(&self) -> Result<CompletionRequest, CompletionRequestError> {
         let prompt = self
             .prompt
             .as_ref()
-            .ok_or_else(|| PromptError::ValidationError("Prompt is required".to_string()))?;
+            .ok_or_else(|| CompletionRequestError::InvalidParameter("Prompt is required".to_string()))?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;
@@ -549,7 +551,7 @@ impl<'a> TogetherCompletionBuilder<'a, HasPrompt> {
         self,
     ) -> AsyncTask<
         Result<
-            completion::CompletionResponse<super::completion::CompletionResponse>,
+            fluent_ai_domain::completion::CompletionResponse<super::completion::CompletionResponse>,
             CompletionError,
         >,
     > {
@@ -600,13 +602,22 @@ impl<'a> TogetherCompletionBuilder<'a, HasPrompt> {
 }
 
 // ============================================================================
+// Prompt trait definition for builder pattern
+// ============================================================================
+pub trait Prompt {
+    type PromptedBuilder;
+    
+    fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, CompletionRequestError>;
+}
+
+// ============================================================================
 // Prompt trait implementation
 // ============================================================================
 impl<'a> Prompt for TogetherCompletionBuilder<'a, NeedsPrompt> {
     type PromptedBuilder = TogetherCompletionBuilder<'a, HasPrompt>;
 
     #[inline(always)]
-    fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, PromptError> {
+    fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, CompletionRequestError> {
         Ok(self.prompt(Message::user(prompt.to_string())))
     }
 }

@@ -1,7 +1,7 @@
 //! Minimal test to verify CandleFluentAi builder pattern works
 //! This bypasses domain module issues by only testing the builder
 
-use fluent_ai_candle::builders::agent_role_working::CandleFluentAi;
+use fluent_ai_candle::builders::agent_role::CandleFluentAi;
 
 fn main() {
     // Test that the basic entry point works
@@ -22,7 +22,7 @@ fn main() {
     
     // Test basic conversation history (simplified)
     let _final_agent = agent_builder.conversation_history(
-        (fluent_ai_candle::builders::agent_role_working::CandleMessageRole::User, "Hello")
+        (fluent_ai_candle::builders::agent_role::CandleMessageRole::User, "Hello")
     );
     
     println!("✅ Conversation history works!");

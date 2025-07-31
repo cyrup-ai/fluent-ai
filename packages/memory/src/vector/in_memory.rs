@@ -1,6 +1,7 @@
 //! In-memory vector store implementation - THREAD-SAFE SYNCHRONOUS OPERATIONS
 
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use fluent_ai_simd::cosine_similarity;
 use surrealdb::sql::Value;
 

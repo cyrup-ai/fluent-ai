@@ -1,5 +1,6 @@
 //! Transaction management implementation
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::oneshot;

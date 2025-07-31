@@ -1,0 +1,8 @@
+{
+  "default_llama": {"max_tokens": 8192, "input_price": 0.0, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "default_llama_large": {"max_tokens": 32768, "input_price": 0.0, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "default_mistral": {"max_tokens": 32768, "input_price": 0.0, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "default_codellama": {"max_tokens": 16384, "input_price": 0.0, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "default_gemma": {"max_tokens": 8192, "input_price": 0.0, "output_price": 0.0, "supports_thinking": false, "required_temp": null},
+  "default": {"max_tokens": 4096, "input_price": 0.0, "output_price": 0.0, "supports_thinking": false, "required_temp": null}
+}

@@ -6,6 +6,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use arrayvec::ArrayVec;
+
 use crossbeam_skiplist::SkipMap;
 use crossbeam_utils::CachePadded;
 use num_complex::Complex64;

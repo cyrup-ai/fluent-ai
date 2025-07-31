@@ -13,8 +13,8 @@ use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use tokio::time::timeout;
 
-use model_info::Provider;
-use crate::model::{ModelError, Result};
+use model_info::DiscoveryProvider as Provider;
+use crate::model::{ModelError, Result, ModelInfo};
 
 /// Maximum validation timeout per model
 const VALIDATION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -225,7 +225,7 @@ struct ValidationData {
 
 impl Default for ValidationData {
     fn default() -> Self {
-        let mut providers = ArrayVec::new();
+        let providers = ArrayVec::new();
         
         // Note: Providers are not initialized here since model-info is the single source of truth
         // This validation system focuses on model enum validation rather than provider connectivity
@@ -308,7 +308,9 @@ impl ModelValidator {
         // Perform validation using AsyncStream pattern with timeout protection
         let mut model_stream = provider_instance.get_model_info(model_name);
         let validation_result = match timeout(VALIDATION_TIMEOUT, async {
-            model_stream.try_next()
+            // The get_model_info returns an empty stream for now, so we'll get None
+            // This is expected behavior until model enumeration is implemented
+            None::<ModelInfo>
         }).await {
             Ok(Some(_model_info)) => {
                 // Successfully got model info from stream

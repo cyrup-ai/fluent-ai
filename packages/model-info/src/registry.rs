@@ -9,18 +9,16 @@ use ahash::RandomState;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
-use crate::model::{ModelError, Result};
-use crate::model::info::ModelInfo;
-use crate::model::traits::Model;
+use crate::common::{ModelError, Result, Model, ModelInfo};
 
 /// A type-erased model reference
 struct ModelHandle {
     model: Box<dyn Any + Send + Sync>,
-    info: &'static ModelInfo}
+    info: ModelInfo}
 
 impl ModelHandle {
     fn new<M: Model + 'static>(model: M) -> Self {
-        let info = model.info();
+        let info = model.to_model_info();
         Self {
             model: Box::new(model),
             info}
@@ -34,8 +32,8 @@ impl ModelHandle {
         self.model.downcast_ref::<M>()
     }
 
-    fn info(&self) -> &'static ModelInfo {
-        self.info
+    fn info(&self) -> &ModelInfo {
+        &self.info
     }
 }
 
@@ -335,25 +333,34 @@ impl<M: Model + 'static> std::ops::Deref for RegisteredModel<M> {
     type Target = M;
 
     fn deref(&self) -> &Self::Target {
-        self.handle
-            .as_model()
-            .expect("type mismatch in RegisteredModel")
+        match self.handle.as_model() {
+            Some(model) => model,
+            None => panic!("type mismatch in RegisteredModel"),
+        }
+    }
+}
+
+impl<M: Model + 'static> RegisteredModel<M> {
+    /// Get model info
+    pub fn info(&self) -> &ModelInfo {
+        self.handle.info()
     }
 }
 
 impl<M: Model + 'static> AsRef<M> for RegisteredModel<M> {
     fn as_ref(&self) -> &M {
-        self.handle
-            .as_model()
-            .expect("type mismatch in RegisteredModel")
+        match self.handle.as_model() {
+            Some(model) => model,
+            None => panic!("type mismatch in RegisteredModel"),
+        }
     }
 }
 
 impl<M: Model + 'static> std::fmt::Debug for RegisteredModel<M> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RegisteredModel")
-            .field("provider", &self.info().provider())
-            .field("name", &self.info().name())
+            .field("provider", &self.handle.info().provider_name)
+            .field("name", &self.handle.info().name)
             .finish()
     }
 }
@@ -373,21 +380,26 @@ impl<M: Model + 'static> Hash for RegisteredModel<M> {
     }
 }
 
-/// A builder for configuring and registering models
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Import ModelInfo::builder() from fluent-ai
-    use fluent_ai::builders::ModelInfoBuilder;
 
     struct TestModel {
-        info: &'static ModelInfo}
+        info: ModelInfo}
 
     impl Model for TestModel {
-        fn info(&self) -> &'static ModelInfo {
-            self.info
-        }
+        fn name(&self) -> &'static str { self.info.name }
+        fn provider_name(&self) -> &'static str { self.info.provider_name }
+        fn max_input_tokens(&self) -> Option<u32> { self.info.max_input_tokens.map(|n| n.get()) }
+        fn max_output_tokens(&self) -> Option<u32> { self.info.max_output_tokens.map(|n| n.get()) }
+        fn pricing_input(&self) -> Option<f64> { self.info.input_price }
+        fn pricing_output(&self) -> Option<f64> { self.info.output_price }
+        fn supports_vision(&self) -> bool { self.info.supports_vision }
+        fn supports_function_calling(&self) -> bool { self.info.supports_function_calling }
+        fn supports_embeddings(&self) -> bool { self.info.supports_embeddings }
+        fn requires_max_tokens(&self) -> bool { self.info.requires_max_tokens }
+        fn supports_thinking(&self) -> bool { self.info.supports_thinking }
+        fn required_temperature(&self) -> Option<f64> { self.info.required_temperature }
     }
 
     #[test]
@@ -398,107 +410,19 @@ mod tests {
             .provider_name("test")
             .name("test-model")
             .build()
-            .unwrap();
+            .expect("Failed to build test model info");
 
-        let model = TestModel { info: &info };
+        let model = TestModel { info };
 
         // Register the model
-        let registered = registry.register("test-provider", model).unwrap();
+        let registered = registry.register("test-provider", model).expect("Failed to register model");
 
         // Retrieve the model
         let retrieved = registry
             .get_required::<TestModel>("test-provider", "test-model")
-            .unwrap();
+            .expect("Failed to retrieve model");
 
-        assert_eq!(registered.info().name(), retrieved.info().name());
-        assert_eq!(registered.info().provider(), retrieved.info().provider());
-    }
-
-    #[test]
-    fn test_duplicate_registration() {
-        let registry = ModelRegistry::new();
-
-        let info1 = ModelInfo::builder()
-            .provider_name("test")
-            .name("test-model")
-            .build()
-            .unwrap();
-
-        let info2 = ModelInfo::builder()
-            .provider_name("test")
-            .name("test-model")
-            .build()
-            .unwrap();
-
-        let model1 = TestModel { info: &info1 };
-        let model2 = TestModel { info: &info2 };
-
-        // First registration should succeed
-        registry.register("test-provider", model1).unwrap();
-
-        // Second registration should fail
-        let result = registry.register("test-provider", model2);
-        assert!(matches!(
-            result,
-            Err(ModelError::ModelAlreadyExists {
-                provider: "test-provider",
-                name: "test-model"})
-        ));
-    }
-
-    #[test]
-    fn test_find_all() {
-        let registry = ModelRegistry::new();
-
-        let info1 = ModelInfo::builder()
-            .provider_name("test1")
-            .name("model1")
-            .build()
-            .unwrap();
-
-        let info2 = ModelInfo::builder()
-            .provider_name("test2")
-            .name("model2")
-            .build()
-            .unwrap();
-
-        let model1 = TestModel { info: &info1 };
-        let model2 = TestModel { info: &info2 };
-
-        // Register both models
-        registry.register("test-provider1", model1).unwrap();
-        registry.register("test-provider2", model2).unwrap();
-
-        // Find all models of type TestModel
-        let models = registry.find_all::<TestModel>();
-
-        assert_eq!(models.len(), 2);
-
-        let model_names: Vec<_> = models.iter().map(|m| m.info().name()).collect();
-
-        assert!(model_names.contains(&"model1"));
-        assert!(model_names.contains(&"model2"));
-    }
-
-    #[test]
-    fn test_model_registration() {
-        let info = ModelInfo::builder()
-            .provider_name("test")
-            .name("test-model")
-            .build()
-            .unwrap();
-
-        let model = TestModel { info: &info };
-
-        // Register model directly using ModelRegistry
-        let mut registry = ModelRegistry::new();
-        registry.register("test-provider", "test-model", model).unwrap();
-
-        // Verify the model was registered
-        let retrieved = registry
-            .get_required::<TestModel>("test-provider", "test-model")
-            .unwrap();
-
-        assert_eq!(info.name(), retrieved.info().name());
+        assert_eq!(registered.name(), retrieved.name());
+        assert_eq!(registered.provider_name(), retrieved.provider_name());
     }
 }

@@ -14,6 +14,9 @@ use tokio::io::AsyncWriteExt;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use crate::{DownloadStream, HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream};
 
+// cyrup_sugars prelude removed - not used in this file
+
+
 /// Content type enumeration for elegant API
 #[derive(Debug, Clone, Copy)]
 pub enum ContentType {
@@ -74,7 +77,10 @@ impl Http3Builder<BodyNotSet> {
 
     /// Shorthand for setting Content-Type to application/json
     #[must_use]
-    pub fn json() -> Self {
+    pub fn json<T>() -> Self
+    where
+        T: serde::de::DeserializeOwned + serde::Serialize + Send + 'static,
+    {
         let client = HttpClient::default();
         Self::new(&client).content_type(ContentType::ApplicationJson)
     }
@@ -127,20 +133,22 @@ impl<S> Http3Builder<S> {
     /// Add multiple headers without overwriting existing ones
     ///
     /// # Arguments
-    /// * `f` - A closure that returns a `HashMap` of header names and values
+    /// * `headers_config` - Headers configuration using [("key", "value")] syntax
     ///
     /// # Returns
     /// `Self` for method chaining
     #[must_use]
-    pub fn headers<F>(mut self, f: F) -> Self
-    where
-        F: FnOnce() -> std::collections::HashMap<HeaderName, &'static str>,
-    {
-        let params = f();
-        for (header_key, header_value) in params {
-            self.request = self
-                .request
-                .header(header_key, HeaderValue::from_static(header_value));
+    pub fn headers(mut self, headers_config: impl Into<hashbrown::HashMap<&'static str, &'static str>>) -> Self {
+        let headers_config = headers_config.into();
+        for (header_key, header_value) in headers_config {
+            match HeaderName::from_bytes(header_key.as_bytes()) {
+                Ok(header_name) => {
+                    self.request = self
+                        .request
+                        .header(header_name, HeaderValue::from_static(header_value));
+                }
+                Err(_) => continue, // Skip invalid header names
+            }
         }
         self
     }
@@ -181,17 +189,14 @@ impl<S> Http3Builder<S> {
     /// Set basic authentication header
     ///
     /// # Arguments
-    /// * `f` - A function that returns a `HashMap` of credentials
+    /// * `auth_config` - Authentication configuration using [("user", "password")] syntax
     ///
     /// # Returns
     /// `Self` for method chaining
     #[must_use]
-    pub fn basic_auth<F>(self, f: F) -> Self
-    where
-        F: FnOnce() -> std::collections::HashMap<&'static str, &'static str>,
-    {
-        let params = f();
-        if let Some((user, pass)) = params.into_iter().next() {
+    pub fn basic_auth(self, auth_config: impl Into<hashbrown::HashMap<&'static str, &'static str>>) -> Self {
+        let auth_config = auth_config.into();
+        if let Some((user, pass)) = auth_config.into_iter().next() {
             let auth_string = format!("{user}:{pass}");
             let encoded = STANDARD.encode(auth_string);
             let header_value = format!("Basic {encoded}");
@@ -411,6 +416,12 @@ pub trait HttpStreamExt {
         self,
         f: F,
     ) -> T;
+
+    /// Process each chunk with a handler function supporting pattern matching syntax
+    fn on_chunk<T, F>(self, handler: F) -> Self
+    where
+        T: DeserializeOwned + serde::Serialize + Send + 'static,
+        F: FnMut(Result<T, crate::HttpError>) -> T + Send + 'static;
 }
 
 impl HttpStreamExt for HttpStream {
@@ -427,9 +438,59 @@ impl HttpStreamExt for HttpStream {
     {
         self.collect_or_else_impl(f)
     }
+
+    fn on_chunk<T, F>(mut self, handler: F) -> Self
+    where
+        T: DeserializeOwned + serde::Serialize + Send + 'static,
+        F: FnMut(Result<T, crate::HttpError>) -> T + Send + 'static,
+    {
+        // Create a processor that deserializes Body chunks and passes Result<T, HttpError> to handler
+        let mut handler = handler;
+        let processor = Box::new(move |chunk: HttpChunk| -> HttpChunk {
+            match chunk {
+                HttpChunk::Body(bytes) => {
+                    // Attempt to deserialize the chunk data into Result<T, HttpError>
+                    let result = match serde_json::from_slice::<T>(&bytes) {
+                        Ok(deserialized) => Ok(deserialized),
+                        Err(e) => Err(crate::HttpError::HttpStatus {
+                            status: 500,
+                            message: format!("Deserialization failed: {}", e),
+                            body: String::from_utf8_lossy(&bytes).to_string(),
+                        })
+                    };
+                    
+                    // Call handler with wrapped Result - handler UNWRAPS it
+                    let processed = handler(result);
+                    
+                    // Convert processed result back to HttpChunk::Deserialized
+                    let json_value = match serde_json::to_value(processed) {
+                        Ok(val) => val,
+                        Err(_) => serde_json::Value::Null,
+                    };
+                    HttpChunk::Deserialized(json_value)
+                }
+                // All other chunks should be processed too - convert to Result<T, HttpError>
+                HttpChunk::Error(e) => {
+                    let processed = handler(Err(e));
+                    let json_value = match serde_json::to_value(processed) {
+                        Ok(val) => val,
+                        Err(_) => serde_json::Value::Null,
+                    };
+                    HttpChunk::Deserialized(json_value)
+                }
+                // Head chunks are not data - pass through
+                other => other,
+            }
+        });
+
+        // Add the processor to the stream
+        self.add_processor(processor);
+        self
+    }
 }
 
 impl HttpStream {
+
     // NO FUTURES - Pure AsyncStream pattern for HTTP response collection
 pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
     where
@@ -439,10 +500,14 @@ pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
 
         // Convert HttpStream to AsyncStream for pure streaming pattern
         let stream = AsyncStream::<T, 1024>::with_channel(move |sender: AsyncStreamSender<T, 1024>| {
-            let rt = tokio::runtime::Runtime::new().unwrap_or_else(|_| {
-                // Fallback to current runtime if available
-                panic!("Failed to create tokio runtime");
-            });
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(_) => {
+                    log::error!("Failed to create tokio runtime");
+                    let _ = sender.send(T::default());
+                    return;
+                }
+            };
             
             rt.block_on(async move {
                 let mut http_stream = self;
@@ -457,6 +522,25 @@ pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
                         Ok(HttpChunk::Head(status, _)) => {
                             status_code = Some(status);
                             log::debug!("HTTP Response Status: {}", status.as_u16());
+                        }
+                        Ok(HttpChunk::Deserialized(json_value)) => {
+                            // Handle pre-deserialized data from on_chunk processors
+                            match serde_json::from_value::<T>(json_value) {
+                                Ok(value) => {
+                                    let _ = sender.send(value);
+                                    return ();
+                                }
+                                Err(e) => {
+                                    log::error!("Failed to convert deserialized chunk: {}", e);
+                                    let _ = sender.send(T::default());
+                                    return ();
+                                }
+                            }
+                        }
+                        Ok(HttpChunk::Error(http_error)) => {
+                            log::error!("HttpChunk error: {}", http_error);
+                            let _ = sender.send(T::default());
+                            return ();
                         }
                         Err(e) => {
                             log::error!("Error receiving chunk: {}", e);
@@ -487,7 +571,10 @@ pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
 
         // Collect from AsyncStream (blocking, no futures)
         let results = stream.collect();
-        results.into_iter().next().unwrap_or_else(T::default)
+        match results.into_iter().next() {
+            Some(value) => value,
+            None => T::default(),
+        }
     }
 
     #[inline(always)]
@@ -540,6 +627,27 @@ pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
                             status_code = Some(status);
                             log::debug!("HTTP Response Status: {}", status.as_u16());
                         }
+                        Ok(HttpChunk::Deserialized(json_value)) => {
+                            // Handle pre-deserialized data from on_chunk processors
+                            match serde_json::from_value::<T>(json_value) {
+                                Ok(value) => {
+                                    let _ = sender.send(value);
+                                    return ();
+                                }
+                                Err(e) => {
+                                    let _ = sender.send(f_arc(HttpError::HttpStatus {
+                                        status: 500,
+                                        message: format!("Failed to convert deserialized chunk: {}", e),
+                                        body: String::new(),
+                                    }));
+                                    return ();
+                                }
+                            }
+                        }
+                        Ok(HttpChunk::Error(http_error)) => {
+                            let _ = sender.send(f_arc(http_error));
+                            return ();
+                        }
                         Err(e) => {
                             let _ = sender.send(f_arc(e));
                             return ();
@@ -548,7 +656,10 @@ pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
                 }
 
                 // If we got a 204 No Content or empty response
-                let status = status_code.unwrap_or(StatusCode::NO_CONTENT);
+                let status = match status_code {
+                    Some(code) => code,
+                    None => StatusCode::NO_CONTENT,
+                };
                 if status == StatusCode::NO_CONTENT || all_bytes.is_empty() {
                     let _ = sender.send(f_arc(HttpError::HttpStatus {
                         status: status.as_u16(),
@@ -654,9 +765,5 @@ impl DownloadProgress {
     }
 }
 
-/// Provider-specific builders
-pub mod provider_builders;
-
 /// Re-export for convenience
 pub use Http3Builder as Builder;
-pub use provider_builders::Http3Builders;

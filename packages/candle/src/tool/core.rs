@@ -1,7 +1,7 @@
 //! Core Tool Implementation - EXACT API from ARCHITECTURE.md
 //!
 //! This module provides the Tool trait and implementations that support
-//! the transparent JSON syntax: Tool<Perplexity>::new({"citations" => "true"})
+//! the transparent array-tuples syntax: Tool<Perplexity>::new([("citations", "true")])
 //!
 //! The syntax works automatically without exposing any macros to users.
 
@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use serde_json::Value;
 use hashbrown::HashMap;
 
-// Note: The transparent JSON syntax {"key" => "value"} should work automatically
+// Note: The transparent array-tuples syntax [("key", "value")] works automatically
 // through cyrup_sugars transformation without requiring explicit macro imports
 
 /// Marker type for Perplexity
@@ -64,18 +64,18 @@ pub struct Tool<T> {
 }
 
 impl<T> Tool<T> {
-    /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
+    /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new([("citations", "true")])
     ///
-    /// This method accepts the transparent JSON syntax {"key" => "value"} which is
+    /// This method accepts the transparent array-tuples syntax [("key", "value")] which is
     /// automatically transformed by cyrup_sugars into the appropriate HashMap.
     ///
     /// Examples:
     /// ```rust
     /// // Single parameter
-    /// Tool::<Perplexity>::new({"citations" => "true"})
+    /// Tool::<Perplexity>::new([("citations", "true")])
     ///
     /// // Multiple parameters
-    /// Tool::<CustomTool>::new({"param1" => "value1", "param2" => "value2"})
+    /// Tool::<CustomTool>::new([("param1", "value1"), ("param2", "value2")])
     /// ```
     #[inline]
     pub fn new<P>(config: P) -> Self
@@ -140,39 +140,7 @@ impl NamedTool {
 
 }
 
-/// Extension trait for executing strings as shell commands and returning text output.
-///
-/// This trait provides a convenient way to execute shell commands from string-like types
-/// and capture their stdout as a String. Primarily used for tool execution in the AI framework.
-pub trait ExecToText {
-    /// Execute the string as a shell command and return the stdout as a String.
-    ///
-    /// # Returns
-    ///
-    /// Returns the command's stdout as a String, or an error message if execution fails.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fluent_ai_domain::tool::core::ExecToText;
-    ///
-    /// let output = "echo hello".exec_to_text();
-    /// assert!(output.contains("hello"));
-    /// ```
-    fn exec_to_text(&self) -> String;
-}
 
-impl ExecToText for &str {
-    fn exec_to_text(&self) -> String {
-        // Execute command and return output
-        std::process::Command::new("sh")
-            .arg("-c")
-            .arg(self)
-            .output()
-            .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
-            .unwrap_or_else(|_| format!("Failed to execute: {}", self))
-    }
-}
 
 /// Dynamic tool embedding trait for runtime tool handling
 pub trait ToolEmbeddingDyn: Send + Sync {

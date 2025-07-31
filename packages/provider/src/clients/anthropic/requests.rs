@@ -1,17 +1,19 @@
 //! Zero-allocation HTTP request handling for Anthropic API
 //!
 //! This module provides blazing-fast request building and execution with zero allocations
-//! after initial setup and no locking requirements.
+//! after initial setup and no locking requirements. Uses AsyncStream-only architecture
+//! with no futures or Result returns.
 
+use fluent_ai_async::{AsyncStream, emit, handle_error};
 use fluent_ai_http3::Http3;
 use fluent_ai_http3::HttpClient;
 use fluent_ai_http3::HttpRequest;
 use fluent_ai_http3::HttpResponse;
+use fluent_ai_domain::http::HttpMethod;
 use std::collections::HashMap;
 
 use super::completion::AnthropicCompletionRequest;
 use super::config::AnthropicConfig;
-use super::error::{AnthropicError, AnthropicResult};
 
 /// HTTP method constants for zero-allocation header building
 const METHOD_POST: &str = "POST";
@@ -31,14 +33,14 @@ const ENDPOINT_MESSAGES: &str = "/v1/messages";
 
 /// Zero-allocation request builder for Anthropic API
 #[derive(Debug)]
-pub struct AnthropicRequestBuilder<'a> {
-    config: &'a AnthropicConfig,
-    http_client: &'a HttpClient}
+pub struct AnthropicRequestBuilder {
+    config: AnthropicConfig,
+    http_client: HttpClient}
 
-impl<'a> AnthropicRequestBuilder<'a> {
+impl AnthropicRequestBuilder {
     /// Create a new request builder
     #[inline]
-    pub fn new(config: &'a AnthropicConfig, http_client: &'a HttpClient) -> Self {
+    pub fn new(config: AnthropicConfig, http_client: HttpClient) -> Self {
         Self {
             config,
             http_client}
@@ -77,36 +79,46 @@ impl<'a> AnthropicRequestBuilder<'a> {
 
 
 
-    /// Send a completion request
-    pub async fn send_completion(
+    /// Send a completion request - returns AsyncStream of JSON responses
+    pub fn send_completion(
         &self,
         request: &AnthropicCompletionRequest,
-    ) -> AnthropicResult<serde_json::Value> {
-        let url = self.build_url(ENDPOINT_MESSAGES);
-        let api_version = self.config.api_version();
+    ) -> AsyncStream<serde_json::Value> {
+        AsyncStream::with_channel(|sender| {
+            let url = self.build_url(ENDPOINT_MESSAGES);
+            let api_version = self.config.api_version().to_string();
+            let api_key = self.config.api_key().to_string();
+            
+            // Clone request for thread safety
+            let request = request.clone();
 
-        // Use new Http3::json() pattern with automatic serialization
-        let response = Http3::json()
-            .debug() // Enable debug logging
-            .api_key(self.config.api_key()) // Use built-in api_key method
-            .header(
-                http::HeaderName::from_static("anthropic-version"),
-                http::HeaderValue::from_str(api_version).unwrap_or(http::HeaderValue::from_static("2023-06-01"))
-            )
-            .body(request) // Automatic serde serialization
-            .post(&url)
-            .collect::<serde_json::Value>() // Collect to JSON response
-            .await
-            .map_err(|e| AnthropicError::NetworkError {
-                message: format!("Failed to execute completion request: {}", e)})?;
+            // Use Http3::json() pattern with streaming
+            let response_stream = Http3::json()
+                .debug() // Enable debug logging
+                .api_key(&api_key)
+                .header("anthropic-version", &api_version)
+                .body(&request)
+                .post(&url)
+                .stream();
 
-        Ok(response)
+            // Process streaming response
+            response_stream.on_chunk(|chunk| {
+                match chunk {
+                    Ok(data) => {
+                        if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&data) {
+                            emit!(sender, json_value);
+                        }
+                    }
+                    Err(e) => handle_error!(e, "HTTP completion request failed"),
+                }
+            });
+        })
     }
 
     /// Send a streaming completion request
-    pub async fn send_streaming_completion(
+    pub async fn send_streaming_completion<'a>(
         &self,
-        request: &AnthropicCompletionRequest,
+        request: &'a AnthropicCompletionRequest<'a>,
     ) -> AnthropicResult<HttpResponse> {
         let url = self.build_url(ENDPOINT_MESSAGES);
         let api_version = self.config.api_version();
@@ -149,7 +161,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
         let test_request = AnthropicCompletionRequest {
             model: "claude-3-haiku-20240307".to_string(),
             max_tokens: 10,
-            messages: vec![crate::clients::anthropic::messages::AnthropicMessage {
+            messages: vec![crate::clients::anthropic::messages::Message {
                 role: "user".to_string(),
                 content: "Hi".to_string()}],
             system: None,
@@ -201,7 +213,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
 pub async fn send_completion_request<'a>(
     config: &'a AnthropicConfig,
     http_client: &'a HttpClient,
-    request: &'a AnthropicCompletionRequest,
+    request: &'a AnthropicCompletionRequest<'a>,
 ) -> AnthropicResult<serde_json::Value> {
     let builder = AnthropicRequestBuilder::new(config, http_client);
     builder.send_completion(request).await
@@ -212,7 +224,7 @@ pub async fn send_completion_request<'a>(
 pub async fn send_streaming_completion_request<'a>(
     config: &'a AnthropicConfig,
     http_client: &'a HttpClient,
-    request: &'a AnthropicCompletionRequest,
+    request: &'a AnthropicCompletionRequest<'a>,
 ) -> AnthropicResult<HttpResponse> {
     let builder = AnthropicRequestBuilder::new(config, http_client);
     builder.send_streaming_completion(request).await
@@ -230,7 +242,7 @@ pub async fn test_connection_request<'a>(
 
 /// Validate request parameters before sending
 #[inline]
-pub fn validate_completion_request(request: &AnthropicCompletionRequest) -> AnthropicResult<()> {
+pub fn validate_completion_request(request: &AnthropicCompletionRequest<'_>) -> AnthropicResult<()> {
     if request.model.is_empty() {
         return Err(AnthropicError::ValidationError {
             message: "Model name cannot be empty".to_string()});
@@ -280,7 +292,7 @@ pub fn validate_completion_request(request: &AnthropicCompletionRequest) -> Anth
 
 /// Estimate request size for rate limiting
 #[inline]
-pub fn estimate_request_size(request: &AnthropicCompletionRequest) -> usize {
+pub fn estimate_request_size(request: &AnthropicCompletionRequest<'_>) -> usize {
     // Rough estimation based on JSON serialization
     let mut size = 0;
     size += request.model.len();

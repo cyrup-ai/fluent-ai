@@ -74,7 +74,7 @@ pub struct StreamingChunk {
     /// Token ID that was generated
     pub token_id: u32,
     /// Decoded text bytes (UTF-8)
-    pub text_bytes: SmallVec<[u8; MAX_TOKEN_TEXT_LEN]>,
+    pub text_bytes: SmallVec<u8, MAX_TOKEN_TEXT_LEN>,
     /// Token position in sequence
     pub token_position: u32,
     /// Timestamp when chunk was created

@@ -4,9 +4,11 @@
 //! multiple provider evaluators, manages evaluation sessions, handles caching,
 //! and provides the main public API for the committee evaluation system.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use arrayvec::ArrayVec;
 // AtomicCounter trait no longer needed since we use local RelaxedCounter
 use crossbeam_skiplist::SkipMap;
 use sha2::{Digest, Sha256};

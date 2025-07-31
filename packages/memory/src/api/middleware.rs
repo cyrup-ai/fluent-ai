@@ -1,6 +1,7 @@
 //! Middleware for the memory API
 //! This module contains middleware functions for authentication, logging, etc.
 
+use std::collections::HashMap;
 use std::time::Instant;
 
 use axum::{

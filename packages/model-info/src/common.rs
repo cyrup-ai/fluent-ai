@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroU32;
 
+
 pub trait Model: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq + std::hash::Hash + 'static {
     // Basic model information
     fn name(&self) -> &'static str;
@@ -12,7 +13,7 @@ pub trait Model: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq +
     fn max_input_tokens(&self) -> Option<u32>;
     fn max_output_tokens(&self) -> Option<u32>;
     
-    // Backward compatibility - derived from input/output tokens
+    // Convenience method: total token capacity (input + output)
     fn max_context_length(&self) -> u64 {
         let input = self.max_input_tokens().unwrap_or(4096) as u64;
         let output = self.max_output_tokens().unwrap_or(2048) as u64;
@@ -26,7 +27,6 @@ pub trait Model: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq +
     // Capability methods
     fn supports_vision(&self) -> bool;
     fn supports_function_calling(&self) -> bool;
-    fn supports_streaming(&self) -> bool;
     fn supports_embeddings(&self) -> bool;
     fn requires_max_tokens(&self) -> bool;
     fn supports_thinking(&self) -> bool;
@@ -60,7 +60,6 @@ pub trait Model: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq +
             output_price: self.pricing_output(),
             supports_vision: self.supports_vision(),
             supports_function_calling: self.supports_function_calling(),
-            supports_streaming: self.supports_streaming(),
             supports_embeddings: self.supports_embeddings(),
             requires_max_tokens: self.requires_max_tokens(),
             supports_thinking: self.supports_thinking(),
@@ -94,8 +93,6 @@ pub struct ModelInfo {
     pub supports_vision: bool,
     #[serde(default)]
     pub supports_function_calling: bool,
-    #[serde(default)]
-    pub supports_streaming: bool,
     #[serde(default)]
     pub supports_embeddings: bool,
     #[serde(default)]
@@ -143,7 +140,6 @@ pub type Result<T> = std::result::Result<T, ModelError>;
 pub struct ModelCapabilities {
     pub supports_vision: bool,
     pub supports_function_calling: bool,
-    pub supports_streaming: bool,
     pub supports_fine_tuning: bool,
     pub supports_batch_processing: bool,
     pub supports_realtime: bool,
@@ -194,12 +190,6 @@ impl ModelInfo {
         self.supports_function_calling
     }
 
-    /// Check if the model supports streaming
-    #[inline]
-    pub fn has_streaming(&self) -> bool {
-        self.supports_streaming
-    }
-
     /// Check if the model supports embeddings
     #[inline]
     pub fn has_embeddings(&self) -> bool {
@@ -243,7 +233,6 @@ impl ModelInfo {
         ModelCapabilities {
             supports_vision: self.supports_vision,
             supports_function_calling: self.supports_function_calling,
-            supports_streaming: self.supports_streaming,
             supports_fine_tuning: false,      // Not in ModelInfo yet
             supports_batch_processing: false, // Not in ModelInfo yet
             supports_realtime: false,         // Not in ModelInfo yet
@@ -257,7 +246,7 @@ impl ModelInfo {
             supports_zero_shot_learning: true, // Assume all models support zero-shot
             has_long_context: self
                 .max_input_tokens
-                .map_or(false, |tokens| tokens.get() > 32000),
+                .is_some_and(|tokens| tokens.get() > 32000),
             is_low_latency: false,        // Not in ModelInfo yet
             is_high_throughput: false,    // Not in ModelInfo yet
             supports_quantization: false, // Not in ModelInfo yet
@@ -280,21 +269,19 @@ impl ModelInfo {
             ));
         }
 
-        if let Some(max_input) = self.max_input_tokens {
-            if max_input.get() == 0 {
+        if let Some(max_input) = self.max_input_tokens
+            && max_input.get() == 0 {
                 return Err(ModelError::InvalidConfiguration(
                     "max_input_tokens cannot be zero".into(),
                 ));
             }
-        }
 
-        if let Some(max_output) = self.max_output_tokens {
-            if max_output.get() == 0 {
+        if let Some(max_output) = self.max_output_tokens
+            && max_output.get() == 0 {
                 return Err(ModelError::InvalidConfiguration(
                     "max_output_tokens cannot be zero".into(),
                 ));
             }
-        }
 
         if self.supports_thinking && self.optimal_thinking_budget.is_none() {
             return Err(ModelError::InvalidConfiguration(
@@ -329,7 +316,6 @@ pub struct ModelInfoBuilder {
     output_price: Option<f64>,
     supports_vision: bool,
     supports_function_calling: bool,
-    supports_streaming: bool,
     supports_embeddings: bool,
     requires_max_tokens: bool,
     supports_thinking: bool,
@@ -344,7 +330,9 @@ pub struct ModelInfoBuilder {
 impl ModelInfoBuilder {
     /// Create a new ModelInfoBuilder
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            ..Self::default()
+        }
     }
 
     /// Set the provider name
@@ -390,11 +378,6 @@ impl ModelInfoBuilder {
         self
     }
 
-    /// Enable streaming support
-    pub fn with_streaming(mut self, enabled: bool) -> Self {
-        self.supports_streaming = enabled;
-        self
-    }
 
     /// Enable embeddings support
     pub fn with_embeddings(mut self, enabled: bool) -> Self {
@@ -470,7 +453,6 @@ impl ModelInfoBuilder {
             output_price: self.output_price,
             supports_vision: self.supports_vision,
             supports_function_calling: self.supports_function_calling,
-            supports_streaming: self.supports_streaming,
             supports_embeddings: self.supports_embeddings,
             requires_max_tokens: self.requires_max_tokens,
             supports_thinking: self.supports_thinking,
