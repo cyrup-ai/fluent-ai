@@ -1,0 +1,37 @@
+
+ [package]
+name = "sweetmcp-plugin-fetch"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "sweetmcp_plugin_fetch"
+crate-type = ["cdylib"]
+
+[dependencies]
+extism-pdk = "1.4.1"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64-serde = "0.8"
+base64 = "0.22.1"
+htmd = "0.2.2"
+hyper = { version = "1.6.0", features = ["client", "http1", "http2"] }
+hyper-util = { version = "0.1.16", features = ["http1", "http2", "tokio"] }
+tokio-rustls = "0.26"
+http-body-util = "0.1"
+ring = "0.17.14"
+tokio = { version = "1", features = ["rt", "macros", "sync", "time"] }
+url = "2.5"
+html5ever = "0.35"
+markup5ever_rcdom = "0.35"
+thiserror = "2.0"
+chromiumoxide = { version = "0.7.0", default-features = false, features = ["tokio-runtime"] }
+futures = "0.3"
+async-trait = "0.1"
+image = "0.25"
+syntect = "5.2"
+hyper-rustls = { version = "0.27.7", features = ["ring", "http1", "http2"] }
+rustls = "0.23.31"
+tower-service = "0.3.3"
+sweetmcp-plugin-builder = { path = "../../packages/plugin-builder" }
