@@ -1,10 +1,11 @@
+use cyrup_sugars::OneOrMany;
 use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
 use crate::domain::chat::conversation::CandleStreamingConversation as StreamingConversation;
 
 /// Builder for creating conversations
 pub struct ConversationBuilder {
     enable_streaming: bool,
-    initial_messages: Vec<(String, MessageRole)>,
+    initial_messages: OneOrMany<(String, MessageRole)>,
 }
 
 impl ConversationBuilder {
@@ -24,24 +25,24 @@ impl ConversationBuilder {
     /// Add initial user message
     #[inline]
     pub fn with_user_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages
-            .push((message.into(), MessageRole::User));
+        self.initial_messages = self.initial_messages
+            .with_pushed((message.into(), MessageRole::User));
         self
     }
 
     /// Add initial assistant message
     #[inline]
     pub fn with_assistant_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages
-            .push((message.into(), MessageRole::Assistant));
+        self.initial_messages = self.initial_messages
+            .with_pushed((message.into(), MessageRole::Assistant));
         self
     }
 
     /// Add initial system message
     #[inline]
     pub fn with_system_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages
-            .push((message.into(), MessageRole::System));
+        self.initial_messages = self.initial_messages
+            .with_pushed((message.into(), MessageRole::System));
         self
     }
 
@@ -68,7 +69,7 @@ impl Default for ConversationBuilder {
     fn default() -> Self {
         Self {
             enable_streaming: false,
-            initial_messages: Vec::new(),
+            initial_messages: OneOrMany::None,
         }
     }
 }

@@ -117,7 +117,41 @@ pub struct HttpConfig {
     pub connection_reuse: ConnectionReuse,
 
     /// Retry policy
-    pub retry_policy: RetryPolicy}
+    pub retry_policy: RetryPolicy,
+
+    // ===== HTTP/3 (QUIC) Configuration =====
+    
+    /// QUIC connection maximum idle timeout before closing
+    /// Controls how long a QUIC connection can remain idle before being closed
+    pub quic_max_idle_timeout: Option<Duration>,
+    
+    /// QUIC per-stream receive window size in bytes
+    /// Controls flow control for individual HTTP/3 streams
+    pub quic_stream_receive_window: Option<u32>,
+    
+    /// QUIC connection-wide receive window size in bytes  
+    /// Controls aggregate flow control across all streams in a connection
+    pub quic_receive_window: Option<u32>,
+    
+    /// QUIC send window size in bytes
+    /// Controls how much data can be sent without acknowledgment
+    pub quic_send_window: Option<u64>,
+    
+    /// Use BBR congestion control algorithm instead of CUBIC
+    /// BBR typically provides better performance over high-latency networks
+    pub quic_congestion_bbr: bool,
+    
+    /// Enable TLS 1.3 early data (0-RTT) for QUIC connections
+    /// Reduces connection establishment latency for resumed connections
+    pub tls_early_data: bool,
+    
+    /// Maximum HTTP/3 header field section size in bytes
+    /// Controls maximum size of HTTP/3 headers to prevent memory exhaustion
+    pub h3_max_field_section_size: Option<u64>,
+    
+    /// Enable HTTP/3 protocol grease
+    /// Sends random grease values to ensure protocol extensibility
+    pub h3_enable_grease: bool}
 
 /// Connection reuse strategy
 #[derive(Debug, Clone)]
@@ -207,7 +241,17 @@ impl Default for HttpConfig {
             metrics_enabled: true,
             tracing_enabled: false,
             connection_reuse: ConnectionReuse::Aggressive,
-            retry_policy: RetryPolicy::default()}
+            retry_policy: RetryPolicy::default(),
+            
+            // HTTP/3 (QUIC) defaults - conservative but optimized values
+            quic_max_idle_timeout: Some(Duration::from_secs(30)),
+            quic_stream_receive_window: Some(256 * 1024), // 256KB per stream
+            quic_receive_window: Some(1024 * 1024), // 1MB connection window
+            quic_send_window: Some(512 * 1024), // 512KB send window
+            quic_congestion_bbr: false, // Use CUBIC by default for compatibility
+            tls_early_data: false, // Disabled by default for security
+            h3_max_field_section_size: Some(16 * 1024), // 16KB header limit
+            h3_enable_grease: true} // Enable grease for protocol evolution
     }
 }
 
@@ -283,7 +327,18 @@ impl HttpConfig {
                     RetryableError::Connection,
                     RetryableError::Dns,
                     RetryableError::Tls,
-                ]}}
+                ],
+            },
+            
+            // AI-optimized HTTP/3 (QUIC) settings for maximum performance
+            quic_max_idle_timeout: Some(Duration::from_secs(120)), // Longer idle for AI workloads
+            quic_stream_receive_window: Some(512 * 1024), // 512KB per stream for large AI responses
+            quic_receive_window: Some(4 * 1024 * 1024), // 4MB connection window for high throughput
+            quic_send_window: Some(2 * 1024 * 1024), // 2MB send window for large requests
+            quic_congestion_bbr: true, // BBR for optimal AI provider performance
+            tls_early_data: true, // Enable 0-RTT for repeat connections
+            h3_max_field_section_size: Some(64 * 1024), // 64KB for large AI headers
+            h3_enable_grease: true} // Enable grease for future compatibility
     }
 
     /// Create a new configuration optimized for streaming
@@ -296,6 +351,14 @@ impl HttpConfig {
         config.http2_max_concurrent_streams = Some(10); // Fewer concurrent streams for streaming
         config.http2_keep_alive_interval = Some(Duration::from_secs(10)); // More frequent keep-alive
         config.retry_policy.max_retries = 2; // Fewer retries for streaming
+        
+        // Streaming-optimized QUIC settings
+        config.quic_max_idle_timeout = Some(Duration::from_secs(600)); // Match streaming timeout
+        config.quic_stream_receive_window = Some(1024 * 1024); // 1MB per stream for streaming
+        config.quic_receive_window = Some(8 * 1024 * 1024); // 8MB connection window for streaming
+        config.quic_send_window = Some(4 * 1024 * 1024); // 4MB send window for streaming
+        config.h3_max_field_section_size = Some(32 * 1024); // 32KB headers for streaming metadata
+        
         config
     }
 
@@ -308,6 +371,14 @@ impl HttpConfig {
         config.http2_max_concurrent_streams = Some(200);
         config.retry_policy.max_retries = 10;
         config.retry_policy.max_delay = Duration::from_secs(120);
+        
+        // Batch-optimized QUIC settings for high throughput
+        config.quic_max_idle_timeout = Some(Duration::from_secs(300)); // 5 minutes for batch efficiency
+        config.quic_stream_receive_window = Some(2 * 1024 * 1024); // 2MB per stream for batch
+        config.quic_receive_window = Some(16 * 1024 * 1024); // 16MB connection window for batch
+        config.quic_send_window = Some(8 * 1024 * 1024); // 8MB send window for batch uploads
+        config.h3_max_field_section_size = Some(128 * 1024); // 128KB headers for batch metadata
+        
         config
     }
 
@@ -321,6 +392,16 @@ impl HttpConfig {
         config.retry_policy.max_retries = 1;
         config.retry_policy.base_delay = Duration::from_millis(10);
         config.retry_policy.max_delay = Duration::from_secs(5);
+        
+        // Low-latency optimized QUIC settings
+        config.quic_max_idle_timeout = Some(Duration::from_secs(15)); // Short idle for low latency
+        config.quic_stream_receive_window = Some(128 * 1024); // 128KB per stream for low latency
+        config.quic_receive_window = Some(512 * 1024); // 512KB connection window for low latency
+        config.quic_send_window = Some(256 * 1024); // 256KB send window for low latency
+        config.quic_congestion_bbr = true; // BBR for better latency characteristics
+        config.tls_early_data = true; // Critical for low latency - enable 0-RTT
+        config.h3_max_field_section_size = Some(8 * 1024); // 8KB headers to minimize latency
+        
         config
     }
 
@@ -365,6 +446,56 @@ impl HttpConfig {
     /// Enable or disable HTTPS only
     pub fn with_https_only(mut self, enabled: bool) -> Self {
         self.https_only = enabled;
+        self
+    }
+    
+    // ===== HTTP/3 (QUIC) Configuration Methods =====
+    
+    /// Set QUIC connection maximum idle timeout
+    pub fn with_quic_max_idle_timeout(mut self, timeout: Duration) -> Self {
+        self.quic_max_idle_timeout = Some(timeout);
+        self
+    }
+    
+    /// Set QUIC per-stream receive window size
+    pub fn with_quic_stream_receive_window(mut self, window_size: u32) -> Self {
+        self.quic_stream_receive_window = Some(window_size);
+        self
+    }
+    
+    /// Set QUIC connection-wide receive window size  
+    pub fn with_quic_receive_window(mut self, window_size: u32) -> Self {
+        self.quic_receive_window = Some(window_size);
+        self
+    }
+    
+    /// Set QUIC send window size
+    pub fn with_quic_send_window(mut self, window_size: u64) -> Self {
+        self.quic_send_window = Some(window_size);
+        self
+    }
+    
+    /// Enable or disable BBR congestion control algorithm
+    pub fn with_quic_congestion_bbr(mut self, enabled: bool) -> Self {
+        self.quic_congestion_bbr = enabled;
+        self
+    }
+    
+    /// Enable or disable TLS 1.3 early data (0-RTT)
+    pub fn with_tls_early_data(mut self, enabled: bool) -> Self {
+        self.tls_early_data = enabled;
+        self
+    }
+    
+    /// Set maximum HTTP/3 header field section size
+    pub fn with_h3_max_field_section_size(mut self, size: u64) -> Self {
+        self.h3_max_field_section_size = Some(size);
+        self
+    }
+    
+    /// Enable or disable HTTP/3 protocol grease
+    pub fn with_h3_enable_grease(mut self, enabled: bool) -> Self {
+        self.h3_enable_grease = enabled;
         self
     }
 

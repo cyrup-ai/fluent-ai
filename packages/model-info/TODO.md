@@ -1,5 +1,174 @@
 # Model-Info Package TODO - Production Readiness Issues
 
+## 🔥 CRITICAL: FIX ALL WARNINGS (30 WARNINGS) - ZERO TOLERANCE
+
+**CURRENT STATUS: 0 ERRORS, 30 WARNINGS**
+**SUCCESS CRITERIA: 0 ERRORS, 0 WARNINGS**
+
+### IMMEDIATE WARNING FIXES REQUIRED
+
+#### 1. Unused Imports (9 warnings)
+**File:** `buildlib/providers/openrouter.rs:6`
+- **Warning:** unused imports: `Http3` and `HttpStreamExt`
+- **Action:** Remove unused imports or implement functionality
+
+**File:** `buildlib/providers/openrouter.rs:7`  
+- **Warning:** unused import: `std::env`
+- **Action:** Remove unused import or implement environment usage
+
+**File:** `buildlib/codegen_syn_fixed.rs:3`
+- **Warning:** unused import: `proc_macro2::Span`
+- **Action:** Remove unused import or implement span usage
+
+**File:** `buildlib/codegen_syn_fixed.rs:5`
+- **Warning:** unused import: `ImplItemFn`
+- **Action:** Remove unused import or implement functionality
+
+**File:** `buildlib/sources/mod.rs:4`
+- **Warning:** unused imports: `Http3` and `HttpStreamExt`
+- **Action:** Remove unused imports or implement functionality
+
+**File:** `buildlib/sources/scraper.rs:2`
+- **Warning:** unused import: `HttpStreamExt`
+- **Action:** Remove unused import or implement functionality
+
+#### 2. Unused Variables (3 warnings)
+**File:** `buildlib/sources/openrouter.rs:52`
+- **Warning:** unused variable: `http_client`
+- **Suggested Fix:** `_http_client` (if intentional)
+- **Production Fix:** Implement HTTP client usage or remove parameter
+
+**File:** `buildlib/sources/litellm.rs:40`
+- **Warning:** unused variable: `http_client`
+- **Suggested Fix:** `_http_client` (if intentional)  
+- **Production Fix:** Implement HTTP client usage or remove parameter
+
+**File:** `buildlib/providers/openrouter.rs:46`
+- **Warning:** unused variable: `sender`
+- **Suggested Fix:** `_sender` (if intentional)
+- **Production Fix:** Implement sender usage or remove parameter
+
+#### 3. Dead Code - Never Used Functions (12 warnings)
+**File:** `buildlib/providers/openrouter.rs:96`
+- **Warning:** function `openrouter_model_to_data` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/codegen.rs:211`
+- **Warning:** function `capitalize_first` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/openrouter.rs:51`
+- **Warning:** function `fetch_model_spec` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/openrouter.rs:163`
+- **Warning:** function `parse_price_string` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/openrouter.rs:171`
+- **Warning:** function `infer_function_calling_support` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/openrouter.rs:188`
+- **Warning:** function `infer_thinking_support` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/openrouter.rs:197`
+- **Warning:** function `infer_embeddings_support` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/litellm.rs:39`
+- **Warning:** function `fetch_model_spec` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/litellm.rs:159`
+- **Warning:** function `normalize_model_name` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/litellm.rs:174`
+- **Warning:** function `infer_thinking_support` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:8`
+- **Warning:** function `fetch_model_spec` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:26`
+- **Warning:** function `scrape_openai_pricing` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:95`
+- **Warning:** function `scrape_anthropic_pricing` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:147`
+- **Warning:** function `scrape_mistral_pricing` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:197`
+- **Warning:** function `scrape_xai_pricing` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:243`
+- **Warning:** function `extract_pricing_table` is never used
+- **Action:** Remove function or implement usage
+
+**File:** `buildlib/sources/scraper.rs:250`
+- **Warning:** function `extract_model_specs` is never used
+- **Action:** Remove function or implement usage
+
+#### 4. Dead Code - Never Used Structs and Methods (6 warnings)
+**File:** `buildlib/codegen.rs:6`
+- **Warning:** struct `CodeGenerator` is never constructed
+- **Action:** Remove struct or implement usage
+
+**File:** `buildlib/codegen.rs:15`
+- **Warning:** associated item `new` is never used
+- **Action:** Remove method or implement usage
+
+**File:** `buildlib/codegen.rs:24`
+- **Warning:** associated item `generate_enum` is never used
+- **Action:** Remove method or implement usage
+
+**File:** `buildlib/codegen.rs:64`
+- **Warning:** associated item `generate_trait_impl` is never used
+- **Action:** Remove method or implement usage
+
+**File:** `buildlib/sources/mod.rs:54-55`
+- **Warning:** fields `http_client` and `cache` are never read
+- **Action:** Remove fields or implement usage
+
+**File:** `buildlib/sources/mod.rs:68`
+- **Warning:** method `fetch_specification` is never used
+- **Action:** Remove method or implement usage
+
+**File:** `buildlib/sources/mod.rs:99`
+- **Warning:** method `try_openrouter` is never used
+- **Action:** Remove method or implement usage
+
+**File:** `buildlib/sources/mod.rs:103`
+- **Warning:** method `try_litellm` is never used
+- **Action:** Remove method or implement usage
+
+**File:** `buildlib/sources/mod.rs:107`
+- **Warning:** method `try_scraping` is never used
+- **Action:** Remove method or implement usage
+
+### WARNING FIX STRATEGY
+
+**ASSUMPTION**: Every warning indicates REAL CODE ISSUES until proven otherwise
+**ASSUMPTION**: Unused items need IMPLEMENTATION not removal (unless truly dead code remnant)
+**APPROACH**: Systematic analysis of each warning to determine:
+- Is this functionality needed? → Implement it properly
+- Is this dead code from refactoring? → Remove it cleanly  
+- Is this library interface code? → Annotate with #[allow(dead_code)] if truly needed
+
+**QUALITY GATES**:
+- [ ] Run `cargo check` after each fix to verify warning elimination
+- [ ] Ensure no new warnings introduced during fixes
+- [ ] Maintain zero-allocation, no-unwrap principles during fixes
+- [ ] Write production-quality implementations for any needed functionality
+
 ## HIGH PRIORITY ISSUES
 
 ### 1. Incomplete Provider Implementations (CRITICAL)
@@ -604,10 +773,163 @@ This section merges recommendations from the audit and study of the model-info p
 - [ ] For XAI (`buildlib/providers/xai.rs`): Add per-model fetches; use JSON for statics.
 - [ ] For Anthropic: Keep static, add update script in `buildlib/scripts/anthropic_update.rs` to check docs.
 
-### TASK 3: Improve Code Generation with Syn/Quote
+### TASK 3: Improve Code Generation with Syn/Quote (ENHANCED IMPLEMENTATION)
 **SUB-STATUS: WORKING**
-- [ ] Refactor `buildlib/codegen.rs` to use quote! and prettyplease for generation.
-  - Architecture: Generate unified Model enum; ensures syntax safety.
+
+#### 3.1: Add Syn Dependencies to Cargo.toml
+- [ ] **File:** `Cargo.toml`
+- [ ] **Dependencies to add:**
+  ```toml
+  [build-dependencies]
+  syn = { version = "2.0", features = ["full", "extra-traits", "parsing", "printing"] }
+  quote = "1.0"
+  proc-macro2 = "1.0"
+  prettyplease = "0.2"
+  ```
+- [ ] **Architecture:** Add build-time dependencies for AST manipulation and code generation
+- [ ] **Specification:** Latest stable versions with full feature sets for complete AST operations
+
+#### 3.2: Refactor CodeGenerator to Use Syn AST Building  
+- [ ] **File:** `buildlib/codegen.rs`
+- [ ] **Lines to Replace:** Entire string-based code generation (lines 47-186)
+- [ ] **Implementation:**
+  ```rust
+  use syn::{ItemEnum, ItemImpl, Variant, Fields, Type, Expr, Pat, Arm, Token};
+  use quote::{quote, format_ident, ToTokens};
+  use prettyplease::unparse;
+  
+  impl CodeGenerator {
+      /// Generate model enum using syn AST building (zero-allocation)
+      #[inline]
+      pub fn generate_enum(&self, models: &[ModelData]) -> Result<String> {
+          let enum_name = format_ident!("{}Model", self.capitalize(&self.provider_name));
+          let mut variants = Vec::with_capacity(models.len());
+          
+          for (model_name, _, _, _, _, _) in models {
+              let variant_name = format_ident!("{}", sanitize_ident(model_name));
+              variants.push(Variant {
+                  attrs: vec![],
+                  ident: variant_name,
+                  fields: Fields::Unit,
+                  discriminant: None,
+              });
+          }
+          
+          let enum_item = ItemEnum {
+              attrs: vec![parse_quote!(#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)])],
+              vis: parse_quote!(pub),
+              enum_token: Token![enum](Span::call_site()),
+              ident: enum_name,
+              generics: Default::default(),
+              brace_token: Default::default(),
+              variants: variants.into_iter().collect(),
+          };
+          
+          let tokens = quote! { #enum_item };
+          Ok(prettyplease::unparse(&syn::parse2(tokens)?))
+      }
+      
+      /// Generate trait implementation using syn AST (type-safe)
+      #[inline] 
+      pub fn generate_trait_impl(&self, models: &[ModelData]) -> Result<String> {
+          let enum_name = format_ident!("{}Model", self.capitalize(&self.provider_name));
+          let trait_path: syn::Path = parse_quote!(crate::common::Model);
+          
+          // Build match arms for each method using syn AST
+          let name_arms = self.build_name_match_arms(models)?;
+          let max_input_arms = self.build_max_input_arms(models)?;
+          let max_output_arms = self.build_max_output_arms(models)?;
+          // ... other method arms
+          
+          let impl_item = ItemImpl {
+              attrs: vec![],
+              defaultness: None,
+              unsafety: None,
+              impl_token: Token![impl](Span::call_site()),
+              generics: Default::default(),
+              trait_: Some((None, trait_path, Token![for](Span::call_site()))),
+              self_ty: Box::new(Type::Path(TypePath {
+                  qself: None,
+                  path: Path::from(enum_name),
+              })),
+              brace_token: Default::default(),
+              items: vec![
+                  self.build_name_method(name_arms)?,
+                  self.build_max_input_method(max_input_arms)?,
+                  self.build_max_output_method(max_output_arms)?,
+                  // ... other methods
+              ],
+          };
+          
+          let tokens = quote! { #impl_item };
+          Ok(prettyplease::unparse(&syn::parse2(tokens)?))
+      }
+      
+      /// Build match arms for name() method using syn AST
+      #[inline]
+      fn build_name_match_arms(&self, models: &[ModelData]) -> Result<Vec<Arm>> {
+          let enum_name = format_ident!("{}Model", self.capitalize(&self.provider_name));
+          let mut arms = Vec::with_capacity(models.len());
+          
+          for (model_name, _, _, _, _, _) in models {
+              let variant_name = format_ident!("{}", sanitize_ident(model_name));
+              let pattern = Pat::Path(PatPath {
+                  attrs: vec![],
+                  qself: None,
+                  path: Path::from(format_ident!("{}::{}", enum_name, variant_name)),
+              });
+              let expr = Expr::Lit(ExprLit {
+                  attrs: vec![],
+                  lit: Lit::Str(LitStr::new(model_name, Span::call_site())),
+              });
+              
+              arms.push(Arm {
+                  attrs: vec![],
+                  pat: pattern,
+                  guard: None,
+                  fat_arrow_token: Token![=>](Span::call_site()),
+                  body: Box::new(expr),
+                  comma: Some(Token![,](Span::call_site())),
+              });
+          }
+          
+          Ok(arms)
+      }
+  }
+  ```
+- [ ] **Architecture:** Replace string templates with type-safe AST building using syn
+- [ ] **Benefits:** 
+  - Eliminates syntax errors like missing match statements
+  - Compile-time validation of generated AST
+  - Better IDE support and tooling
+  - Zero-allocation const string optimization
+  - Maintainable code structure with prettyplease formatting
+
+#### 3.3: Add AST Validation and Error Recovery
+- [ ] **File:** `buildlib/codegen.rs` 
+- [ ] **Implementation:** Add comprehensive AST validation before code generation
+- [ ] **Error Handling:** Implement detailed error messages for AST construction failures
+- [ ] **Recovery Strategy:** Graceful degradation with fallback to string generation if AST fails
+- [ ] **Architecture:** Fail-fast validation with detailed error context for debugging
+
+#### 3.4: Optimize Generated Code Structure  
+- [ ] **File:** `buildlib/codegen.rs`
+- [ ] **Implementation:** 
+  - Use const string tables instead of heap allocations
+  - Implement `#[inline(always)]` for hot paths
+  - Generate match arms with optimal ordering for performance
+  - Add compile-time assertions for enum completeness
+- [ ] **Architecture:** Zero-allocation code generation with maximum performance optimizations
+
+#### 3.5: Add Code Generation Testing
+- [ ] **File:** `tests/codegen_tests.rs` (NEW)
+- [ ] **Implementation:** Comprehensive tests for syn-based code generation
+- [ ] **Coverage:** 
+  - AST structure validation
+  - Generated code compilation verification  
+  - Performance regression testing
+  - Error handling validation
+- [ ] **Architecture:** Automated testing of generated code quality and correctness
 
 ### TASK 4: Add Build-Time Caching and Runtime Refresh
 **SUB-STATUS: WORKING**

@@ -14,6 +14,7 @@ use fluent_ai_domain::model::Model;
 use serde_json::json;
 
 use crate::{
+    OneOrMany,
     completion::message::Message,
     completion::{
         CompletionError, CompletionRequest, CompletionRequestBuilder, PromptError, ToolDefinition},
@@ -33,14 +34,14 @@ pub struct CompletionBuilder<M, S> {
     model: M,
     temperature: Option<f64>,
     preamble: Option<String>,
-    chat_history: Vec<Message>,
-    documents: Vec<crate::completion::Document>,
-    tools: Vec<ToolDefinition>,
+    chat_history: OneOrMany<Message>,
+    documents: OneOrMany<crate::completion::Document>,
+    tools: OneOrMany<ToolDefinition>,
     max_tokens: Option<u64>,
     // universal feature flags
     extended_thinking: bool,
     cache_control: Option<serde_json::Value>,
-    prompt_enhancements: Vec<&'static str>,
+    prompt_enhancements: OneOrMany<&'static str>,
     extra_params: serde_json::Value,
     prompt: Option<Message>,
     _state: std::marker::PhantomData<S>}
@@ -55,13 +56,13 @@ impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
             model,
             temperature: None,
             preamble: None,
-            chat_history: Vec::new(),
-            documents: Vec::new(),
-            tools: Vec::new(),
+            chat_history: OneOrMany::None,
+            documents: OneOrMany::None,
+            tools: OneOrMany::None,
             max_tokens: None,
             extended_thinking: false,
             cache_control: None,
-            prompt_enhancements: Vec::new(),
+            prompt_enhancements: OneOrMany::None,
             extra_params: json!({}),
             prompt: None,
             _state: std::marker::PhantomData}
@@ -91,8 +92,8 @@ impl<M, S> CompletionBuilder<M, S> {
         self
     }
     #[inline(always)]
-    pub fn chat_history(mut self, h: Vec<Message>) -> Self {
-        self.chat_history = h;
+    pub fn chat_history(mut self, h: impl Into<OneOrMany<Message>>) -> Self {
+        self.chat_history = h.into();
         self
     }
     #[inline(always)]

@@ -117,7 +117,7 @@ struct MemoryNodeBuilderImpl {
     id: ZeroOneOrMany<Uuid>,
     memory_type: ZeroOneOrMany<MemoryTypeEnum>,
     content: ZeroOneOrMany<MemoryContent>,
-    embedding: ZeroOneOrMany<Vec<f32>>,
+    embedding: ZeroOneOrMany<f32>,
     importance: ZeroOneOrMany<f32>,
     creation_time: ZeroOneOrMany<SystemTime>,
     last_accessed: ZeroOneOrMany<SystemTime>,
@@ -182,9 +182,8 @@ impl MemoryNodeBuilder for MemoryNodeBuilderImpl {
 
     #[inline(always)]
     fn with_embedding(self, embedding: impl Into<ZeroOneOrMany<f32>>) -> impl MemoryNodeBuilder {
-        let embedding_vec: Vec<f32> = embedding.into().into_iter().collect();
         MemoryNodeBuilderImpl {
-            embedding: self.embedding.with_pushed(embedding_vec),
+            embedding: embedding.into(),
             ..self
         }
     }
@@ -265,7 +264,8 @@ impl MemoryNodeBuilder for MemoryNodeBuilderImpl {
         let mut node = MemoryNode::with_id(id, memory_type, content);
 
         // Apply embedding with validation
-        if let Some(embedding_data) = self.embedding.into_iter().next() {
+        if !self.embedding.is_none() {
+            let embedding_data: Vec<f32> = self.embedding.into_iter().collect();
             if !embedding_data.is_empty() {
                 node.set_embedding(embedding_data)
                     .map_err(|e| MemoryError::validation(&format!("Invalid embedding: {}", e)))?;

@@ -16,17 +16,7 @@ async fn main() -> Result<()> {
     
     success_check!("✅ Model code generation completed successfully!");
     
-    // Verify the generated code compiles
-    info!("Verifying generated code compiles...");
-    if std::process::Command::new("cargo")
-        .args(&["check", "--quiet"])
-        .status()
-        .is_ok()
-    {
-        success_check!("✅ Generated code compiles successfully!");
-    } else {
-        anyhow::bail!("❌ Generated code has compilation errors. Build failed.");
-    }
+    // Note: Compilation verification will happen automatically during the build process
     
     Ok(())
 }

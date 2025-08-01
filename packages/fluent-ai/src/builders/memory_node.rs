@@ -7,21 +7,24 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-use fluent_ai_domain::memory::primitives::types::{
-    BaseMemory, MemoryContent, MemoryError, MemoryResult, MemoryTypeEnum, 
+use fluent_ai_domain::{
+    OneOrMany, ZeroOneOrMany,
+    memory::primitives::types::{
+        BaseMemory, MemoryContent, MemoryError, MemoryResult, MemoryTypeEnum, 
+    },
+    memory::primitives::node::MemoryNode
 };
-use fluent_ai_domain::memory::primitives::node::MemoryNode;
 
 /// Ergonomic builder for memory nodes with zero-allocation move semantics
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MemoryNodeBuilder {
     id: Option<Uuid>,
     memory_type: Option<MemoryTypeEnum>,
     content: Option<MemoryContent>,
-    embedding: Option<Vec<f32>>,
+    embedding: ZeroOneOrMany<f32>,
     importance: Option<f32>,
-    keywords: Vec<Arc<str>>,
-    tags: Vec<Arc<str>>,
+    keywords: OneOrMany<Arc<str>>,
+    tags: OneOrMany<Arc<str>>,
     custom_metadata: HashMap<Arc<str>, serde_json::Value>,
 }
 
@@ -71,8 +74,8 @@ impl MemoryNodeBuilder {
 
     /// Set embedding
     #[inline]
-    pub fn with_embedding(mut self, embedding: Vec<f32>) -> Self {
-        self.embedding = Some(embedding);
+    pub fn with_embedding(mut self, embedding: impl Into<ZeroOneOrMany<f32>>) -> Self {
+        self.embedding = embedding.into();
         self
     }
 
@@ -100,14 +103,14 @@ impl MemoryNodeBuilder {
     /// Add keyword
     #[inline]
     pub fn with_keyword(mut self, keyword: impl Into<Arc<str>>) -> Self {
-        self.keywords.push(keyword.into());
+        self.keywords = self.keywords.with_pushed(keyword.into());
         self
     }
 
     /// Add tag
     #[inline]
     pub fn with_tag(mut self, tag: impl Into<Arc<str>>) -> Self {
-        self.tags.push(tag.into());
+        self.tags = self.tags.with_pushed(tag.into());
         self
     }
 
@@ -160,5 +163,20 @@ impl MemoryNodeBuilder {
         }
 
         Ok(node)
+    }
+}
+
+impl Default for MemoryNodeBuilder {
+    fn default() -> Self {
+        Self {
+            id: None,
+            memory_type: None,
+            content: None,
+            embedding: ZeroOneOrMany::None,
+            importance: None,
+            keywords: OneOrMany::None,
+            tags: OneOrMany::None,
+            custom_metadata: HashMap::new(),
+        }
     }
 }

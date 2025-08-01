@@ -1,7 +1,10 @@
 use std::sync::Arc;
-use fluent_ai_domain::chat::{
-    ChatTemplate, 
-    templates::{TemplateCategory, core}
+use fluent_ai_domain::{
+    OneOrMany,
+    chat::{
+        ChatTemplate, 
+        templates::{TemplateCategory, core}
+    }
 };
 
 /// Template builder struct
@@ -11,7 +14,7 @@ pub struct TemplateBuilder {
     content: Option<String>,
     description: Option<String>,
     category: TemplateCategory,
-    variables: Vec<String>,
+    variables: OneOrMany<String>,
 }
 
 impl TemplateBuilder {
@@ -22,7 +25,7 @@ impl TemplateBuilder {
             content: None,
             description: None,
             category: TemplateCategory::Chat,
-            variables: Vec::new(),
+            variables: OneOrMany::None,
         }
     }
 
@@ -52,7 +55,7 @@ impl TemplateBuilder {
 
     /// Add a variable to the template
     pub fn variable(mut self, var: impl Into<String>) -> Self {
-        self.variables.push(var.into());
+        self.variables = self.variables.with_pushed(var.into());
         self
     }
 

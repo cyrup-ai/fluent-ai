@@ -102,7 +102,7 @@ safetensors = { version = "0.6.0", optional = true }
 
 
 [features]
-default = ["metal", "candle"]  # macOS-optimized defaults with Metal acceleration (from fluent-ai-candle)
+default = ["metal", "candle", "reqwest_unstable"]  # macOS-optimized defaults with Metal acceleration (from fluent-ai-candle)
 # --- Candle backend features (required for all candle crates) -----
 candle = []  # Enables Candle provider client
 cuda = ["candle-core/cuda", "candle-nn/cuda", "dep:cudarc", "dep:half", "dep:bindgen_cuda", "candle-transformers/cuda"]
@@ -117,6 +117,7 @@ onnx = ["dep:candle-onnx"]
 # Performance features
 parking = ["dep:parking_lot"]
 wide-ops = ["dep:wide"]
+reqwest_unstable = []
 # UI features
 ui = ["dioxus"]
 

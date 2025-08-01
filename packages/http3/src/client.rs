@@ -212,27 +212,107 @@ impl ClientStats {
     }
 }
 
-impl Default for HttpClient {
-    fn default() -> Self {
-        let config = HttpConfig::default();
-        let inner = reqwest::Client::builder()
+impl HttpClient {
+    /// Create a new HttpClient with the specified configuration
+    /// Enables HTTP/3 (QUIC) optimization when config.http3_enabled is true
+    pub fn with_config(config: HttpConfig) -> Result<Self, crate::HttpError> {
+        let mut builder = reqwest::Client::builder()
             .pool_max_idle_per_host(config.pool_max_idle_per_host)
             .pool_idle_timeout(config.pool_idle_timeout)
             .timeout(config.timeout)
             .connect_timeout(config.connect_timeout)
             .tcp_nodelay(config.tcp_nodelay)
-            .http2_prior_knowledge()
-            .http2_adaptive_window(config.http2_adaptive_window)
             .use_rustls_tls()
-            .tls_built_in_root_certs(true)
+            .tls_built_in_root_certs(config.use_native_certs)
             .https_only(config.https_only)
-            .user_agent(&config.user_agent)
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+            .user_agent(&config.user_agent);
 
-        Self {
+        // HTTP/3 (QUIC) configuration when enabled
+        if config.http3_enabled {
+            // Enable HTTP/3 protocol version preference
+            builder = builder.http3_prior_knowledge();
+            
+            // Note: Advanced QUIC configuration methods require the 'reqwest_unstable' feature
+            // which is not enabled by default. For full HTTP/3 optimization, enable this feature.
+            #[cfg(feature = "reqwest_unstable")]
+            {
+                // Configure QUIC connection parameters when unstable features are enabled
+                if let Some(idle_timeout) = config.quic_max_idle_timeout {
+                    builder = builder.http3_max_idle_timeout(idle_timeout);
+                }
+                
+                if let Some(stream_window) = config.quic_stream_receive_window {
+                    builder = builder.http3_stream_receive_window(stream_window as u64);
+                }
+                
+                if let Some(conn_window) = config.quic_receive_window {
+                    builder = builder.http3_conn_receive_window(conn_window as u64);
+                }
+                
+                if let Some(send_window) = config.quic_send_window {
+                    builder = builder.http3_send_window(send_window);
+                }
+                
+                // Enable BBR congestion control if requested
+                if config.quic_congestion_bbr {
+                    builder = builder.http3_congestion_bbr();
+                }
+                
+                // Configure HTTP/3 protocol parameters
+                if let Some(header_size) = config.h3_max_field_section_size {
+                    builder = builder.http3_max_field_section_size(header_size);
+                }
+                
+                if config.h3_enable_grease {
+                    builder = builder.http3_send_grease(true);
+                }
+            }
+            
+            #[cfg(not(feature = "reqwest_unstable"))]
+            {
+                // Basic HTTP/3 is enabled but advanced QUIC optimizations are not available
+                // without the reqwest_unstable feature. HTTP/3 will still provide significant
+                // performance improvements over HTTP/2 for most use cases.
+                log::debug!("HTTP/3 enabled but advanced QUIC optimizations require 'reqwest_unstable' feature");
+            }
+        } else {
+            // HTTP/2 configuration when HTTP/3 is disabled
+            builder = builder.http2_prior_knowledge()
+                .http2_adaptive_window(config.http2_adaptive_window);
+                
+            if let Some(frame_size) = config.http2_max_frame_size {
+                builder = builder.http2_max_frame_size(frame_size);
+            }
+        }
+
+        // Compression configuration
+        builder = builder
+            .gzip(config.gzip)
+            .brotli(config.brotli)
+            .deflate(config.deflate);
+
+        // Build the client with error handling
+        let inner = builder.build()
+            .map_err(|e| crate::HttpError::Configuration(format!("Failed to build HTTP client: {}", e)))?;
+
+        Ok(Self {
             inner,
             config,
-            stats: ClientStats::default()}
+            stats: ClientStats::default(),
+        })
+    }
+}
+
+impl Default for HttpClient {
+    fn default() -> Self {
+        // Use the new with_config constructor with default configuration
+        // If configuration fails, fall back to a basic reqwest client
+        let config = HttpConfig::default();
+        Self::with_config(config)
+            .unwrap_or_else(|_| Self {
+                inner: reqwest::Client::new(),
+                config: HttpConfig::default(),
+                stats: ClientStats::default(),
+            })
     }
 }

@@ -41,9 +41,10 @@ candle-core = { git = "https://github.com/huggingface/candle", branch = "main", 
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 
 [features]
-default = []
+default = ["reqwest_unstable"]
 candle = ["dep:candle-core"]
 portable_simd = []
+reqwest_unstable = []
 
 [dev-dependencies]
 criterion = "0.7"

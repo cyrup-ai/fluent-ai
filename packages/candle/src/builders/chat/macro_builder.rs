@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
+use cyrup_sugars::OneOrMany;
 use crate::domain::chat::{
     CandleChatMacro as ChatMacro, 
     CandleMacroAction as MacroAction, 
@@ -14,11 +15,11 @@ use crate::domain::chat::{
 pub struct MacroBuilder {
     name: Option<Arc<str>>,
     description: Option<Arc<str>>,
-    actions: Vec<MacroAction>,
+    actions: OneOrMany<MacroAction>,
     variables: HashMap<Arc<str>, Arc<str>>,
-    triggers: Vec<Arc<str>>,
-    conditions: Vec<Arc<str>>,
-    dependencies: Vec<Arc<str>>,
+    triggers: OneOrMany<Arc<str>>,
+    conditions: OneOrMany<Arc<str>>,
+    dependencies: OneOrMany<Arc<str>>,
     execution_config: MacroExecutionConfig,
 }
 
@@ -28,11 +29,11 @@ impl MacroBuilder {
         Self {
             name: None,
             description: None,
-            actions: Vec::new(),
+            actions: OneOrMany::None,
             variables: HashMap::new(),
-            triggers: Vec::new(),
-            conditions: Vec::new(),
-            dependencies: Vec::new(),
+            triggers: OneOrMany::None,
+            conditions: OneOrMany::None,
+            dependencies: OneOrMany::None,
             execution_config: MacroExecutionConfig::default(),
         }
     }

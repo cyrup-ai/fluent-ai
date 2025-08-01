@@ -66,8 +66,8 @@ pub trait CompletionClient: ProviderClient + Clone + Send + Sync + 'static {
 pub struct CompletionRequest {
     pub preamble: Option<Message>,
     pub chat_history: OneOrMany<Message>,
-    pub documents: Vec<Message>,
-    pub tools: Vec<ToolCall>,
+    pub documents: OneOrMany<Message>,
+    pub tools: OneOrMany<ToolCall>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
     pub additional_params: serde_json::Value}
@@ -85,10 +85,10 @@ pub struct CompletionResponse<R: Clone> {
 pub struct CompletionRequestBuilder<'a, M: CompletionModel> {
     model: &'a M,
     preamble: Option<Message>,
-    chat_history: Vec<Message>,
+    chat_history: OneOrMany<Message>,
     prompt: Message,
-    documents: Vec<Message>,
-    tools: Vec<ToolCall>,
+    documents: OneOrMany<Message>,
+    tools: OneOrMany<ToolCall>,
     temperature: Option<f32>,
     max_tokens: Option<u32>,
     additional_params: serde_json::Value}
@@ -98,10 +98,10 @@ impl<'a, M: CompletionModel> CompletionRequestBuilder<'a, M> {
         Self {
             model,
             preamble: None,
-            chat_history: Vec::new(),
+            chat_history: OneOrMany::None,
             prompt: prompt.into(),
-            documents: Vec::new(),
-            tools: Vec::new(),
+            documents: OneOrMany::None,
+            tools: OneOrMany::None,
             temperature: None,
             max_tokens: None,
             additional_params: serde_json::Value::Null}
@@ -110,7 +110,7 @@ impl<'a, M: CompletionModel> CompletionRequestBuilder<'a, M> {
     pub fn build(self) -> CompletionRequest {
         CompletionRequest {
             preamble: self.preamble,
-            chat_history: OneOrMany::from(self.chat_history).add(self.prompt),
+            chat_history: self.chat_history.with_pushed(self.prompt),
             documents: self.documents,
             tools: self.tools,
             temperature: self.temperature,

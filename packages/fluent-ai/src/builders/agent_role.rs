@@ -137,9 +137,9 @@ where
 {
     name: String,
     completion_provider: ZeroOneOrMany<CompletionProvider>,
-    temperature: Option<f64>,
-    max_tokens: Option<u64>,
-    system_prompt: Option<String>,
+    temperature: ZeroOneOrMany<f64>,
+    max_tokens: ZeroOneOrMany<u64>,
+    system_prompt: ZeroOneOrMany<String>,
     contexts: ZeroOneOrMany<Context>,
     tools: ZeroOneOrMany<Tool>,
     mcp_servers: ZeroOneOrMany<McpServer>,
@@ -160,9 +160,9 @@ where
         AgentRoleBuilderImpl {
             name: name.into(),
             completion_provider: ZeroOneOrMany::None,
-            temperature: None,
-            max_tokens: None,
-            system_prompt: None,
+            temperature: ZeroOneOrMany::None,
+            max_tokens: ZeroOneOrMany::None,
+            system_prompt: ZeroOneOrMany::None,
             contexts: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
             mcp_servers: ZeroOneOrMany::None,
@@ -208,19 +208,19 @@ where
 
     /// Set temperature - EXACT syntax: .temperature(1.0)
     fn temperature(mut self, temp: f64) -> impl AgentRoleBuilder {
-        self.temperature = Some(temp);
+        self.temperature = ZeroOneOrMany::one(temp);
         self
     }
 
     /// Set max tokens - EXACT syntax: .max_tokens(8000)
     fn max_tokens(mut self, max: u64) -> impl AgentRoleBuilder {
-        self.max_tokens = Some(max);
+        self.max_tokens = ZeroOneOrMany::one(max);
         self
     }
 
     /// Set system prompt - EXACT syntax: .system_prompt("...")
     fn system_prompt(mut self, prompt: impl Into<String>) -> impl AgentRoleBuilder {
-        self.system_prompt = Some(prompt.into());
+        self.system_prompt = ZeroOneOrMany::one(prompt.into());
         self
     }
 

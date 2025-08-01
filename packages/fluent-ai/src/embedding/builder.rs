@@ -27,7 +27,7 @@ use crate::{
 /// batched, parallel requests.
 pub struct EmbeddingsBuilder<M: EmbeddingModel, T: Embed> {
     model: M,
-    documents: Vec<(T, Vec<String>)>}
+    documents: OneOrMany<(T, OneOrMany<String>)>}
 
 impl<M: EmbeddingModel, T: Embed> EmbeddingsBuilder<M, T> {
     /// Start a new builder for `model`.
@@ -35,7 +35,7 @@ impl<M: EmbeddingModel, T: Embed> EmbeddingsBuilder<M, T> {
     pub fn new(model: M) -> Self {
         Self {
             model,
-            documents: Vec::new()}
+            documents: OneOrMany::None}
     }
 
     /// Push a single document.
@@ -43,7 +43,7 @@ impl<M: EmbeddingModel, T: Embed> EmbeddingsBuilder<M, T> {
     pub fn document(mut self, doc: T) -> Result<Self, EmbedError> {
         let mut extractor = TextEmbedder::default();
         doc.embed(&mut extractor)?;
-        self.documents.push((doc, extractor.texts));
+        self.documents = self.documents.with_pushed((doc, OneOrMany::from(extractor.texts)));
         Ok(self)
     }
 
@@ -71,7 +71,7 @@ where
         runtime::spawn_async(async move {
             // Process documents in batches and stream results as they complete
             let mut docs: HashMap<usize, T> = HashMap::with_capacity(self.documents.len());
-            let mut per_doc_texts: Vec<(usize, Vec<String>)> =
+            let mut per_doc_texts: Vec<(usize, OneOrMany<String>)> =
                 Vec::with_capacity(self.documents.len());
 
             for (idx, (doc, texts)) in self.documents.into_iter().enumerate() {

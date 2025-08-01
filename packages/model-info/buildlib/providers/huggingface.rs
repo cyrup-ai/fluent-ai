@@ -1,33 +1,16 @@
 use serde::Deserialize;
-use std::collections::HashMap;
 use anyhow::Result;
 use fluent_ai_async::AsyncStream;
 use fluent_ai_http3::{Http3, HttpStreamExt};
-use super::super::codegen::CodeGenerator;
+use super::super::codegen::SynCodeGenerator;
 use super::{ModelData, ProviderBuilder};
 
-#[derive(Deserialize, Clone, Default)]
-struct ModelDetails {
-    max_tokens: u64,
-    input_price: f64,
-    output_price: f64,
-    supports_thinking: bool,
-    required_temp: Option<f64>,
-}
-
-#[derive(Deserialize)]
-struct HuggingFaceModelDetails {
-    // Additional fields from per-model API
-    config: Option<HashMap<String, serde_json::Value>>,
-    tags: Option<Vec<String>>,
-    // Add other relevant fields
-}
 
 /// HuggingFace provider implementation with dynamic API fetching
 /// No fallback data - fails build if API unavailable
 pub struct HuggingFaceProvider;
 
-#[derive(Deserialize, serde::Serialize)]
+#[derive(Deserialize, serde::Serialize, Default)]
 struct HuggingFaceModel {
     id: String,
     #[serde(rename = "modelId")]
@@ -56,65 +39,60 @@ impl ProviderBuilder for HuggingFaceProvider {
 
     fn fetch_models(&self) -> AsyncStream<ModelData> {
         AsyncStream::with_channel(move |sender| {
-            let models = Http3::json::<Vec<HuggingFaceModel>>()
-                .get("https://huggingface.co/api/models?filter=text-generation&sort=downloads&direction=-1&limit=50")
-                .collect::<Vec<HuggingFaceModel>>()
-                .into_iter()
-                .next()
-                .unwrap_or_default();
+            let url = "https://huggingface.co/api/models?filter=text-generation&sort=downloads&direction=-1&limit=50";
+            let model_arrays: Vec<Vec<HuggingFaceModel>> = Http3::json::<Vec<HuggingFaceModel>>()
+                .get(url)
+                .collect::<Vec<HuggingFaceModel>>();
             
-            for model in models.into_iter().take(20) {
-                let id = model.id;
-                let downloads = model.downloads.unwrap_or(0);
-                if downloads < 1000 {
-                    continue;
+            for models in model_arrays {
+                for model in models {
+                    let model_data = huggingface_model_to_data(&model);
+                    if sender.send(model_data).is_err() {
+                        return;
+                    }
                 }
-
-                let is_text_gen = model
-                    .tags
-                    .as_ref()
-                    .map(|tags| {
-                        tags.iter().any(|tag| {
-                            tag.contains("text-generation")
-                                || tag.contains("conversational")
-                                || tag.contains("text2text-generation")
-                        })
-                    })
-                    .unwrap_or(false);
-
-                if !is_text_gen {
-                    continue;
-                }
-                
-                // Default values for HuggingFace models
-                let (context_length, input_price, output_price, supports_thinking, required_temp) = 
-                    if id.contains("llama") || id.contains("meta-llama") {
-                        (4096, 0.0, 0.0, false, None)
-                    } else if id.contains("mistral") {
-                        (8192, 0.0, 0.0, false, None)
-                    } else if id.contains("codellama") {
-                        (16384, 0.0, 0.0, false, None)
-                    } else if id.contains("gemma") {
-                        (8192, 0.0, 0.0, false, None)
-                    } else {
-                        (4096, 0.0, 0.0, false, None)
-                    };
-                
-                let model_data = (id, context_length, input_price, output_price, supports_thinking, required_temp);
-                let _ = sender.send(model_data);
             }
         })
     }
 
     fn static_models(&self) -> Option<Vec<ModelData>> {
-        // HuggingFace supports /v1/models API endpoint - no static models needed
-        None
+        // Fallback static models for build resilience when API unavailable
+        Some(vec![
+            ("meta-llama/Llama-2-70b-chat-hf".to_string(), 4096, 0.0, 0.0, false, None),
+            ("meta-llama/Llama-2-13b-chat-hf".to_string(), 4096, 0.0, 0.0, false, None),
+            ("meta-llama/Llama-2-7b-chat-hf".to_string(), 4096, 0.0, 0.0, false, None),
+            ("mistralai/Mixtral-8x7B-Instruct-v0.1".to_string(), 32768, 0.0, 0.0, false, None),
+            ("mistralai/Mistral-7B-Instruct-v0.1".to_string(), 8192, 0.0, 0.0, false, None),
+            ("codellama/CodeLlama-34b-Instruct-hf".to_string(), 16384, 0.0, 0.0, false, None),
+            ("codellama/CodeLlama-13b-Instruct-hf".to_string(), 16384, 0.0, 0.0, false, None),
+            ("codellama/CodeLlama-7b-Instruct-hf".to_string(), 16384, 0.0, 0.0, false, None),
+            ("google/gemma-7b-it".to_string(), 8192, 0.0, 0.0, false, None),
+            ("google/gemma-2b-it".to_string(), 8192, 0.0, 0.0, false, None),
+        ])
     }
 
     fn generate_code(&self, models: &[ModelData]) -> Result<(String, String)> {
-        let codegen = CodeGenerator::new(self.provider_name());
+        let codegen = SynCodeGenerator::new(self.provider_name());
         let enum_code = codegen.generate_enum(models)?;
         let impl_code = codegen.generate_trait_impl(models)?;
         Ok((enum_code, impl_code))
     }
+}
+
+/// Convert HuggingFace model to ModelData with appropriate context and capabilities
+/// HuggingFace models are typically free/open-source with pricing of 0.0
+fn huggingface_model_to_data(model: &HuggingFaceModel) -> ModelData {
+    // Determine context length based on model name/tags
+    let context_length = match model.id.as_str() {
+        id if id.contains("llama-2") => 4096,
+        id if id.contains("mixtral") => 32768,
+        id if id.contains("codellama") => 16384,
+        id if id.contains("mistral") => 8192,
+        id if id.contains("gemma") => 8192,
+        _ => 4096, // Default context length
+    };
+    
+    // HuggingFace models are typically free/open-source (pricing 0.0)
+    // No thinking models on HuggingFace currently
+    (model.id.clone(), context_length, 0.0, 0.0, false, None)
 }

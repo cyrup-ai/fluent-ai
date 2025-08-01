@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["bincode-serialization"]
+default = ["bincode-serialization", "reqwest_unstable"]
 cylo = []
 bincode-serialization = ["bincode"]
 rkyv-serialization = ["rkyv"]
+reqwest_unstable = []
 
 [dependencies]
 fluent_ai_async = { path = "../async-stream" }

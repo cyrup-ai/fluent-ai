@@ -31,6 +31,7 @@ use fluent_ai_provider::Model;
 #[cfg(feature = "mcp")]
 use crate::tool::McpTool;
 use crate::{
+    OneOrMany, ZeroOneOrMany,
     completion::Document,
     runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
@@ -181,15 +182,15 @@ pub struct AgentBuilder<M: Model, S, C> {
     system_prompt: Option<String>,
 
     // Context and tools - pre-allocated for zero-alloc hot-path
-    static_context: Vec<Document>,
-    static_tools_by_id: Vec<String>,
-    dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
-    dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+    static_context: OneOrMany<Document>,
+    static_tools_by_id: OneOrMany<String>,
+    dynamic_context: OneOrMany<(usize, Box<dyn VectorStoreIndexDyn>)>,
+    dynamic_tools: OneOrMany<(usize, Box<dyn VectorStoreIndexDyn>)>,
     toolset: ToolSet,
 
     // Runtime configuration
-    temperature: Option<f64>,
-    max_tokens: Option<u64>,
+    temperature: ZeroOneOrMany<f64>,
+    max_tokens: ZeroOneOrMany<u64>,
     extended_thinking: bool,
     prompt_cache: bool,
     additional_params: Option<serde_json::Value>,
@@ -213,10 +214,10 @@ impl<M: Model> AgentBuilder<M, MissingSys, MissingCtx> {
             model: Some(ModelAdapter::new(model_variant)),
             model_name: Some(model_name),
             system_prompt: None,
-            static_context: Vec::with_capacity(4), // Pre-allocate for hot-path
-            static_tools_by_id: Vec::with_capacity(4),
-            dynamic_context: Vec::new(),
-            dynamic_tools: Vec::new(),
+            static_context: OneOrMany::None,
+            static_tools_by_id: OneOrMany::None,
+            dynamic_context: OneOrMany::None,
+            dynamic_tools: OneOrMany::None,
             toolset: ToolSet::default(),
             temperature: None,
             max_tokens: None,

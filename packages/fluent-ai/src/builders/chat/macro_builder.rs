@@ -2,20 +2,23 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
-use fluent_ai_domain::chat::{
-    MacroAction,
-    macros::{ChatMacro, MacroExecutionConfig, MacroMetadata, MacroSystemError}
+use fluent_ai_domain::{
+    OneOrMany,
+    chat::{
+        MacroAction,
+        macros::{ChatMacro, MacroExecutionConfig, MacroMetadata, MacroSystemError}
+    }
 };
 
 /// Builder for creating macros programmatically
 pub struct MacroBuilder {
     name: Option<Arc<str>>,
     description: Option<Arc<str>>,
-    actions: Vec<MacroAction>,
+    actions: OneOrMany<MacroAction>,
     variables: HashMap<Arc<str>, Arc<str>>,
-    triggers: Vec<Arc<str>>,
-    conditions: Vec<Arc<str>>,
-    dependencies: Vec<Arc<str>>,
+    triggers: OneOrMany<Arc<str>>,
+    conditions: OneOrMany<Arc<str>>,
+    dependencies: OneOrMany<Arc<str>>,
     execution_config: MacroExecutionConfig,
 }
 
@@ -25,11 +28,11 @@ impl MacroBuilder {
         Self {
             name: None,
             description: None,
-            actions: Vec::new(),
+            actions: OneOrMany::None,
             variables: HashMap::new(),
-            triggers: Vec::new(),
-            conditions: Vec::new(),
-            dependencies: Vec::new(),
+            triggers: OneOrMany::None,
+            conditions: OneOrMany::None,
+            dependencies: OneOrMany::None,
             execution_config: MacroExecutionConfig::default(),
         }
     }
@@ -48,7 +51,7 @@ impl MacroBuilder {
 
     /// Add an action to the macro
     pub fn add_action(mut self, action: MacroAction) -> Self {
-        self.actions.push(action);
+        self.actions = self.actions.with_pushed(action);
         self
     }
 

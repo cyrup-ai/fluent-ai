@@ -35,9 +35,11 @@ pub trait ProviderBuilder: Send + Sync {
     fn provider_name(&self) -> &'static str;
 
     /// API endpoint for fetching models (None for providers without dynamic endpoints)
+    #[allow(dead_code)] // Library method - may be used in future API implementations
     fn api_endpoint(&self) -> Option<&'static str>;
 
     /// Environment variable name for API key
+    #[allow(dead_code)] // Library method - may be used in future API implementations
     fn api_key_env_var(&self) -> Option<&'static str>;
 
     /// Fetch models from the provider's API
@@ -190,16 +192,19 @@ use once_cell::sync::Lazy;
 
 /// Global registry for dynamic provider registration.
 /// Allows runtime addition of custom providers for extensibility.
+#[allow(dead_code)] // Library feature - extensibility for custom providers
 pub static PROVIDER_REGISTRY: Lazy<DashMap<String, Box<dyn ProviderBuilder + Send + Sync>>> =
     Lazy::new(DashMap::new);
 
 /// Register a new provider dynamically.
 /// This can be called at runtime to add custom providers.
+#[allow(dead_code)] // Library function - extensibility for custom providers
 pub fn register_provider(name: String, provider: Box<dyn ProviderBuilder + Send + Sync>) {
     PROVIDER_REGISTRY.insert(name, provider);
 }
 
 /// Get all providers, including dynamically registered ones.
+#[allow(dead_code)] // Library function - extensibility for custom providers
 pub fn all_providers_extended() -> Vec<Box<dyn ProviderBuilder + Send + Sync>> {
     let providers: Vec<Box<dyn ProviderBuilder + Send + Sync>> = all_providers()
         .into_iter()

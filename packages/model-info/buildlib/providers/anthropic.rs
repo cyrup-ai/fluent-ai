@@ -1,5 +1,5 @@
 use super::{ModelData, ProviderBuilder};
-use super::super::codegen::CodeGenerator;
+use super::super::codegen::SynCodeGenerator;
 use fluent_ai_async::AsyncStream;
 use anyhow::Result;
 use serde::Deserialize;
@@ -73,7 +73,7 @@ impl ProviderBuilder for AnthropicProvider {
     }
     
     fn generate_code(&self, models: &[ModelData]) -> Result<(String, String)> {
-        let codegen = CodeGenerator::new(self.provider_name());
+        let codegen = SynCodeGenerator::new(self.provider_name());
         let enum_code = codegen.generate_enum(models)?;
         let impl_code = codegen.generate_trait_impl(models)?;
         Ok((enum_code, impl_code))

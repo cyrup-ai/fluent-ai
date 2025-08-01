@@ -6,7 +6,6 @@ use termcolor::{info, success_check, colored_println};
 
 pub mod providers;
 pub mod codegen;
-pub mod sources;
 
 use providers::{all_providers, ProviderBuilder, ModelData};
 
@@ -67,12 +66,23 @@ pub async fn generate_model_code() -> Result<()> {
     Ok(())
 }
 
-/// Fetch models from provider using strategy pattern - API or static data
-/// All providers must provide model data through their implemented strategy
+/// Fetch models from provider with API-first, fallback-second strategy
+/// Tries real API endpoints first, falls back to static models for build resilience
 async fn fetch_provider_models(provider: &dyn ProviderBuilder) -> Result<Vec<providers::ModelData>> {
     let provider_name = provider.provider_name();
     
-    // First try API endpoint if provider supports it
+    // Special case: Anthropic has no public /v1/models API, use static only
+    if provider_name == "anthropic" {
+        if let Some(static_models) = provider.static_models() {
+            if !static_models.is_empty() {
+                info!("Using {} static models for {} provider (no public API)", static_models.len(), provider_name);
+                return Ok(static_models);
+            }
+        }
+        return Err(anyhow::anyhow!("Anthropic provider has no static model data"));
+    }
+    
+    // Try API first for all other providers
     let model_stream = provider.fetch_models();
     let api_models: Vec<ModelData> = model_stream.collect();
     if !api_models.is_empty() {
@@ -80,17 +90,17 @@ async fn fetch_provider_models(provider: &dyn ProviderBuilder) -> Result<Vec<pro
         return Ok(api_models);
     }
     
-    // If API didn't return data, try static models (only for providers that legitimately need them)
+    // API failed or returned no data - try static fallback
     if let Some(static_models) = provider.static_models() {
         if !static_models.is_empty() {
-            info!("Using {} static models for {} provider", static_models.len(), provider_name);
+            info!("API failed for {} provider, using {} static fallback models", provider_name, static_models.len());
             return Ok(static_models);
         }
     }
     
-    // Provider has no model data available
+    // No API data and no fallback - build fails
     Err(anyhow::anyhow!(
-        "Provider {} returned no model data from API or static sources",
+        "Provider {} returned no data from API and has no static fallback models",
         provider_name
     ))
 }

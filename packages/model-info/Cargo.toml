@@ -7,6 +7,10 @@ authors.workspace = true
 repository.workspace = true
 description = "Dynamic retrieval and structured representation of AI model info from various providers using build-time code generation for strongly typed enums"
 
+[features]
+default = ["reqwest_unstable"]
+reqwest_unstable = []
+
 [dependencies]
 fluent_ai_http3 = { path = "../http3" }
 fluent_ai_async = { path = "../async-stream" }
@@ -35,7 +39,7 @@ reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.141"
 quote = "1.0.40"
-syn = { version = "2.0.104", features = ["full"] }
+syn = { version = "2.0.104", features = ["full", "extra-traits", "parsing", "printing"] }
 proc-macro2 = "1.0.95"
 anyhow = "1.0.98"
 hashbrown = "0.15.4"

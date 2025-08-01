@@ -19,6 +19,10 @@ pub enum HttpError {
         /// Error message describing the client configuration issue
         message: String},
 
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     /// HTTP status error
     #[error("HTTP {status}: {message}")]
     HttpStatus {

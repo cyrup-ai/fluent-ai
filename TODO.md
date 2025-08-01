@@ -1927,13 +1927,15 @@
 ## MODEL-INFO EXTENSION: Provider-Specific Model Enums without 'Model' Suffix [NEW]
 
 ### Objective
-Extend the code generation in model-info to create additional enums for each provider, named directly after the provider (e.g., OpenAI instead of OpenaiModel), with variants corresponding to sanitized model names. This enables syntax like OpenAI::Gpt4o for model selection, while maintaining access to model info via trait impls using dynamically fetched data at build time.
+Extend the code generation in model-info to create additional enums for each provider, named directly after the provider (e.g., OpenAI instead of OpenaiModel), with variants corresponding to sanitized model names. This enables syntax like OpenAI::Gpt4o for model selection, while maintaining access to model info via trait impls using dynamically fetched data at build time. This directly supports typesafe fluent builders in Fluent-AI, allowing seamless integration into high-level chains (e.g., AgentRoleBuilder::with_model(OpenAI::Gpt4o)).
 
 Research Sources:
 - /Volumes/samsung_t9/fluent-ai/packages/model-info/build.rs
 - /Volumes/samsung_t9/fluent-ai/packages/model-info/buildlib/codegen.rs
 - /Volumes/samsung_t9/fluent-ai/packages/model-info/buildlib/providers/mod.rs
-- /Volumes/samsung_t9/fluent-ai/packages/fluent-ai/ARCHITECTURE.md
+- /Volumes/samsung_t9/fluent-ai/packages/fluent-ai/ARCHITECTURE.md (for fluent builder patterns)
+- /Volumes/samsung_t9/fluent-ai/packages/fluent-ai/examples/agent_role_builder.rs (real-world fluent API examples)
+- https://docs.rs/syn/latest/syn/ (for codegen best practices)
 
 Architectural Notes:
 - Change enum naming in codegen.rs to use customized provider name (e.g., 'OpenAI' for 'openai').
@@ -1941,16 +1943,19 @@ Architectural Notes:
 - Generate additional enums alongside existing ones to avoid breaking changes.
 - Ensure trait impls for new enums.
 - Update any dependent code in fluent-ai to use new syntax where appropriate.
+- Integrate with Fluent-AI's streams-first async: Ensure all generated methods return AsyncStream where appropriate, no Futures.
+- Test fluent chaining: e.g., ModelBuilder::provider(OpenAI).model(OpenAI::Gpt4o).with_capabilities(...)
 
 ### Tasks
 
-- Task 1: Research and define custom enum names for each provider (e.g., map 'openai' to 'OpenAI'). STATUS: PLANNED
+- Task 1: Research and define custom enum names for each provider (e.g., map 'openai' to 'OpenAI'). STATUS: WORKING
 - Task 2: Modify codegen.rs to generate additional enum with new name and variants. STATUS: PLANNED
 - Task 3: Implement trait impl generation for the new enums. STATUS: PLANNED
 - Task 4: Adjust sanitize_ident to optionally use underscores for certain characters if required. STATUS: PLANNED
 - Task 5: Update buildlib/mod.rs to include generation of new enums in the output. STATUS: PLANNED
 - Task 6: Run cargo check in model-info package to verify changes. STATUS: PLANNED
 - Task 7: If compilation succeeds, mark for testing with example builder usage. STATUS: PLANNED
+- Task 8 (NEW): Create an example in /Volumes/samsung_t9/fluent-ai/packages/model-info/examples/ demonstrating fluent builder integration (e.g., chaining with generated enums). STATUS: PLANNED
 # JSON Syntax Support Implementation
 
 ## Critical: Fix JSON Syntax Support for FluentAi Builders

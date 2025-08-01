@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use uuid::Uuid;
 
+use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 use crate::domain::memory::primitives::types::{
     CandleBaseMemory as BaseMemory, CandleMemoryContent as MemoryContent, CandleMemoryError as MemoryError, CandleMemoryResult as MemoryResult, CandleMemoryTypeEnum as MemoryTypeEnum, 
 };
@@ -18,10 +19,10 @@ pub struct MemoryNodeBuilder {
     id: Option<Uuid>,
     memory_type: Option<MemoryTypeEnum>,
     content: Option<MemoryContent>,
-    embedding: Option<Vec<f32>>,
+    embedding: ZeroOneOrMany<f32>,
     importance: Option<f32>,
-    keywords: Vec<Arc<str>>,
-    tags: Vec<Arc<str>>,
+    keywords: OneOrMany<Arc<str>>,
+    tags: OneOrMany<Arc<str>>,
     custom_metadata: HashMap<Arc<str>, serde_json::Value>,
 }
 

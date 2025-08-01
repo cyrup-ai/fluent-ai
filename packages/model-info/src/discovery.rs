@@ -317,8 +317,7 @@ impl ModelDiscoveryRegistry {
     /// # Returns
     /// A stream of refresh status updates and final count
     pub fn refresh_models(&self) -> AsyncStream<usize> {
-        AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
+        AsyncStream::with_channel(|sender| {
                 let mut total_refreshed = 0;
                 
                 // Temporary storage for new model data
@@ -328,7 +327,7 @@ impl ModelDiscoveryRegistry {
                 // Fetch from all providers using streams - collect models from each provider stream
                 for (provider_name, provider) in PROVIDER_NAMES.iter().zip(REGISTRY.providers.iter()) {
                     let model_stream = self.fetch_provider_models(provider);
-                    let models = model_stream.collect::<Vec<_>>().await;
+                    let models = model_stream.collect();
                     
                     if !models.is_empty() {
                         total_refreshed += models.len();
@@ -344,7 +343,7 @@ impl ModelDiscoveryRegistry {
                         new_models_by_provider.insert((*provider_name).to_string(), arc_models);
                         
                         // Send progress update
-                        let _ = sender.send(total_refreshed).await;
+                        let _ = sender.send(total_refreshed);
                     }
                 }
                 
@@ -363,10 +362,8 @@ impl ModelDiscoveryRegistry {
                 self.rebuild_capability_indices();
                 
                 // Send final count
-                let _ = sender.send(total_refreshed).await;
-                
-                Ok(())
-            })
+                let _ = sender.send(total_refreshed);
+
         })
     }
     

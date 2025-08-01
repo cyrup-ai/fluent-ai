@@ -1,5 +1,10 @@
+# Global Cargo configuration for Fluent-AI workspace
+# Enables reqwest_unstable for full HTTP/3 QUIC optimization
+
 [build]
+# Enable reqwest_unstable globally for all packages
 rustflags = ["--cfg", "reqwest_unstable"]
 
 [env]
-CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG = "true"
+# Set environment variable for conditional compilation
+REQWEST_UNSTABLE = "1"

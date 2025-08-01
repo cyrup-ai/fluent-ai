@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use cyrup_sugars::OneOrMany;
 use crate::domain::chat::templates::{
     CandleChatTemplate as ChatTemplate, 
     CandleTemplateCategory as TemplateCategory,
@@ -17,7 +18,7 @@ pub struct TemplateBuilder {
     content: Option<String>,
     description: Option<String>,
     category: TemplateCategory,
-    variables: Vec<String>,
+    variables: OneOrMany<String>,
 }
 
 impl TemplateBuilder {
@@ -28,7 +29,7 @@ impl TemplateBuilder {
             content: None,
             description: None,
             category: TemplateCategory::Chat,
-            variables: Vec::new(),
+            variables: OneOrMany::None,
         }
     }
 
@@ -58,7 +59,7 @@ impl TemplateBuilder {
 
     /// Add a variable to the template
     pub fn variable(mut self, var: impl Into<String>) -> Self {
-        self.variables.push(var.into());
+        self.variables = self.variables.with_pushed(var.into());
         self
     }
 

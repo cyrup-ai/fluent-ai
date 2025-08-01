@@ -5,11 +5,11 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["hashbrown-json"]
-hashbrown-json = []
+default = ["reqwest_unstable"]
 audio = []
 image = ["dep:image"]
 cylo = ["dep:cylo"]
+reqwest_unstable = []
 
 [dependencies]
 cylo = { path = "../cylo", optional = true }

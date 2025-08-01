@@ -1,34 +1,9 @@
 use anyhow::Result;
-use serde::Deserialize;
 use fluent_ai_async::AsyncStream;
 use fluent_ai_http3::{Http3, HttpStreamExt};
-use http::{header, HeaderValue};
+use std::env;
 
-#[derive(Deserialize, Clone, Default)]
-struct ModelDetails {
-    max_tokens: u64,
-    input_price: f64,
-    output_price: f64,
-    supports_thinking: bool,
-    required_temp: Option<f64>,
-}
-
-#[derive(Deserialize)]
-struct OpenAiModelDetails {
-    // Fields from per-model API, if any (e.g., hypothetical)
-    #[serde(default)]
-    max_tokens: Option<u64>,
-    #[serde(default)]
-    input_price: Option<f64>,
-    #[serde(default)]
-    output_price: Option<f64>,
-    #[serde(default)]
-    supports_thinking: Option<bool>,
-    #[serde(default)]
-    required_temp: Option<f64>,
-}
-
-use super::super::codegen::CodeGenerator;
+use super::super::codegen::SynCodeGenerator;
 use super::{ModelData, ProviderBuilder, StandardModelsResponse};
 
 /// OpenAI provider implementation with dynamic API fetching
@@ -52,62 +27,67 @@ impl ProviderBuilder for OpenAiProvider {
 
     fn fetch_models(&self) -> AsyncStream<ModelData> {
         AsyncStream::with_channel(move |sender| {
-            // /v1/models endpoint is PUBLIC - no auth needed
-            let response_data = Http3::json::<StandardModelsResponse>()
-                .get("https://api.openai.com/v1/models")
-                .collect::<StandardModelsResponse>()
-                .into_iter()
-                .next()
-                .unwrap_or_default();
+            let responses = if let Ok(api_key) = env::var("OPENAI_API_KEY") {
+                Http3::json::<StandardModelsResponse>()
+                    .bearer_auth(&api_key)
+                    .get("https://api.openai.com/v1/models")
+                    .collect::<StandardModelsResponse>()
+            } else {
+                Http3::json::<StandardModelsResponse>()
+                    .get("https://api.openai.com/v1/models")
+                    .collect::<StandardModelsResponse>()
+            };
             
-            // Process the collected response data using ONLY what comes from the API
-            for model in response_data.data {
-                let id = model.id;
-                if id.contains("embedding") || id.contains("ft:") {
-                    continue;
+            if let Some(response) = responses.into_iter().next() {
+                for model in response.data {
+                    let model_data = openai_model_to_data(&model.id);
+                    if sender.send(model_data).is_err() {
+                        break;
+                    }
                 }
-                
-                // Use a reasonable default context length since OpenAI API doesn't always provide it
-                let context_length = if id.contains("gpt-4") {
-                    128000 // GPT-4 models typically have 128k context
-                } else if id.contains("gpt-3.5") {
-                    16384 // GPT-3.5 models typically have 16k context  
-                } else {
-                    4096 // Default fallback
-                };
-                
-                // Determine if model supports thinking based on model name
-                let supports_thinking = id.to_lowercase().contains("thinking");
-                
-                // Set default temperature based on thinking support (user can override at runtime)
-                let required_temp = if supports_thinking {
-                    Some(1.0) // Thinking models default to 1.0
-                } else {
-                    Some(0.0) // Non-thinking models default to 0.0
-                };
-                
-                let model_data = (
-                    id,
-                    context_length,
-                    0.0, // Pricing not available in /v1/models endpoint
-                    0.0, // Pricing not available in /v1/models endpoint  
-                    supports_thinking,
-                    required_temp,
-                );
-                let _ = sender.send(model_data);
             }
         })
     }
 
     fn static_models(&self) -> Option<Vec<ModelData>> {
-        // OpenAI supports /v1/models API endpoint - no static models needed
-        None
+        // Minimal fallback models for build resilience when API unavailable
+        // Dynamic fetching is tried FIRST, these are only used as last resort
+        Some(vec![
+            ("gpt-4o".to_string(), 128000, 0.005, 0.015, false, Some(0.0)),
+            ("gpt-4o-mini".to_string(), 128000, 0.00015, 0.0006, false, Some(0.0)),
+            ("gpt-3.5-turbo".to_string(), 16384, 0.001, 0.002, false, Some(0.0)),
+        ])
     }
 
     fn generate_code(&self, models: &[ModelData]) -> Result<(String, String)> {
-        let codegen = CodeGenerator::new(self.provider_name());
+        let codegen = SynCodeGenerator::new(self.provider_name());
         let enum_code = codegen.generate_enum(models)?;
         let impl_code = codegen.generate_trait_impl(models)?;
         Ok((enum_code, impl_code))
+    }
+}
+
+/// Convert OpenAI model ID to ModelData with appropriate pricing and capabilities
+/// Based on current OpenAI pricing as of 2024
+fn openai_model_to_data(model_id: &str) -> ModelData {
+    match model_id {
+        // GPT-4 models
+        "gpt-4" => (model_id.to_string(), 128000, 0.03, 0.06, false, Some(0.0)),
+        "gpt-4-turbo" => (model_id.to_string(), 128000, 0.01, 0.03, false, Some(0.0)),
+        "gpt-4o" => (model_id.to_string(), 128000, 0.005, 0.015, false, Some(0.0)),
+        "gpt-4o-mini" => (model_id.to_string(), 128000, 0.00015, 0.0006, false, Some(0.0)),
+        
+        // GPT-3.5 models
+        "gpt-3.5-turbo" => (model_id.to_string(), 16384, 0.001, 0.002, false, Some(0.0)),
+        "gpt-3.5-turbo-instruct" => (model_id.to_string(), 4096, 0.0015, 0.002, false, Some(0.0)),
+        
+        // Text models
+        "text-davinci-003" => (model_id.to_string(), 4097, 0.02, 0.02, false, Some(0.0)),
+        "text-curie-001" => (model_id.to_string(), 2049, 0.002, 0.002, false, Some(0.0)),
+        "text-babbage-001" => (model_id.to_string(), 2049, 0.0005, 0.0005, false, Some(0.0)),
+        "text-ada-001" => (model_id.to_string(), 2049, 0.0004, 0.0004, false, Some(0.0)),
+        
+        // Default for unknown models
+        _ => (model_id.to_string(), 8192, 0.001, 0.002, false, Some(0.0)),
     }
 }

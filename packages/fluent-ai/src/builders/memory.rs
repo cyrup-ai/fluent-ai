@@ -117,7 +117,7 @@ struct MemoryNodeBuilderImpl {
     id: ZeroOneOrMany<Uuid>,
     memory_type: ZeroOneOrMany<MemoryTypeEnum>,
     content: ZeroOneOrMany<MemoryContent>,
-    embedding: ZeroOneOrMany<Vec<f32>>,
+    embedding: ZeroOneOrMany<OneOrMany<f32>>,
     importance: ZeroOneOrMany<f32>,
     creation_time: ZeroOneOrMany<SystemTime>,
     last_accessed: ZeroOneOrMany<SystemTime>,
@@ -182,9 +182,9 @@ impl MemoryNodeBuilder for MemoryNodeBuilderImpl {
 
     #[inline(always)]
     fn with_embedding(self, embedding: impl Into<ZeroOneOrMany<f32>>) -> impl MemoryNodeBuilder {
-        let embedding_vec: Vec<f32> = embedding.into().into_iter().collect();
+        let embedding_data: OneOrMany<f32> = embedding.into().into();
         MemoryNodeBuilderImpl {
-            embedding: self.embedding.with_pushed(embedding_vec),
+            embedding: self.embedding.with_pushed(embedding_data),
             ..self
         }
     }

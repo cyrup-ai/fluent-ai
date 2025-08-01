@@ -36,6 +36,7 @@ use crate::{
     domain::tool::ToolSet,
     runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
+use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 
 // ============================================================================
 // Error types for builder operations
@@ -182,10 +183,10 @@ pub struct AgentBuilder<M: Model, S, C> {
     system_prompt: Option<String>,
 
     // Context and tools - pre-allocated for zero-alloc hot-path
-    static_context: Vec<Document>,
-    static_tools_by_id: Vec<String>,
-    dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
-    dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+    static_context: OneOrMany<Document>,
+    static_tools_by_id: OneOrMany<String>,
+    dynamic_context: OneOrMany<(usize, Box<dyn VectorStoreIndexDyn>)>,
+    dynamic_tools: OneOrMany<(usize, Box<dyn VectorStoreIndexDyn>)>,
     toolset: ToolSet,
 
     // Runtime configuration
@@ -214,10 +215,10 @@ impl<M: Model> AgentBuilder<M, MissingSys, MissingCtx> {
             model: Some(ModelAdapter::new(model_variant)),
             model_name: Some(model_name),
             system_prompt: None,
-            static_context: Vec::with_capacity(4), // Pre-allocate for hot-path
-            static_tools_by_id: Vec::with_capacity(4),
-            dynamic_context: Vec::new(),
-            dynamic_tools: Vec::new(),
+            static_context: OneOrMany::None,
+            static_tools_by_id: OneOrMany::None,
+            dynamic_context: OneOrMany::None,
+            dynamic_tools: OneOrMany::None,
             toolset: ToolSet::default(),
             temperature: None,
             max_tokens: None,
@@ -256,7 +257,7 @@ impl<M: Model> AgentBuilder<M, (), MissingCtx> {
     /// Add context - transitions to Ready state
     #[inline(always)]
     pub fn context(mut self, doc: impl Into<String>) -> AgentBuilder<M, (), Ready> {
-        self.static_context.push(Document {
+        self.static_context = self.static_context.with_pushed(Document {
             content: doc.into()});
         AgentBuilder {
             model: self.model,
@@ -283,7 +284,7 @@ impl<M: Model> AgentBuilder<M, (), MissingCtx> {
         sample: usize,
         store: impl VectorStoreIndexDyn + 'static,
     ) -> AgentBuilder<M, (), Ready> {
-        self.dynamic_context.push((sample, Box::new(store)));
+        self.dynamic_context = self.dynamic_context.with_pushed((sample, Box::new(store)));
         AgentBuilder {
             model: self.model,
             model_name: self.model_name,
@@ -311,7 +312,7 @@ impl<M: Model> AgentBuilder<M, (), Ready> {
         let instance = T::default(); // Assuming Tool has Default trait
         let name = T::NAME.to_string();
         self.toolset.add_tool(instance);
-        self.static_tools_by_id.push(name);
+        self.static_tools_by_id = self.static_tools_by_id.with_pushed(name);
         self
     }
 
@@ -348,7 +349,7 @@ impl<M: Model> AgentBuilder<M, (), Ready> {
             .system_prompt
             .ok_or(AgentBuilderError::MissingSystemPrompt)?;
 
-        if self.static_context.is_empty() && self.dynamic_context.is_empty() {
+        if self.static_context.is_none() && self.dynamic_context.is_none() {
             return Err(AgentBuilderError::MissingContext);
         }
 
