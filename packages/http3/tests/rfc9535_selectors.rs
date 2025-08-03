@@ -244,7 +244,8 @@ mod index_selector_tests {
                 "Index [{}] should select one element",
                 expected_index
             );
-            if let Ok(ref value) = results[0] {
+            {
+                let value = &results[0];
                 assert_eq!(value, expected_value, "Should select correct value");
             }
         }
@@ -273,7 +274,8 @@ mod index_selector_tests {
                 "Negative index '{}' should select one element",
                 expr
             );
-            if let Ok(ref value) = results[0] {
+            {
+                let value = &results[0];
                 assert_eq!(
                     value, expected_value,
                     "Should select correct value from end"

@@ -239,7 +239,7 @@ mod full_spec_integration {
             );
 
             let mut stream =
-                JsonArrayStream::<serde_json::Value>::new(expr).expect("Valid Unicode JSONPath");
+                JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(unicode_json);
             let results: Vec<_> = stream.process_chunk(chunk).collect();

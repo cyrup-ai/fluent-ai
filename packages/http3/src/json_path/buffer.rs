@@ -117,6 +117,12 @@ impl StreamBuffer {
         self.buffer.len()
     }
 
+    /// Get current buffer capacity in bytes
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.buffer.capacity()
+    }
+
     /// Get total bytes processed since creation
     #[inline]
     pub fn total_bytes_processed(&self) -> u64 {
@@ -207,6 +213,18 @@ impl StreamBuffer {
             utilization_ratio: self.buffer.len() as f64 / self.buffer.capacity() as f64,
         }
     }
+
+    /// Get detailed capacity management statistics for advanced monitoring
+    pub fn capacity_stats(&self) -> CapacityStats {
+        CapacityStats {
+            initial_capacity: self.capacity_manager.initial_capacity,
+            max_capacity: self.capacity_manager.max_capacity,
+            current_capacity: self.buffer.capacity(),
+            growth_operations: self.capacity_manager.growth_operations,
+            last_shrink_size: self.capacity_manager.last_shrink_size,
+            can_shrink: self.capacity_manager.growth_operations >= self.capacity_manager.hysteresis_threshold,
+        }
+    }
 }
 
 impl Default for StreamBuffer {
@@ -266,12 +284,19 @@ impl<'a> BufferReader<'a> {
 /// Intelligent buffer capacity management
 ///
 /// Handles buffer growth and shrinking based on usage patterns to minimize
-/// memory usage while avoiding frequent reallocations.
+/// memory usage while avoiding frequent reallocations. Includes hysteresis
+/// to prevent size thrashing and adaptive growth patterns.
 struct CapacityManager {
     initial_capacity: usize,
     max_capacity: usize,
     growth_factor: f64,
     shrink_threshold: f64,
+    /// Last time buffer was shrunk to prevent thrashing
+    last_shrink_size: Option<usize>,
+    /// Number of growth operations since last shrink
+    growth_operations: u32,
+    /// Minimum operations before allowing shrink after growth
+    hysteresis_threshold: u32,
 }
 
 impl CapacityManager {
@@ -281,6 +306,9 @@ impl CapacityManager {
             max_capacity: initial_capacity * 16, // Max 16x growth
             growth_factor: 2.0,
             shrink_threshold: 0.25, // Shrink when less than 25% utilized
+            last_shrink_size: None,
+            growth_operations: 0,
+            hysteresis_threshold: 3, // Wait for 3 growth ops before allowing shrink
         }
     }
 
@@ -299,6 +327,9 @@ impl CapacityManager {
             );
 
             buffer.reserve(new_capacity - current_capacity);
+            
+            // Track growth operation for hysteresis
+            self.growth_operations = self.growth_operations.saturating_add(1);
         }
     }
 
@@ -307,26 +338,60 @@ impl CapacityManager {
         let size = buffer.len();
         let utilization = size as f64 / capacity as f64;
 
+        // Hysteresis check: don't shrink immediately after growing
+        if self.growth_operations < self.hysteresis_threshold {
+            return;
+        }
+
+        // Don't shrink to a size we recently shrunk from (prevents oscillation)
+        if let Some(last_shrink) = self.last_shrink_size {
+            if capacity <= last_shrink * 2 {
+                return;
+            }
+        }
+
         // Only shrink if significantly under-utilized and above initial capacity
-        if utilization < self.shrink_threshold && capacity > self.initial_capacity * 2 {
+        // Additional check: only shrink if we can save significant memory (at least 8KB)
+        if utilization < self.shrink_threshold 
+            && capacity > self.initial_capacity * 2 
+            && capacity > size + 8192 {
+            
             let target_capacity = std::cmp::max(
                 self.initial_capacity,
                 (size as f64 / self.shrink_threshold) as usize,
             );
 
-            // TODO: Implement actual buffer shrinking when BytesMut supports it
-            log::debug!(
-                "Buffer shrinking recommended: current={}, target={}",
-                capacity,
-                target_capacity
-            );
-            // For now, just track that shrinking would be beneficial
-            // In a full implementation, we'd use a custom allocator or buffer pool
+            // Only proceed if the saving is significant (at least 50% capacity reduction)
+            if target_capacity < capacity / 2 {
+                // Create new buffer with optimal capacity
+                let mut new_buffer = BytesMut::with_capacity(target_capacity);
+                
+                // Zero-copy the existing data into the new buffer
+                if size > 0 {
+                    new_buffer.extend_from_slice(&buffer[..size]);
+                }
+                
+                // Replace the old buffer with the optimized one
+                *buffer = new_buffer;
+                
+                // Update shrink tracking
+                self.last_shrink_size = Some(capacity);
+                self.growth_operations = 0; // Reset growth counter after shrink
+                
+                log::debug!(
+                    "Buffer shrunk: {} bytes -> {} bytes (saved {} bytes)",
+                    capacity,
+                    target_capacity,
+                    capacity - target_capacity
+                );
+            }
         }
     }
 
     fn reset(&mut self) {
         // Reset capacity management state for new stream
+        self.last_shrink_size = None;
+        self.growth_operations = 0;
     }
 }
 
@@ -341,6 +406,23 @@ pub struct BufferStats {
     pub total_processed: u64,
     /// Buffer utilization ratio (0.0 to 1.0)
     pub utilization_ratio: f64,
+}
+
+/// Detailed capacity management statistics for advanced monitoring
+#[derive(Debug, Clone, Copy)]
+pub struct CapacityStats {
+    /// Initial buffer capacity
+    pub initial_capacity: usize,
+    /// Maximum allowed capacity
+    pub max_capacity: usize,
+    /// Current buffer capacity
+    pub current_capacity: usize,
+    /// Number of growth operations since last shrink
+    pub growth_operations: u32,
+    /// Size of buffer when it was last shrunk
+    pub last_shrink_size: Option<usize>,
+    /// Whether buffer is eligible for shrinking
+    pub can_shrink: bool,
 }
 
 /// Legacy alias for backward compatibility

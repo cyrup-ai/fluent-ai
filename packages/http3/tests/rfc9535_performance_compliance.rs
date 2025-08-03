@@ -192,7 +192,6 @@ mod large_dataset_tests {
             let chunk = Bytes::from(json_data.clone());
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             let duration = start_time.elapsed();
@@ -307,7 +306,7 @@ mod large_dataset_tests {
             let mut count = 0;
 
             // Process items one by one to verify streaming
-            for result in stream.process_chunk(chunk) {
+            for result in stream.process_chunk(chunk).collect() {
                 match result {
                     Ok(_item) => count += 1,
                     Err(_) => break,
@@ -615,7 +614,7 @@ mod streaming_tests {
         let mut timing_checkpoints = Vec::new();
 
         // Process results and record timing at regular intervals
-        for result in stream.process_chunk(chunk) {
+        for result in stream.process_chunk(chunk).collect() {
             match result {
                 Ok(_item) => {
                     result_count += 1;
@@ -683,7 +682,7 @@ mod streaming_tests {
 
         // Process large strings without accumulating them all in memory
         let mut processed_count = 0;
-        for result in stream.process_chunk(chunk) {
+        for result in stream.process_chunk(chunk).collect() {
             match result {
                 Ok(large_string) => {
                     // Verify string content without storing it

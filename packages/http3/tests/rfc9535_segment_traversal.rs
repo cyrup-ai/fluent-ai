@@ -160,7 +160,6 @@ mod descendant_ordering_tests {
         let chunk = Bytes::from(json_data);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 3, "Should find all three target values");
@@ -240,7 +239,6 @@ mod descendant_ordering_tests {
         let chunk = Bytes::from(json_data);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 3, "Should find all type fields");
@@ -288,7 +286,6 @@ mod array_object_traversal_tests {
         let chunk = Bytes::from(json_data);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 4, "Should find all array indices");
@@ -321,7 +318,6 @@ mod array_object_traversal_tests {
         let chunk = Bytes::from(json_data);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 4, "Should find all object members");
@@ -436,7 +432,8 @@ mod array_object_traversal_tests {
         let mut found_array = 0;
 
         for result in results {
-            if let Ok(value) = result {
+            {
+                let value = result;
                 if value.is_object() {
                     found_object += 1;
                 } else if value.is_array() {
@@ -480,7 +477,6 @@ mod non_deterministic_tests {
         let chunk = Bytes::from(json_data.clone());
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 5, "Should find all 5 property values");
@@ -494,7 +490,6 @@ mod non_deterministic_tests {
         let chunk = Bytes::from(json_data);
         let second_results: Vec<_> = stream2
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(
@@ -985,7 +980,6 @@ mod consistency_tests {
         let chunk = Bytes::from(json_data.clone());
         let array_results: Vec<_> = array_stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(array_results.len(), 3, "Should find all array indices");
@@ -1005,7 +999,6 @@ mod consistency_tests {
         let chunk = Bytes::from(json_data);
         let object_results: Vec<_> = object_stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(object_results.len(), 3, "Should find all object orders");

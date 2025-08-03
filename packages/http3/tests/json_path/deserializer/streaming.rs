@@ -18,11 +18,11 @@ mod streaming_tests {
 
     #[test]
     fn test_jsonpath_stream_creation() {
-        let stream = JsonArrayStream::<TestModel>::new("$.data[*]");
-        assert!(stream.is_ok());
+        let _stream = JsonArrayStream::<TestModel>::new("$.data[*]");
+        // Stream creation now always succeeds, invalid paths are handled internally
 
-        let invalid_stream = JsonArrayStream::<TestModel>::new("$.invalid[syntax");
-        assert!(invalid_stream.is_err());
+        let _invalid_stream = JsonArrayStream::<TestModel>::new("$.invalid[syntax");
+        // Invalid JSONPath expressions are handled via error emission, stream creation still succeeds
     }
 
     #[test]
@@ -35,7 +35,7 @@ mod streaming_tests {
         let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(results.len(), 2);
 
-        let first = results[0].as_ref().expect("Valid deserialization");
+        let first = &results[0];
         assert_eq!(first.id, "test1");
         assert_eq!(first.value, 42);
     }
@@ -50,7 +50,7 @@ mod streaming_tests {
         let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(results.len(), 1);
 
-        let item = results[0].as_ref().expect("Valid deserialization");
+        let item = &results[0];
         assert_eq!(item.id, "nested1");
         assert_eq!(item.value, 100);
     }

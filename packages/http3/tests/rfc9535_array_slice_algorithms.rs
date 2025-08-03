@@ -643,7 +643,6 @@ mod algorithm_compliance_validation {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             println!(

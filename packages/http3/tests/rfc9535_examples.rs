@@ -72,7 +72,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         let expected_authors = vec![
@@ -100,7 +99,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(
@@ -143,13 +141,11 @@ mod rfc_examples_tests {
         let mut has_book_array = false;
         let mut has_bicycle = false;
 
-        for result in results {
-            if let Ok(value) = result {
-                if value.is_array() {
-                    has_book_array = true;
-                } else if value.is_object() && value.get("color").is_some() {
-                    has_bicycle = true;
-                }
+        for value in results {
+            if value.is_array() {
+                has_book_array = true;
+            } else if value.is_object() && value.get("color").is_some() {
+                has_bicycle = true;
             }
         }
 
@@ -165,7 +161,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(
@@ -189,7 +184,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 1, "Should find exactly one book");
@@ -211,7 +205,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 1, "Should find exactly one book");
@@ -233,7 +226,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 2, "Should find exactly two books");
@@ -257,7 +249,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 2, "Should find exactly two books");
@@ -281,7 +272,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 2, "Should find 2 books with ISBN");
@@ -310,7 +300,6 @@ mod rfc_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 2, "Should find 2 books cheaper than 10");
@@ -349,7 +338,6 @@ mod extended_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 3, "Should find 3 fiction books");
@@ -367,7 +355,6 @@ mod extended_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 1, "Should find 1 expensive book");
@@ -392,7 +379,6 @@ mod extended_examples_tests {
             let chunk = Bytes::from(BOOKSTORE_JSON);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -419,7 +405,6 @@ mod extended_examples_tests {
             let chunk = Bytes::from(BOOKSTORE_JSON);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -440,7 +425,6 @@ mod extended_examples_tests {
         let chunk = Bytes::from(BOOKSTORE_JSON);
         let results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(results.len(), 1, "Should find the bicycle");

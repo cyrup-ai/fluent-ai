@@ -41,8 +41,7 @@ mod length_function_tests {
         ];
 
         for (expr, expected_count) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -70,8 +69,7 @@ mod length_function_tests {
         ];
 
         for (expr, expected_count) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -99,8 +97,7 @@ mod length_function_tests {
         ];
 
         for (expr, expected_count) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -119,8 +116,7 @@ mod length_function_tests {
             {"value": [1, 2, 3]}
         ]}"#;
         
-        let mut stream = JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]")
-            ;
+        let mut stream = JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]");
         
         let chunk = Bytes::from(json_data);
         let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -164,8 +160,7 @@ mod length_function_tests {
         ];
 
         for (expr, expected_count) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -193,8 +188,7 @@ mod length_function_tests {
         ];
 
         for (expr, expected_count) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -232,8 +226,7 @@ mod length_function_tests {
         for (expr, expected_count) in test_cases {
             let start_time = std::time::Instant::now();
             
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data.clone());
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -271,8 +264,7 @@ mod length_function_tests {
         ];
 
         for (expr, expected_count) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                ;
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -342,8 +334,7 @@ mod length_error_tests {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => {
-                    let mut stream = JsonArrayStream::<serde_json::Value>::new(expr)
-                        ;
+                    let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     
                     let chunk = Bytes::from(json_data);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -354,7 +345,6 @@ mod length_error_tests {
                 Err(_) => {
                     // Complex expressions not supported is acceptable
                 }
-            }
             }
         }
     }

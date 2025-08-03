@@ -95,7 +95,7 @@ mod ast_construction_tests {
             let mut results_sets = Vec::new();
 
             for path in path_group {
-                let mut stream = JsonArrayStream::<String>::new(path).expect("Valid JSONPath AST");
+                let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
                 let results: Vec<_> = stream
@@ -238,9 +238,9 @@ mod ast_segment_tests {
         }"#;
 
         let mut child_stream =
-            JsonArrayStream::<String>::new("$.level1['target']").expect("Valid JSONPath AST");
+            JsonArrayStream::<String>::new("$.level1['target']");
         let mut descendant_stream =
-            JsonArrayStream::<String>::new("$..['target']").expect("Valid JSONPath AST");
+            JsonArrayStream::<String>::new("$..['target']");
 
         let chunk = Bytes::from(json_data);
 

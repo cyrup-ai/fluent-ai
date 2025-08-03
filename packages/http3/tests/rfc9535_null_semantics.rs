@@ -48,10 +48,313 @@ mod null_vs_missing_tests {
                 "Properties that exist (including null)",
             ),
             (
-                "$.items[?@.name]",
-                3,
-                "Name properties that exist (including null)",
+                "$.items[?@.missing]",
+                0,
+                "Properties that don't exist",
             ),
+            // Test for null comparisons
+            (
+                "$.items[?@.value == null]",
+                1,
+                "Explicit null comparison",
+            ),
+            (
+                "$.items[?@.name == null]",
+                1,
+                "Explicit null comparison for name",
+            ),
+            // Test for non-null values
+            (
+                "$.items[?@.value != null]",
+                2,
+                "Non-null values",
+            ),
+            (
+                "$.items[?@.name != null]",
+                3,
+                "Non-null names",
+            ),
+        ];
+
+        for (expr, expected_count, description) in test_cases {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(json_data);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "Null vs missing test '{}' should return {} results: {}", 
+                expr, expected_count, description);
+        }
+    }
+
+    #[test]
+    fn test_null_in_array_and_object_access() {
+        // RFC 9535 Section 2.6: null used as array/object access should yield Nothing
+        let json_data = r#"{
+            "data": {
+                "array_with_null": [1, null, 3],
+                "object_with_null": {"key": null, "other": "value"},
+                "null_value": null,
+                "nested": {
+                    "null_array": [null, null, null],
+                    "mixed": [{"a": null}, null, {"b": "value"}]
+                }
+            }
+        }"#;
+
+        let null_access_tests = vec![
+            // Array access on null should yield Nothing (empty result)
+            ("$.data.null_value[0]", 0, "Array access on null value"),
+            ("$.data.null_value[*]", 0, "Wildcard access on null value"),
+            ("$.data.null_value[:5]", 0, "Slice access on null value"),
+            
+            // Object access on null should yield Nothing
+            ("$.data.null_value.property", 0, "Property access on null value"),
+            ("$.data.null_value.*", 0, "Wildcard property access on null"),
+            ("$.data.null_value['key']", 0, "Bracket property access on null"),
+            
+            // Null elements in arrays
+            ("$.data.array_with_null[1]", 1, "Access null element in array"),
+            ("$.data.array_with_null[*]", 3, "All elements including null"),
+            ("$.data.nested.null_array[*]", 3, "Array of all nulls"),
+            
+            // Object properties with null values
+            ("$.data.object_with_null.key", 1, "Access property with null value"),
+            ("$.data.object_with_null.*", 2, "All properties including null"),
+            
+            // Chained access through null
+            ("$.data.null_value.nested.property", 0, "Chained access through null"),
+            ("$.data.array_with_null[1].property", 0, "Property access on null array element"),
+            
+            // Mixed scenarios
+            ("$.data.nested.mixed[1].property", 0, "Property access on null in mixed array"),
+            ("$.data.nested.mixed[*].a", 1, "Property access on mixed array with nulls"),
+        ];
+
+        for (expr, expected_count, description) in null_access_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(json_data);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "Null access test '{}' should return {} results: {}", 
+                expr, expected_count, description);
+        }
+    }
+
+    #[test]
+    fn test_null_vs_nothing_in_filters() {
+        // RFC 9535: Test null vs Nothing distinction in filter expressions
+        let json_data = r#"{
+            "records": [
+                {"id": 1, "status": "active", "score": 85},
+                {"id": 2, "status": null, "score": 90},
+                {"id": 3, "status": "inactive", "score": null},
+                {"id": 4, "score": 95},
+                {"id": 5, "status": "active"},
+                {"id": 6, "status": null}
+            ]
+        }"#;
+
+        let null_filter_tests = vec![
+            // Existence tests (should find properties that exist, even if null)
+            ("$.records[?@.status]", 4, "Records with status property (including null)"),
+            ("$.records[?@.score]", 4, "Records with score property (including null)"),
+            
+            // Null value tests (explicit null comparison)
+            ("$.records[?@.status == null]", 2, "Records with null status"),
+            ("$.records[?@.score == null]", 1, "Records with null score"),
+            
+            // Non-null tests
+            ("$.records[?@.status != null]", 2, "Records with non-null status"),
+            ("$.records[?@.score != null]", 3, "Records with non-null score"),
+            
+            // Missing property tests (properties that don't exist)
+            ("$.records[?!@.status]", 2, "Records without status property"),
+            ("$.records[?!@.score]", 2, "Records without score property"),
+            
+            // Complex logical combinations
+            ("$.records[?@.status && @.status != null]", 2, "Non-null status (exists and not null)"),
+            ("$.records[?@.score && @.score != null]", 3, "Non-null score (exists and not null)"),
+            ("$.records[?@.status == null || !@.status]", 4, "Null status or missing status"),
+            ("$.records[?@.score == null || !@.score]", 3, "Null score or missing score"),
+            
+            // Type checking with null
+            ("$.records[?@.status == 'active']", 2, "String comparison ignoring null"),
+            ("$.records[?@.score > 80]", 3, "Numeric comparison ignoring null"),
+        ];
+
+        for (expr, expected_count, description) in null_filter_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(json_data);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "Null filter test '{}' should return {} results: {}", 
+                expr, expected_count, description);
+        }
+    }
+
+    #[test]
+    fn test_function_behavior_with_null() {
+        // RFC 9535: Test function behavior when encountering null values
+        let json_data = r#"{
+            "data": [
+                {"text": "hello", "items": [1, 2, 3], "flag": true},
+                {"text": null, "items": [4, 5], "flag": false},
+                {"text": "world", "items": null, "flag": null},
+                {"text": "", "items": [], "flag": true},
+                {"items": [6, 7, 8]}
+            ]
+        }"#;
+
+        let function_null_tests = vec![
+            // length() function with null
+            ("$.data[?length(@.text) > 0]", 2, "length() with null text (should skip null)"),
+            ("$.data[?length(@.items) > 0]", 3, "length() with null array (should skip null)"),
+            
+            // count() function with null
+            ("$.data[?count(@.items[*]) > 2]", 2, "count() with null array (should skip null)"),
+            ("$.data[?count(@.items[*]) == 0]", 1, "count() with empty vs null array"),
+            
+            // match() function with null (if implemented)
+            ("$.data[?match(@.text, 'hello')]", 1, "match() with null text (should skip null)"),
+            
+            // value() function with null
+            ("$.data[?value(@.flag)]", 2, "value() with null boolean (should handle null)"),
+            ("$.data[?value(@.text)]", 2, "value() with null string (should handle null)"),
+            
+            // Nested property access with null
+            ("$.data[?@.text.length]", 0, "Property access on null (should yield Nothing)"),
+            ("$.data[?@.items[0]]", 3, "Array access with some null arrays"),
+        ];
+
+        for (expr, expected_count, description) in function_null_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(json_data);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            println!("Function null test '{}' returned {} results (expected {}) - {}",
+                expr, results.len(), expected_count, description);
+        }
+    }
+
+    #[test]
+    fn test_null_propagation_through_expressions() {
+        // RFC 9535: Test how null values propagate through JSONPath expressions
+        let json_data = r#"{
+            "root": {
+                "branch1": {
+                    "leaf": "value1"
+                },
+                "branch2": null,
+                "branch3": {
+                    "leaf": null
+                },
+                "branch4": {
+                    "subbranch": null
+                }
+            }
+        }"#;
+
+        let null_propagation_tests = vec![
+            // Direct null access
+            ("$.root.branch2", 1, "Direct access to null property"),
+            ("$.root.branch3.leaf", 1, "Access to property with null value"),
+            
+            // Null propagation in chains
+            ("$.root.branch2.anything", 0, "Chain through null (should yield Nothing)"),
+            ("$.root.branch4.subbranch.anything", 0, "Chain through null subbranch"),
+            ("$.root.branch2[0]", 0, "Array access on null"),
+            ("$.root.branch2.*", 0, "Wildcard on null"),
+            
+            // Descendant search through null
+            ("$..leaf", 2, "Descendant search finds leaves (including null)"),
+            ("$..anything", 0, "Descendant search for non-existent"),
+            ("$.root.branch2..anything", 0, "Descendant from null"),
+            
+            // Wildcard behavior with null
+            ("$.root.*", 4, "Root wildcard includes null branch"),
+            ("$.root.*.leaf", 2, "Wildcard then property (null branch yields Nothing)"),
+            ("$.root.branch2.*", 0, "Wildcard on null property"),
+            
+            // Array access patterns
+            ("$.root['branch2']", 1, "Bracket access to null property"),
+            ("$.root['branch2']['anything']", 0, "Bracket chain through null"),
+        ];
+
+        for (expr, expected_count, description) in null_propagation_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(json_data);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "Null propagation test '{}' should return {} results: {}", 
+                expr, expected_count, description);
+        }
+    }
+
+    #[test]
+    fn test_null_semantics_edge_cases() {
+        // RFC 9535: Test edge cases in null semantics
+        let json_data = r#"{
+            "edge_cases": {
+                "null_string": "null",
+                "empty_string": "",
+                "zero": 0,
+                "false_value": false,
+                "actual_null": null,
+                "nested_nulls": {
+                    "level1": {
+                        "level2": null
+                    }
+                },
+                "array_of_nulls": [null, null, null],
+                "mixed_array": [0, "", false, null, "null"]
+            }
+        }"#;
+
+        let edge_case_tests = vec![
+            // Distinguish null from similar values
+            ("$.edge_cases[?@ == null]", 0, "Root level null comparison"),
+            ("$.edge_cases.actual_null", 1, "Access actual null property"),
+            ("$.edge_cases[?@.actual_null == null]", 1, "Compare property to null"),
+            
+            // String "null" vs actual null
+            ("$.edge_cases[?@.null_string == 'null']", 1, "String 'null' comparison"),
+            ("$.edge_cases[?@.null_string == null]", 0, "String 'null' vs actual null"),
+            
+            // Falsy values vs null
+            ("$.edge_cases[?@.empty_string == null]", 0, "Empty string vs null"),
+            ("$.edge_cases[?@.zero == null]", 0, "Zero vs null"),
+            ("$.edge_cases[?@.false_value == null]", 0, "False vs null"),
+            
+            // Null in nested structures
+            ("$..level2", 1, "Descendant search finds null value"),
+            ("$..level2.anything", 0, "Property access on found null"),
+            
+            // Array of nulls
+            ("$.edge_cases.array_of_nulls[*]", 3, "All null array elements"),
+            ("$.edge_cases.array_of_nulls[?@ == null]", 3, "Filter null array elements"),
+            ("$.edge_cases.array_of_nulls[?@ != null]", 0, "Filter non-null from null array"),
+            
+            // Mixed array with null
+            ("$.edge_cases.mixed_array[?@ == null]", 1, "Find null in mixed array"),
+            ("$.edge_cases.mixed_array[?@ == 'null']", 1, "Find string 'null' in mixed array"),
+            ("$.edge_cases.mixed_array[?@ != null && @ != '']", 3, "Non-null, non-empty values"),
+        ];
+
+        for (expr, expected_count, description) in edge_case_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(json_data);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "Null edge case test '{}' should return {} results: {}", 
+                expr, expected_count, description);
+        }
+    }
+}
             // Test for null values specifically
             (
                 "$.items[?@.value == null]",

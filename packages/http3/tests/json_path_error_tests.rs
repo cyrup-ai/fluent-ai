@@ -3,7 +3,7 @@
 //! Tests for the JSONPath error handling, moved from src/json_path/error.rs
 
 use fluent_ai_http3::json_path::error::{
-    JsonPathError, JsonPathErrorExt, JsonPathResult, invalid_expression_error,
+    JsonPathError, JsonPathResultExt, JsonPathResult, invalid_expression_error,
 };
 
 #[cfg(test)]
@@ -20,17 +20,25 @@ mod error_tests {
     }
 
     #[test]
-    fn test_error_context_chaining() {
-        let result: JsonPathResult<()> = Err(JsonPathError::StreamError {
+    fn test_error_result_extension_methods() {
+        let result: JsonPathResult<String> = Err(JsonPathError::StreamError {
             message: "test error".to_string(),
             state: "initial".to_string(),
             recoverable: true,
         });
 
-        let with_context = result.with_stream_context("parsing");
-        assert!(
-            matches!(with_context, Err(JsonPathError::StreamError { state, .. }) if state == "parsing")
-        );
+        // Test handle_or_default method
+        let default_value = result.handle_or_default("fallback".to_string());
+        assert_eq!(default_value, "fallback");
+
+        // Test handle_or_log method
+        let error_result: JsonPathResult<i32> = Err(JsonPathError::InvalidExpression {
+            expression: "$.invalid".to_string(),
+            reason: "test".to_string(),
+            position: None,
+        });
+        let logged_value = error_result.handle_or_log("test context", 42);
+        assert_eq!(logged_value, 42);
     }
 
     #[test]

@@ -493,7 +493,6 @@ mod path_uniqueness_tests {
                 let chunk = Bytes::from(json_data);
                 let results: Vec<_> = stream
                     .process_chunk(chunk)
-                    .map(|r| r.expect("Valid deserialization"))
                     .collect();
 
                 results_sets.push(results);

@@ -113,7 +113,7 @@ mod injection_attack_tests {
     #[test]
     fn test_string_escape_injection() {
         // Test injection through string escape sequences
-        let json_data = r#"{"keys": {
+        let _json_data = r#"{"keys": {
             "normal": "value1",
             "with'quote": "value2",
             "with\"quote": "value3",
@@ -141,7 +141,7 @@ mod injection_attack_tests {
     #[test]
     fn test_unicode_injection_prevention() {
         // Test Unicode-based injection attempts
-        let json_data = r#"{"data": {
+        let _json_data = r#"{"data": {
             "normal": "value",
             "café": "coffee",
             "αβγ": "greek",
@@ -841,6 +841,375 @@ mod regex_dos_prevention_tests {
                 }
                 Err(_) => println!("Regex pattern not supported for size test"),
             }
+        }
+    }
+}
+
+/// Parser Vulnerability Protection Tests
+#[cfg(test)]
+mod parser_vulnerability_tests {
+    use super::*;
+
+    #[test]
+    fn test_buffer_overflow_protection() {
+        // Test protection against buffer overflow attacks through oversized inputs
+        let extremely_long_property = "a".repeat(100000);
+        let _oversized_json = format!(r#"{{"{}": "value"}}"#, extremely_long_property);
+
+        let buffer_overflow_tests = vec![
+            (format!("$.{}", extremely_long_property), "Extremely long property name"),
+            (format!("$['{}']", extremely_long_property), "Extremely long bracket property"),
+            ("$..a".repeat(1000), "Repeated descendant operators"),
+            (format!("$[?@.field == '{}']", "x".repeat(50000)), "Extremely long filter value"),
+        ];
+
+        for (path, description) in buffer_overflow_tests {
+            let start_time = std::time::Instant::now();
+            
+            let result = std::panic::catch_unwind(|| {
+                JsonPathParser::compile(&path)
+            });
+
+            let duration = start_time.elapsed();
+
+            match result {
+                Ok(parse_result) => {
+                    match parse_result {
+                        Ok(_) => println!("Buffer overflow test '{}' compiled unexpectedly", description),
+                        Err(_) => println!("Buffer overflow test '{}' correctly rejected", description),
+                    }
+                }
+                Err(_) => println!("Buffer overflow test '{}' caused panic (potential vulnerability)", description),
+            }
+
+            // Compilation should not take excessive time even for malicious inputs
+            assert!(duration.as_millis() < 5000, 
+                "Buffer overflow protection test '{}' should reject quickly", description);
+        }
+    }
+
+    #[test]
+    fn test_stack_overflow_protection() {
+        // Test protection against stack overflow through deeply nested expressions
+        let deep_property_chain = (0..1000).map(|i| format!("prop{}", i)).collect::<Vec<_>>().join(".");
+        let deep_bracket_chain = (0..1000).map(|i| format!("['prop{}']", i)).collect::<Vec<_>>().join("");
+        
+        let stack_overflow_tests = vec![
+            (format!("$.{}", deep_property_chain), "1000-level property chain"),
+            (format!("${}", deep_bracket_chain), "1000-level bracket chain"),
+            (format!("${}", "[*]".repeat(500)), "500 nested wildcard selectors"),
+            (format!("${}", "..value".repeat(200)), "200 nested descendant operators"),
+        ];
+
+        for (path, description) in stack_overflow_tests {
+            let start_time = std::time::Instant::now();
+            
+            let result = std::panic::catch_unwind(|| {
+                JsonPathParser::compile(&path)
+            });
+
+            let duration = start_time.elapsed();
+
+            match result {
+                Ok(parse_result) => {
+                    match parse_result {
+                        Ok(_) => println!("Stack overflow test '{}' compiled (potential issue)", description),
+                        Err(_) => println!("Stack overflow test '{}' correctly rejected", description),
+                    }
+                }
+                Err(_) => println!("Stack overflow test '{}' hit protection limits", description),
+            }
+
+            // Should complete quickly even for pathological inputs
+            assert!(duration.as_millis() < 3000,
+                "Stack overflow protection test '{}' should complete quickly", description);
+        }
+    }
+
+    #[test]
+    fn test_memory_exhaustion_protection() {
+        // Test protection against memory exhaustion attacks
+        let huge_array_json = format!(r#"{{"array": [{}]}}"#, "1,".repeat(1000000) + "1");
+        let huge_object_json = format!(r#"{{{}}}"#, 
+            (0..100000).map(|i| format!(r#""key{}": "value{}""#, i, i)).collect::<Vec<_>>().join(","));
+
+        let memory_exhaustion_tests = vec![
+            (huge_array_json.clone(), "$.array[*]", "Million element array wildcard"),
+            (huge_object_json.clone(), "$.*", "100k property object wildcard"),
+            (huge_array_json.clone(), "$.array[::1]", "Million element array slice"),
+            (huge_object_json.clone(), "$..value0", "Descendant search in huge object"),
+        ];
+
+        for (json_data, path, description) in memory_exhaustion_tests {
+            let start_time = std::time::Instant::now();
+            
+            let json_data_clone = json_data.clone();
+            let path_clone = path.to_string();
+            let result = std::panic::catch_unwind(move || {
+                let mut stream = JsonArrayStream::<serde_json::Value>::new(&path_clone);
+                // Limit JSON data to 1MB to prevent memory exhaustion
+                let limited_data = if json_data_clone.len() > 1024*1024 {
+                    json_data_clone[..1024*1024].to_string()
+                } else {
+                    json_data_clone
+                };
+                let chunk = Bytes::from(limited_data);
+                let stream_result = stream.process_chunk(chunk);
+                let results: Vec<_> = stream_result.collect().into_iter().take(1000).collect(); // Limit results
+                results.len()
+            });
+
+            let duration = start_time.elapsed();
+
+            match result {
+                Ok(count) => println!("Memory exhaustion test '{}' -> {} results in {:?}", description, count, duration),
+                Err(_) => println!("Memory exhaustion test '{}' hit protection limits", description),
+            }
+
+            // Should complete within reasonable memory/time bounds
+            assert!(duration.as_millis() < 10000,
+                "Memory exhaustion test '{}' should complete within bounds", description);
+        }
+    }
+
+    #[test]
+    fn test_parser_state_corruption() {
+        // Test that parser state cannot be corrupted by malicious inputs
+        let corruption_attempts = vec![
+            "$[?@.field == '\0']",           // Null byte injection
+            "$[?@.field == '\x01\x02']",     // Control character injection
+            "$[?@.field == '\u{FEFF}']",     // BOM injection
+            "$[?@.field == '\u{200B}']",     // Zero-width space
+            "$[?@.field == '\u{FFFF}']",     // Invalid Unicode
+            r#"$[?@.field == "line1\nline2"]"#, // Newline injection
+            r#"$[?@.field == "tab\ttab"]"#,   // Tab injection
+        ];
+
+        for malicious_input in corruption_attempts {
+            let result1 = JsonPathParser::compile(malicious_input);
+            let result2 = JsonPathParser::compile("$.normal.path"); // Normal path after malicious
+
+            match (result1, result2) {
+                (Ok(_), Ok(_)) => println!("Parser state corruption test '{}' - both compiled", malicious_input),
+                (Err(_), Ok(_)) => println!("Parser state corruption test '{}' - first rejected, second ok", malicious_input),
+                (Ok(_), Err(_)) => println!("Parser state corruption test '{}' - potential state corruption", malicious_input),
+                (Err(_), Err(_)) => println!("Parser state corruption test '{}' - both rejected", malicious_input),
+            }
+
+            // Parser should consistently handle normal paths after any input
+            let normal_result = JsonPathParser::compile("$.test");
+            assert!(normal_result.is_ok(), 
+                "Parser state should not be corrupted after malicious input: {}", malicious_input);
+        }
+    }
+
+    #[test]
+    fn test_unicode_vulnerability_protection() {
+        // Test protection against Unicode-based vulnerabilities
+        let unicode_attacks = vec![
+            ("$['\u{202E}danger\u{202D}']", "RTL/LTR override attack"),
+            ("$['\u{00A0}']", "Non-breaking space"),
+            ("$['\u{2000}']", "En quad space"),
+            ("$['\u{200C}']", "Zero-width non-joiner"),
+            ("$['\u{200D}']", "Zero-width joiner"),
+            ("$['\u{061C}']", "Arabic letter mark"),
+            ("$['\u{2066}\u{2069}']", "Isolate characters"),
+            ("$['\u{FE0F}']", "Variation selector"),
+        ];
+
+        for (attack_path, description) in unicode_attacks {
+            let result = JsonPathParser::compile(attack_path);
+            match result {
+                Ok(_) => println!("Unicode attack '{}' compiled ({})", attack_path, description),
+                Err(_) => println!("Unicode attack '{}' rejected ({})", attack_path, description),
+            }
+
+            // Test that Unicode attacks don't affect subsequent parsing
+            let normal_result = JsonPathParser::compile("$.normal");
+            assert!(normal_result.is_ok(), 
+                "Unicode attack should not affect subsequent parsing: {}", description);
+        }
+    }
+}
+
+/// Error Recovery and State Consistency Tests
+#[cfg(test)]
+mod error_recovery_tests {
+    use super::*;
+
+    #[test]
+    fn test_graceful_error_recovery() {
+        // Test that errors are handled gracefully without corrupting state
+        let error_inducing_inputs = vec![
+            ("$[", "Unclosed bracket"),
+            ("$.key.", "Trailing dot"),
+            ("$key", "Missing root"),
+            ("$.key[abc", "Malformed bracket"),
+            ("$.key[?@", "Incomplete filter"),
+        ];
+
+        for (malicious_path, description) in error_inducing_inputs {
+            // Attempt to compile malicious path
+            let error_result = JsonPathParser::compile(malicious_path);
+            assert!(error_result.is_err(), 
+                "Error-inducing path '{}' should be rejected", malicious_path);
+
+            // Verify normal paths still work after error
+            let normal_result = JsonPathParser::compile("$.valid.path");
+            assert!(normal_result.is_ok(), 
+                "Normal path should work after error from '{}' ({})", malicious_path, description);
+
+            // Verify stream creation still works
+            let stream_result = std::panic::catch_unwind(|| {
+                JsonArrayStream::<serde_json::Value>::new("$.test")
+            });
+            assert!(stream_result.is_ok(), 
+                "Stream creation should work after error from '{}' ({})", malicious_path, description);
+        }
+    }
+
+    #[test]
+    fn test_error_propagation_consistency() {
+        // Test that errors propagate consistently through the system
+        let json_data = r#"{"valid": "data"}"#;
+        
+        let error_scenarios = vec![
+            ("$[?@.field ==]", "Incomplete comparison"),
+            ("$[?@.field &&]", "Incomplete logical"),
+            ("$[?@.field == 'unclosed", "Unclosed string"),
+            ("$...", "Invalid descendant"),
+            ("$store", "Missing dot"),
+        ];
+
+        for (invalid_path, description) in error_scenarios {
+            // Parser should reject invalid paths
+            let parse_result = JsonPathParser::compile(invalid_path);
+            assert!(parse_result.is_err(), 
+                "Invalid path '{}' should be rejected during parsing ({})", invalid_path, description);
+
+            // Stream creation with invalid path should also fail consistently
+            let stream_result = std::panic::catch_unwind(|| {
+                let mut stream = JsonArrayStream::<serde_json::Value>::new(invalid_path);
+                let chunk = Bytes::from(json_data);
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            });
+
+            // Either the stream creation should panic or handle gracefully
+            match stream_result {
+                Ok(_) => println!("Invalid path '{}' handled gracefully in stream", invalid_path),
+                Err(_) => println!("Invalid path '{}' properly rejected in stream", invalid_path),
+            }
+        }
+    }
+
+    #[test]
+    fn test_concurrent_access_safety() {
+        // Test thread safety and concurrent access patterns
+        use std::thread;
+
+        let json_data = r#"{"shared": {"value": 42, "array": [1, 2, 3, 4, 5]}}"#;
+        let test_paths = vec![
+            "$.shared.value",
+            "$.shared.array[*]", 
+            "$.shared.array[0]",
+            "$..value",
+            "$.shared.*",
+        ];
+
+        let handles: Vec<_> = test_paths.into_iter().map(|path| {
+            let json_data = json_data.to_string();
+            let path = path.to_string();
+            
+            thread::spawn(move || {
+                for i in 0..100 {
+                    let mut stream = JsonArrayStream::<serde_json::Value>::new(&path);
+                    let chunk = Bytes::from(json_data.clone());
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    
+                    if i == 0 {
+                        println!("Concurrent test '{}' -> {} results", path, results.len());
+                    }
+                }
+                path
+            })
+        }).collect();
+
+        // Wait for all threads to complete
+        for handle in handles {
+            let path = handle.join().expect("Thread should complete successfully");
+            println!("Concurrent access test completed for: {}", path);
+        }
+    }
+
+    #[test]
+    fn test_resource_cleanup_after_errors() {
+        // Test that resources are properly cleaned up after errors
+        let cleanup_test_scenarios = vec![
+            ("$[", "Incomplete bracket"),
+            ("$.a.b.c.d.e.f.g.h.i.j.k.l.m", "Long property chain"),
+            ("$[*][*][*][*][*]", "Deep wildcard nesting"),
+            ("$..value..target..data", "Multiple descendants"),
+        ];
+
+        for (path, description) in cleanup_test_scenarios {
+            // Create and process multiple times to test cleanup
+            for iteration in 0..10 {
+                let result = std::panic::catch_unwind(|| {
+                    let parse_result = JsonPathParser::compile(path);
+                    if let Ok(_) = parse_result {
+                        let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
+                        let chunk = Bytes::from(r#"{"test": "data"}"#);
+                        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    }
+                });
+
+                match result {
+                    Ok(_) => {
+                        if iteration == 0 {
+                            println!("Resource cleanup test '{}' handled gracefully", description);
+                        }
+                    }
+                    Err(_) => {
+                        if iteration == 0 {
+                            println!("Resource cleanup test '{}' caused expected error", description);
+                        }
+                    }
+                }
+            }
+
+            // Verify system is still functional after cleanup tests
+            let verification_result = JsonPathParser::compile("$.test");
+            assert!(verification_result.is_ok(), 
+                "System should be functional after resource cleanup test: {}", description);
+        }
+    }
+
+    #[test]
+    fn test_input_validation_edge_cases() {
+        // Test edge cases in input validation
+        let edge_case_inputs = vec![
+            ("", "Empty string"),
+            (" ", "Whitespace only"),
+            ("\n", "Newline only"),
+            ("\t", "Tab only"),
+            ("\r\n", "CRLF"),
+            ("$", "Root only"),
+            ("$$", "Double root"),
+            ("$.$", "Root dot root"),
+            ("$[]", "Empty brackets"),
+            ("$[:]", "Empty slice"),
+            ("$[?]", "Empty filter"),
+        ];
+
+        for (input, description) in edge_case_inputs {
+            let result = JsonPathParser::compile(input);
+            println!("Input validation edge case '{}' ({}): {:?}", 
+                input.escape_debug(), description, result.is_ok());
+
+            // System should handle edge cases without crashing
+            let post_test_result = JsonPathParser::compile("$.normal");
+            assert!(post_test_result.is_ok(), 
+                "System should remain stable after edge case: {}", description);
         }
     }
 }

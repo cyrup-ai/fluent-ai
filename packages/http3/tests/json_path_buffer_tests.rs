@@ -15,7 +15,7 @@ mod buffer_tests {
     fn test_buffer_creation() {
         let buffer = StreamBuffer::with_capacity(1024);
         assert_eq!(buffer.current_size(), 0);
-        assert!(buffer.buffer.capacity() >= 1024);
+        assert!(buffer.capacity() >= 1024);
     }
 
     #[test]
