@@ -2,9 +2,10 @@
 //!
 //! Tests for the JSONPath error handling, moved from src/json_path/error.rs
 
-use fluent_ai_http3::json_path::error::{
-    JsonPathError, JsonPathResultExt, JsonPathResult, invalid_expression_error,
+use fluent_ai_http3::json_path::{
+    JsonPathError, JsonPathResult, JsonPathResultExt,
 };
+use fluent_ai_http3::json_path::error::invalid_expression_error;
 
 #[cfg(test)]
 mod error_tests {

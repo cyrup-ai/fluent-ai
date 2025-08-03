@@ -108,7 +108,7 @@ mod parser_vulnerability_tests {
 
             let expr = "$..*";
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
-            let chunk = Bytes::from(malformed_json.as_str());
+            let chunk = Bytes::from(malformed_json.clone());
             
             let start_time = Instant::now();
             let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -129,6 +129,9 @@ mod parser_vulnerability_tests {
     #[test]
     fn test_parser_injection_attacks() {
         // Security: Test potential parser injection attacks
+        let expr_overflow = format!("$.store.book[?{}true]", "@.title == 'a' && ".repeat(1000));
+        let property_overflow = format!("$.{}end", "property.".repeat(1000));
+        
         let injection_tests = vec![
             // JSONPath injection attempts
             ("$.store.book[?@.title == 'title' || true]", "Boolean injection attempt"),
@@ -142,8 +145,8 @@ mod parser_vulnerability_tests {
             ("$.store.book[?@.title == '\\xFF\\xFE']", "Byte order mark injection"),
             
             // Parser overflow attempts
-            ("$.store.book[?" + &"@.title == 'a' && ".repeat(1000) + "true]", "Expression overflow"),
-            ("$." + &"property.".repeat(1000) + "end", "Property chain overflow"),
+            (expr_overflow.as_str(), "Expression overflow"),
+            (property_overflow.as_str(), "Property chain overflow"),
         ];
 
         for (expr, description) in injection_tests {
@@ -184,18 +187,25 @@ mod parser_vulnerability_tests {
     #[test]
     fn test_resource_exhaustion_protection() {
         // Security: Test protection against resource exhaustion
+        let large_string_expr = format!("$.store.book[?@.title == '{}']", "A".repeat(10000));
+        let very_large_string_expr = format!("$.store.book[?@.author == '{}']", "B".repeat(50000));
+        let complex_bool_expr = format!("$.store.book[?{}true]", "@.price > 1 && ".repeat(100));
+        let large_or_expr = format!("$.store.book[?{}false]", "@.title != 'x' || ".repeat(50));
+        let large_number_expr = "$.store.book[?@.price == 99999999999999999999]".to_string();
+        let large_negative_expr = "$.store.book[?@.price == -99999999999999999999]".to_string();
+        
         let exhaustion_tests = vec![
             // Large string attacks
-            ("$.store.book[?@.title == '" + &"A".repeat(10000) + "']", "Large string comparison"),
-            ("$.store.book[?@.author == '" + &"B".repeat(50000) + "']", "Very large string comparison"),
+            (&large_string_expr, "Large string comparison"),
+            (&very_large_string_expr, "Very large string comparison"),
             
             // Large number attacks
-            ("$.store.book[?@.price == 99999999999999999999]", "Large number comparison"),
-            ("$.store.book[?@.price == -99999999999999999999]", "Large negative number"),
+            (&large_number_expr, "Large number comparison"),
+            (&large_negative_expr, "Large negative number"),
             
             // Complex expression attacks
-            ("$.store.book[?" + &"@.price > 1 && ".repeat(100) + "true]", "Complex boolean expression"),
-            ("$.store.book[?" + &"@.title != 'x' || ".repeat(50) + "false]", "Large OR expression"),
+            (&complex_bool_expr, "Complex boolean expression"),
+            (&large_or_expr, "Large OR expression"),
         ];
 
         for (expr, description) in exhaustion_tests {

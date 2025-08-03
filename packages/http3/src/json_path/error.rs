@@ -71,6 +71,9 @@ pub enum JsonPathError {
         /// Suggested alternative or workaround
         alternative: Option<String>,
     },
+
+    /// General deserialization error for compatibility
+    Deserialization(String),
 }
 
 impl fmt::Display for JsonPathError {
@@ -149,6 +152,10 @@ impl fmt::Display for JsonPathError {
                     write!(f, " (try: {})", alt)?;
                 }
                 Ok(())
+            }
+
+            JsonPathError::Deserialization(message) => {
+                write!(f, "Deserialization error: {}", message)
             }
         }
     }

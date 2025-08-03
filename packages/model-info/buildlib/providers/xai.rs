@@ -1,14 +1,12 @@
-use super::{ModelData, ProviderBuilder, OpenAiModelsListResponse, OpenAiModel};
+use super::{ModelData, ProviderBuilder, StandardModelsResponse, StandardModel};
 
 /// X.AI provider implementation with dynamic API fetching
 /// Uses the official X.AI API endpoint as documented at https://docs.x.ai/docs/api-reference#list-models
 pub struct XaiProvider;
 
-// Using StandardModelsResponse from mod.rs
-
 impl ProviderBuilder for XaiProvider {
-    type ListResponse = OpenAiModelsListResponse; // Uses OpenAI-compatible format
-    type GetResponse = OpenAiModel;
+    type ListResponse = StandardModelsResponse; // Uses OpenAI-compatible format
+    type GetResponse = StandardModel;
 
     fn provider_name(&self) -> &'static str {
         "xai"
@@ -28,6 +26,9 @@ impl ProviderBuilder for XaiProvider {
             .collect()
     }
 
+    fn model_to_data(&self, model: &Self::GetResponse) -> ModelData {
+        xai_model_to_data(&model.id)
+    }
 }
 
 /// Convert X.AI model ID to ModelData with appropriate pricing and capabilities

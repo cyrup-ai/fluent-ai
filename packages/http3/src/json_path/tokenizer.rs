@@ -100,15 +100,37 @@ impl ExpressionParser {
                         i += 1;
                     }
 
+                    // Check for decimal point
+                    let mut is_float = false;
+                    if i < chars.len() && chars[i] == '.' {
+                        is_float = true;
+                        i += 1; // Skip decimal point
+                        while i < chars.len() && chars[i].is_ascii_digit() {
+                            i += 1;
+                        }
+                    }
+
                     let number_str: String = chars[start..i].iter().collect();
-                    if let Ok(int_val) = number_str.parse::<i64>() {
-                        self.tokens.push_back(Token::Integer(int_val));
+                    if is_float {
+                        if let Ok(float_val) = number_str.parse::<f64>() {
+                            self.tokens.push_back(Token::Number(float_val));
+                        } else {
+                            return Err(invalid_expression_error(
+                                &self.input,
+                                "invalid floating point number format",
+                                Some(start),
+                            ));
+                        }
                     } else {
-                        return Err(invalid_expression_error(
-                            &self.input,
-                            "invalid number format",
-                            Some(start),
-                        ));
+                        if let Ok(int_val) = number_str.parse::<i64>() {
+                            self.tokens.push_back(Token::Integer(int_val));
+                        } else {
+                            return Err(invalid_expression_error(
+                                &self.input,
+                                "invalid integer format",
+                                Some(start),
+                            ));
+                        }
                     }
                     i = i.saturating_sub(1); // Adjust for loop increment
                 }

@@ -12,10 +12,10 @@ categories = ["network-programming", "web-programming::http-client"]
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 fluent_ai_async = { package = "fluent_ai_async", path = "../async-stream" }
 reqwest = { path = "../../forks", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
-tokio = { version = "1.47.0", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 serde_urlencoded = "0.7.1"
 thiserror = "2.0.12"
 futures = "0.3.31"
@@ -44,14 +44,14 @@ cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "mai
 [dev-dependencies]
 env_logger = "0.11.8"
 futures-util = "0.3.31"
-tokio = { version = "1.47.0", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 axum = "0.8.4"
 chrono = { version = "0.4.41", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
-criterion = { version = "0.5.1", features = ["html_reports"] }
+serde_json = "1.0.142"
+criterion = { version = "0.7.0", features = ["html_reports"] }
 jemallocator = "0.5.4"
-dhat = "0.3.2"
+dhat = "0.3.3"
 
 [lib]
 name = "fluent_ai_http3"

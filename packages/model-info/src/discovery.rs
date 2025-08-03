@@ -443,7 +443,7 @@ impl ModelDiscoveryRegistry {
             mistral::MistralProvider,
             xai::XaiProvider,
             together::TogetherProvider,
-            huggingface::HuggingfaceProvider,
+            huggingface::HuggingFaceProvider,
         };
 
         match provider_name {
@@ -452,7 +452,7 @@ impl ModelDiscoveryRegistry {
             "mistral" => MistralProvider.list_models(),
             "xai" => XaiProvider.list_models(),
             "together" => TogetherProvider.list_models(),
-            "huggingface" => HuggingfaceProvider.list_models(),
+            "huggingface" => HuggingFaceProvider.list_models(),
             _ => fluent_ai_async::AsyncStream::empty(),
         }
     }

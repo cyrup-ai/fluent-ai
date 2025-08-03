@@ -15,11 +15,11 @@ reqwest_unstable = []
 cylo = { path = "../cylo", optional = true }
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 serde_path_to_error = "0.1.17"
 # futures = "0.3.31" # REMOVED: Use AsyncStream only
 # futures-util = "0.3.31" # REMOVED: Use AsyncStream only
-tokio = { version = "1.47.0", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 bytes = "1.10.1"
 fluent_ai_domain = { path = "../domain" }
 fluent_ai_provider = { path = "../provider" }
@@ -117,4 +117,4 @@ bindgen_cuda = { version = "0.1.5", optional = true }
 bindgen_cuda = { version = "0.1.5", optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.47.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }

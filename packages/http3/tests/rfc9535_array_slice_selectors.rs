@@ -33,7 +33,6 @@ mod array_slice_tests {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -61,7 +60,6 @@ mod array_slice_tests {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -90,7 +88,6 @@ mod array_slice_tests {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -119,7 +116,6 @@ mod array_slice_tests {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -148,7 +144,6 @@ mod array_slice_tests {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(
@@ -177,7 +172,6 @@ mod array_slice_tests {
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
                 .collect();
 
             assert_eq!(

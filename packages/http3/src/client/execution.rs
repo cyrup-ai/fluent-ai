@@ -24,6 +24,12 @@ impl HttpClient {
     /// When debug is enabled, logs request details including method, URL, headers,
     /// and body size for debugging and monitoring purposes.
     pub fn execute_streaming_with_debug(&self, request: HttpRequest, debug: bool) -> HttpStream {
+        use std::sync::atomic::Ordering;
+        use std::time::Instant;
+        
+        // Record request start and increment request counter
+        let start_time = Instant::now();
+        self.stats.request_count.fetch_add(1, Ordering::Relaxed);
         if debug {
             println!("🚀 HTTP Request: {} {}", request.method(), request.url());
             if let Some(body) = request.body() {
@@ -38,6 +44,11 @@ impl HttpClient {
         }
 
         let client = self.inner.clone();
+        // Record request body size if present
+        if let Some(body) = request.body() {
+            self.stats.total_bytes_sent.fetch_add(body.len() as u64, Ordering::Relaxed);
+        }
+        
         let reqwest_request = match client
             .request(request.method().clone(), request.url())
             .headers(request.headers().clone())
@@ -46,23 +57,42 @@ impl HttpClient {
         {
             Ok(req) => req,
             Err(e) => {
+                // Record failed request
+                self.stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                 let error_stream = stream! { yield Err(HttpError::from(e)); };
                 return HttpStream::new(Box::pin(error_stream));
             }
         };
 
+        let stats = self.stats.clone();
         let response_stream = stream! {
             match client.execute(reqwest_request).await {
                 Ok(response) => {
                     let status = response.status();
                     let headers = response.headers().clone();
+                    
+                    // Record response time
+                    let response_time = start_time.elapsed().as_nanos() as u64;
+                    stats.total_response_time_nanos.fetch_add(response_time, Ordering::Relaxed);
+                    
+                    // Record success/failure based on status code
+                    if status.is_success() {
+                        stats.successful_requests.fetch_add(1, Ordering::Relaxed);
+                    } else {
+                        stats.failed_requests.fetch_add(1, Ordering::Relaxed);
+                    }
+                    
                     log::debug!("HTTP Response: {} {}", status.as_u16(), status.canonical_reason().unwrap_or(""));
                     yield Ok(HttpChunk::Head(status, headers));
 
                     let mut byte_stream = response.bytes_stream();
                     while let Some(item) = byte_stream.next().await {
                         match item {
-                            Ok(bytes) => yield Ok(HttpChunk::Body(bytes)),
+                            Ok(bytes) => {
+                                // Record bytes received
+                                stats.total_bytes_received.fetch_add(bytes.len() as u64, Ordering::Relaxed);
+                                yield Ok(HttpChunk::Body(bytes));
+                            },
                             Err(e) => {
                                 yield Err(HttpError::from(e));
                                 break;
@@ -71,6 +101,10 @@ impl HttpClient {
                     }
                 }
                 Err(e) => {
+                    // Record failed request and response time
+                    let response_time = start_time.elapsed().as_nanos() as u64;
+                    stats.total_response_time_nanos.fetch_add(response_time, Ordering::Relaxed);
+                    stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                     yield Err(HttpError::from(e));
                 }
             }
@@ -84,6 +118,18 @@ impl HttpClient {
     /// Optimized for file downloads with progress tracking. Each chunk includes
     /// download progress information including bytes downloaded and total size.
     pub fn download_file(&self, request: HttpRequest) -> DownloadStream {
+        use std::sync::atomic::Ordering;
+        use std::time::Instant;
+        
+        // Record download request start
+        let start_time = Instant::now();
+        self.stats.request_count.fetch_add(1, Ordering::Relaxed);
+        
+        // Record request body size if present
+        if let Some(body) = request.body() {
+            self.stats.total_bytes_sent.fetch_add(body.len() as u64, Ordering::Relaxed);
+        }
+        
         let client = self.inner.clone();
         let reqwest_request = match client
             .request(request.method().clone(), request.url())
@@ -93,17 +139,31 @@ impl HttpClient {
         {
             Ok(req) => req,
             Err(e) => {
+                // Record failed request
+                self.stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                 let error_stream = stream! { yield Err(HttpError::from(e)); };
                 return DownloadStream::new(Box::pin(error_stream));
             }
         };
 
+        let stats = self.stats.clone();
         let download_stream = stream! {
             match client.execute(reqwest_request).await {
                 Ok(response) => {
+                    let status = response.status();
                     let total_size = response.content_length();
                     let mut bytes_downloaded = 0;
                     let mut chunk_number = 0;
+                    
+                    // Record response time and success/failure
+                    let response_time = start_time.elapsed().as_nanos() as u64;
+                    stats.total_response_time_nanos.fetch_add(response_time, Ordering::Relaxed);
+                    
+                    if status.is_success() {
+                        stats.successful_requests.fetch_add(1, Ordering::Relaxed);
+                    } else {
+                        stats.failed_requests.fetch_add(1, Ordering::Relaxed);
+                    }
 
                     let mut byte_stream = response.bytes_stream();
                     while let Some(item) = byte_stream.next().await {
@@ -111,6 +171,10 @@ impl HttpClient {
                             Ok(bytes) => {
                                 bytes_downloaded += bytes.len() as u64;
                                 chunk_number += 1;
+                                
+                                // Record bytes received for downloads
+                                stats.total_bytes_received.fetch_add(bytes.len() as u64, Ordering::Relaxed);
+                                
                                 let chunk = DownloadChunk {
                                     data: bytes,
                                     chunk_number,
@@ -127,6 +191,10 @@ impl HttpClient {
                     }
                 }
                 Err(e) => {
+                    // Record failed request and response time for downloads
+                    let response_time = start_time.elapsed().as_nanos() as u64;
+                    stats.total_response_time_nanos.fetch_add(response_time, Ordering::Relaxed);
+                    stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                     yield Err(HttpError::from(e));
                 }
             }

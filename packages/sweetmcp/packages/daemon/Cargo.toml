@@ -33,7 +33,7 @@ sweetmcp-client-autoconfig = { path = "../autoconfig" }
 
 # async support (always enabled)
 async-process = { version = "2.4" }
-tokio         = { version = "1.47.0", features = ["process", "macros", "signal", "rt-multi-thread", "time", "fs"] }
+tokio         = { version = "1.47.1", features = ["process", "macros", "signal", "rt-multi-thread", "time", "fs"] }
 
 # SSE server dependencies (always enabled)
 axum          = { version = "0.8.4" }

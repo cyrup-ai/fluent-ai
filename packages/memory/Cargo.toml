@@ -12,14 +12,14 @@ fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 surrealdb = { version = "2.3.7", features = ["http", "protocol-http", "kv-surrealkv", "kv-mem"] }
 
 # Async runtime
-tokio = { version = "1.47.0", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 futures = { version = "0.3.31" }
 futures-util = { version = "0.3.31" }
 
 # Serialization
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.141" }
+serde_json = { version = "1.0.142" }
 
 # Utilities
 uuid = { version = "1.17.0", features = ["v4", "serde"] }

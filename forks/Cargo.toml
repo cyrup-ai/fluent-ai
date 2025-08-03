@@ -121,7 +121,7 @@ sync_wrapper = { version = "1.0", features = ["futures"] }
 # Optional deps...
 
 ## json
-serde_json = { version = "1.0.141", optional = true }
+serde_json = { version = "1.0.142", optional = true }
 ## multipart
 mime_guess = { version = "2.0", default-features = false, optional = true }
 
@@ -134,10 +134,10 @@ hyper-util = { version = "0.1.16", features = ["http1", "client", "client-legacy
 h2 = { version = "0.4", optional = true }
 log = "0.4.27"
 percent-encoding = "2.3.1"
-tokio = { version = "1.47.0", default-features = false, features = ["net", "time"] }
+tokio = { version = "1.47.1", default-features = false, features = ["net", "time"] }
 tower = { version = "0.5.2", default-features = false, features = ["timeout", "util"] }
 tower-http = { version = "0.6.6", default-features = false, features = ["follow-redirect"] }
-pin-project-lite = "0.2.15"
+pin-project-lite = "0.2.16"
 
 # Optional deps...
 rustls-pki-types = { version = "1.12.0", features = ["std"], optional = true }
@@ -183,14 +183,14 @@ flate2 = "1.1.2"
 brotli_crate = { package = "brotli", version = "8.0.1" }
 zstd_crate = { package = "zstd", version = "0.13.3" }
 doc-comment = "0.3"
-tokio = { version = "1.47.0", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.47.1", default-features = false, features = ["macros", "rt-multi-thread"] }
 futures-util = { version = "0.3.31", default-features = false, features = ["std", "alloc"] }
 
 # wasm
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3.77"
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 wasm-streams = { version = "0.4", optional = true }

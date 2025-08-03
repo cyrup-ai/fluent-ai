@@ -61,12 +61,12 @@ async fn fetch_xai_models() -> Result<XaiModelsResponse, Box<dyn std::error::Err
     use std::env;
     
     let response = if let Ok(api_key) = env::var("XAI_API_KEY") {
-        Http3::json::<XaiModelsResponse>()
+        Http3::json()
             .bearer_auth(&api_key)
             .get("https://api.x.ai/v1/models")
             .collect::<XaiModelsResponse>()
     } else {
-        Http3::json::<XaiModelsResponse>()
+        Http3::json()
             .get("https://api.x.ai/v1/models")
             .collect::<XaiModelsResponse>()
     };

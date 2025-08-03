@@ -15,12 +15,12 @@ path = "test_yaml.rs"
 [dependencies]
 # Core serialization
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
 
 # CLI dependencies
 clap = { version = "4.5", features = ["derive"] }
-tokio = { version = "1.47.0", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 
 # HTTP client for YAML download
 fluent_ai_http3 = { path = "../http3" }

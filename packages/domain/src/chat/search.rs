@@ -379,21 +379,29 @@ impl ChatSearchIndex {
             let start_time = Instant::now();
             self_clone.query_counter.inc();
 
+            // Convert ZeroOneOrMany to slice for search methods
+            let query_terms_slice: Vec<Arc<str>> = match &query_terms {
+                ZeroOneOrMany::None => vec![],
+                ZeroOneOrMany::One(term) => vec![term.clone()],
+                ZeroOneOrMany::Many(terms) => terms.clone(),
+            };
+            let query_terms_ref: &[Arc<str>] = &query_terms_slice;
+
             let results = match query_operator {
                 QueryOperator::And => self_clone
-                    .search_and_stream(&query_terms, query_fuzzy_matching)
+                    .search_and_stream(query_terms_ref, query_fuzzy_matching)
                     .collect(),
                 QueryOperator::Or => self_clone
-                    .search_or_stream(&query_terms, query_fuzzy_matching)
+                    .search_or_stream(query_terms_ref, query_fuzzy_matching)
                     .collect(),
                 QueryOperator::Not => self_clone
-                    .search_not_stream(&query_terms, query_fuzzy_matching)
+                    .search_not_stream(query_terms_ref, query_fuzzy_matching)
                     .collect(),
                 QueryOperator::Phrase => self_clone
-                    .search_phrase_stream(&query_terms, query_fuzzy_matching)
+                    .search_phrase_stream(query_terms_ref, query_fuzzy_matching)
                     .collect(),
                 QueryOperator::Proximity { distance } => self_clone
-                    .search_proximity_stream(&query_terms, distance, query_fuzzy_matching)
+                    .search_proximity_stream(query_terms_ref, distance, query_fuzzy_matching)
                     .collect()};
 
             // Apply filters - for now, pass through results as-is

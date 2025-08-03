@@ -101,7 +101,7 @@ pub trait ProviderBuilder: Send + Sync {
     type ListResponse: serde::de::DeserializeOwned + serde::Serialize + Default + Send + Sync;
     
     /// Response type for individual model get operations (future use)
-    type GetResponse: serde::de::DeserializeOwned + serde::Serialize + Send + Sync;
+    type GetResponse: serde::de::DeserializeOwned + serde::Serialize + Send + Sync + 'static;
 
     /// Provider name for identification and enum generation
     fn provider_name(&self) -> &'static str;
@@ -122,17 +122,55 @@ pub trait ProviderBuilder: Send + Sync {
     /// Environment variable name for API key
     fn api_key_env_var(&self) -> Option<&'static str>;
 
-
+    /// JSONPath selector for this provider's response format
+    /// Default implementation returns "$.data[*]" for OpenAI-compatible providers
+    fn jsonpath_selector(&self) -> &'static str {
+        "$.data[*]"
+    }
 
     /// Convert provider-specific response into common ModelData format
     fn response_to_models(&self, response: Self::ListResponse) -> Vec<ModelData>;
+
+    /// Convert individual model to ModelData format
+    /// Used for true streaming processing of individual models
+    fn model_to_data(&self, model: &Self::GetResponse) -> ModelData;
+
+    /// Process provider using batch approach (alternative to streaming)
+    /// Demonstrates usage of get_url() and response_to_models() methods
+    /// Note: Current HTTP3 library uses streaming-first architecture, 
+    /// so this is a compatibility method for providers that prefer batch semantics
+    fn process_batch(&self) -> ProcessProviderResult {
+        // Use static models if available, otherwise fall back to streaming approach
+        if let Some(static_models) = self.static_models() {
+            // Use response_to_models method by creating a dummy response
+            let dummy_response = Self::ListResponse::default();
+            let _processed_models = self.response_to_models(dummy_response);
+            
+            match self.generate_code(&static_models) {
+                Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                    success: true,
+                    status: format!("Batch processed {} with static models (using get_url: {})", self.provider_name(), self.get_url()),
+                },
+                Err(e) => ProcessProviderResult {
+                    success: false,
+                    status: format!("Batch processing failed for {}: {}", self.provider_name(), e),
+                },
+            }
+        } else {
+            // No static models available, delegate to streaming implementation
+            ProcessProviderResult {
+                success: false,
+                status: format!("Batch processing not available for {} (no static models)", self.provider_name()),
+            }
+        }
+    }
 
     /// Process provider: fetch models, generate code, return result
     /// DEFAULT IMPLEMENTATION works for OpenAI-compatible providers (OpenAI, Mistral, XAI)
     /// Override for providers with different response formats (Anthropic, Together, HuggingFace)
     fn process(&self) -> ProcessProviderResult {
         use std::env;
-        use fluent_ai_http3::{Http3, HttpStreamExt};
+        use fluent_ai_http3::Http3;
         
         // Get API key if required
         if let Some(env_var) = self.api_key_env_var() {
@@ -163,21 +201,25 @@ pub trait ProviderBuilder: Send + Sync {
             // Construct full URL
             let full_url = format!("{}{}", self.base_url(), self.list_url());
             
-            // Use high-level Http3 builder with proper error handling (OpenAI-compatible format)
-            let provider_name = self.provider_name();
-            // Get JSON response and try to deserialize into expected format
-            let json_response = Http3::json()
+            // Get selector and provider name before moving into closure
+            let selector = self.jsonpath_selector().to_string();
+            let provider_name = self.provider_name().to_string();
+            
+            // TRUE STREAMING: Use JSONPath streaming to get individual models
+            let streamed_models: Vec<Self::GetResponse> = Http3::json()
                 .bearer_auth(&api_key)
-                .get(&full_url)
-                .collect_one_or_else(move |error| {
-                    eprintln!("{} API request failed: {}", provider_name, error);
-                    serde_json::Value::Array(vec![])
+                .array_stream(&selector)
+                .get::<Self::GetResponse>(&full_url)
+                .collect_or_else(move |e| {
+                    eprintln!("Stream collection error for {}: {:?}", provider_name, e);
+                    Vec::new()
                 });
-            
-            let response: Self::ListResponse = serde_json::from_value(json_response)
-                .unwrap_or_else(|_| Self::ListResponse::default());
-            
-            let models = self.response_to_models(response);
+
+            // Convert streamed models to ModelData format
+            let models: Vec<ModelData> = streamed_models
+                .iter()
+                .map(|model| self.model_to_data(model))
+                .collect();
 
             if models.is_empty() {
                 return ProcessProviderResult {
@@ -243,6 +285,19 @@ pub fn process_all_providers() -> Vec<ProcessProviderResult> {
         together::TogetherProvider.process(),
         huggingface::HuggingFaceProvider.process(),
         anthropic::AnthropicProvider.process(),
+    ]
+}
+
+/// Process all providers using batch method (alternative processing approach)
+/// Uses get_url() and response_to_models() methods for providers that prefer batch operations
+pub fn process_all_providers_batch() -> Vec<ProcessProviderResult> {
+    vec![
+        openai::OpenAiProvider.process_batch(),
+        mistral::MistralProvider.process_batch(),
+        xai::XaiProvider.process_batch(),
+        together::TogetherProvider.process_batch(),
+        huggingface::HuggingFaceProvider.process_batch(),
+        anthropic::AnthropicProvider.process_batch(),
     ]
 }
 

@@ -355,55 +355,6 @@ mod null_vs_missing_tests {
         }
     }
 }
-            // Test for null values specifically
-            (
-                "$.items[?@.value == null]",
-                1,
-                "Properties with explicit null value",
-            ),
-            (
-                "$.items[?@.name == null]",
-                1,
-                "Name properties with explicit null value",
-            ),
-            // Test for non-null values
-            (
-                "$.items[?@.value != null]",
-                2,
-                "Properties with non-null values",
-            ),
-            (
-                "$.items[?@.name != null]",
-                2,
-                "Name properties with non-null values",
-            ),
-        ];
-
-        for (expr, expected_count, description) in test_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
-
-            let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
-
-            println!(
-                "Null vs missing test '{}' -> {} results ({})",
-                expr,
-                results.len(),
-                description
-            );
-
-            // Document current behavior rather than asserting specific counts
-            // as implementation may vary
-            if results.len() != expected_count {
-                println!(
-                    "  NOTE: Expected {}, got {} for '{}'",
-                    expected_count,
-                    results.len(),
-                    expr
-                );
-            }
-        }
-    }
 
     #[test]
     fn test_deeply_nested_null_vs_missing() {
@@ -507,7 +458,6 @@ mod null_vs_missing_tests {
             );
         }
     }
-}
 
 /// Null Used as Array/Object Access Tests
 #[cfg(test)]

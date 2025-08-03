@@ -71,7 +71,7 @@ impl<T> Tool<T> {
     /// // Multiple parameters
     /// Tool::<CustomTool>::new([("param1", "value1"), ("param2", "value2")])
     /// ```
-    #[cyrup_sugars::macros::json_syntax]
+    // Note: json_syntax macro not yet available in cyrup_sugars
     #[inline]
     pub fn new<P>(config: P) -> Self
     where

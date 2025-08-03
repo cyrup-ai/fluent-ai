@@ -131,9 +131,47 @@ where
     /// Collect all items from the stream into a Vec (future-like behavior when needed)
     pub fn collect(mut self) -> Vec<T> {
         let mut results = Vec::new();
-        while let Some(item) = self.try_next() {
-            results.push(item);
+        
+        // Wait for producer thread to potentially emit values
+        // Use a timeout to avoid infinite waiting
+        let start = std::time::Instant::now();
+        let timeout = std::time::Duration::from_millis(100);
+        
+        loop {
+            if let Some(item) = self.try_next() {
+                results.push(item);
+                // Reset timeout when we get items
+                continue;
+            }
+            
+            // If we haven't seen any items yet and haven't timed out, keep waiting
+            if results.is_empty() && start.elapsed() < timeout {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                continue;
+            }
+            
+            // If we have items but queue is empty, wait a bit more for potential additional items
+            if !results.is_empty() {
+                let mut empty_count = 0;
+                for _ in 0..10 {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    if let Some(item) = self.try_next() {
+                        results.push(item);
+                        empty_count = 0;
+                    } else {
+                        empty_count += 1;
+                        if empty_count >= 5 {
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            
+            // Timeout reached with no items
+            break;
         }
+        
         results
     }
 
@@ -214,6 +252,19 @@ impl<T, const CAP: usize> Clone for AsyncStreamSender<T, CAP> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone()}
+    }
+}
+
+/// Iterator implementation for AsyncStream to support test patterns
+impl<T, const CAP: usize> Iterator for AsyncStream<T, CAP>
+where
+    T: Send + 'static,
+{
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.try_next()
     }
 }
 

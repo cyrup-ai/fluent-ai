@@ -2,6 +2,9 @@
 //!
 //! Provides state management and evaluation logic for JSONPath recursive descent
 //! operations during streaming JSON parsing.
+//!
+//! NOTE: Methods in this module may be part of incomplete recursive descent implementation.
+#![allow(dead_code)]
 
 use serde::de::DeserializeOwned;
 

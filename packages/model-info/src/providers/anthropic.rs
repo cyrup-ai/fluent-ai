@@ -20,18 +20,17 @@ impl ProviderTrait for AnthropicProvider {
     }
     
     fn list_models(&self) -> AsyncStream<ModelInfo> {
-        use crate::generated_models::AnthropicModel as Anthropic;
-        use crate::common::Model;
-        
+        // Anthropic doesn't have a public models API, so we use hardcoded models
         AsyncStream::with_channel(move |sender| {
             let models = vec![
-                Anthropic::Claude35Sonnet20240620,
-                Anthropic::Claude3Haiku20240307,
-                Anthropic::Claude3Opus20240229,
+                "claude-3-5-sonnet-20240620",
+                "claude-3-haiku-20240307", 
+                "claude-3-opus-20240229",
+                "claude-3-sonnet-20240229",
             ];
             
             for model in models {
-                let model_info = adapt_anthropic_to_model_info(model.name());
+                let model_info = adapt_anthropic_to_model_info(model);
                 let _ = sender.send(model_info);
             }
         })

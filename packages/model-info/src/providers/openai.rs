@@ -1,5 +1,22 @@
 use crate::common::{ModelInfo, ProviderTrait};
-use crate::generated_models::OpenAiModel as OpenAi;
+// Note: Generated models are managed by build script
+pub enum OpenAi {
+    Gpt41,
+    Gpt41Mini,
+    O3,
+    O4Mini,
+    Gpt4o,
+    Gpt4oMini,
+}
+
+impl OpenAi {
+    pub fn max_context_length(&self) -> u64 {
+        match self {
+            OpenAi::Gpt41 | OpenAi::O3 | OpenAi::Gpt4o => 128000,
+            OpenAi::Gpt41Mini | OpenAi::O4Mini | OpenAi::Gpt4oMini => 128000,
+        }
+    }
+}
 use fluent_ai_async::AsyncStream;
 use serde::Deserialize;
 
@@ -42,7 +59,7 @@ impl ProviderTrait for OpenAiProvider {
             owned_by: String,
         }
         
-        #[derive(Deserialize, Serialize, Debug)]
+        #[derive(Deserialize, Serialize, Debug, Default)]
         struct OpenAiModelsResponse {
             object: String,
             data: Vec<OpenAiModel>,
@@ -50,12 +67,12 @@ impl ProviderTrait for OpenAiProvider {
         
         AsyncStream::with_channel(move |sender| {
             let response = if let Ok(api_key) = env::var("OPENAI_API_KEY") {
-                Http3::json::<OpenAiModelsResponse>()
+                Http3::json()
                     .bearer_auth(&api_key)
                     .get("https://api.openai.com/v1/models")
                     .collect::<OpenAiModelsResponse>()
             } else {
-                Http3::json::<OpenAiModelsResponse>()
+                Http3::json()
                     .get("https://api.openai.com/v1/models")
                     .collect::<OpenAiModelsResponse>()
             };
@@ -244,7 +261,6 @@ impl OpenAiModelExt for OpenAi {
 /// Utility functions for string-based model operations (for backwards compatibility)
 pub mod string_utils {
     use super::{OpenAi, OpenAiModelExt};
-    use crate::common::Model;
     
     // Model constants for backwards compatibility
     pub const GPT_4_1: &str = "gpt-4.1";

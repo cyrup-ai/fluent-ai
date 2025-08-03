@@ -1,14 +1,12 @@
-use super::{ModelData, ProviderBuilder, OpenAiModelsListResponse, OpenAiModel};
+use super::{ModelData, ProviderBuilder, StandardModelsResponse, StandardModel};
 
 /// Mistral provider implementation with dynamic API fetching
 /// API must be available - no static data
 pub struct MistralProvider;
 
-// Using StandardModelsResponse from mod.rs
-
 impl ProviderBuilder for MistralProvider {
-    type ListResponse = OpenAiModelsListResponse; // Uses OpenAI-compatible format
-    type GetResponse = OpenAiModel;
+    type ListResponse = StandardModelsResponse; // Uses OpenAI-compatible format
+    type GetResponse = StandardModel;
 
     fn provider_name(&self) -> &'static str {
         "mistral"
@@ -28,7 +26,9 @@ impl ProviderBuilder for MistralProvider {
             .collect()
     }
 
-
+    fn model_to_data(&self, model: &Self::GetResponse) -> ModelData {
+        mistral_model_to_data(&model.id)
+    }
 }
 
 /// Convert Mistral model ID to ModelData with appropriate pricing and capabilities

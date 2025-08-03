@@ -749,12 +749,8 @@ mod wellformedness_tests {
     }
 }
 
-/// RFC 9535 Performance Tests - Large Dataset Handling
-#[cfg(test)]
-mod large_dataset_tests {
-    use super::*;
-
-    fn generate_large_dataset(size: usize) -> serde_json::Value {
+/// Helper function to generate large datasets for performance testing
+fn generate_large_dataset(size: usize) -> serde_json::Value {
         let items: Vec<LargeDataModel> = (0..size)
             .map(|i| LargeDataModel {
                 id: i as u32,
@@ -803,7 +799,12 @@ mod large_dataset_tests {
                 }
             }
         })
-    }
+}
+
+/// RFC 9535 Performance Tests - Large Dataset Handling
+#[cfg(test)]
+mod large_dataset_tests {
+    use super::*;
 
     #[test]
     fn test_large_array_traversal_performance() {

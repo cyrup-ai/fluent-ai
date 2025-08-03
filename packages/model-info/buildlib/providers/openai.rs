@@ -1,14 +1,12 @@
-use super::{ModelData, ProviderBuilder, OpenAiModelsListResponse, OpenAiModel};
+use super::{ModelData, ProviderBuilder, StandardModelsResponse, StandardModel};
 
 /// OpenAI provider implementation with dynamic API fetching
 /// API must be available - no static data
 pub struct OpenAiProvider;
 
-// Using StandardModelsResponse from mod.rs
-
 impl ProviderBuilder for OpenAiProvider {
-    type ListResponse = OpenAiModelsListResponse;
-    type GetResponse = OpenAiModel;
+    type ListResponse = StandardModelsResponse;
+    type GetResponse = StandardModel;
 
     fn provider_name(&self) -> &'static str {
         "openai"
@@ -29,6 +27,9 @@ impl ProviderBuilder for OpenAiProvider {
             .collect()
     }
 
+    fn model_to_data(&self, model: &Self::GetResponse) -> ModelData {
+        openai_model_to_data(&model.id)
+    }
 }
 
 /// Convert OpenAI model ID to ModelData with appropriate pricing and capabilities

@@ -32,6 +32,11 @@ impl ProviderBuilder for AnthropicProvider {
         Vec::new()
     }
 
+    fn model_to_data(&self, _model: &Self::GetResponse) -> ModelData {
+        // Not used since Anthropic has no API - placeholder implementation
+        ("unknown".to_string(), 0, 0.0, 0.0, false, None)
+    }
+
     // Custom process() implementation for Anthropic's static models
     fn process(&self) -> ProcessProviderResult {
         // Get static models - ONLY legitimate use since Anthropic has no public /v1/models API

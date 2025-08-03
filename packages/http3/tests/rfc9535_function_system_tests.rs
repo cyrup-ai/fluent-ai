@@ -550,3 +550,201 @@ mod complex_function_type_tests {
         }
     }
 }
+
+/// RFC 9535 Section 2.4.2 - Type Conversion Boundary Tests
+#[cfg(test)]
+mod type_conversion_boundary_tests {
+    use super::*;
+
+    #[test]
+    fn test_valuetype_to_logicaltype_conversion() {
+        // RFC 9535 Section 2.4.2: ValueType results used in LogicalType context
+        let conversion_tests = vec![
+            // ValueType function results used as LogicalType (test expressions)
+            ("$.library.books[?length(@.title)]", true, "length() ValueType→LogicalType in test context"),
+            ("$.library.books[?count(@.authors)]", true, "count() ValueType→LogicalType in test context"),
+            ("$.library.books[?value(@.id)]", true, "value() ValueType→LogicalType in test context"),
+            
+            // ValueType results in logical operations
+            ("$.library.books[?length(@.title) && length(@.authors[0])]", true, "Multiple ValueType→LogicalType in AND"),
+            ("$.library.books[?count(@.authors) || count(@.metadata.genres)]", true, "Multiple ValueType→LogicalType in OR"),
+            ("$.library.books[?!length(@.availability.locations)]", true, "ValueType→LogicalType in NOT operation"),
+            
+            // Edge cases for ValueType→LogicalType conversion
+            ("$.library.books[?length(@.missing_property)]", true, "Missing property ValueType→LogicalType"),
+            ("$.library.books[?count(@.empty_array) || length(@.empty_string)]", true, "Empty values ValueType→LogicalType"),
+            ("$.library.books[?value(@.metadata.year) && value(@.availability.inStock)]", true, "Multiple value() conversions"),
+        ];
+
+        for (expr, should_be_valid, description) in conversion_tests {
+            let result = JsonPathParser::compile(expr);
+            
+            if should_be_valid {
+                assert!(
+                    result.is_ok(),
+                    "RFC 9535: ValueType→LogicalType conversion should compile: {} ({})",
+                    expr, description
+                );
+                
+                // Test execution to verify conversion behavior
+                let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+                let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                
+                println!("ValueType→LogicalType test '{}': {} results ({})", 
+                    expr, results.len(), description);
+            } else {
+                assert!(
+                    result.is_err(),
+                    "RFC 9535: Invalid ValueType→LogicalType conversion should be rejected: {} ({})",
+                    expr, description
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_nodestype_to_valuetype_conversion() {
+        // RFC 9535 Section 2.4.2: NodesType to ValueType conversion via value() function
+        let conversion_tests = vec![
+            // Single node NodesType→ValueType conversions
+            ("$.library.books[?value(@.id) == 1]", true, "Single node ValueType extraction"),
+            ("$.library.books[?value(@.availability.inStock) == true]", true, "Boolean ValueType extraction"),
+            ("$.library.books[?value(@.metadata.year) > 1950]", true, "Numeric ValueType extraction"),
+            ("$.library.books[?value(@.title) == 'The Great Gatsby']", true, "String ValueType extraction"),
+            
+            // Edge cases for NodesType→ValueType conversion
+            ("$.library.books[?value(@.missing_property) == null]", true, "Missing property to ValueType"),
+            ("$.library.books[?value(@.metadata) != null]", true, "Object to ValueType"),
+            ("$.library.books[?value(@.authors[0]) != null]", true, "Array element to ValueType"),
+            
+            // Invalid NodesType→ValueType conversions (ambiguous multi-node)
+            ("$.library.books[?value(@.authors[*])]", false, "Multi-node to ValueType (ambiguous)"),
+            ("$.library.books[?value(@..genres)]", false, "Recursive descent to ValueType (ambiguous)"),
+            ("$.library.books[?value(@.metadata.ratings[*])]", false, "Multi-element array to ValueType"),
+            
+            // Boundary conditions
+            ("$.library.books[?value(@) != null]", true, "Root node to ValueType"),
+            ("$.library.books[?length(value(@.title)) > 0]", true, "Nested NodesType→ValueType→ValueType"),
+        ];
+
+        for (expr, should_be_valid, description) in conversion_tests {
+            let result = JsonPathParser::compile(expr);
+            
+            if should_be_valid {
+                assert!(
+                    result.is_ok(),
+                    "RFC 9535: NodesType→ValueType conversion should compile: {} ({})",
+                    expr, description
+                );
+                
+                // Test execution to verify conversion behavior
+                let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+                let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                
+                println!("NodesType→ValueType test '{}': {} results ({})", 
+                    expr, results.len(), description);
+            } else {
+                assert!(
+                    result.is_err(),
+                    "RFC 9535: Invalid NodesType→ValueType conversion should be rejected: {} ({})",
+                    expr, description
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_type_conversion_with_null_values() {
+        // RFC 9535 Section 2.4.2: Type conversion edge cases with null/missing values
+        let null_handling_tests = vec![
+            // Null value handling in type conversions
+            ("$.library.books[?value(@.metadata) && length(@.metadata) > 0]", true, "Null check before length conversion"),
+            ("$.library.books[?count(@.missing_array) == 0]", true, "Missing array count conversion"),
+            ("$.library.books[?value(@.missing_property) || value(@.id)]", true, "Null coalescing in conversion"),
+            
+            // Edge cases with empty vs null vs missing
+            ("$.library.books[?length(@.availability.locations) >= 0]", true, "Empty array length conversion"),
+            ("$.library.books[?count(@.availability.locations[*]) >= 0]", true, "Empty array element count"),
+            ("$.library.books[?value(@.availability.quantity) >= 0]", true, "Zero value extraction"),
+            
+            // Complex null handling scenarios
+            ("$.library.books[?(@.metadata && count(@.metadata) > 0) || !@.metadata]", true, "Complex null check with conversion"),
+            ("$.library.books[?value(@.metadata.category) || value(@.id)]", true, "Nested property null handling"),
+        ];
+
+        for (expr, should_be_valid, description) in null_handling_tests {
+            let result = JsonPathParser::compile(expr);
+            
+            if should_be_valid {
+                assert!(
+                    result.is_ok(),
+                    "RFC 9535: Null handling type conversion should compile: {} ({})",
+                    expr, description
+                );
+                
+                // Test execution to verify null handling behavior
+                let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+                let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                
+                println!("Null handling conversion test '{}': {} results ({})", 
+                    expr, results.len(), description);
+            } else {
+                assert!(
+                    result.is_err(),
+                    "RFC 9535: Invalid null handling conversion should be rejected: {} ({})",
+                    expr, description
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_complex_type_conversion_chains() {
+        // RFC 9535 Section 2.4.2: Complex chained type conversions
+        let chain_tests = vec![
+            // Multi-step conversion chains
+            ("$.library.books[?length(value(@.title)) > count(@.authors)]", true, "NodesType→ValueType→ValueType vs NodesType→ValueType"),
+            ("$.library.books[?value(@.id) > 0 && length(@.title) > 0]", true, "Mixed conversion types in logical"),
+            ("$.library.books[?count(@.authors) == length(@.authors)]", false, "Invalid: NodesType vs ValueType direct comparison"),
+            
+            // Function composition with type conversions
+            ("$.library.books[?length(@.title) > length(value(@.authors[0]))]", true, "Nested function type conversions"),
+            ("$.library.books[?count(@.metadata.genres) > value(@.id) - 1]", true, "Arithmetic with mixed types"),
+            ("$.library.books[?match(value(@.title), 'Great')]", true, "String function with value conversion"),
+            
+            // Edge cases in conversion chains
+            ("$.library.books[?value(length(@.title)) > 10]", false, "Invalid: ValueType→NodesType conversion"),
+            ("$.library.books[?count(value(@.title))]", false, "Invalid: ValueType→NodesType conversion"),
+            ("$.library.books[?length(count(@.authors))]", false, "Invalid: ValueType(number)→ValueType(string)"),
+        ];
+
+        for (expr, should_be_valid, description) in chain_tests {
+            let result = JsonPathParser::compile(expr);
+            
+            if should_be_valid {
+                assert!(
+                    result.is_ok(),
+                    "RFC 9535: Complex type conversion chain should compile: {} ({})",
+                    expr, description
+                );
+                
+                // Test execution for valid chains
+                let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+                let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                
+                println!("Complex conversion chain '{}': {} results ({})", 
+                    expr, results.len(), description);
+            } else {
+                assert!(
+                    result.is_err(),
+                    "RFC 9535: Invalid type conversion chain should be rejected: {} ({})",
+                    expr, description
+                );
+            }
+        }
+    }
+}

@@ -489,7 +489,7 @@ mod performance_regression_tests {
     fn test_expression_compilation_performance() {
         // RFC 9535: Test performance of expression compilation
         let compilation_tests = vec![
-            ("$.simple", "Simple expression"),
+            ("$.efficient", "Efficient expression"),
             ("$.complex.nested.deep.property", "Deep property chain"),
             ("$.array[*].property", "Array wildcard"),
             ("$..recursive", "Recursive descent"),

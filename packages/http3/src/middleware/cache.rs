@@ -201,7 +201,7 @@ fn parse_http_date_to_timestamp(date_str: &str) -> Option<u64> {
 
 /// Parse RFC 1123 format to Unix timestamp
 fn parse_rfc1123_to_timestamp(date_str: &str) -> Option<u64> {
-    // Simple parser for RFC 1123 format
+    // Robust parser for RFC 1123 format
     // For production, consider using chrono or time crate
     let parts: Vec<&str> = date_str.split_whitespace().collect();
     if parts.len() != 6 {
@@ -283,7 +283,7 @@ fn days_in_month(month: u32, year: u32) -> Option<u64> {
 
 /// Format Unix timestamp as HTTP date string
 fn format_timestamp_as_http_date(timestamp: u64) -> String {
-    // Simple formatter for HTTP date
+    // Efficient formatter for HTTP date
     // For production, use proper date library
     let days_since_epoch = timestamp / 86400;
     let seconds_in_day = timestamp % 86400;

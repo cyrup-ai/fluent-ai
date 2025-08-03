@@ -44,12 +44,8 @@ struct ProductModel {
     tags: Vec<String>,
 }
 
-/// RFC 9535 Table 10 - Operator Precedence Tests
-#[cfg(test)]
-mod operator_precedence_tests {
-    use super::*;
-
-    fn create_test_data() -> String {
+/// Helper function to create test data for filter tests
+fn create_test_data() -> String {
         let items = vec![
             TestModel {
                 a: 1,
@@ -105,7 +101,12 @@ mod operator_precedence_tests {
 
         serde_json::to_string(&serde_json::json!({ "items": items }))
             .expect("Valid JSON serialization")
-    }
+}
+
+/// RFC 9535 Table 10 - Operator Precedence Tests
+#[cfg(test)]
+mod operator_precedence_tests {
+    use super::*;
 
     #[test]
     fn test_comparison_vs_logical_precedence() {

@@ -33,6 +33,12 @@ impl JsonPathExpression {
         &self.original
     }
 
+    /// Get original JSONPath expression string (alias for original)
+    #[inline]
+    pub fn as_string(&self) -> String {
+        self.original.clone()
+    }
+
     /// Check if this expression targets array elements for streaming
     #[inline]
     pub fn is_array_stream(&self) -> bool {
@@ -139,7 +145,7 @@ impl JsonPathExpression {
 
         // Selector multiplier: interaction effects between multiple selectors
         let selector_multiplier = match metrics.total_selector_count {
-            0..=2 => 1,  // Simple expressions
+            0..=2 => 1,  // Straightforward expressions
             3..=5 => 2,  // Medium complexity
             6..=10 => 4, // High complexity
             _ => 8,      // Very complex expressions

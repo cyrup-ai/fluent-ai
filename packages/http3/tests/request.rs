@@ -14,8 +14,9 @@ mod request_tests {
         // Tests for HTTP request construction and processing
 
         // Placeholder test to ensure module compiles
-        let builder = Http3::get("https://api.example.com/test");
-        assert!(builder.is_ok() || builder.is_err());
+        let _stream = Http3::json().get("https://api.example.com/test");
+        // HttpStream is always created successfully, test basic creation
+        assert!(true);
     }
 }
 

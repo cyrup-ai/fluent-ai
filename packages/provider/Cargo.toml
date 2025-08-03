@@ -15,9 +15,9 @@ fluent_ai_http3 = { path = "../http3" }
 # CRITICAL: Model/provider information comes from model-info package only
 model-info = { path = "../model-info" }
 # fluent_ai = { path = "../fluent-ai" } # Temporarily commented out to fix cyclic dependency
-tokio = { version = "1.47.0", features = ["full"] }
+tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 thiserror = "2.0.12"
 # futures = "0.3.31" # Removed: Using AsyncStream instead
 hashbrown = { version = "0.15.4", features = ["serde"] }

@@ -45,9 +45,18 @@ impl<'a> SelectorParser<'a> {
                 self.consume_token();
                 self.parse_bracket_selector()
             }
+            Some(Token::Identifier(name)) => {
+                // Handle standalone identifiers (e.g., 'author' in '$..author')
+                let name = name.clone();
+                self.consume_token();
+                Ok(JsonSelector::Child {
+                    name,
+                    exact_match: true,
+                })
+            }
             _ => Err(invalid_expression_error(
                 self.input,
-                "expected selector (.property, [index], or [expression])",
+                "expected selector (.property, [index], identifier, or [expression])",
                 Some(self.position),
             )),
         }
@@ -98,11 +107,51 @@ impl<'a> SelectorParser<'a> {
             Some(Token::String(s)) => {
                 let name = s.clone();
                 self.consume_token();
-                self.expect_token(Token::RightBracket)?;
-                Ok(JsonSelector::Child {
-                    name,
-                    exact_match: true,
-                })
+                
+                // Check for comma-separated union selector
+                if matches!(self.peek_token(), Some(Token::Comma)) {
+                    let mut selectors = vec![JsonSelector::Child {
+                        name,
+                        exact_match: true,
+                    }];
+                    
+                    while matches!(self.peek_token(), Some(Token::Comma)) {
+                        self.consume_token(); // consume comma
+                        
+                        match self.peek_token() {
+                            Some(Token::String(s)) => {
+                                let name = s.clone();
+                                self.consume_token();
+                                selectors.push(JsonSelector::Child {
+                                    name,
+                                    exact_match: true,
+                                });
+                            }
+                            Some(Token::Integer(n)) => {
+                                let index = *n;
+                                self.consume_token();
+                                selectors.push(JsonSelector::Index {
+                                    index,
+                                    from_end: index < 0,
+                                });
+                            }
+                            _ => return Err(invalid_expression_error(
+                                self.input,
+                                "expected string or integer after comma in union selector",
+                                Some(self.position),
+                            )),
+                        }
+                    }
+                    
+                    self.expect_token(Token::RightBracket)?;
+                    Ok(JsonSelector::Union { selectors })
+                } else {
+                    self.expect_token(Token::RightBracket)?;
+                    Ok(JsonSelector::Child {
+                        name,
+                        exact_match: true,
+                    })
+                }
             }
             Some(Token::Integer(n)) => {
                 let index = *n;
@@ -129,9 +178,47 @@ impl<'a> SelectorParser<'a> {
                 })
             }
             Some(Token::Colon) => self.parse_slice_from_start(start),
+            Some(Token::Comma) => {
+                // Parse union selector starting with integer
+                let mut selectors = vec![JsonSelector::Index {
+                    index: start,
+                    from_end: start < 0,
+                }];
+                
+                while matches!(self.peek_token(), Some(Token::Comma)) {
+                    self.consume_token(); // consume comma
+                    
+                    match self.peek_token() {
+                        Some(Token::Integer(n)) => {
+                            let index = *n;
+                            self.consume_token();
+                            selectors.push(JsonSelector::Index {
+                                index,
+                                from_end: index < 0,
+                            });
+                        }
+                        Some(Token::String(s)) => {
+                            let name = s.clone();
+                            self.consume_token();
+                            selectors.push(JsonSelector::Child {
+                                name,
+                                exact_match: true,
+                            });
+                        }
+                        _ => return Err(invalid_expression_error(
+                            self.input,
+                            "expected integer or string after comma in union selector",
+                            Some(self.position),
+                        )),
+                    }
+                }
+                
+                self.expect_token(Token::RightBracket)?;
+                Ok(JsonSelector::Union { selectors })
+            }
             _ => Err(invalid_expression_error(
                 self.input,
-                "expected ']' or ':' after index",
+                "expected ']', ':', or ',' after index",
                 Some(self.position),
             )),
         }

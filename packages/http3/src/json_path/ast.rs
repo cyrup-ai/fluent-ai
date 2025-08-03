@@ -11,6 +11,7 @@ pub enum JsonSelector {
 
     /// Child property access (.property or ['property'])
     Child {
+        /// Name of the child property to access
         name: String,
         /// Whether to use exact string matching (true) or case-insensitive (false)
         exact_match: bool,
@@ -21,6 +22,7 @@ pub enum JsonSelector {
 
     /// Array index access ([0], [-1], etc.)
     Index {
+        /// Array index value (negative indices count from end)
         index: i64,
         /// For negative indices, whether to count from end
         from_end: bool,
@@ -28,8 +30,11 @@ pub enum JsonSelector {
 
     /// Array slice ([start:end], [start:], [:end])
     Slice {
+        /// Start index for slice (None means from beginning)
         start: Option<i64>,
+        /// End index for slice (None means to end)
         end: Option<i64>,
+        /// Step size for slice (None means step of 1)
         step: Option<i64>,
     },
 
@@ -43,7 +48,10 @@ pub enum JsonSelector {
     },
 
     /// Multiple selectors (union operator)
-    Union { selectors: Vec<JsonSelector> },
+    Union { 
+        /// List of selectors in the union
+        selectors: Vec<JsonSelector> 
+    },
 }
 
 /// Filter expression AST for JSONPath predicates
@@ -53,37 +61,56 @@ pub enum FilterExpression {
     Current,
 
     /// Property access (@.property)
-    Property { path: Vec<String> },
+    Property { 
+        /// Property path components
+        path: Vec<String> 
+    },
 
     /// Complex JSONPath expressions (@.items[*], @.data[0:5], etc.)
-    JsonPath { selectors: Vec<JsonSelector> },
+    JsonPath { 
+        /// Selectors in the JSONPath expression
+        selectors: Vec<JsonSelector> 
+    },
 
     /// Literal values (strings, numbers, booleans)
-    Literal { value: FilterValue },
+    Literal { 
+        /// The literal value
+        value: FilterValue 
+    },
 
     /// Comparison operations
     Comparison {
+        /// Left operand of comparison
         left: Box<FilterExpression>,
+        /// Comparison operator
         operator: ComparisonOp,
+        /// Right operand of comparison
         right: Box<FilterExpression>,
     },
 
     /// Logical operations (&&, ||)
     Logical {
+        /// Left operand of logical operation
         left: Box<FilterExpression>,
+        /// Logical operator
         operator: LogicalOp,
+        /// Right operand of logical operation
         right: Box<FilterExpression>,
     },
 
     /// Regular expression matching
     Regex {
+        /// Target expression to match against
         target: Box<FilterExpression>,
+        /// Regular expression pattern
         pattern: String,
     },
 
     /// Function calls (length, type, etc.)
     Function {
+        /// Function name
         name: String,
+        /// Function arguments
         args: Vec<FilterExpression>,
     },
 }
@@ -91,36 +118,56 @@ pub enum FilterExpression {
 /// Filter expression literal values
 #[derive(Debug, Clone)]
 pub enum FilterValue {
+    /// String literal value
     String(String),
+    /// Floating-point number literal value
     Number(f64),
+    /// Integer literal value
     Integer(i64),
+    /// Boolean literal value
     Boolean(bool),
+    /// Null literal value
     Null,
 }
 
 /// Comparison operators for filter expressions
 #[derive(Debug, Clone, Copy)]
 pub enum ComparisonOp {
-    Equal,      // ==
-    NotEqual,   // !=
-    Less,       // <
-    LessEq,     // <=
-    Greater,    // >
-    GreaterEq,  // >=
-    In,         // in
-    NotIn,      // not in
-    Contains,   // contains
-    StartsWith, // starts with
-    EndsWith,   // ends with
-    Match,      // =~
-    NotMatch,   // !~
+    /// Equality comparison (==)
+    Equal,
+    /// Inequality comparison (!=)
+    NotEqual,
+    /// Less than comparison (<)
+    Less,
+    /// Less than or equal comparison (<=)
+    LessEq,
+    /// Greater than comparison (>)
+    Greater,
+    /// Greater than or equal comparison (>=)
+    GreaterEq,
+    /// Membership test (in)
+    In,
+    /// Non-membership test (not in)
+    NotIn,
+    /// Contains substring test (contains)
+    Contains,
+    /// Starts with prefix test (starts with)
+    StartsWith,
+    /// Ends with suffix test (ends with)
+    EndsWith,
+    /// Regular expression match (=~)
+    Match,
+    /// Regular expression non-match (!~)
+    NotMatch,
 }
 
 /// Logical operators for filter expressions
 #[derive(Debug, Clone, Copy)]
 pub enum LogicalOp {
-    And, // &&
-    Or,  // ||
+    /// Logical AND operator (&&)
+    And,
+    /// Logical OR operator (||)
+    Or,
 }
 
 /// Comprehensive complexity metrics for JSONPath expression analysis

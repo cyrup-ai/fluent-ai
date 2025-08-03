@@ -9,15 +9,15 @@ mod debug_tests {
     use super::*;
 
     #[test]
-    fn debug_simple_function_call() {
+    fn debug_core_function_call() {
         // Test the simplest function call first
         let result = JsonPathParser::compile("$.test[?length() == 0]");
-        println!("Simple function result: {:?}", result);
+        println!("Core function result: {:?}", result);
 
         // This should work if the basic parsing is correct
         assert!(
             result.is_ok(),
-            "Simple function call should parse successfully"
+            "Core function call should parse successfully"
         );
     }
 

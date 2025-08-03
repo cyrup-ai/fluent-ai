@@ -29,7 +29,7 @@ struct TestModel {
 mod operator_precedence_tests {
     use super::*;
 
-    fn create_test_data() -> String {
+    pub fn create_test_data() -> String {
         let items = vec![
             TestModel {
                 a: 1,
@@ -90,7 +90,7 @@ mod operator_precedence_tests {
     #[test]
     fn test_comparison_vs_logical_precedence() {
         // RFC 9535: Comparison operators have higher precedence than logical operators
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         // Test case: @.a < 3 && @.b > 4 || @.c == 5
         // Should be evaluated as: ((@.a < 3) && (@.b > 4)) || (@.c == 5)
@@ -119,13 +119,13 @@ mod operator_precedence_tests {
             let chunk = Bytes::from(json_data.clone());
             let results1: Vec<_> = stream1
                 .process_chunk(chunk.clone())
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             let chunk = Bytes::from(json_data.clone());
             let results2: Vec<_> = stream2
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             assert_eq!(
@@ -151,7 +151,7 @@ mod operator_precedence_tests {
     #[test]
     fn test_arithmetic_comparison_precedence() {
         // Test arithmetic operators vs comparison operators precedence
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let arithmetic_cases = vec![
             (
@@ -213,7 +213,7 @@ mod operator_precedence_tests {
     #[test]
     fn test_unary_operator_precedence() {
         // Test unary operators (negation) have highest precedence
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let unary_cases = vec![
             (
@@ -245,13 +245,13 @@ mod operator_precedence_tests {
                     let chunk = Bytes::from(json_data.clone());
                     let results1: Vec<_> = stream1
                         .process_chunk(chunk.clone())
-                        .map(|r| r.expect("Valid deserialization"))
+        
                         .collect();
 
                     let chunk = Bytes::from(json_data.clone());
                     let results2: Vec<_> = stream2
                         .process_chunk(chunk)
-                        .map(|r| r.expect("Valid deserialization"))
+        
                         .collect();
 
                     assert_eq!(
@@ -277,7 +277,7 @@ mod operator_precedence_tests {
     #[test]
     fn test_function_call_precedence() {
         // Test function calls have highest precedence
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let function_cases = vec![
             (
@@ -336,7 +336,7 @@ mod parentheses_grouping_tests {
     #[test]
     fn test_parentheses_override_precedence() {
         // Test that parentheses correctly override default operator precedence
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let grouping_cases = vec![
             (
@@ -367,7 +367,7 @@ mod parentheses_grouping_tests {
             let chunk = Bytes::from(json_data.clone());
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             assert_eq!(
@@ -402,7 +402,7 @@ mod parentheses_grouping_tests {
     #[test]
     fn test_nested_parentheses() {
         // Test nested parentheses evaluation
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let nested_cases = vec![
             (
@@ -428,7 +428,7 @@ mod parentheses_grouping_tests {
             let chunk = Bytes::from(json_data.clone());
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             assert!(
@@ -493,7 +493,7 @@ mod logical_precedence_tests {
     #[test]
     fn test_and_or_precedence() {
         // RFC 9535: AND (&&) has higher precedence than OR (||)
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let precedence_cases = vec![
             (
@@ -520,13 +520,13 @@ mod logical_precedence_tests {
             let chunk = Bytes::from(json_data.clone());
             let results1: Vec<_> = stream1
                 .process_chunk(chunk.clone())
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             let chunk = Bytes::from(json_data.clone());
             let results2: Vec<_> = stream2
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             assert_eq!(
@@ -552,7 +552,7 @@ mod logical_precedence_tests {
     #[test]
     fn test_associativity() {
         // Test left-to-right associativity for operators of equal precedence
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let associativity_cases = vec![
             (
@@ -579,13 +579,13 @@ mod logical_precedence_tests {
             let chunk = Bytes::from(json_data.clone());
             let results1: Vec<_> = stream1
                 .process_chunk(chunk.clone())
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             let chunk = Bytes::from(json_data.clone());
             let results2: Vec<_> = stream2
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             assert_eq!(
@@ -606,7 +606,7 @@ mod logical_precedence_tests {
     #[test]
     fn test_short_circuit_evaluation() {
         // Test that logical operators use short-circuit evaluation
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         // Test cases designed to verify short-circuit behavior
         let short_circuit_cases = vec![
@@ -652,7 +652,7 @@ mod comparison_precedence_tests {
     #[test]
     fn test_comparison_operators_equal_precedence() {
         // All comparison operators have equal precedence and left-to-right associativity
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let comparison_cases = vec![
             (
@@ -698,7 +698,7 @@ mod comparison_precedence_tests {
     #[test]
     fn test_comparison_vs_equality_precedence() {
         // Test that all comparison operators have same precedence
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let mixed_comparison_cases = vec![
             ("$.items[?@.a > 1 == true]", "Greater than vs equality"),
@@ -735,7 +735,7 @@ mod comparison_precedence_tests {
     #[test]
     fn test_comparison_with_parentheses() {
         // Test comparison operators with explicit parentheses
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let parenthetical_comparisons = vec![
             (
@@ -784,7 +784,7 @@ mod complex_evaluation_tests {
     #[test]
     fn test_deeply_nested_precedence() {
         // Test precedence in deeply nested expressions
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let complex_expressions = vec![
             (
@@ -807,7 +807,7 @@ mod complex_evaluation_tests {
             let chunk = Bytes::from(json_data.clone());
             let results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+
                 .collect();
 
             println!("{}: {} items matched", description, results.len());
@@ -825,7 +825,7 @@ mod complex_evaluation_tests {
     #[test]
     fn test_precedence_with_functions() {
         // Test precedence when function calls are involved
-        let json_data = create_test_data();
+        let json_data = operator_precedence_tests::create_test_data();
 
         let function_precedence_cases = vec![
             (

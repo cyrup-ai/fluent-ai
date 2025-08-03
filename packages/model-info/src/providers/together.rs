@@ -42,7 +42,7 @@ impl ProviderTrait for TogetherProvider {
             owned_by: Option<String>,
         }
         
-        #[derive(Deserialize, Serialize, Debug)]
+        #[derive(Deserialize, Serialize, Debug, Default)]
         struct TogetherModelsResponse {
             object: String,
             data: Vec<TogetherModel>,
@@ -50,12 +50,12 @@ impl ProviderTrait for TogetherProvider {
         
         AsyncStream::with_channel(move |sender| {
             let response = if let Ok(api_key) = env::var("TOGETHER_API_KEY") {
-                Http3::json::<TogetherModelsResponse>()
+                Http3::json()
                     .bearer_auth(&api_key)
                     .get("https://api.together.xyz/v1/models")
                     .collect::<TogetherModelsResponse>()
             } else {
-                Http3::json::<TogetherModelsResponse>()
+                Http3::json()
                     .get("https://api.together.xyz/v1/models")
                     .collect::<TogetherModelsResponse>()
             };

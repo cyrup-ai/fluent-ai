@@ -26,8 +26,7 @@ impl ProviderTrait for HuggingFaceProvider {
     }
     
     fn list_models(&self) -> AsyncStream<ModelInfo> {
-        use crate::generated_models::HuggingFaceModel as HuggingFace;
-        use crate::common::Model;
+        // Note: Generated models are managed by build script
         
         use fluent_ai_http3::{Http3, HttpStreamExt};
         use std::env;
@@ -44,12 +43,12 @@ impl ProviderTrait for HuggingFaceProvider {
         
         AsyncStream::with_channel(move |sender| {
             let response = if let Ok(api_key) = env::var("HUGGINGFACE_API_KEY") {
-                Http3::json::<Vec<HuggingFaceModel>>()
+                Http3::json()
                     .bearer_auth(&api_key)
                     .get("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&direction=-1&limit=50")
                     .collect::<Vec<HuggingFaceModel>>()
             } else {
-                Http3::json::<Vec<HuggingFaceModel>>()
+                Http3::json()
                     .get("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&direction=-1&limit=50")
                     .collect::<Vec<HuggingFaceModel>>()
             };

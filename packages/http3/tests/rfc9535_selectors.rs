@@ -8,7 +8,7 @@
 //! - Filter Selector (2.3.5)
 
 use bytes::Bytes;
-use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathError, JsonPathParser};
+use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -337,8 +337,6 @@ mod index_selector_tests {
         let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 1, "Index 0 should select first element");
-        if let Ok(ref value) = results[0] {
-            assert_eq!(value, "first", "Should select first element");
-        }
+        assert_eq!(results[0], "first", "Should select first element");
     }
 }

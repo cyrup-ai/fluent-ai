@@ -262,7 +262,7 @@ mod ijson_boundary_tests {
 
             // Then test execution
             let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
-            let chunk = Bytes::from(json_data.as_str());
+            let chunk = Bytes::from(json_data.clone());
             let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(

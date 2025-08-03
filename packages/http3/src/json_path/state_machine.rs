@@ -87,18 +87,27 @@ pub struct StreamStateMachine {
 #[derive(Debug, Clone)]
 pub struct DepthFrame {
     /// Type of JSON structure at this depth
+    /// TODO: Use in JSONPath evaluation to track structure context
+    #[allow(dead_code)]
     structure_type: JsonStructureType,
-    /// Key name (for objects) or index (for arrays)
+    /// Key name (for objects) or index (for arrays)  
+    /// TODO: Use for JSONPath navigation and selector matching
+    #[allow(dead_code)]
     identifier: FrameIdentifier,
     /// JSONPath selector that matched this frame
+    /// TODO: Implement selector tracking for complex JSONPath expressions
+    #[allow(dead_code)]
     matched_selector: Option<JsonSelector>,
 }
 
 /// Type of JSON structure
 #[derive(Debug, Clone, Copy)]
 pub enum JsonStructureType {
+    /// JSON object structure (enclosed in {})
     Object,
+    /// JSON array structure (enclosed in [])
     Array,
+    /// JSON primitive value (string, number, boolean, null)
     Value,
 }
 
@@ -405,6 +414,10 @@ impl StreamStateMachine {
 
     // State transition methods
 
+    /// Transition to navigating state for JSONPath evaluation
+    ///
+    /// Initializes navigation through the JSON structure using the configured
+    /// JSONPath expression selectors.
     pub fn transition_to_navigating(&mut self) {
         if let Some(expr) = &self.path_expression {
             self.state = JsonStreamState::Navigating {
@@ -433,11 +446,18 @@ impl StreamStateMachine {
         self.stats.state_transitions += 1;
     }
 
+    /// Transition to complete state indicating processing is finished
+    ///
+    /// Marks the JSON stream processing as successfully completed.
     pub fn transition_to_complete(&mut self) {
         self.state = JsonStreamState::Complete;
         self.stats.state_transitions += 1;
     }
 
+    /// Transition to error state with optional recovery capability
+    ///
+    /// Records an error condition and determines if processing can continue.
+    /// Recoverable errors allow continued processing while non-recoverable errors halt execution.
     pub fn transition_to_error(&mut self, error: JsonPathError, recoverable: bool) {
         self.state = JsonStreamState::Error { error, recoverable };
         self.stats.state_transitions += 1;
@@ -473,6 +493,10 @@ impl StreamStateMachine {
 
     // Depth tracking methods
 
+    /// Enter a JSON object during parsing
+    ///
+    /// Increments depth tracking and pushes object frame onto the depth stack
+    /// for proper JSONPath evaluation context.
     pub fn enter_object(&mut self) {
         self.stats.current_depth += 1;
         self.stats.max_depth = self.stats.max_depth.max(self.stats.current_depth);
@@ -484,11 +508,18 @@ impl StreamStateMachine {
         });
     }
 
+    /// Exit a JSON object during parsing
+    ///
+    /// Decrements depth tracking and pops object frame from the depth stack.
     pub fn exit_object(&mut self) {
         self.stats.current_depth = self.stats.current_depth.saturating_sub(1);
         self.depth_stack.pop_back();
     }
 
+    /// Enter a JSON array during parsing
+    ///
+    /// Increments depth tracking and pushes array frame onto the depth stack
+    /// for proper JSONPath evaluation context.
     pub fn enter_array(&mut self) {
         self.stats.current_depth += 1;
         self.stats.max_depth = self.stats.max_depth.max(self.stats.current_depth);
@@ -576,6 +607,8 @@ enum ProcessResult {
     /// Complete JSON object found at boundary
     ObjectBoundary { start: usize, end: usize },
     /// Need more data to continue processing
+    /// TODO: Used in streaming JSON processing - ensure integration with new architecture
+    #[allow(dead_code)]
     NeedMoreData,
     /// Stream processing complete
     Complete,

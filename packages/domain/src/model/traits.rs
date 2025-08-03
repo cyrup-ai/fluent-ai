@@ -120,7 +120,7 @@ pub struct FunctionDefinition {
     pub parameters: serde_json::Value}
 
 /// Parameters for text generation
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GenerationParams {
     /// The maximum number of tokens to generate
     pub max_tokens: Option<u32>,
@@ -145,6 +145,21 @@ pub struct GenerationParams {
 
     /// Whether to stream the response
     pub stream: bool}
+
+impl Default for GenerationParams {
+    fn default() -> Self {
+        Self {
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            stop_sequences: ZeroOneOrMany::None,
+            stream: false,
+        }
+    }
+}
 
 /// A chunk of generated text
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

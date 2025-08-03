@@ -323,6 +323,80 @@ mod rfc_examples_tests {
             );
         }
     }
+
+    #[test]
+    fn test_all_member_values_and_array_elements() {
+        // RFC 9535: $.* → All member values and array elements contained in the input value
+        let mut stream = JsonArrayStream::<serde_json::Value>::new("$..*");
+
+        let chunk = Bytes::from(BOOKSTORE_JSON);
+        let results: Vec<_> = stream
+            .process_chunk(chunk)
+            .collect();
+
+        // Should find all values in the JSON structure recursively
+        // This includes: store object, book array, 4 book objects, bicycle object, 
+        // all string values, all number values, etc.
+        assert!(
+            results.len() >= 20,
+            "Recursive descent wildcard should find many values, found: {}",
+            results.len()
+        );
+
+        // Verify we get different types of values
+        let mut has_strings = false;
+        let mut has_numbers = false;
+        let mut has_objects = false;
+        let mut has_arrays = false;
+
+        for value in results {
+            match value {
+                v if v.is_string() => has_strings = true,
+                v if v.is_number() => has_numbers = true,
+                v if v.is_object() => has_objects = true,
+                v if v.is_array() => has_arrays = true,
+                _ => {}
+            }
+        }
+
+        assert!(has_strings, "Should find string values");
+        assert!(has_numbers, "Should find number values");
+        assert!(has_objects, "Should find object values");
+        assert!(has_arrays, "Should find array values");
+    }
+
+    #[test]
+    fn test_third_book_author() {
+        // RFC 9535: $..book[2].author → The third book's author
+        let mut stream = JsonArrayStream::<String>::new("$..book[2].author");
+
+        let chunk = Bytes::from(BOOKSTORE_JSON);
+        let results: Vec<_> = stream
+            .process_chunk(chunk)
+            .collect();
+
+        assert_eq!(results.len(), 1, "Should find exactly one author");
+        assert_eq!(
+            results[0], "Herman Melville",
+            "Third book author should be Herman Melville"
+        );
+    }
+
+    #[test]
+    fn test_third_book_missing_publisher() {
+        // RFC 9535: $..book[2].publisher → Empty result: the third book does not have a "publisher" member
+        let mut stream = JsonArrayStream::<String>::new("$..book[2].publisher");
+
+        let chunk = Bytes::from(BOOKSTORE_JSON);
+        let results: Vec<_> = stream
+            .process_chunk(chunk)
+            .collect();
+
+        assert_eq!(
+            results.len(), 0,
+            "Should return empty result for non-existent publisher field"
+        );
+    }
 }
 
 /// Extended RFC Examples with Complex Queries

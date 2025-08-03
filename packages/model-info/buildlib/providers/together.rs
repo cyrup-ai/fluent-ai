@@ -1,6 +1,4 @@
-use std::env;
-use fluent_ai_http3::{Http3, HttpStreamExt};
-use super::{ModelData, ProviderBuilder, TogetherModel, ProcessProviderResult};
+use super::{ModelData, ProviderBuilder, TogetherModel};
 
 /// Together provider implementation with dynamic API fetching
 /// API must be available - no static data
@@ -22,54 +20,16 @@ impl ProviderBuilder for TogetherProvider {
         Some("TOGETHER_API_KEY")
     }
 
+    fn jsonpath_selector(&self) -> &'static str {
+        "$[*]" // Together.ai returns direct array format
+    }
+
     fn response_to_models(&self, response: Self::ListResponse) -> Vec<ModelData> {
         vec![together_model_to_data(&response)]
     }
 
-    // Custom process() implementation for Together's direct array response format
-    fn process(&self) -> ProcessProviderResult {
-        // Construct full URL
-        let full_url = format!("{}{}", self.base_url(), self.list_url());
-        
-        // Together.ai returns direct array - collect as Vec<Vec<TogetherModel>> then flatten
-        let models_nested: Vec<Vec<TogetherModel>> = if let Ok(api_key) = env::var("TOGETHER_API_KEY") {
-            Http3::json()
-                .bearer_auth(&api_key)
-                .get(&full_url)
-                .collect::<Vec<TogetherModel>>()
-        } else {
-            Http3::json()
-                .get(&full_url)
-                .collect::<Vec<TogetherModel>>()
-        };
-        
-        // Flatten nested Vec<Vec<TogetherModel>> to Vec<TogetherModel>
-        let models_array: Vec<TogetherModel> = models_nested.into_iter().flatten().collect();
-
-        // Convert to ModelData format
-        let models: Vec<ModelData> = models_array
-            .iter()
-            .map(together_model_to_data)
-            .collect();
-
-        if models.is_empty() {
-            return ProcessProviderResult {
-                success: false,
-                status: format!("No models found for {}", self.provider_name()),
-            };
-        }
-
-        // Generate code using syn
-        match self.generate_code(&models) {
-            Ok((_enum_code, _impl_code)) => ProcessProviderResult {
-                success: true,
-                status: format!("Successfully processed {} models for {}", models.len(), self.provider_name()),
-            },
-            Err(e) => ProcessProviderResult {
-                success: false,
-                status: format!("Code generation failed for {}: {}", self.provider_name(), e),
-            },
-        }
+    fn model_to_data(&self, model: &Self::GetResponse) -> ModelData {
+        together_model_to_data(model)
     }
 }
 

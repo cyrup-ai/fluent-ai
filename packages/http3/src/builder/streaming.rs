@@ -2,21 +2,21 @@
 //!
 //! Provides JsonPathStream for transforming raw HTTP byte streams into
 //! individual JSON objects based on JSONPath expressions.
+//! Follows the streams-only architecture with zero allocation and no futures.
 
 use std::marker::PhantomData;
 
-use fluent_ai_async::thread_pool::global_executor;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, emit, handle_error};
-use futures_util::StreamExt;
 use serde::de::DeserializeOwned;
 
-use crate::json_path::{JsonArrayStream, JsonPathError};
+use crate::json_path::{JsonStreamProcessor, JsonPathError};
 use crate::{HttpChunk, HttpError, HttpStream};
 
 /// JSONPath streaming wrapper for HTTP responses
 ///
 /// Transforms raw HTTP byte streams into individual JSON objects based on JSONPath expressions.
-/// Maintains compatibility with existing `on_chunk` error handling patterns.
+/// Maintains compatibility with existing `on_chunk` error handling patterns while following
+/// the streams-only architecture with zero allocation.
 pub struct JsonPathStream<T> {
     http_stream: HttpStream,
     jsonpath_expr: String,
@@ -153,78 +153,43 @@ where
         let http_stream = self.http_stream;
         let mut processors = self.chunk_processors;
 
-        // Create AsyncStream using pure async-stream pattern - NO TOKIO
-        let stream =
-            AsyncStream::<T, 1024>::with_channel(move |sender: AsyncStreamSender<T, 1024>| {
-                // Use global_executor for HTTP polling encapsulation with crossbeam bridge
-                let chunks_rx = global_executor().execute_with_result(move || {
-                    // Create crossbeam channel for synchronous HttpStream consumption
-                    let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
-
-                    // Spawn dedicated thread for async HttpStream polling
-                    std::thread::spawn(move || {
-                        // Minimal tokio runtime ONLY for HttpStream polling - isolated async work
-                        let rt = tokio::runtime::Runtime::new().unwrap_or_else(|e| {
-                            log::error!("Failed to create HTTP polling runtime: {}", e);
-                            panic!("HTTP polling runtime required for futures::Stream consumption");
-                        });
-                        rt.block_on(async move {
-                            let mut http_stream = http_stream;
-                            while let Some(chunk_result) = http_stream.next().await {
-                                if chunk_tx.send(chunk_result).is_err() {
-                                    break; // Receiver dropped
-                                }
-                            }
-                        });
-                    });
-
-                    // Synchronous consumption in main thread - NO FUTURES
-                    let mut chunks = Vec::new();
-                    while let Ok(chunk_result) = chunk_rx.recv() {
-                        chunks.push(chunk_result);
-                    }
-                    chunks
-                });
-
-                // Synchronous processing with JsonArrayStream
-                let mut json_array_stream = JsonArrayStream::new(&jsonpath_expr);
-
-                // Collect chunks from global_executor - pure crossbeam pattern
-                let chunks = match chunks_rx.recv() {
-                    Ok(chunks) => chunks,
-                    Err(_) => {
-                        log::error!("Failed to receive HTTP chunks from global executor");
-                        return;
-                    }
-                };
-
-                for chunk_result in chunks {
-                    match chunk_result {
-                        Ok(HttpChunk::Body(bytes)) => {
-                            // Process bytes through JSONPath deserializer synchronously
-                            let objects_stream = json_array_stream.process_chunk(bytes);
-                            let objects = objects_stream.collect(); // Collect all objects from AsyncStream
-
-                            for obj in objects {
-                                // Apply chunk processors - objects are already unwrapped from AsyncStream
-                                let mut final_obj = obj;
-                                for processor in &mut processors {
-                                    final_obj = processor(Ok(final_obj));
-                                }
-
-                                emit!(sender, final_obj);
-                            }
+        // Use streams-only architecture with JsonStreamProcessor
+        let stream = AsyncStream::<T>::with_channel(move |sender: AsyncStreamSender<T>| {
+            // Collect all HTTP chunks synchronously - no futures
+            let chunks = Self::collect_http_chunks_sync(http_stream);
+            
+            match chunks {
+                Ok(chunk_vec) => {
+                    // Create JsonStreamProcessor for high-performance JSONPath processing
+                    let json_processor = JsonStreamProcessor::new(&jsonpath_expr);
+                    
+                    // Process chunks through JsonStreamProcessor
+                    let object_stream = json_processor.process_chunks(chunk_vec.into_iter());
+                    
+                    // Emit each processed object through the sender
+                    for obj in object_stream {
+                        let mut result = Ok(obj);
+                        
+                        // Apply chunk processors in sequence
+                        for processor in &mut processors {
+                            result = Ok(processor(result));
                         }
-                        Ok(HttpChunk::Error(e)) | Err(e) => {
-                            handle_error!(e, "HTTP chunk error in JSONPath stream");
-                        }
-                        Ok(_) => {
-                            // Ignore other chunk types (Head, Deserialized) in JSONPath streaming
-                            continue;
+                        
+                        match result {
+                            Ok(processed_obj) => {
+                                emit!(sender, processed_obj);
+                            }
+                            Err(e) => {
+                                handle_error!(e, "Chunk processor failed");
+                            }
                         }
                     }
                 }
-            });
+                Err(e) => {
+                    handle_error!(e, "Failed to collect HTTP chunks");
+                }
+            }
+        });
 
         // Collect from AsyncStream
         let results = stream.collect();
@@ -234,6 +199,73 @@ where
         } else {
             results
         }
+    }
+
+    /// Collect HTTP chunks synchronously using streams-only architecture
+    ///
+    /// This method follows the no-futures constraint by using crossbeam channels
+    /// to bridge between the async HttpStream and synchronous processing.
+    fn collect_http_chunks_sync(mut http_stream: HttpStream) -> Result<Vec<HttpChunk>, HttpError> {
+        use crossbeam_channel::{bounded, Receiver};
+        use std::thread;
+        use std::time::Duration;
+
+        // Create bounded channel for chunk communication
+        let (tx, rx): (crossbeam_channel::Sender<Result<HttpChunk, HttpError>>, Receiver<Result<HttpChunk, HttpError>>) = bounded(1024);
+
+        // Spawn thread to handle async HttpStream polling - isolated async work
+        let handle = thread::spawn(move || {
+            // Use minimal tokio runtime ONLY for HttpStream polling
+            let rt = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    let _ = tx.send(Err(HttpError::Generic(format!("Failed to create HTTP polling runtime: {}", e))));
+                    return;
+                }
+            };
+
+            rt.block_on(async move {
+                use futures_util::StreamExt;
+                
+                while let Some(chunk_result) = http_stream.next().await {
+                    if tx.send(chunk_result).is_err() {
+                        break; // Receiver dropped
+                    }
+                }
+            });
+        });
+
+        // Synchronous collection from crossbeam channel - no futures
+        let mut chunks = Vec::new();
+        let timeout = Duration::from_secs(30); // 30 second timeout for HTTP collection
+
+        loop {
+            match rx.recv_timeout(timeout) {
+                Ok(chunk_result) => {
+                    match chunk_result {
+                        Ok(chunk) => chunks.push(chunk),
+                        Err(e) => return Err(e),
+                    }
+                }
+                Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
+                    // Timeout - consider it complete
+                    break;
+                }
+                Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
+                    // Sender finished - natural completion
+                    break;
+                }
+            }
+        }
+
+        // Wait for thread completion
+        if let Err(e) = handle.join() {
+            return Err(HttpError::Generic(format!("HTTP collection thread failed: {:?}", e)));
+        }
+
+        Ok(chunks)
     }
 
     /// Collect the first object from the stream
@@ -296,6 +328,7 @@ where
     {
         let error_handler_clone = error_handler.clone();
         let vec_error_handler = move |e| vec![error_handler_clone(e)];
+        
         self.collect_or_else(vec_error_handler)
             .pop()
             .unwrap_or_else(|| error_handler(HttpError::Generic("No data received".to_string())))

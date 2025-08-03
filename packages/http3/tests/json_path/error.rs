@@ -4,7 +4,7 @@
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::error::{
-    JsonPathError, JsonPathErrorExt, JsonPathResult, invalid_expression_error,
+    JsonPathError, JsonPathResultExt, JsonPathResult, invalid_expression_error,
 };
 use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
 use serde::{Deserialize, Serialize};

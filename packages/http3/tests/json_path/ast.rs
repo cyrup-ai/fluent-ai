@@ -152,10 +152,8 @@ mod ast_construction_tests {
         ];
 
         for (dot_notation, bracket_notation) in dot_to_bracket_conversions {
-            let mut dot_stream = JsonArrayStream::<serde_json::Value>::new(dot_notation)
-                .expect("Valid JSONPath AST");
-            let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket_notation)
-                .expect("Valid JSONPath AST");
+            let mut dot_stream = JsonArrayStream::<serde_json::Value>::new(dot_notation);
+            let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket_notation);
 
             let chunk = Bytes::from(json_data);
             let dot_results: Vec<_> = dot_stream.process_chunk(chunk.clone()).collect();

@@ -2,6 +2,10 @@
 //!
 //! Contains the core logic for processing individual JSON bytes during streaming,
 //! including state transitions and JSONPath evaluation integration.
+//!
+//! NOTE: Many methods in this module appear to duplicate functionality from core.rs.
+//! These are preserved as they may represent different architectural approaches.
+#![allow(dead_code)]
 
 use serde::de::DeserializeOwned;
 
@@ -25,7 +29,11 @@ impl<'iter, 'data, T> JsonPathIterator<'iter, 'data, T>
 where
     T: DeserializeOwned,
 {
+    // TODO: Many methods in this impl block appear to duplicate functionality from core.rs  
+    // This suggests different architectural approaches were tried. Investigate which is canonical.
     /// Read next byte from streaming buffer using persistent position tracking
+    /// TODO: This appears to duplicate functionality in core.rs - investigate architectural intent
+    #[allow(dead_code)]
     #[inline]
     pub(super) fn read_next_byte(&mut self) -> JsonPathResult<Option<u8>> {
         // Check if we've reached the end of available data
@@ -48,7 +56,9 @@ where
         }
     }
 
-    /// Process single JSON byte and update parsing state
+    /// Process single JSON byte and update parsing state  
+    /// TODO: This appears to duplicate functionality in core.rs - investigate architectural intent
+    #[allow(dead_code)]
     #[inline]
     pub(super) fn process_json_byte(&mut self, byte: u8) -> JsonPathResult<JsonProcessResult> {
         match self.deserializer.state.current_state() {
@@ -67,6 +77,7 @@ where
     }
 
     /// Process byte when parser is in initial state
+    #[allow(dead_code)]
     #[inline]
     pub(super) fn process_initial_byte(&mut self, byte: u8) -> JsonPathResult<JsonProcessResult> {
         match byte {
@@ -125,12 +136,23 @@ where
         &mut self,
         byte: u8,
     ) -> JsonPathResult<JsonProcessResult> {
+        // Check for recursive descent mode entry before processing
+        if !self.deserializer.in_recursive_descent && self.should_enter_recursive_descent() {
+            self.enter_recursive_descent_mode();
+        }
+        
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(JsonProcessResult::Continue), // Skip whitespace
             b'{' => {
                 self.deserializer.object_nesting =
                     self.deserializer.object_nesting.saturating_add(1);
                 self.deserializer.state.transition_to_processing_object();
+                
+                // Update breadcrumbs for recursive descent tracking
+                if self.deserializer.in_recursive_descent {
+                    self.update_breadcrumbs(None); // Object entry
+                }
+                
                 if self.matches_current_path() && self.deserializer.in_target_array {
                     self.deserializer.object_buffer.clear();
                     self.deserializer.object_buffer.push(byte);
@@ -142,6 +164,12 @@ where
             b'[' => {
                 self.deserializer.current_depth = self.deserializer.current_depth.saturating_add(1);
                 self.deserializer.state.transition_to_streaming_array();
+                
+                // Update breadcrumbs for recursive descent tracking
+                if self.deserializer.in_recursive_descent {
+                    self.update_breadcrumbs(None); // Array entry
+                }
+                
                 // Push current array index to stack for nested arrays
                 self.deserializer
                     .array_index_stack
@@ -265,7 +293,13 @@ where
                 self.deserializer.object_nesting =
                     self.deserializer.object_nesting.saturating_sub(1);
                 if self.deserializer.object_nesting == 0 {
-                    // Complete object found
+                    // Complete object found - check if we need to exit recursive descent
+                    if self.deserializer.in_recursive_descent {
+                        // Evaluate if we should continue or exit recursive descent
+                        if !self.evaluate_recursive_descent_match() {
+                            self.exit_recursive_descent_mode();
+                        }
+                    }
                     Ok(JsonProcessResult::ObjectFound)
                 } else {
                     Ok(JsonProcessResult::Continue)
@@ -319,11 +353,21 @@ where
     #[inline]
     pub(super) fn evaluate_jsonpath_at_current_position(&self) -> bool {
         if self.deserializer.in_recursive_descent {
+            // Evaluate recursive descent match using the implemented logic
             self.evaluate_recursive_descent_match()
         } else {
-            self.evaluate_selector_match()
+            // Check if we should enter recursive descent mode
+            if self.should_enter_recursive_descent() {
+                // Note: We need a mutable reference to enter recursive descent mode
+                // This will be handled by the caller that has mutable access
+                false
+            } else {
+                self.evaluate_selector_match()
+            }
         }
     }
+
+
 
     /// Evaluate current selector considering array indices and slice notation
     #[inline]
@@ -441,4 +485,6 @@ where
 
         within_start && within_end && matches_step
     }
+
+
 }

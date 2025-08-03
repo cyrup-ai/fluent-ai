@@ -534,3 +534,154 @@ mod normalized_paths_tests {
         }
     }
 }
+
+/// RFC 9535 Section 2.1.2 - Nodelist Ordering Preservation Tests
+#[cfg(test)]
+mod nodelist_ordering_tests {
+    use super::*;
+
+    #[test]
+    fn test_multi_selector_overlapping_results_ordering() {
+        // RFC 9535 Section 2.1.2: "The nodelist resulting from the last segment is presented as the result of the query"
+        // "A segment operates on each of the nodes in its input nodelist in turn, and the resultant nodelists 
+        // are concatenated in the order of the input nodelist they were derived from to produce the result of the segment"
+        
+        let test_json = r#"{
+            "items": [
+                {"id": 1, "type": "book", "category": "fiction"},
+                {"id": 2, "type": "book", "category": "science"},
+                {"id": 3, "type": "magazine", "category": "fiction"},
+                {"id": 4, "type": "book", "category": "history"}
+            ]
+        }"#;
+
+        // Test case 1: Index selector ordering tests
+        let index_selector_tests = vec![
+            (
+                "$.items[0,2,1]", // Selectors in specific order
+                vec![1, 3, 2], // Expected IDs in selector order
+                "Multiple index selectors should preserve selector order"
+            ),
+            (
+                "$.items[2,0,3,1]", // Different selector order
+                vec![3, 1, 4, 2], // Expected IDs in selector order  
+                "Index selectors should maintain specified order regardless of array position"
+            ),
+        ];
+
+        // Test case 2: Property selector ordering tests
+        let property_selector_tests = vec![
+            (
+                "$['items'][0,1]['id','type']", // Nested multi-selectors
+                vec!["id", "type", "id", "type"], // Should interleave based on selector order
+                "Nested multi-selectors should preserve concatenation order"
+            )
+        ];
+
+        // Test index selector ordering
+        for (expr, expected_pattern, description) in index_selector_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_pattern.len(), 
+                "RFC 9535 nodelist ordering: {} should produce {} results", expr, expected_pattern.len());
+                
+            for (i, result) in results.iter().enumerate() {
+                let id_value = result["id"].as_i64().unwrap_or(-1);
+                assert_eq!(id_value, expected_pattern[i] as i64,
+                    "RFC 9535: {} - Position {} should have ID {}, got {}", description, i, expected_pattern[i], id_value);
+            }
+        }
+
+        // Test property selector ordering  
+        for (expr, expected_fields, description) in property_selector_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_fields.len(), 
+                "RFC 9535 nodelist ordering: {} should produce {} results", expr, expected_fields.len());
+                
+            // Check alternating id/type pattern
+            for (i, result) in results.iter().enumerate() {
+                let expected_field = expected_fields[i];
+                if expected_field == "id" {
+                    assert!(result.is_number(), 
+                        "RFC 9535: Position {} should be numeric id, got {:?}", i, result);
+                } else {
+                    assert!(result.is_string(), 
+                        "RFC 9535: Position {} should be string type, got {:?}", i, result);
+                }
+            }
+        }
+    }
+
+    #[test] 
+    fn test_duplicate_node_preservation() {
+        // RFC 9535 Section 2.1.2: "A node may be selected more than once and appears that number of times in the nodelist. Duplicate nodes are not removed."
+        
+        let test_json = r#"{
+            "data": {
+                "x": 42,
+                "y": 24  
+            }
+        }"#;
+
+        let test_cases = vec![
+            (
+                "$.data['x','x','y','x']", // Duplicate selectors
+                vec![42, 42, 24, 42], // Should preserve all duplicates in order
+                "Duplicate selectors should preserve all occurrences in selector order"
+            ),
+            (
+                "$['data','data'].x", // Duplicate path segments
+                vec![42, 42], // Should get x twice
+                "Duplicate path segments should produce duplicate results"
+            )
+        ];
+
+        for (expr, expected_values, description) in test_cases {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_values.len(),
+                "RFC 9535 duplicate preservation: {} should produce {} results", expr, expected_values.len());
+                
+            for (i, result) in results.iter().enumerate() {
+                let value = result.as_i64().unwrap_or(-1);
+                assert_eq!(value, expected_values[i] as i64,
+                    "RFC 9535: {} - Position {} should be {}, got {}", description, i, expected_values[i], value);
+            }
+        }
+    }
+
+    #[test]
+    fn test_empty_nodelist_propagation() {
+        // RFC 9535 Section 2.1.2: "As a consequence of this approach, if any of the segments produces an empty nodelist, then the whole query produces an empty nodelist."
+        
+        let test_json = r#"{
+            "store": {
+                "book": [{"title": "Book 1"}],
+                "magazine": [{"title": "Magazine 1"}]
+            }
+        }"#;
+
+        let empty_producing_expressions = vec![
+            "$.store.nonexistent.anything", // nonexistent produces empty, should propagate
+            "$.store.book[99].title", // out-of-bounds index produces empty
+            "$.store[''].title", // empty string selector on object without empty key
+            "$.store.book[?@.missing].title", // filter that matches nothing
+        ];
+
+        for expr in empty_producing_expressions {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), 0,
+                "RFC 9535 empty propagation: Expression '{}' should produce empty nodelist due to empty segment propagation", expr);
+        }
+    }
+}

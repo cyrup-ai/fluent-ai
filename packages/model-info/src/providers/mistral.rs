@@ -41,7 +41,7 @@ impl ProviderTrait for MistralProvider {
             owned_by: Option<String>,
         }
         
-        #[derive(Deserialize, Serialize, Debug)]
+        #[derive(Deserialize, Serialize, Debug, Default)]
         struct MistralModelsResponse {
             object: String,
             data: Vec<MistralModel>,
@@ -49,12 +49,12 @@ impl ProviderTrait for MistralProvider {
         
         AsyncStream::with_channel(move |sender| {
             let response = if let Ok(api_key) = env::var("MISTRAL_API_KEY") {
-                Http3::json::<MistralModelsResponse>()
+                Http3::json()
                     .bearer_auth(&api_key)
                     .get("https://api.mistral.ai/v1/models")
                     .collect::<MistralModelsResponse>()
             } else {
-                Http3::json::<MistralModelsResponse>()
+                Http3::json()
                     .get("https://api.mistral.ai/v1/models")
                     .collect::<MistralModelsResponse>()
             };

@@ -41,8 +41,20 @@ pub mod deserializer;
 pub mod error;
 pub mod filter;
 pub mod functions;
+pub mod normalized_paths;
+pub mod null_semantics;
 pub mod parser;
+pub mod safe_parsing;
+pub mod core_evaluator;
 pub mod state_machine;
+pub mod stream_processor;
+pub mod type_system;
+
+#[cfg(test)]
+pub mod debug_infinite_loop;
+
+#[cfg(test)]
+pub mod test_parser_debug;
 
 // Decomposed parser modules
 pub mod ast;
@@ -59,7 +71,7 @@ mod debug_test;
 use std::marker::PhantomData;
 
 use bytes::Bytes;
-use fluent_ai_async::{AsyncStream, emit, handle_error};
+use fluent_ai_async::{AsyncStream, emit};
 use serde::de::DeserializeOwned;
 
 pub use self::{
@@ -71,8 +83,15 @@ pub use self::{
     parser::{
         ComparisonOp, ComplexityMetrics, FilterExpression, FilterValue, JsonPathExpression,
         JsonPathParser, JsonSelector,
+        // RFC 9535 Implementation Types
+        FunctionType, TypedValue, FunctionSignature, TypeSystem,
+        NormalizedPath, PathSegment, NormalizedPathProcessor,
+        PropertyAccessResult, NullSemantics,
+        SafeParsingContext, Utf8Handler, Utf8RecoveryStrategy, SafeStringBuffer,
     },
+    core_evaluator::CoreJsonPathEvaluator,
     state_machine::{JsonStreamState, StreamStateMachine},
+    stream_processor::JsonStreamProcessor,
 };
 
 /// Zero-allocation JSONPath streaming processor
@@ -153,21 +172,81 @@ where
         // Append chunk to internal buffer
         self.buffer.append_chunk(chunk);
 
-        // Process available data and collect results
+        // Try to parse as complete JSON first using simple evaluator
+        let all_data = self.buffer.as_bytes();
+        let json_str = match std::str::from_utf8(all_data) {
+            Ok(s) => s,
+            Err(_) => {
+                // Invalid UTF-8, return empty stream
+                return AsyncStream::empty();
+            }
+        };
+
+        // Try to parse as complete JSON
+        let json_value = match serde_json::from_str::<serde_json::Value>(json_str) {
+            Ok(value) => value,
+            Err(_) => {
+                // Not complete JSON yet, fall back to streaming deserializer
+                return self.fallback_to_streaming_deserializer();
+            }
+        };
+
+        // Use core evaluator for complete JSON
+        let expression = self.path_expression.as_string();
+        let evaluator = match CoreJsonPathEvaluator::new(&expression) {
+            Ok(eval) => eval,
+            Err(_) => return AsyncStream::empty(),
+        };
+
+        let results = match evaluator.evaluate(&json_value) {
+            Ok(values) => values,
+            Err(_) => return AsyncStream::empty(),
+        };
+
+        // Convert JSON values to target type T
+        let mut typed_results = Vec::new();
+        for value in results {
+            match serde_json::from_value::<T>(value.clone()) {
+                Ok(typed_value) => {
+                    typed_results.push(typed_value);
+                }
+                Err(_) => {
+                    // Skip invalid values
+                }
+            }
+        }
+
+        // Create AsyncStream from the processed results
+        AsyncStream::with_channel(move |sender| {
+            for typed_value in typed_results {
+                emit!(sender, typed_value);
+            }
+        })
+    }
+
+    fn fallback_to_streaming_deserializer(&mut self) -> AsyncStream<T>
+    where
+        T: Send + 'static,
+    {
+        // Process available data using the streaming deserializer
         let mut deserializer =
             JsonPathDeserializer::new(&self.path_expression, &mut self.buffer, &mut self.state);
-        let results: Vec<_> = deserializer.process_available().collect();
+        let mut results = Vec::new();
+        
+        // Manually collect the iterator to avoid lifetime dependency
+        let mut iterator = deserializer.process_available();
+        while let Some(result) = iterator.next() {
+            results.push(result);
+        }
 
         // Create AsyncStream from the processed results
         AsyncStream::with_channel(move |sender| {
             for result in results {
                 match result {
-                    Ok(value) => {
-                        emit!(sender, value);
-                    }
+                    Ok(typed_value) => emit!(sender, typed_value),
                     Err(e) => {
-                        handle_error!(e, "JSON deserialization failed");
-                        // Continue processing other items even after errors
+                        log::warn!("Deserialization failed: {:?}", e);
+                        // Skip invalid values
                     }
                 }
             }
@@ -193,6 +272,14 @@ where
             parse_errors: self.state.parse_errors(),
             buffer_size: self.buffer.current_size(),
         }
+    }
+
+    /// Get the JSONPath expression string
+    ///
+    /// Returns the original JSONPath expression used to create this stream processor.
+    #[must_use]
+    pub fn jsonpath_expr(&self) -> &str {
+        self.path_expression.original()
     }
 }
 

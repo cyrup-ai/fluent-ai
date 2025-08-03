@@ -68,12 +68,53 @@ impl HttpClient {
         &mut self.stats
     }
 
-    /// Get shared reference to client statistics for internal access
+    /// Get client statistics for monitoring and observability
     ///
-    /// Used by execution modules to read current statistics state.
-    /// This method is internal to the client modules.
+    /// Returns statistical information about the HTTP client including
+    /// request counts, success rates, response times, and cache performance.
+    /// This is part of the public API for application monitoring.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::HttpClient;
+    /// 
+    /// let client = HttpClient::new();
+    /// let stats = client.stats();
+    /// println!("Success rate: {:.2}%", stats.success_rate() * 100.0);
+    /// ```
     #[inline]
-    pub(crate) fn stats(&self) -> &ClientStats {
+    pub fn stats(&self) -> &ClientStats {
         &self.stats
+    }
+
+    /// Reset all client statistics to zero
+    ///
+    /// Clears all accumulated statistics including request counts, response times,
+    /// success/failure counts, and cache metrics. Useful for testing or periodic
+    /// monitoring reset scenarios.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::HttpClient;
+    /// use fluent_ai_http3::config::Config;
+    ///
+    /// let mut client = HttpClient::with_config(Config::default()).unwrap();
+    /// client.reset_stats();
+    /// assert_eq!(client.stats().request_count(), 0);
+    /// ```
+    pub fn reset_stats(&mut self) {
+        use std::sync::atomic::Ordering;
+        let stats = self.stats_mut();
+        
+        // Reset all atomic counters to zero
+        stats.request_count.store(0, Ordering::Relaxed);
+        stats.connection_count.store(0, Ordering::Relaxed);  
+        stats.total_bytes_sent.store(0, Ordering::Relaxed);
+        stats.total_bytes_received.store(0, Ordering::Relaxed);
+        stats.total_response_time_nanos.store(0, Ordering::Relaxed);
+        stats.successful_requests.store(0, Ordering::Relaxed);
+        stats.failed_requests.store(0, Ordering::Relaxed);
+        stats.cache_hits.store(0, Ordering::Relaxed);
+        stats.cache_misses.store(0, Ordering::Relaxed);
     }
 }

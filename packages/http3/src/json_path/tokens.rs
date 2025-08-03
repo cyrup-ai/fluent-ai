@@ -7,40 +7,67 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     // Structural tokens
-    Root,         // $
-    Dot,          // .
-    LeftBracket,  // [
-    RightBracket, // ]
-    LeftParen,    // (
-    RightParen,   // )
-    Comma,        // ,
-    Colon,        // :
-    Question,     // ?
-    At,           // @
-    Star,         // *
+    /// Root identifier token ($)
+    Root,
+    /// Dot notation token (.)
+    Dot,
+    /// Left bracket token ([)
+    LeftBracket,
+    /// Right bracket token (])
+    RightBracket,
+    /// Left parenthesis token (()
+    LeftParen,
+    /// Right parenthesis token ())
+    RightParen,
+    /// Comma separator token (,)
+    Comma,
+    /// Colon separator token (:)
+    Colon,
+    /// Question mark token (?)
+    Question,
+    /// Current node identifier token (@)
+    At,
+    /// Wildcard selector token (*)
+    Star,
 
     // Literals
+    /// String literal token
     String(String),
+    /// Integer literal token
     Integer(i64),
+    /// Floating-point number literal token
     Number(f64),
+    /// Boolean true literal token
     True,
+    /// Boolean false literal token
     False,
+    /// Null literal token
     Null,
 
     // Operators
-    Equal,      // ==
-    NotEqual,   // !=
-    Less,       // <
-    LessEq,     // <=
-    Greater,    // >
-    GreaterEq,  // >=
-    LogicalAnd, // &&
-    LogicalOr,  // ||
+    /// Equality operator token (==)
+    Equal,
+    /// Inequality operator token (!=)
+    NotEqual,
+    /// Less than operator token (<)
+    Less,
+    /// Less than or equal operator token (<=)
+    LessEq,
+    /// Greater than operator token (>)
+    Greater,
+    /// Greater than or equal operator token (>=)
+    GreaterEq,
+    /// Logical AND operator token (&&)
+    LogicalAnd,
+    /// Logical OR operator token (||)
+    LogicalOr,
 
     // Identifiers and functions
+    /// Property identifier or function name token
     Identifier(String),
 
     // Special
+    /// End of file/input token
     EOF,
 }
 

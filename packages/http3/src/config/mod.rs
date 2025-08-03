@@ -12,9 +12,6 @@ pub mod timeouts;
 // Re-export all public types for backward compatibility
 pub use core::{ConnectionReuse, HttpConfig, RetryPolicy, RetryableError};
 
-// Re-export preset configuration methods
-pub use client::*;
-// Re-export security configuration methods
-pub use security::*;
-// Re-export timeout configuration methods
-pub use timeouts::*;
+// Note: Preset configuration methods are available as HttpConfig::ai_optimized(), etc.
+// Security and timeout methods are available as HttpConfig methods.
+// No re-exports needed as all functionality is accessed via HttpConfig.

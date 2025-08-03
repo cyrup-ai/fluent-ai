@@ -59,15 +59,18 @@ where
 
         // Parse JSON incrementally to find next object matching JSONPath
         loop {
-            let byte = match self.read_next_byte()? {
+            let byte = match self.deserializer.read_next_byte()? {
                 Some(b) => b,
                 None => return Ok(None), // No more data available
             };
 
-            match self.process_json_byte(byte)? {
+            match self.deserializer.process_json_byte(byte)? {
                 JsonProcessResult::ObjectFound => {
                     // Found complete object, attempt deserialization
-                    return Ok(self.deserialize_current_object());
+                    match self.deserializer.deserialize_current_object() {
+                        Some(obj) => return Ok(Some(obj)),
+                        None => continue, // Continue parsing if deserialization failed
+                    }
                 }
                 JsonProcessResult::Continue => {
                     // Continue parsing
@@ -84,6 +87,8 @@ where
             }
         }
     }
+
+
 }
 
 impl<'iter, 'data, T> Iterator for JsonPathIterator<'iter, 'data, T>

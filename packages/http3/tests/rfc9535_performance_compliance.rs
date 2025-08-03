@@ -107,6 +107,7 @@ mod large_dataset_tests {
 
     #[test]
     fn test_large_array_traversal_performance() {
+        use crate::large_dataset_tests::generate_large_dataset;
         // Test performance with 10K elements
         let dataset = generate_large_dataset(10_000);
         let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -167,6 +168,7 @@ mod large_dataset_tests {
 
     #[test]
     fn test_filter_performance_large_dataset() {
+        use crate::large_dataset_tests::generate_large_dataset;
         // Test filter performance on large datasets
         let dataset = generate_large_dataset(10_000);
         let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -248,6 +250,7 @@ mod large_dataset_tests {
 
     #[test]
     fn test_descendant_search_performance() {
+        use crate::large_dataset_tests::generate_large_dataset;
         // Test descendant search performance on large nested structures
         let dataset = generate_large_dataset(5_000);
         let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -294,6 +297,7 @@ mod large_dataset_tests {
         let sizes = vec![1_000, 5_000, 10_000];
 
         for size in sizes {
+            use crate::large_dataset_tests::generate_large_dataset;
             let dataset = generate_large_dataset(size);
             let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
 
@@ -307,10 +311,8 @@ mod large_dataset_tests {
 
             // Process items one by one to verify streaming
             for result in stream.process_chunk(chunk).collect() {
-                match result {
-                    Ok(_item) => count += 1,
-                    Err(_) => break,
-                }
+                // AsyncStream yields results directly, not wrapped in Result
+                count += 1;
 
                 // Simulate processing time
                 if count % 1000 == 0 {
@@ -439,6 +441,7 @@ mod complex_query_tests {
 
     #[test]
     fn test_filter_complexity_performance() {
+        use crate::large_dataset_tests::generate_large_dataset;
         // Test performance of increasingly complex filter expressions
         let dataset = generate_large_dataset(1_000);
         let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -542,6 +545,7 @@ mod streaming_tests {
 
     #[test]
     fn test_chunked_processing_performance() {
+        use crate::large_dataset_tests::generate_large_dataset;
         // Test streaming behavior with chunked data processing
         let dataset = generate_large_dataset(5_000);
         let json_string = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -601,6 +605,7 @@ mod streaming_tests {
 
     #[test]
     fn test_incremental_result_delivery() {
+        use crate::large_dataset_tests::generate_large_dataset;
         // Test that results are delivered incrementally, not all at once
         let dataset = generate_large_dataset(1_000);
         let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -614,17 +619,13 @@ mod streaming_tests {
         let mut timing_checkpoints = Vec::new();
 
         // Process results and record timing at regular intervals
-        for result in stream.process_chunk(chunk).collect() {
-            match result {
-                Ok(_item) => {
-                    result_count += 1;
+        for _result in stream.process_chunk(chunk).collect() {
+            // AsyncStream yields results directly, not wrapped in Result
+            result_count += 1;
 
-                    // Record timing every 100 results
-                    if result_count % 100 == 0 {
-                        timing_checkpoints.push((result_count, start_time.elapsed()));
-                    }
-                }
-                Err(_) => break,
+            // Record timing every 100 results
+            if result_count % 100 == 0 {
+                timing_checkpoints.push((result_count, start_time.elapsed()));
             }
         }
 
@@ -682,21 +683,17 @@ mod streaming_tests {
 
         // Process large strings without accumulating them all in memory
         let mut processed_count = 0;
-        for result in stream.process_chunk(chunk).collect() {
-            match result {
-                Ok(large_string) => {
-                    // Verify string content without storing it
-                    assert!(
-                        large_string.len() > large_string_size,
-                        "String should be large as expected"
-                    );
-                    processed_count += 1;
+        for large_string in stream.process_chunk(chunk).collect() {
+            // AsyncStream yields results directly, not wrapped in Result
+            // Verify string content without storing it
+            assert!(
+                large_string.len() > large_string_size,
+                "String should be large as expected"
+            );
+            processed_count += 1;
 
-                    // Drop the string immediately to test memory efficiency
-                    drop(large_string);
-                }
-                Err(_) => break,
-            }
+            // Drop the string immediately to test memory efficiency
+            drop(large_string);
         }
 
         let duration = start_time.elapsed();
@@ -862,6 +859,7 @@ mod resource_limit_tests {
         use std::sync::Arc;
         use std::thread;
 
+        use crate::large_dataset_tests::generate_large_dataset;
         let dataset = Arc::new(generate_large_dataset(1_000));
         let json_data = Arc::new(serde_json::to_string(&*dataset).expect("Valid JSON"));
 

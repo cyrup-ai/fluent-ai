@@ -61,7 +61,7 @@ mod wellformedness_validity_comprehensive {
             // Well-formed Unicode expressions
             "$.北京.東京.Москва.Paris",
             "$['🌟']['🎉']['🚀']",
-            "$['\u0041\u0042\u0043']",
+            "$['\u{0041}\u{0042}\u{0043}']",
         ];
 
         for expr in wellformed_expressions {

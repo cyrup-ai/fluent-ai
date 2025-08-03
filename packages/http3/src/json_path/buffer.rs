@@ -123,6 +123,15 @@ impl StreamBuffer {
         self.buffer.capacity()
     }
 
+    /// Get current buffer contents as bytes slice
+    ///
+    /// Returns a byte slice view of the current buffer contents.
+    /// Useful for direct parsing operations.
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buffer[..]
+    }
+
     /// Get total bytes processed since creation
     #[inline]
     pub fn total_bytes_processed(&self) -> u64 {

@@ -63,6 +63,64 @@ const TEST_JSON: &str = r#"{
   }
 }"#;
 
+/// Deep nesting test data for complex @ identifier scenarios
+const DEEP_NESTING_JSON: &str = r#"{
+  "company": {
+    "departments": [
+      {
+        "name": "Engineering",
+        "teams": [
+          {
+            "name": "Backend",
+            "members": [
+              {
+                "id": 1,
+                "name": "Alice",
+                "skills": ["rust", "python"],
+                "performance": {
+                  "rating": 9.5,
+                  "projects": [
+                    {"name": "Project A", "status": "complete", "rating": 10},
+                    {"name": "Project B", "status": "active", "rating": 8.5}
+                  ]
+                }
+              },
+              {
+                "id": 2,
+                "name": "Bob",
+                "skills": ["javascript", "rust"],
+                "performance": {
+                  "rating": 8.0,
+                  "projects": [
+                    {"name": "Project C", "status": "complete", "rating": 7.5},
+                    {"name": "Project D", "status": "complete", "rating": 9.0}
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Frontend",
+            "members": [
+              {
+                "id": 3,
+                "name": "Carol",
+                "skills": ["react", "typescript"],
+                "performance": {
+                  "rating": 9.0,
+                  "projects": [
+                    {"name": "Project E", "status": "active", "rating": 8.0}
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}"#;
+
 /// RFC 9535 Section 2.3.5 - Current Node Identifier Context Tests
 #[cfg(test)]
 mod current_node_context_tests {
@@ -80,22 +138,41 @@ mod current_node_context_tests {
             "$.store.books.@.name",    // @ in path segments
             "@.store.books[0]",        // @ as root identifier
             "$.store.books[@.id]",     // @ in bracket without ?
+            "$.@name",                 // @ in dot notation
+            "$['@']",                  // @ as quoted property name (valid)
+            "$.store.@books",          // @ in middle of path
+            "$.store.books.@",         // @ at end of path
+            "$..@",                    // @ with descendant operator
+            "$.*.@",                   // @ after wildcard
+            "$.store.books[0].@.id",   // @ in chain after index
+            "$.store.books[@name]",    // @ without dot in bracket
+            "$.@.store",               // @ immediately after root
         ];
 
         for expr in invalid_contexts {
             let result = JsonPathParser::compile(expr);
-            assert!(
-                result.is_err(),
-                "RFC 9535: @ outside filter context MUST be rejected: '{}'",
-                expr
-            );
-
-            if let Err(JsonPathError::InvalidExpression { reason, .. }) = result {
+            
+            // Special case: $['@'] is actually valid - it's a property named "@"
+            if expr == "$['@']" {
                 assert!(
-                    reason.contains("@") || reason.contains("current") || reason.contains("filter"),
-                    "Error should mention @ or current node context: {}",
-                    reason
+                    result.is_ok(),
+                    "RFC 9535: Property named '@' should be valid: '{}'",
+                    expr
                 );
+            } else {
+                assert!(
+                    result.is_err(),
+                    "RFC 9535: @ outside filter context MUST be rejected: '{}'",
+                    expr
+                );
+
+                if let Err(JsonPathError::InvalidExpression { reason, .. }) = result {
+                    assert!(
+                        reason.contains("@") || reason.contains("current") || reason.contains("filter"),
+                        "Error should mention @ or current node context: {}",
+                        reason
+                    );
+                }
             }
         }
     }
@@ -285,35 +362,35 @@ mod current_node_scope_tests {
             ("$.store.books[?@.id > 1]", 2, "Single filter scope"),
             
             // Multiple independent scopes  
-            ("$.store.books[?@.active].metadata[?@.category == 'fiction']", "Multiple independent scopes"),
-            ("$..books[?@.id > 1][?@.value < 20]", "Chained filter scopes"),
+            ("$.store.books[?@.active].metadata[?@.category == 'fiction']", 0, "Multiple independent scopes"),
+            ("$..books[?@.id > 1][?@.value < 20]", 0, "Chained filter scopes"),
             
             // Descendant with filters
             ("$.store..books[?@.active]", 2, "Descendant with filter scope"),
-            ("$..metadata[?@.category]", "Descendant filter on metadata"),
+            ("$..metadata[?@.category]", 1, "Descendant filter on metadata"),
         ];
 
         for (expr, expected_count, description) in scope_tests {
-            if let Ok(expected_count) = expected_count.parse::<usize>() {
-                let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
-                let chunk = Bytes::from(TEST_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let expected_count = expected_count as usize;
+            
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(TEST_JSON);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-                assert_eq!(
-                    results.len(),
-                    expected_count,
-                    "RFC 9535: @ scope isolation should work: {} ({})",
-                    expr, description
-                );
-            } else {
-                // Test compilation for complex scopes
-                let result = JsonPathParser::compile(expr);
-                assert!(
-                    result.is_ok(),
-                    "RFC 9535: @ scope test should compile: {} ({})",
-                    expr, description
-                );
-            }
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "RFC 9535: @ scope isolation should work: {} ({})",
+                expr, description
+            );
+            
+            // Test compilation for complex scopes
+            let result = JsonPathParser::compile(expr);
+            assert!(
+                result.is_ok(),
+                "RFC 9535: @ scope test should compile: {} ({})",
+                expr, description
+            );
         }
     }
 
@@ -432,6 +509,221 @@ mod current_node_error_tests {
                 "RFC 9535: {} should be invalid: '{}'",
                 error_description, expr
             );
+        }
+    }
+}
+
+/// RFC 9535 Section 2.3.5 - Deep Nesting Current Node Identifier Tests
+#[cfg(test)]
+mod deep_nesting_current_node_tests {
+    use super::*;
+
+    #[test]
+    fn test_deeply_nested_current_node_references() {
+        // RFC 9535 Section 2.3.5: Test complex nested @ references in filter expressions
+        
+        let deep_nested_json = r#"{
+            "departments": [
+                {
+                    "name": "Engineering",
+                    "teams": [
+                        {
+                            "name": "Backend",
+                            "members": [
+                                {"name": "Alice", "skills": ["rust", "python"], "level": 5, "projects": [{"name": "API", "priority": 1}]},
+                                {"name": "Bob", "skills": ["go", "rust"], "level": 3, "projects": [{"name": "DB", "priority": 2}]}
+                            ]
+                        },
+                        {
+                            "name": "Frontend", 
+                            "members": [
+                                {"name": "Carol", "skills": ["javascript", "react"], "level": 4, "projects": [{"name": "UI", "priority": 1}]}
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }"#;
+
+        let complex_nested_tests = vec![
+            (
+                // Nested @ references in complex filter
+                "$.departments[?@.teams[?@.members[?@.level > 4]]]",
+                1, // Should find Engineering dept with high-level members
+                "Deep nested @ should correctly reference nodes at each level"
+            ),
+            (
+                // Multiple @ references in same filter expression
+                "$.departments[*].teams[?@.name == 'Backend' && @.members[?@.level >= 3]]",
+                1, // Should find Backend team with qualified members
+                "Multiple @ references in logical expression should work"
+            ),
+            (
+                // @ with function calls in nested context
+                "$.departments[*].teams[*].members[?length(@.skills) > 1 && @.projects[?@.priority == 1]]",
+                2, // Alice and Carol have multiple skills and priority 1 projects
+                "@ in function calls within nested filters should work"
+            ),
+            (
+                // Complex property access through @
+                "$.departments[?@.teams[?@.members[?@.projects[?@.priority < 2]]]].name",
+                1, // Engineering dept has teams with members having priority 1 projects
+                "Deep @ property traversal should access correct nested properties"
+            )
+        ];
+
+        for (expr, expected_count, description) in complex_nested_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(deep_nested_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "RFC 9535 deep nesting: {} - '{}' should return {} results, got {}",
+                description, expr, expected_count, results.len());
+        }
+    }
+
+    #[test]
+    fn test_current_node_scope_isolation() {
+        // RFC 9535: @ should correctly reference current node at each nesting level
+        
+        let scope_test_json = r#"{
+            "levels": [
+                {
+                    "id": 1,
+                    "subitems": [
+                        {"id": 11, "value": 100},
+                        {"id": 12, "value": 200}
+                    ]
+                },
+                {
+                    "id": 2, 
+                    "subitems": [
+                        {"id": 21, "value": 150},
+                        {"id": 22, "value": 250}
+                    ]
+                }
+            ]
+        }"#;
+
+        let scope_tests = vec![
+            (
+                // @ should reference the level, not subitem
+                "$.levels[?@.id == 1].subitems[*]",
+                2, // Both subitems from level 1
+                "@ should reference level object, not subitems"
+            ),
+            (
+                // @ should reference subitem in inner filter
+                "$.levels[*].subitems[?@.value > 150]",
+                2, // id 12 (200) and id 22 (250)
+                "@ in inner filter should reference subitem, not level"
+            ),
+            (
+                // Nested @ scopes should be independent
+                "$.levels[?@.id > 0].subitems[?@.id > 15]",
+                2, // id 21 and id 22 from level 2 (since level 2 has id > 0)
+                "Nested @ scopes should reference correct nodes independently"
+            )
+        ];
+
+        for (expr, expected_count, description) in scope_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(scope_test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "RFC 9535 scope isolation: {} - '{}' should return {} results, got {}",
+                description, expr, expected_count, results.len());
+        }
+    }
+
+    #[test]
+    fn test_current_node_with_complex_logical_expressions() {
+        // RFC 9535: @ in complex logical expressions with multiple operators
+        
+        let logical_test_json = r#"{
+            "products": [
+                {"name": "Laptop", "price": 999, "category": "electronics", "inStock": true, "rating": 4.5},
+                {"name": "Book", "price": 15, "category": "education", "inStock": true, "rating": 4.0},
+                {"name": "Phone", "price": 599, "category": "electronics", "inStock": false, "rating": 4.8},
+                {"name": "Tablet", "price": 299, "category": "electronics", "inStock": true, "rating": 3.9}
+            ]
+        }"#;
+        
+        let logical_tests = vec![
+            (
+                // Complex AND/OR with @
+                "$.products[?(@.category == 'electronics' && @.inStock == true) || (@.price < 50 && @.rating > 4.0)]",
+                3, // Laptop, Tablet (electronics + inStock), Book (cheap + good rating)
+                "Complex AND/OR expressions with @ should work correctly"
+            ),
+            (
+                // Nested parentheses with @
+                "$.products[?(@.price > 500 && (@.category == 'electronics' || @.rating > 4.7)) || (@.price < 100 && @.inStock)]",
+                3, // Laptop (expensive electronics), Phone (expensive + high rating), Book (cheap + inStock)
+                "Nested parentheses with @ should evaluate correctly"
+            ),
+            (
+                // Negation with @
+                "$.products[?!(@.category == 'electronics' && @.inStock == false)]",
+                3, // All except Phone (electronics + not inStock)
+                "Negation with @ should work correctly"
+            )
+        ];
+
+        for (expr, expected_count, description) in logical_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(logical_test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "RFC 9535 logical expressions: {} - '{}' should return {} results, got {}",
+                description, expr, expected_count, results.len());
+        }
+    }
+
+    #[test]
+    fn test_current_node_with_function_composition() {
+        // RFC 9535: @ used in complex function compositions within filters
+        
+        let function_test_json = r#"{
+            "teams": [
+                {"name": "Alpha", "members": ["Alice", "Bob", "Charlie"], "scores": [85, 92, 78], "active": true},
+                {"name": "Beta", "members": ["David", "Eve"], "scores": [95, 88], "active": true},
+                {"name": "Gamma", "members": ["Frank"], "scores": [67], "active": false}
+            ]
+        }"#;
+
+        let function_tests = vec![
+            (
+                // Function composition with @
+                "$.teams[?count(@.members) > 2 && length(@.name) < 6]",
+                1, // Alpha has >2 members and name length < 6
+                "Function composition with @ should work in filters"
+            ),
+            (
+                // Nested function calls with @
+                "$.teams[?@.active && count(@.scores) == length(@.members)]",
+                2, // Alpha and Beta are active with matching scores/members count
+                "Nested function calls with @ should evaluate correctly"
+            ),
+            (
+                // @ in function arguments with logical operators
+                "$.teams[?length(@.name) > 4 || (count(@.members) == 1 && @.active == false)]",
+                2, // Alpha, Beta (long names), Gamma (1 member + inactive)
+                "@ in function arguments with logical operators should work"
+            )
+        ];
+
+        for (expr, expected_count, description) in function_tests {
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let chunk = Bytes::from(function_test_json);
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            
+            assert_eq!(results.len(), expected_count,
+                "RFC 9535 function composition: {} - '{}' should return {} results, got {}",
+                description, expr, expected_count, results.len());
         }
     }
 }
