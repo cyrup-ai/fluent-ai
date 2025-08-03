@@ -10,7 +10,8 @@ use crate::{HttpResult, client::HttpClient, request::HttpRequest, stream::HttpSt
 pub struct DeleteOperation {
     client: HttpClient,
     url: String,
-    headers: HeaderMap}
+    headers: HeaderMap,
+}
 
 impl DeleteOperation {
     /// Create a new DELETE operation
@@ -19,7 +20,8 @@ impl DeleteOperation {
         Self {
             client,
             url,
-            headers: HeaderMap::new()}
+            headers: HeaderMap::new(),
+        }
     }
 
     /// Add custom header

@@ -12,7 +12,8 @@ pub struct PutOperation {
     client: HttpClient,
     url: String,
     headers: HeaderMap,
-    body: PutBody}
+    body: PutBody,
+}
 
 /// Supported PUT body types
 #[derive(Clone)]
@@ -24,7 +25,8 @@ pub enum PutBody {
     /// Plain text body
     Text(String),
     /// Empty request body
-    Empty}
+    Empty,
+}
 
 impl PutOperation {
     /// Create a new PUT operation
@@ -34,7 +36,8 @@ impl PutOperation {
             client,
             url,
             headers: HeaderMap::new(),
-            body: PutBody::Empty}
+            body: PutBody::Empty,
+        }
     }
 
     /// Add custom header
@@ -124,7 +127,8 @@ impl HttpOperation for PutOperation {
             },
             PutBody::Binary(data) => Some(data.clone()),
             PutBody::Text(text) => Some(text.clone().into_bytes()),
-            PutBody::Empty => None};
+            PutBody::Empty => None,
+        };
 
         let request = HttpRequest::new(
             self.method(),

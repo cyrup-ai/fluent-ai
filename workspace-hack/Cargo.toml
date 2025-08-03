@@ -171,7 +171,6 @@ string_cache = { version = "0.8" }
 strum-2f80eeee3b1b6c7e = { package = "strum", version = "0.26", features = ["derive"] }
 strum-754bda37e0fb3874 = { package = "strum", version = "0.27", features = ["derive"] }
 subtle = { version = "2" }
-sugars_collections = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main" }
 surrealdb = { version = "2", features = ["http", "jwks", "kv-mem", "kv-surrealkv", "protocol-http"] }
 surrealdb-core = { version = "2", default-features = false, features = ["http", "jwks", "kv-mem", "kv-surrealkv"] }
 target-lexicon = { version = "0.13", features = ["std"] }
@@ -187,7 +186,8 @@ toml_datetime-3b31131e45eafb45 = { package = "toml_datetime", version = "0.6", d
 toml_datetime-ca01ad9e24f5d932 = { package = "toml_datetime", version = "0.7", features = ["serde"] }
 toml_edit = { version = "0.22", features = ["serde"] }
 toml_parser = { version = "1" }
-tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+toml_writer = { version = "1" }
+tower = { version = "0.5", default-features = false, features = ["buffer", "limit", "log", "make", "retry", "timeout"] }
 tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
 tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
@@ -372,7 +372,6 @@ string_cache = { version = "0.8" }
 strum-2f80eeee3b1b6c7e = { package = "strum", version = "0.26", features = ["derive"] }
 strum-754bda37e0fb3874 = { package = "strum", version = "0.27", features = ["derive"] }
 subtle = { version = "2" }
-sugars_collections = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main" }
 surrealdb = { version = "2", features = ["http", "jwks", "kv-mem", "kv-surrealkv", "protocol-http"] }
 surrealdb-core = { version = "2", default-features = false, features = ["http", "jwks", "kv-mem", "kv-surrealkv"] }
 syn-dff4ba8e3ae991db = { package = "syn", version = "1", features = ["extra-traits", "full", "visit"] }
@@ -392,7 +391,8 @@ toml_datetime-3b31131e45eafb45 = { package = "toml_datetime", version = "0.6", d
 toml_datetime-ca01ad9e24f5d932 = { package = "toml_datetime", version = "0.7", features = ["serde"] }
 toml_edit = { version = "0.22", features = ["serde"] }
 toml_parser = { version = "1" }
-tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+toml_writer = { version = "1" }
+tower = { version = "0.5", default-features = false, features = ["buffer", "limit", "log", "make", "retry", "timeout"] }
 tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
 tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }

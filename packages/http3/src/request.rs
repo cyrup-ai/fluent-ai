@@ -11,7 +11,8 @@ pub struct HttpRequest {
     url: String,
     headers: HeaderMap,
     body: Option<Vec<u8>>,
-    timeout: Option<Duration>}
+    timeout: Option<Duration>,
+}
 
 impl HttpRequest {
     /// Creates a new `HttpRequest`.
@@ -28,7 +29,8 @@ impl HttpRequest {
             url,
             headers: headers.unwrap_or_default(),
             body,
-            timeout}
+            timeout,
+        }
     }
 
     /// Returns the HTTP method.
@@ -117,8 +119,32 @@ impl HttpRequest {
         for (key, value) in params {
             url.query_pairs_mut().append_pair(key, value);
         }
-        
+
         self.url = url.to_string();
+        self
+    }
+
+    /// Sets the Content-Type header, consuming the request and returning a new one.
+    ///
+    /// # Arguments
+    ///
+    /// * `content_type` - The content type string (e.g., "application/json", "text/plain")
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fluent_ai_http3::HttpRequest;
+    /// use http::Method;
+    ///
+    /// let request = HttpRequest::new(Method::POST, "https://api.example.com".to_string(), None, None, None)
+    ///     .content_type("application/json");
+    /// ```
+    #[must_use = "returns a new `HttpRequest` with the updated Content-Type header"]
+    pub fn content_type(mut self, content_type: &str) -> Self {
+        let header_name = HeaderName::from_static("content-type");
+        if let Ok(header_value) = HeaderValue::from_str(content_type) {
+            self.headers.insert(header_name, header_value);
+        }
         self
     }
 }

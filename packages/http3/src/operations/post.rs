@@ -1,6 +1,7 @@
 //! POST HTTP Operations Module - JSON, form data, binary, and multipart support
 
 use std::collections::HashMap;
+
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde_json::Value;
 
@@ -13,7 +14,8 @@ pub struct PostOperation {
     client: HttpClient,
     url: String,
     headers: HeaderMap,
-    body: PostBody}
+    body: PostBody,
+}
 
 /// Supported POST body types
 #[derive(Clone)]
@@ -25,7 +27,8 @@ pub enum PostBody {
     /// Binary data body
     Binary(Vec<u8>),
     /// Empty request body
-    Empty}
+    Empty,
+}
 
 impl PostOperation {
     /// Create a new POST operation
@@ -35,7 +38,8 @@ impl PostOperation {
             client,
             url,
             headers: HeaderMap::new(),
-            body: PostBody::Empty}
+            body: PostBody::Empty,
+        }
     }
 
     /// Add custom header
@@ -109,7 +113,8 @@ impl HttpOperation for PostOperation {
                 Err(_) => Some(Vec::new()), // Fallback to empty body on encoding error
             },
             PostBody::Binary(data) => Some(data.clone()),
-            PostBody::Empty => None};
+            PostBody::Empty => None,
+        };
 
         let request = HttpRequest::new(
             self.method(),

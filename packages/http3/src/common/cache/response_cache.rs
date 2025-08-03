@@ -6,13 +6,15 @@
 use std::{
     collections::HashMap,
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
-    time::Instant};
+    time::Instant,
+};
 
 use crossbeam_skiplist::SkipMap;
 
 use super::{
     cache_config::CacheConfig, cache_entry::CacheEntry, cache_key::CacheKey,
-    cache_stats::CacheStats, http_date::httpdate};
+    cache_stats::CacheStats, http_date::httpdate,
+};
 use crate::HttpResponse;
 
 /// Lock-free HTTP response cache using crossbeam skiplist
@@ -28,7 +30,8 @@ pub struct ResponseCache {
     /// Cache statistics
     stats: CacheStats,
     /// Cleanup task running flag
-    cleanup_running: AtomicBool}
+    cleanup_running: AtomicBool,
+}
 
 impl ResponseCache {
     /// Create new response cache with configuration
@@ -39,7 +42,8 @@ impl ResponseCache {
             memory_usage: AtomicU64::new(0),
             entry_count: AtomicU64::new(0),
             stats: CacheStats::default(),
-            cleanup_running: AtomicBool::new(false)}
+            cleanup_running: AtomicBool::new(false),
+        }
     }
 
     /// Create cache with default configuration

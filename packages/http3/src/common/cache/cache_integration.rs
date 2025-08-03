@@ -46,7 +46,8 @@ where
                                 }
                                 Some((Ok(response), (None, operation, true)))
                             }
-                            Err(error) => Some((Err(error), (None, operation, true)))}
+                            Err(error) => Some((Err(error), (None, operation, true))),
+                        }
                     } else {
                         None
                     }

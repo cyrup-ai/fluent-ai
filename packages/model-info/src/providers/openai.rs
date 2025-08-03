@@ -30,22 +30,43 @@ impl ProviderTrait for OpenAiProvider {
     }
     
     fn list_models(&self) -> AsyncStream<ModelInfo> {
-        use crate::generated_models::OpenAiModel as OpenAi;
-        use crate::common::Model;
+        use fluent_ai_http3::{Http3, HttpStreamExt};
+        use std::env;
+        use serde::{Deserialize, Serialize};
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct OpenAiModel {
+            id: String,
+            object: String,
+            created: u64,
+            owned_by: String,
+        }
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct OpenAiModelsResponse {
+            object: String,
+            data: Vec<OpenAiModel>,
+        }
         
         AsyncStream::with_channel(move |sender| {
-            let models = vec![
-                OpenAi::Gpt41,
-                OpenAi::Gpt41Mini,
-                OpenAi::O3,
-                OpenAi::O4Mini,
-                OpenAi::Gpt4o,
-                OpenAi::Gpt4oMini,
-            ];
+            let response = if let Ok(api_key) = env::var("OPENAI_API_KEY") {
+                Http3::json::<OpenAiModelsResponse>()
+                    .bearer_auth(&api_key)
+                    .get("https://api.openai.com/v1/models")
+                    .collect::<OpenAiModelsResponse>()
+            } else {
+                Http3::json::<OpenAiModelsResponse>()
+                    .get("https://api.openai.com/v1/models")
+                    .collect::<OpenAiModelsResponse>()
+            };
             
-            for model in models {
-                let model_info = adapt_openai_to_model_info(model.name());
-                let _ = sender.send(model_info);
+            if let Some(models_response) = response.into_iter().next() {
+                for model in models_response.data {
+                    let model_info = adapt_openai_to_model_info(&model.id);
+                    if sender.send(model_info).is_err() {
+                        break;
+                    }
+                }
             }
         })
     }

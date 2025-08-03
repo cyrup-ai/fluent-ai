@@ -4,6 +4,8 @@
 pub mod common;
 pub mod registry;
 pub mod discovery;
+pub mod providers;
+pub mod generated_models;
 
 // Re-export core types for external use
 pub use common::{

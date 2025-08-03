@@ -5,7 +5,8 @@
 
 use std::{
     sync::atomic::{AtomicU64, Ordering},
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH}};
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 use crate::{HttpResponse, common::cache::http_date::httpdate};
 
@@ -27,7 +28,8 @@ pub struct CacheEntry {
     /// Hit count for LRU tracking
     pub hit_count: AtomicU64,
     /// Size in bytes for memory management
-    pub size_bytes: u64}
+    pub size_bytes: u64,
+}
 
 impl CacheEntry {
     /// Create new cache entry from HTTP response
@@ -54,7 +56,8 @@ impl CacheEntry {
             etag,
             last_modified,
             hit_count: AtomicU64::new(0),
-            size_bytes}
+            size_bytes,
+        }
     }
 
     /// Parse expiration time from response headers
@@ -133,6 +136,7 @@ impl Clone for CacheEntry {
             etag: self.etag.clone(),
             last_modified: self.last_modified,
             hit_count: AtomicU64::new(self.hit_count.load(Ordering::Relaxed)),
-            size_bytes: self.size_bytes}
+            size_bytes: self.size_bytes,
+        }
     }
 }

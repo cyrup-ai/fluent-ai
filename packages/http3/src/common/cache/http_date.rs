@@ -12,7 +12,8 @@ pub enum HttpDateParseError {
     /// Date format was not recognized by any of the supported parsers
     UnrecognizedFormat(String),
     /// Date was parsed but represents a time before Unix epoch
-    InvalidTimestamp(String)}
+    InvalidTimestamp(String),
+}
 
 impl std::fmt::Display for HttpDateParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

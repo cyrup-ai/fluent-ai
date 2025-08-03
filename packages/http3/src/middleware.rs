@@ -29,7 +29,8 @@ pub trait Middleware: Send + Sync {
 /// Simplified direct result processing aligned with Reqwest patterns
 #[derive(Default)]
 pub struct MiddlewareChain {
-    middlewares: Vec<Arc<dyn Middleware>>}
+    middlewares: Vec<Arc<dyn Middleware>>,
+}
 
 impl MiddlewareChain {
     /// Create a new middleware chain
@@ -95,7 +96,7 @@ impl Middleware for RequestIdMiddleware {
         let request = request.header(
             http::HeaderName::from_static("x-request-id"),
             http::HeaderValue::from_str(&request_id).map_err(|e| HttpError::StreamError {
-                message: format!("Invalid request ID: {e}")
+                message: format!("Invalid request ID: {e}"),
             })?,
         );
         Ok(request)
@@ -105,7 +106,8 @@ impl Middleware for RequestIdMiddleware {
 /// Request/response logging middleware
 #[derive(Debug)]
 pub struct LoggingMiddleware {
-    enabled: bool}
+    enabled: bool,
+}
 
 impl LoggingMiddleware {
     /// Create a new LoggingMiddleware instance with logging enabled
@@ -148,7 +150,8 @@ impl Middleware for LoggingMiddleware {
 /// Compression middleware for request/response
 #[derive(Debug)]
 pub struct CompressionMiddleware {
-    enabled: bool}
+    enabled: bool,
+}
 
 impl CompressionMiddleware {
     /// Create a new CompressionMiddleware instance with compression enabled

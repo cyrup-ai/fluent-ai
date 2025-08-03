@@ -14,7 +14,7 @@ fn get_custom_enum_name(provider: &str) -> String {
         "openrouter" => "OpenRouter".to_string(),
         "huggingface" => "HuggingFace".to_string(),
         "xai" => "XAI".to_string(),
-        _ => capitalize_first(provider), // Fallback: capitalize first letter
+        _ => capitalize_first(provider), // Default: capitalize first letter
     }
 }
 

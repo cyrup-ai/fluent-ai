@@ -55,47 +55,27 @@ impl ProviderTrait for XaiProvider {
     }
 }
 
-/// Fetch X.AI models from API (fallback to known models if API unavailable)
+/// Fetch X.AI models from API
 async fn fetch_xai_models() -> Result<XaiModelsResponse, Box<dyn std::error::Error + Send + Sync>> {
-    // Since we don't have API credentials in build context, return known models
-    // In a real implementation, this would make an HTTP call to X.AI API
-    let known_models = vec![
-        XaiModelData {
-            id: "grok-4".to_string(),
-            object: "model".to_string(),
-            created: 1640995200, // Example timestamp
-            owned_by: "xai".to_string(),
-        },
-        XaiModelData {
-            id: "grok-3".to_string(),
-            object: "model".to_string(),
-            created: 1640995200,
-            owned_by: "xai".to_string(),
-        },
-        XaiModelData {
-            id: "grok-3-mini".to_string(),
-            object: "model".to_string(),
-            created: 1640995200,
-            owned_by: "xai".to_string(),
-        },
-        XaiModelData {
-            id: "grok-beta".to_string(),
-            object: "model".to_string(),
-            created: 1640995200,
-            owned_by: "xai".to_string(),
-        },
-        XaiModelData {
-            id: "grok-2".to_string(),
-            object: "model".to_string(),
-            created: 1640995200,
-            owned_by: "xai".to_string(),
-        },
-    ];
+    use fluent_ai_http3::{Http3, HttpStreamExt};
+    use std::env;
     
-    Ok(XaiModelsResponse {
-        object: "list".to_string(),
-        data: known_models,
-    })
+    let response = if let Ok(api_key) = env::var("XAI_API_KEY") {
+        Http3::json::<XaiModelsResponse>()
+            .bearer_auth(&api_key)
+            .get("https://api.x.ai/v1/models")
+            .collect::<XaiModelsResponse>()
+    } else {
+        Http3::json::<XaiModelsResponse>()
+            .get("https://api.x.ai/v1/models")
+            .collect::<XaiModelsResponse>()
+    };
+    
+    if let Some(models_response) = response.into_iter().next() {
+        Ok(models_response)
+    } else {
+        Err("Failed to fetch XAI models".into())
+    }
 }
 
 // Type alias for complex provider data tuple to improve readability  

@@ -12,7 +12,8 @@ pub struct PatchOperation {
     client: HttpClient,
     url: String,
     headers: HeaderMap,
-    body: PatchBody}
+    body: PatchBody,
+}
 
 /// Supported PATCH types
 #[derive(Clone)]
@@ -20,7 +21,8 @@ pub enum PatchBody {
     /// JSON Patch (RFC 6902) - Array of patch operations
     JsonPatch(Value),
     /// JSON Merge Patch (RFC 7396) - Object representing the patch
-    JsonMergePatch(Value)}
+    JsonMergePatch(Value),
+}
 
 impl PatchOperation {
     /// Create a new PATCH operation
@@ -37,7 +39,8 @@ impl PatchOperation {
             client,
             url,
             headers: HeaderMap::new(),
-            body: PatchBody::JsonMergePatch(Value::Null)}
+            body: PatchBody::JsonMergePatch(Value::Null),
+        }
     }
 
     /// Add a custom header

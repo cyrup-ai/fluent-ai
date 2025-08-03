@@ -1,157 +1,248 @@
-use anyhow::Result;
-use fluent_ai_async::AsyncStream;
+
 
 pub mod anthropic;
 pub mod huggingface;
 pub mod mistral;
 pub mod openai;
-pub mod openrouter;
 pub mod together;
 pub mod xai;
 
 /// Type alias for model data tuple: (name, max_tokens, input_price, output_price, supports_thinking, required_temp)
 pub type ModelData = (String, u64, f64, f64, bool, Option<f64>);
 
-/// Standard /v1/models API response structure used by OpenAI, Mistral, OpenRouter, XAI, Together
-#[derive(serde::Deserialize, serde::Serialize, Default)]
-pub struct StandardModelsResponse {
-    pub data: Vec<StandardModel>,
+/// OpenAI-compatible /v1/models request (empty for GET requests)
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct OpenAiModelsListRequest;
+
+/// OpenAI-compatible /v1/models response structure used by OpenAI, Mistral, XAI
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct OpenAiModelsListResponse {
+    pub data: Vec<OpenAiModel>,
     pub object: String,
 }
 
-/// Standard model object from /v1/models endpoints
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct StandardModel {
+/// Standard model object from OpenAI-compatible /v1/models endpoints
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct OpenAiModel {
     pub id: String,
     pub object: String,
     pub created: Option<u64>,
     pub owned_by: Option<String>,
 }
 
+/// Together.ai direct array response format
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct TogetherModelsListResponse(pub Vec<TogetherModel>);
+
+/// Together.ai model object with extended pricing and config data
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct TogetherModel {
+    pub id: String,
+    pub object: String,
+    pub created: Option<u64>,
+    #[serde(rename = "type")]
+    pub model_type: Option<String>,
+    pub running: Option<bool>,
+    pub display_name: Option<String>,
+    pub organization: Option<String>,
+    pub link: Option<String>,
+    pub context_length: Option<u64>,
+    pub config: Option<TogetherModelConfig>,
+    pub pricing: Option<TogetherModelPricing>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct TogetherModelConfig {
+    pub chat_template: Option<String>,
+    pub stop: Vec<String>,
+    pub bos_token: Option<String>,
+    pub eos_token: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct TogetherModelPricing {
+    pub hourly: Option<f64>,
+    pub input: Option<f64>,
+    pub output: Option<f64>,
+    pub base: Option<f64>,
+    pub finetune: Option<f64>,
+}
+
+/// HuggingFace API response format (different structure)
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct HuggingFaceModelsListResponse {
+    pub models: Vec<HuggingFaceModel>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug)]
+pub struct HuggingFaceModel {
+    pub id: String,
+    pub pipeline_tag: Option<String>,
+    pub tags: Vec<String>,
+    pub downloads: Option<u64>,
+    pub likes: Option<u64>,
+}
+
+/// Legacy aliases for backward compatibility
+pub type StandardModelsResponse = OpenAiModelsListResponse;
+pub type StandardModel = OpenAiModel;
+
+/// Result type for provider processing operations
+#[derive(Debug, Clone)]
+pub struct ProcessProviderResult {
+    pub success: bool,
+    pub status: String,
+}
+
 /// Strategy pattern interface for all provider modules
 /// Each provider implements this trait to define how it fetches models and generates code
 pub trait ProviderBuilder: Send + Sync {
+    /// Response type for /v1/models list endpoint
+    type ListResponse: serde::de::DeserializeOwned + serde::Serialize + Default + Send + Sync;
+    
+    /// Response type for individual model get operations (future use)
+    type GetResponse: serde::de::DeserializeOwned + serde::Serialize + Send + Sync;
+
     /// Provider name for identification and enum generation
     fn provider_name(&self) -> &'static str;
 
-    /// API endpoint for fetching models (None for providers without dynamic endpoints)
-    #[allow(dead_code)] // Library method - may be used in future API implementations
-    fn api_endpoint(&self) -> Option<&'static str>;
+    /// Base API URL (e.g. "https://api.openai.com")
+    fn base_url(&self) -> &'static str;
+
+    /// List models endpoint path (e.g. "/v1/models")
+    fn list_url(&self) -> &'static str {
+        "/v1/models"
+    }
+
+    /// Get single model endpoint path (e.g. "/v1/models/{id}")
+    fn get_url(&self) -> &'static str {
+        "/v1/models"
+    }
 
     /// Environment variable name for API key
-    #[allow(dead_code)] // Library method - may be used in future API implementations
     fn api_key_env_var(&self) -> Option<&'static str>;
 
-    /// Fetch models from the provider's API
-    /// Returns AsyncStream for providers that support dynamic fetching
-    fn fetch_models(&self) -> AsyncStream<ModelData>;
+
+
+    /// Convert provider-specific response into common ModelData format
+    fn response_to_models(&self, response: Self::ListResponse) -> Vec<ModelData>;
+
+    /// Process provider: fetch models, generate code, return result
+    /// DEFAULT IMPLEMENTATION works for OpenAI-compatible providers (OpenAI, Mistral, XAI)
+    /// Override for providers with different response formats (Anthropic, Together, HuggingFace)
+    fn process(&self) -> ProcessProviderResult {
+        use std::env;
+        use fluent_ai_http3::{Http3, HttpStreamExt};
+        
+        // Get API key if required
+        if let Some(env_var) = self.api_key_env_var() {
+            let api_key = match env::var(env_var) {
+                Ok(key) => key,
+                Err(_) => {
+                    // Check for static models fallback
+                    if let Some(static_models) = self.static_models() {
+                        match self.generate_code(&static_models) {
+                            Ok((_enum_code, _impl_code)) => return ProcessProviderResult {
+                                success: true,
+                                status: format!("Using static models for {} (API key {} not found)", self.provider_name(), env_var),
+                            },
+                            Err(e) => return ProcessProviderResult {
+                                success: false,
+                                status: format!("Code generation failed for static models in {}: {}", self.provider_name(), e),
+                            },
+                        }
+                    } else {
+                        return ProcessProviderResult {
+                            success: false,
+                            status: format!("Missing API key {} for {} and no static models available", env_var, self.provider_name()),
+                        };
+                    }
+                }
+            };
+
+            // Construct full URL
+            let full_url = format!("{}{}", self.base_url(), self.list_url());
+            
+            // Use high-level Http3 builder with proper error handling (OpenAI-compatible format)
+            let provider_name = self.provider_name();
+            // Get JSON response and try to deserialize into expected format
+            let json_response = Http3::json()
+                .bearer_auth(&api_key)
+                .get(&full_url)
+                .collect_one_or_else(move |error| {
+                    eprintln!("{} API request failed: {}", provider_name, error);
+                    serde_json::Value::Array(vec![])
+                });
+            
+            let response: Self::ListResponse = serde_json::from_value(json_response)
+                .unwrap_or_else(|_| Self::ListResponse::default());
+            
+            let models = self.response_to_models(response);
+
+            if models.is_empty() {
+                return ProcessProviderResult {
+                    success: false,
+                    status: format!("No models found for {}", self.provider_name()),
+                };
+            }
+
+            // Generate code using syn
+            match self.generate_code(&models) {
+                Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                    success: true,
+                    status: format!("Successfully processed {} models for {}", models.len(), self.provider_name()),
+                },
+                Err(e) => ProcessProviderResult {
+                    success: false,
+                    status: format!("Code generation failed for {}: {}", self.provider_name(), e),
+                },
+            }
+        } else {
+            // No API key required - use static models if available
+            if let Some(static_models) = self.static_models() {
+                match self.generate_code(&static_models) {
+                    Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                        success: true,
+                        status: format!("Using static models for {} (no API key required)", self.provider_name()),
+                    },
+                    Err(e) => ProcessProviderResult {
+                        success: false,
+                        status: format!("Code generation failed for static models in {}: {}", self.provider_name(), e),
+                    },
+                }
+            } else {
+                ProcessProviderResult {
+                    success: false,
+                    status: format!("No API key configured and no static models for {}", self.provider_name()),
+                }
+            }
+        }
+    }
 
     /// Get static/hardcoded model data for providers without APIs
     /// Used as the primary data source for providers like Anthropic
-    fn static_models(&self) -> Option<Vec<ModelData>>;
+    fn static_models(&self) -> Option<Vec<ModelData>> { None }
 
     /// Generate model enum and implementation code
     /// Takes the model data and produces the Rust code for the enum and trait impl
-    fn generate_code(&self, models: &[ModelData]) -> anyhow::Result<(String, String)>;
-}
-
-/// Enum containing all available provider types
-/// This allows us to avoid trait objects while still processing providers uniformly
-pub enum Provider {
-    OpenAi(openai::OpenAiProvider),
-    Mistral(mistral::MistralProvider),
-    Anthropic(anthropic::AnthropicProvider),
-    Together(together::TogetherProvider),
-    OpenRouter(openrouter::OpenRouterProvider),
-    HuggingFace(huggingface::HuggingFaceProvider),
-    Xai(xai::XaiProvider),
-}
-
-impl ProviderBuilder for Provider {
-    fn provider_name(&self) -> &'static str {
-        match self {
-            Provider::OpenAi(p) => p.provider_name(),
-            Provider::Mistral(p) => p.provider_name(),
-            Provider::Anthropic(p) => p.provider_name(),
-            Provider::Together(p) => p.provider_name(),
-            Provider::OpenRouter(p) => p.provider_name(),
-            Provider::HuggingFace(p) => p.provider_name(),
-            Provider::Xai(p) => p.provider_name(),
-        }
-    }
-
-    fn api_endpoint(&self) -> Option<&'static str> {
-        match self {
-            Provider::OpenAi(p) => p.api_endpoint(),
-            Provider::Mistral(p) => p.api_endpoint(),
-            Provider::Anthropic(p) => p.api_endpoint(),
-            Provider::Together(p) => p.api_endpoint(),
-            Provider::OpenRouter(p) => p.api_endpoint(),
-            Provider::HuggingFace(p) => p.api_endpoint(),
-            Provider::Xai(p) => p.api_endpoint(),
-        }
-    }
-
-    fn api_key_env_var(&self) -> Option<&'static str> {
-        match self {
-            Provider::OpenAi(p) => p.api_key_env_var(),
-            Provider::Mistral(p) => p.api_key_env_var(),
-            Provider::Anthropic(p) => p.api_key_env_var(),
-            Provider::Together(p) => p.api_key_env_var(),
-            Provider::OpenRouter(p) => p.api_key_env_var(),
-            Provider::HuggingFace(p) => p.api_key_env_var(),
-            Provider::Xai(p) => p.api_key_env_var(),
-        }
-    }
-
-    fn fetch_models(&self) -> AsyncStream<ModelData> {
-        match self {
-            Provider::OpenAi(p) => p.fetch_models(),
-            Provider::Mistral(p) => p.fetch_models(),
-            Provider::Anthropic(p) => p.fetch_models(),
-            Provider::Together(p) => p.fetch_models(),
-            Provider::OpenRouter(p) => p.fetch_models(),
-            Provider::HuggingFace(p) => p.fetch_models(),
-            Provider::Xai(p) => p.fetch_models(),
-        }
-    }
-
-    fn static_models(&self) -> Option<Vec<ModelData>> {
-        match self {
-            Provider::OpenAi(p) => p.static_models(),
-            Provider::Mistral(p) => p.static_models(),
-            Provider::Anthropic(p) => p.static_models(),
-            Provider::Together(p) => p.static_models(),
-            Provider::OpenRouter(p) => p.static_models(),
-            Provider::HuggingFace(p) => p.static_models(),
-            Provider::Xai(p) => p.static_models(),
-        }
-    }
-
-    fn generate_code(&self, models: &[ModelData]) -> Result<(String, String)> {
-        match self {
-            Provider::OpenAi(p) => p.generate_code(models),
-            Provider::Mistral(p) => p.generate_code(models),
-            Provider::Anthropic(p) => p.generate_code(models),
-            Provider::Together(p) => p.generate_code(models),
-            Provider::OpenRouter(p) => p.generate_code(models),
-            Provider::HuggingFace(p) => p.generate_code(models),
-            Provider::Xai(p) => p.generate_code(models),
-        }
+    fn generate_code(&self, models: &[ModelData]) -> anyhow::Result<(String, String)> {
+        use crate::buildlib::codegen::SynCodeGenerator;
+        let codegen = SynCodeGenerator::new(self.provider_name());
+        let enum_code = codegen.generate_enum(models)?;
+        let impl_code = codegen.generate_trait_impl(models)?;
+        Ok((enum_code, impl_code))
     }
 }
 
-/// Get all available provider builders
-#[inline]
-pub fn all_providers() -> Vec<Provider> {
+/// Process all providers individually using impl Trait pattern
+pub fn process_all_providers() -> Vec<ProcessProviderResult> {
     vec![
-        Provider::OpenAi(openai::OpenAiProvider),
-        Provider::Mistral(mistral::MistralProvider),
-        Provider::Anthropic(anthropic::AnthropicProvider),
-        Provider::Together(together::TogetherProvider),
-        Provider::OpenRouter(openrouter::OpenRouterProvider),
-        Provider::HuggingFace(huggingface::HuggingFaceProvider),
-        Provider::Xai(xai::XaiProvider),
+        openai::OpenAiProvider.process(),
+        mistral::MistralProvider.process(),
+        xai::XaiProvider.process(),
+        together::TogetherProvider.process(),
+        huggingface::HuggingFaceProvider.process(),
+        anthropic::AnthropicProvider.process(),
     ]
 }
 
@@ -187,30 +278,4 @@ pub fn sanitize_ident(id: &str) -> String {
     }
 }
 
-use dashmap::DashMap;
-use once_cell::sync::Lazy;
 
-/// Global registry for dynamic provider registration.
-/// Allows runtime addition of custom providers for extensibility.
-#[allow(dead_code)] // Library feature - extensibility for custom providers
-pub static PROVIDER_REGISTRY: Lazy<DashMap<String, Box<dyn ProviderBuilder + Send + Sync>>> =
-    Lazy::new(DashMap::new);
-
-/// Register a new provider dynamically.
-/// This can be called at runtime to add custom providers.
-#[allow(dead_code)] // Library function - extensibility for custom providers
-pub fn register_provider(name: String, provider: Box<dyn ProviderBuilder + Send + Sync>) {
-    PROVIDER_REGISTRY.insert(name, provider);
-}
-
-/// Get all providers, including dynamically registered ones.
-#[allow(dead_code)] // Library function - extensibility for custom providers
-pub fn all_providers_extended() -> Vec<Box<dyn ProviderBuilder + Send + Sync>> {
-    let providers: Vec<Box<dyn ProviderBuilder + Send + Sync>> = all_providers()
-        .into_iter()
-        .map(|p| Box::new(p) as Box<dyn ProviderBuilder + Send + Sync>)
-        .collect();
-    // Note: PROVIDER_REGISTRY is not included in default providers list
-    // as it contains dynamic providers that need special handling
-    providers
-}

@@ -11,14 +11,16 @@ pub struct CacheMiddleware {
     /// Default cache duration in hours if no expires header is present
     default_expires_hours: u64,
     /// Whether to add ETags to responses that don't have them
-    generate_etags: bool}
+    generate_etags: bool,
+}
 
 impl CacheMiddleware {
     /// Create a new cache middleware with default settings
     pub fn new() -> Self {
         Self {
             default_expires_hours: 24, // 24 hours default
-            generate_etags: true}
+            generate_etags: true,
+        }
     }
 
     /// Set the default cache duration in hours
@@ -63,7 +65,8 @@ impl CacheMiddleware {
             (Some(remote), Some(user)) => remote.max(user),
             (Some(remote), None) => remote,
             (None, Some(user)) => user,
-            (None, None) => now + (self.default_expires_hours * 3600)}
+            (None, None) => now + (self.default_expires_hours * 3600),
+        }
     }
 
     /// Generate an ETag for response content if none exists
@@ -219,7 +222,8 @@ fn parse_rfc1123_to_timestamp(date_str: &str) -> Option<u64> {
         "Oct" => 10,
         "Nov" => 11,
         "Dec" => 12,
-        _ => return None};
+        _ => return None,
+    };
     let year: u32 = parts[3].parse().ok()?;
 
     let time_parts: Vec<&str> = parts[4].split(':').collect();
@@ -273,7 +277,8 @@ fn days_in_month(month: u32, year: u32) -> Option<u64> {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => Some(31),
         4 | 6 | 9 | 11 => Some(30),
         2 => Some(if is_leap_year(year) { 29 } else { 28 }),
-        _ => None}
+        _ => None,
+    }
 }
 
 /// Format Unix timestamp as HTTP date string
@@ -303,7 +308,8 @@ fn format_timestamp_as_http_date(timestamp: u64) -> String {
         10 => "Oct",
         11 => "Nov",
         12 => "Dec",
-        _ => "Jan"};
+        _ => "Jan",
+    };
 
     // RFC 1123 format: "Sun, 06 Nov 1994 08:49:37 GMT"
     // Note: Day of week calculation omitted for simplicity

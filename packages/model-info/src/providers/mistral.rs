@@ -29,27 +29,43 @@ impl ProviderTrait for MistralProvider {
     }
     
     fn list_models(&self) -> AsyncStream<ModelInfo> {
-        use crate::generated_models::MistralModel as Mistral;
-        use crate::common::Model;
+        use fluent_ai_http3::{Http3, HttpStreamExt};
+        use std::env;
+        use serde::{Deserialize, Serialize};
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct MistralModel {
+            id: String,
+            object: String,
+            created: Option<u64>,
+            owned_by: Option<String>,
+        }
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct MistralModelsResponse {
+            object: String,
+            data: Vec<MistralModel>,
+        }
         
         AsyncStream::with_channel(move |sender| {
-            let models = vec![
-                Mistral::MistralLarge2407,
-                Mistral::MistralLarge2312,
-                Mistral::MistralSmall2409,
-                Mistral::MistralNemo2407,
-                Mistral::OpenMistralNemo,
-                Mistral::Codestral2405,
-                Mistral::MistralEmbed,
-                Mistral::MistralTiny,
-                Mistral::MistralSmall,
-                Mistral::MistralMedium,
-                Mistral::MistralLarge,
-            ];
+            let response = if let Ok(api_key) = env::var("MISTRAL_API_KEY") {
+                Http3::json::<MistralModelsResponse>()
+                    .bearer_auth(&api_key)
+                    .get("https://api.mistral.ai/v1/models")
+                    .collect::<MistralModelsResponse>()
+            } else {
+                Http3::json::<MistralModelsResponse>()
+                    .get("https://api.mistral.ai/v1/models")
+                    .collect::<MistralModelsResponse>()
+            };
             
-            for model in models {
-                let model_info = adapt_mistral_to_model_info(model.name());
-                let _ = sender.send(model_info);
+            if let Some(models_response) = response.into_iter().next() {
+                for model in models_response.data {
+                    let model_info = adapt_mistral_to_model_info(&model.id);
+                    if sender.send(model_info).is_err() {
+                        break;
+                    }
+                }
             }
         })
     }

@@ -30,19 +30,43 @@ impl ProviderTrait for TogetherProvider {
     }
     
     fn list_models(&self) -> AsyncStream<ModelInfo> {
-        use crate::generated_models::TogetherModel as Together;
-        use crate::common::Model;
+        use fluent_ai_http3::{Http3, HttpStreamExt};
+        use std::env;
+        use serde::{Deserialize, Serialize};
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct TogetherModel {
+            id: String,
+            object: String,
+            created: Option<u64>,
+            owned_by: Option<String>,
+        }
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct TogetherModelsResponse {
+            object: String,
+            data: Vec<TogetherModel>,
+        }
         
         AsyncStream::with_channel(move |sender| {
-            let models = vec![
-                Together::MetaLlamaLlama38bChatHf,
-                Together::MistralaiMixtral8x7bInstructV01,
-                Together::TogethercomputerCodellama34bInstruct,
-            ];
+            let response = if let Ok(api_key) = env::var("TOGETHER_API_KEY") {
+                Http3::json::<TogetherModelsResponse>()
+                    .bearer_auth(&api_key)
+                    .get("https://api.together.xyz/v1/models")
+                    .collect::<TogetherModelsResponse>()
+            } else {
+                Http3::json::<TogetherModelsResponse>()
+                    .get("https://api.together.xyz/v1/models")
+                    .collect::<TogetherModelsResponse>()
+            };
             
-            for model in models {
-                let model_info = adapt_together_to_model_info(model.name());
-                let _ = sender.send(model_info);
+            if let Some(models_response) = response.into_iter().next() {
+                for model in models_response.data {
+                    let model_info = adapt_together_to_model_info(&model.id);
+                    if sender.send(model_info).is_err() {
+                        break;
+                    }
+                }
             }
         })
     }

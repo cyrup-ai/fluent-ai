@@ -13,7 +13,8 @@ pub struct CacheKey {
     /// Normalized headers that affect caching (e.g., Accept, Authorization)
     pub cache_headers: HashMap<String, String>,
     /// HTTP method (GET, POST, etc.)
-    pub method: String}
+    pub method: String,
+}
 
 impl CacheKey {
     /// Create cache key from request components
@@ -40,7 +41,8 @@ impl CacheKey {
         Self {
             url,
             method,
-            cache_headers}
+            cache_headers,
+        }
     }
 
     /// Generate hash key for storage

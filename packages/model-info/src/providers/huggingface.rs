@@ -29,16 +29,38 @@ impl ProviderTrait for HuggingFaceProvider {
         use crate::generated_models::HuggingFaceModel as HuggingFace;
         use crate::common::Model;
         
+        use fluent_ai_http3::{Http3, HttpStreamExt};
+        use std::env;
+        use serde::{Deserialize, Serialize};
+        
+        #[derive(Deserialize, Serialize, Debug)]
+        struct HuggingFaceModel {
+            id: String,
+            #[serde(rename = "modelId")]
+            model_id: Option<String>,
+            pipeline_tag: Option<String>,
+            library_name: Option<String>,
+        }
+        
         AsyncStream::with_channel(move |sender| {
-            let models = vec![
-                HuggingFace::MetaLlamaMetaLlama38bInstruct,
-                HuggingFace::MistralaiMistral7bInstructV03,
-                HuggingFace::GoogleGemma29bIt,
-            ];
+            let response = if let Ok(api_key) = env::var("HUGGINGFACE_API_KEY") {
+                Http3::json::<Vec<HuggingFaceModel>>()
+                    .bearer_auth(&api_key)
+                    .get("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&direction=-1&limit=50")
+                    .collect::<Vec<HuggingFaceModel>>()
+            } else {
+                Http3::json::<Vec<HuggingFaceModel>>()
+                    .get("https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&direction=-1&limit=50")
+                    .collect::<Vec<HuggingFaceModel>>()
+            };
             
-            for model in models {
-                let model_info = adapt_huggingface_to_model_info(model.name());
-                let _ = sender.send(model_info);
+            if let Some(models) = response.into_iter().next() {
+                for model in models {
+                    let model_info = adapt_huggingface_to_model_info(&model.id);
+                    if sender.send(model_info).is_err() {
+                        break;
+                    }
+                }
             }
         })
     }

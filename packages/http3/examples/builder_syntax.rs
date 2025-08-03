@@ -12,6 +12,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post, put},
 };
+use cyrup_sugars::prelude::*;
 use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpStreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -85,7 +86,7 @@ struct BinaryResponse {
 async fn handle_post(
     headers: HeaderMap,
     Json(payload): Json<SerdeRequestType>,
-) -> Result<ResponseJson<SerdeResponseType>, StatusCode> {
+) -> Result<ResponseJson<Vec<SerdeResponseType>>, StatusCode> {
     println!("🚀 Server received payload: {:#?}", payload);
     println!("📋 Server received headers:");
     for (name, value) in headers.iter() {
@@ -103,7 +104,7 @@ async fn handle_post(
     };
 
     println!("📤 Server responding with: {:#?}", response);
-    Ok(ResponseJson(response))
+    Ok(ResponseJson(vec![response]))
 }
 
 // Handler for CSV download
@@ -121,7 +122,7 @@ async fn handle_csv_download() -> Result<Response<String>, StatusCode> {
 async fn handle_put_json(
     headers: HeaderMap,
     Json(payload): Json<JsonRequest>,
-) -> Result<ResponseJson<JsonResponse>, StatusCode> {
+) -> Result<ResponseJson<Vec<JsonResponse>>, StatusCode> {
     println!("🔄 PUT JSON received: {:#?}", payload);
     println!("📋 Headers: {:?}", headers.get("content-type"));
 
@@ -144,14 +145,14 @@ async fn handle_put_json(
     };
 
     println!("📤 PUT JSON responding: {:#?}", response);
-    Ok(ResponseJson(response))
+    Ok(ResponseJson(vec![response]))
 }
 
 // PUT handler for form-urlencoded content - FormRequest -> FormResponse
 async fn handle_put_form(
     headers: HeaderMap,
     Form(params): Form<HashMap<String, String>>,
-) -> Result<ResponseJson<FormResponse>, StatusCode> {
+) -> Result<ResponseJson<Vec<FormResponse>>, StatusCode> {
     println!("🔄 PUT Form received: {:#?}", params);
     println!("📋 Headers: {:?}", headers.get("content-type"));
 
@@ -178,14 +179,14 @@ async fn handle_put_form(
     };
 
     println!("📤 PUT Form responding: {:#?}", response);
-    Ok(ResponseJson(response))
+    Ok(ResponseJson(vec![response]))
 }
 
 // PUT handler for binary/text content - BinaryRequest -> BinaryResponse
 async fn handle_put_binary(
     headers: HeaderMap,
     Json(payload): Json<BinaryRequest>,
-) -> Result<ResponseJson<BinaryResponse>, StatusCode> {
+) -> Result<ResponseJson<Vec<BinaryResponse>>, StatusCode> {
     println!("🔄 PUT Binary received: {:#?}", payload);
     println!("📋 Headers: {:?}", headers.get("content-type"));
 
@@ -198,7 +199,7 @@ async fn handle_put_binary(
     };
 
     println!("📤 PUT Binary responding: {:#?}", response);
-    Ok(ResponseJson(response))
+    Ok(ResponseJson(vec![response]))
 }
 
 // Requestbin-style middleware to log ALL incoming requests with full details
@@ -301,21 +302,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Stream of HttpChunk or mixed BadHttpChunk
     Http3::json()
         .debug() // Enable debug logging
-        .headers([
-            ("x-api-key", "abc123")
-        ])
+        .headers([("x-api-key", "abc123")])
         .body(&request)
         .post(&server_url);
 
     // collect to Serde mapped type
     let response_data = Http3::json()
         .accept(ContentType::ApplicationJson)
-        .headers([
-            ("x-api-key", "abc123")
-        ])
+        .headers([("x-api-key", "abc123")])
         .body(&request)
         .post(&server_url)
-        .collect::<SerdeResponseType>();
+        .collect_one::<SerdeResponseType>();
     println!("📥 Received response: {:?}", response_data);
 
     // shorthand
@@ -323,7 +320,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .api_key("abc123")
         .body(&request)
         .post(&server_url)
-        .collect::<SerdeResponseType>();
+        .collect_one::<SerdeResponseType>();
     println!("📥 Received response 2: {:?}", response_data2);
 
     // shorthand
@@ -331,23 +328,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .basic_auth([("user", "password")])
         .body(&request)
         .post(&server_url)
-        .collect::<SerdeResponseType>();
+        .collect_one::<SerdeResponseType>();
 
     // Stream of HttpChunk may have mixed BadHttpChunk
-    let error_response = Http3::json::<JsonRequest>()
-        .headers([
-            ("foo", "bar"),
-            ("fizz", "buzz")
-        ])
+    let error_response = Http3::json()
+        .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
-        .on_chunk( |chunk| {
-            match chunk {
-                Ok(chunk) => chunk.into(),
-                Err(e) => BadChunk::from_err(e)
-            }
+        .on_chunk(|chunk_result| match chunk_result {
+            Ok(chunk) => chunk,
+            Err(e) => BadChunk::from_err(e).into(),
         })
-        .collect_or_else(|e| {
+        .collect_one_or_else(|e| {
             println!("Error: {}", e);
             SerdeResponseType {
                 result: "error".to_string(),
@@ -359,9 +351,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Download file example with proper URL
     let csv_url = format!("http://{}/download/file.csv", local_addr);
     let download_result = Http3::json()
-        .headers([
-            ("x-api-key", "abc123")
-        ])
+        .headers([("x-api-key", "abc123")])
         .download_file(&csv_url)
         .save("/tmp/some.csv")
         .await; // polymorphic path for download specific semantics
@@ -389,7 +379,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .debug()
         .body(&json_request)
         .put(&json_url)
-        .collect::<JsonResponse>();
+        .collect_one::<JsonResponse>();
     println!("📤 PUT JSON Response: {:#?}", json_response);
 
     // PUT Form test - Send actual form-urlencoded data, not JSON
@@ -405,7 +395,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .debug()
         .body(&form_params)
         .put(&form_url)
-        .collect::<FormResponse>();
+        .collect_one::<FormResponse>();
     println!("📤 PUT Form Response: {:#?}", form_response);
 
     // PUT Binary test - BinaryRequest -> BinaryResponse
@@ -421,7 +411,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .debug()
         .body(&binary_request)
         .put(&binary_url)
-        .collect::<BinaryResponse>();
+        .collect_one::<BinaryResponse>();
     println!("📤 PUT Binary Response: {:#?}", binary_response);
 
     // Give the server a moment to process all requests

@@ -18,7 +18,11 @@ pub use cache::{CacheConfig, CacheEntry, CacheKey, CacheStats, ResponseCache};
 pub use content_types::ContentTypes;
 pub use headers::HeaderManager;
 pub use metrics::{MetricsCollector, OperationMetrics, RequestMetrics};
-pub use retry::{HttpRetryExecutor, RetryExecutor, RetryPolicy, RetryResult, RetryStats};
+pub use retry::{
+    GLOBAL_RETRY_STATS, GlobalRetryStats, HttpRetryExecutor, RetryExecutor, RetryPolicy,
+    RetryResult, RetryStats, execute_with_aggressive_retry, execute_with_conservative_retry,
+    execute_with_default_retry, execute_without_retry, with_retry,
+};
 
 /// Common result type for utility operations
 pub type UtilityResult<T> = Result<T, UtilityError>;
@@ -35,7 +39,8 @@ pub enum UtilityError {
     /// Cache operation error
     CacheError,
     /// Metrics collection error
-    MetricsError}
+    MetricsError,
+}
 
 impl std::fmt::Display for UtilityError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -44,7 +49,8 @@ impl std::fmt::Display for UtilityError {
             UtilityError::AuthError => write!(f, "Authentication failed"),
             UtilityError::RetryError => write!(f, "Retry operation failed"),
             UtilityError::CacheError => write!(f, "Cache operation failed"),
-            UtilityError::MetricsError => write!(f, "Metrics collection failed")}
+            UtilityError::MetricsError => write!(f, "Metrics collection failed"),
+        }
     }
 }
 

@@ -72,7 +72,7 @@ impl Provider {
 /// Provider names for efficient lookups
 const PROVIDER_NAMES: &[&str] = &[
     "openai", "mistral", "anthropic", "together", 
-    "openrouter", "huggingface", "xai"
+    "huggingface", "xai"
 ];
 
 /// Maximum number of models per provider (for zero-allocation collections)
@@ -316,7 +316,7 @@ impl ModelDiscoveryRegistry {
     ///
     /// # Returns
     /// A stream of refresh status updates and final count
-    pub fn refresh_models(&self) -> AsyncStream<usize> {
+    pub fn refresh_models() -> AsyncStream<usize> {
         AsyncStream::with_channel(|sender| {
                 let mut total_refreshed = 0;
                 
@@ -325,8 +325,8 @@ impl ModelDiscoveryRegistry {
                 let mut all_new_models = Vec::new();
                 
                 // Fetch from all providers using streams - collect models from each provider stream
-                for (provider_name, provider) in PROVIDER_NAMES.iter().zip(REGISTRY.providers.iter()) {
-                    let model_stream = self.fetch_provider_models(provider);
+                for provider_name in PROVIDER_NAMES.iter() {
+                    let model_stream = Self::fetch_provider_models_static(provider_name);
                     let models = model_stream.collect();
                     
                     if !models.is_empty() {
@@ -359,7 +359,7 @@ impl ModelDiscoveryRegistry {
                 }
                 
                 // Update capability indices
-                self.rebuild_capability_indices();
+                Self::rebuild_capability_indices_static();
                 
                 // Send final count
                 let _ = sender.send(total_refreshed);
@@ -435,14 +435,30 @@ impl ModelDiscoveryRegistry {
     }
     
     /// Fetch models from a specific provider as a stream
-    fn fetch_provider_models(&self, _provider: &Provider) -> fluent_ai_async::AsyncStream<ModelInfo> {
-        // For now, return empty stream as we need to implement provider-specific model enumeration
-        // This would be enhanced to actually fetch model lists from each provider using AsyncStream
-        fluent_ai_async::AsyncStream::empty()
+    fn fetch_provider_models_static(provider_name: &str) -> fluent_ai_async::AsyncStream<ModelInfo> {
+        use crate::common::ProviderTrait;
+        use crate::providers::{
+            openai::OpenAiProvider,
+            anthropic::AnthropicProvider,
+            mistral::MistralProvider,
+            xai::XaiProvider,
+            together::TogetherProvider,
+            huggingface::HuggingfaceProvider,
+        };
+
+        match provider_name {
+            "openai" => OpenAiProvider.list_models(),
+            "anthropic" => AnthropicProvider.list_models(),
+            "mistral" => MistralProvider.list_models(),
+            "xai" => XaiProvider.list_models(),
+            "together" => TogetherProvider.list_models(),
+            "huggingface" => HuggingfaceProvider.list_models(),
+            _ => fluent_ai_async::AsyncStream::empty(),
+        }
     }
     
     /// Rebuild capability-based indices for fast filtering
-    fn rebuild_capability_indices(&self) {
+    fn rebuild_capability_indices_static() {
         REGISTRY.thinking_models.clear();
         REGISTRY.high_context_models.clear();
         REGISTRY.low_cost_models.clear();

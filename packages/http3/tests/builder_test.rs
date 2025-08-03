@@ -7,7 +7,7 @@ async fn test_fluent_builder_get_request() {
     // This test uses httpbin.org, a public testing service.
     let url = "https://httpbin.org/get";
 
-    let stream = Http3::json::<serde_json::Value>()
+    let stream = Http3::json()
         .url(url)
         .headers([("x-custom-header", "Cascade-Test")])
         .api_key("test-api-key")
@@ -35,7 +35,7 @@ async fn basic_builder_flow() {
     // This test uses httpbin.org, a public testing service.
     let url = "https://httpbin.org/get";
 
-    let stream = Http3::json::<serde_json::Value>()
+    let stream = Http3::json()
         .url(url)
         .headers([("x-custom-header", "Cascade-Test")])
         .api_key("test-api-key")

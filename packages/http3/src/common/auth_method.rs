@@ -3,9 +3,10 @@
 //! This module provides a simplified AuthMethod interface that wraps the
 //! more comprehensive AuthProvider trait system for backward compatibility.
 
-use crate::common::auth::{ApiKey, ApiKeyPlacement, AuthProvider, BearerToken, BasicAuth};
 use http::HeaderMap;
+
 use crate::HttpResult;
+use crate::common::auth::{ApiKey, ApiKeyPlacement, AuthProvider, BasicAuth, BearerToken};
 
 /// Legacy-compatible AuthMethod wrapper
 pub enum AuthMethod {

@@ -93,6 +93,7 @@ pub mod client;
 pub mod common;
 pub mod config;
 pub mod error;
+pub mod json_path;
 pub mod middleware;
 pub mod operations;
 pub mod request;
@@ -100,8 +101,9 @@ pub mod response;
 pub mod stream;
 
 pub use builder::{
-    ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt, header};
-
+    ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt, JsonPathStream,
+    header,
+};
 // Provider compatibility types for legacy code
 pub use common::{AuthMethod, ContentTypes};
 
@@ -113,10 +115,14 @@ pub use common::cache::CacheEntry;
 pub use config::HttpConfig;
 // Removed sugars_macros::json_map - dependency not available
 pub use error::{HttpError, HttpResult};
+// JSONPath streaming support
+pub use json_path::{JsonArrayStream, JsonPathError, StreamStats};
 pub use middleware::{Middleware, MiddlewareChain, cache::CacheMiddleware};
 pub use request::HttpRequest;
 pub use response::{HttpResponse, JsonStream, SseEvent};
-pub use stream::{BadChunk, DownloadChunk, DownloadStream, HttpChunk, HttpStream, LinesStream, SseStream};
+pub use stream::{
+    BadChunk, DownloadChunk, DownloadStream, HttpChunk, HttpStream, LinesStream, SseStream,
+};
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling
@@ -148,4 +154,3 @@ pub fn init_global_client(_config: HttpConfig) -> HttpResult<()> {
     // Users should create their own client instances if they need custom configuration
     Ok(())
 }
-

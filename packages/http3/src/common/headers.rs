@@ -7,13 +7,15 @@ use thiserror::Error;
 /// A wrapper around `http::HeaderMap` to provide fluent, application-specific helpers.
 #[derive(Debug, Clone, Default)]
 pub struct HeaderManager {
-    headers: HeaderMap}
+    headers: HeaderMap,
+}
 
 impl HeaderManager {
     /// Creates a new, empty `HeaderManager`.
     pub fn new() -> Self {
         HeaderManager {
-            headers: HeaderMap::new()}
+            headers: HeaderMap::new(),
+        }
     }
 
     /// Sets a header, consuming the manager and returning a new one.
@@ -55,11 +57,14 @@ pub enum HeaderError {
     #[error("Invalid header value: {message}")]
     InvalidHeaderValue {
         /// Error message describing the invalid header value
-        message: String}}
+        message: String,
+    },
+}
 
 impl From<http::header::InvalidHeaderValue> for HeaderError {
     fn from(err: http::header::InvalidHeaderValue) -> Self {
         HeaderError::InvalidHeaderValue {
-            message: err.to_string()}
+            message: err.to_string(),
+        }
     }
 }

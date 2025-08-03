@@ -1,8 +1,5 @@
-use super::{ModelData, ProviderBuilder};
-use super::super::codegen::SynCodeGenerator;
-use fluent_ai_async::AsyncStream;
-use anyhow::Result;
-use serde::Deserialize;
+use super::{ModelData, ProviderBuilder, ProcessProviderResult};
+use serde::{Deserialize, Serialize};
 
 /// Anthropic provider implementation with legitimate hardcoded data
 /// This is the ONLY provider that legitimately uses static data because
@@ -10,29 +7,64 @@ use serde::Deserialize;
 pub struct AnthropicProvider;
 
 // Placeholder type since Anthropic doesn't have an API endpoint
-#[derive(Deserialize)]
-struct AnthropicModelsResponse;
+#[derive(Deserialize, Serialize, Default)]
+pub struct AnthropicModelsResponse;
 
 impl ProviderBuilder for AnthropicProvider {
+    type ListResponse = AnthropicModelsResponse; // Placeholder - no API
+    type GetResponse = AnthropicModelsResponse;
+
     fn provider_name(&self) -> &'static str {
         "anthropic"
     }
     
-    fn api_endpoint(&self) -> Option<&'static str> {
-        // Anthropic does not provide a public models list API
-        None
+    fn base_url(&self) -> &'static str {
+        "https://api.anthropic.com" // Not used since no public models API
     }
     
     fn api_key_env_var(&self) -> Option<&'static str> {
         // No API key needed since there's no API endpoint
         None
     }
-    
-    fn fetch_models(&self) -> AsyncStream<ModelData> {
-        // Anthropic doesn't have a models API endpoint - return empty stream
-        AsyncStream::empty()
+
+    fn response_to_models(&self, _response: Self::ListResponse) -> Vec<ModelData> {
+        // Not used since Anthropic has no API
+        Vec::new()
     }
-    
+
+    // Custom process() implementation for Anthropic's static models
+    fn process(&self) -> ProcessProviderResult {
+        // Get static models - ONLY legitimate use since Anthropic has no public /v1/models API
+        let models = match self.static_models() {
+            Some(models) => models,
+            None => {
+                return ProcessProviderResult {
+                    success: false,
+                    status: format!("No static models defined for {}", self.provider_name()),
+                };
+            }
+        };
+
+        if models.is_empty() {
+            return ProcessProviderResult {
+                success: false,
+                status: format!("No models found for {}", self.provider_name()),
+            };
+        }
+
+        // Generate code using syn
+        match self.generate_code(&models) {
+            Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                success: true,
+                status: format!("Successfully processed {} static models for {}", models.len(), self.provider_name()),
+            },
+            Err(e) => ProcessProviderResult {
+                success: false,
+                status: format!("Code generation failed for {}: {}", self.provider_name(), e),
+            },
+        }
+    }
+
     fn static_models(&self) -> Option<Vec<ModelData>> {
         // ONLY legitimate use of static model data - Anthropic has no public /v1/models API
         // User-specified claude-4 models only
@@ -70,12 +102,5 @@ impl ProviderBuilder for AnthropicProvider {
                 Some(1.0),
             ),
         ])
-    }
-    
-    fn generate_code(&self, models: &[ModelData]) -> Result<(String, String)> {
-        let codegen = SynCodeGenerator::new(self.provider_name());
-        let enum_code = codegen.generate_enum(models)?;
-        let impl_code = codegen.generate_trait_impl(models)?;
-        Ok((enum_code, impl_code))
     }
 }

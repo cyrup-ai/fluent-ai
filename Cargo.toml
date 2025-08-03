@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "workspace-hack",
+    "forks",
     "packages/async-stream",
     "packages/fluent-ai",
     "packages/candle",

@@ -20,7 +20,8 @@ pub enum HttpChunk {
     /// Deserialized data from response body for pattern matching
     Deserialized(serde_json::Value),
     /// Error that occurred during processing
-    Error(crate::HttpError)}
+    Error(crate::HttpError),
+}
 
 /// Represents the result of processing a chunk through an on_chunk handler
 #[derive(Debug, Clone)]
@@ -30,7 +31,7 @@ pub enum ProcessedChunk<T> {
     /// Error occurred during chunk processing
     Err(crate::HttpError),
     /// Chunk should be skipped/ignored
-    Skip
+    Skip,
 }
 
 /// Represents a bad/error chunk in HTTP response processing.
@@ -43,8 +44,8 @@ pub enum BadChunk {
         /// The original error
         error: crate::HttpError,
         /// Additional context about the processing failure
-        context: String
-    }
+        context: String,
+    },
 }
 
 impl BadChunk {
@@ -62,7 +63,7 @@ impl BadChunk {
     pub fn error(&self) -> &crate::HttpError {
         match self {
             BadChunk::Error(err) => err,
-            BadChunk::ProcessingFailed { error, .. } => error
+            BadChunk::ProcessingFailed { error, .. } => error,
         }
     }
 }
@@ -77,7 +78,8 @@ pub struct DownloadChunk {
     /// Total file size if known from headers
     pub total_size: Option<u64>,
     /// Total bytes downloaded so far
-    pub bytes_downloaded: u64}
+    pub bytes_downloaded: u64,
+}
 
 // Stream newtype wrappers to allow for extension methods
 
@@ -95,9 +97,9 @@ impl HttpStream {
     /// Create a new HTTP response stream
     #[must_use]
     pub fn new(inner: Pin<Box<dyn Stream<Item = HttpResult<HttpChunk>> + Send>>) -> Self {
-        Self { 
+        Self {
             inner,
-            chunk_processors: Vec::new()
+            chunk_processors: Vec::new(),
         }
     }
 
@@ -105,18 +107,18 @@ impl HttpStream {
     #[must_use]
     pub fn with_processors(
         inner: Pin<Box<dyn Stream<Item = HttpResult<HttpChunk>> + Send>>,
-        processors: Vec<Box<dyn FnMut(HttpChunk) -> HttpChunk + Send>>
+        processors: Vec<Box<dyn FnMut(HttpChunk) -> HttpChunk + Send>>,
     ) -> Self {
-        Self { 
+        Self {
             inner,
-            chunk_processors: processors
+            chunk_processors: processors,
         }
     }
 
     /// Add a chunk processor to this stream
-    pub fn add_processor<F>(&mut self, processor: F) 
+    pub fn add_processor<F>(&mut self, processor: F)
     where
-        F: FnMut(HttpChunk) -> HttpChunk + Send + 'static
+        F: FnMut(HttpChunk) -> HttpChunk + Send + 'static,
     {
         self.chunk_processors.push(Box::new(processor));
     }
@@ -211,5 +213,21 @@ impl Stream for SseStream {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.project().inner.poll_next(cx)
+    }
+}
+
+// Conversions between BadChunk and HttpChunk for elegant error handling
+impl From<BadChunk> for HttpChunk {
+    fn from(bad_chunk: BadChunk) -> Self {
+        match bad_chunk {
+            BadChunk::Error(error) => HttpChunk::Error(error),
+            BadChunk::ProcessingFailed { error, .. } => HttpChunk::Error(error),
+        }
+    }
+}
+
+impl From<crate::HttpError> for BadChunk {
+    fn from(error: crate::HttpError) -> Self {
+        BadChunk::Error(error)
     }
 }
