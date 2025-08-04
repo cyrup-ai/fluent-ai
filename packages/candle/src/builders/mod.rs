@@ -5,6 +5,7 @@
 //! fluent-ai contains all builders for construction and configuration.
 
 pub mod agent_role;
+pub mod completion;
 
 // Re-export main builder types for public API
 pub use agent_role::{CandleFluentAi, CandleAgentRoleBuilder, CandleAgentBuilder};

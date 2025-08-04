@@ -10,7 +10,8 @@ use crate::domain::{
         types::{MAX_TOKENS, TEMPERATURE_RANGE}
     },
     tool::{CandleTool},
-    model::{CandleValidationError as ValidationError}
+    model::{CandleValidationError as ValidationError},
+    http::requests::completion::{ToolDefinition, FunctionDefinition, ToolType}
 };
 
 /// Builder for completion requests
@@ -105,11 +106,42 @@ impl CompletionRequestBuilder {
 
     /// Build the request
     pub fn build(self) -> Result<CompletionRequest, CompletionRequestError> {
+        // Convert Box<dyn CandleTool> to ToolDefinition
+        let converted_tools = match self.tools {
+            ZeroOneOrMany::None => ZeroOneOrMany::None,
+            ZeroOneOrMany::One(tool) => {
+                let tool_def = ToolDefinition {
+                    tool_type: ToolType::Function,
+                    function: FunctionDefinition::new(
+                        tool.name(),
+                        tool.description(),
+                        tool.parameters().clone()
+                    ).map_err(|_| CompletionRequestError::InvalidParameter("Failed to create function definition".to_string()))?
+                };
+                ZeroOneOrMany::One(tool_def)
+            },
+            ZeroOneOrMany::Many(tools) => {
+                let mut tool_defs = Vec::new();
+                for tool in tools {
+                    let tool_def = ToolDefinition {
+                        tool_type: ToolType::Function,
+                        function: FunctionDefinition::new(
+                            tool.name(),
+                            tool.description(),
+                            tool.parameters().clone()
+                        ).map_err(|_| CompletionRequestError::InvalidParameter("Failed to create function definition".to_string()))?
+                    };
+                    tool_defs.push(tool_def);
+                }
+                ZeroOneOrMany::Many(tool_defs)
+            }
+        };
+
         let request = CompletionRequest {
             system_prompt: self.system_prompt,
             chat_history: self.chat_history,
             documents: self.documents,
-            tools: self.tools,
+            tools: converted_tools,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,

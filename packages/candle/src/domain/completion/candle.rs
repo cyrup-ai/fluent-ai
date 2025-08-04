@@ -92,6 +92,31 @@ pub struct CompletionCoreRequest<'a> {
 }
 
 impl<'a> CompletionCoreRequest<'a> {
+    /// Create a new completion request from builder
+    #[inline(always)]
+    pub fn from_builder(
+        prompt: ArrayVec<u8, MAX_PROMPT_SIZE>,
+        max_tokens: u32,
+        temperature: f32,
+        top_k: u32,
+        top_p: f32,
+        stop_tokens: SmallVec<&'a str, MAX_STOP_TOKENS>,
+        stream: bool,
+        model_params: ModelParams,
+        seed: Option<u64>,
+    ) -> Self {
+        Self {
+            prompt,
+            max_tokens,
+            temperature,
+            top_k,
+            top_p,
+            stop_tokens,
+            stream,
+            model_params,
+            seed,
+        }
+    }
 
     /// Get the prompt as a string slice
     #[inline(always)]
@@ -131,6 +156,25 @@ pub struct CompletionCoreResponse {
 }
 
 impl CompletionCoreResponse {
+    /// Create a new completion response from builder
+    #[inline(always)]
+    pub fn from_builder(
+        text: ArrayVec<u8, MAX_RESPONSE_SIZE>,
+        tokens_generated: u32,
+        generation_time_ms: u32,
+        tokens_per_second: u32,
+        finish_reason: ArrayVec<u8, 32>,
+        model: ArrayVec<u8, 64>,
+    ) -> Self {
+        Self {
+            text,
+            tokens_generated: AtomicU32::new(tokens_generated),
+            generation_time_ms: AtomicU32::new(generation_time_ms),
+            tokens_per_second: AtomicU32::new(tokens_per_second),
+            finish_reason,
+            model,
+        }
+    }
 
     /// Get the generated text as a string slice
     #[inline(always)]

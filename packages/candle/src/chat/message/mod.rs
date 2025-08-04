@@ -300,7 +300,7 @@ pub use error::MessageError;
 pub use media::{ImageMediaType, DocumentMediaType, AudioMediaType, VideoMediaType};
 
 // Import ToolCall from HTTP module for message processing
-pub use crate::http::{ToolCall, ToolCallType, FunctionCall};
+pub use crate::domain::http::{ToolCall, ToolCallType, FunctionCall};
 
 // Alias for backward compatibility - some code expects MimeType instead of MediaType
 pub use media::MediaType as MimeType;

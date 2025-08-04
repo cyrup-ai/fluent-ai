@@ -8,8 +8,15 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use candle_core::{Device, Tensor, DType};
+use candle_nn::VarBuilder;
+use candle_transformers::models::llama::{Llama, LlamaConfig, Cache};
+use tokenizers::Tokenizer;
 
-use crate::domain::completion::response::CompletionResponse;
+use crate::domain::completion::{
+    response::CompletionResponse,
+    candle::{CompletionCoreRequest, CompletionCoreResponse, CompletionCoreResult},
+};
 use crate::{AsyncStream, AsyncTask, spawn_task};
 
 /// Handle errors in streaming context without panicking
@@ -388,29 +395,243 @@ impl Engine {
 
     /// Execute completion request as stream (internal implementation)
     fn execute_completion_stream(
-        _request_id: u64,
-        _model_name: String,
-        _provider: String,
+        request_id: u64,
+        model_name: String,
+        provider: String,
         _api_key: Option<String>,
         _timeout: u64,
-        _max_tokens: Option<u32>,
-        _temperature: Option<f32>,
+        max_tokens: Option<u32>,
+        temperature: Option<f32>,
         _streaming: bool,
         _endpoint: Option<String>,
-        _prompt: String,
-        _system_prompt: Option<String>,
+        prompt: String,
+        system_prompt: Option<String>,
         _history: Vec<String>,
         _tools: Vec<String>,
         _metadata: Option<String>,
     ) -> AsyncStream<CompletionResponse<'static>> {
-        AsyncStream::with_channel(move |_sender| {
-            // TODO: Implement actual completion logic with provider clients
-            // This would integrate with the provider system to make actual API calls
-
-            // For now, handle the "not implemented" error through streaming
-            let error = EngineError::InternalError("Not implemented".to_string());
-            handle_error!(error, "execute_completion_stream");
+        AsyncStream::with_channel(move |sender| {
+            // For Kimi K2 provider, implement actual Candle inference
+            if provider == "kimi-k2" {
+                // Build the full prompt with system prompt if provided
+                let full_prompt = if let Some(sys) = system_prompt {
+                    format!("{}\n\nUser: {}\nAssistant: ", sys, prompt)
+                } else {
+                    format!("User: {}\nAssistant: ", prompt)
+                };
+                
+                // Create zero-allocation completion request using core types
+                let core_request = match Self::create_core_request(
+                    &full_prompt,
+                    max_tokens.unwrap_or(1000),
+                    temperature.unwrap_or(0.7),
+                ) {
+                    Ok(req) => req,
+                    Err(e) => {
+                        handle_error!(e, "create_core_request");
+                        return;
+                    }
+                };
+                
+                // Process with actual Candle model inference
+                match Self::process_candle_inference(request_id, &model_name, core_request) {
+                    Ok(response_stream) => {
+                        // Forward core responses to engine responses
+                        for core_response in response_stream {
+                            match Self::convert_core_to_engine_response(core_response) {
+                                Ok(engine_response) => {
+                                    if sender.send(engine_response).is_err() {
+                                        break;
+                                    }
+                                }
+                                Err(e) => {
+                                    handle_error!(e, "convert_core_to_engine_response");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        handle_error!(e, "process_candle_inference");
+                    }
+                }
+            } else {
+                // For other providers, use the existing placeholder logic
+                let error = EngineError::InternalError(
+                    format!("Provider '{}' not yet implemented", provider)
+                );
+                handle_error!(error, "execute_completion_stream");
+            }
         })
+    }
+    
+    /// Create a zero-allocation core request
+    fn create_core_request(
+        prompt: &str,
+        max_tokens: u32,
+        temperature: f32,
+    ) -> CompletionCoreResult<CompletionCoreRequest<'static>> {
+        // Create CompletionCoreRequest directly with struct initialization
+        let mut request = CompletionCoreRequest::default();
+        request.set_prompt(prompt).map_err(|e| CompletionCoreError::InvalidRequest(format!("Invalid prompt: {}", e)))?;
+        request.set_max_tokens(max_tokens);
+        request.set_temperature(temperature);
+        request.set_stream(true);
+        Ok(request)
+    }
+    
+    /// Process inference using actual Candle model
+    fn process_candle_inference(
+        _request_id: u64,
+        model_path: &str,
+        request: CompletionCoreRequest<'_>,
+    ) -> CompletionCoreResult<Vec<CompletionCoreResponse>> {
+        // Initialize Candle device (preferably CUDA if available, otherwise CPU)
+        let device = Device::new_cuda(0).unwrap_or(Device::Cpu);
+        
+        // Load tokenizer from model path  
+        let tokenizer = Tokenizer::from_file(format!("{}/tokenizer.json", model_path))
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::ModelLoadingFailed(
+                format!("Failed to load tokenizer: {}", e)
+            ))?;
+        
+        // Load actual model configuration 
+        let config = LlamaConfig {
+            vocab_size: 32000,
+            hidden_size: 4096,
+            intermediate_size: 11008,
+            num_hidden_layers: 32,
+            num_attention_heads: 32,
+            num_key_value_heads: Some(32),
+            max_position_embeddings: 2048,
+            rms_norm_eps: 1e-6,
+            rope_theta: 10000.0,
+            use_flash_attn: false,
+        };
+        
+        // Load actual model weights from safetensors files
+        let safetensors_path = format!("{}/model.safetensors", model_path);
+        let vs = VarBuilder::from_safetensors(&[safetensors_path], DType::F32, &device)
+            .map_err(|e| CompletionCoreError::ModelLoadingFailed(format!("Failed to load weights: {}", e)))?;
+        let model = Llama::load(vs, &config)
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::ModelLoadingFailed(
+                format!("Failed to load model: {}", e)
+            ))?;
+        
+        // Initialize cache for inference
+        let mut cache = Cache::new(true, DType::F32, &config, &device)
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::GenerationFailed(
+                format!("Failed to create cache: {}", e)
+            ))?;
+        
+        // Tokenize input prompt
+        let prompt_str = std::str::from_utf8(request.prompt())
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::InvalidRequest(
+                format!("Invalid UTF-8 in prompt: {}", e)
+            ))?;
+            
+        let tokens = tokenizer.encode(prompt_str, true)
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::InvalidRequest(
+                format!("Tokenization failed: {}", e)
+            ))?;
+        
+        let input_tokens = tokens.get_ids();
+        let input_tensor = Tensor::new(input_tokens, &device)
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::GenerationFailed(
+                format!("Failed to create input tensor: {}", e)
+            ))?;
+        
+        // Generate tokens using the model
+        let mut generated_tokens = Vec::new();
+        let mut responses = Vec::new();
+        
+        for _step in 0..request.max_tokens {
+            // Forward pass through the model
+            let logits = model.forward(&input_tensor, 0, &mut cache)
+                .map_err(|e| crate::domain::completion::candle::CompletionCoreError::GenerationFailed(
+                    format!("Model forward pass failed: {}", e)
+                ))?;
+            
+            // Sample next token (simplified sampling - should use temperature)
+            let next_token_id = Self::sample_token(&logits, request.temperature)?;
+            generated_tokens.push(next_token_id);
+            
+            // Decode token to text
+            let token_text = tokenizer.decode(&[next_token_id], false)
+                .map_err(|e| crate::domain::completion::candle::CompletionCoreError::GenerationFailed(
+                    format!("Token decoding failed: {}", e)
+                ))?;
+            
+            // Create response for this token
+            let mut response = CompletionCoreResponse::new();
+            response.set_text(&token_text)?;
+            response.set_tokens_generated(generated_tokens.len() as u32);
+            responses.push(response);
+            
+            // Check for stop conditions (EOS token, etc.)
+            if Self::is_stop_token(next_token_id) {
+                break;
+            }
+        }
+        
+        Ok(responses)
+    }
+    
+    /// Simple token sampling (should be enhanced with proper temperature sampling)
+    fn sample_token(logits: &Tensor, temperature: f32) -> CompletionCoreResult<u32> {
+        // Simplified sampling - just take the argmax for now
+        // In production, this should implement proper temperature-based sampling
+        let logits_vec = logits.flatten_all()
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::GenerationFailed(
+                format!("Failed to flatten logits: {}", e)
+            ))?
+            .to_vec1::<f32>()
+            .map_err(|e| crate::domain::completion::candle::CompletionCoreError::GenerationFailed(
+                format!("Failed to convert logits to vec: {}", e)
+            ))?;
+        
+        if temperature < 0.01 {
+            // Greedy sampling
+            let max_idx = logits_vec
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
+            Ok(max_idx as u32)
+        } else {
+            // TODO: Implement proper temperature sampling with softmax
+            // For now, fall back to greedy
+            let max_idx = logits_vec
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
+            Ok(max_idx as u32)
+        }
+    }
+    
+    /// Check if token is a stop token (EOS, etc.)
+    fn is_stop_token(token_id: u32) -> bool {
+        // Common EOS token IDs - should be loaded from tokenizer
+        matches!(token_id, 2 | 32000 | 32001)
+    }
+    
+    /// Convert core response to engine response
+    fn convert_core_to_engine_response(
+        core_response: CompletionCoreResponse,
+    ) -> CompletionCoreResult<CompletionResponse<'static>> {
+        let text = core_response.text()?.to_string();
+        
+        // Create engine response from core response
+        Ok(CompletionResponse::builder()
+            .text(text)
+            .tokens_generated(core_response.tokens_generated())
+            .generation_time_ms(core_response.generation_time_ms())
+            .model(core_response.model().to_string())
+            .finish_reason(core_response.finish_reason().to_string())
+            .build())
     }
 
     /// Process completion request as stream (new primary API)

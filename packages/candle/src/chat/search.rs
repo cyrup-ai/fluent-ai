@@ -869,8 +869,7 @@ impl ChatSearchIndex {
         let query_clone = query.clone();
 
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                for result in results {
+            for result in results {
                     let mut keep_result = true;
 
                     // Date range filter
@@ -915,11 +914,9 @@ impl ChatSearchIndex {
                     }
 
                     if keep_result {
-                        let _ = sender.send(result).await;
+                        let _ = sender.send(result);
                     }
                 }
-                Ok(())
-            })
             // AsyncStream automatically closes when sender is dropped
         })
     }

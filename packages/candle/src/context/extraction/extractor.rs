@@ -10,7 +10,8 @@ use crate::agent::agent::Agent;
 use crate::context::chunk::{CandleCompletionChunk, FinishReason};
 use crate::chat::message::types::MessageRole;
 use crate::model::traits::{ChatCompletionRequest as CompletionRequest, GenerationParams as CompletionParams};
-use crate::engine::CompletionRequest as EngineCompletionRequest;
+// Note: Engine module temporarily disabled due to compilation issues
+// use crate::engine::CompletionRequest as EngineCompletionRequest;
 use crate::prompt::CandlePrompt as Prompt;
 
 // Local completion model trait for standalone package

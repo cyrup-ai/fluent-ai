@@ -97,21 +97,21 @@ mod descendant_ordering_tests {
                 let chunk = Bytes::from(json_data.clone());
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
-                let iterationresults: Vec<_> = stream.process_chunk(chunk).collect();
+                let iteration_results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 if iteration == 0 {
-                    results = iterationresults;
+                    results = iteration_results;
                 } else {
                     // Verify consistent ordering across iterations
                     assert_eq!(
                         results.len(),
-                        iterationresults.len(),
+                        iteration_results.len(),
                         "{}: Result count should be consistent across iterations",
                         _description
                     );
 
                     for (i, (expected, actual)) in
-                        results.iter().zip(iterationresults.iter()).enumerate()
+                        results.iter().zip(iteration_results.iter()).enumerate()
                     {
                         assert_eq!(
                             expected,
@@ -1175,28 +1175,28 @@ mod depth_first_order_validation_tests {
         // Test descendant traversal maintains consistent sibling ordering
         let mut stream = JsonArrayStream::<String>::new("$..value");
         let chunk = Bytes::from(json_data.clone());
-        let firstresults: Vec<_> = stream.process_chunk(chunk).collect();
+        let first_results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(firstresults.len(), 3, "Should find all 3 sibling values");
+        assert_eq!(first_results.len(), 3, "Should find all 3 sibling values");
         
         // Execute multiple times to verify consistency
         for iteration in 1..5 {
             let mut stream = JsonArrayStream::<String>::new("$..value");
             let chunk = Bytes::from(json_data.clone());
-            let iterationresults: Vec<_> = stream.process_chunk(chunk).collect();
+            let iteration_results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(iterationresults.len(), firstresults.len(), 
+            assert_eq!(iteration_results.len(), first_results.len(), 
                 "Iteration {}: Should find same number of values", iteration);
             
             // Verify same set of values (order should be consistent within implementation)
-            let first_set: std::collections::HashSet<_> = firstresults.iter().cloned().collect();
-            let iteration_set: std::collections::HashSet<_> = iterationresults.iter().cloned().collect();
+            let first_set: std::collections::HashSet<_> = first_results.iter().cloned().collect();
+            let iteration_set: std::collections::HashSet<_> = iteration_results.iter().cloned().collect();
             
             assert_eq!(first_set, iteration_set, 
                 "Iteration {}: Should find same set of sibling values", iteration);
         }
         
-        println!("Sibling order consistency: {} values found consistently across iterations", firstresults.len());
+        println!("Sibling order consistency: {} values found consistently across iterations", first_results.len());
     }
 
     #[test]
@@ -1290,9 +1290,9 @@ mod depth_first_order_validation_tests {
         // Test comprehensive recursive descent
         let mut comprehensive_stream = JsonArrayStream::<String>::new("$..*");
         let chunk = Bytes::from(json_data);
-        let comprehensiveresults: Vec<_> = comprehensive_stream.process_chunk(chunk).collect();
+        let comprehensive_results: Vec<_> = comprehensive_stream.process_chunk(chunk).collect();
         
-        println!("Comprehensive recursive descent: {} total descendants found", comprehensiveresults.len());
-        assert!(comprehensiveresults.len() > 0, "RFC 9535: Comprehensive recursive descent should find descendants");
+        println!("Comprehensive recursive descent: {} total descendants found", comprehensive_results.len());
+        assert!(comprehensive_results.len() > 0, "RFC 9535: Comprehensive recursive descent should find descendants");
     }
 }

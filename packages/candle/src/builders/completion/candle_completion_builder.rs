@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicU32;
+
 use arrayvec::ArrayVec;
 use smallvec::SmallVec;
 use crate::domain::completion::{
@@ -120,17 +120,17 @@ impl<'a> CompletionCoreRequestBuilder<'a> {
             )));
         }
 
-        Ok(CompletionCoreRequest {
-            prompt: self.prompt,
-            max_tokens: self.max_tokens,
-            temperature: self.temperature,
-            top_k: self.top_k,
-            top_p: self.top_p,
-            stop_tokens: self.stop_tokens,
-            stream: self.stream,
-            model_params: self.model_params,
-            seed: self.seed,
-        })
+        Ok(CompletionCoreRequest::from_builder(
+            self.prompt,
+            self.max_tokens,
+            self.temperature,
+            self.top_k,
+            self.top_p,
+            self.stop_tokens,
+            self.stream,
+            self.model_params,
+            self.seed,
+        ))
     }
 }
 
@@ -221,14 +221,14 @@ impl CompletionCoreResponseBuilder {
             )));
         }
 
-        Ok(CompletionCoreResponse {
-            text: self.text,
-            tokens_generated: AtomicU32::new(self.tokens_generated),
-            generation_time_ms: AtomicU32::new(self.generation_time_ms),
-            tokens_per_second: AtomicU32::new(self.tokens_per_second),
-            finish_reason: self.finish_reason,
-            model: self.model,
-        })
+        Ok(CompletionCoreResponse::from_builder(
+            self.text,
+            self.tokens_generated,
+            self.generation_time_ms,
+            self.tokens_per_second,
+            self.finish_reason,
+            self.model,
+        ))
     }
 }
 

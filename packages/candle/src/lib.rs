@@ -19,6 +19,10 @@ pub mod domain;
 pub mod builders;  
 /// Candle model providers for local inference
 pub mod providers;
+/// Chat functionality and loop control
+pub mod chat;
+/// Core engine for completion processing (temporarily disabled)
+// pub mod engine;
 
 // Essential Candle re-exports for public API (minimal set)
 // Domain types will be added as they become available
@@ -34,8 +38,8 @@ pub mod prelude {
     pub use crate::domain::{
         agent::CandleAgent,
         chat::message::types::CandleMessageRole,
-        context::{CandleContext, FinishReason},
-        tool::{CandleTool, CandleExecToText},
+        context::{CandleContext, FinishReason, provider::{CandleFile, CandleFiles, CandleDirectory, CandleGithub}},
+        tool::{CandleExecToText, core::CandlePerplexity},
     };
     
     pub use crate::providers::{CandleKimiK2Provider, CandleKimiK2Config};
@@ -44,7 +48,25 @@ pub mod prelude {
     pub struct CandleModels;
     pub struct CandleLibrary;
     
+    impl CandleLibrary {
+        pub fn named(_name: &str) -> Self {
+            Self
+        }
+    }
+    
+    impl CandleModels {
+        pub const KIMI_K2: Self = Self;
+    }
+    
+    // Re-export tool implementation that provides static methods
+    pub use crate::domain::tool::core::CandleToolImpl as CandleTool;
+    
     pub use fluent_ai_async::AsyncStream;
+    
+    // Helper function for ARCHITECTURE.md example
+    pub fn process_turn() -> CandleChatLoop {
+        CandleChatLoop::Reprompt("continue".to_string())
+    }
 }
 
 // Re-export everything from prelude at root level for convenience

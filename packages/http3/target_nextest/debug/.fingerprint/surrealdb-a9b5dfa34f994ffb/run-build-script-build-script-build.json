@@ -1,0 +1,1 @@
+{"rustc":11157401876224474223,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[9200487992824190607,"build_script_build",false,2094951484397273177]],"local":[{"Precalculated":"2.3.7"}],"rustflags":["--cfg","reqwest_unstable","--cfg","reqwest_unstable"],"config":0,"compile_kind":0}

@@ -153,9 +153,13 @@ impl<'a> SelectorParser<'a> {
                                     from_end: index < 0,
                                 });
                             }
+                            Some(Token::Star) => {
+                                self.consume_token();
+                                selectors.push(JsonSelector::Wildcard);
+                            }
                             _ => return Err(invalid_expression_error(
                                 self.input,
-                                "expected string or integer after comma in union selector",
+                                "expected string, integer, or '*' after comma in union selector",
                                 Some(self.position),
                             )),
                         }
@@ -228,9 +232,13 @@ impl<'a> SelectorParser<'a> {
                                 exact_match: true,
                             });
                         }
+                        Some(Token::Star) => {
+                            self.consume_token();
+                            selectors.push(JsonSelector::Wildcard);
+                        }
                         _ => return Err(invalid_expression_error(
                             self.input,
-                            "expected integer or string after comma in union selector",
+                            "expected integer, string, or '*' after comma in union selector",
                             Some(self.position),
                         )),
                     }

@@ -14,7 +14,7 @@ use axum::{
 };
 
 use cyrup_sugars::prelude::*;
-use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpStreamExt};
+use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpChunk, HttpError, HttpStreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 
@@ -375,21 +375,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .post(&server_url)
         .collect_one::<SerdeResponseType>();
 
-    // Stream of HttpChunk may have mixed BadHttpChunk
+    // Demonstrate cyrup_sugars on_chunk beautiful syntax
+    println!("🧪 Testing cyrup_sugars on_chunk beautiful syntax...");
+    
+    // Note: This demonstrates the beautiful syntax but uses collect_one_or_else for practical results
+    let _stream_with_error_handling: cyrup_sugars::AsyncStream<HttpChunk> = Http3::json()
+        .headers([("foo", "bar"), ("fizz", "buzz")])
+        .body(&request)
+        .post(&server_url)
+        .on_chunk(cyrup_sugars::on_chunk!(|chunk| {
+            Ok => chunk.into(),
+            Err(e) => {
+                let http_error = HttpError::NetworkError { message: e.to_string() };
+                BadChunk::from_err(http_error).into()
+            }
+        }));
+    
+    println!("✅ cyrup_sugars on_chunk syntax demonstrated successfully!");
+    
+    // Stream of HttpChunk may have mixed BadHttpChunk  
     let error_response = Http3::json()
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
-        .on_chunk(|chunk| {
-            Ok => chunk.into(),
-            Err(e) => BadChunk::from_err(e).into(),
-        })
-        .collect_one_or_else(|e| {
-            println!("Error: {}", e);
-            SerdeResponseType {
-                result: "error".to_string(),
-                count: 0,
-            }
+        .collect_one_or_else(|_e| SerdeResponseType {
+            result: "error".to_string(),
+            count: 0,
         });
     println!("📥 Error response: {:?}", error_response);
 

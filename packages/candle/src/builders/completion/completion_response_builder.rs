@@ -146,7 +146,7 @@ impl CompactCompletionResponseBuilder {
     /// Build the compact response
     pub fn build(self) -> AsyncStream<CompactCompletionResponse> {
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
+            {
                 let response = CompactCompletionResponse {
                     content: self.content.unwrap_or_else(|| Arc::from("")),
                     model: self.model.unwrap_or_else(|| Arc::from("unknown")),
@@ -156,9 +156,8 @@ impl CompactCompletionResponseBuilder {
                     response_time_ms: self.response_time_ms,
                 };
 
-                let _ = sender.send(response).await;
-                Ok(())
-            })
+                let _ = sender.send(response);
+            }
         })
     }
 }

@@ -412,10 +412,10 @@ impl Default for UIConfig {
             font_size: 14,
             dark_mode: false,
             enable_animations: true,
-            layout: Arc::from("standard"),
-            color_scheme: Arc::from("adaptive"),
-            display_density: Arc::from("comfortable"),
-            animations: Arc::from("smooth")}
+            layout: "standard".to_string(),
+            color_scheme: "adaptive".to_string(),
+            display_density: "comfortable".to_string(),
+            animations: "smooth".to_string()}
     }
 }
 

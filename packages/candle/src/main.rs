@@ -113,8 +113,9 @@ async fn create_kimi_k2_agent(args: &Args) -> Result<impl CandleAgentBuilder, Bo
         println!("📦 Model path: {}", model_path);
     }
     
-    println!("📦 Downloading model via progresshub (if needed)...");
-    let provider = CandleKimiK2Provider::new(model_path);
+    println!("📦 Loading model (if needed)...");
+    let provider = CandleKimiK2Provider::new(model_path)
+        .map_err(|e| format!("Failed to load model: {}", e))?;
     println!("✅ Model ready!");
     
     // Build the agent with streaming and interactive capabilities

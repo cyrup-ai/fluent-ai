@@ -67,6 +67,14 @@ impl ExpressionParser {
                 '.' => {
                     // Check for double dot (..)
                     if i + 1 < chars.len() && chars[i + 1] == '.' {
+                        // Check for invalid triple dot (...) 
+                        if i + 2 < chars.len() && chars[i + 2] == '.' {
+                            return Err(invalid_expression_error(
+                                &self.input,
+                                "triple dot '...' is invalid, use '..' for recursive descent",
+                                Some(i),
+                            ));
+                        }
                         self.tokens.push_back(Token::DoubleDot);
                         i += 1; // Skip the second dot
                     } else {
@@ -86,9 +94,69 @@ impl ExpressionParser {
                     let quote = chars[i];
                     i += 1; // Skip opening quote
                     let start = i;
-                    while i < chars.len() && chars[i] != quote {
+                    let mut string_value = String::new();
+                    
+                    while i < chars.len() {
+                        if chars[i] == quote {
+                            // Found closing quote
+                            break;
+                        } else if chars[i] == '\\' && i + 1 < chars.len() {
+                            // Handle escape sequence
+                            i += 1; // Skip backslash
+                            match chars[i] {
+                                '"' => string_value.push('"'),
+                                '\'' => string_value.push('\''),
+                                '\\' => string_value.push('\\'),
+                                '/' => string_value.push('/'),
+                                'b' => string_value.push('\u{0008}'), // Backspace
+                                'f' => string_value.push('\u{000C}'), // Form feed
+                                'n' => string_value.push('\n'),        // Newline
+                                'r' => string_value.push('\r'),        // Carriage return
+                                't' => string_value.push('\t'),        // Tab
+                                'u' => {
+                                    // Unicode escape sequence \uXXXX
+                                    if i + 4 >= chars.len() {
+                                        return Err(invalid_expression_error(
+                                            &self.input,
+                                            "incomplete unicode escape sequence",
+                                            Some(i),
+                                        ));
+                                    }
+                                    let hex_digits: String = chars[i+1..i+5].iter().collect();
+                                    if let Ok(code_point) = u32::from_str_radix(&hex_digits, 16) {
+                                        if let Some(unicode_char) = char::from_u32(code_point) {
+                                            string_value.push(unicode_char);
+                                            i += 4; // Skip the 4 hex digits
+                                        } else {
+                                            return Err(invalid_expression_error(
+                                                &self.input,
+                                                "invalid unicode code point",
+                                                Some(i),
+                                            ));
+                                        }
+                                    } else {
+                                        return Err(invalid_expression_error(
+                                            &self.input,
+                                            "invalid unicode escape sequence",
+                                            Some(i),
+                                        ));
+                                    }
+                                },
+                                _ => {
+                                    return Err(invalid_expression_error(
+                                        &self.input,
+                                        "invalid escape sequence",
+                                        Some(i),
+                                    ));
+                                }
+                            }
+                        } else {
+                            // Regular character
+                            string_value.push(chars[i]);
+                        }
                         i += 1;
                     }
+                    
                     if i >= chars.len() {
                         return Err(invalid_expression_error(
                             &self.input,
@@ -96,7 +164,7 @@ impl ExpressionParser {
                             Some(start),
                         ));
                     }
-                    let string_value = chars[start..i].iter().collect();
+                    
                     self.tokens.push_back(Token::String(string_value));
                 }
                 c if c.is_ascii_digit() || c == '-' => {
@@ -104,8 +172,29 @@ impl ExpressionParser {
                     if c == '-' {
                         i += 1;
                     }
+                    
+                    // RFC 9535: integers cannot have leading zeros (except for "0" itself)
+                    let digit_start = i;
                     while i < chars.len() && chars[i].is_ascii_digit() {
                         i += 1;
+                    }
+                    
+                    // Validate no leading zeros for multi-digit integers
+                    if i > digit_start + 1 && chars[digit_start] == '0' {
+                        return Err(invalid_expression_error(
+                            &self.input,
+                            "integers cannot have leading zeros",
+                            Some(digit_start),
+                        ));
+                    }
+                    
+                    // RFC 9535: negative zero "-0" is invalid per grammar: int = "0" / (["−"] (non-zero-digit *DIGIT))
+                    if start < digit_start && chars[digit_start] == '0' && i == digit_start + 1 {
+                        return Err(invalid_expression_error(
+                            &self.input,
+                            "negative zero is not allowed",
+                            Some(start),
+                        ));
                     }
 
                     // Check for decimal point

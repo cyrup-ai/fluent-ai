@@ -29,10 +29,10 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
 
             ~ Be Useful, Not Thorough")
         .context( // trait CandleContext
-            CandleContext::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
-            CandleContext::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
-            CandleContext::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-            CandleContext::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+            (CandleContext::<CandleFile>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            CandleContext::<CandleFiles>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+            CandleContext::<CandleDirectory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+            CandleContext::<CandleGithub>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}"))
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait CandleTool
@@ -138,10 +138,10 @@ fn candle_agent_simple_example() -> AsyncStream<CandleMessageChunk> {
 
             ~ Be Useful, Not Thorough")
         .context( // trait CandleContext
-            CandleContext::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
-            CandleContext::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
-            CandleContext::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-            CandleContext::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+            (CandleContext::<CandleFile>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            CandleContext::<CandleFiles>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+            CandleContext::<CandleDirectory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+            CandleContext::<CandleGithub>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}"))
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait CandleTool
