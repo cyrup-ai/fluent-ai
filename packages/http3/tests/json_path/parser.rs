@@ -167,9 +167,11 @@ mod abnf_grammar_tests {
 
     #[test]
     fn test_jsonpath_query_structure() {
-        // ABNF: jsonpath-query = root-identifier *segment
+        // RFC 9535 ABNF: jsonpath-query = root-identifier segments
+        //                segments = *(S segment)  ; zero or more segments
+        // Therefore "$" (root-only) is VALID per RFC 9535
         let result = JsonPathParser::compile("$");
-        assert!(result.is_err(), "Missing segments should fail");
+        assert!(result.is_ok(), "Root-only query '$' should be valid per RFC 9535");
 
         let result = JsonPathParser::compile("$.store.book[*]");
         assert!(result.is_ok(), "Valid query structure should pass");
@@ -214,10 +216,10 @@ mod semantics_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$.store.book[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should produce nodelist with 2 nodes
-        assert_eq!(_results.len(), 2, "Should produce nodelist with 2 nodes");
+        assert_eq!(results.len(), 2, "Should produce nodelist with 2 nodes");
     }
 
     #[test]
@@ -227,9 +229,9 @@ mod semantics_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$.store.book[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 0, "No matches should produce empty nodelist");
+        assert_eq!(results.len(), 0, "No matches should produce empty nodelist");
     }
 }
 
@@ -274,11 +276,11 @@ mod case_sensitivity_tests {
 
         let chunk = Bytes::from(json_data);
 
-        let exact_results: Vec<_> = stream_exact.process_chunk(chunk.clone()).collect();
-        let wrong_case_results: Vec<_> = stream_wrong_case.process_chunk(chunk).collect();
+        let exactresults: Vec<_> = stream_exact.process_chunk(chunk.clone()).collect();
+        let wrong_caseresults: Vec<_> = stream_wrong_case.process_chunk(chunk).collect();
 
-        assert_eq!(exact_results.len(), 1, "Exact case should match");
-        assert_eq!(wrong_case_results.len(), 0, "Wrong case should not match");
+        assert_eq!(exactresults.len(), 1, "Exact case should match");
+        assert_eq!(wrong_caseresults.len(), 0, "Wrong case should not match");
     }
 }
 

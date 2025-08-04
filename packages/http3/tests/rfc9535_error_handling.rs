@@ -137,12 +137,12 @@ mod wellformedness_validity_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(invalid_path);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Semantic error '{}' compiled but may fail at runtime -> {} results ({})",
                         invalid_path,
-                        _results.len(),
+                        results.len(),
                         _description
                     );
                 }
@@ -466,23 +466,23 @@ mod graceful_degradation_tests {
             ("$.data.missing.anything", 0, "Missing early in path"),
         ];
 
-        for (path, expected_results, _description) in partial_paths {
+        for (path, expectedresults, _description) in partial_paths {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Partial path '{}' -> {} results (expected {}) - {}",
                 path,
-                _results.len(),
-                expected_results,
+                results.len(),
+                expectedresults,
                 _description
             );
 
             // Should handle missing paths gracefully, not crash
             assert!(
-                _results.len() <= expected_results,
+                results.len() <= expectedresults,
                 "Should not return more results than expected"
             );
         }
@@ -513,8 +513,8 @@ mod graceful_degradation_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             match result {
@@ -556,8 +556,8 @@ mod graceful_degradation_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             match result {
@@ -586,8 +586,8 @@ mod graceful_degradation_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new("$.key");
 
                 let chunk = Bytes::from(malformed_json);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             match result {
@@ -739,7 +739,7 @@ mod resource_limit_tests {
             let processing_time = start_time.elapsed();
 
             match result {
-                Ok(compile_result) => match compile_result {
+                Ok(compileresult) => match compileresult {
                     Ok(_) => println!(
                         "Cascade test '{}' compiled in {:?}",
                         expression, processing_time

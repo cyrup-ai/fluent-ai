@@ -53,10 +53,10 @@ mod ast_construction_tests {
                 original, canonical, _description
             );
 
-            let original_result = JsonPathParser::compile(original);
-            let canonical_result = JsonPathParser::compile(canonical);
+            let originalresult = JsonPathParser::compile(original);
+            let canonicalresult = JsonPathParser::compile(canonical);
 
-            match (original_result, canonical_result) {
+            match (originalresult, canonicalresult) {
                 (Ok(_), Ok(_)) => println!("  Both forms create valid AST"),
                 (Ok(_), Err(_)) => println!("  Original valid AST, canonical invalid"),
                 (Err(_), Ok(_)) => println!("  Original invalid AST, canonical valid"),
@@ -98,11 +98,11 @@ mod ast_construction_tests {
                 let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream
+                let results: Vec<_> = stream
                     .process_chunk(chunk)
                     .collect();
 
-                results_sets.push(_results);
+                results_sets.push(results);
                 println!(
                     "  AST path '{}' -> {} results",
                     path,
@@ -111,12 +111,12 @@ mod ast_construction_tests {
             }
 
             // All equivalent AST paths should produce the same results
-            for (i, results) in _results_sets.iter().enumerate() {
-                for (j, other_results) in _results_sets.iter().enumerate() {
+            for (i, results) in results_sets.iter().enumerate() {
+                for (j, otherresults) in results_sets.iter().enumerate() {
                     if i != j {
                         assert_eq!(
-                            _results.len(),
-                            other_results.len(),
+                            results.len(),
+                            otherresults.len(),
                             "Equivalent AST paths should produce same results: {} vs {}",
                             path_group[i],
                             path_group[j]
@@ -155,20 +155,20 @@ mod ast_construction_tests {
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket_notation);
 
             let chunk = Bytes::from(json_data);
-            let dot_results: Vec<_> = dot_stream.process_chunk(chunk.clone()).collect();
-            let bracket_results: Vec<_> = bracket_stream.process_chunk(chunk).collect();
+            let dotresults: Vec<_> = dot_stream.process_chunk(chunk.clone()).collect();
+            let bracketresults: Vec<_> = bracket_stream.process_chunk(chunk).collect();
 
             println!(
                 "AST dot to bracket: '{}' ≡ '{}' -> {} vs {} results",
                 dot_notation,
                 bracket_notation,
-                dot_results.len(),
-                bracket_results.len()
+                dotresults.len(),
+                bracketresults.len()
             );
 
             assert_eq!(
-                dot_results.len(),
-                bracket_results.len(),
+                dotresults.len(),
+                bracketresults.len(),
                 "AST should produce same results for dot and bracket notation"
             );
         }
@@ -241,16 +241,16 @@ mod ast_segment_tests {
 
         let chunk = Bytes::from(json_data);
 
-        let child_results: Vec<_> = child_stream.process_chunk(chunk.clone()).collect();
-        let descendant_results: Vec<_> = descendant_stream.process_chunk(chunk).collect();
+        let childresults: Vec<_> = child_stream.process_chunk(chunk.clone()).collect();
+        let descendantresults: Vec<_> = descendant_stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            child_results.len(),
+            childresults.len(),
             1,
             "AST child traversal should find only direct child"
         );
         assert_eq!(
-            descendant_results.len(),
+            descendantresults.len(),
             2,
             "AST descendant traversal should find all targets"
         );
@@ -272,10 +272,10 @@ mod ast_segment_tests {
             JsonArrayStream::<serde_json::Value>::new("$..books[0]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             2,
             "AST should handle descendant followed by child segment"
         );
@@ -299,10 +299,10 @@ mod ast_segment_tests {
 
         let chunk = Bytes::from(json_data);
         let start_time = std::time::Instant::now();
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
-        assert_eq!(_results.len(), 1, "AST should find the deeply nested value");
+        assert_eq!(results.len(), 1, "AST should find the deeply nested value");
         println!("AST deep traversal took {:?}", duration);
 
         // AST traversal performance should be reasonable
@@ -379,11 +379,11 @@ mod ast_validation_tests {
                     let mut stream = JsonArrayStream::<i32>::new(path);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "  AST compiled and executed successfully, {} results",
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(e) => println!("  AST failed to compile: {:?}", e),
@@ -422,21 +422,21 @@ mod ast_validation_tests {
                 JsonArrayStream::<String>::new(normalized);
 
             let chunk = Bytes::from(json_data);
-            let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-            let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+            let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+            let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
             println!(
                 "AST Unicode key test: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
                 _description,
-                original_results.len(),
-                normalized_results.len()
+                originalresults.len(),
+                normalizedresults.len()
             );
 
             assert_eq!(
-                original_results.len(),
-                normalized_results.len(),
+                originalresults.len(),
+                normalizedresults.len(),
                 "AST should handle Unicode keys consistently"
             );
         }

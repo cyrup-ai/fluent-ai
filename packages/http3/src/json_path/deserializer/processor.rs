@@ -61,18 +61,12 @@ where
     #[allow(dead_code)]
     #[inline]
     pub(super) fn process_json_byte(&mut self, byte: u8) -> JsonPathResult<JsonProcessResult> {
-        match self.deserializer.state.current_state() {
-            JsonStreamState::Initial => self.process_initial_byte(byte),
-            JsonStreamState::Navigating { .. } => self.process_navigating_byte(byte),
-            JsonStreamState::StreamingArray { .. } => self.process_array_byte(byte),
-            JsonStreamState::ProcessingObject { .. } => self.process_object_byte(byte),
-            JsonStreamState::Complete => Ok(JsonProcessResult::Complete),
-            JsonStreamState::Finishing { .. } => {
-                // Transition to Complete to terminate processing
-                self.deserializer.state.transition_to_complete();
-                Ok(JsonProcessResult::Complete)
-            }
-            JsonStreamState::Error { .. } => Ok(JsonProcessResult::Complete),
+        match &self.deserializer.state {
+            super::core::DeserializerState::Initial => self.process_initial_byte(byte),
+            super::core::DeserializerState::Navigating => self.process_navigating_byte(byte),
+            super::core::DeserializerState::ProcessingArray => self.process_array_byte(byte),
+            super::core::DeserializerState::ProcessingObject => self.process_object_byte(byte),
+            super::core::DeserializerState::Complete => Ok(JsonProcessResult::Complete),
         }
     }
 
@@ -83,7 +77,7 @@ where
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(JsonProcessResult::Continue), // Skip whitespace
             b'{' => {
-                self.deserializer.state.transition_to_processing_object();
+                self.deserializer.transition_to_processing_object();
                 self.deserializer.object_nesting =
                     self.deserializer.object_nesting.saturating_add(1);
                 if self.matches_root_object_path() {
@@ -93,7 +87,7 @@ where
                 }
             }
             b'[' => {
-                self.deserializer.state.transition_to_streaming_array();
+                self.deserializer.transition_to_processing_array();
                 self.deserializer.current_depth = self.deserializer.current_depth.saturating_add(1);
                 // Push current array index to stack for nested arrays
                 self.deserializer
@@ -146,7 +140,7 @@ where
             b'{' => {
                 self.deserializer.object_nesting =
                     self.deserializer.object_nesting.saturating_add(1);
-                self.deserializer.state.transition_to_processing_object();
+                self.deserializer.transition_to_processing_object();
                 
                 // Update breadcrumbs for recursive descent tracking
                 if self.deserializer.in_recursive_descent {
@@ -163,7 +157,7 @@ where
             }
             b'[' => {
                 self.deserializer.current_depth = self.deserializer.current_depth.saturating_add(1);
-                self.deserializer.state.transition_to_streaming_array();
+                self.deserializer.transition_to_processing_array();
                 
                 // Update breadcrumbs for recursive descent tracking
                 if self.deserializer.in_recursive_descent {
@@ -190,7 +184,7 @@ where
                     self.deserializer.current_array_index = prev_index;
                 }
                 if self.deserializer.current_depth == 0 {
-                    self.deserializer.state.transition_to_complete();
+                    self.deserializer.transition_to_complete();
                     Ok(JsonProcessResult::Complete)
                 } else {
                     Ok(JsonProcessResult::Continue)
@@ -200,7 +194,7 @@ where
                 self.deserializer.object_nesting =
                     self.deserializer.object_nesting.saturating_sub(1);
                 if self.deserializer.object_nesting == 0 {
-                    self.deserializer.state.transition_to_complete();
+                    self.deserializer.transition_to_complete();
                     Ok(JsonProcessResult::Complete)
                 } else {
                     Ok(JsonProcessResult::Continue)
@@ -219,7 +213,7 @@ where
                 if self.deserializer.in_target_array && self.matches_current_path() {
                     self.deserializer.object_buffer.clear();
                     self.deserializer.object_buffer.push(byte);
-                    self.deserializer.state.transition_to_processing_object();
+                    self.deserializer.transition_to_processing_object();
                     self.deserializer.object_nesting = 1;
                     Ok(JsonProcessResult::Continue)
                 } else {
@@ -228,7 +222,7 @@ where
             }
             b'[' => {
                 self.deserializer.current_depth = self.deserializer.current_depth.saturating_add(1);
-                self.deserializer.state.transition_to_streaming_array();
+                self.deserializer.transition_to_processing_array();
                 // Push current array index to stack for nested arrays
                 self.deserializer
                     .array_index_stack
@@ -237,6 +231,18 @@ where
                 Ok(JsonProcessResult::Continue)
             }
             b']' => {
+                // Check if we have a remaining object to process before closing array
+                if self.deserializer.in_target_array && !self.deserializer.object_buffer.is_empty() {
+                    // Last object in array - process it before closing
+                    let result = JsonProcessResult::ObjectFound;
+                    self.deserializer.in_target_array = false;
+                    self.deserializer.current_depth = self.deserializer.current_depth.saturating_sub(1);
+                    if let Some(prev_index) = self.deserializer.array_index_stack.pop() {
+                        self.deserializer.current_array_index = prev_index;
+                    }
+                    return Ok(result);
+                }
+                
                 if self.deserializer.in_target_array {
                     self.deserializer.in_target_array = false;
                 }
@@ -246,7 +252,7 @@ where
                     self.deserializer.current_array_index = prev_index;
                 }
                 if self.deserializer.current_depth == 0 {
-                    self.deserializer.state.transition_to_complete();
+                    self.deserializer.transition_to_complete();
                     Ok(JsonProcessResult::Complete)
                 } else {
                     Ok(JsonProcessResult::Continue)

@@ -373,10 +373,10 @@ mod abnf_grammar_tests {
         for (expr, expected_count, _description) in execution_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(ABNF_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: ABNF grammar execution: {} ({}) should return {} results",
                 expr, _description, expected_count

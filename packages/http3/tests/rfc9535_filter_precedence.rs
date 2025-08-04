@@ -136,7 +136,7 @@ mod operator_precedence_tests {
             );
 
             // Verify same items are selected
-            for (item1, item2) in _results1.iter().zip(results2.iter()) {
+            for (item1, item2) in results1.iter().zip(results2.iter()) {
                 assert_eq!(
                     item1, item2,
                     "{}: Items should match between implicit and explicit precedence",
@@ -365,13 +365,13 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
 
                 .collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_indices.len(),
                 "{}: Should match expected number of items",
                 _description
@@ -379,13 +379,13 @@ mod parentheses_grouping_tests {
 
             // Verify specific items are selected based on expected indices
             for (i, &expected_idx) in expected_indices.iter().enumerate() {
-                if i < _results.len() {
+                if i < results.len() {
                     match expected_idx {
-                        0 => assert_eq!(_results[i].a, 1, "First item should have a=1"),
-                        1 => assert_eq!(_results[i].a, 2, "Second item should have a=2"),
-                        2 => assert_eq!(_results[i].a, 3, "Third item should have a=3"),
-                        3 => assert_eq!(_results[i].a, 4, "Fourth item should have a=4"),
-                        4 => assert_eq!(_results[i].a, 5, "Fifth item should have a=5"),
+                        0 => assert_eq!(results[i].a, 1, "First item should have a=1"),
+                        1 => assert_eq!(results[i].a, 2, "Second item should have a=2"),
+                        2 => assert_eq!(results[i].a, 3, "Third item should have a=3"),
+                        3 => assert_eq!(results[i].a, 4, "Fourth item should have a=4"),
+                        4 => assert_eq!(results[i].a, 5, "Fifth item should have a=5"),
                         _ => {}
                     }
                 }
@@ -394,7 +394,7 @@ mod parentheses_grouping_tests {
             println!(
                 "{}: {} items matched with parentheses grouping",
                 _description,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -426,23 +426,23 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
 
                 .collect();
 
             assert!(
-                _results.len() >= min_expected,
+                results.len() >= min_expected,
                 "{}: Should find at least {} matching items, found {}",
                 _description,
                 min_expected,
-                _results.len()
+                results.len()
             );
 
             println!(
                 "{}: {} items matched with nested parentheses",
                 _description,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -537,7 +537,7 @@ mod logical_precedence_tests {
             );
 
             // Verify same items are selected
-            for (item1, item2) in _results1.iter().zip(results2.iter()) {
+            for (item1, item2) in results1.iter().zip(results2.iter()) {
                 assert_eq!(
                     item1.a, item2.a,
                     "{}: Same items should be selected with consistent precedence",
@@ -632,13 +632,13 @@ mod logical_precedence_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Should not crash and should return valid results
             println!(
                 "{}: {} results (no crash demonstrates short-circuit)",
                 _description,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -677,12 +677,12 @@ mod comparison_precedence_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (chained comparisons supported)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -717,12 +717,12 @@ mod comparison_precedence_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (mixed comparisons)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -760,12 +760,12 @@ mod comparison_precedence_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (parenthetical comparisons)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -805,12 +805,12 @@ mod complex_evaluation_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
 
                 .collect();
 
-            println!("{}: {} items matched", _description, _results.len());
+            println!("{}: {} items matched", _description, results.len());
 
             // Verify results are logically consistent
             for item in &results {
@@ -850,12 +850,12 @@ mod complex_evaluation_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (function precedence)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {

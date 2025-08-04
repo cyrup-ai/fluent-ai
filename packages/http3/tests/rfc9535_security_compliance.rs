@@ -55,16 +55,16 @@ mod injection_attack_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(malicious_path);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Path injection test '{}' -> {} results",
                         malicious_path,
-                        _results.len()
+                        results.len()
                     );
 
                     // Log for security audit - these should be controlled by application logic
-                    if _results.len() > 0 {
+                    if results.len() > 0 {
                         println!("  WARNING: Potentially sensitive data accessible via path");
                     }
                 }
@@ -97,12 +97,12 @@ mod injection_attack_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(filter);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Filter injection test '{}' -> {} results",
                         filter,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => println!("Filter injection '{}' rejected by parser", filter),
@@ -146,8 +146,9 @@ mod injection_attack_tests {
                         path, results.len());
                     
                     // Verify no injection occurred by checking result validity
-                    for result in results {
-                        assert!(result.is_ok(), "Escaped path should not cause processing errors");
+                    for value in results {
+                        // Values from JsonArrayStream should be valid JSON values
+                        println!("  Result value: {:?}", value);
                     }
                 },
                 Err(err) => {
@@ -193,8 +194,9 @@ mod injection_attack_tests {
                         path, results.len());
                     
                     // Verify Unicode handling doesn't cause issues
-                    for result in results {
-                        assert!(result.is_ok(), "Unicode path should not cause processing errors");
+                    for value in results {
+                        // Values from JsonArrayStream should be valid JSON values
+                        println!("  Unicode result value: {:?}", value);
                     }
                 },
                 Err(err) => {
@@ -237,14 +239,14 @@ mod resource_exhaustion_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Large JSON test '{}' -> {} results in {:?} ({})",
                 path,
-                _results.len(),
+                results.len(),
                 duration,
                 _description
             );
@@ -285,14 +287,14 @@ mod resource_exhaustion_tests {
             let mut stream = JsonArrayStream::<i32>::new(path);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Memory usage test '{}' -> {} results in {:?} ({})",
                 path,
-                _results.len(),
+                results.len(),
                 duration,
                 _description
             );
@@ -335,14 +337,14 @@ mod resource_exhaustion_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Wildcard stress test '{}' -> {} results in {:?} ({})",
                 path,
-                _results.len(),
+                results.len(),
                 duration,
                 _description
             );
@@ -383,14 +385,14 @@ mod resource_exhaustion_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(filter);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "Complex filter '{}' -> {} results in {:?}",
                         filter,
-                        _results.len(),
+                        results.len(),
                         duration
                     );
 
@@ -433,8 +435,8 @@ mod malformed_input_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new("$.key");
 
                 let chunk = Bytes::from(malformed_json);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             match result {
@@ -494,8 +496,8 @@ mod malformed_input_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                     let chunk = Bytes::from(edge_json);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                    _results.len()
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    results.len()
                 });
 
                 match result {
@@ -531,8 +533,8 @@ mod malformed_input_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(large_number_json);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             match result {
@@ -572,8 +574,8 @@ mod deep_nesting_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data.clone());
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             let duration = start_time.elapsed();
@@ -622,8 +624,8 @@ mod deep_nesting_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data.clone());
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             let duration = start_time.elapsed();
@@ -681,8 +683,8 @@ mod deep_nesting_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data.clone());
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                _results.len()
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                results.len()
             });
 
             let duration = start_time.elapsed();
@@ -735,17 +737,17 @@ mod regex_dos_prevention_tests {
 
             match result {
                 Ok(_) => {
-                    let execution_result = std::panic::catch_unwind(|| {
+                    let executionresult = std::panic::catch_unwind(|| {
                         let mut stream = JsonArrayStream::<serde_json::Value>::new(pattern);
 
                         let chunk = Bytes::from(json_data);
-                        let _results: Vec<_> = stream.process_chunk(chunk).collect();
-                        _results.len()
+                        let results: Vec<_> = stream.process_chunk(chunk).collect();
+                        results.len()
                     });
 
                     let duration = start_time.elapsed();
 
-                    match execution_result {
+                    match executionresult {
                         Ok(count) => {
                             println!(
                                 "Dangerous regex '{}' -> {} results in {:?}",
@@ -806,14 +808,14 @@ mod regex_dos_prevention_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(pattern);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "Regex complexity '{}' -> {} results in {:?} ({})",
                         pattern,
-                        _results.len(),
+                        results.len(),
                         duration,
                         _description
                     );
@@ -860,14 +862,14 @@ mod regex_dos_prevention_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(pattern);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "Regex input size test '{}' -> {} results in {:?} ({})",
                         pattern,
-                        _results.len(),
+                        results.len(),
                         duration,
                         size_desc
                     );
@@ -913,8 +915,8 @@ mod parser_vulnerability_tests {
             let duration = start_time.elapsed();
 
             match result {
-                Ok(parse_result) => {
-                    match parse_result {
+                Ok(parseresult) => {
+                    match parseresult {
                         Ok(_) => println!("Buffer overflow test '{}' compiled unexpectedly", _description),
                         Err(_) => println!("Buffer overflow test '{}' correctly rejected", _description),
                     }
@@ -951,8 +953,8 @@ mod parser_vulnerability_tests {
             let duration = start_time.elapsed();
 
             match result {
-                Ok(parse_result) => {
-                    match parse_result {
+                Ok(parseresult) => {
+                    match parseresult {
                         Ok(_) => println!("Stack overflow test '{}' compiled (potential issue)", _description),
                         Err(_) => println!("Stack overflow test '{}' correctly rejected", _description),
                     }
@@ -994,9 +996,9 @@ mod parser_vulnerability_tests {
                     json_data_clone
                 };
                 let chunk = Bytes::from(limited_data);
-                let stream_result = stream.process_chunk(chunk);
-                let _results: Vec<_> = stream_result.collect().into_iter().take(1000).collect(); // Limit results
-                _results.len()
+                let streamresult = stream.process_chunk(chunk);
+                let results: Vec<_> = streamresult.collect().into_iter().take(1000).collect(); // Limit results
+                results.len()
             });
 
             let duration = start_time.elapsed();
@@ -1037,8 +1039,8 @@ mod parser_vulnerability_tests {
             }
 
             // Parser should consistently handle normal paths after any input
-            let normal_result = JsonPathParser::compile("$.test");
-            assert!(normal_result.is_ok(), 
+            let normalresult = JsonPathParser::compile("$.test");
+            assert!(normalresult.is_ok(), 
                 "Parser state should not be corrupted after malicious input: {}", malicious_input);
         }
     }
@@ -1065,8 +1067,8 @@ mod parser_vulnerability_tests {
             }
 
             // Test that Unicode attacks don't affect subsequent parsing
-            let normal_result = JsonPathParser::compile("$.normal");
-            assert!(normal_result.is_ok(), 
+            let normalresult = JsonPathParser::compile("$.normal");
+            assert!(normalresult.is_ok(), 
                 "Unicode attack should not affect subsequent parsing: {}", _description);
         }
     }
@@ -1090,20 +1092,20 @@ mod error_recovery_tests {
 
         for (malicious_path, _description) in error_inducing_inputs {
             // Attempt to compile malicious path
-            let error_result = JsonPathParser::compile(malicious_path);
-            assert!(error_result.is_err(), 
+            let errorresult = JsonPathParser::compile(malicious_path);
+            assert!(errorresult.is_err(), 
                 "Error-inducing path '{}' should be rejected", malicious_path);
 
             // Verify normal paths still work after error
-            let normal_result = JsonPathParser::compile("$.valid.path");
-            assert!(normal_result.is_ok(), 
+            let normalresult = JsonPathParser::compile("$.valid.path");
+            assert!(normalresult.is_ok(), 
                 "Normal path should work after error from '{}' ({})", malicious_path, _description);
 
             // Verify stream creation still works
-            let stream_result = std::panic::catch_unwind(|| {
+            let streamresult = std::panic::catch_unwind(|| {
                 JsonArrayStream::<serde_json::Value>::new("$.test")
             });
-            assert!(stream_result.is_ok(), 
+            assert!(streamresult.is_ok(), 
                 "Stream creation should work after error from '{}' ({})", malicious_path, _description);
         }
     }
@@ -1123,19 +1125,19 @@ mod error_recovery_tests {
 
         for (invalid_path, _description) in error_scenarios {
             // Parser should reject invalid paths
-            let parse_result = JsonPathParser::compile(invalid_path);
-            assert!(parse_result.is_err(), 
+            let parseresult = JsonPathParser::compile(invalid_path);
+            assert!(parseresult.is_err(), 
                 "Invalid path '{}' should be rejected during parsing ({})", invalid_path, _description);
 
             // Stream creation with invalid path should also fail consistently
-            let stream_result = std::panic::catch_unwind(|| {
+            let streamresult = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(invalid_path);
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
             });
 
             // Either the stream creation should panic or handle gracefully
-            match stream_result {
+            match streamresult {
                 Ok(_) => println!("Invalid path '{}' handled gracefully in stream", invalid_path),
                 Err(_) => println!("Invalid path '{}' properly rejected in stream", invalid_path),
             }
@@ -1164,10 +1166,10 @@ mod error_recovery_tests {
                 for i in 0..100 {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(&path);
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     if i == 0 {
-                        println!("Concurrent test '{}' -> {} results", path, _results.len());
+                        println!("Concurrent test '{}' -> {} results", path, results.len());
                     }
                 }
                 path
@@ -1195,11 +1197,11 @@ mod error_recovery_tests {
             // Create and process multiple times to test cleanup
             for iteration in 0..10 {
                 let result = std::panic::catch_unwind(|| {
-                    let parse_result = JsonPathParser::compile(path);
-                    if let Ok(_) = parse_result {
+                    let parseresult = JsonPathParser::compile(path);
+                    if let Ok(_) = parseresult {
                         let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
                         let chunk = Bytes::from(r#"{"test": "data"}"#);
-                        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                        let results: Vec<_> = stream.process_chunk(chunk).collect();
                     }
                 });
 
@@ -1218,8 +1220,8 @@ mod error_recovery_tests {
             }
 
             // Verify system is still functional after cleanup tests
-            let verification_result = JsonPathParser::compile("$.test");
-            assert!(verification_result.is_ok(), 
+            let verificationresult = JsonPathParser::compile("$.test");
+            assert!(verificationresult.is_ok(), 
                 "System should be functional after resource cleanup test: {}", _description);
         }
     }
@@ -1247,8 +1249,8 @@ mod error_recovery_tests {
                 input.escape_debug(), _description, result.is_ok());
 
             // System should handle edge cases without crashing
-            let post_test_result = JsonPathParser::compile("$.normal");
-            assert!(post_test_result.is_ok(), 
+            let post_testresult = JsonPathParser::compile("$.normal");
+            assert!(post_testresult.is_ok(), 
                 "System should remain stable after edge case: {}", _description);
         }
     }

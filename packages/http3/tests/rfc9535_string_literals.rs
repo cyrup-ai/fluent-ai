@@ -47,10 +47,10 @@ mod string_literal_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Escape sequence test '{}' should return {} items",
                 expr,
@@ -95,10 +95,10 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         expected_count,
                         "Standard escape '{}' should return {} items",
                         expr,
@@ -139,12 +139,12 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Unicode escape '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -184,12 +184,12 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Quote handling '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -229,12 +229,12 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Complex pattern '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -270,10 +270,10 @@ mod string_literal_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Empty string test '{}' should return {} items",
                 expr,
@@ -312,10 +312,10 @@ mod string_literal_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "String comparison '{}' should return {} items",
                 expr,
@@ -468,11 +468,11 @@ mod extended_string_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         let duration = start_time.elapsed();
 
-        assert_eq!(_results.len(), 1, "Should find the long string");
+        assert_eq!(results.len(), 1, "Should find the long string");
         assert!(
             duration.as_millis() < 1000,
             "String literal performance should complete in <1000ms, took {:?}",
@@ -505,10 +505,10 @@ mod extended_string_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Multibyte test '{}' should return {} items",
                 expr,
@@ -549,12 +549,12 @@ mod extended_string_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
 
                     let chunk = Bytes::from(json_str.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Control character test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }

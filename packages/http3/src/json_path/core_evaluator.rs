@@ -41,16 +41,37 @@ impl CoreJsonPathEvaluator {
         let mut current_results: Vec<Value> = vec![json.clone()];
         
         // Process each selector in the chain
-        for selector in selectors {
-            let mut next_results = Vec::new();
-            
-            // Apply selector to each current result
-            for current_value in &current_results {
-                let intermediate_results = self.apply_selector_to_value(current_value, &selector)?;
-                next_results.extend(intermediate_results);
+        for (i, selector) in selectors.iter().enumerate() {
+            // Special handling for recursive descent
+            if matches!(selector, JsonSelector::RecursiveDescent) {
+                // For recursive descent, apply all remaining selectors to all descendants
+                let remaining_selectors = &selectors[i + 1..];
+                if remaining_selectors.is_empty() {
+                    // $.. with no following selectors - collect all descendants
+                    let mut next_results = Vec::new();
+                    for current_value in &current_results {
+                        self.collect_all_descendants_owned(current_value, &mut next_results);
+                    }
+                    current_results = next_results;
+                } else {
+                    // $..property - find property recursively
+                    let mut next_results = Vec::new();
+                    for current_value in &current_results {
+                        let recursive_results = self.apply_recursive_descent(current_value, remaining_selectors)?;
+                        next_results.extend(recursive_results);
+                    }
+                    // Skip the remaining selectors since we processed them in recursive descent
+                    return Ok(next_results);
+                }
+            } else {
+                // Apply selector to each current result
+                let mut next_results = Vec::new();
+                for current_value in &current_results {
+                    let intermediate_results = self.apply_selector_to_value(current_value, &selector)?;
+                    next_results.extend(intermediate_results);
+                }
+                current_results = next_results;
             }
-            
-            current_results = next_results;
             
             // Early exit if no matches
             if current_results.is_empty() {
@@ -171,6 +192,97 @@ impl CoreJsonPathEvaluator {
                 }
             }
             _ => {} // Primitives have no descendants
+        }
+    }
+
+    /// Apply recursive descent followed by remaining selectors
+    fn apply_recursive_descent(&self, value: &Value, remaining_selectors: &[JsonSelector]) -> JsonPathResult<Vec<Value>> {
+        // Special optimization for $..*  pattern to avoid exponential explosion
+        if remaining_selectors.len() == 1 && matches!(remaining_selectors[0], JsonSelector::Wildcard) {
+            return self.apply_recursive_descent_wildcard(value);
+        }
+        
+        let mut all_candidates = Vec::new();
+        
+        // Include the current value itself (recursive descent includes the starting point)
+        all_candidates.push(value.clone());
+        
+        // Collect all descendants
+        self.collect_all_descendants_owned(value, &mut all_candidates);
+        
+        // Apply remaining selectors to each candidate
+        let mut final_results = Vec::new();
+        for candidate in all_candidates {
+            let mut current_results = vec![candidate];
+            
+            // Apply each remaining selector in sequence
+            for selector in remaining_selectors {
+                let mut next_results = Vec::new();
+                for current_value in &current_results {
+                    let intermediate_results = self.apply_selector_to_value(current_value, selector)?;
+                    next_results.extend(intermediate_results);
+                }
+                current_results = next_results;
+                
+                if current_results.is_empty() {
+                    break; // No point continuing if no matches
+                }
+            }
+            
+            final_results.extend(current_results);
+        }
+        
+        Ok(final_results)
+    }
+    
+    /// Optimized handler for $..*  pattern to avoid exponential complexity
+    fn apply_recursive_descent_wildcard(&self, value: &Value) -> JsonPathResult<Vec<Value>> {
+        let mut results = Vec::new();
+        self.collect_recursive_wildcard(value, &mut results);
+        Ok(results)
+    }
+    
+    /// Efficiently collect all nodes and their children in a single traversal
+    fn collect_recursive_wildcard(&self, value: &Value, results: &mut Vec<Value>) {
+        // For $..*: apply wildcard to current node, then recursively descend
+        self.apply_wildcard_to_node(value, results);
+        
+        // Then recursively apply to all children
+        match value {
+            Value::Object(obj) => {
+                for child_value in obj.values() {
+                    self.collect_recursive_wildcard(child_value, results);
+                }
+            }
+            Value::Array(arr) => {
+                for child_value in arr {
+                    self.collect_recursive_wildcard(child_value, results);
+                }
+            }
+            _ => {
+                // Primitives have no children to recurse into
+            }
+        }
+    }
+    
+    /// Apply wildcard to a single node (get all its direct children)
+    fn apply_wildcard_to_node(&self, value: &Value, results: &mut Vec<Value>) {
+        match value {
+            Value::Object(obj) => {
+                // Wildcard on object returns all property values
+                for child_value in obj.values() {
+                    results.push(child_value.clone());
+                }
+            }
+            Value::Array(arr) => {
+                // Wildcard on array returns all array elements
+                for child_value in arr {
+                    results.push(child_value.clone());
+                }
+            }
+            _ => {
+                // Primitives have no children - wildcard returns nothing
+            }
         }
     }
     

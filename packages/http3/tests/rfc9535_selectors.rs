@@ -44,8 +44,8 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$['store']");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(_results.len(), 1, "Should select store object");
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(results.len(), 1, "Should select store object");
     }
 
     #[test]
@@ -61,8 +61,8 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$[\"store\"]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(_results.len(), 1, "Should select store object");
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(results.len(), 1, "Should select store object");
     }
 
     #[test]
@@ -75,8 +75,8 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(_results.len(), 1, "Should select store object");
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(results.len(), 1, "Should select store object");
     }
 
     #[test]
@@ -123,9 +123,9 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.nonexistent");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             0,
             "Nonexistent property should return empty nodelist"
         );
@@ -144,9 +144,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             2,
             "Wildcard should select all object members"
         );
@@ -159,9 +159,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.books[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             3,
             "Wildcard should select all array elements"
         );
@@ -174,9 +174,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             3,
             "Root wildcard should select all top-level members"
         );
@@ -189,9 +189,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.value[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             0,
             "Wildcard on primitive should return empty nodelist"
         );
@@ -207,9 +207,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store.*");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             2,
             "Dot-star should select all store children"
         );
@@ -236,16 +236,16 @@ mod index_selector_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "Index [{}] should select one element",
                 expected_index
             );
             {
-                let value = &_results[0];
+                let value = &results[0];
                 assert_eq!(value, expected_value, "Should select correct value");
             }
         }
@@ -266,16 +266,16 @@ mod index_selector_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "Negative index '{}' should select one element",
                 expr
             );
             {
-                let value = &_results[0];
+                let value = &results[0];
                 assert_eq!(
                     value, expected_value,
                     "Should select correct value from end"
@@ -298,10 +298,10 @@ mod index_selector_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 0,
                 "Out of bounds '{}' should return empty nodelist",
                 expr
@@ -316,9 +316,9 @@ mod index_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store[0]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            _results.len(),
+            results.len(),
             0,
             "Index on object should return empty nodelist"
         );
@@ -334,9 +334,9 @@ mod index_selector_tests {
         let mut stream = JsonArrayStream::<String>::new("$.books[0]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 1, "Index 0 should select first element");
-        assert_eq!(_results[0], "first", "Should select first element");
+        assert_eq!(results.len(), 1, "Index 0 should select first element");
+        assert_eq!(results[0], "first", "Should select first element");
     }
 }

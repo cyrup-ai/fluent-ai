@@ -50,16 +50,16 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Empty nodelist comparisons should typically return no matches
             println!(
                 "Empty nodelist test '{}' returned {} results",
                 expr,
-                _results.len()
+                results.len()
             );
             assert_eq!(
-                _results.len(),
+                results.len(),
                 0,
                 "Empty nodelist comparison should return no results"
             );
@@ -96,12 +96,12 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Type mismatch test '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -133,12 +133,12 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Numeric precision test '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -176,12 +176,12 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Unicode comparison test '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -217,12 +217,12 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "String collation test '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -261,12 +261,12 @@ mod comparison_edge_cases {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Structured value test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -308,12 +308,12 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Null comparison test '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -352,12 +352,12 @@ mod comparison_edge_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Inequality test '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -393,12 +393,12 @@ mod comparison_edge_cases {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Precedence test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -481,14 +481,14 @@ mod comparison_performance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Performance test '{}' found {} results in {:?} (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 duration,
                 expected_count
             );
@@ -526,14 +526,14 @@ mod comparison_performance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "String performance test '{}' found {} results in {:?} (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 duration,
                 expected_count
             );

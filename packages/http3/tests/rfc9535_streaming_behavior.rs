@@ -58,11 +58,11 @@ mod openai_streaming_tests {
         let mut stream = JsonArrayStream::<OpenAiModel>::new("$.data[*]");
 
         let chunk = Bytes::from(openai_response);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 3, "Should stream 3 models");
+        assert_eq!(results.len(), 3, "Should stream 3 models");
 
-        let model_ids: Vec<String> = _results.iter().map(|m| m.id.clone()).collect();
+        let model_ids: Vec<String> = results.iter().map(|m| m.id.clone()).collect();
         assert!(
             model_ids.contains(&"gpt-4".to_string()),
             "Should contain gpt-4"
@@ -77,7 +77,7 @@ mod openai_streaming_tests {
         );
 
         // Verify all models have correct object type
-        for model in _results {
+        for model in results {
             assert_eq!(model.object, "model", "All items should be model objects");
         }
     }
@@ -110,11 +110,11 @@ mod openai_streaming_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.choices[*].message");
 
         let chunk = Bytes::from(chat_response);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 1, "Should stream 1 message");
+        assert_eq!(results.len(), 1, "Should stream 1 message");
 
-        let message = &_results[0];
+        let message = &results[0];
         assert_eq!(
             message["role"], "assistant",
             "Message should be from assistant"
@@ -136,9 +136,9 @@ mod openai_streaming_tests {
         let mut stream = JsonArrayStream::<OpenAiModel>::new("$.data[*]");
 
         let chunk = Bytes::from(empty_response);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 0, "Empty array should yield no results");
+        assert_eq!(results.len(), 0, "Empty array should yield no results");
         assert!(
             stream.is_complete(),
             "Stream should be complete after empty array"
@@ -160,10 +160,10 @@ mod openai_streaming_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
 
         let chunk = Bytes::from(error_response);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             0,
             "Error response should yield no data results"
         );
@@ -171,10 +171,10 @@ mod openai_streaming_tests {
         // Test error path extraction
         let mut error_stream = JsonArrayStream::<serde_json::Value>::new("$.error");
 
-        let error_results: Vec<_> = error_stream
+        let errorresults: Vec<_> = error_stream
             .process_chunk(Bytes::from(error_response))
             .collect();
-        assert_eq!(error_results.len(), 1, "Should extract error object");
+        assert_eq!(errorresults.len(), 1, "Should extract error object");
     }
 }
 
@@ -196,22 +196,22 @@ mod chunked_streaming_tests {
 
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
 
-        let mut all_results = Vec::new();
+        let mut allresults = Vec::new();
 
         for chunk_data in json_chunks {
             let chunk = Bytes::from(chunk_data);
-            let chunk_results: Vec<_> = stream.process_chunk(chunk).collect();
-            all_results.extend(chunk_results);
+            let chunkresults: Vec<_> = stream.process_chunk(chunk).collect();
+            allresults.extend(chunkresults);
         }
 
         assert_eq!(
-            all_results.len(),
+            allresults.len(),
             3,
             "Should parse all items from chunked input"
         );
 
         // Verify parsed content
-        for (i, result) in all_results.iter().enumerate() {
+        for (i, result) in allresults.iter().enumerate() {
             let expected_id = format!("{}", i + 1);
             assert_eq!(
                 result["id"],
@@ -265,11 +265,11 @@ mod chunked_streaming_tests {
 
         let chunk = Bytes::from(json_data);
         let start_time = Instant::now();
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             array_size,
             "Should stream all {} items",
             array_size
@@ -294,19 +294,19 @@ mod chunked_streaming_tests {
 
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
 
-        let mut all_results = Vec::new();
+        let mut allresults = Vec::new();
 
         for chunk_data in json_chunks {
             let chunk = Bytes::from(chunk_data);
-            let chunk_results: Vec<_> = stream.process_chunk(chunk).collect();
+            let chunkresults: Vec<_> = stream.process_chunk(chunk).collect();
 
-            all_results.extend(chunk_results);
+            allresults.extend(chunkresults);
         }
 
         // Should handle errors gracefully and continue processing
-        println!("Successfully parsed {} items", all_results.len());
+        println!("Successfully parsed {} items", allresults.len());
         assert!(
-            all_results.len() > 0,
+            allresults.len() > 0,
             "Should parse some valid items despite errors"
         );
     }
@@ -343,7 +343,7 @@ mod streaming_stats_tests {
 
         // Process data
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Get final stats
         let final_stats = stream.stats();
@@ -355,7 +355,7 @@ mod streaming_stats_tests {
             final_stats.objects_yielded, 3,
             "Should have yielded 3 objects"
         );
-        assert_eq!(_results.len(), 3, "Should match objects yielded");
+        assert_eq!(results.len(), 3, "Should match objects yielded");
 
         println!("Streaming stats: {:?}", final_stats);
     }
@@ -373,7 +373,7 @@ mod streaming_stats_tests {
         );
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Stream completion status depends on implementation
         let is_complete = stream.is_complete();
@@ -396,7 +396,7 @@ mod streaming_stats_tests {
             let json_data = format!(r#"{{"data": ["{}"]}}"#, large_data);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let stats = stream.stats();
             println!(
@@ -443,10 +443,10 @@ mod complex_streaming_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.departments[*].employees[*]");
 
         let chunk = Bytes::from(nested_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             4,
             "Should stream all employees from all departments"
         );
@@ -494,10 +494,10 @@ mod complex_streaming_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(data_with_conditions);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Filter '{}' should return {} items",
                 expr,
@@ -531,10 +531,10 @@ mod complex_streaming_tests {
 
         let chunk = Bytes::from(deep_nested_data);
         let start_time = Instant::now();
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
-        assert_eq!(_results.len(), 3, "Should find all items at any depth");
+        assert_eq!(results.len(), 3, "Should find all items at any depth");
         println!("Descendant streaming took {:?}", duration);
 
         // Performance should be reasonable for moderate nesting

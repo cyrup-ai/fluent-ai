@@ -101,11 +101,11 @@ mod well_formedness_validity_tests {
                 // Test execution - should not crash but may return empty results
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(CORE_TEST_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 // Should execute without error, even if no results
                 println!("Well-formed invalid '{}' -> {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -234,13 +234,13 @@ mod null_vs_missing_semantics_tests {
             ("$.missing_test.empty_object", 1, "Empty object exists"),
         ];
 
-        for (expr, _expected_count, _description) in null_vs_missing_tests {
+        for (expr, expected_count, _description) in null_vs_missing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(CORE_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: Null vs missing test: {} ({}) should return {} results",
                 expr, _description, expected_count
@@ -272,13 +272,13 @@ mod null_vs_missing_semantics_tests {
             ("$.store.book[?@.tags]", 2, "Non-null arrays are truthy"),
         ];
 
-        for (expr, _expected_count, _description) in null_filter_tests {
+        for (expr, expected_count, _description) in null_filter_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(CORE_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: Null filter test: {} ({}) should return {} results",
                 expr, _description, expected_count
@@ -321,13 +321,13 @@ mod null_vs_missing_semantics_tests {
             ("$..*", 9, "Recursive descent finds all values including nulls"),
         ];
 
-        for (expr, _expected_count, _description) in edge_case_tests {
+        for (expr, expected_count, _description) in edge_case_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(edge_case_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: Null vs missing edge case: {} ({}) should return {} results",
                 expr, _description, expected_count
@@ -541,7 +541,7 @@ mod nodelist_ordering_tests {
     use super::*;
 
     #[test]
-    fn test_multi_selector_overlapping_results_ordering() {
+    fn test_multi_selector_overlappingresults_ordering() {
         // RFC 9535 Section 2.1.2: "The nodelist resulting from the last segment is presented as the result of the query"
         // "A segment operates on each of the nodes in its input nodelist in turn, and the resultant nodelists 
         // are concatenated in the order of the input nodelist they were derived from to produce the result of the segment"
@@ -582,12 +582,12 @@ mod nodelist_ordering_tests {
         for (expr, expected_pattern, _description) in index_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_pattern.len(), 
+            assert_eq!(results.len(), expected_pattern.len(), 
                 "RFC 9535 nodelist ordering: {} should produce {} results", expr, expected_pattern.len());
                 
-            for (i, result) in _results.iter().enumerate() {
+            for (i, result) in results.iter().enumerate() {
                 let id_value = result["id"].as_i64().unwrap_or(-1);
                 assert_eq!(id_value, expected_pattern[i] as i64,
                     "RFC 9535: {} - Position {} should have ID {}, got {}", _description, i, expected_pattern[i], id_value);
@@ -598,13 +598,13 @@ mod nodelist_ordering_tests {
         for (expr, expected_fields, _description) in property_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_fields.len(), 
+            assert_eq!(results.len(), expected_fields.len(), 
                 "RFC 9535 nodelist ordering: {} should produce {} results", expr, expected_fields.len());
                 
             // Check alternating id/type pattern
-            for (i, result) in _results.iter().enumerate() {
+            for (i, result) in results.iter().enumerate() {
                 let expected_field = expected_fields[i];
                 if expected_field == "id" {
                     assert!(result.is_number(), 
@@ -644,12 +644,12 @@ mod nodelist_ordering_tests {
         for (expr, expected_values, _description) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_values.len(),
+            assert_eq!(results.len(), expected_values.len(),
                 "RFC 9535 duplicate preservation: {} should produce {} results", expr, expected_values.len());
                 
-            for (i, result) in _results.iter().enumerate() {
+            for (i, result) in results.iter().enumerate() {
                 let value = result.as_i64().unwrap_or(-1);
                 assert_eq!(value, expected_values[i] as i64,
                     "RFC 9535: {} - Position {} should be {}, got {}", _description, i, expected_values[i], value);
@@ -678,9 +678,9 @@ mod nodelist_ordering_tests {
         for expr in empty_producing_expressions {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), 0,
+            assert_eq!(results.len(), 0,
                 "RFC 9535 empty propagation: Expression '{}' should produce empty nodelist due to empty segment propagation", expr);
         }
     }

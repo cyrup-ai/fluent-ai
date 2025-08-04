@@ -117,10 +117,10 @@ mod semantics_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$.store.book[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should produce nodelist with 2 nodes
-        assert_eq!(_results.len(), 2, "Should produce nodelist with 2 nodes");
+        assert_eq!(results.len(), 2, "Should produce nodelist with 2 nodes");
     }
 
     #[test]
@@ -130,9 +130,9 @@ mod semantics_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$.store.book[*]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 0, "No matches should produce empty nodelist");
+        assert_eq!(results.len(), 0, "No matches should produce empty nodelist");
     }
 }
 
@@ -155,7 +155,7 @@ mod whitespace_tests {
             // Document current whitespace handling behavior
             // These expressions may be valid or invalid depending on implementation
             // The key is consistent handling across similar patterns
-            let _result = result; // Allow either pass or fail, test for consistency
+            let result = result; // Allow either pass or fail, test for consistency
             // Future: Add specific whitespace behavior expectations based on RFC clarification
         }
     }
@@ -177,11 +177,11 @@ mod case_sensitivity_tests {
 
         let chunk = Bytes::from(json_data);
 
-        let exact_results: Vec<_> = stream_exact.process_chunk(chunk.clone()).collect();
-        let wrong_case_results: Vec<_> = stream_wrong_case.process_chunk(chunk).collect();
+        let exactresults: Vec<_> = stream_exact.process_chunk(chunk.clone()).collect();
+        let wrong_caseresults: Vec<_> = stream_wrong_case.process_chunk(chunk).collect();
 
-        assert_eq!(exact_results.len(), 1, "Exact case should match");
-        assert_eq!(wrong_case_results.len(), 0, "Wrong case should not match");
+        assert_eq!(exactresults.len(), 1, "Exact case should match");
+        assert_eq!(wrong_caseresults.len(), 0, "Wrong case should not match");
     }
 }
 
@@ -298,9 +298,9 @@ mod wellformedness_validity_tests {
         for (expr, expected_count, _description) in semantic_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Semantic test '{}' should return {} results: {}", expr, expected_count, _description);
         }
     }
@@ -346,13 +346,13 @@ mod nodelist_semantics_tests {
 
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.items[*].id");
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Results should maintain document order, not sort by value
-        assert_eq!(_results.len(), 3, "Should return all three ids");
+        assert_eq!(results.len(), 3, "Should return all three ids");
         
         // Verify document order is preserved (not sorted by priority or id)
-        let ids: Vec<String> = _results.into_iter()
+        let ids: Vec<String> = results.into_iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect();
         
@@ -365,7 +365,7 @@ mod nodelist_semantics_tests {
         // RFC 9535: Conditions that produce empty nodelists
         let json_data = r#"{"store": {"book": [], "bicycle": {"color": "red"}}}"#;
 
-        let empty_result_tests = vec![
+        let emptyresult_tests = vec![
             ("$.store.book[*]", "Empty array wildcard"),
             ("$.store.book[0]", "Index into empty array"),
             ("$.store.nonexistent", "Non-existent property"),
@@ -375,12 +375,12 @@ mod nodelist_semantics_tests {
             ("$.store.book[*].title", "Property access on empty array results"),
         ];
 
-        for (expr, _description) in empty_result_tests {
+        for (expr, _description) in emptyresult_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), 0, 
+            assert_eq!(results.len(), 0, 
                 "Empty nodelist test '{}' should return 0 results: {}", expr, _description);
         }
     }
@@ -399,17 +399,17 @@ mod nodelist_semantics_tests {
 
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.mixed[*]");
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 6, "Should return all mixed type values");
+        assert_eq!(results.len(), 6, "Should return all mixed type values");
 
         // Verify type preservation
-        assert!(_results[0].is_string(), "First value should be string");
-        assert!(_results[1].is_number(), "Second value should be number");
-        assert!(_results[2].is_boolean(), "Third value should be boolean");
-        assert!(_results[3].is_null(), "Fourth value should be null");
-        assert!(_results[4].is_object(), "Fifth value should be object");
-        assert!(_results[5].is_array(), "Sixth value should be array");
+        assert!(results[0].is_string(), "First value should be string");
+        assert!(results[1].is_number(), "Second value should be number");
+        assert!(results[2].is_boolean(), "Third value should be boolean");
+        assert!(results[3].is_null(), "Fourth value should be null");
+        assert!(results[4].is_object(), "Fifth value should be object");
+        assert!(results[5].is_array(), "Sixth value should be array");
     }
 }
 
@@ -431,9 +431,9 @@ mod path_evaluation_semantics_tests {
         for (expr, expected_count, _description) in root_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Root semantics test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -453,9 +453,9 @@ mod path_evaluation_semantics_tests {
         for (expr, expected_count, _description) in multiple_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Selector order test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -484,9 +484,9 @@ mod path_evaluation_semantics_tests {
         for (expr, expected_count, _description) in descendant_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Descendant semantics test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -509,9 +509,9 @@ mod path_evaluation_semantics_tests {
         for (expr, expected_count, _description) in index_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Array index test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }

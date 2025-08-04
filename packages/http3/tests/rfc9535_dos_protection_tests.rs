@@ -80,7 +80,7 @@ mod dos_protection_tests {
             let chunk = Bytes::from(json_data);
             
             // Set reasonable timeout for DoS protection
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             if should_succeed {
@@ -93,7 +93,7 @@ mod dos_protection_tests {
                 
                 // Should find the nested value
                 assert!(
-                    _results.len() > 0,
+                    results.len() > 0,
                     "RFC 9535: Should find values at depth {}: {}",
                     depth, _description
                 );
@@ -101,12 +101,12 @@ mod dos_protection_tests {
                 // Should either timeout, error, or take too long
                 if elapsed > Duration::from_secs(5) {
                     println!("DoS protection: Depth {} timed out as expected ({})", depth, _description);
-                } else if _results.is_empty() {
+                } else if results.is_empty() {
                     println!("DoS protection: Depth {} returned no results ({})", depth, _description);
                 } else {
                     // Acceptable if it completes but with protection warnings
                     println!("DoS protection: Depth {} completed with {} results in {}ms ({})", 
-                        depth, _results.len(), elapsed.as_millis(), _description);
+                        depth, results.len(), elapsed.as_millis(), _description);
                 }
             }
         }
@@ -130,7 +130,7 @@ mod dos_protection_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             let expected_matches = width * items_per_level;
@@ -143,7 +143,7 @@ mod dos_protection_tests {
                 );
                 
                 assert_eq!(
-                    _results.len(),
+                    results.len(),
                     expected_matches,
                     "RFC 9535: Should find all {} matches: {}",
                     expected_matches, _description
@@ -154,7 +154,7 @@ mod dos_protection_tests {
                     println!("DoS protection: Breadth test timed out as expected ({})", _description);
                 } else {
                     println!("DoS protection: Breadth test completed in {}ms with {} results ({})",
-                        elapsed.as_millis(), _results.len(), _description);
+                        elapsed.as_millis(), results.len(), _description);
                 }
             }
         }
@@ -176,14 +176,14 @@ mod dos_protection_tests {
             let json_data = create_wide_json_structure(50, 10);
             
             let start_time = Instant::now();
-            let compile_result = JsonPathParser::compile(expr);
+            let compileresult = JsonPathParser::compile(expr);
             
-            match compile_result {
+            match compileresult {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(json_data);
                     
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     let elapsed = start_time.elapsed();
                     
                     // Should complete in reasonable time or have protection
@@ -192,7 +192,7 @@ mod dos_protection_tests {
                             expr, elapsed.as_millis(), _description);
                     } else {
                         println!("Pathological pattern '{}' completed with {} results in {}ms ({})",
-                            expr, _results.len(), elapsed.as_millis(), _description);
+                            expr, results.len(), elapsed.as_millis(), _description);
                     }
                 }
                 Err(_) => {
@@ -220,12 +220,12 @@ mod dos_protection_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Memory protection test - should not crash or consume excessive memory
             println!("Memory test '{}' with {} data elements: {} results in {}ms ({})",
-                expr, data_size, _results.len(), elapsed.as_millis(), _description);
+                expr, data_size, results.len(), elapsed.as_millis(), _description);
             
             // Should complete within memory bounds
             assert!(
@@ -255,20 +255,20 @@ mod recursive_descent_performance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
-            let expected_results = size * 3; // 3 items per level
+            let expectedresults = size * 3; // 3 items per level
             
             println!("Performance test size {}: {} results in {}ms (expected: {})",
-                size, _results.len(), elapsed.as_millis(), expected_results);
+                size, results.len(), elapsed.as_millis(), expectedresults);
             
             // Performance should scale reasonably
-            let ms_per_result = elapsed.as_millis() as f64 / _results.len() as f64;
+            let ms_perresult = elapsed.as_millis() as f64 / results.len() as f64;
             assert!(
-                ms_per_result < 10.0,
+                ms_perresult < 10.0,
                 "RFC 9535: Performance should scale linearly, got {:.2}ms per result for size {}",
-                ms_per_result, size
+                ms_perresult, size
             );
         }
     }
@@ -290,7 +290,7 @@ mod recursive_descent_performance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Must terminate within reasonable time
@@ -301,7 +301,7 @@ mod recursive_descent_performance_tests {
             );
             
             println!("Termination test '{}': {} results in {}ms ({})",
-                expr, _results.len(), elapsed.as_millis(), _description);
+                expr, results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -314,9 +314,9 @@ mod recursive_descent_performance_tests {
             let json_data = create_deeply_nested_json(depth);
             let expr = "$..*";
             
-            let compile_result = JsonPathParser::compile(expr);
+            let compileresult = JsonPathParser::compile(expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "Parser should handle deep nesting compilation for depth {}",
                 depth
             );
@@ -326,11 +326,11 @@ mod recursive_descent_performance_tests {
             let chunk = Bytes::from(json_data);
             
             // This should not cause stack overflow
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             println!("Stack overflow test depth {}: {} results in {}ms",
-                depth, _results.len(), elapsed.as_millis());
+                depth, results.len(), elapsed.as_millis());
             
             // Should not crash or take excessive time
             assert!(
@@ -381,7 +381,7 @@ mod dos_attack_simulation_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(json_data);
                     
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     let elapsed = start_time.elapsed();
                     
                     // Should complete without exponential explosion
@@ -392,7 +392,7 @@ mod dos_attack_simulation_tests {
                     );
                     
                     println!("Fork bomb protection: '{}' -> {} results in {}ms ({})",
-                        expr, _results.len(), elapsed.as_millis(), _description);
+                        expr, results.len(), elapsed.as_millis(), _description);
                 }
                 Err(_) => {
                     println!("Fork bomb protection: Parser rejected '{}' ({})", expr, _description);
@@ -418,12 +418,12 @@ mod dos_attack_simulation_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Resource limits test
             println!("Resource test '{}' with {} scale: {} results in {}ms ({})",
-                expr, data_multiplier, _results.len(), elapsed.as_millis(), _description);
+                expr, data_multiplier, results.len(), elapsed.as_millis(), _description);
             
             // Should have reasonable resource consumption
             assert!(

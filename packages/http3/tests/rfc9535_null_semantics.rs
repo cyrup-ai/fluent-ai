@@ -76,12 +76,12 @@ mod null_vs_missing_tests {
             ),
         ];
 
-        for (expr, _expected_count, _description) in test_cases {
+        for (expr, expected_count, _description) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Null vs missing test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -131,12 +131,12 @@ mod null_vs_missing_tests {
             ("$.data.nested.mixed[*].a", 1, "Property access on mixed array with nulls"),
         ];
 
-        for (expr, _expected_count, _description) in null_access_tests {
+        for (expr, expected_count, _description) in null_access_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Null access test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -184,12 +184,12 @@ mod null_vs_missing_tests {
             ("$.records[?@.score > 80]", 3, "Numeric comparison ignoring null"),
         ];
 
-        for (expr, _expected_count, _description) in null_filter_tests {
+        for (expr, expected_count, _description) in null_filter_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Null filter test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -229,13 +229,13 @@ mod null_vs_missing_tests {
             ("$.data[?@.items[0]]", 3, "Array access with some null arrays"),
         ];
 
-        for (expr, _expected_count, _description) in function_null_tests {
+        for (expr, expected_count, _description) in function_null_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
             println!("Function null test '{}' returned {} results (expected {}) - {}",
-                expr, _results.len(), expected_count, _description);
+                expr, results.len(), expected_count, _description);
         }
     }
 
@@ -283,12 +283,12 @@ mod null_vs_missing_tests {
             ("$.root['branch2']['anything']", 0, "Bracket chain through null"),
         ];
 
-        for (expr, _expected_count, _description) in null_propagation_tests {
+        for (expr, expected_count, _description) in null_propagation_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Null propagation test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -344,12 +344,12 @@ mod null_vs_missing_tests {
             ("$.edge_cases.mixed_array[?@ != null && @ != '']", 3, "Non-null, non-empty values"),
         ];
 
-        for (expr, _expected_count, _description) in edge_case_tests {
+        for (expr, expected_count, _description) in edge_case_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Null edge case test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -411,12 +411,12 @@ mod null_vs_missing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Nested null test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -448,12 +448,12 @@ mod null_vs_missing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Array null test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -488,12 +488,12 @@ mod null_access_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Null array index '{}' -> {} results (should be 0 or error)",
                         expr,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => println!("Null array index '{}' rejected at compile time", expr),
@@ -525,12 +525,12 @@ mod null_access_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Null object key '{}' -> {} results (should be 0)",
                         expr,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => println!("Null object key '{}' rejected at compile time", expr),
@@ -569,21 +569,21 @@ mod null_access_tests {
             ),
         ];
 
-        for (expr, _expected_count, _description) in chained_null_tests {
+        for (expr, expected_count, _description) in chained_null_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Chained null access '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
 
-            if _results.len() != expected_count {
-                println!("  NOTE: Expected {}, got {}", expected_count, _results.len());
+            if results.len() != expected_count {
+                println!("  NOTE: Expected {}, got {}", expected_count, results.len());
             }
         }
     }
@@ -627,12 +627,12 @@ mod comparison_existence_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Null comparison '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -677,12 +677,12 @@ mod comparison_existence_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Existence test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -727,12 +727,12 @@ mod comparison_existence_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Logical null test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -787,12 +787,12 @@ mod json_null_vs_nothing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Filter null test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -832,19 +832,19 @@ mod json_null_vs_nothing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Null propagation test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
     }
 
     #[test]
-    fn test_nothing_vs_empty_results() {
+    fn test_nothing_vs_emptyresults() {
         // Test distinction between Nothing and empty results
         let json_data = r#"{"containers": [
             {"items": []},
@@ -877,12 +877,12 @@ mod json_null_vs_nothing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Nothing test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -935,12 +935,12 @@ mod function_null_behavior_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Length null test '{}' -> {} results ({})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         _description
                     );
                 }
@@ -1069,12 +1069,12 @@ mod type_system_null_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Type coercion test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -1115,12 +1115,12 @@ mod type_system_null_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Numeric null test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }
@@ -1152,12 +1152,12 @@ mod type_system_null_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "String null test '{}' -> {} results ({})",
                 expr,
-                _results.len(),
+                results.len(),
                 _description
             );
         }

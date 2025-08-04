@@ -5,7 +5,6 @@
 use bytes::Bytes;
 use fluent_ai_http3::json_path::{
     JsonPathParser, buffer::StreamBuffer, deserializer::JsonPathDeserializer,
-    state_machine::StreamStateMachine,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,19 +23,27 @@ mod deserializer_tests {
         let json_data = r#"[{"id":"test1","value":42},{"id":"test2","value":24}]"#;
         let path_expr = JsonPathParser::compile("$[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
 
         buffer.append_chunk(Bytes::from(json_data));
 
         let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer, &mut state);
-        let _results: Vec<_> = deserializer.process_available().collect();
+            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let results: Vec<_> = deserializer.process_available().collect();
 
-        assert_eq!(_results.len(), 2);
-        assert!(_results[0].is_ok());
-        assert!(_results[1].is_ok());
+        // Debug output
+        println!("Results found: {}", results.len());
+        for (i, result) in results.iter().enumerate() {
+            match result {
+                Ok(obj) => println!("Result {}: id={}, value={}", i, obj.id, obj.value),
+                Err(e) => println!("Result {}: Error={:?}", i, e),
+            }
+        }
 
-        let first = _results[0].as_ref().unwrap();
+        assert_eq!(results.len(), 2);
+        assert!(results[0].is_ok());
+        assert!(results[1].is_ok());
+
+        let first = results[0].as_ref().unwrap();
         assert_eq!(first.id, "test1");
         assert_eq!(first.value, 42);
     }
@@ -46,18 +53,17 @@ mod deserializer_tests {
         let json_data = r#"{"data":[{"id":"nested1","value":100}],"meta":"info"}"#;
         let path_expr = JsonPathParser::compile("$.data[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
 
         buffer.append_chunk(Bytes::from(json_data));
 
         let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer, &mut state);
-        let _results: Vec<_> = deserializer.process_available().collect();
+            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let results: Vec<_> = deserializer.process_available().collect();
 
-        assert_eq!(_results.len(), 1);
-        assert!(_results[0].is_ok());
+        assert_eq!(results.len(), 1);
+        assert!(results[0].is_ok());
 
-        let item = _results[0].as_ref().unwrap();
+        let item = results[0].as_ref().unwrap();
         assert_eq!(item.id, "nested1");
         assert_eq!(item.value, 100);
     }
@@ -66,7 +72,6 @@ mod deserializer_tests {
     fn test_streaming_chunks() {
         let path_expr = JsonPathParser::compile("$.items[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
 
         // Add data in chunks to simulate streaming
         buffer.append_chunk(Bytes::from(r#"{"items":["#));
@@ -75,11 +80,11 @@ mod deserializer_tests {
         buffer.append_chunk(Bytes::from(r#"]}"#));
 
         let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer, &mut state);
-        let _results: Vec<_> = deserializer.process_available().collect();
+            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let results: Vec<_> = deserializer.process_available().collect();
 
-        assert_eq!(_results.len(), 2);
-        assert!(_results.iter().all(|r| r.is_ok()));
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().all(|r| r.is_ok()));
     }
 
     #[test]
@@ -87,15 +92,14 @@ mod deserializer_tests {
         let json_data = r#"{"data":[{"id":"test1","invalid":}]}"#; // Missing value
         let path_expr = JsonPathParser::compile("$.data[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
 
         buffer.append_chunk(Bytes::from(json_data));
 
         let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer, &mut state);
-        let _results: Vec<_> = deserializer.process_available().collect();
+            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let results: Vec<_> = deserializer.process_available().collect();
 
-        assert!(!_results.is_empty());
-        assert!(_results[0].is_err());
+        assert!(!results.is_empty());
+        assert!(results[0].is_err());
     }
 }

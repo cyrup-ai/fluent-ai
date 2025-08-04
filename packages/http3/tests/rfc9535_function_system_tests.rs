@@ -164,7 +164,7 @@ mod function_type_system_tests {
     }
 
     #[test]
-    fn test_logicaltype_function_results() {
+    fn test_logicaltype_functionresults() {
         // RFC 9535: Functions that return LogicalType (used in test expressions)
         let logicaltype_tests = vec![
             // Function results used as test expressions (LogicalType context)
@@ -340,11 +340,11 @@ mod function_argument_type_tests {
 
 /// RFC 9535 Section 2.4 - Function Result Type Validation Tests
 #[cfg(test)]
-mod function_result_type_tests {
+mod functionresult_type_tests {
     use super::*;
 
     #[test]
-    fn test_function_result_type_consistency() {
+    fn test_functionresult_type_consistency() {
         // RFC 9535: Function results must be consistently typed
         let result_type_tests = vec![
             // Functions returning numeric values (ValueType)
@@ -400,13 +400,13 @@ mod function_result_type_tests {
             ("$.library.books[?search(@.authors[0], 'Lee')]", 1, "Author search filtering"),
         ];
 
-        for (expr, _expected_count, _description) in execution_tests {
+        for (expr, expected_count, _description) in execution_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: Function execution with types: {} ({}) should return {} results",
                 expr, _description, expected_count
@@ -451,10 +451,10 @@ mod function_result_type_tests {
                 // Test execution for valid expressions
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Type coercion test '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -502,10 +502,10 @@ mod complex_function_type_tests {
                 // Test execution
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Complex type scenario '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -589,10 +589,10 @@ mod type_conversion_boundary_tests {
                 // Test execution to verify conversion behavior
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("ValueType→LogicalType test '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -641,10 +641,10 @@ mod type_conversion_boundary_tests {
                 // Test execution to verify conversion behavior
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("NodesType→ValueType test '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -687,10 +687,10 @@ mod type_conversion_boundary_tests {
                 // Test execution to verify null handling behavior
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Null handling conversion test '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -734,10 +734,10 @@ mod type_conversion_boundary_tests {
                 // Test execution for valid chains
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Complex conversion chain '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),

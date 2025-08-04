@@ -41,6 +41,14 @@ impl<'a> SelectorParser<'a> {
                 self.consume_token();
                 self.parse_dot_selector()
             }
+            Some(Token::DoubleDot) => {
+                self.consume_token();
+                Ok(JsonSelector::RecursiveDescent)
+            }
+            Some(Token::Star) => {
+                self.consume_token();
+                Ok(JsonSelector::Wildcard)
+            }
             Some(Token::LeftBracket) => {
                 self.consume_token();
                 self.parse_bracket_selector()
@@ -54,6 +62,11 @@ impl<'a> SelectorParser<'a> {
                     exact_match: true,
                 })
             }
+            Some(Token::At) => Err(invalid_expression_error(
+                self.input,
+                "current node identifier '@' is only valid within filter expressions [?...]",
+                Some(self.position),
+            )),
             _ => Err(invalid_expression_error(
                 self.input,
                 "expected selector (.property, [index], identifier, or [expression])",
@@ -81,6 +94,11 @@ impl<'a> SelectorParser<'a> {
                     exact_match: true,
                 })
             }
+            Some(Token::At) => Err(invalid_expression_error(
+                self.input,
+                "current node identifier '@' is only valid within filter expressions [?...]",
+                Some(self.position),
+            )),
             _ => Err(invalid_expression_error(
                 self.input,
                 "expected property name, '..' (recursive descent), or '*' (wildcard) after '.'",
@@ -159,6 +177,11 @@ impl<'a> SelectorParser<'a> {
                 self.parse_index_or_slice(index)
             }
             Some(Token::Colon) => self.parse_slice_from_colon(),
+            Some(Token::At) => Err(invalid_expression_error(
+                self.input,
+                "current node identifier '@' is only valid within filter expressions [?...]",
+                Some(self.position),
+            )),
             _ => Err(invalid_expression_error(
                 self.input,
                 "expected index, slice, filter, string, or wildcard in brackets",

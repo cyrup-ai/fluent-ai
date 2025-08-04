@@ -61,10 +61,10 @@ mod test_expr_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         expected_count,
                         "Valid test expression '{}' should return {} items",
                         expr,
@@ -136,10 +136,10 @@ mod test_expr_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Existence test '{}' should return {} items",
                 expr,
@@ -174,10 +174,10 @@ mod test_expr_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Logical operator test '{}' should return {} items",
                 expr,
@@ -229,10 +229,10 @@ mod comparable_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Comparable test '{}' should return {} items",
                 expr,
@@ -268,13 +268,13 @@ mod comparable_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Note: Cross-type comparison behavior may vary between implementations
             println!(
                 "Cross-type comparison '{}' returned {} results (expected {})",
                 expr,
-                _results.len(),
+                results.len(),
                 expected_count
             );
         }
@@ -337,10 +337,10 @@ mod comparable_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Arithmetic comparison '{}' should return {} items",
                 expr,
@@ -383,12 +383,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Length argument test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -425,12 +425,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Count argument test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -467,12 +467,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Match argument test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -510,12 +510,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Value argument test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -606,7 +606,7 @@ mod type_mismatch_error_tests {
             ("$.items[?@.array < @.object]", "Array vs Object comparison"),
             // Functions returning non-comparable types
             (
-                "$.items[?@.function_result == @.other_function]",
+                "$.items[?@.functionresult == @.other_function]",
                 "Function result comparison",
             ),
         ];

@@ -251,11 +251,11 @@ mod ijson_boundary_tests {
             (format!("$.items[?@.id < {}]", MAX_SAFE_INTEGER), 1, "Less than max safe"),
         ];
 
-        for (expr, _expected_count, _description) in execution_tests {
+        for (expr, expected_count, _description) in execution_tests {
             // First verify the expression compiles
-            let compile_result = JsonPathParser::compile(&expr);
+            let compileresult = JsonPathParser::compile(&expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "RFC 9535: I-JSON boundary execution should compile: {} ({})",
                 expr, _description
             );
@@ -263,10 +263,10 @@ mod ijson_boundary_tests {
             // Then test execution
             let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: I-JSON boundary execution should return {} results: {} ({})",
                 expected_count, expr, _description

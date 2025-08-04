@@ -72,6 +72,7 @@ pub enum JsonStreamState {
 }
 
 /// State machine managing JSON streaming with JSONPath evaluation
+#[derive(Debug)]
 pub struct StreamStateMachine {
     /// Current parsing state
     state: JsonStreamState,

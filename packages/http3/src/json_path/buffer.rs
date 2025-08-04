@@ -13,6 +13,7 @@ use serde_json::de::IoRead;
 ///
 /// Optimized for JSON parsing workflows where data arrives in chunks and needs
 /// to be parsed incrementally. Uses memory pools and zero-copy techniques.
+#[derive(Debug)]
 pub struct StreamBuffer {
     /// Main buffer for accumulating incoming chunks
     buffer: BytesMut,
@@ -295,6 +296,7 @@ impl<'a> BufferReader<'a> {
 /// Handles buffer growth and shrinking based on usage patterns to minimize
 /// memory usage while avoiding frequent reallocations. Includes hysteresis
 /// to prevent size thrashing and adaptive growth patterns.
+#[derive(Debug)]
 struct CapacityManager {
     initial_capacity: usize,
     max_capacity: usize,

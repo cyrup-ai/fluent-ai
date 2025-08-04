@@ -64,12 +64,12 @@ mod iregexp_basic_compliance {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Literal matching '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -98,7 +98,7 @@ mod iregexp_basic_compliance {
             ("$.items[?match(@.code, '[^a-z]+')]", 3), // Not lowercase
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Character class '{}' compiled successfully", expr),
@@ -129,7 +129,7 @@ mod iregexp_basic_compliance {
             ("$.items[?match(@.text, 'a{1,3}')]", 3), // One to three 'a'
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Quantifier '{}' compiled successfully", expr),
@@ -157,7 +157,7 @@ mod iregexp_basic_compliance {
             ("$.items[?match(@.text, '^end$')]", 1),  // Exactly 'end'
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Anchor '{}' compiled successfully", expr),
@@ -186,7 +186,7 @@ mod iregexp_basic_compliance {
             ("$.items[?match(@.category, '^(fiction|reference)$')]", 2), // Exact match alternatives
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Alternation '{}' compiled successfully", expr),
@@ -214,32 +214,32 @@ mod match_vs_search_behavior {
 
         // match() should only match complete strings
         let match_expr = "$.items[?match(@.text, 'target')]";
-        let match_result = JsonPathParser::compile(match_expr);
+        let matchresult = JsonPathParser::compile(match_expr);
 
         // search() should find substring matches
         let search_expr = "$.items[?search(@.text, 'target')]";
-        let search_result = JsonPathParser::compile(search_expr);
+        let searchresult = JsonPathParser::compile(search_expr);
 
-        match (match_result, search_result) {
+        match (matchresult, searchresult) {
             (Ok(_), Ok(_)) => {
                 println!("Both match() and search() syntax supported");
 
                 // Test match() - should only find exact "target"
                 let mut match_stream = JsonArrayStream::<serde_json::Value>::new(match_expr);
                 let chunk = Bytes::from(json_data);
-                let match_results: Vec<_> = match_stream.process_chunk(chunk).collect();
+                let matchresults: Vec<_> = match_stream.process_chunk(chunk).collect();
                 println!(
                     "match() found {} results (should be 1 for exact match)",
-                    match_results.len()
+                    matchresults.len()
                 );
 
                 // Test search() - should find all containing "target"
                 let mut search_stream = JsonArrayStream::<serde_json::Value>::new(search_expr);
                 let chunk = Bytes::from(json_data);
-                let search_results: Vec<_> = search_stream.process_chunk(chunk).collect();
+                let searchresults: Vec<_> = search_stream.process_chunk(chunk).collect();
                 println!(
                     "search() found {} results (should be 4 for substring matches)",
-                    search_results.len()
+                    searchresults.len()
                 );
             }
             (Ok(_), Err(_)) => println!("Only match() function supported"),
@@ -298,7 +298,7 @@ mod match_vs_search_behavior {
             ("$.items[?search(@.text, 'ELL')]", 2),  // Different case substring
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Case sensitivity test '{}' compiled", expr),
@@ -407,7 +407,7 @@ mod unicode_regex_handling {
             ("$.items[?match(@.text, 'こんにちは')]", 1), // Japanese characters
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Unicode pattern '{}' compiled successfully", expr),
@@ -432,7 +432,7 @@ mod unicode_regex_handling {
             ("$.items[?search(@.text, '\\u0065')]", 3), // Letter 'e' (appears in multiple)
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Unicode escape '{}' compiled successfully", expr),
@@ -501,13 +501,13 @@ mod regex_performance_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
 
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 let execution_duration = execution_start.elapsed();
 
                 println!(
                     "Complex pattern executed in {:?}, found {} matches",
                     execution_duration,
-                    _results.len()
+                    results.len()
                 );
 
                 // Performance assertion
@@ -548,14 +548,14 @@ mod regex_performance_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     let duration = start_time.elapsed();
 
                     println!(
                         "Large input test '{}' completed in {:?}, found {} matches",
                         expr,
                         duration,
-                        _results.len()
+                        results.len()
                     );
 
                     // Performance assertion for large inputs
@@ -595,7 +595,7 @@ mod regex_performance_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     let duration = start_time.elapsed();
 
                     println!("DoS test '{}' completed in {:?}", expr, duration);
@@ -639,7 +639,7 @@ mod escape_sequence_validation {
             ("$.items[?search(@.text, '\\/')]", 1),  // Forward slash
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Escape sequence '{}' compiled successfully", expr),
@@ -687,7 +687,7 @@ mod escape_sequence_validation {
             ("$.items[?search(@.text, '[\\^]')]", 1), // Escaped caret
         ];
 
-        for (expr, expected_count) in test_cases {
+        for (expr, _expected_count) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!("Character class escape '{}' compiled successfully", expr),

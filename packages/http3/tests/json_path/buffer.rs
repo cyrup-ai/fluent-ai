@@ -6,6 +6,7 @@
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::buffer::StreamBuffer;
+use std::io::Read;
 
 #[cfg(test)]
 mod buffer_tests {

@@ -20,7 +20,7 @@ mod recursive_tests {
         let mut stream = JsonArrayStream::<Value>::new("$..c");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         assert!(true);
     }
 }

@@ -62,9 +62,9 @@ mod shorthand_syntax_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Shorthand test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Shorthand test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -130,28 +130,28 @@ mod shorthand_syntax_tests {
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket);
 
             let chunk = Bytes::from(json_data);
-            let shorthand_results: Vec<_> = shorthand_stream.process_chunk(chunk.clone()).collect();
-            let bracket_results: Vec<_> = bracket_stream.process_chunk(chunk).collect();
+            let shorthandresults: Vec<_> = shorthand_stream.process_chunk(chunk.clone()).collect();
+            let bracketresults: Vec<_> = bracket_stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                shorthand_results.len(),
-                bracket_results.len(),
+                shorthandresults.len(),
+                bracketresults.len(),
                 "Shorthand '{}' and bracket '{}' should return same count: {}",
                 shorthand, bracket, _description
             );
 
             // Check value equivalence if both have results
-            if !shorthand_results.is_empty() && !bracket_results.is_empty() {
+            if !shorthandresults.is_empty() && !bracketresults.is_empty() {
                 assert_eq!(
-                    shorthand_results[0],
-                    bracket_results[0],
+                    shorthandresults[0],
+                    bracketresults[0],
                     "Shorthand and bracket notation should return equivalent values: {}",
                     _description
                 );
             }
 
             println!("Equivalence test: '{}' ≡ '{}' -> {} results ({})", 
-                shorthand, bracket, shorthand_results.len(), _description);
+                shorthand, bracket, shorthandresults.len(), _description);
         }
     }
 
@@ -196,9 +196,9 @@ mod shorthand_syntax_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Wildcard test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Wildcard test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -246,9 +246,9 @@ mod shorthand_syntax_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Descendant test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Descendant test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -298,9 +298,9 @@ mod shorthand_syntax_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Index test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Index test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -339,9 +339,9 @@ mod shorthand_syntax_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Slice test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Slice test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -391,9 +391,9 @@ mod shorthand_syntax_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Combined test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Combined test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 

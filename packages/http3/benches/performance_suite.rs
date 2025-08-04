@@ -50,7 +50,7 @@ impl DatasetGenerator {
 
             // Create realistic nested object structure
             json.push_str(&format!(
-                r#"{{"id":{},"name":"Object {}","metadata":{{"created":"2024-01-01T00:00:00Z","status":"active","tags":["benchmark","test","performance"],"nested":{{"level1":{{"level2":{{"value":"deep_{}","count":{}}}}}}}}}}"#,
+                r#"{{"id":{},"name":"Object {}","metadata":{{"created":"2024-01-01T00:00:00Z","status":"active","tags":["benchmark","test","performance"],"nested":{{"level1":{{"level2":{{"value":"deep_{}","count":{}}}}}}}}}}}"#,
                 i, i, i, i % 100
             ));
         }
@@ -105,7 +105,7 @@ fn memory_profiling_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                let mut stream = JsonArrayStream::new("$.data[*]");
+                let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
                 for chunk in &chunks {
                     let chunk_bytes = Bytes::from(chunk.clone());
                     let _results = stream.process_chunk(chunk_bytes);
@@ -149,7 +149,9 @@ fn large_dataset_benchmarks(c: &mut Criterion) {
                 b.iter(|| {
                     // Test JSONPath compilation performance
                     match JsonPathParser::compile("$.data[*].metadata.nested.level1.level2.value") {
-                        Ok(expression) => black_box(expression),
+                        Ok(expression) => {
+                            black_box(expression);
+                        }
                         Err(_) => {
                             // Fallback to simpler expression if complex one fails
                             if let Ok(expr) = JsonPathParser::compile("$.data[*]") {
@@ -230,7 +232,7 @@ fn streaming_backpressure_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                let mut stream = JsonArrayStream::new("$.data[*]");
+                let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
                 for chunk in &chunks {
                     let chunk_bytes = Bytes::from(chunk.clone());
                     let results = stream.process_chunk(chunk_bytes);
@@ -244,6 +246,7 @@ fn streaming_backpressure_benchmarks(c: &mut Criterion) {
                 }
             });
         });
+    });
 
     // Test burst processing capability
     group.bench_function("burst_processing", |b| {
@@ -255,7 +258,7 @@ fn streaming_backpressure_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                let mut stream = JsonArrayStream::new("$.data[*]");
+                let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
                 // Process all chunks rapidly to test burst handling
                 for chunk in &chunks {
                     let chunk_bytes = Bytes::from(chunk.clone());
@@ -352,7 +355,7 @@ fn regression_testing_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                let mut stream = JsonArrayStream::new("$.data[*]");
+                let mut stream = JsonArrayStream::<serde_json::Value>::new("$.data[*]");
                 let chunk_bytes = Bytes::from(chunk.to_vec());
                 let _results = stream.process_chunk(chunk_bytes);
                 black_box(_results);

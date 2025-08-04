@@ -895,10 +895,10 @@ mod ijson_number_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: Decimal precision test '{}' should return {} results",
                 expr,
@@ -991,7 +991,7 @@ mod wellformedness_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             if should_execute {
                 // Valid queries should execute without panicking - test passes if we get here
@@ -1188,9 +1188,9 @@ mod wellformedness_tests {
             // Verify the expression can execute
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Comparison test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Comparison test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -1230,9 +1230,9 @@ mod wellformedness_tests {
             // Verify the expression can execute
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Logical test '{}' returned {} results ({})", expr, _results.len(), _description);
+            println!("Logical test '{}' returned {} results ({})", expr, results.len(), _description);
         }
     }
 

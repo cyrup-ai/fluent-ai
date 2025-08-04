@@ -72,9 +72,9 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<String>::new("$.store.book[*].author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 4, "Should find all 4 book authors");
+        assert_eq!(results.len(), 4, "Should find all 4 book authors");
 
         let expected_authors = vec![
             "Nigel Rees",
@@ -85,7 +85,7 @@ mod xpath_equivalence_tests {
 
         for author in expected_authors {
             assert!(
-                _results.contains(&author.to_string()),
+                results.contains(&author.to_string()),
                 "XPath equivalent should contain author: {}",
                 author
             );
@@ -99,10 +99,10 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<String>::new("$..author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             4,
             "Descendant search should find all 4 authors"
         );
@@ -116,7 +116,7 @@ mod xpath_equivalence_tests {
 
         for author in expected_authors {
             assert!(
-                _results.contains(&author.to_string()),
+                results.contains(&author.to_string()),
                 "XPath descendant equivalent should contain author: {}",
                 author
             );
@@ -130,10 +130,10 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store.*");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             2,
             "Store wildcard should contain 2 things: book array and bicycle"
         );
@@ -142,7 +142,7 @@ mod xpath_equivalence_tests {
         let mut has_book_array = false;
         let mut has_bicycle = false;
 
-        for result in _results {
+        for result in results {
             if result.is_array() && result.as_array().unwrap().len() == 4 {
                 has_book_array = true;
             } else if result.is_object() && result.get("color").is_some() {
@@ -164,10 +164,10 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<f64>::new("$.store..price");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             5,
             "Should find 5 prices (4 books + 1 bicycle)"
         );
@@ -176,7 +176,7 @@ mod xpath_equivalence_tests {
 
         for price in expected_prices {
             assert!(
-                _results.contains(&price),
+                results.contains(&price),
                 "XPath descendant price equivalent should contain price: {}",
                 price
             );
@@ -190,15 +190,15 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[2]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 1, "Should find exactly one book (the third)");
+        assert_eq!(results.len(), 1, "Should find exactly one book (the third)");
         assert_eq!(
-            _results[0].title, "Moby Dick",
+            results[0].title, "Moby Dick",
             "XPath third book equivalent should be Moby Dick"
         );
         assert_eq!(
-            _results[0].author, "Herman Melville",
+            results[0].author, "Herman Melville",
             "Third book author should be Herman Melville"
         );
     }
@@ -210,15 +210,15 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[-1]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 1, "Should find exactly one book (the last)");
+        assert_eq!(results.len(), 1, "Should find exactly one book (the last)");
         assert_eq!(
-            _results[0].title, "The Lord of the Rings",
+            results[0].title, "The Lord of the Rings",
             "XPath last book equivalent should be LOTR"
         );
         assert_eq!(
-            _results[0].author, "J. R. R. Tolkien",
+            results[0].author, "J. R. R. Tolkien",
             "Last book author should be Tolkien"
         );
     }
@@ -230,11 +230,11 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[0,1]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 2, "Should find exactly two books");
+        assert_eq!(results.len(), 2, "Should find exactly two books");
 
-        let titles: Vec<String> = _results.iter().map(|book| book.title.clone()).collect();
+        let titles: Vec<String> = results.iter().map(|book| book.title.clone()).collect();
         assert!(
             titles.contains(&"Sayings of the Century".to_string()),
             "XPath first two books should contain first book"
@@ -252,21 +252,21 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[:2]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             2,
             "Slice selector should find exactly two books"
         );
 
         // Results should be in order for slice selector
         assert_eq!(
-            _results[0].title, "Sayings of the Century",
+            results[0].title, "Sayings of the Century",
             "XPath slice equivalent first book should be first"
         );
         assert_eq!(
-            _results[1].title, "Sword of Honour",
+            results[1].title, "Sword of Honour",
             "XPath slice equivalent second book should be second"
         );
     }
@@ -278,11 +278,11 @@ mod xpath_equivalence_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.isbn]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 2, "Should find 2 books with ISBN");
+        assert_eq!(results.len(), 2, "Should find 2 books with ISBN");
 
-        let titles: Vec<String> = _results.iter().map(|book| book.title.clone()).collect();
+        let titles: Vec<String> = results.iter().map(|book| book.title.clone()).collect();
         assert!(
             titles.contains(&"Moby Dick".to_string()),
             "XPath ISBN filter should include Moby Dick"
@@ -293,7 +293,7 @@ mod xpath_equivalence_tests {
         );
 
         // Verify all results actually have ISBN
-        for book in _results {
+        for book in results {
             assert!(
                 book.isbn.is_some(),
                 "XPath ISBN equivalent should only return books with ISBN: {}",
@@ -327,7 +327,7 @@ mod xpath_equivalence_tests {
         }
 
         // Verify all results are actually cheaper than 10
-        for book in _results {
+        for book in results {
             assert!(
                 book.price < 10.0,
                 "XPath price equivalent should only return books <$10: {} at ${}",
@@ -412,16 +412,16 @@ mod xpath_indexing_difference_tests {
             let mut stream = JsonArrayStream::<String>::new(jsonpath_expr);
 
             let chunk = Bytes::from(json_array);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "JSONPath index expression '{}' should return exactly 1 result",
                 jsonpath_expr
             );
             assert_eq!(
-                _results[0], expected_value,
+                results[0], expected_value,
                 "JSONPath uses 0-based indexing: '{}' should return '{}'",
                 jsonpath_expr, expected_value
             );
@@ -446,23 +446,23 @@ mod xpath_indexing_difference_tests {
 
         let chunk = Bytes::from(json_data);
 
-        let union_results: Vec<_> = union_stream.process_chunk(chunk.clone()).collect();
-        let slice_results: Vec<_> = slice_stream.process_chunk(chunk).collect();
+        let unionresults: Vec<_> = union_stream.process_chunk(chunk.clone()).collect();
+        let sliceresults: Vec<_> = slice_stream.process_chunk(chunk).collect();
 
         // Both should return first two books
         assert_eq!(
-            union_results.len(),
+            unionresults.len(),
             2,
             "Union selector should return 2 books"
         );
         assert_eq!(
-            slice_results.len(),
+            sliceresults.len(),
             2,
             "Slice selector should return 2 books"
         );
 
         // Verify the correct books are returned (first two)
-        for results in vec![&union_results, &slice_results] {
+        for results in vec![&unionresults, &sliceresults] {
             let titles: Vec<String> = results
                 .iter()
                 .map(|book| book["title"].as_str().unwrap().to_string())
@@ -492,15 +492,15 @@ mod xpath_indexing_difference_tests {
         let mut stream = JsonArrayStream::<i32>::new("$.sequence[-1]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            _results.len(),
+            results.len(),
             1,
             "Last element selector should return 1 result"
         );
         assert_eq!(
-            _results[0], 50,
+            results[0], 50,
             "XPath last() equivalent should return last element"
         );
 
@@ -514,16 +514,16 @@ mod xpath_indexing_difference_tests {
         for (expr, expected) in test_cases {
             let mut stream = JsonArrayStream::<i32>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "Negative index '{}' should return 1 result",
                 expr
             );
             assert_eq!(
-                _results[0], expected,
+                results[0], expected,
                 "Negative index '{}' should return {}",
                 expr, expected
             );
@@ -570,15 +570,15 @@ mod xpath_nodeset_vs_jsonpath_nodelist_tests {
         // Compare with getting all items then selecting
         let mut all_items_stream = JsonArrayStream::<i32>::new("$.groups[*].items[*]");
         let chunk = Bytes::from(nested_data);
-        let all_results: Vec<_> = all_items_stream.process_chunk(chunk).collect();
+        let allresults: Vec<_> = all_items_stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            all_results.len(),
+            allresults.len(),
             9,
             "Should get all 9 items when using [*]"
         );
         assert_eq!(
-            all_results,
+            allresults,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             "Should get all items in order"
         );

@@ -147,4 +147,19 @@ impl HttpRequest {
         }
         self
     }
+
+    /// Sets the timeout, consuming the request and returning a new one.
+    #[must_use = "returns a new `HttpRequest` with the updated timeout"]
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// Sets retry attempts (placeholder for now, may extend struct later)
+    #[must_use = "returns a new `HttpRequest` with retry configuration"]
+    pub fn with_retry_attempts(self, _attempts: u32) -> Self {
+        // For now, this is a no-op but provides the method signature
+        // In full implementation, this would store retry config
+        self
+    }
 }

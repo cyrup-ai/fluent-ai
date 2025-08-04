@@ -15,8 +15,7 @@ mod config_tests {
         
         // Test that the builder can be configured with various settings
         let configured_builder = builder
-            .headers([("accept", "application/json")])
-            .user_agent("HTTP3-Test-Client");
+            .headers([("accept", "application/json"), ("user-agent", "HTTP3-Test-Client")]);
         
         // Verify the builder maintains its configuration state
         // Since Http3 builders are consumed on execution, we test configuration acceptance

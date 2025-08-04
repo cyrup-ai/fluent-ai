@@ -16,7 +16,7 @@ mod put_operation_tests {
         let builder = Http3::json()
             .url("https://example.com/api/resource/123")
             .headers([("Content-Type", "application/json")])
-            .body(serde_json::json!({"updated": "data"}));
+            .body(&serde_json::json!({"updated": "data"}));
         
         // Verify builder was created successfully
         assert!(format!("{:?}", builder).contains("Http3"));

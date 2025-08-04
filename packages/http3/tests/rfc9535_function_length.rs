@@ -44,9 +44,9 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "String length filter '{}' should return {} items", expr, expected_count);
         }
     }
@@ -72,9 +72,9 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "Array length filter '{}' should return {} items", expr, expected_count);
         }
     }
@@ -100,9 +100,9 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "Object length filter '{}' should return {} items", expr, expected_count);
         }
     }
@@ -119,9 +119,9 @@ mod length_function_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]");
         
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(_results.len(), 1, "length(null) should equal null");
+        assert_eq!(results.len(), 1, "length(null) should equal null");
     }
 
     #[test]
@@ -136,9 +136,9 @@ mod length_function_tests {
         // RFC mandates length() returns null for primitives
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]");
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(_results.len(), 3, 
+        assert_eq!(results.len(), 3, 
             "RFC 9535: length() MUST return null for all primitive values");
     }
 
@@ -163,10 +163,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
             // RFC 9535: Unicode string length MUST count characters, not bytes
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "RFC 9535: Unicode length test '{}' should return {} results", 
                 expr, expected_count);
         }
@@ -191,9 +191,9 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "RFC 9535: Nested length test '{}' should return {} results", 
                 expr, expected_count);
         }
@@ -229,11 +229,11 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
             let duration = start_time.elapsed();
             
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "Performance test '{}' should return {} results", 
                 expr, expected_count);
             
@@ -267,9 +267,9 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count, 
+            assert_eq!(results.len(), expected_count, 
                 "RFC 9535: Edge case test '{}' should return {} results", 
                 expr, expected_count);
         }
@@ -337,10 +337,10 @@ mod length_error_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     // Expression evaluated successfully - results can be empty or contain values
-                    println!("Complex length() expression '{}' returned {} results", expr, _results.len());
+                    println!("Complex length() expression '{}' returned {} results", expr, results.len());
                 }
                 Err(_) => {
                     // Complex expressions not supported is acceptable

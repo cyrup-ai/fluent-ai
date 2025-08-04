@@ -129,4 +129,73 @@ impl<S> Http3Builder<S> {
         let value = format!("max-age={}", seconds);
         self.cache_control(&value)
     }
+
+    /// Set User-Agent header
+    ///
+    /// # Arguments
+    /// * `user_agent` - The user agent string
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::Http3Builder;
+    ///
+    /// let response = Http3Builder::json()
+    ///     .user_agent("MyApp/1.0")
+    ///     .get("https://api.example.com/data");
+    /// ```
+    #[must_use]
+    pub fn user_agent(self, user_agent: &str) -> Self {
+        match HeaderValue::from_str(user_agent) {
+            Ok(header_value) => self.header(header::USER_AGENT, header_value),
+            Err(_) => self, // Skip invalid header value
+        }
+    }
+
+    /// Set Accept header  
+    ///
+    /// # Arguments
+    /// * `accept` - The accept header value (e.g., "application/json", "text/html")
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::Http3Builder;
+    ///
+    /// let response = Http3Builder::json()
+    ///     .accept("application/json")
+    ///     .get("https://api.example.com/data");
+    /// ```
+    #[must_use]
+    pub fn accept(self, accept: &str) -> Self {
+        match HeaderValue::from_str(accept) {
+            Ok(header_value) => self.header(header::ACCEPT, header_value),
+            Err(_) => self, // Skip invalid header value
+        }
+    }
+
+    /// Set Accept header using ContentType enum
+    ///
+    /// # Arguments
+    /// * `content_type` - The content type to accept
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::{Http3Builder, ContentType};
+    ///
+    /// let response = Http3Builder::json()
+    ///     .accept_content_type(ContentType::ApplicationJson)
+    ///     .get("https://api.example.com/data");
+    /// ```
+    #[must_use]
+    pub fn accept_content_type(self, content_type: crate::builder::core::ContentType) -> Self {
+        self.accept(content_type.as_str())
+    }
 }

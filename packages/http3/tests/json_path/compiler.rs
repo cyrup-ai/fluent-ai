@@ -618,12 +618,12 @@ mod ijson_number_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Decimal precision test '{}' returned {} results",
                 expr,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -712,11 +712,11 @@ mod wellformedness_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             if should_execute {
                 // Should execute without error, even if no results
-                println!("Query '{}' executed with {} results", query, _results.len());
+                println!("Query '{}' executed with {} results", query, results.len());
             }
         }
     }
@@ -825,14 +825,14 @@ mod large_dataset_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "{}: {} results in {:?}",
                 _description,
-                _results.len(),
+                results.len(),
                 duration
             );
 
@@ -846,17 +846,17 @@ mod large_dataset_tests {
             // Verify results are correct
             match expr {
                 "$.catalog.items[*].name" => {
-                    assert_eq!(_results.len(), 10_000, "Should extract all 10K names");
+                    assert_eq!(results.len(), 10_000, "Should extract all 10K names");
                 }
                 "$.catalog.items[*].price" => {
-                    assert_eq!(_results.len(), 10_000, "Should extract all 10K prices");
+                    assert_eq!(results.len(), 10_000, "Should extract all 10K prices");
                 }
                 "$.catalog.items[*].category" => {
-                    assert_eq!(_results.len(), 10_000, "Should extract all 10K categories");
+                    assert_eq!(results.len(), 10_000, "Should extract all 10K categories");
                 }
                 "$.catalog.items[*].tags[*]" => {
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         30_000,
                         "Should extract all 30K tags (3 per item)"
                     );
@@ -891,7 +891,7 @@ mod large_dataset_tests {
             let mut stream = JsonArrayStream::<LargeDataModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -900,7 +900,7 @@ mod large_dataset_tests {
             println!(
                 "{}: {} results in {:?}",
                 _description,
-                _results.len(),
+                results.len(),
                 duration
             );
 
@@ -966,14 +966,14 @@ mod large_dataset_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "{}: {} results in {:?}",
                 _description,
-                _results.len(),
+                results.len(),
                 duration
             );
 
@@ -985,7 +985,7 @@ mod large_dataset_tests {
             );
 
             // Verify minimum expected results
-            assert!(_results.len() > 0, "Descendant search should find results");
+            assert!(results.len() > 0, "Descendant search should find results");
         }
     }
 
@@ -1112,7 +1112,7 @@ mod complex_query_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                 let chunk = Bytes::from(json_data.clone());
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 let duration = start_time.elapsed();
 
@@ -1120,7 +1120,7 @@ mod complex_query_tests {
                     "{} - {}: {} results in {:?}",
                     _description,
                     query_desc,
-                    _results.len(),
+                    results.len(),
                     duration
                 );
 
@@ -1167,14 +1167,14 @@ mod complex_query_tests {
             let mut stream = JsonArrayStream::<LargeDataModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "{}: {} results in {:?}",
                 _description,
-                _results.len(),
+                results.len(),
                 duration
             );
 
@@ -1187,7 +1187,7 @@ mod complex_query_tests {
 
             // Verify all results match the filter criteria
             assert!(
-                _results.len() > 0,
+                results.len() > 0,
                 "Complex filter should find some matching results"
             );
         }
@@ -1256,22 +1256,22 @@ mod streaming_tests {
 
         let mut stream = JsonArrayStream::<LargeDataModel>::new("$.catalog.items[?@.active]");
 
-        let mut total_results = 0;
+        let mut totalresults = 0;
 
         // Process chunks sequentially to test streaming behavior
         for (i, chunk) in chunks.iter().enumerate() {
             let chunk_start = Instant::now();
 
-            let _results: Vec<_> = stream.process_chunk(_chunk.clone()).collect();
-            let chunk_results = _results.len();
-            total_results += chunk_results;
+            let results: Vec<_> = stream.process_chunk(chunk.clone()).collect();
+            let chunkresults = results.len();
+            totalresults += chunkresults;
 
             let chunk_duration = chunk_start.elapsed();
 
             println!(
                 "Chunk {}: {} results in {:?}",
                 i + 1,
-                chunk_results,
+                chunkresults,
                 chunk_duration
             );
 
@@ -1287,7 +1287,7 @@ mod streaming_tests {
 
         println!(
             "Total streaming: {} results in {:?}",
-            total_results, total_duration
+            totalresults, total_duration
         );
 
         // Streaming should be efficient overall
@@ -1298,7 +1298,7 @@ mod streaming_tests {
     }
 
     #[test]
-    fn test_incremental_result_delivery() {
+    fn test_incrementalresult_delivery() {
         // Test that results are delivered incrementally, not all at once
         let dataset = generate_large_dataset(1_000);
         let json_data = serde_json::to_string(&dataset).expect("Valid JSON serialization");
@@ -1434,10 +1434,10 @@ mod resource_limit_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(&deep_query);
 
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 // Should handle gracefully even if path doesn't exist
-                println!("Deep query execution: {} results", _results.len());
+                println!("Deep query execution: {} results", results.len());
             }
             Err(_) => {
                 println!("Deep query rejected at compilation (expected for extreme depth)");
@@ -1466,11 +1466,11 @@ mod resource_limit_tests {
                     let mut stream = JsonArrayStream::<i32>::new(&query);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     // Should return empty results for out-of-bounds indices
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         0,
                         "Out-of-bounds index {} should return no results",
                         index
@@ -1523,12 +1523,12 @@ mod resource_limit_tests {
 
                 let execution_start = Instant::now();
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 let execution_time = execution_start.elapsed();
 
                 println!(
                     "Complex filter execution: {} results in {:?}",
-                    _results.len(),
+                    results.len(),
                     execution_time
                 );
 
@@ -1567,7 +1567,7 @@ mod resource_limit_tests {
             .into_iter()
             .enumerate()
             .map(|(i, query)| {
-                let json_data = Arc::clone(&_json_data);
+                let json_data = Arc::clone(&json_data);
                 let query = query.to_string();
 
                 thread::spawn(move || {
@@ -1576,26 +1576,26 @@ mod resource_limit_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(&query);
 
                     let chunk = Bytes::from((*json_data).clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let thread_duration = thread_start.elapsed();
 
-                    (i, query, _results.len(), thread_duration)
+                    (i, query, results.len(), thread_duration)
                 })
             })
             .collect();
 
         let mut results = Vec::new();
         for handle in handles {
-            _results.push(handle.join().expect("Thread completed successfully"));
+            results.push(handle.join().expect("Thread completed successfully"));
         }
 
         let total_duration = start_time.elapsed();
 
         // Verify all queries completed
-        assert_eq!(_results.len(), 5, "All concurrent queries should complete");
+        assert_eq!(results.len(), 5, "All concurrent queries should complete");
 
-        for (i, query, result_count, thread_duration) in _results {
+        for (i, query, result_count, thread_duration) in results {
             println!(
                 "Thread {}: '{}' -> {} results in {:?}",
                 i, query, result_count, thread_duration

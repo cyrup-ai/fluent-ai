@@ -130,18 +130,18 @@ mod logical_precedence_tests {
             let mut explicit_stream = JsonArrayStream::<serde_json::Value>::new(explicit_precedence);
 
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let implicit_results: Vec<_> = implicit_stream.process_chunk(chunk.clone()).collect();
-            let explicit_results: Vec<_> = explicit_stream.process_chunk(chunk).collect();
+            let implicitresults: Vec<_> = implicit_stream.process_chunk(chunk.clone()).collect();
+            let explicitresults: Vec<_> = explicit_stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                implicit_results.len(),
-                explicit_results.len(),
+                implicitresults.len(),
+                explicitresults.len(),
                 "RFC 9535: Implicit and explicit precedence should produce same results: {} ({})",
                 implicit_precedence, _description
             );
             
             println!("✓ Precedence test: {} -> {} results ({})", 
-                implicit_precedence, implicit_results.len(), _description);
+                implicit_precedence, implicitresults.len(), _description);
         }
     }
 
@@ -187,26 +187,26 @@ mod logical_precedence_tests {
             let mut explicit_stream = JsonArrayStream::<serde_json::Value>::new(explicit_precedence);
 
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let implicit_results: Vec<_> = implicit_stream.process_chunk(chunk.clone()).collect();
-            let explicit_results: Vec<_> = explicit_stream.process_chunk(chunk).collect();
+            let implicitresults: Vec<_> = implicit_stream.process_chunk(chunk.clone()).collect();
+            let explicitresults: Vec<_> = explicit_stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                implicit_results.len(),
-                explicit_results.len(),
+                implicitresults.len(),
+                explicitresults.len(),
                 "RFC 9535: Implicit and explicit negation precedence should match: {} ({})",
                 implicit_precedence, _description
             );
             
             // Validate against expected count to ensure correct precedence evaluation
             assert_eq!(
-                implicit_results.len(),
+                implicitresults.len(),
                 expected_count,
                 "RFC 9535: Negation precedence should yield expected result count: {} ({})",
                 implicit_precedence, _description
             );
             
             println!("✓ Negation precedence: {} -> {} results (expected: {}) ({})", 
-                implicit_precedence, implicit_results.len(), expected_count, _description);
+                implicit_precedence, implicitresults.len(), expected_count, _description);
         }
     }
 
@@ -252,26 +252,26 @@ mod logical_precedence_tests {
             let mut explicit_stream = JsonArrayStream::<serde_json::Value>::new(explicit_assoc);
 
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let implicit_results: Vec<_> = implicit_stream.process_chunk(chunk.clone()).collect();
-            let explicit_results: Vec<_> = explicit_stream.process_chunk(chunk).collect();
+            let implicitresults: Vec<_> = implicit_stream.process_chunk(chunk.clone()).collect();
+            let explicitresults: Vec<_> = explicit_stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                implicit_results.len(),
-                explicit_results.len(),
+                implicitresults.len(),
+                explicitresults.len(),
                 "RFC 9535: Implicit and explicit associativity should match: {} ({})",
                 implicit_assoc, _description
             );
             
             // Validate against expected count to ensure correct associativity evaluation
             assert_eq!(
-                implicit_results.len(),
+                implicitresults.len(),
                 expected_count,
                 "RFC 9535: Operator associativity should yield expected result count: {} ({})",
                 implicit_assoc, _description
             );
             
             println!("✓ Associativity test: {} -> {} results (expected: {}) ({})", 
-                implicit_assoc, implicit_results.len(), expected_count, _description);
+                implicit_assoc, implicitresults.len(), expected_count, _description);
         }
     }
 
@@ -313,13 +313,13 @@ mod logical_precedence_tests {
             let mut natural_stream = JsonArrayStream::<serde_json::Value>::new(natural);
 
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let paren_results: Vec<_> = paren_stream.process_chunk(chunk.clone()).collect();
-            let natural_results: Vec<_> = natural_stream.process_chunk(chunk).collect();
+            let parenresults: Vec<_> = paren_stream.process_chunk(chunk.clone()).collect();
+            let naturalresults: Vec<_> = natural_stream.process_chunk(chunk).collect();
 
             // These should generally produce different results due to precedence changes
             println!("Parentheses test: '{}' -> {} results vs '{}' -> {} results ({})",
-                parenthesized, paren_results.len(),
-                natural, natural_results.len(),
+                parenthesized, parenresults.len(),
+                natural, naturalresults.len(),
                 _description);
                 
             // Both should compile successfully
@@ -347,10 +347,10 @@ mod logical_truth_table_tests {
         for (expr, expected_ids, _description) in and_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Extract IDs from results for comparison
-            let result_ids: Vec<i32> = _results.iter()
+            let result_ids: Vec<i32> = results.iter()
                 .map(|item| item["id"].as_i64().unwrap() as i32)
                 .collect();
 
@@ -378,9 +378,9 @@ mod logical_truth_table_tests {
         for (expr, expected_ids, _description) in or_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            let result_ids: Vec<i32> = _results.iter()
+            let result_ids: Vec<i32> = results.iter()
                 .map(|item| item["id"].as_i64().unwrap() as i32)
                 .collect();
 
@@ -410,9 +410,9 @@ mod logical_truth_table_tests {
         for (expr, expected_ids, _description) in not_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            let result_ids: Vec<i32> = _results.iter()
+            let result_ids: Vec<i32> = results.iter()
                 .map(|item| item["id"].as_i64().unwrap() as i32)
                 .collect();
 
@@ -459,18 +459,18 @@ mod logical_truth_table_tests {
             let mut right_stream = JsonArrayStream::<serde_json::Value>::new(de_morgan_right);
 
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let left_results: Vec<_> = left_stream.process_chunk(chunk.clone()).collect();
-            let right_results: Vec<_> = right_stream.process_chunk(chunk).collect();
+            let leftresults: Vec<_> = left_stream.process_chunk(chunk.clone()).collect();
+            let rightresults: Vec<_> = right_stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                left_results.len(),
-                right_results.len(),
+                leftresults.len(),
+                rightresults.len(),
                 "RFC 9535: De Morgan's law should produce equal results: {} ({})",
                 de_morgan_left, _description
             );
             
             println!("✓ De Morgan's law: {} = {} -> {} results ({})",
-                de_morgan_left, de_morgan_right, left_results.len(), _description);
+                de_morgan_left, de_morgan_right, leftresults.len(), _description);
         }
     }
 }
@@ -525,9 +525,9 @@ mod complex_logical_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            println!("✓ Complex logic: {} -> {} results ({})", expr, _results.len(), _description);
+            println!("✓ Complex logic: {} -> {} results ({})", expr, results.len(), _description);
         }
     }
 
@@ -552,9 +552,9 @@ mod complex_logical_tests {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(LOGIC_TEST_JSON);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     println!("Short-circuit test passed: {} -> {} results ({})", 
-                        expr, _results.len(), _description);
+                        expr, results.len(), _description);
                 }
                 Err(_) => {
                     println!("Short-circuit test failed compilation: {} ({})", expr, _description);

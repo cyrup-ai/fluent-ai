@@ -139,18 +139,18 @@ mod json_pointer_compatibility_tests {
             // Convert JSON Pointer concept to JSONPath (manual for testing)
             let mut jsonpath_stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-            let jsonpath_results: Vec<_> = jsonpath_stream.process_chunk(chunk).collect();
+            let jsonpathresults: Vec<_> = jsonpath_stream.process_chunk(chunk).collect();
 
             // Verify JSONPath expression compiles and executes
-            let compile_result = JsonPathParser::compile(jsonpath_expr);
+            let compileresult = JsonPathParser::compile(jsonpath_expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "RFC 9535: JSONPath equivalent should compile: {} -> {} ({})",
                 json_pointer_like, jsonpath_expr, _description
             );
 
             println!("✓ Compatibility: '{}' ≈ '{}' -> {} results ({})",
-                json_pointer_like, jsonpath_expr, jsonpath_results.len(), _description);
+                json_pointer_like, jsonpath_expr, jsonpathresults.len(), _description);
         }
     }
 
@@ -169,26 +169,26 @@ mod json_pointer_compatibility_tests {
         ];
 
         for (json_pointer_like, jsonpath_expr, _description) in array_equivalence_tests {
-            let compile_result = JsonPathParser::compile(jsonpath_expr);
+            let compileresult = JsonPathParser::compile(jsonpath_expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "RFC 9535: Array access should compile: {} -> {} ({})",
                 json_pointer_like, jsonpath_expr, _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Should return exactly one result for specific index access
             assert!(
-                _results.len() <= 1,
+                results.len() <= 1,
                 "RFC 9535: Specific array index should return 0 or 1 result: {} ({})",
                 jsonpath_expr, _description
             );
 
             println!("✓ Array compatibility: '{}' ≈ '{}' -> {} results ({})",
-                json_pointer_like, jsonpath_expr, _results.len(), _description);
+                json_pointer_like, jsonpath_expr, results.len(), _description);
         }
     }
 
@@ -222,19 +222,19 @@ mod json_pointer_compatibility_tests {
         ];
 
         for (jsonpath_expr, _description) in jsonpath_only_features {
-            let compile_result = JsonPathParser::compile(jsonpath_expr);
+            let compileresult = JsonPathParser::compile(jsonpath_expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "RFC 9535: JSONPath-only feature should compile: {} ({})",
                 jsonpath_expr, _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!("✓ JSONPath-only: '{}' -> {} results ({}) - No JSON Pointer equivalent",
-                jsonpath_expr, _results.len(), _description);
+                jsonpath_expr, results.len(), _description);
         }
     }
 
@@ -256,9 +256,9 @@ mod json_pointer_compatibility_tests {
         ];
 
         for (jsonpath_expr, _description) in escaping_tests {
-            let compile_result = JsonPathParser::compile(jsonpath_expr);
+            let compileresult = JsonPathParser::compile(jsonpath_expr);
             // Some may be valid, some may not - test compilation
-            match compile_result {
+            match compileresult {
                 Ok(_) => {
                     println!("✓ Escaping test: '{}' compiled successfully ({})", jsonpath_expr, _description);
                 }
@@ -283,17 +283,17 @@ mod json_pointer_compatibility_tests {
 
         for (original_jsonpath, json_pointer_like, converted_jsonpath, _description) in round_trip_tests {
             // Test original JSONPath
-            let original_result = JsonPathParser::compile(original_jsonpath);
+            let originalresult = JsonPathParser::compile(original_jsonpath);
             assert!(
-                original_result.is_ok(),
+                originalresult.is_ok(),
                 "Original JSONPath should compile: {} ({})",
                 original_jsonpath, _description
             );
 
             // Test converted JSONPath (should be equivalent)
-            let converted_result = JsonPathParser::compile(converted_jsonpath);
+            let convertedresult = JsonPathParser::compile(converted_jsonpath);
             assert!(
-                converted_result.is_ok(),
+                convertedresult.is_ok(),
                 "Converted JSONPath should compile: {} ({})",
                 converted_jsonpath, _description
             );
@@ -303,19 +303,19 @@ mod json_pointer_compatibility_tests {
             let mut converted_stream = JsonArrayStream::<serde_json::Value>::new(converted_jsonpath);
             
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-            let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-            let converted_results: Vec<_> = converted_stream.process_chunk(chunk).collect();
+            let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+            let convertedresults: Vec<_> = converted_stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                original_results.len(),
-                converted_results.len(),
+                originalresults.len(),
+                convertedresults.len(),
                 "RFC 9535: Round-trip conversion should preserve results: {} -> {} -> {} ({})",
                 original_jsonpath, json_pointer_like, converted_jsonpath, _description
             );
 
             println!("✓ Round-trip: '{}' -> '{}' -> '{}' ({} results) ({})",
                 original_jsonpath, json_pointer_like, converted_jsonpath, 
-                original_results.len(), _description);
+                originalresults.len(), _description);
         }
     }
 }
@@ -343,19 +343,19 @@ mod feature_matrix_tests {
         ];
 
         for (jsonpath_expr, _description) in expressible_patterns {
-            let compile_result = JsonPathParser::compile(jsonpath_expr);
+            let compileresult = JsonPathParser::compile(jsonpath_expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "RFC 9535: JSON Pointer expressible pattern should work: {} ({})",
                 jsonpath_expr, _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!("✓ JSON Pointer expressible: '{}' -> {} results ({})",
-                jsonpath_expr, _results.len(), _description);
+                jsonpath_expr, results.len(), _description);
         }
     }
 
@@ -389,16 +389,16 @@ mod feature_matrix_tests {
         ];
 
         for (jsonpath_expr, _description) in inexpressible_patterns {
-            let compile_result = JsonPathParser::compile(jsonpath_expr);
+            let compileresult = JsonPathParser::compile(jsonpath_expr);
             // Most should compile (JSONPath is more expressive)
-            match compile_result {
+            match compileresult {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
                     let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     println!("✓ JSON Pointer inexpressible: '{}' -> {} results ({}) - JSONPath advantage",
-                        jsonpath_expr, _results.len(), _description);
+                        jsonpath_expr, results.len(), _description);
                 }
                 Err(_) => {
                     println!("✗ JSONPath compilation failed: '{}' ({})", jsonpath_expr, _description);
@@ -464,15 +464,15 @@ mod interoperability_edge_cases {
         ];
 
         for (expr, _description) in empty_path_tests {
-            let compile_result = JsonPathParser::compile(expr);
-            match compile_result {
+            let compileresult = JsonPathParser::compile(expr);
+            match compileresult {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     println!("✓ Empty path test: '{}' -> {} results ({})",
-                        expr, _results.len(), _description);
+                        expr, results.len(), _description);
                 }
                 Err(e) => {
                     println!("✗ Empty path test failed: '{}' - {:?} ({})", expr, e, _description);
@@ -508,15 +508,15 @@ mod interoperability_edge_cases {
         ];
 
         for (expr, _description) in special_char_tests {
-            let compile_result = JsonPathParser::compile(expr);
-            match compile_result {
+            let compileresult = JsonPathParser::compile(expr);
+            match compileresult {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(special_char_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     println!("✓ Special char: '{}' -> {} results ({})",
-                        expr, _results.len(), _description);
+                        expr, results.len(), _description);
                 }
                 Err(_) => {
                     println!("✗ Special char compilation failed: '{}' ({})", expr, _description);
@@ -547,15 +547,15 @@ mod interoperability_edge_cases {
         ];
 
         for (expr, _description) in unicode_tests {
-            let compile_result = JsonPathParser::compile(expr);
-            match compile_result {
+            let compileresult = JsonPathParser::compile(expr);
+            match compileresult {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(unicode_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     println!("✓ Unicode: '{}' -> {} results ({})",
-                        expr, _results.len(), _description);
+                        expr, results.len(), _description);
                 }
                 Err(_) => {
                     println!("✗ Unicode compilation failed: '{}' ({})", expr, _description);

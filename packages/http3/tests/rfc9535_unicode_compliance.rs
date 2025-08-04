@@ -40,10 +40,10 @@ mod unicode_escape_sequence_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Escape sequence test '{}' should return {} results",
                 expr,
@@ -74,10 +74,10 @@ mod unicode_escape_sequence_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Unicode escape test '{}' should return {} results",
                 expr,
@@ -129,10 +129,10 @@ mod unicode_character_handling_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Unicode character length test '{}' should return {} results",
                 expr,
@@ -164,10 +164,10 @@ mod unicode_character_handling_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Emoji handling test '{}' should return {} results",
                 expr,
@@ -194,10 +194,10 @@ mod unicode_character_handling_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Surrogate pair test '{}' should return {} results",
                 expr,
@@ -219,10 +219,10 @@ mod unicode_character_handling_tests {
             // These should either parse correctly (replacement chars) or fail gracefully
             let mut stream = JsonArrayStream::<serde_json::Value>::new("$.text");
             let chunk = Bytes::from(_json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Should not panic - either successful parsing with replacement chars or controlled error
-            println!("Invalid surrogate handling result count: {}", _results.len());
+            println!("Invalid surrogate handling result count: {}", results.len());
         }
     }
 }
@@ -281,10 +281,10 @@ mod string_literal_quoting_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Quote escaping test '{}' should return {} results",
                 expr,
@@ -312,15 +312,15 @@ mod case_sensitivity_tests {
         for (expr, expected_value) in test_cases {
             let mut stream = JsonArrayStream::<String>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "Expression '{}' should find exactly one result",
                 expr
             );
-            let result = &_results[0];
+            let result = &results[0];
             assert_eq!(
                 result, expected_value,
                 "Property '{}' should return '{}'",
@@ -348,10 +348,10 @@ mod case_sensitivity_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Case sensitivity test '{}' should return {} results",
                 expr,
@@ -378,10 +378,10 @@ mod case_sensitivity_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Unicode case sensitivity test '{}' should return {} results",
                 expr,
@@ -414,10 +414,10 @@ mod string_normalization_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Unicode normalization test '{}' should return {} results",
                 expr,
@@ -444,10 +444,10 @@ mod string_normalization_tests {
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Zero-width character test '{}' should return {} results",
                 expr,

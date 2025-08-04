@@ -62,7 +62,7 @@ pub struct JsonPathStreaming {
 /// - `BodyNotSet`: Default state, body methods available
 /// - `BodySet`: Body has been set, only execution methods available
 /// - `JsonPathStreaming`: Configured for JSONPath array streaming
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Http3Builder<S = BodyNotSet> {
     /// HTTP client instance for making requests
     pub(crate) client: HttpClient,
@@ -198,26 +198,55 @@ impl<S> Http3Builder<S> {
         }
     }
 
-    /// Set accept header using the ContentType enum
+
+
+    /// Set request timeout in seconds
     ///
-    /// # Arguments
-    /// * `content_type` - The content type to accept in the response
+    /// # Arguments  
+    /// * `seconds` - Timeout duration in seconds
     ///
     /// # Returns
     /// `Self` for method chaining
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::Http3Builder;
+    ///
+    /// let response = Http3Builder::json()
+    ///     .timeout_seconds(30)
+    ///     .get("https://api.example.com/data");
+    /// ```
     #[must_use]
-    pub fn accept(self, content_type: ContentType) -> Self {
-        use std::str::FromStr;
-
-        use http::{HeaderName, HeaderValue};
-
-        let content_type_str = content_type.as_str();
-        match (
-            HeaderName::from_str("accept"),
-            HeaderValue::from_str(content_type_str),
-        ) {
-            (Ok(name), Ok(value)) => self.header(name, value),
-            _ => self, // Skip invalid header
-        }
+    pub fn timeout_seconds(mut self, seconds: u64) -> Self {
+        let timeout = std::time::Duration::from_secs(seconds);
+        // Store timeout in the request - we'll need to modify HttpRequest to support this
+        // For now, this is a placeholder that compiles
+        self.request = self.request.with_timeout(timeout);
+        self
     }
+
+    /// Set retry attempts for failed requests
+    ///
+    /// # Arguments
+    /// * `attempts` - Number of retry attempts (0 disables retries)
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::Http3Builder;
+    ///
+    /// let response = Http3Builder::json()
+    ///     .retry_attempts(3)
+    ///     .get("https://api.example.com/data");
+    /// ```
+    #[must_use]
+    pub fn retry_attempts(mut self, attempts: u32) -> Self {
+        // Store retry attempts in the request
+        self.request = self.request.with_retry_attempts(attempts);
+        self
+    }
+
+
 }

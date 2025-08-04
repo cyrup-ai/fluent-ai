@@ -21,7 +21,7 @@ mod error_tests {
     }
 
     #[test]
-    fn test_error_result_extension_methods() {
+    fn test_errorresult_extension_methods() {
         let result: JsonPathResult<String> = Err(JsonPathError::StreamError {
             message: "test error".to_string(),
             state: "initial".to_string(),
@@ -33,12 +33,12 @@ mod error_tests {
         assert_eq!(default_value, "fallback");
 
         // Test handle_or_log method
-        let error_result: JsonPathResult<i32> = Err(JsonPathError::InvalidExpression {
+        let errorresult: JsonPathResult<i32> = Err(JsonPathError::InvalidExpression {
             expression: "$.invalid".to_string(),
             reason: "test".to_string(),
             position: None,
         });
-        let logged_value = error_result.handle_or_log("test context", 42);
+        let logged_value = errorresult.handle_or_log("test context", 42);
         assert_eq!(logged_value, 42);
     }
 

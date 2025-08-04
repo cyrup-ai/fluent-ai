@@ -64,7 +64,15 @@ impl ExpressionParser {
                     // Skip whitespace
                 }
                 '$' => self.tokens.push_back(Token::Root),
-                '.' => self.tokens.push_back(Token::Dot),
+                '.' => {
+                    // Check for double dot (..)
+                    if i + 1 < chars.len() && chars[i + 1] == '.' {
+                        self.tokens.push_back(Token::DoubleDot);
+                        i += 1; // Skip the second dot
+                    } else {
+                        self.tokens.push_back(Token::Dot);
+                    }
+                }
                 '[' => self.tokens.push_back(Token::LeftBracket),
                 ']' => self.tokens.push_back(Token::RightBracket),
                 '(' => self.tokens.push_back(Token::LeftParen),

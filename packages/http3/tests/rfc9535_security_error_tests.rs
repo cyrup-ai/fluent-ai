@@ -70,7 +70,7 @@ mod parser_vulnerability_tests {
             
             // Should not crash or panic, even with malformed input
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should complete quickly and not hang
@@ -82,7 +82,7 @@ mod parser_vulnerability_tests {
             
             // Results should be empty or error, but not crash
             println!("Malformed JSON test '{}': {} results in {}ms", 
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 
@@ -111,7 +111,7 @@ mod parser_vulnerability_tests {
             let chunk = Bytes::from(malformed_json.clone());
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should not hang or crash with deep malformed nesting
@@ -122,7 +122,7 @@ mod parser_vulnerability_tests {
             );
             
             println!("Deep malformed test {}: {} results in {}ms", 
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 
@@ -167,7 +167,7 @@ mod parser_vulnerability_tests {
                 let chunk = Bytes::from(r#"{"store":{"book":[{"title":"test","price":10,"author":"test"}]}}"#);
                 
                 let exec_start = Instant::now();
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 let exec_elapsed = exec_start.elapsed();
                 
                 assert!(
@@ -177,7 +177,7 @@ mod parser_vulnerability_tests {
                 );
                 
                 println!("Injection test '{}': compiled and executed {} results in {}ms",
-                    _description, _results.len(), exec_elapsed.as_millis());
+                    _description, results.len(), exec_elapsed.as_millis());
             } else {
                 println!("Injection test '{}': rejected at compile time", _description);
             }
@@ -225,7 +225,7 @@ mod parser_vulnerability_tests {
                 let chunk = Bytes::from(r#"{"store":{"book":[{"title":"test","price":10,"author":"test"}]}}"#);
                 
                 let exec_start = Instant::now();
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 let exec_elapsed = exec_start.elapsed();
                 
                 assert!(
@@ -235,7 +235,7 @@ mod parser_vulnerability_tests {
                 );
                 
                 println!("Resource test '{}': {} results in {}ms", 
-                    _description, _results.len(), exec_elapsed.as_millis());
+                    _description, results.len(), exec_elapsed.as_millis());
             }
         }
     }
@@ -272,7 +272,7 @@ mod utf8_decode_error_tests {
             let chunk = Bytes::from(json_bytes);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle invalid UTF-8 gracefully without crashing
@@ -283,7 +283,7 @@ mod utf8_decode_error_tests {
             );
             
             println!("Invalid UTF-8 test '{}': {} results in {}ms",
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 
@@ -317,7 +317,7 @@ mod utf8_decode_error_tests {
             let chunk = Bytes::from(_json_data);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle UTF-8 boundary cases correctly
@@ -328,7 +328,7 @@ mod utf8_decode_error_tests {
             );
             
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "UTF-8 boundary test should find the value: {} ({})",
                 _description, _json_data
@@ -362,7 +362,7 @@ mod utf8_decode_error_tests {
             let chunk = Bytes::from(_json_data);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle normalization consistently
@@ -373,7 +373,7 @@ mod utf8_decode_error_tests {
             );
             
             println!("UTF-8 normalization test '{}': {} results in {}ms",
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 }
@@ -410,7 +410,7 @@ mod memory_exhaustion_tests {
             let chunk = Bytes::from(json);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should not consume excessive memory or time
@@ -421,7 +421,7 @@ mod memory_exhaustion_tests {
             );
             
             println!("Deep nesting memory test {}: {} results in {}ms", 
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 
@@ -448,7 +448,7 @@ mod memory_exhaustion_tests {
             let chunk = Bytes::from(json);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle wide structures efficiently
@@ -458,12 +458,12 @@ mod memory_exhaustion_tests {
                 _description, width, elapsed.as_millis()
             );
             
-            let expected_results = width * 2; // property names + values
+            let expectedresults = width * 2; // property names + values
             assert_eq!(
-                _results.len(),
-                expected_results,
+                results.len(),
+                expectedresults,
                 "Wide structure should find all {} properties: {} ({})",
-                expected_results, _description, _results.len()
+                expectedresults, _description, results.len()
             );
         }
     }
@@ -487,7 +487,7 @@ mod memory_exhaustion_tests {
             let chunk = Bytes::from(json);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle large strings without memory issues
@@ -498,10 +498,10 @@ mod memory_exhaustion_tests {
             );
             
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "Large string test should find the value: {} ({})",
-                _description, _results.len()
+                _description, results.len()
             );
         }
     }
@@ -531,7 +531,7 @@ mod memory_exhaustion_tests {
             let chunk = Bytes::from(json);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle complex recursion with memory protection
@@ -542,7 +542,7 @@ mod memory_exhaustion_tests {
             );
             
             println!("Complex recursive memory test '{}': {} results in {}ms",
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 }

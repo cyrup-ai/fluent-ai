@@ -199,3 +199,39 @@ This is a new section for planning fixes to the candle package, clearly demarcat
 - Update dependencies in candle package to latest versions using cargo search, following CARGO HAKARI rules. STATUS: PLANNED
 - Add tests for candle_agent_role_builder example to verify standalone functionality after fixes, including stream collection and basic inference simulation. STATUS: PLANNED
 - Run cargo check on the candle package after changes to confirm compilation. STATUS: PLANNED
+
+---
+
+## 🔥 CRITICAL FIX: basic_builder_flow Test Failure - BadChunk Implementation
+
+### STATUS: APPROVED FOR IMMEDIATE EXECUTION
+
+**PROBLEM**: The `basic_builder_flow` test fails with "assertion failed: body.is_object()" because `collect_internal()` returns `serde_json::Value::Null` instead of the actual HTTP response from httpbin.org.
+
+**ROOT CAUSE**: In `/Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/execution.rs` lines ~329-347, the `collect_internal()` method violates streams-first architecture by using `T::default()` fallbacks instead of proper BadChunk error handling.
+
+### Core Implementation Tasks
+
+- **Fix empty response handling in collect_internal()**: In `/Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/execution.rs` line ~334, replace `T::default()` return with `BadChunk::Error(HttpError::Generic("Empty response body".to_string()))`. The current code silently returns `Value::Null` for empty responses, violating streams-first architecture. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. STATUS: PLANNED
+
+- **Act as an Objective QA Rust developer**: Rate the work performed on empty response handling. Verify that BadChunk::Error is properly created instead of T::default(), that the error message is descriptive, and that the streams-first architecture is maintained. Confirm no unwrap() or expect() calls were added to src/* files. STATUS: PLANNED
+
+- **Fix deserialization failure handling in collect_internal()**: In `/Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/execution.rs` line ~346, replace `T::default()` return with `BadChunk::ProcessingFailed { error: HttpError::Generic(format!("JSON deserialization failed: {}", e)), context: "collect_internal deserialization".to_string() }`. Current code masks deserialization errors with `Value::Null`. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. STATUS: PLANNED
+
+- **Act as an Objective QA Rust developer**: Rate the work performed on deserialization failure handling. Verify that BadChunk::ProcessingFailed is properly created with the original error and context, that the error information is preserved, and that no unwrap() or expect() calls were added to src/* files. STATUS: PLANNED
+
+- **Implement BadChunk to T conversion in collect_internal()**: Ensure the BadChunk instances can be properly converted to type T through the existing `From<BadChunk> for HttpChunk` implementation in `/Volumes/samsung_t9/fluent-ai/packages/http3/src/stream.rs`. Verify the conversion chain: BadChunk → HttpChunk → T works for the collect_internal return type. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. STATUS: PLANNED
+
+- **Act as an Objective QA Rust developer**: Rate the BadChunk to T conversion implementation. Verify that the conversion chain works properly, that type safety is maintained, and that the architecture supports the conversion without runtime panics or unwrap() calls. STATUS: PLANNED
+
+### Architecture Compliance Tasks
+
+- **Verify streams-first architecture compliance**: Ensure all changes maintain the "NO FUTURES, pure unwrapped Stream" architecture described in the codebase. BadChunk usage should align with the existing error handling patterns in `/Volumes/samsung_t9/fluent-ai/packages/http3/src/stream.rs`. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. STATUS: PLANNED
+
+- **Act as an Objective QA Rust developer**: Rate the streams-first architecture compliance. Verify that no Futures were introduced, that the pure Stream pattern is maintained, and that BadChunk usage follows existing patterns in the codebase. STATUS: PLANNED
+
+### Test Validation Tasks
+
+- **Run basic_builder_flow test to verify fix**: Execute `cargo nextest run basic_builder_flow` to confirm the test now passes. The test should receive a proper JSON object from httpbin.org instead of `Value::Null`, making `body.is_object()` return true. DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. STATUS: PLANNED
+
+- **Act as an Objective QA Rust developer**: Rate the test validation results. Verify that basic_builder_flow test passes, that the response is a proper JSON object, that all assertions in the test succeed, and that no regressions were introduced to other tests. STATUS: PLANNED

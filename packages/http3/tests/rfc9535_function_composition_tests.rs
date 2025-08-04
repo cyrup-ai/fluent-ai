@@ -256,19 +256,19 @@ mod function_composition_tests {
             ("$.library.books[?length(@.title) + count(@.tags) > 15]", 2, "Combined length and count"),
         ];
 
-        for (expr, _expected_count, _description) in execution_tests {
+        for (expr, expected_count, _description) in execution_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(FUNCTION_TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: Function composition execution: {} ({}) should return {} results",
                 expr, _description, expected_count
             );
             
-            println!("✓ Execution test: {} -> {} results ({})", expr, _results.len(), _description);
+            println!("✓ Execution test: {} -> {} results ({})", expr, results.len(), _description);
         }
     }
 }

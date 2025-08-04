@@ -55,10 +55,10 @@ mod type_system_overview_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Value type test '{}' should return {} items",
                 expr,
@@ -96,10 +96,10 @@ mod type_system_overview_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         expected_count,
                         "Logical type test '{}' should return {} items",
                         expr,
@@ -139,10 +139,10 @@ mod type_system_overview_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Nodes type test '{}' should return {} items",
                 expr,
@@ -185,12 +185,12 @@ mod function_argument_types_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Length argument test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -253,10 +253,10 @@ mod function_argument_types_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Type comparison '{}' should return {} items",
                 expr,
@@ -290,10 +290,10 @@ mod function_argument_types_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Arithmetic comparison '{}' should return {} items",
                 expr,
@@ -331,10 +331,10 @@ mod type_conversion_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Conversion test '{}' should return {} items",
                 expr,
@@ -366,20 +366,20 @@ mod type_conversion_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Document behavior rather than asserting specific results
             // as error handling may vary between implementations
             println!(
                 "Logical type error test '{}' returned {} results",
                 expr,
-                _results.len()
+                results.len()
             );
         }
     }
 
     #[test]
-    fn test_function_result_type_validation() {
+    fn test_functionresult_type_validation() {
         // RFC 9535: Function result types must match expected types
         let json_data = r#"{
             "function_tests": [
@@ -403,12 +403,12 @@ mod type_conversion_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Function result type test '{}' returned {} results (expected {})",
                         expr,
-                        _results.len(),
+                        results.len(),
                         expected_count
                     );
                 }
@@ -533,12 +533,12 @@ mod nested_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Function composition '{}' returned {} results",
                         expr,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => println!("Function composition '{}' not supported", expr),
@@ -571,12 +571,12 @@ mod nested_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Complex nested expression '{}' returned {} results",
                         expr,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => println!("Complex nested expression '{}' not supported", expr),
@@ -608,12 +608,12 @@ mod nested_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Type error propagation '{}' returned {} results",
                         expr,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => println!("Type error propagation '{}' rejected", expr),
@@ -786,14 +786,14 @@ mod type_conversion_boundary_tests {
             ("$.boundary_cases[?@.type == \"string_zero\" && !@.value]", 0, "String '0' should be truthy"),
         ];
 
-        for (expr, _expected_count, _description) in boundary_tests {
+        for (expr, expected_count, _description) in boundary_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(boundary_test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 boundary condition: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 
@@ -802,7 +802,7 @@ mod type_conversion_boundary_tests {
         // RFC 9535 Section 2.4.2: NodesType to ValueType conversion edge cases
         let nodes_conversion_json = r#"{
             "conversions": [
-                {"empty_result": [], "type": "empty_nodelist"},
+                {"emptyresult": [], "type": "empty_nodelist"},
                 {"single_null": [null], "type": "single_null_node"},
                 {"single_false": [false], "type": "single_false_node"}, 
                 {"single_zero": [0], "type": "single_zero_node"},
@@ -818,8 +818,8 @@ mod type_conversion_boundary_tests {
 
         let nodes_boundary_tests = vec![
             // Empty nodelist conversions
-            ("$.conversions[?@.empty_result[*]]", 0, "Empty nodelist should produce no matches"),
-            ("$.conversions[?count(@.empty_result[*]) == 0]", 1, "Empty nodelist count should be 0"),
+            ("$.conversions[?@.emptyresult[*]]", 0, "Empty nodelist should produce no matches"),
+            ("$.conversions[?count(@.emptyresult[*]) == 0]", 1, "Empty nodelist count should be 0"),
             
             // Single node extractions (should succeed)
             ("$.conversions[?@.single_null[0] == null]", 1, "Single null node should extract null"),
@@ -842,14 +842,14 @@ mod type_conversion_boundary_tests {
             ("$.conversions[?@.deeply_nested[0][0][0] == null]", 1, "Deeply nested null should be accessible"),
         ];
 
-        for (expr, _expected_count, _description) in nodes_boundary_tests {
+        for (expr, expected_count, _description) in nodes_boundary_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(nodes_conversion_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 NodesType boundary: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 
@@ -903,17 +903,17 @@ mod type_conversion_boundary_tests {
             ("$.complex_cases[?length(@.function_inputs.empty_object) == 0]", 1, "Length of empty object should be 0"),
         ];
 
-        for (expr, _expected_count, _description) in complex_tests {
+        for (expr, expected_count, _description) in complex_tests {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(complex_conversion_json);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
                     
-                    assert_eq!(_results.len(), expected_count,
+                    assert_eq!(results.len(), expected_count,
                         "RFC 9535 complex conversion: {} - '{}' should return {} results, got {}",
-                        _description, expr, expected_count, _results.len());
+                        _description, expr, expected_count, results.len());
                 }
                 Err(_) => {
                     println!("RFC 9535 complex conversion test not supported: {} - '{}'", _description, expr);
@@ -955,18 +955,18 @@ mod type_conversion_boundary_tests {
             ("$.error_boundaries[?@.numeric_field == 0]", 1, "Zero numeric field should be identifiable"),
         ];
 
-        for (expr, _expected_count, _description) in error_boundary_tests {
+        for (expr, expected_count, _description) in error_boundary_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(error_boundary_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
             // Note: Results may vary based on implementation's error handling strategy
             println!("RFC 9535 error boundary: {} - '{}' returned {} results (expected {})",
-                _description, expr, _results.len(), expected_count);
+                _description, expr, results.len(), expected_count);
                 
             // Assert compilation succeeds (runtime behavior may vary)
-            let compile_result = JsonPathParser::compile(expr);
-            assert!(compile_result.is_ok(), 
+            let compileresult = JsonPathParser::compile(expr);
+            assert!(compileresult.is_ok(), 
                 "RFC 9535 error boundary test should compile: {} - '{}'", _description, expr);
         }
     }

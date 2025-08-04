@@ -133,9 +133,9 @@ where
         let mut results = Vec::new();
         
         // Wait for producer thread to potentially emit values
-        // Use a timeout to avoid infinite waiting
+        // Use a timeout to avoid infinite waiting - increased to 10 seconds for HTTP requests
         let start = std::time::Instant::now();
-        let timeout = std::time::Duration::from_millis(100);
+        let timeout = std::time::Duration::from_millis(10000);
         
         loop {
             if let Some(item) = self.try_next() {
@@ -146,7 +146,7 @@ where
             
             // If we haven't seen any items yet and haven't timed out, keep waiting
             if results.is_empty() && start.elapsed() < timeout {
-                std::thread::sleep(std::time::Duration::from_millis(1));
+                std::thread::sleep(std::time::Duration::from_millis(10));
                 continue;
             }
             
@@ -154,7 +154,7 @@ where
             if !results.is_empty() {
                 let mut empty_count = 0;
                 for _ in 0..10 {
-                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    std::thread::sleep(std::time::Duration::from_millis(5));
                     if let Some(item) = self.try_next() {
                         results.push(item);
                         empty_count = 0;
@@ -256,6 +256,7 @@ impl<T, const CAP: usize> Clone for AsyncStreamSender<T, CAP> {
 }
 
 /// Iterator implementation for AsyncStream to support test patterns
+/// This automatically provides IntoIterator via the standard library's blanket implementation
 impl<T, const CAP: usize> Iterator for AsyncStream<T, CAP>
 where
     T: Send + 'static,

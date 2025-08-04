@@ -13,6 +13,7 @@ use axum::{
     routing::{get, post, put},
 };
 
+use cyrup_sugars::prelude::*;
 use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpStreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -27,6 +28,15 @@ struct SerdeRequestType {
 struct SerdeResponseType {
     result: String,
     count: u32,
+}
+
+impl From<fluent_ai_http3::BadChunk> for SerdeResponseType {
+    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+        SerdeResponseType {
+            result: "error".to_string(),
+            count: 0,
+        }
+    }
 }
 
 // JSON request/response types
@@ -47,6 +57,18 @@ struct JsonResponse {
     settings: std::collections::HashMap<String, i32>,
 }
 
+impl From<fluent_ai_http3::BadChunk> for JsonResponse {
+    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+        JsonResponse {
+            success: false,
+            user_id: 0,
+            created_at: String::new(),
+            roles: Vec::new(),
+            settings: std::collections::HashMap::new(),
+        }
+    }
+}
+
 // Form request/response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct FormRequest {
@@ -65,6 +87,18 @@ struct FormResponse {
     discount_applied: bool,
 }
 
+impl From<fluent_ai_http3::BadChunk> for FormResponse {
+    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+        FormResponse {
+            order_id: String::new(),
+            total_cost: 0.0,
+            estimated_delivery: String::new(),
+            items: Vec::new(),
+            discount_applied: false,
+        }
+    }
+}
+
 // Binary/Text request/response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct BinaryRequest {
@@ -80,6 +114,17 @@ struct BinaryResponse {
     status: String,
     bytes_processed: u64,
     validation_result: bool,
+}
+
+impl From<fluent_ai_http3::BadChunk> for BinaryResponse {
+    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+        BinaryResponse {
+            upload_id: String::new(),
+            status: "error".to_string(),
+            bytes_processed: 0,
+            validation_result: false,
+        }
+    }
 }
 
 // Handler for test server that logs received payload and headers
@@ -308,7 +353,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // collect to Serde mapped type
     let response_data = Http3::json()
-        .accept(ContentType::ApplicationJson)
+        .accept_content_type(ContentType::ApplicationJson)
         .headers([("x-api-key", "abc123")])
         .body(&request)
         .post(&server_url)
@@ -335,8 +380,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
-        .on_chunk(|chunk_result| match chunk_result {
-            Ok(chunk) => chunk,
+        .on_chunk(|chunk| {
+            Ok => chunk.into(),
             Err(e) => BadChunk::from_err(e).into(),
         })
         .collect_one_or_else(|e| {

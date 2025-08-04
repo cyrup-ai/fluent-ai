@@ -67,22 +67,22 @@ mod canonical_bracket_notation_tests {
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket);
 
             let chunk = Bytes::from(json_data);
-            let shorthand_results: Vec<_> = shorthand_stream.process_chunk(chunk.clone()).collect();
-            let bracket_results: Vec<_> = bracket_stream.process_chunk(chunk).collect();
+            let shorthandresults: Vec<_> = shorthand_stream.process_chunk(chunk.clone()).collect();
+            let bracketresults: Vec<_> = bracket_stream.process_chunk(chunk).collect();
 
             println!(
                 "Equivalence test: '{}' ≡ '{}' -> {} vs {} results ({})",
                 shorthand,
                 bracket,
-                shorthand_results.len(),
-                bracket_results.len(),
+                shorthandresults.len(),
+                bracketresults.len(),
                 _description
             );
 
             // Both forms should produce the same number of results
             assert_eq!(
-                shorthand_results.len(),
-                bracket_results.len(),
+                shorthandresults.len(),
+                bracketresults.len(),
                 "Shorthand '{}' and bracket '{}' should produce same results",
                 shorthand,
                 bracket
@@ -118,16 +118,16 @@ mod canonical_bracket_notation_tests {
             let mut normalized_stream = JsonArrayStream::<serde_json::Value>::new(normalized);
 
             let chunk = Bytes::from(json_data);
-            let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-            let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+            let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+            let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
             println!(
                 "Wildcard normalization: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
                 _description,
-                original_results.len(),
-                normalized_results.len()
+                originalresults.len(),
+                normalizedresults.len()
             );
         }
     }
@@ -165,16 +165,16 @@ mod canonical_bracket_notation_tests {
             let mut normalized_stream = JsonArrayStream::<String>::new(normalized);
 
             let chunk = Bytes::from(json_data);
-            let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-            let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+            let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+            let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
             println!(
                 "Descendant normalization: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
                 _description,
-                original_results.len(),
-                normalized_results.len()
+                originalresults.len(),
+                normalizedresults.len()
             );
         }
     }
@@ -224,16 +224,16 @@ mod single_quote_delimiter_tests {
             let mut single_stream = JsonArrayStream::<String>::new(single_quoted);
 
             let chunk = Bytes::from(json_data);
-            let double_results: Vec<_> = double_stream.process_chunk(chunk.clone()).collect();
-            let single_results: Vec<_> = single_stream.process_chunk(chunk).collect();
+            let doubleresults: Vec<_> = double_stream.process_chunk(chunk.clone()).collect();
+            let singleresults: Vec<_> = single_stream.process_chunk(chunk).collect();
 
             println!(
                 "Quote normalization: '{}' -> '{}' ({}) -> {} vs {} results",
                 double_quoted,
                 single_quoted,
                 _description,
-                double_results.len(),
-                single_results.len()
+                doubleresults.len(),
+                singleresults.len()
             );
         }
     }
@@ -277,10 +277,10 @@ mod single_quote_delimiter_tests {
                 original, normalized, _description
             );
 
-            let original_result = JsonPathParser::compile(original);
-            let normalized_result = JsonPathParser::compile(normalized);
+            let originalresult = JsonPathParser::compile(original);
+            let normalizedresult = JsonPathParser::compile(normalized);
 
-            match (original_result, normalized_result) {
+            match (originalresult, normalizedresult) {
                 (Ok(_), Ok(_)) => println!("  Both forms compiled successfully"),
                 (Ok(_), Err(_)) => println!("  Original compiled, normalized failed"),
                 (Err(_), Ok(_)) => println!("  Original failed, normalized compiled"),
@@ -321,16 +321,16 @@ mod single_quote_delimiter_tests {
             let mut normalized_stream = JsonArrayStream::<String>::new(normalized);
 
             let chunk = Bytes::from(json_data);
-            let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-            let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+            let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+            let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
             println!(
                 "Unicode key test: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
                 _description,
-                original_results.len(),
-                normalized_results.len()
+                originalresults.len(),
+                normalizedresults.len()
             );
         }
     }
@@ -378,10 +378,10 @@ mod character_escaping_tests {
                 original_path, normalized_path, _description
             );
 
-            let original_result = JsonPathParser::compile(&original_path);
-            let normalized_result = JsonPathParser::compile(&normalized_path);
+            let originalresult = JsonPathParser::compile(&original_path);
+            let normalizedresult = JsonPathParser::compile(&normalized_path);
 
-            match (original_result, normalized_result) {
+            match (originalresult, normalizedresult) {
                 (Ok(_), Ok(_)) => println!("  Both paths compiled successfully"),
                 (Ok(_), Err(_)) => println!("  Original compiled, normalized failed"),
                 (Err(_), Ok(_)) => println!("  Original failed, normalized compiled"),
@@ -438,10 +438,10 @@ mod character_escaping_tests {
                 path_with_escape, path_with_char, _description
             );
 
-            let escape_result = JsonPathParser::compile(&path_with_escape);
-            let char_result = JsonPathParser::compile(&path_with_char);
+            let escaperesult = JsonPathParser::compile(&path_with_escape);
+            let charresult = JsonPathParser::compile(&path_with_char);
 
-            match (escape_result, char_result) {
+            match (escaperesult, charresult) {
                 (Ok(_), Ok(_)) => println!("  Both forms compiled successfully"),
                 (Ok(_), Err(_)) => println!("  Escape compiled, character failed"),
                 (Err(_), Ok(_)) => println!("  Escape failed, character compiled"),
@@ -491,11 +491,11 @@ mod path_uniqueness_tests {
                 let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream
+                let results: Vec<_> = stream
                     .process_chunk(chunk)
                     .collect();
 
-                results_sets.push(_results);
+                results_sets.push(results);
                 println!(
                     "  '{}' -> {} results",
                     path,
@@ -504,12 +504,12 @@ mod path_uniqueness_tests {
             }
 
             // All equivalent paths should produce the same results
-            for (i, results) in _results_sets.iter().enumerate() {
-                for (j, other_results) in _results_sets.iter().enumerate() {
+            for (i, results) in results_sets.iter().enumerate() {
+                for (j, otherresults) in results_sets.iter().enumerate() {
                     if i != j {
                         assert_eq!(
-                            _results.len(),
-                            other_results.len(),
+                            results.len(),
+                            otherresults.len(),
                             "Equivalent paths should produce same number of results: {} vs {}",
                             path_group[i],
                             path_group[j]
@@ -557,10 +557,10 @@ mod path_uniqueness_tests {
                 original, canonical, _description
             );
 
-            let original_result = JsonPathParser::compile(original);
-            let canonical_result = JsonPathParser::compile(canonical);
+            let originalresult = JsonPathParser::compile(original);
+            let canonicalresult = JsonPathParser::compile(canonical);
 
-            match (original_result, canonical_result) {
+            match (originalresult, canonicalresult) {
                 (Ok(_), Ok(_)) => println!("  Both forms valid"),
                 (Ok(_), Err(_)) => println!("  Original valid, canonical invalid"),
                 (Err(_), Ok(_)) => println!("  Original invalid, canonical valid"),
@@ -595,11 +595,11 @@ mod path_uniqueness_tests {
                     let mut stream = JsonArrayStream::<i32>::new(path);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "  Compiled and executed successfully, {} results",
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(e) => println!("  Failed to compile: {:?}", e),
@@ -645,20 +645,20 @@ mod conversion_form_tests {
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket_notation);
 
             let chunk = Bytes::from(json_data);
-            let dot_results: Vec<_> = dot_stream.process_chunk(chunk.clone()).collect();
-            let bracket_results: Vec<_> = bracket_stream.process_chunk(chunk).collect();
+            let dotresults: Vec<_> = dot_stream.process_chunk(chunk.clone()).collect();
+            let bracketresults: Vec<_> = bracket_stream.process_chunk(chunk).collect();
 
             println!(
                 "Dot to bracket: '{}' ≡ '{}' -> {} vs {} results",
                 dot_notation,
                 bracket_notation,
-                dot_results.len(),
-                bracket_results.len()
+                dotresults.len(),
+                bracketresults.len()
             );
 
             assert_eq!(
-                dot_results.len(),
-                bracket_results.len(),
+                dotresults.len(),
+                bracketresults.len(),
                 "Dot and bracket notation should produce same results"
             );
         }
@@ -692,15 +692,15 @@ mod conversion_form_tests {
             let mut normalized_stream = JsonArrayStream::<String>::new(normalized);
 
             let chunk = Bytes::from(json_data);
-            let mixed_results: Vec<_> = mixed_stream.process_chunk(chunk.clone()).collect();
-            let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+            let mixedresults: Vec<_> = mixed_stream.process_chunk(chunk.clone()).collect();
+            let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
             println!(
                 "Mixed notation: '{}' -> '{}' -> {} vs {} results",
                 mixed,
                 normalized,
-                mixed_results.len(),
-                normalized_results.len()
+                mixedresults.len(),
+                normalizedresults.len()
             );
         }
     }
@@ -732,10 +732,10 @@ mod conversion_form_tests {
                 original_filter, normalized_filter
             );
 
-            let original_result = JsonPathParser::compile(original_filter);
-            let normalized_result = JsonPathParser::compile(normalized_filter);
+            let originalresult = JsonPathParser::compile(original_filter);
+            let normalizedresult = JsonPathParser::compile(normalized_filter);
 
-            match (original_result, normalized_result) {
+            match (originalresult, normalizedresult) {
                 (Ok(_), Ok(_)) => {
                     let mut original_stream =
                         JsonArrayStream::<serde_json::Value>::new(original_filter);
@@ -743,15 +743,15 @@ mod conversion_form_tests {
                         JsonArrayStream::<serde_json::Value>::new(normalized_filter);
 
                     let chunk = Bytes::from(json_data);
-                    let original_results: Vec<_> =
+                    let originalresults: Vec<_> =
                         original_stream.process_chunk(chunk.clone()).collect();
-                    let normalized_results: Vec<_> =
+                    let normalizedresults: Vec<_> =
                         normalized_stream.process_chunk(chunk).collect();
 
                     println!(
                         "  Both compiled, {} vs {} results",
-                        original_results.len(),
-                        normalized_results.len()
+                        originalresults.len(),
+                        normalizedresults.len()
                     );
                 }
                 (Ok(_), Err(_)) => println!("  Original compiled, normalized failed"),
@@ -789,18 +789,18 @@ mod complex_normalized_path_tests {
         let mut normalized_stream = JsonArrayStream::<String>::new(deep_path_normalized);
 
         let chunk = Bytes::from(json_data);
-        let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-        let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+        let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+        let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
         println!(
             "Deep nested normalization: {} vs {} results",
-            original_results.len(),
-            normalized_results.len()
+            originalresults.len(),
+            normalizedresults.len()
         );
 
         assert_eq!(
-            original_results.len(),
-            normalized_results.len(),
+            originalresults.len(),
+            normalizedresults.len(),
             "Deep nested paths should produce same results"
         );
     }
@@ -826,15 +826,15 @@ mod complex_normalized_path_tests {
             let mut normalized_stream = JsonArrayStream::<i32>::new(normalized);
 
             let chunk = Bytes::from(json_data);
-            let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-            let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk).collect();
+            let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+            let normalizedresults: Vec<_> = normalized_stream.process_chunk(chunk).collect();
 
             println!(
                 "Array slice normalization: '{}' -> '{}' -> {} vs {} results",
                 original,
                 normalized,
-                original_results.len(),
-                normalized_results.len()
+                originalresults.len(),
+                normalizedresults.len()
             );
         }
     }
@@ -867,17 +867,17 @@ mod complex_normalized_path_tests {
             let mut stream = JsonArrayStream::<String>::new(normalized_path);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Special character key: '{}' -> {} results ({})",
                 normalized_path,
-                _results.len(),
+                results.len(),
                 _description
             );
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 1,
                 "Special character key should be accessible: {}",
                 normalized_path

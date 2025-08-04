@@ -155,7 +155,7 @@ mod operator_precedence_tests {
             );
 
             // Verify same items are selected
-            for (item1, item2) in _results1.iter().zip(results2.iter()) {
+            for (item1, item2) in results1.iter().zip(results2.iter()) {
                 assert_eq!(
                     item1, item2,
                     "{}: Items should match between implicit and explicit precedence",
@@ -384,13 +384,13 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
                 
                 .collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_indices.len(),
                 "{}: Should match expected number of items",
                 _description
@@ -398,13 +398,13 @@ mod parentheses_grouping_tests {
 
             // Verify specific items are selected based on expected indices
             for (i, &expected_idx) in expected_indices.iter().enumerate() {
-                if i < _results.len() {
+                if i < results.len() {
                     match expected_idx {
-                        0 => assert_eq!(_results[i].a, 1, "First item should have a=1"),
-                        1 => assert_eq!(_results[i].a, 2, "Second item should have a=2"),
-                        2 => assert_eq!(_results[i].a, 3, "Third item should have a=3"),
-                        3 => assert_eq!(_results[i].a, 4, "Fourth item should have a=4"),
-                        4 => assert_eq!(_results[i].a, 5, "Fifth item should have a=5"),
+                        0 => assert_eq!(results[i].a, 1, "First item should have a=1"),
+                        1 => assert_eq!(results[i].a, 2, "Second item should have a=2"),
+                        2 => assert_eq!(results[i].a, 3, "Third item should have a=3"),
+                        3 => assert_eq!(results[i].a, 4, "Fourth item should have a=4"),
+                        4 => assert_eq!(results[i].a, 5, "Fifth item should have a=5"),
                         _ => {}
                     }
                 }
@@ -413,7 +413,7 @@ mod parentheses_grouping_tests {
             println!(
                 "{}: {} items matched with parentheses grouping",
                 _description,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -445,23 +445,23 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
                 
                 .collect();
 
             assert!(
-                _results.len() >= min_expected,
+                results.len() >= min_expected,
                 "{}: Should find at least {} matching items, found {}",
                 _description,
                 min_expected,
-                _results.len()
+                results.len()
             );
 
             println!(
                 "{}: {} items matched with nested parentheses",
                 _description,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -554,7 +554,7 @@ mod logical_precedence_tests {
             );
 
             // Verify same items are selected
-            for (item1, item2) in _results1.iter().zip(results2.iter()) {
+            for (item1, item2) in results1.iter().zip(results2.iter()) {
                 assert_eq!(
                     item1.a, item2.a,
                     "{}: Same items should be selected with consistent precedence",
@@ -647,13 +647,13 @@ mod logical_precedence_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Should not crash and should return valid results
             println!(
                 "{}: {} results (no crash demonstrates short-circuit)",
                 _description,
-                _results.len()
+                results.len()
             );
         }
     }
@@ -692,12 +692,12 @@ mod comparison_precedence_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (chained comparisons supported)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -732,12 +732,12 @@ mod comparison_precedence_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (mixed comparisons)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -775,12 +775,12 @@ mod comparison_precedence_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (parenthetical comparisons)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -820,12 +820,12 @@ mod complex_evaluation_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let _results: Vec<_> = stream
+            let results: Vec<_> = stream
                 .process_chunk(chunk)
                 
                 .collect();
 
-            println!("{}: {} items matched", _description, _results.len());
+            println!("{}: {} items matched", _description, results.len());
 
             // Verify results are logically consistent
             for item in &results {
@@ -865,12 +865,12 @@ mod complex_evaluation_tests {
                     let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "{}: {} results (function precedence)",
                         _description,
-                        _results.len()
+                        results.len()
                     );
                 }
                 Err(_) => {
@@ -918,9 +918,9 @@ mod filter_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.books[?@.available]");
 
         let chunk = Bytes::from(json_data);
-        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(_results.len(), 1, "Should select only available books");
+        assert_eq!(results.len(), 1, "Should select only available books");
     }
 
     #[test]
@@ -945,10 +945,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Filter '{}' should return {} items",
                 expr,
@@ -976,10 +976,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "String filter '{}' should return {} items",
                 expr,
@@ -1007,10 +1007,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Logical filter '{}' should return {} items",
                 expr,
@@ -1038,10 +1038,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Existence filter '{}' should return {} items",
                 expr,
@@ -1068,10 +1068,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Nested filter '{}' should return {} items",
                 expr,
@@ -1098,10 +1098,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Parenthesized filter '{}' should return {} items",
                 expr,
@@ -1125,10 +1125,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Array filter '{}' should return {} items",
                 expr,
@@ -1156,10 +1156,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Boolean filter '{}' should return {} items",
                 expr,
@@ -1187,10 +1187,10 @@ mod filter_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "Null filter '{}' should return {} items",
                 expr,
@@ -1285,10 +1285,10 @@ mod filter_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         expected_count,
                         "Length function '{}' should return {} items",
                         expr,
@@ -1324,10 +1324,10 @@ mod filter_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         expected_count,
                         "Match function '{}' should return {} items",
                         expr,
@@ -1363,10 +1363,10 @@ mod filter_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        _results.len(),
+                        results.len(),
                         expected_count,
                         "Search function '{}' should return {} items",
                         expr,

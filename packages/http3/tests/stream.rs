@@ -12,17 +12,13 @@ mod stream_tests {
     fn test_basic_stream_functionality() {
         // Test HTTP3 stream creation and configuration
         let client = global_client();
-        let stream = Http3Builder::new(&client).get("https://api.example.com/test");
+        let configured_builder = Http3Builder::new(&client)
+            .headers([("accept", "application/json"), ("user-agent", "HTTP3-Stream-Test")])
+            .timeout_seconds(10)
+            .retry_attempts(2);
         
-        // Test that the stream can be configured with headers and other options
-        let configured_stream = stream
-            .header("accept", "application/json")
-            .header("user-agent", "HTTP3-Stream-Test")
-            .timeout_seconds(10);
-        
-        // Verify the stream configuration is accepted without panic
-        // Since streams are consumed on execution, we test configuration acceptance
-        let _final_stream = configured_stream.retry_attempts(2);
+        // Test that the builder can create a stream
+        let _stream = configured_builder.get("https://api.example.com/test");
         
         // Test passes if stream configuration methods can be chained
         assert!(true, "HTTP3 stream should accept configuration chaining");

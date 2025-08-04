@@ -20,8 +20,7 @@ mod response_tests {
         
         // Test additional response handling options
         let _final_builder = configured_builder
-            .user_agent("HTTP3-Response-Test")
-            .headers([("cache-control", "no-cache")]);
+            .headers([("user-agent", "HTTP3-Response-Test"), ("cache-control", "no-cache")]);
         
         // Test passes if response-oriented configuration can be chained
         assert!(true, "HTTP3 builder should support response handling configuration");

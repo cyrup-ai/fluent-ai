@@ -7,8 +7,23 @@ use serde::de::DeserializeOwned;
 
 use super::iterator::JsonPathIterator;
 use crate::json_path::{
-    buffer::StreamBuffer, parser::JsonPathExpression, state_machine::StreamStateMachine,
+    buffer::StreamBuffer, parser::JsonPathExpression,
 };
+
+/// Current state of the JSON deserializer
+#[derive(Debug, Clone, PartialEq)]
+pub(super) enum DeserializerState {
+    /// Initial state - waiting for JSON to begin
+    Initial,
+    /// Navigating through JSON structure to find target location
+    Navigating,
+    /// Processing array elements at target location
+    ProcessingArray,
+    /// Processing individual JSON object
+    ProcessingObject,
+    /// Processing complete
+    Complete,
+}
 
 /// High-performance streaming JSON deserializer with JSONPath navigation
 ///
@@ -20,8 +35,8 @@ pub struct JsonPathDeserializer<'a, T> {
     pub(super) path_expression: &'a JsonPathExpression,
     /// Streaming buffer for efficient byte processing
     pub(super) buffer: &'a mut StreamBuffer,
-    /// State machine for tracking parsing progress
-    pub(super) state: &'a mut StreamStateMachine,
+    /// Current parsing state
+    pub(super) state: DeserializerState,
     /// Current parsing depth in JSON structure
     pub(super) current_depth: usize,
     /// Whether we've reached the target array location
@@ -52,6 +67,10 @@ pub struct JsonPathDeserializer<'a, T> {
     pub(super) array_index_stack: Vec<i64>,
     /// Current position in the buffer for consistent reading
     pub(super) buffer_position: usize,
+    /// Target property name for $.property[*] patterns
+    pub(super) target_property: Option<String>,
+    /// Whether we're currently inside the target property
+    pub(super) in_target_property: bool,
     /// Performance marker
     pub(super) _phantom: std::marker::PhantomData<T>,
 }
@@ -66,20 +85,33 @@ where
     ///
     /// * `path_expression` - Compiled JSONPath expression for navigation
     /// * `buffer` - Streaming buffer containing JSON bytes
-    /// * `state` - State machine for tracking parsing progress
     #[inline]
     pub fn new(
         path_expression: &'a JsonPathExpression,
         buffer: &'a mut StreamBuffer,
-        state: &'a mut StreamStateMachine,
     ) -> Self {
         let has_recursive_descent = path_expression.has_recursive_descent();
         let initial_capacity = if has_recursive_descent { 256 } else { 32 };
 
+        // Extract target property name for $.property[*] patterns
+        let target_property = {
+            let expr = path_expression.as_string();
+            if expr.starts_with("$.") && expr.ends_with("[*]") {
+                let property_part = &expr[2..expr.len()-3]; // Remove "$." and "[*]"
+                if !property_part.contains('.') && !property_part.contains('[') {
+                    Some(property_part.to_string())
+                } else {
+                    None // Complex nested paths not supported yet
+                }
+            } else {
+                None
+            }
+        };
+
         Self {
             path_expression,
             buffer,
-            state,
+            state: DeserializerState::Initial,
             current_depth: 0,
             in_target_array: false,
             object_nesting: 0,
@@ -91,6 +123,8 @@ where
             current_array_index: 0,
             array_index_stack: Vec::with_capacity(16), // Support up to 16 nested arrays
             buffer_position: 0,
+            target_property,
+            in_target_property: false,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -136,18 +170,13 @@ where
     /// Process single JSON byte and update parsing state
     #[inline]
     pub(super) fn process_json_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
-        match self.state.current_state() {
-            crate::json_path::state_machine::JsonStreamState::Initial => self.process_initial_byte(byte),
-            crate::json_path::state_machine::JsonStreamState::Navigating { .. } => self.process_navigating_byte(byte),
-            crate::json_path::state_machine::JsonStreamState::StreamingArray { .. } => self.process_array_byte(byte),
-            crate::json_path::state_machine::JsonStreamState::ProcessingObject { .. } => self.process_object_byte(byte),
-            crate::json_path::state_machine::JsonStreamState::Complete => Ok(super::processor::JsonProcessResult::Complete),
-            crate::json_path::state_machine::JsonStreamState::Finishing { .. } => {
-                // Transition to Complete to terminate processing
-                self.state.transition_to_complete();
-                Ok(super::processor::JsonProcessResult::Complete)
-            }
-            crate::json_path::state_machine::JsonStreamState::Error { .. } => Ok(super::processor::JsonProcessResult::Complete),
+        eprintln!("DEBUG: Processing byte '{}' (char: '{}') in state: {:?}", byte, byte as char, self.state);
+        match &self.state {
+            DeserializerState::Initial => self.process_initial_byte(byte),
+            DeserializerState::Navigating => self.process_navigating_byte(byte),
+            DeserializerState::ProcessingArray => self.process_array_byte(byte),
+            DeserializerState::ProcessingObject => self.process_object_byte(byte),
+            DeserializerState::Complete => Ok(super::processor::JsonProcessResult::Complete),
         }
     }
 
@@ -157,18 +186,31 @@ where
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(super::processor::JsonProcessResult::Continue), // Skip whitespace
             b'{' => {
-                self.state.transition_to_processing_object();
-                self.object_nesting = self.object_nesting.saturating_add(1);
-                Ok(super::processor::JsonProcessResult::Continue)
+                let expression = self.path_expression.as_string();
+                if expression.starts_with("$.") && expression.ends_with("[*]") {
+                    // For $.property[*] patterns, we need to navigate to the property first
+                    self.transition_to_navigating();
+                    self.object_nesting = self.object_nesting.saturating_add(1);
+                    // Reprocess this byte in the new navigating state
+                    self.process_navigating_byte(byte)
+                } else {
+                    self.transition_to_processing_object();
+                    self.object_nesting = self.object_nesting.saturating_add(1);
+                    Ok(super::processor::JsonProcessResult::Continue)
+                }
             }
             b'[' => {
-                self.state.transition_to_streaming_array();
+                self.transition_to_processing_array();
                 self.current_depth = self.current_depth.saturating_add(1);
                 self.array_index_stack.push(self.current_array_index);
                 self.current_array_index = 0;
-                if self.matches_root_array_path() {
+                
+                // For $[*] expressions, we immediately enter target array at root level
+                let expression = self.path_expression.as_string();
+                if expression == "$[*]" {
                     self.in_target_array = true;
                 }
+                
                 Ok(super::processor::JsonProcessResult::Continue)
             }
             _ => Ok(super::processor::JsonProcessResult::Continue),
@@ -178,37 +220,72 @@ where
     /// Check if current position matches JSONPath root array selector
     #[inline]
     pub(super) fn matches_root_array_path(&self) -> bool {
-        matches!(
-            self.path_expression.root_selector(),
-            Some(crate::json_path::parser::JsonSelector::Wildcard)
-                | Some(crate::json_path::parser::JsonSelector::Index { .. })
-                | Some(crate::json_path::parser::JsonSelector::Slice { .. })
-        )
+        let expression = self.path_expression.as_string();
+        
+        // For simple root array patterns like $[*]
+        if expression == "$[*]" {
+            return self.current_depth == 1; // We just entered an array at root level
+        }
+        
+        // For patterns like $.data[*], we don't match at root level
+        // We need to navigate deeper first
+        false
     }
 
     /// Process byte when navigating through JSON structure
     pub(super) fn process_navigating_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(super::processor::JsonProcessResult::Continue),
+            b'"' => {
+                // Potential property name - need to check if it matches our target
+                if self.target_property.is_some() {
+                    let property_name = self.read_property_name()?;
+                    if let Some(ref target_prop) = self.target_property {
+                        if property_name == *target_prop {
+                            self.in_target_property = true;
+                        }
+                    }
+                } else {
+                    // Skip string content normally
+                    let mut escaped = false;
+                    while let Some(string_byte) = self.read_next_byte()? {
+                        if escaped {
+                            escaped = false;
+                        } else {
+                            match string_byte {
+                                b'"' => break,
+                                b'\\' => escaped = true,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                Ok(super::processor::JsonProcessResult::Continue)
+            }
             b'{' => {
-                self.object_nesting = self.object_nesting.saturating_add(1);
-                self.state.transition_to_processing_object();
-                if self.matches_current_path() && self.in_target_array {
+                if self.in_target_array && self.matches_current_path() {
+                    // We're inside the target array - start collecting this object
                     self.object_buffer.clear();
                     self.object_buffer.push(byte);
+                    self.transition_to_processing_object();
+                    self.object_nesting = 1;
                     Ok(super::processor::JsonProcessResult::Continue)
                 } else {
+                    // We're still navigating - this is just a nested object, continue navigating
+                    self.object_nesting = self.object_nesting.saturating_add(1);
                     Ok(super::processor::JsonProcessResult::Continue)
                 }
             }
             b'[' => {
+                if self.in_target_property {
+                    // Found array in target property - this is our target array!
+                    self.in_target_array = true;
+                    self.in_target_property = false;
+                }
                 self.current_depth = self.current_depth.saturating_add(1);
-                self.state.transition_to_streaming_array();
+                self.transition_to_processing_array();
                 self.array_index_stack.push(self.current_array_index);
                 self.current_array_index = 0;
-                if self.matches_current_path() {
-                    self.in_target_array = true;
-                }
                 Ok(super::processor::JsonProcessResult::Continue)
             }
             b']' => {
@@ -220,7 +297,7 @@ where
                     self.current_array_index = prev_index;
                 }
                 if self.current_depth == 0 {
-                    self.state.transition_to_complete();
+                    self.transition_to_complete();
                     Ok(super::processor::JsonProcessResult::Complete)
                 } else {
                     Ok(super::processor::JsonProcessResult::Continue)
@@ -229,11 +306,15 @@ where
             b'}' => {
                 self.object_nesting = self.object_nesting.saturating_sub(1);
                 if self.object_nesting == 0 {
-                    self.state.transition_to_complete();
+                    self.transition_to_complete();
                     Ok(super::processor::JsonProcessResult::Complete)
                 } else {
                     Ok(super::processor::JsonProcessResult::Continue)
                 }
+            }
+            b':' => {
+                // Property separator - next value could be our target array
+                Ok(super::processor::JsonProcessResult::Continue)
             }
             b',' => Ok(super::processor::JsonProcessResult::Continue),
             _ => Ok(super::processor::JsonProcessResult::Continue),
@@ -248,7 +329,7 @@ where
                 if self.in_target_array && self.matches_current_path() {
                     self.object_buffer.clear();
                     self.object_buffer.push(byte);
-                    self.state.transition_to_processing_object();
+                    self.transition_to_processing_object();
                     self.object_nesting = 1;
                     Ok(super::processor::JsonProcessResult::Continue)
                 } else {
@@ -257,12 +338,24 @@ where
             }
             b'[' => {
                 self.current_depth = self.current_depth.saturating_add(1);
-                self.state.transition_to_streaming_array();
+                self.transition_to_processing_array();
                 self.array_index_stack.push(self.current_array_index);
                 self.current_array_index = 0;
                 Ok(super::processor::JsonProcessResult::Continue)
             }
             b']' => {
+                // Check if we have a remaining object to process before closing array
+                if self.in_target_array && !self.object_buffer.is_empty() {
+                    // Last object in array - process it before closing
+                    let result = super::processor::JsonProcessResult::ObjectFound;
+                    self.in_target_array = false;
+                    self.current_depth = self.current_depth.saturating_sub(1);
+                    if let Some(prev_index) = self.array_index_stack.pop() {
+                        self.current_array_index = prev_index;
+                    }
+                    return Ok(result);
+                }
+                
                 if self.in_target_array {
                     self.in_target_array = false;
                 }
@@ -271,7 +364,7 @@ where
                     self.current_array_index = prev_index;
                 }
                 if self.current_depth == 0 {
-                    self.state.transition_to_complete();
+                    self.transition_to_complete();
                     Ok(super::processor::JsonProcessResult::Complete)
                 } else {
                     Ok(super::processor::JsonProcessResult::Continue)
@@ -279,6 +372,7 @@ where
             }
             b',' => {
                 if self.in_target_array && !self.object_buffer.is_empty() {
+                    // Don't add the comma to the object buffer - it's a separator, not part of the object
                     Ok(super::processor::JsonProcessResult::ObjectFound)
                 } else {
                     self.current_array_index = self.current_array_index.saturating_add(1);
@@ -296,22 +390,48 @@ where
 
     /// Process byte when inside JSON object
     pub(super) fn process_object_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
+        // Always add bytes to object buffer if we're in target array BEFORE processing special characters
         if self.in_target_array {
             self.object_buffer.push(byte);
         }
 
         match byte {
             b'"' => {
-                self.skip_string_content()?;
+                // Skip string content but don't add the bytes again since we already added the opening quote
+                let mut escaped = false;
+                while let Some(string_byte) = self.read_next_byte()? {
+                    if self.in_target_array {
+                        self.object_buffer.push(string_byte);
+                    }
+                    if escaped {
+                        escaped = false;
+                    } else {
+                        match string_byte {
+                            b'"' => break, // End of string
+                            b'\\' => escaped = true,
+                            _ => {}
+                        }
+                    }
+                }
                 Ok(super::processor::JsonProcessResult::Continue)
             }
             b'{' => {
                 self.object_nesting = self.object_nesting.saturating_add(1);
                 Ok(super::processor::JsonProcessResult::Continue)
             }
+            b'[' => {
+                // Transition to streaming array state when encountering array in object
+                self.current_depth = self.current_depth.saturating_add(1);
+                self.transition_to_processing_array();
+                self.array_index_stack.push(self.current_array_index);
+                self.current_array_index = 0;
+                Ok(super::processor::JsonProcessResult::Continue)
+            }
             b'}' => {
                 self.object_nesting = self.object_nesting.saturating_sub(1);
                 if self.object_nesting == 0 {
+                    // Complete object found - transition back to streaming array state
+                    self.transition_to_processing_array();
                     Ok(super::processor::JsonProcessResult::ObjectFound)
                 } else {
                     Ok(super::processor::JsonProcessResult::Continue)
@@ -321,75 +441,130 @@ where
         }
     }
 
-    /// Skip over JSON string content including escaped characters
-    pub(super) fn skip_string_content(&mut self) -> crate::json_path::error::JsonPathResult<()> {
-        let mut escaped = false;
-        let mut bytes_processed = 0;
-        const MAX_STRING_BYTES: usize = 1024 * 1024;
 
-        while let Some(byte) = self.read_next_byte()? {
-            bytes_processed += 1;
-
-            if bytes_processed > MAX_STRING_BYTES {
-                return Err(crate::json_path::error::json_parse_error(
-                    "JSON string too long or unterminated".to_string(),
-                    self.buffer_position,
-                    "string parsing".to_string(),
-                ));
-            }
-            if self.in_target_array {
-                self.object_buffer.push(byte);
-            }
-
-            if escaped {
-                escaped = false;
-            } else {
-                match byte {
-                    b'"' => return Ok(()),
-                    b'\\' => escaped = true,
-                    _ => {}
-                }
-            }
-        }
-        Ok(())
-    }
 
     /// Check if current position matches JSONPath expression
     #[inline]
     pub(super) fn matches_current_path(&self) -> bool {
-        // Production implementation - check if we're in target array
+        // Simplified JSONPath matching for basic patterns
+        // This handles common cases like $.data[*], $.items[*]
+        
+        let expression = self.path_expression.as_string();
+        
+        // For array wildcard patterns like $.data[*], $.items[*]
+        if expression.starts_with("$.") && expression.ends_with("[*]") {
+            // Match when we're inside the target array to capture array elements
+            return self.in_target_array;
+        }
+        
+        // For root array patterns like $[*]
+        if expression == "$[*]" {
+            // Match when we're inside the root array
+            return self.in_target_array;
+        }
+        
+        // Default fallback - match if we're in target array
         self.in_target_array
     }
 
     /// Deserialize current object from buffer
     #[inline]
-    pub(super) fn deserialize_current_object(&mut self) -> Option<T> {
+    pub(super) fn deserialize_current_object(&mut self) -> crate::json_path::error::JsonPathResult<Option<T>> {
         if self.object_buffer.is_empty() {
-            return None;
+            return Ok(None);
         }
 
         let json_str = match std::str::from_utf8(&self.object_buffer) {
             Ok(s) => s,
             Err(e) => {
-                log::error!("Invalid UTF-8 in JSON object: {}", e);
+                let error = crate::json_path::error::json_parse_error(
+                    format!("Invalid UTF-8 in JSON object: {}", e),
+                    self.buffer_position,
+                    "object deserialization".to_string(),
+                );
                 self.object_buffer.clear();
-                return None;
+                return Err(error);
             }
         };
 
         let result = match serde_json::from_str::<T>(json_str) {
             Ok(obj) => obj,
             Err(e) => {
-                log::error!("Failed to deserialize JSON: {}", e);
+                let error = crate::json_path::error::json_parse_error(
+                    format!("Failed to deserialize JSON: {}", e),
+                    self.buffer_position,
+                    "object deserialization".to_string(),
+                );
                 self.object_buffer.clear();
-                return None;
+                return Err(error);
             }
         };
 
         // Clear buffer for next object
         self.object_buffer.clear();
-        self.state.increment_objects_yielded();
+        // Object yielded - no state tracking needed for internal state
 
-        Some(result)
+        Ok(Some(result))
+    }
+
+    /// Read a JSON property name from the current position
+    #[inline]
+    pub(super) fn read_property_name(&mut self) -> crate::json_path::error::JsonPathResult<String> {
+        let mut property_name = String::new();
+        let mut escaped = false;
+
+        while let Some(byte) = self.read_next_byte()? {
+            if escaped {
+                escaped = false;
+                match byte {
+                    b'"' => property_name.push('"'),
+                    b'\\' => property_name.push('\\'),
+                    b'/' => property_name.push('/'),
+                    b'b' => property_name.push('\u{0008}'),
+                    b'f' => property_name.push('\u{000C}'),
+                    b'n' => property_name.push('\n'),
+                    b'r' => property_name.push('\r'),
+                    b't' => property_name.push('\t'),
+                    _ => {
+                        property_name.push('\\');
+                        property_name.push(byte as char);
+                    }
+                }
+            } else {
+                match byte {
+                    b'"' => break, // End of property name
+                    b'\\' => escaped = true,
+                    _ => property_name.push(byte as char),
+                }
+            }
+        }
+
+        Ok(property_name)
+    }
+
+    // Internal state transition methods
+
+    /// Transition to navigating state
+    #[inline]
+    pub(super) fn transition_to_navigating(&mut self) {
+        self.state = DeserializerState::Navigating;
+    }
+
+    /// Transition to processing array state  
+    #[inline]
+    pub(super) fn transition_to_processing_array(&mut self) {
+        self.state = DeserializerState::ProcessingArray;
+    }
+
+    /// Transition to processing object state
+    #[inline]
+    pub(super) fn transition_to_processing_object(&mut self) {
+        self.state = DeserializerState::ProcessingObject;
+    }
+
+    /// Transition to complete state
+    #[inline]
+    pub(super) fn transition_to_complete(&mut self) {
+        self.state = DeserializerState::Complete;
     }
 }

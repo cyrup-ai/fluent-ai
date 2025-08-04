@@ -41,8 +41,41 @@ impl JsonPathParser {
             ));
         }
 
+        // RFC 9535 Compliance: JSONPath expressions must start with '$'
+        if !expression.starts_with('$') {
+            // Special case: provide specific error for @ outside filter context
+            if expression.starts_with('@') {
+                return Err(invalid_expression_error(
+                    expression,
+                    "current node identifier '@' is only valid within filter expressions [?...]",
+                    Some(0),
+                ));
+            }
+            return Err(invalid_expression_error(
+                expression,
+                "JSONPath expressions must start with '$'",
+                Some(0),
+            ));
+        }
+
+        // RFC 9535 Compliance: JSONPath expressions cannot end with '.' unless it's recursive descent
+        // '$.' is invalid (incomplete property access)
+        // '$..' is valid (recursive descent)
+        if expression.ends_with('.') && !expression.ends_with("..") {
+            return Err(invalid_expression_error(
+                expression,
+                "incomplete property access (ends with '.')",
+                Some(expression.len() - 1),
+            ));
+        }
+
         let mut parser = ExpressionParser::new(expression);
         let selectors = parser.parse()?;
+
+        // RFC 9535 Compliance: Root-only expressions "$" are NOT valid per RFC 9535
+        // ABNF: jsonpath-query = root-identifier segments
+        //       segments = *(S segment)  ; zero or more segments per RFC 9535
+        // Therefore "$" (root-only) is VALID per RFC 9535
 
         // Determine if this is an array streaming expression
         let is_array_stream = selectors.iter().any(|s| {

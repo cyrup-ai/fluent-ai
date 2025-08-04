@@ -283,7 +283,7 @@ where
     #[must_use]
     pub fn new(jsonpath_expr: &str) -> Self {
         Self {
-            json_array_stream: JsonArrayStream::new(jsonpath_expr),
+            json_array_stream: JsonArrayStream::new_typed(jsonpath_expr),
             chunk_handlers: Vec::new(),
             stats: ProcessorStats::new(),
             error_recovery: ErrorRecoveryState::new(),

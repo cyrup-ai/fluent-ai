@@ -106,7 +106,8 @@ pub use self::{
 ///
 /// Transforms HTTP byte streams into individual JSON objects based on JSONPath expressions.
 /// Uses compile-time optimizations and runtime streaming for maximum performance.
-pub struct JsonArrayStream<T> {
+#[derive(Debug)]
+pub struct JsonArrayStream<T = serde_json::Value> {
     /// JSONPath expression for array element selection
     path_expression: JsonPathExpression,
     /// Streaming buffer for efficient byte processing
@@ -121,7 +122,7 @@ impl<T> JsonArrayStream<T>
 where
     T: DeserializeOwned + Send + 'static,
 {
-    /// Create new JSONPath streaming processor
+    /// Create new JSONPath streaming processor with explicit type
     ///
     /// # Arguments
     ///
@@ -136,6 +137,24 @@ where
     ///
     /// JSONPath compilation is performed once during construction for optimal runtime performance.
     pub fn new(jsonpath: &str) -> Self {
+        Self::new_typed(jsonpath)
+    }
+
+    /// Create new JSONPath streaming processor with explicit type (alias for new)
+    ///
+    /// # Arguments
+    ///
+    /// * `jsonpath` - JSONPath expression (e.g., "$.data[*]", "$.results[?(@.active)]")
+    ///
+    /// # Error Handling
+    ///
+    /// Invalid JSONPath expressions are handled via async-stream error emission patterns.
+    /// Errors are logged and processing continues with a default expression.
+    ///
+    /// # Performance
+    ///
+    /// JSONPath compilation is performed once during construction for optimal runtime performance.
+    pub fn new_typed(jsonpath: &str) -> Self {
         let path_expression = match JsonPathParser::compile(jsonpath) {
             Ok(expr) => expr,
             Err(e) => {
@@ -154,6 +173,23 @@ where
             _phantom: PhantomData,
         }
     }
+}
+
+impl JsonArrayStream<serde_json::Value> {
+    /// Create new JSONPath streaming processor for serde_json::Value (common case)
+    ///
+    /// This is a convenience method for the most common use case of processing JSON
+    /// into serde_json::Value objects. For custom deserialization types, use new_typed().
+    pub fn new_value(jsonpath: &str) -> Self {
+        Self::new_typed(jsonpath)
+    }
+}
+
+
+impl<T> JsonArrayStream<T>
+where
+    T: DeserializeOwned + Send + 'static,
+{
 
     /// Process incoming bytes and yield deserialized objects
     ///
@@ -238,7 +274,7 @@ where
     {
         // Process available data using the streaming deserializer
         let mut deserializer =
-            JsonPathDeserializer::new(&self.path_expression, &mut self.buffer, &mut self.state);
+            JsonPathDeserializer::new(&self.path_expression, &mut self.buffer);
         let mut results = Vec::new();
         
         // Manually collect the iterator to avoid lifetime dependency

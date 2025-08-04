@@ -14,7 +14,7 @@
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser, JsonPathError};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// Create complex nested test data
 fn create_complex_nested_data(depth: usize, width: usize) -> String {
@@ -307,7 +307,7 @@ mod boundary_condition_tests {
             let chunk = Bytes::from(test_data);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should complete within reasonable time
@@ -318,7 +318,7 @@ mod boundary_condition_tests {
             );
             
             println!("Recursive boundary test '{}': {} results in {}ms ({})",
-                expr, _results.len(), elapsed.as_millis(), _description);
+                expr, results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -357,10 +357,10 @@ mod boundary_condition_tests {
                 // Test execution
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(ADVANCED_FEATURES_JSON);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Array slice boundary '{}': {} results ({})", 
-                    expr, _results.len(), _description);
+                    expr, results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
@@ -393,7 +393,7 @@ mod performance_regression_tests {
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Performance should be reasonable
@@ -404,7 +404,7 @@ mod performance_regression_tests {
             );
             
             println!("Performance test '{}': {} results in {}ms ({})",
-                expr, _results.len(), elapsed.as_millis(), _description);
+                expr, results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -436,7 +436,7 @@ mod performance_regression_tests {
             let chunk = Bytes::from(json_data);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Performance should scale reasonably
@@ -448,7 +448,7 @@ mod performance_regression_tests {
             );
             
             println!("Scalability test {}: {} results in {}ms ({:.3}ms per item)",
-                _description, _results.len(), elapsed.as_millis(), ms_per_item);
+                _description, results.len(), elapsed.as_millis(), ms_per_item);
         }
     }
 
@@ -470,7 +470,7 @@ mod performance_regression_tests {
             let chunk = Bytes::from(complex_data);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should complete without memory issues
@@ -481,7 +481,7 @@ mod performance_regression_tests {
             );
             
             println!("Memory efficiency test '{}': {} results in {}ms ({})",
-                expr, _results.len(), elapsed.as_millis(), _description);
+                expr, results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -549,9 +549,9 @@ mod edge_case_validation_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Concurrent expression '{}': {} results", expr, _results.len());
+            println!("Concurrent expression '{}': {} results", expr, results.len());
         }
     }
 
@@ -570,10 +570,10 @@ mod edge_case_validation_tests {
             
             let mut stream = JsonArrayStream::<serde_json::Value>::new(reuse_expr);
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON); // Use consistent data
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
             // Results should be consistent across reuses
-            println!("Expression reuse run {}: {} results", i, _results.len());
+            println!("Expression reuse run {}: {} results", i, results.len());
         }
     }
 
@@ -594,7 +594,7 @@ mod edge_case_validation_tests {
             let chunk = Bytes::from(malformed_json);
             
             let start_time = Instant::now();
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle gracefully without hanging
@@ -605,7 +605,7 @@ mod edge_case_validation_tests {
             );
             
             println!("Malformed input resilience '{}': {} results in {}ms",
-                _description, _results.len(), elapsed.as_millis());
+                _description, results.len(), elapsed.as_millis());
         }
     }
 }

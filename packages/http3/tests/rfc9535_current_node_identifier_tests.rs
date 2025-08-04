@@ -223,10 +223,10 @@ mod current_node_context_tests {
         for (expr, expected_count, _description) in property_access_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: @ property access should work correctly: {} ({})",
                 expr, _description
@@ -247,13 +247,13 @@ mod current_node_context_tests {
             ("$.store.books[?@.value >= 10 && @.value <= 20]", 2, "Range check with @"),
         ];
 
-        for (expr, _expected_count, _description) in logical_tests {
+        for (expr, expected_count, _description) in logical_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: @ in logical expressions should work: {} ({})",
                 expr, _description
@@ -271,7 +271,7 @@ mod current_node_context_tests {
             ("$.store.books[?@.metadata && length(@.metadata) > 0]", 2, "Function with @ existence check"),
         ];
 
-        for (expr, _expected_count, _description) in function_tests {
+        for (expr, expected_count, _description) in function_tests {
             // Note: These tests validate syntax compilation
             // Actual function execution depends on implementation
             let result = JsonPathParser::compile(expr);
@@ -334,13 +334,13 @@ mod current_node_context_tests {
             ("$.store.books[?@.value > @.id]", 2, "Numeric comparison within same @"),
         ];
 
-        for (expr, _expected_count, _description) in type_tests {
+        for (expr, expected_count, _description) in type_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: @ type consistency should work: {} ({})",
                 expr, _description
@@ -370,15 +370,15 @@ mod current_node_scope_tests {
             ("$..metadata[?@.category]", 1, "Descendant filter on metadata"),
         ];
 
-        for (expr, _expected_count, _description) in scope_tests {
+        for (expr, expected_count, _description) in scope_tests {
             let expected_count = expected_count as usize;
             
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: @ scope isolation should work: {} ({})",
                 expr, _description
@@ -404,13 +404,13 @@ mod current_node_scope_tests {
             ("$..books[?@.nested && @.nested.active]", 1, "Descendant @ with nesting"),
         ];
 
-        for (expr, _expected_count, _description) in inheritance_tests {
+        for (expr, expected_count, _description) in inheritance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                _results.len(),
+                results.len(),
                 expected_count,
                 "RFC 9535: @ inheritance should work: {} ({})",
                 expr, _description
@@ -430,22 +430,22 @@ mod current_node_scope_tests {
             ("$.store.books[?@.nonexistent == null]", 0, "Missing property comparison"),
         ];
 
-        for (expr, _expected_count, _description) in comparison_tests {
+        for (expr, expected_count, _description) in comparison_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Note: Some comparisons may vary based on implementation
             // These tests document expected behavior
             println!(
                 "@ comparison test '{}' -> {} results ({})",
-                expr, _results.len(), _description
+                expr, results.len(), _description
             );
             
             // Assert compilation succeeds
-            let compile_result = JsonPathParser::compile(expr);
+            let compileresult = JsonPathParser::compile(expr);
             assert!(
-                compile_result.is_ok(),
+                compileresult.is_ok(),
                 "RFC 9535: @ comparison should compile: {} ({})",
                 expr, _description
             );
@@ -572,14 +572,14 @@ mod deep_nesting_current_node_tests {
             )
         ];
 
-        for (expr, _expected_count, _description) in complex_nested_tests {
+        for (expr, expected_count, _description) in complex_nested_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(deep_nested_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 deep nesting: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 
@@ -615,14 +615,14 @@ mod deep_nesting_current_node_tests {
             )
         ];
 
-        for (expr, _expected_count, _description) in performance_tests {
+        for (expr, expected_count, _description) in performance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(DEEP_NESTING_JSON);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 deep nesting performance: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 
@@ -670,14 +670,14 @@ mod deep_nesting_current_node_tests {
             )
         ];
 
-        for (expr, _expected_count, _description) in scope_tests {
+        for (expr, expected_count, _description) in scope_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(scope_test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 scope isolation: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 
@@ -715,14 +715,14 @@ mod deep_nesting_current_node_tests {
             )
         ];
 
-        for (expr, _expected_count, _description) in logical_tests {
+        for (expr, expected_count, _description) in logical_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(logical_test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 logical expressions: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 
@@ -759,14 +759,14 @@ mod deep_nesting_current_node_tests {
             )
         ];
 
-        for (expr, _expected_count, _description) in function_tests {
+        for (expr, expected_count, _description) in function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(function_test_json);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "RFC 9535 function composition: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, _results.len());
+                _description, expr, expected_count, results.len());
         }
     }
 }

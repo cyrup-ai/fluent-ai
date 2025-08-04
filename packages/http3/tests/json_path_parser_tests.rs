@@ -2,7 +2,7 @@
 //!
 //! Tests for the core JSONPath parsing functionality, extracted from inline tests
 
-use fluent_ai_http3::json_path::{JsonPathError, JsonPathParser, JsonSelector};
+use fluent_ai_http3::json_path::{JsonPathParser, JsonSelector};
 
 #[cfg(test)]
 mod parser_basic_tests {
@@ -10,8 +10,9 @@ mod parser_basic_tests {
 
     #[test]
     fn test_simple_root_expression() {
-        let expr = JsonPathParser::compile("$").expect_err("Should reject bare root");
-        assert!(matches!(expr, JsonPathError::InvalidExpression { .. }));
+        let expr = JsonPathParser::compile("$").expect("Bare root is valid per RFC 9535");
+        assert_eq!(expr.selectors().len(), 1);
+        assert!(matches!(expr.selectors()[0], JsonSelector::Root));
     }
 
     #[test]

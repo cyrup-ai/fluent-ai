@@ -214,9 +214,9 @@ mod wellformedness_validity_comprehensive {
             // Then test semantic validity
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let _results: Vec<_> = stream.process_chunk(chunk).collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(_results.len(), expected_count,
+            assert_eq!(results.len(), expected_count,
                 "Semantic validity test '{}' should return {} results: {}", 
                 expr, expected_count, _description);
         }
@@ -267,9 +267,9 @@ mod wellformedness_validity_comprehensive {
                 
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
-                assert_eq!(_results.len(), expected_count,
+                assert_eq!(results.len(), expected_count,
                     "Filter validity test '{}' should return {} results: {}", 
                     expr, expected_count, _description);
             } else {
@@ -327,9 +327,9 @@ mod wellformedness_validity_comprehensive {
                 
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
-                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
                 
-                assert_eq!(_results.len(), expected_count,
+                assert_eq!(results.len(), expected_count,
                     "Type safety test '{}' should return {} results: {}", 
                     expr, expected_count, _description);
             } else {

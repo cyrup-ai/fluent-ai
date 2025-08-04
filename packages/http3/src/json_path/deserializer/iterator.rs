@@ -68,8 +68,9 @@ where
                 JsonProcessResult::ObjectFound => {
                     // Found complete object, attempt deserialization
                     match self.deserializer.deserialize_current_object() {
-                        Some(obj) => return Ok(Some(obj)),
-                        None => continue, // Continue parsing if deserialization failed
+                        Ok(Some(obj)) => return Ok(Some(obj)),
+                        Ok(None) => continue, // Continue parsing if no object available
+                        Err(e) => return Err(e), // Return deserialization error to caller
                     }
                 }
                 JsonProcessResult::Continue => {

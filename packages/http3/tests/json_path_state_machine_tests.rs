@@ -60,6 +60,9 @@ mod state_machine_tests {
         assert_eq!(sm.stats().current_depth, 2);
         assert_eq!(sm.stats().max_depth, 2);
 
+        sm.exit_array();
+        assert_eq!(sm.stats().current_depth, 1);
+        
         sm.exit_object();
         assert_eq!(sm.stats().current_depth, 0);
         assert_eq!(sm.stats().max_depth, 2); // Max remains

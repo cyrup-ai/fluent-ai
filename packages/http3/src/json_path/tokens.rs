@@ -11,6 +11,8 @@ pub enum Token {
     Root,
     /// Dot notation token (.)
     Dot,
+    /// Double dot (recursive descent) token (..)
+    DoubleDot,
     /// Left bracket token ([)
     LeftBracket,
     /// Right bracket token (])
@@ -113,6 +115,7 @@ impl Token {
             self,
             Token::Root
                 | Token::Dot
+                | Token::DoubleDot
                 | Token::LeftBracket
                 | Token::RightBracket
                 | Token::LeftParen
@@ -130,6 +133,7 @@ impl Token {
         match self {
             Token::Root => "$",
             Token::Dot => ".",
+            Token::DoubleDot => "..",
             Token::LeftBracket => "[",
             Token::RightBracket => "]",
             Token::LeftParen => "(",
@@ -172,6 +176,7 @@ impl TokenMatcher {
             (Token::LeftParen, Token::LeftParen) => true,
             (Token::LeftBracket, Token::LeftBracket) => true,
             (Token::Dot, Token::Dot) => true,
+            (Token::DoubleDot, Token::DoubleDot) => true,
             (Token::Comma, Token::Comma) => true,
             (Token::Colon, Token::Colon) => true,
             (Token::Question, Token::Question) => true,

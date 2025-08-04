@@ -115,7 +115,10 @@ impl FilterEvaluator {
                 }
             }
             serde_json::Value::String(s) => FilterValue::String(s.clone()),
-            _ => FilterValue::Null, // Arrays and objects are not directly comparable
+            // Arrays and objects should not convert to null - they're distinct values
+            // For comparison purposes, we'll handle them specially in compare_values
+            serde_json::Value::Array(_) => FilterValue::Boolean(true), // Arrays are truthy
+            serde_json::Value::Object(_) => FilterValue::Boolean(true), // Objects are truthy
         }
     }
 
@@ -193,8 +196,12 @@ impl FilterEvaluator {
                 ComparisonOp::NotEqual => false,
                 _ => false,
             }),
-            // Cross-type comparisons - mostly false except for null checks
-            (FilterValue::Null, _) | (_, FilterValue::Null) => Ok(match op {
+            (FilterValue::Null, _) => Ok(match op {
+                ComparisonOp::Equal => false,
+                ComparisonOp::NotEqual => true,
+                _ => false,
+            }),
+            (_, FilterValue::Null) => Ok(match op {
                 ComparisonOp::Equal => false,
                 ComparisonOp::NotEqual => true,
                 _ => false,
