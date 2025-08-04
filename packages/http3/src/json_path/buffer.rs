@@ -439,5 +439,5 @@ pub type JsonBuffer = StreamBuffer;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // Tests for buffer module will be implemented here
 }

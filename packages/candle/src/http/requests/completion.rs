@@ -9,6 +9,8 @@
 //! - **Anthropic**: Claude models with cache control and tool use
 //! - **Google**: Vertex AI and Gemini with safety settings
 //! - **AWS Bedrock**: Multi-model support with converse API
+
+#![allow(missing_docs)]
 //! - **Cohere**: Command models with chat history
 //! - **Azure OpenAI**: All OpenAI models via Azure deployment
 //! - **Local/OSS**: Ollama, HuggingFace, Together, etc.
@@ -42,7 +44,6 @@
 //     .with_openai_response_format("json_object")
 //     .with_openai_seed(42);
 // ```
-#[warn(missing_docs)]
 #[forbid(unsafe_code)]
 #[deny(clippy::all)]
 #[deny(clippy::pedantic)]

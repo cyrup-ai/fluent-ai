@@ -74,7 +74,7 @@ futures-lite = { version = "2" }
 futures-sink = { version = "0.3" }
 futures-task = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
-generic-array = { version = "0.14", default-features = false, features = ["more_lengths", "zeroize"] }
+generic-array = { version = "1.2", default-features = false, features = ["zeroize"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
 getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
 gix-features = { version = "0.42", features = ["fs-read-dir", "progress", "walkdir"] }
@@ -274,7 +274,7 @@ futures-lite = { version = "2" }
 futures-sink = { version = "0.3" }
 futures-task = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
-generic-array = { version = "0.14", default-features = false, features = ["more_lengths", "zeroize"] }
+generic-array = { version = "1.2", default-features = false, features = ["zeroize"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
 getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
 gix-features = { version = "0.42", features = ["fs-read-dir", "progress", "walkdir"] }

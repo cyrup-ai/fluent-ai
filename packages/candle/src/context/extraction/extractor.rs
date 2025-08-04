@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use super::error::{ExtractionError, _ExtractionResult as ExtractionResult};
 use crate::agent::agent::Agent;
 // Standalone candle - no domain imports allowed!
-use crate::context::chunk::{CompletionChunk, FinishReason};
+use crate::context::chunk::{CandleCompletionChunk, FinishReason};
 use crate::chat::message::types::MessageRole;
 use crate::model::traits::{ChatCompletionRequest as CompletionRequest, GenerationParams as CompletionParams};
 use crate::engine::CompletionRequest as EngineCompletionRequest;
@@ -106,29 +106,30 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
         let mut full_response = String::new();
         let mut finish_reason = None;
 
-        while let Some(chunk) = stream.try_next() {
+        // Process the stream chunks
+        let mut stream = Box::pin(stream);
+        while let Some(chunk) = stream.next().await {
             match chunk {
-                CompletionChunk::Text(text) => {
+                CandleCompletionChunk::Text(text) => {
+                    // Append text content to full response
                     full_response.push_str(&text);
                 }
-                CompletionChunk::Complete {
-                    text,
-                    finish_reason: reason,
-                    ..
-                } => {
-                    full_response.push_str(&text);
+                CandleCompletionChunk::Complete { text, finish_reason: reason, .. } => {
+                    // This is the final chunk
+                    if !text.is_empty() {
+                        full_response.push_str(&text);
+                    }
                     finish_reason = reason;
                     break;
                 }
-                CompletionChunk::Error(error) => {
+                CandleCompletionChunk::Error(err) => {
                     return Err(ExtractionError::CompletionError(format!(
-                        "Completion error: {}",
-                        error
+                        "Error from model: {}",
+                        err
                     )));
                 }
-                _ => {
-                    // Handle other chunk types (tool calls, etc.) if needed
-                }
+                // Handle other variants as needed
+                _ => {}
             }
         }
 
@@ -191,7 +192,7 @@ impl CompletionModel for AgentCompletionModel {
         AsyncStream::with_channel(move |sender| {
             // TODO: Replace with proper streams-only completion
             // For now, send default chunk to maintain compilation
-            let default_chunk = CompletionChunk::Complete {
+            let default_chunk = CandleCompletionChunk::Complete {
                 text: format!("{:?}", prompt),
                 finish_reason: Some(FinishReason::Stop),
                 usage: None};

@@ -19,9 +19,9 @@ mod builder_tests {
             .api_key("test-api-key")
             .get(url);
 
-        // The new API uses async collect
-        let chunks: Vec<Vec<u8>> = HttpStreamExt::collect(stream);
-        let body_str = String::from_utf8_lossy(&chunks.concat()).to_string();
+        // The new API uses collect on the stream
+        let responses: Vec<serde_json::Value> = stream.collect();
+        let body_str = serde_json::to_string(&responses[0]).expect("Failed to serialize JSON");
         let body: serde_json::Value =
             serde_json::from_str(&body_str).expect("Failed to parse JSON");
 
@@ -48,9 +48,9 @@ mod builder_tests {
             .api_key("test-api-key")
             .get(url);
 
-        // The new API uses async collect, which consumes the stream.
-        let chunks: Vec<Vec<u8>> = HttpStreamExt::collect(stream);
-        let body_str = String::from_utf8_lossy(&chunks.concat()).to_string();
+        // The new API uses collect on the stream
+        let responses: Vec<serde_json::Value> = stream.collect();
+        let body_str = serde_json::to_string(&responses[0]).expect("Failed to serialize JSON");
         let body: serde_json::Value =
             serde_json::from_str(&body_str).expect("Failed to parse JSON");
 

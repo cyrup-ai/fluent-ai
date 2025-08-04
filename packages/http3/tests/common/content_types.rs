@@ -13,8 +13,8 @@ mod content_types_tests {
         // This will contain content types-specific tests
 
         // Placeholder test to ensure module compiles
-        let builder = Http3::get("https://api.example.com/test");
-        assert!(builder.is_ok() || builder.is_err());
+        let builder = Http3::json().get("https://api.example.com/test");
+        // builder is now an HttpStream, not a Result
     }
 }
 

@@ -20,8 +20,8 @@ mod processor_tests {
         let mut stream = JsonArrayStream::<Value>::new("$.items[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert!(results.len() >= 0);
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert!(true);
     }
 }
 

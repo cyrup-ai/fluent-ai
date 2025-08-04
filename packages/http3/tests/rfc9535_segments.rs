@@ -52,9 +52,9 @@ mod child_segment_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store['book','bicycle']");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 2, "Should select both book and bicycle");
+        assert_eq!(_results.len(), 2, "Should select both book and bicycle");
     }
 
     #[test]
@@ -70,11 +70,11 @@ mod child_segment_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$[0,2]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 2, "Should select items 0 and 2");
-        assert_eq!(results[0].name, "item0");
-        assert_eq!(results[1].name, "item2");
+        assert_eq!(_results.len(), 2, "Should select items 0 and 2");
+        assert_eq!(_results[0].name, "item0");
+        assert_eq!(_results[1].name, "item2");
     }
 
     #[test]
@@ -115,9 +115,9 @@ mod child_segment_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$['items','store','count']");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 3, "Should select all three properties");
+        assert_eq!(_results.len(), 3, "Should select all three properties");
     }
 
     #[test]
@@ -128,10 +128,10 @@ mod child_segment_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$['nonexistent','missing']");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Nonexistent selectors should return empty nodelist"
         );
@@ -181,11 +181,11 @@ mod descendant_segment_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..['name']");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should find all 'name' properties at any depth
         assert!(
-            results.len() >= 3,
+            _results.len() >= 3,
             "Should find multiple 'name' properties recursively"
         );
     }
@@ -235,10 +235,10 @@ mod descendant_segment_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..['value']");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             4,
             "Should find all value properties in nested arrays"
         );
@@ -258,11 +258,11 @@ mod descendant_segment_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should find all values at all descendant levels
         assert!(
-            results.len() >= 8,
+            _results.len() >= 8,
             "Descendant wildcard should find many values"
         );
     }
@@ -283,12 +283,12 @@ mod descendant_segment_tests {
         let mut stream = JsonArrayStream::<f64>::new("$..price");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 3, "Should find all price properties");
-        assert!(results.contains(&8.95));
-        assert!(results.contains(&12.99));
-        assert!(results.contains(&19.95));
+        assert_eq!(_results.len(), 3, "Should find all price properties");
+        assert!(_results.contains(&8.95));
+        assert!(_results.contains(&12.99));
+        assert!(_results.contains(&19.95));
     }
 
     #[test]
@@ -311,10 +311,10 @@ mod descendant_segment_tests {
         let mut stream = JsonArrayStream::<String>::new("$..target");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 1, "Should find deeply nested target");
-        assert_eq!(results[0], "deep_value");
+        assert_eq!(_results.len(), 1, "Should find deeply nested target");
+        assert_eq!(_results[0], "deep_value");
     }
 }
 
@@ -338,10 +338,10 @@ mod segment_combination_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..books[0]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "Should find first book in each books array"
         );
@@ -365,9 +365,9 @@ mod segment_combination_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store..price");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 3, "Should find all prices under store");
+        assert_eq!(_results.len(), 3, "Should find all prices under store");
     }
 
     #[test]
@@ -389,9 +389,9 @@ mod segment_combination_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..leaf..value");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 2, "Should find values under all leaf nodes");
+        assert_eq!(_results.len(), 2, "Should find values under all leaf nodes");
     }
 
     #[test]
@@ -412,10 +412,10 @@ mod segment_combination_tests {
 
         let chunk = Bytes::from(json_data);
         let start_time = std::time::Instant::now();
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
-        assert_eq!(results.len(), 1, "Should find the deeply nested value");
+        assert_eq!(_results.len(), 1, "Should find the deeply nested value");
         println!("Deep descendant search took {:?}", duration);
 
         // Performance should be reasonable even for deep nesting
@@ -477,10 +477,10 @@ mod segment_error_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 0,
                 "Segment on primitive '{}' should return empty nodelist",
                 expr

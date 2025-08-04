@@ -110,29 +110,29 @@ impl<T, E: Error> ResultExt<T, E> for std::result::Result<T, E> {
 #[macro_export]
 macro_rules! model_err {
     (not_found: $provider:expr, $name:expr) => {
-        $crate::model::error::CandleModelError::ModelNotFound {
+        $crate::domain::model::error::CandleModelError::ModelNotFound {
             provider: $provider.into(),
             name: $name.into()}
     };
     (provider_not_found: $provider:expr) => {
-        $crate::model::error::CandleModelError::ProviderNotFound($provider.into())
+        $crate::domain::model::error::CandleModelError::ProviderNotFound($provider.into())
     };
     (already_exists: $provider:expr, $name:expr) => {
-        $crate::model::error::CandleModelError::ModelAlreadyExists {
+        $crate::domain::model::error::CandleModelError::ModelAlreadyExists {
             provider: $provider.into(),
             name: $name.into()}
     };
     (invalid_config: $msg:expr) => {
-        $crate::model::error::CandleModelError::InvalidConfiguration($msg.into())
+        $crate::domain::model::error::CandleModelError::InvalidConfiguration($msg.into())
     };
     (not_supported: $msg:expr) => {
-        $crate::model::error::CandleModelError::OperationNotSupported($msg.into())
+        $crate::domain::model::error::CandleModelError::OperationNotSupported($msg.into())
     };
     (invalid_input: $msg:expr) => {
-        $crate::model::error::CandleModelError::InvalidInput($msg.into())
+        $crate::domain::model::error::CandleModelError::InvalidInput($msg.into())
     };
     (internal: $msg:expr) => {
-        $crate::model::error::CandleModelError::Internal($msg.into())
+        $crate::domain::model::error::CandleModelError::Internal($msg.into())
     };
 }
 

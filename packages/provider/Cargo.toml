@@ -121,6 +121,15 @@ reqwest_unstable = []
 # UI features
 ui = ["dioxus"]
 
+# Image generation features
+generation = ["candle", "image", "tokenizers", "safetensors"]
+
+# Worker thread features
+worker = []
+
+# Cylo sandbox execution features  
+cylo = ["fluent_ai_domain/cylo"]
+
 # Audio processing features - TEMPORARILY DISABLED
 # microphone = ["dep:cpal", "dep:rubato"]
 # encodec = ["dep:cpal", "dep:symphonia", "dep:rubato"]

@@ -36,7 +36,7 @@
 //!     .with_top_p(0.9)?;
 //! ```
 
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]

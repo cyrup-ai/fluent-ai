@@ -14,7 +14,7 @@
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser, JsonPathError};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// Create complex nested test data
 fn create_complex_nested_data(depth: usize, width: usize) -> String {
@@ -97,20 +97,20 @@ mod function_extension_tests {
             ("$.performance_test.large_array[?search(@.category, 'A')]", true, "search() function"),
         ];
 
-        for (expr, should_be_valid, description) in core_function_tests {
+        for (expr, _should_be_valid, _description) in core_function_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Core function should be registered: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid function should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -127,13 +127,13 @@ mod function_extension_tests {
             ("$.complex_structure[?advanced_value(@.level1.level2)]", false, "Advanced function not available"),
         ];
 
-        for (expr, should_be_valid, description) in unknown_function_tests {
+        for (expr, _should_be_valid, _description) in unknown_function_tests {
             let result = JsonPathParser::compile(expr);
             
             assert!(
                 result.is_err(),
                 "RFC 9535: Unknown function should be rejected: {} ({})",
-                expr, description
+                expr, _description
             );
             
             // Verify error message mentions unknown function
@@ -141,7 +141,7 @@ mod function_extension_tests {
                 assert!(
                     reason.to_lowercase().contains("function") || reason.to_lowercase().contains("unknown"),
                     "Error should mention unknown function: {} ({})",
-                    reason, description
+                    reason, _description
                 );
             }
         }
@@ -183,14 +183,14 @@ mod function_extension_tests {
             ("$.performance_test[?regex_match(@.large_array[*].name, '^item[0-9]+$')]", "Regex function extension"),
         ];
 
-        for (expr, description) in extension_point_tests {
+        for (expr, _description) in extension_point_tests {
             let result = JsonPathParser::compile(expr);
             
             // Should be syntactically parseable but unknown function
             assert!(
                 result.is_err(),
                 "RFC 9535: Extension point function should be rejected as unknown: {} ({})",
-                expr, description
+                expr, _description
             );
             
             // Verify the error is about unknown function, not syntax
@@ -198,7 +198,7 @@ mod function_extension_tests {
                 assert!(
                     !reason.to_lowercase().contains("syntax"),
                     "Error should be about unknown function, not syntax: {} ({})",
-                    reason, description
+                    reason, _description
                 );
             }
         }
@@ -220,7 +220,7 @@ mod boundary_condition_tests {
             (100, false, "Extremely deep nesting depth"),
         ];
 
-        for (depth, should_succeed, description) in deep_nesting_tests {
+        for (depth, should_succeed, _description) in deep_nesting_tests {
             // Create deeply nested property access
             let mut expr = String::from("$");
             for i in 0..depth {
@@ -233,12 +233,12 @@ mod boundary_condition_tests {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Deep nesting should be supported: depth {} ({})",
-                    depth, description
+                    depth, _description
                 );
             } else {
                 // Very deep nesting might be rejected for safety
                 if result.is_err() {
-                    println!("Deep nesting rejected at depth {}: {} ({})", depth, expr, description);
+                    println!("Deep nesting rejected at depth {}: {} ({})", depth, expr, _description);
                 }
             }
         }
@@ -255,7 +255,7 @@ mod boundary_condition_tests {
             (50, false, "Extreme filter complexity"),
         ];
 
-        for (complexity, should_succeed, description) in complex_filter_tests {
+        for (complexity, should_succeed, _description) in complex_filter_tests {
             // Create complex filter with multiple conditions
             let mut filter_parts = Vec::new();
             for i in 0..complexity {
@@ -270,12 +270,12 @@ mod boundary_condition_tests {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Complex filter should be supported: complexity {} ({})",
-                    complexity, description
+                    complexity, _description
                 );
             } else {
                 // Very complex filters might be rejected for safety
                 if result.is_err() {
-                    println!("Complex filter rejected at complexity {}: {} ({})", complexity, expr.len(), description);
+                    println!("Complex filter rejected at complexity {}: {} ({})", complexity, expr.len(), _description);
                 }
             }
         }
@@ -292,13 +292,13 @@ mod boundary_condition_tests {
             ("$..**[*]..*", "Recursive descent with arrays"),
         ];
 
-        for (expr, description) in recursive_tests {
+        for (expr, _description) in recursive_tests {
             let result = JsonPathParser::compile(expr);
             
             assert!(
                 result.is_ok(),
                 "RFC 9535: Recursive descent pattern should compile: {} ({})",
-                expr, description
+                expr, _description
             );
 
             // Test execution with boundary conditions
@@ -307,18 +307,18 @@ mod boundary_condition_tests {
             let chunk = Bytes::from(test_data);
             
             let start_time = Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should complete within reasonable time
             assert!(
                 elapsed < Duration::from_secs(5),
                 "RFC 9535: Recursive descent should complete in reasonable time: {} ({}ms) ({})",
-                expr, elapsed.as_millis(), description
+                expr, elapsed.as_millis(), _description
             );
             
             println!("Recursive boundary test '{}': {} results in {}ms ({})",
-                expr, results.len(), elapsed.as_millis(), description);
+                expr, _results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -344,28 +344,28 @@ mod boundary_condition_tests {
             ("$.performance_test.large_array[-1000000:-999999]", true, "Very large negative slice"),
         ];
 
-        for (expr, should_be_valid, description) in array_slice_tests {
+        for (expr, _should_be_valid, _description) in array_slice_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Array slice boundary should be valid: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(ADVANCED_FEATURES_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Array slice boundary '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid array slice boundary should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -388,23 +388,23 @@ mod performance_regression_tests {
             ("$.performance_test.large_array[?@.category == 'A' || @.category == 'B']", "Complex filter"),
         ];
 
-        for (expr, description) in performance_tests {
+        for (expr, _description) in performance_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON);
             
             let start_time = Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Performance should be reasonable
             assert!(
                 elapsed < Duration::from_millis(100),
                 "RFC 9535: Streaming performance should be good: {} ({}ms) ({})",
-                expr, elapsed.as_millis(), description
+                expr, elapsed.as_millis(), _description
             );
             
             println!("Performance test '{}': {} results in {}ms ({})",
-                expr, results.len(), elapsed.as_millis(), description);
+                expr, _results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -417,7 +417,7 @@ mod performance_regression_tests {
             (1000, "Large dataset"),
         ];
 
-        for (size, description) in data_sizes {
+        for (size, _description) in data_sizes {
             // Create dataset of specified size
             let mut large_array = String::from("[");
             for i in 0..size {
@@ -436,7 +436,7 @@ mod performance_regression_tests {
             let chunk = Bytes::from(json_data);
             
             let start_time = Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Performance should scale reasonably
@@ -444,11 +444,11 @@ mod performance_regression_tests {
             assert!(
                 ms_per_item < 0.1,
                 "RFC 9535: Performance should scale linearly: {:.3}ms per item for {} ({})",
-                ms_per_item, size, description
+                ms_per_item, size, _description
             );
             
             println!("Scalability test {}: {} results in {}ms ({:.3}ms per item)",
-                description, results.len(), elapsed.as_millis(), ms_per_item);
+                _description, _results.len(), elapsed.as_millis(), ms_per_item);
         }
     }
 
@@ -462,7 +462,7 @@ mod performance_regression_tests {
             ("$.performance_test.large_array[*].tags[*]", "Nested array streaming"),
         ];
 
-        for (expr, description) in memory_tests {
+        for (expr, _description) in memory_tests {
             // Use moderately complex data
             let complex_data = create_complex_nested_data(4, 4);
             
@@ -470,18 +470,18 @@ mod performance_regression_tests {
             let chunk = Bytes::from(complex_data);
             
             let start_time = Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should complete without memory issues
             assert!(
                 elapsed < Duration::from_secs(2),
                 "RFC 9535: Memory efficient streaming should complete quickly: {} ({}ms) ({})",
-                expr, elapsed.as_millis(), description
+                expr, elapsed.as_millis(), _description
             );
             
             println!("Memory efficiency test '{}': {} results in {}ms ({})",
-                expr, results.len(), elapsed.as_millis(), description);
+                expr, _results.len(), elapsed.as_millis(), _description);
         }
     }
 
@@ -498,7 +498,7 @@ mod performance_regression_tests {
             ("$.slice[1:10:2]", "Array slice"),
         ];
 
-        for (expr, description) in compilation_tests {
+        for (expr, _description) in compilation_tests {
             let start_time = Instant::now();
             let result = JsonPathParser::compile(expr);
             let elapsed = start_time.elapsed();
@@ -507,17 +507,17 @@ mod performance_regression_tests {
             assert!(
                 elapsed < Duration::from_millis(10),
                 "RFC 9535: Expression compilation should be fast: {} ({}ms) ({})",
-                expr, elapsed.as_millis(), description
+                expr, elapsed.as_millis(), _description
             );
             
             assert!(
                 result.is_ok(),
                 "RFC 9535: Expression should compile successfully: {} ({})",
-                expr, description
+                expr, _description
             );
             
             println!("Compilation performance '{}': {}ms ({})",
-                expr, elapsed.as_millis(), description);
+                expr, elapsed.as_millis(), _description);
         }
     }
 }
@@ -549,9 +549,9 @@ mod edge_case_validation_tests {
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Concurrent expression '{}': {} results", expr, results.len());
+            println!("Concurrent expression '{}': {} results", expr, _results.len());
         }
     }
 
@@ -570,10 +570,10 @@ mod edge_case_validation_tests {
             
             let mut stream = JsonArrayStream::<serde_json::Value>::new(reuse_expr);
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON); // Use consistent data
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
             // Results should be consistent across reuses
-            println!("Expression reuse run {}: {} results", i, results.len());
+            println!("Expression reuse run {}: {} results", i, _results.len());
         }
     }
 
@@ -589,23 +589,23 @@ mod edge_case_validation_tests {
 
         let expr = "$..*";
         
-        for (malformed_json, description) in malformed_inputs {
+        for (malformed_json, _description) in malformed_inputs {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(malformed_json);
             
             let start_time = Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let elapsed = start_time.elapsed();
             
             // Should handle gracefully without hanging
             assert!(
                 elapsed < Duration::from_millis(500),
                 "RFC 9535: Malformed input should be handled quickly: {} ({}ms) ({})",
-                description, elapsed.as_millis(), description
+                _description, elapsed.as_millis(), _description
             );
             
             println!("Malformed input resilience '{}': {} results in {}ms",
-                description, results.len(), elapsed.as_millis());
+                _description, _results.len(), elapsed.as_millis());
         }
     }
 }

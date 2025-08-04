@@ -78,20 +78,21 @@ parking_lot = "0.12.4"
 dashmap = "6.1.0"
 strsim = "0.11.1"
 lz4 = "1.28.1"
-html-escape = "0.2.13"
+
 
 # Additional dependencies for memory migration
 fastrand = "2.3.0"
 num_cpus = "1.17.0"
 bytes = "1.10.1"
-toml = "0.9"
-rkyv = { version = "0.8", optional = true }
+toml = "0.9.4"
+rkyv = { version = "0.8.11", optional = true }
 bincode = { version = "2.0.1", optional = true }
 reqwest = { version = "0.12.22", features = ["json"] }
 md5 = "0.8.0"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 async-stream = "0.3.6"
+clap = { version = "4.5.31", features = ["derive"] }
 
 [dev-dependencies]
 tracing-subscriber = "0.3.19"
@@ -100,7 +101,11 @@ quanta = "0.12.6"
 weak-table = "0.3.2"
 fnv = "1.0.7"
 hdrhistogram = "7.5.4"
-html-escape = "0.2.13"
+
+
+[[bin]]
+name = "candle-chat"
+path = "src/main.rs"
 
 [lib]
 name = "fluent_ai_candle"

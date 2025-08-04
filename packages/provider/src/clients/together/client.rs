@@ -331,7 +331,11 @@ impl ProviderClient for Client {
 // ============================================================================
 // Typestate markers
 // ============================================================================
+
+/// Typestate marker indicating that prompt is required for completion builder
 pub struct NeedsPrompt;
+
+/// Typestate marker indicating that prompt has been provided for completion builder
 pub struct HasPrompt;
 
 // ============================================================================

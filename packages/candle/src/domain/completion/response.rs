@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::Usage;
+use crate::domain::model::usage::Usage;
 
 /// A response from a text completion request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,4 +129,3 @@ impl CompactCompletionResponse {
         }
     }
 }
-

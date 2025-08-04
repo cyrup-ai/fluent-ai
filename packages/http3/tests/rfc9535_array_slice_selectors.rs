@@ -31,7 +31,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -58,7 +58,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -86,7 +86,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -114,7 +114,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -142,7 +142,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -170,7 +170,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -189,9 +189,9 @@ mod array_slice_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store[1:3]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Slice on object should return empty nodelist"
         );
@@ -274,10 +274,10 @@ mod slice_performance_tests {
 
         let chunk = Bytes::from(json_data);
         let start_time = std::time::Instant::now();
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
-        assert_eq!(results.len(), 100, "Should select 100 elements");
+        assert_eq!(_results.len(), 100, "Should select 100 elements");
         println!("Large array slice took {:?}", duration);
 
         // Performance assertion - should complete in reasonable time

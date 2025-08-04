@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::AsyncTask;
 use cyrup_sugars::ZeroOneOrMany;
 use crate::domain::context::chunk::EmbeddingChunk;
-use crate::domain::model::Usage;
+use crate::domain::model::usage::Usage;
 
 /// Core trait for embedding models
 pub trait EmbeddingModel: Send + Sync + Clone {

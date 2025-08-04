@@ -10,26 +10,17 @@ use serde_json::Value;
 
 use crate::domain::model::{CandleValidationError as ValidationError, CandleValidationResult as ValidationResult};
 
-/// A chunk of Candle completion response
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CandleCompletionChunk {
-    /// The text content of this chunk
-    pub text: String,
-    /// Whether this is the final chunk
-    pub done: bool,
-    /// Error information if any
-    pub error: Option<String>,
-}
-
 /// Temperature range for generation (0.0 to 2.0)
 pub const TEMPERATURE_RANGE: RangeInclusive<f64> = 0.0..=2.0;
+
 /// Maximum tokens for a single completion
 pub const MAX_TOKENS: u64 = 8192;
+
 /// Maximum chunk size for streaming
 pub const MAX_CHUNK_SIZE: usize = 4096;
 
 /// Candle parameters for completion generation
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct CandleCompletionParams {
     /// Sampling temperature (0.0 to 2.0)
@@ -39,7 +30,9 @@ pub struct CandleCompletionParams {
     /// Number of completions to generate
     pub n: std::num::NonZeroU8,
     /// Whether to stream the response
-    pub stream: bool}
+    pub stream: bool,
+    /// Additional provider-specific parameters
+    pub additional_params: Option<Value>}
 
 impl Default for CandleCompletionParams {
     fn default() -> Self {
@@ -50,7 +43,8 @@ impl Default for CandleCompletionParams {
                 Some(n) => n,
                 None => std::num::NonZeroU8::MIN, // Use minimum valid value as fallback
             },
-            stream: false}
+            stream: false,
+            additional_params: None}
     }
 }
 
@@ -79,6 +73,12 @@ impl CandleCompletionParams {
     /// Set the maximum number of tokens
     pub fn with_max_tokens(mut self, max_tokens: Option<NonZeroU64>) -> Self {
         self.max_tokens = max_tokens.and_then(|t| NonZeroU64::new(t.get().min(MAX_TOKENS)));
+        self
+    }
+
+    /// Set additional provider-specific parameters
+    pub fn with_additional_params(mut self, additional_params: Option<Value>) -> Self {
+        self.additional_params = additional_params;
         self
     }
 }

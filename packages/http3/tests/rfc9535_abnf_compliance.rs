@@ -461,7 +461,7 @@ mod function_syntax_tests {
             ("$[?match(@.title, \"^Lord.*\")]", true),
             ("$[?match(@.isbn, \"[0-9]{13}\")]", true),
             // Search function
-            ("$[?search(@.description, \"fantasy\")]", true),
+            ("$[?search(@._description, \"fantasy\")]", true),
             ("$[?search(@.title, \"Ring\")]", true),
             ("$[?search(@.content, \"magic\")]", true),
             // Value function
@@ -572,7 +572,7 @@ mod function_syntax_tests {
     fn test_search_function_syntax() {
         // RFC 9535: search-function-expr = "search" "(" S expr S "," S string-literal S ")"
         let search_tests = vec![
-            ("$[?search(@.description, \"fantasy\")]", true),
+            ("$[?search(@._description, \"fantasy\")]", true),
             ("$[?search(@.content, \"magic\")]", true),
             ("$[?search(@.title, 'adventure')]", true),     // Single quotes
             ("$[? search(@.text, \"keyword\")]", true),     // Whitespace after ?
@@ -638,7 +638,7 @@ mod function_syntax_tests {
             ("$[?count(value(@.collection)) == 5]", true),
             ("$[?value(length(@.data)) < 10]", true),
             ("$[?match(value(@.category), \"fiction\")]", true),
-            ("$[?search(value(@.description), \"adventure\")]", true),
+            ("$[?search(value(@._description), \"adventure\")]", true),
             // Complex valid nesting
             ("$[?value(count($..book[?@.price])) > 3]", true),
             ("$[?length(value(@.authors)) >= 2]", true),
@@ -865,9 +865,9 @@ mod ijson_number_tests {
             ("$[-9007199254740992]", true), // Beyond MIN_SAFE_INTEGER
         ];
 
-        for (query, should_compile) in number_tests {
+        for (query, _should_compile) in number_tests {
             let result = JsonPathParser::compile(query);
-            if should_compile {
+            if _should_compile {
                 assert!(result.is_ok(), "I-JSON number '{}' should compile", query);
             } else {
                 assert!(
@@ -895,10 +895,10 @@ mod ijson_number_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: Decimal precision test '{}' should return {} results",
                 expr,
@@ -991,7 +991,7 @@ mod wellformedness_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             if should_execute {
                 // Valid queries should execute without panicking - test passes if we get here
@@ -1181,16 +1181,16 @@ mod wellformedness_tests {
             ("$.items[?@.active == 1]", "Boolean vs number comparison"),
         ];
 
-        for (expr, description) in comparison_operators {
+        for (expr, _description) in comparison_operators {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Comparison operator '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Comparison operator '{}' should compile: {}", expr, _description);
 
             // Verify the expression can execute
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Comparison test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Comparison test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -1223,16 +1223,16 @@ mod wellformedness_tests {
             ("$.items[?!@.active && @.price > 15]", "NOT/AND precedence"),
         ];
 
-        for (expr, description) in logical_operators {
+        for (expr, _description) in logical_operators {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Logical operator '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Logical operator '{}' should compile: {}", expr, _description);
 
             // Verify the expression can execute
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Logical test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Logical test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 

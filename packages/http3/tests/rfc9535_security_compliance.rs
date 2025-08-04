@@ -55,16 +55,16 @@ mod injection_attack_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(malicious_path);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Path injection test '{}' -> {} results",
                         malicious_path,
-                        results.len()
+                        _results.len()
                     );
 
                     // Log for security audit - these should be controlled by application logic
-                    if results.len() > 0 {
+                    if _results.len() > 0 {
                         println!("  WARNING: Potentially sensitive data accessible via path");
                     }
                 }
@@ -97,12 +97,12 @@ mod injection_attack_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(filter);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Filter injection test '{}' -> {} results",
                         filter,
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(_) => println!("Filter injection '{}' rejected by parser", filter),
@@ -113,7 +113,7 @@ mod injection_attack_tests {
     #[test]
     fn test_string_escape_injection() {
         // Test injection through string escape sequences
-        let _json_data = r#"{"keys": {
+        let json_data = r#"{"keys": {
             "normal": "value1",
             "with'quote": "value2",
             "with\"quote": "value3",
@@ -129,11 +129,31 @@ mod injection_attack_tests {
             "$['keys']['with\\tquote']",      // Tab injection attempt
         ];
 
+        // Parse JSON data for testing
+        let json_value: serde_json::Value = serde_json::from_str(json_data)
+            .expect("Test JSON should be valid");
+
         for path in escape_injection_tests {
             let result = JsonPathParser::compile(path);
             match result {
-                Ok(_) => println!("Escape injection '{}' compiled successfully", path),
-                Err(_) => println!("Escape injection '{}' rejected", path),
+                Ok(expr) => {
+                    // Test that the compiled expression can safely process the JSON
+                    let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
+                    let chunk = Bytes::from(json_data);
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    
+                    println!("✓ Escape injection '{}' processed safely: {} results", 
+                        path, results.len());
+                    
+                    // Verify no injection occurred by checking result validity
+                    for result in results {
+                        assert!(result.is_ok(), "Escaped path should not cause processing errors");
+                    }
+                },
+                Err(err) => {
+                    println!("Escape injection '{}' rejected: {}", path, err);
+                    // Rejection is also acceptable for security
+                }
             }
         }
     }
@@ -141,7 +161,7 @@ mod injection_attack_tests {
     #[test]
     fn test_unicode_injection_prevention() {
         // Test Unicode-based injection attempts
-        let _json_data = r#"{"data": {
+        let json_data = r#"{"data": {
             "normal": "value",
             "café": "coffee",
             "αβγ": "greek",
@@ -156,11 +176,31 @@ mod injection_attack_tests {
             "$['data']['\\u03B1\\u03B2\\u03B3']",        // Unicode escapes for Greek
         ];
 
+        // Parse JSON data for Unicode testing
+        let json_value: serde_json::Value = serde_json::from_str(json_data)
+            .expect("Unicode test JSON should be valid");
+
         for path in unicode_injection_tests {
             let result = JsonPathParser::compile(path);
             match result {
-                Ok(_) => println!("Unicode injection '{}' compiled successfully", path),
-                Err(_) => println!("Unicode injection '{}' rejected", path),
+                Ok(expr) => {
+                    // Test that Unicode paths can safely process the JSON data
+                    let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
+                    let chunk = Bytes::from(json_data);
+                    let results: Vec<_> = stream.process_chunk(chunk).collect(); 
+                    
+                    println!("✓ Unicode injection '{}' processed safely: {} results", 
+                        path, results.len());
+                    
+                    // Verify Unicode handling doesn't cause issues
+                    for result in results {
+                        assert!(result.is_ok(), "Unicode path should not cause processing errors");
+                    }
+                },
+                Err(err) => {
+                    println!("Unicode injection '{}' rejected: {}", path, err);
+                    // Rejection may be acceptable for certain Unicode sequences
+                }
             }
         }
     }
@@ -179,7 +219,7 @@ mod resource_exhaustion_tests {
             "large_data": large_array,
             "metadata": {
                 "count": 10000,
-                "description": "Large dataset for testing"
+                "_description": "Large dataset for testing"
             }
         });
         let json_data = serde_json::to_string(&json_value).expect("Valid JSON");
@@ -191,22 +231,22 @@ mod resource_exhaustion_tests {
             ("$.metadata.count", "Metadata access"),
         ];
 
-        for (path, description) in large_data_tests {
+        for (path, _description) in large_data_tests {
             let start_time = std::time::Instant::now();
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Large JSON test '{}' -> {} results in {:?} ({})",
                 path,
-                results.len(),
+                _results.len(),
                 duration,
-                description
+                _description
             );
 
             // Performance assertion - should complete within reasonable time
@@ -239,22 +279,22 @@ mod resource_exhaustion_tests {
             ("$.arrays[0:3][100:200]", "Subset of arrays and elements"),
         ];
 
-        for (path, description) in memory_test_paths {
+        for (path, _description) in memory_test_paths {
             let start_time = std::time::Instant::now();
 
             let mut stream = JsonArrayStream::<i32>::new(path);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Memory usage test '{}' -> {} results in {:?} ({})",
                 path,
-                results.len(),
+                _results.len(),
                 duration,
-                description
+                _description
             );
 
             // Memory usage should be reasonable
@@ -289,22 +329,22 @@ mod resource_exhaustion_tests {
             ("$..*", "Universal descendant wildcard"),
         ];
 
-        for (path, description) in wildcard_stress_tests {
+        for (path, _description) in wildcard_stress_tests {
             let start_time = std::time::Instant::now();
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Wildcard stress test '{}' -> {} results in {:?} ({})",
                 path,
-                results.len(),
+                _results.len(),
                 duration,
-                description
+                _description
             );
 
             // Should handle wildcards efficiently
@@ -343,14 +383,14 @@ mod resource_exhaustion_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(filter);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "Complex filter '{}' -> {} results in {:?}",
                         filter,
-                        results.len(),
+                        _results.len(),
                         duration
                     );
 
@@ -393,8 +433,8 @@ mod malformed_input_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new("$.key");
 
                 let chunk = Bytes::from(malformed_json);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             match result {
@@ -454,8 +494,8 @@ mod malformed_input_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                     let chunk = Bytes::from(edge_json);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    results.len()
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    _results.len()
                 });
 
                 match result {
@@ -491,8 +531,8 @@ mod malformed_input_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(large_number_json);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             match result {
@@ -525,15 +565,15 @@ mod deep_nesting_tests {
             ("$.level_99.*.*", "Wildcard through deep levels"),
         ];
 
-        for (path, description) in deep_nesting_tests {
+        for (path, _description) in deep_nesting_tests {
             let start_time = std::time::Instant::now();
 
             let result = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data.clone());
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             let duration = start_time.elapsed();
@@ -542,7 +582,7 @@ mod deep_nesting_tests {
                 Ok(count) => {
                     println!(
                         "Deep nesting test '{}' -> {} results in {:?} ({})",
-                        path, count, duration, description
+                        path, count, duration, _description
                     );
 
                     // Should handle deep nesting without excessive time
@@ -575,15 +615,15 @@ mod deep_nesting_tests {
             ("$[*][*][*]", "Three-level wildcard"),
         ];
 
-        for (path, description) in deep_array_tests {
+        for (path, _description) in deep_array_tests {
             let start_time = std::time::Instant::now();
 
             let result = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data.clone());
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             let duration = start_time.elapsed();
@@ -592,7 +632,7 @@ mod deep_nesting_tests {
                 Ok(count) => {
                     println!(
                         "Deep array test '{}' -> {} results in {:?} ({})",
-                        path, count, duration, description
+                        path, count, duration, _description
                     );
 
                     // Should handle deep arrays efficiently
@@ -634,15 +674,15 @@ mod deep_nesting_tests {
             ("$..*", "Universal descendant search"),
         ];
 
-        for (path, description) in recursion_tests {
+        for (path, _description) in recursion_tests {
             let start_time = std::time::Instant::now();
 
             let result = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data.clone());
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             let duration = start_time.elapsed();
@@ -651,7 +691,7 @@ mod deep_nesting_tests {
                 Ok(count) => {
                     println!(
                         "Recursion test '{}' -> {} results in {:?} ({})",
-                        path, count, duration, description
+                        path, count, duration, _description
                     );
 
                     // Recursion should be controlled and fast
@@ -699,8 +739,8 @@ mod regex_dos_prevention_tests {
                         let mut stream = JsonArrayStream::<serde_json::Value>::new(pattern);
 
                         let chunk = Bytes::from(json_data);
-                        let results: Vec<_> = stream.process_chunk(chunk).collect();
-                        results.len()
+                        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                        _results.len()
                     });
 
                     let duration = start_time.elapsed();
@@ -757,7 +797,7 @@ mod regex_dos_prevention_tests {
             ("$.data[?match(@.code, '[A-Z]+')]", "Basic character class"),
         ];
 
-        for (pattern, description) in complexity_patterns {
+        for (pattern, _description) in complexity_patterns {
             let start_time = std::time::Instant::now();
             let result = JsonPathParser::compile(pattern);
 
@@ -766,16 +806,16 @@ mod regex_dos_prevention_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(pattern);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "Regex complexity '{}' -> {} results in {:?} ({})",
                         pattern,
-                        results.len(),
+                        _results.len(),
                         duration,
-                        description
+                        _description
                     );
 
                     // Complex patterns should still execute quickly
@@ -787,7 +827,7 @@ mod regex_dos_prevention_tests {
                 }
                 Err(_) => println!(
                     "Regex pattern '{}' not supported ({})",
-                    pattern, description
+                    pattern, _description
                 ),
             }
         }
@@ -820,14 +860,14 @@ mod regex_dos_prevention_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(pattern);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "Regex input size test '{}' -> {} results in {:?} ({})",
                         pattern,
-                        results.len(),
+                        _results.len(),
                         duration,
                         size_desc
                     );
@@ -854,7 +894,7 @@ mod parser_vulnerability_tests {
     fn test_buffer_overflow_protection() {
         // Test protection against buffer overflow attacks through oversized inputs
         let extremely_long_property = "a".repeat(100000);
-        let _oversized_json = format!(r#"{{"{}": "value"}}"#, extremely_long_property);
+        let oversized_json = format!(r#"{{"{}": "value"}}"#, extremely_long_property);
 
         let buffer_overflow_tests = vec![
             (format!("$.{}", extremely_long_property), "Extremely long property name"),
@@ -863,7 +903,7 @@ mod parser_vulnerability_tests {
             (format!("$[?@.field == '{}']", "x".repeat(50000)), "Extremely long filter value"),
         ];
 
-        for (path, description) in buffer_overflow_tests {
+        for (path, _description) in buffer_overflow_tests {
             let start_time = std::time::Instant::now();
             
             let result = std::panic::catch_unwind(|| {
@@ -875,16 +915,16 @@ mod parser_vulnerability_tests {
             match result {
                 Ok(parse_result) => {
                     match parse_result {
-                        Ok(_) => println!("Buffer overflow test '{}' compiled unexpectedly", description),
-                        Err(_) => println!("Buffer overflow test '{}' correctly rejected", description),
+                        Ok(_) => println!("Buffer overflow test '{}' compiled unexpectedly", _description),
+                        Err(_) => println!("Buffer overflow test '{}' correctly rejected", _description),
                     }
                 }
-                Err(_) => println!("Buffer overflow test '{}' caused panic (potential vulnerability)", description),
+                Err(_) => println!("Buffer overflow test '{}' caused panic (potential vulnerability)", _description),
             }
 
             // Compilation should not take excessive time even for malicious inputs
             assert!(duration.as_millis() < 5000, 
-                "Buffer overflow protection test '{}' should reject quickly", description);
+                "Buffer overflow protection test '{}' should reject quickly", _description);
         }
     }
 
@@ -901,7 +941,7 @@ mod parser_vulnerability_tests {
             (format!("${}", "..value".repeat(200)), "200 nested descendant operators"),
         ];
 
-        for (path, description) in stack_overflow_tests {
+        for (path, _description) in stack_overflow_tests {
             let start_time = std::time::Instant::now();
             
             let result = std::panic::catch_unwind(|| {
@@ -913,16 +953,16 @@ mod parser_vulnerability_tests {
             match result {
                 Ok(parse_result) => {
                     match parse_result {
-                        Ok(_) => println!("Stack overflow test '{}' compiled (potential issue)", description),
-                        Err(_) => println!("Stack overflow test '{}' correctly rejected", description),
+                        Ok(_) => println!("Stack overflow test '{}' compiled (potential issue)", _description),
+                        Err(_) => println!("Stack overflow test '{}' correctly rejected", _description),
                     }
                 }
-                Err(_) => println!("Stack overflow test '{}' hit protection limits", description),
+                Err(_) => println!("Stack overflow test '{}' hit protection limits", _description),
             }
 
             // Should complete quickly even for pathological inputs
             assert!(duration.as_millis() < 3000,
-                "Stack overflow protection test '{}' should complete quickly", description);
+                "Stack overflow protection test '{}' should complete quickly", _description);
         }
     }
 
@@ -940,10 +980,10 @@ mod parser_vulnerability_tests {
             (huge_object_json.clone(), "$..value0", "Descendant search in huge object"),
         ];
 
-        for (json_data, path, description) in memory_exhaustion_tests {
+        for (_json_data, path, _description) in memory_exhaustion_tests {
             let start_time = std::time::Instant::now();
             
-            let json_data_clone = json_data.clone();
+            let json_data_clone = _json_data.clone();
             let path_clone = path.to_string();
             let result = std::panic::catch_unwind(move || {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(&path_clone);
@@ -955,20 +995,20 @@ mod parser_vulnerability_tests {
                 };
                 let chunk = Bytes::from(limited_data);
                 let stream_result = stream.process_chunk(chunk);
-                let results: Vec<_> = stream_result.collect().into_iter().take(1000).collect(); // Limit results
-                results.len()
+                let _results: Vec<_> = stream_result.collect().into_iter().take(1000).collect(); // Limit results
+                _results.len()
             });
 
             let duration = start_time.elapsed();
 
             match result {
-                Ok(count) => println!("Memory exhaustion test '{}' -> {} results in {:?}", description, count, duration),
-                Err(_) => println!("Memory exhaustion test '{}' hit protection limits", description),
+                Ok(count) => println!("Memory exhaustion test '{}' -> {} results in {:?}", _description, count, duration),
+                Err(_) => println!("Memory exhaustion test '{}' hit protection limits", _description),
             }
 
             // Should complete within reasonable memory/time bounds
             assert!(duration.as_millis() < 10000,
-                "Memory exhaustion test '{}' should complete within bounds", description);
+                "Memory exhaustion test '{}' should complete within bounds", _description);
         }
     }
 
@@ -1017,17 +1057,17 @@ mod parser_vulnerability_tests {
             ("$['\u{FE0F}']", "Variation selector"),
         ];
 
-        for (attack_path, description) in unicode_attacks {
+        for (attack_path, _description) in unicode_attacks {
             let result = JsonPathParser::compile(attack_path);
             match result {
-                Ok(_) => println!("Unicode attack '{}' compiled ({})", attack_path, description),
-                Err(_) => println!("Unicode attack '{}' rejected ({})", attack_path, description),
+                Ok(_) => println!("Unicode attack '{}' compiled ({})", attack_path, _description),
+                Err(_) => println!("Unicode attack '{}' rejected ({})", attack_path, _description),
             }
 
             // Test that Unicode attacks don't affect subsequent parsing
             let normal_result = JsonPathParser::compile("$.normal");
             assert!(normal_result.is_ok(), 
-                "Unicode attack should not affect subsequent parsing: {}", description);
+                "Unicode attack should not affect subsequent parsing: {}", _description);
         }
     }
 }
@@ -1048,7 +1088,7 @@ mod error_recovery_tests {
             ("$.key[?@", "Incomplete filter"),
         ];
 
-        for (malicious_path, description) in error_inducing_inputs {
+        for (malicious_path, _description) in error_inducing_inputs {
             // Attempt to compile malicious path
             let error_result = JsonPathParser::compile(malicious_path);
             assert!(error_result.is_err(), 
@@ -1057,14 +1097,14 @@ mod error_recovery_tests {
             // Verify normal paths still work after error
             let normal_result = JsonPathParser::compile("$.valid.path");
             assert!(normal_result.is_ok(), 
-                "Normal path should work after error from '{}' ({})", malicious_path, description);
+                "Normal path should work after error from '{}' ({})", malicious_path, _description);
 
             // Verify stream creation still works
             let stream_result = std::panic::catch_unwind(|| {
                 JsonArrayStream::<serde_json::Value>::new("$.test")
             });
             assert!(stream_result.is_ok(), 
-                "Stream creation should work after error from '{}' ({})", malicious_path, description);
+                "Stream creation should work after error from '{}' ({})", malicious_path, _description);
         }
     }
 
@@ -1081,11 +1121,11 @@ mod error_recovery_tests {
             ("$store", "Missing dot"),
         ];
 
-        for (invalid_path, description) in error_scenarios {
+        for (invalid_path, _description) in error_scenarios {
             // Parser should reject invalid paths
             let parse_result = JsonPathParser::compile(invalid_path);
             assert!(parse_result.is_err(), 
-                "Invalid path '{}' should be rejected during parsing ({})", invalid_path, description);
+                "Invalid path '{}' should be rejected during parsing ({})", invalid_path, _description);
 
             // Stream creation with invalid path should also fail consistently
             let stream_result = std::panic::catch_unwind(|| {
@@ -1124,10 +1164,10 @@ mod error_recovery_tests {
                 for i in 0..100 {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(&path);
                     let chunk = Bytes::from(json_data.clone());
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
                     
                     if i == 0 {
-                        println!("Concurrent test '{}' -> {} results", path, results.len());
+                        println!("Concurrent test '{}' -> {} results", path, _results.len());
                     }
                 }
                 path
@@ -1151,7 +1191,7 @@ mod error_recovery_tests {
             ("$..value..target..data", "Multiple descendants"),
         ];
 
-        for (path, description) in cleanup_test_scenarios {
+        for (path, _description) in cleanup_test_scenarios {
             // Create and process multiple times to test cleanup
             for iteration in 0..10 {
                 let result = std::panic::catch_unwind(|| {
@@ -1166,12 +1206,12 @@ mod error_recovery_tests {
                 match result {
                     Ok(_) => {
                         if iteration == 0 {
-                            println!("Resource cleanup test '{}' handled gracefully", description);
+                            println!("Resource cleanup test '{}' handled gracefully", _description);
                         }
                     }
                     Err(_) => {
                         if iteration == 0 {
-                            println!("Resource cleanup test '{}' caused expected error", description);
+                            println!("Resource cleanup test '{}' caused expected error", _description);
                         }
                     }
                 }
@@ -1180,7 +1220,7 @@ mod error_recovery_tests {
             // Verify system is still functional after cleanup tests
             let verification_result = JsonPathParser::compile("$.test");
             assert!(verification_result.is_ok(), 
-                "System should be functional after resource cleanup test: {}", description);
+                "System should be functional after resource cleanup test: {}", _description);
         }
     }
 
@@ -1201,15 +1241,15 @@ mod error_recovery_tests {
             ("$[?]", "Empty filter"),
         ];
 
-        for (input, description) in edge_case_inputs {
+        for (input, _description) in edge_case_inputs {
             let result = JsonPathParser::compile(input);
             println!("Input validation edge case '{}' ({}): {:?}", 
-                input.escape_debug(), description, result.is_ok());
+                input.escape_debug(), _description, result.is_ok());
 
             // System should handle edge cases without crashing
             let post_test_result = JsonPathParser::compile("$.normal");
             assert!(post_test_result.is_ok(), 
-                "System should remain stable after edge case: {}", description);
+                "System should remain stable after edge case: {}", _description);
         }
     }
 }

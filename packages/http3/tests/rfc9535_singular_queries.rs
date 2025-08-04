@@ -112,27 +112,27 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() <= 1,
+                _results.len() <= 1,
                 "Singular query '{}' should return at most 1 result, got {}",
                 query,
-                results.len()
+                _results.len()
             );
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Singular query '{}' should return {} results, got {}",
                 query,
                 expected_count,
-                results.len()
+                _results.len()
             );
 
             println!(
                 "Singular query '{}' returned {} results (expected {})",
                 query,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -171,9 +171,9 @@ mod singular_query_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-                results_sets.push(results);
+                results_sets.push(_results);
                 println!(
                     "Query '{}' returned {} results",
                     query,
@@ -184,12 +184,12 @@ mod singular_query_tests {
             // All equivalent queries should return the same results
             if results_sets.len() > 1 {
                 let first = &results_sets[0];
-                for (i, results) in results_sets.iter().enumerate().skip(1) {
-                    if first.len() == results.len() && first.len() <= 1 {
+                for (i, results) in _results_sets.iter().enumerate().skip(1) {
+                    if first.len() == _results.len() && first.len() <= 1 {
                         // For singular queries, check value equality if both have results
-                        if !first.is_empty() && !results.is_empty() {
+                        if !first.is_empty() && !_results.is_empty() {
                             assert_eq!(
-                                first[0], results[0],
+                                first[0], _results[0],
                                 "Equivalent queries '{}' and '{}' should return same value",
                                 group[0], group[i]
                             );
@@ -374,15 +374,15 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() <= 1,
+                _results.len() <= 1,
                 "Singular query '{}' should return at most 1 result",
                 query
             );
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Edge case query '{}' should return {} results",
                 query,
@@ -392,7 +392,7 @@ mod singular_query_tests {
             println!(
                 "Edge case query '{}' returned {} results",
                 query,
-                results.len()
+                _results.len()
             );
         }
     }
@@ -442,22 +442,22 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() <= 1,
+                _results.len() <= 1,
                 "Deep singular query '{}' should return at most 1 result",
                 query
             );
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Deep query '{}' should return {} results",
                 query,
                 expected_count
             );
 
-            println!("Deep query '{}' returned {} results", query, results.len());
+            println!("Deep query '{}' returned {} results", query, _results.len());
         }
     }
 
@@ -492,12 +492,12 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Performance query '{}' should return {} results",
                 query,
@@ -507,7 +507,7 @@ mod singular_query_tests {
             println!(
                 "Performance query '{}' returned {} results in {:?}",
                 query,
-                results.len(),
+                _results.len(),
                 duration
             );
 
@@ -579,10 +579,10 @@ mod singular_query_error_tests {
             ("$['length']", true), // Bracket property access
         ];
 
-        for (query, should_be_valid) in ambiguous_tests {
+        for (query, _should_be_valid) in ambiguous_tests {
             let result = JsonPathParser::compile(query);
 
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "Ambiguous query '{}' should be valid",
@@ -630,16 +630,16 @@ mod singular_query_error_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "Query '{}' should return exactly one result",
                 query
             );
 
-            let actual_type = match &results[0] {
+            let actual_type = match &_results[0] {
                 serde_json::Value::String(_) => "string",
                 serde_json::Value::Number(_) => "number",
                 serde_json::Value::Bool(_) => "boolean",

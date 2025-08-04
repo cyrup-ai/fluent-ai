@@ -42,10 +42,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "String length filter '{}' should return {} items",
                 expr,
@@ -75,10 +75,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Array length filter '{}' should return {} items",
                 expr,
@@ -108,10 +108,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Object length filter '{}' should return {} items",
                 expr,
@@ -133,9 +133,9 @@ mod length_function_tests {
             JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 1, "length(null) should equal null");
+        assert_eq!(_results.len(), 1, "length(null) should equal null");
     }
 
     #[test]
@@ -151,10 +151,10 @@ mod length_function_tests {
         let mut stream =
             JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]");
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             3,
             "RFC 9535: length() MUST return null for all primitive values (numbers, booleans)"
         );
@@ -190,10 +190,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(&filter_expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "count() expression '{}' should return 1 result when count equals {}",
                 count_expr,
@@ -211,10 +211,10 @@ mod count_function_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(filter_expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             1,
             "RFC 9535: count() of empty nodelist MUST return 0"
         );
@@ -239,10 +239,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() comparison '{}' should return {} results",
                 expr,
@@ -279,10 +279,10 @@ mod match_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "match() filter '{}' should return {} items",
                 expr,
@@ -311,10 +311,10 @@ mod match_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "match() case sensitivity test '{}' should return {} items",
                 expr,
@@ -337,11 +337,11 @@ mod match_function_tests {
 
         let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should match valid email addresses
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "Email regex should match 2 valid email addresses"
         );
@@ -357,27 +357,27 @@ mod search_function_tests {
     fn test_regex_search() {
         // RFC 9535: search() tests if string contains match for regex
         let json_data = r#"{"items": [
-            {"description": "This contains the word test"},
-            {"description": "No matching content here"},
-            {"description": "Another test example"},
-            {"description": "Testing is important"}
+            {"_description": "This contains the word test"},
+            {"_description": "No matching content here"},
+            {"_description": "Another test example"},
+            {"_description": "Testing is important"}
         ]}"#;
 
         let test_cases = vec![
-            ("$.items[?search(@.description, 'test')]", 3), // Contains 'test'
-            ("$.items[?search(@.description, '^This')]", 1), // Starts with 'This'
-            ("$.items[?search(@.description, 'important$')]", 1), // Ends with 'important'
-            ("$.items[?search(@.description, '[Tt]est')]", 3), // Case variations
+            ("$.items[?search(@._description, 'test')]", 3), // Contains 'test'
+            ("$.items[?search(@._description, '^This')]", 1), // Starts with 'This'
+            ("$.items[?search(@._description, 'important$')]", 1), // Ends with 'important'
+            ("$.items[?search(@._description, '[Tt]est')]", 3), // Case variations
         ];
 
         for (expr, expected_count) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "search() filter '{}' should return {} items",
                 expr,
@@ -438,10 +438,10 @@ mod value_function_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             1,
             "value() function should extract timeout value and compare it"
         );
@@ -460,11 +460,11 @@ mod value_function_tests {
         if result.is_ok() {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // If it compiles, it should return empty results due to error
             assert_eq!(
-                results.len(),
+                _results.len(),
                 0,
                 "RFC 9535: value() on multi-node nodelist MUST error"
             );
@@ -482,11 +482,11 @@ mod value_function_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // RFC: value() on empty nodelist should be handled appropriately
         assert!(
-            results.len() <= 1,
+            _results.len() <= 1,
             "RFC 9535: value() on empty nodelist should return at most 1 result"
         );
     }
@@ -544,10 +544,10 @@ mod function_error_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             1,
             "RFC 9535: Valid nested function usage MUST work"
         );

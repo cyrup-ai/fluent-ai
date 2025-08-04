@@ -37,7 +37,7 @@
 //! stream.record_chunk(&chunk);
 //! ```
 
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]

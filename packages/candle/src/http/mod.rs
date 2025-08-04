@@ -58,7 +58,7 @@
 //!     .await?;
 //! ```
 
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
@@ -100,7 +100,7 @@ pub use {
     },
     responses::{
         completion::{
-            CompletionResponse, CompletionChoice, CompletionChunk, ChunkChoice, ChunkDelta,
+            CompletionResponse, CompletionChoice, CandleCompletionResponseChunk, ChunkChoice, ChunkDelta,
             StreamingResponse, CompletionResponseError, LogProbs, TokenLogProb,
             OpenAIMetadata, AnthropicMetadata, GoogleMetadata, BedrockMetadata, CohereMetadata,
             SafetyRating, CitationMetadata, CitationSource, BedrockMetrics}

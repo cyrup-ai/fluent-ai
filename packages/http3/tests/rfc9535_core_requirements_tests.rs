@@ -88,29 +88,29 @@ mod well_formedness_validity_tests {
             ("$.store.book[?@.author.length]", true, "Property on primitive"),
         ];
 
-        for (expr, should_compile, description) in well_formed_invalid {
+        for (expr, _should_compile, _description) in well_formed_invalid {
             let result = JsonPathParser::compile(expr);
             
-            if should_compile {
+            if _should_compile {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Well-formed expression should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution - should not crash but may return empty results
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(CORE_TEST_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 // Should execute without error, even if no results
                 println!("Well-formed invalid '{}' -> {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Malformed expression should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -147,13 +147,13 @@ mod well_formedness_validity_tests {
             ("$['\\unicode']", false, "Invalid unicode escape"),
         ];
 
-        for (expr, should_compile, description) in malformed_expressions {
+        for (expr, _should_compile, _description) in malformed_expressions {
             let result = JsonPathParser::compile(expr);
             
             assert!(
                 result.is_err(),
                 "RFC 9535: Malformed expression should be rejected: {} ({})",
-                expr, description
+                expr, _description
             );
             
             // Verify error message is informative
@@ -184,20 +184,20 @@ mod well_formedness_validity_tests {
             ("$.a.b.c.d.e.f.g.h.i.j", true, "Very deep property chain"),
         ];
 
-        for (expr, should_be_valid, description) in semantic_validity_tests {
+        for (expr, _should_be_valid, _description) in semantic_validity_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Semantically valid expression should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Semantically invalid expression should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -234,16 +234,16 @@ mod null_vs_missing_semantics_tests {
             ("$.missing_test.empty_object", 1, "Empty object exists"),
         ];
 
-        for (expr, expected_count, description) in null_vs_missing_tests {
+        for (expr, _expected_count, _description) in null_vs_missing_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(CORE_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: Null vs missing test: {} ({}) should return {} results",
-                expr, description, expected_count
+                expr, _description, expected_count
             );
         }
     }
@@ -272,16 +272,16 @@ mod null_vs_missing_semantics_tests {
             ("$.store.book[?@.tags]", 2, "Non-null arrays are truthy"),
         ];
 
-        for (expr, expected_count, description) in null_filter_tests {
+        for (expr, _expected_count, _description) in null_filter_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(CORE_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: Null filter test: {} ({}) should return {} results",
-                expr, description, expected_count
+                expr, _description, expected_count
             );
         }
     }
@@ -321,16 +321,16 @@ mod null_vs_missing_semantics_tests {
             ("$..*", 9, "Recursive descent finds all values including nulls"),
         ];
 
-        for (expr, expected_count, description) in edge_case_tests {
+        for (expr, _expected_count, _description) in edge_case_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(edge_case_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: Null vs missing edge case: {} ({}) should return {} results",
-                expr, description, expected_count
+                expr, _description, expected_count
             );
         }
     }
@@ -382,7 +382,7 @@ mod normalized_paths_tests {
             ),
         ];
 
-        for (expr1, expr2, description) in equivalence_tests {
+        for (expr1, expr2, _description) in equivalence_tests {
             let mut stream1 = JsonArrayStream::<serde_json::Value>::new(expr1);
             let mut stream2 = JsonArrayStream::<serde_json::Value>::new(expr2);
             
@@ -394,11 +394,11 @@ mod normalized_paths_tests {
                 results1.len(),
                 results2.len(),
                 "RFC 9535: Equivalent expressions should produce same results: '{}' vs '{}' ({})",
-                expr1, expr2, description
+                expr1, expr2, _description
             );
 
             println!("✓ Normalized equivalence: '{}' ≡ '{}' ({} results) ({})",
-                expr1, expr2, results1.len(), description);
+                expr1, expr2, results1.len(), _description);
         }
     }
 
@@ -421,13 +421,13 @@ mod normalized_paths_tests {
             ("$['store']['book'][*]['title']", true, "Non-canonical wildcard"),
         ];
 
-        for (expr, should_be_valid, description) in canonical_tests {
+        for (expr, _should_be_valid, _description) in canonical_tests {
             let result = JsonPathParser::compile(expr);
             
             assert!(
-                result.is_ok() == should_be_valid,
+                result.is_ok() == _should_be_valid,
                 "RFC 9535: Canonical form test: {} ({}) validity: {}",
-                expr, description, should_be_valid
+                expr, _description, _should_be_valid
             );
         }
     }
@@ -460,20 +460,20 @@ mod normalized_paths_tests {
             ("$.store.book", true, "Original case property"),
         ];
 
-        for (expr, should_be_valid, description) in normalization_edge_cases {
+        for (expr, _should_be_valid, _description) in normalization_edge_cases {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid normalization case should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid normalization case should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -506,7 +506,7 @@ mod normalized_paths_tests {
             ),
         ];
 
-        for (expr1, expr2, description) in semantic_equivalence_tests {
+        for (expr1, expr2, _description) in semantic_equivalence_tests {
             // Both should compile successfully
             let result1 = JsonPathParser::compile(expr1);
             let result2 = JsonPathParser::compile(expr2);
@@ -514,7 +514,7 @@ mod normalized_paths_tests {
             assert!(
                 result1.is_ok() && result2.is_ok(),
                 "RFC 9535: Both equivalent expressions should compile: '{}' and '{}' ({})",
-                expr1, expr2, description
+                expr1, expr2, _description
             );
 
             // Both should produce same results when executed
@@ -529,7 +529,7 @@ mod normalized_paths_tests {
                 results1.len(),
                 results2.len(),
                 "RFC 9535: Semantically equivalent expressions should produce same results: '{}' vs '{}' ({})",
-                expr1, expr2, description
+                expr1, expr2, _description
             );
         }
     }
@@ -579,32 +579,32 @@ mod nodelist_ordering_tests {
         ];
 
         // Test index selector ordering
-        for (expr, expected_pattern, description) in index_selector_tests {
+        for (expr, expected_pattern, _description) in index_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(results.len(), expected_pattern.len(), 
+            assert_eq!(_results.len(), expected_pattern.len(), 
                 "RFC 9535 nodelist ordering: {} should produce {} results", expr, expected_pattern.len());
                 
-            for (i, result) in results.iter().enumerate() {
+            for (i, result) in _results.iter().enumerate() {
                 let id_value = result["id"].as_i64().unwrap_or(-1);
                 assert_eq!(id_value, expected_pattern[i] as i64,
-                    "RFC 9535: {} - Position {} should have ID {}, got {}", description, i, expected_pattern[i], id_value);
+                    "RFC 9535: {} - Position {} should have ID {}, got {}", _description, i, expected_pattern[i], id_value);
             }
         }
 
         // Test property selector ordering  
-        for (expr, expected_fields, description) in property_selector_tests {
+        for (expr, expected_fields, _description) in property_selector_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(results.len(), expected_fields.len(), 
+            assert_eq!(_results.len(), expected_fields.len(), 
                 "RFC 9535 nodelist ordering: {} should produce {} results", expr, expected_fields.len());
                 
             // Check alternating id/type pattern
-            for (i, result) in results.iter().enumerate() {
+            for (i, result) in _results.iter().enumerate() {
                 let expected_field = expected_fields[i];
                 if expected_field == "id" {
                     assert!(result.is_number(), 
@@ -641,18 +641,18 @@ mod nodelist_ordering_tests {
             )
         ];
 
-        for (expr, expected_values, description) in test_cases {
+        for (expr, expected_values, _description) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(results.len(), expected_values.len(),
+            assert_eq!(_results.len(), expected_values.len(),
                 "RFC 9535 duplicate preservation: {} should produce {} results", expr, expected_values.len());
                 
-            for (i, result) in results.iter().enumerate() {
+            for (i, result) in _results.iter().enumerate() {
                 let value = result.as_i64().unwrap_or(-1);
                 assert_eq!(value, expected_values[i] as i64,
-                    "RFC 9535: {} - Position {} should be {}, got {}", description, i, expected_values[i], value);
+                    "RFC 9535: {} - Position {} should be {}, got {}", _description, i, expected_values[i], value);
             }
         }
     }
@@ -678,9 +678,9 @@ mod nodelist_ordering_tests {
         for expr in empty_producing_expressions {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(test_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(results.len(), 0,
+            assert_eq!(_results.len(), 0,
                 "RFC 9535 empty propagation: Expression '{}' should produce empty nodelist due to empty segment propagation", expr);
         }
     }

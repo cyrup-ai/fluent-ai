@@ -16,7 +16,7 @@ pub mod types;
 
 // Re-export core Candle tool functionality (avoid conflicts with trait)
 pub use core::{
-    CandleExecToText, CandleNamedTool, CandlePerplexity, CandleToolEmbeddingDyn, CandleToolSet};
+    CandleExecToText, CandleNamedTool, CandlePerplexity};
 
 // Re-export Candle MCP functionality
 pub use mcp::{CandleClient as CandleMcpClient, CandleMcpError, CandleStdioTransport, CandleTransport};

@@ -18,11 +18,13 @@ mod streaming_tests {
 
     #[test]
     fn test_jsonpath_stream_creation() {
-        let _stream = JsonArrayStream::<TestModel>::new("$.data[*]");
+        let stream = JsonArrayStream::<TestModel>::new("$.data[*]");
         // Stream creation now always succeeds, invalid paths are handled internally
+        assert!(format!("{:?}", stream).contains("JsonArrayStream"));
 
-        let _invalid_stream = JsonArrayStream::<TestModel>::new("$.invalid[syntax");
+        let invalid_stream = JsonArrayStream::<TestModel>::new("$.invalid[syntax");
         // Invalid JSONPath expressions are handled via error emission, stream creation still succeeds
+        assert!(format!("{:?}", invalid_stream).contains("JsonArrayStream"));
     }
 
     #[test]

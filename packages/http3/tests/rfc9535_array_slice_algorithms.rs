@@ -52,10 +52,10 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Positive index slice '{}' should return {} items",
                 expr,
@@ -83,12 +83,12 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Negative index slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -112,12 +112,12 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Out-of-bounds slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -140,10 +140,10 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Empty array slice '{}' should return {} items",
                 expr,
@@ -176,12 +176,12 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Positive step slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -205,12 +205,12 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Negative step slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -236,12 +236,12 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Default values slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -266,10 +266,10 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Edge case slice '{}' should return {} items",
                 expr,
@@ -319,12 +319,12 @@ mod step_value_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Large step slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -332,7 +332,7 @@ mod step_value_tests {
 
     #[test]
     fn test_step_value_boundaries() {
-        // Test step values at boundaries
+        // Test step values at _boundaries
         let json_data = r#"{"arrays": [
             {"data": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "name": "ten_elements"}
         ]}"#;
@@ -348,12 +348,12 @@ mod step_value_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Step boundary slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -388,14 +388,14 @@ mod slice_performance_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Large array slice '{}' returned {} results in {:?} (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 duration,
                 expected_count
             );
@@ -432,19 +432,19 @@ mod slice_performance_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Memory efficient slice '{}' returned {} results in {:?}",
                 expr,
-                results.len(),
+                _results.len(),
                 duration
             );
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Efficient slice '{}' should return exactly {} items",
                 expr,
@@ -478,12 +478,12 @@ mod slice_performance_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Complex slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -517,12 +517,12 @@ mod multidimensional_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Nested array slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -549,12 +549,12 @@ mod multidimensional_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Jagged array slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -583,25 +583,25 @@ mod algorithm_compliance_validation {
             ("$.test_array[:8:2]", 4, "start=0, end=8, step=2"),
         ];
 
-        for (expr, expected_count, description) in table8_tests {
+        for (expr, _expected_count, _description) in table8_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Table 8 test '{}' -> {} ({})",
                 expr,
-                results.len(),
-                description
+                _results.len(),
+                _description
             );
 
             // Some tests might not be exact due to implementation details
-            if results.len() != expected_count {
+            if _results.len() != expected_count {
                 println!(
                     "  WARNING: Expected {}, got {} for '{}'",
                     expected_count,
-                    results.len(),
+                    _results.len(),
                     expr
                 );
             }
@@ -637,23 +637,23 @@ mod algorithm_compliance_validation {
             ("$.numbers[5:5]", vec![], "Empty range: start == end"),
         ];
 
-        for (expr, expected_subset, description) in algorithm_tests {
+        for (expr, expected_subset, _description) in algorithm_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
             println!(
                 "Algorithm test '{}' -> {:?} ({})",
-                expr, results, description
+                expr, results, _description
             );
 
             // For some tests, verify exact match
-            if !expected_subset.is_empty() && results.len() == expected_subset.len() {
+            if !expected_subset.is_empty() && _results.len() == expected_subset.len() {
                 for (i, expected) in expected_subset.iter().enumerate() {
-                    if i < results.len() && results[i] != *expected {
+                    if i < _results.len() && _results[i] != *expected {
                         println!(
                             "  WARNING: Expected {:?}, got {:?} for '{}'",
                             expected_subset, results, expr

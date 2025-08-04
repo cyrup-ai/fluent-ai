@@ -11,7 +11,7 @@
 //! - Filter expression correctness
 
 use bytes::Bytes;
-use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
+use fluent_ai_http3::json_path::JsonArrayStream;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -78,9 +78,8 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<String>::new("$.store.book[*].author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         let expected_authors = vec![
@@ -90,10 +89,10 @@ mod rfc_examples_tests {
             "J. R. R. Tolkien",
         ];
 
-        assert_eq!(results.len(), 4, "Should find all 4 book authors");
+        assert_eq!(_results.len(), 4, "Should find all 4 book authors");
         for author in expected_authors {
             assert!(
-                results.contains(&author.to_string()),
+                _results.contains(&author.to_string()),
                 "Should contain author: {}",
                 author
             );
@@ -106,13 +105,12 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<String>::new("$..author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             4,
             "Descendant search should find all 4 authors"
         );
@@ -126,7 +124,7 @@ mod rfc_examples_tests {
 
         for author in expected_authors {
             assert!(
-                results.contains(&author.to_string()),
+                _results.contains(&author.to_string()),
                 "Descendant search should contain author: {}",
                 author
             );
@@ -139,10 +137,10 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store.*");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "Store should contain 2 things: book array and bicycle"
         );
@@ -151,13 +149,11 @@ mod rfc_examples_tests {
         let mut has_book_array = false;
         let mut has_bicycle = false;
 
-        for result in results {
-            if let Ok(value) = result {
-                if value.is_array() {
-                    has_book_array = true;
-                } else if value.is_object() && value.get("color").is_some() {
-                    has_bicycle = true;
-                }
+        for value in _results {
+            if value.is_array() {
+                has_book_array = true;
+            } else if value.is_object() && value.get("color").is_some() {
+                has_bicycle = true;
             }
         }
 
@@ -171,13 +167,12 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<f64>::new("$.store..price");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             5,
             "Should find 5 prices (4 books + 1 bicycle)"
         );
@@ -185,7 +180,7 @@ mod rfc_examples_tests {
         let expected_prices = vec![8.95, 12.99, 8.99, 22.99, 19.95];
 
         for price in expected_prices {
-            assert!(results.contains(&price), "Should contain price: {}", price);
+            assert!(_results.contains(&price), "Should contain price: {}", price);
         }
     }
 
@@ -195,18 +190,17 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[2]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 1, "Should find exactly one book");
+        assert_eq!(_results.len(), 1, "Should find exactly one book");
         assert_eq!(
-            results[0].title, "Moby Dick",
+            _results[0].title, "Moby Dick",
             "Third book should be Moby Dick"
         );
         assert_eq!(
-            results[0].author, "Herman Melville",
+            _results[0].author, "Herman Melville",
             "Author should be Herman Melville"
         );
     }
@@ -217,18 +211,17 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[-1]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 1, "Should find exactly one book");
+        assert_eq!(_results.len(), 1, "Should find exactly one book");
         assert_eq!(
-            results[0].title, "The Lord of the Rings",
+            _results[0].title, "The Lord of the Rings",
             "Last book should be LOTR"
         );
         assert_eq!(
-            results[0].author, "J. R. R. Tolkien",
+            _results[0].author, "J. R. R. Tolkien",
             "Author should be Tolkien"
         );
     }
@@ -239,14 +232,13 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[0,1]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 2, "Should find exactly two books");
+        assert_eq!(_results.len(), 2, "Should find exactly two books");
 
-        let titles: Vec<String> = results.iter().map(|book| book.title.clone()).collect();
+        let titles: Vec<String> = _results.iter().map(|book| book.title.clone()).collect();
         assert!(
             titles.contains(&"Sayings of the Century".to_string()),
             "Should contain first book"
@@ -263,20 +255,19 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[:2]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 2, "Should find exactly two books");
+        assert_eq!(_results.len(), 2, "Should find exactly two books");
 
         // Results should be in order
         assert_eq!(
-            results[0].title, "Sayings of the Century",
+            _results[0].title, "Sayings of the Century",
             "First book should be first"
         );
         assert_eq!(
-            results[1].title, "Sword of Honour",
+            _results[1].title, "Sword of Honour",
             "Second book should be second"
         );
     }
@@ -287,14 +278,13 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.isbn]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 2, "Should find 2 books with ISBN");
+        assert_eq!(_results.len(), 2, "Should find 2 books with ISBN");
 
-        let titles: Vec<String> = results.iter().map(|book| book.title.clone()).collect();
+        let titles: Vec<String> = _results.iter().map(|book| book.title.clone()).collect();
         assert!(
             titles.contains(&"Moby Dick".to_string()),
             "Moby Dick has ISBN"
@@ -305,7 +295,7 @@ mod rfc_examples_tests {
         );
 
         // Verify all results actually have ISBN
-        for book in results {
+        for book in _results {
             assert!(book.isbn.is_some(), "Book should have ISBN: {}", book.title);
         }
     }
@@ -316,24 +306,23 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.price<10]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 2, "Should find 2 books cheaper than 10");
+        assert_eq!(_results.len(), 2, "Should find 2 books cheaper than 10");
 
         let expected_books = vec![("Sayings of the Century", 8.95), ("Moby Dick", 8.99)];
 
         for (title, price) in expected_books {
-            let found = results
+            let found = _results
                 .iter()
                 .any(|book| book.title == title && book.price == price);
             assert!(found, "Should find book: {} at price: {}", title, price);
         }
 
         // Verify all results are actually cheaper than 10
-        for book in results {
+        for book in _results {
             assert!(
                 book.price < 10.0,
                 "Book should be <$10: {} at ${}",
@@ -355,14 +344,13 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.category=='fiction']");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 3, "Should find 3 fiction books");
+        assert_eq!(_results.len(), 3, "Should find 3 fiction books");
 
-        for book in results {
+        for book in _results {
             assert_eq!(book.category, "fiction", "All books should be fiction");
         }
     }
@@ -373,17 +361,16 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.price>15]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 1, "Should find 1 expensive book");
+        assert_eq!(_results.len(), 1, "Should find 1 expensive book");
         assert_eq!(
-            results[0].title, "The Lord of the Rings",
+            _results[0].title, "The Lord of the Rings",
             "LOTR should be the expensive book"
         );
-        assert!(results[0].price > 15.0, "Book should be >$15");
+        assert!(_results[0].price > 15.0, "Book should be >$15");
     }
 
     #[test]
@@ -398,13 +385,13 @@ mod extended_examples_tests {
             let mut stream = JsonArrayStream::<BookModel>::new(expr);
 
             let chunk = Bytes::from(BOOKSTORE_JSON);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Author filter '{}' should return {} books",
                 expr,
@@ -425,13 +412,13 @@ mod extended_examples_tests {
             let mut stream = JsonArrayStream::<BookModel>::new(expr);
 
             let chunk = Bytes::from(BOOKSTORE_JSON);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Complex filter '{}' should return {} books",
                 expr,
@@ -446,14 +433,13 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<BicycleModel>::new("$.store.bicycle");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
-            .map(|r| r.expect("Valid deserialization"))
             .collect();
 
-        assert_eq!(results.len(), 1, "Should find the bicycle");
-        assert_eq!(results[0].color, "red", "Bicycle should be red");
-        assert_eq!(results[0].price, 19.95, "Bicycle should cost $19.95");
+        assert_eq!(_results.len(), 1, "Should find the bicycle");
+        assert_eq!(_results[0].color, "red", "Bicycle should be red");
+        assert_eq!(_results[0].price, 19.95, "Bicycle should cost $19.95");
     }
 
     #[test]
@@ -462,10 +448,10 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store..*[?@.price]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             5,
             "Should find 5 items with prices (4 books + 1 bicycle)"
         );
@@ -491,13 +477,13 @@ mod performance_tests {
 
             let chunk = Bytes::from(BOOKSTORE_JSON);
             let start_time = std::time::Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let duration = start_time.elapsed();
 
             println!(
                 "Expression '{}' found {} results in {:?}",
                 expr,
-                results.len(),
+                _results.len(),
                 duration
             );
 
@@ -525,13 +511,13 @@ mod performance_tests {
 
             let chunk = Bytes::from(BOOKSTORE_JSON);
             let start_time = std::time::Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let duration = start_time.elapsed();
 
             println!(
                 "Filter '{}' found {} results in {:?}",
                 expr,
-                results.len(),
+                _results.len(),
                 duration
             );
 

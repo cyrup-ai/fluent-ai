@@ -125,7 +125,7 @@ mod logical_precedence_tests {
             ),
         ];
 
-        for (implicit_precedence, explicit_precedence, description) in precedence_tests {
+        for (implicit_precedence, explicit_precedence, _description) in precedence_tests {
             let mut implicit_stream = JsonArrayStream::<serde_json::Value>::new(implicit_precedence);
             let mut explicit_stream = JsonArrayStream::<serde_json::Value>::new(explicit_precedence);
 
@@ -137,11 +137,11 @@ mod logical_precedence_tests {
                 implicit_results.len(),
                 explicit_results.len(),
                 "RFC 9535: Implicit and explicit precedence should produce same results: {} ({})",
-                implicit_precedence, description
+                implicit_precedence, _description
             );
             
             println!("✓ Precedence test: {} -> {} results ({})", 
-                implicit_precedence, implicit_results.len(), description);
+                implicit_precedence, implicit_results.len(), _description);
         }
     }
 
@@ -182,7 +182,7 @@ mod logical_precedence_tests {
             ),
         ];
 
-        for (implicit_precedence, explicit_precedence, expected_count, description) in negation_tests {
+        for (implicit_precedence, explicit_precedence, expected_count, _description) in negation_tests {
             let mut implicit_stream = JsonArrayStream::<serde_json::Value>::new(implicit_precedence);
             let mut explicit_stream = JsonArrayStream::<serde_json::Value>::new(explicit_precedence);
 
@@ -194,11 +194,19 @@ mod logical_precedence_tests {
                 implicit_results.len(),
                 explicit_results.len(),
                 "RFC 9535: Implicit and explicit negation precedence should match: {} ({})",
-                implicit_precedence, description
+                implicit_precedence, _description
             );
             
-            println!("✓ Negation precedence: {} -> {} results ({})", 
-                implicit_precedence, implicit_results.len(), description);
+            // Validate against expected count to ensure correct precedence evaluation
+            assert_eq!(
+                implicit_results.len(),
+                expected_count,
+                "RFC 9535: Negation precedence should yield expected result count: {} ({})",
+                implicit_precedence, _description
+            );
+            
+            println!("✓ Negation precedence: {} -> {} results (expected: {}) ({})", 
+                implicit_precedence, implicit_results.len(), expected_count, _description);
         }
     }
 
@@ -239,7 +247,7 @@ mod logical_precedence_tests {
             ),
         ];
 
-        for (implicit_assoc, explicit_assoc, expected_count, description) in associativity_tests {
+        for (implicit_assoc, explicit_assoc, expected_count, _description) in associativity_tests {
             let mut implicit_stream = JsonArrayStream::<serde_json::Value>::new(implicit_assoc);
             let mut explicit_stream = JsonArrayStream::<serde_json::Value>::new(explicit_assoc);
 
@@ -251,11 +259,19 @@ mod logical_precedence_tests {
                 implicit_results.len(),
                 explicit_results.len(),
                 "RFC 9535: Implicit and explicit associativity should match: {} ({})",
-                implicit_assoc, description
+                implicit_assoc, _description
             );
             
-            println!("✓ Associativity test: {} -> {} results ({})", 
-                implicit_assoc, implicit_results.len(), description);
+            // Validate against expected count to ensure correct associativity evaluation
+            assert_eq!(
+                implicit_results.len(),
+                expected_count,
+                "RFC 9535: Operator associativity should yield expected result count: {} ({})",
+                implicit_assoc, _description
+            );
+            
+            println!("✓ Associativity test: {} -> {} results (expected: {}) ({})", 
+                implicit_assoc, implicit_results.len(), expected_count, _description);
         }
     }
 
@@ -292,7 +308,7 @@ mod logical_precedence_tests {
             ),
         ];
 
-        for (parenthesized, natural, description) in parentheses_tests {
+        for (parenthesized, natural, _description) in parentheses_tests {
             let mut paren_stream = JsonArrayStream::<serde_json::Value>::new(parenthesized);
             let mut natural_stream = JsonArrayStream::<serde_json::Value>::new(natural);
 
@@ -304,7 +320,7 @@ mod logical_precedence_tests {
             println!("Parentheses test: '{}' -> {} results vs '{}' -> {} results ({})",
                 parenthesized, paren_results.len(),
                 natural, natural_results.len(),
-                description);
+                _description);
                 
             // Both should compile successfully
             assert!(JsonPathParser::compile(parenthesized).is_ok());
@@ -328,13 +344,13 @@ mod logical_truth_table_tests {
             ("$.items[?!@.flag_a && !@.flag_b]", vec![4], "false && false cases"),
         ];
 
-        for (expr, expected_ids, description) in and_tests {
+        for (expr, expected_ids, _description) in and_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Extract IDs from results for comparison
-            let result_ids: Vec<i32> = results.iter()
+            let result_ids: Vec<i32> = _results.iter()
                 .map(|item| item["id"].as_i64().unwrap() as i32)
                 .collect();
 
@@ -342,11 +358,11 @@ mod logical_truth_table_tests {
                 assert!(
                     result_ids.contains(&expected_id),
                     "RFC 9535: AND truth table test should include ID {}: {} ({})",
-                    expected_id, expr, description
+                    expected_id, expr, _description
                 );
             }
             
-            println!("✓ AND truth table: {} -> IDs {:?} ({})", expr, result_ids, description);
+            println!("✓ AND truth table: {} -> IDs {:?} ({})", expr, result_ids, _description);
         }
     }
 
@@ -359,12 +375,12 @@ mod logical_truth_table_tests {
             ("$.items[?!@.flag_a && !@.flag_b]", vec![4], "Both false case"),
         ];
 
-        for (expr, expected_ids, description) in or_tests {
+        for (expr, expected_ids, _description) in or_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            let result_ids: Vec<i32> = results.iter()
+            let result_ids: Vec<i32> = _results.iter()
                 .map(|item| item["id"].as_i64().unwrap() as i32)
                 .collect();
 
@@ -372,11 +388,11 @@ mod logical_truth_table_tests {
                 assert!(
                     result_ids.contains(&expected_id),
                     "RFC 9535: OR truth table test should include ID {}: {} ({})",
-                    expected_id, expr, description
+                    expected_id, expr, _description
                 );
             }
             
-            println!("✓ OR truth table: {} -> IDs {:?} ({})", expr, result_ids, description);
+            println!("✓ OR truth table: {} -> IDs {:?} ({})", expr, result_ids, _description);
         }
     }
 
@@ -391,12 +407,12 @@ mod logical_truth_table_tests {
             ("$.items[?!@.flag_c]", vec![2, 3], "NOT flag_c cases"),
         ];
 
-        for (expr, expected_ids, description) in not_tests {
+        for (expr, expected_ids, _description) in not_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            let result_ids: Vec<i32> = results.iter()
+            let result_ids: Vec<i32> = _results.iter()
                 .map(|item| item["id"].as_i64().unwrap() as i32)
                 .collect();
 
@@ -404,11 +420,11 @@ mod logical_truth_table_tests {
                 assert!(
                     result_ids.contains(&expected_id),
                     "RFC 9535: NOT truth table test should include ID {}: {} ({})",
-                    expected_id, expr, description
+                    expected_id, expr, _description
                 );
             }
             
-            println!("✓ NOT truth table: {} -> IDs {:?} ({})", expr, result_ids, description);
+            println!("✓ NOT truth table: {} -> IDs {:?} ({})", expr, result_ids, _description);
         }
     }
 
@@ -438,7 +454,7 @@ mod logical_truth_table_tests {
             ),
         ];
 
-        for (de_morgan_left, de_morgan_right, description) in de_morgan_tests {
+        for (de_morgan_left, de_morgan_right, _description) in de_morgan_tests {
             let mut left_stream = JsonArrayStream::<serde_json::Value>::new(de_morgan_left);
             let mut right_stream = JsonArrayStream::<serde_json::Value>::new(de_morgan_right);
 
@@ -450,11 +466,11 @@ mod logical_truth_table_tests {
                 left_results.len(),
                 right_results.len(),
                 "RFC 9535: De Morgan's law should produce equal results: {} ({})",
-                de_morgan_left, description
+                de_morgan_left, _description
             );
             
             println!("✓ De Morgan's law: {} = {} -> {} results ({})",
-                de_morgan_left, de_morgan_right, left_results.len(), description);
+                de_morgan_left, de_morgan_right, left_results.len(), _description);
         }
     }
 }
@@ -499,19 +515,19 @@ mod complex_logical_tests {
             ),
         ];
 
-        for (expr, description) in complex_tests {
+        for (expr, _description) in complex_tests {
             let result = JsonPathParser::compile(expr);
             assert!(
                 result.is_ok(),
                 "RFC 9535: Complex logical expression should compile: {} ({})",
-                expr, description
+                expr, _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(LOGIC_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            println!("✓ Complex logic: {} -> {} results ({})", expr, results.len(), description);
+            println!("✓ Complex logic: {} -> {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -529,19 +545,19 @@ mod complex_logical_tests {
             ("$.items[?@.active || (@.flag_a && @.nonexistent)]", "Nested short-circuit"),
         ];
 
-        for (expr, description) in short_circuit_tests {
+        for (expr, _description) in short_circuit_tests {
             // These may or may not work depending on implementation short-circuit behavior
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(LOGIC_TEST_JSON);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
                     println!("Short-circuit test passed: {} -> {} results ({})", 
-                        expr, results.len(), description);
+                        expr, _results.len(), _description);
                 }
                 Err(_) => {
-                    println!("Short-circuit test failed compilation: {} ({})", expr, description);
+                    println!("Short-circuit test failed compilation: {} ({})", expr, _description);
                 }
             }
         }
@@ -571,20 +587,20 @@ mod complex_logical_tests {
             ("$.items[?@.active && || @.flag_a]", false, "Malformed operators"),
         ];
 
-        for (expr, should_be_valid, description) in syntax_tests {
+        for (expr, _should_be_valid, _description) in syntax_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid logical syntax should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid logical syntax should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }

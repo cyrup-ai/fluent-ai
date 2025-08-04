@@ -56,10 +56,10 @@ mod full_spec_integration {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(complex_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Child segment expression '{}' should return {} results",
                 expr,
@@ -80,14 +80,14 @@ mod full_spec_integration {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(complex_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() >= min_expected,
+                _results.len() >= min_expected,
                 "Descendant expression '{}' should return at least {} results, got {}",
                 expr,
                 min_expected,
-                results.len()
+                _results.len()
             );
         }
     }
@@ -186,19 +186,19 @@ mod full_spec_integration {
             ),
         ];
 
-        for (expr, description) in function_expressions {
+        for (expr, _description) in function_expressions {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => {
-                    println!("✓ {} syntax supported: {}", description, expr);
+                    println!("✓ {} syntax supported: {}", _description, expr);
 
                     // Try to execute if compilation succeeds
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(function_test_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    println!("  → Returned {} results", results.len());
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                    println!("  → Returned {} results", _results.len());
                 }
-                Err(_) => println!("✗ {} syntax not yet supported: {}", description, expr),
+                Err(_) => println!("✗ {} syntax not yet supported: {}", _description, expr),
             }
         }
     }
@@ -242,10 +242,10 @@ mod full_spec_integration {
                 JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(unicode_json);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Unicode expression '{}' should return {} results",
                 expr,
@@ -294,18 +294,18 @@ mod full_spec_integration {
             ),
         ];
 
-        for (json_data, expr, expected_count) in edge_case_scenarios {
+        for (_json_data, expr, expected_count) in edge_case_scenarios {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
-            let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let chunk = Bytes::from(_json_data);
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Edge case '{}' with data '{}' should return {} results",
                 expr,
-                json_data,
+                _json_data,
                 expected_count
             );
         }
@@ -333,18 +333,18 @@ mod full_spec_integration {
             ),
         ];
 
-        for (scenario_name, json_data, expr) in performance_scenarios {
+        for (scenario_name, _json_data, expr) in performance_scenarios {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
-            let chunk = Bytes::from(json_data);
+            let chunk = Bytes::from(_json_data);
             let start_time = std::time::Instant::now();
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             let duration = start_time.elapsed();
 
             println!(
                 "{}: {} results in {:?}",
                 scenario_name,
-                results.len(),
+                _results.len(),
                 duration
             );
 
@@ -355,7 +355,7 @@ mod full_spec_integration {
                 scenario_name
             );
             assert!(
-                !results.is_empty(),
+                !_results.is_empty(),
                 "{} should return some results",
                 scenario_name
             );
@@ -453,18 +453,18 @@ mod compliance_summary {
         let mut passed = 0;
         let total = compliance_items.len();
 
-        for (description, test_expr, should_pass) in compliance_items {
+        for (_description, test_expr, should_pass) in compliance_items {
             let result = JsonPathParser::compile(test_expr);
             let actual_pass = result.is_ok();
 
             if actual_pass == should_pass {
-                println!("✓ {}", description);
+                println!("✓ {}", _description);
                 passed += 1;
             } else if actual_pass && !should_pass {
-                println!("✓ {} (unexpectedly supported!)", description);
+                println!("✓ {} (unexpectedly supported!)", _description);
                 passed += 1;
             } else {
-                println!("✗ {} (not yet implemented)", description);
+                println!("✗ {} (not yet implemented)", _description);
             }
         }
 

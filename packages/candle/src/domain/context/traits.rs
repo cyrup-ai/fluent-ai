@@ -415,8 +415,9 @@ impl CandleContext for MockCandleContext {
     }
     
     fn refresh(&self) -> AsyncStream<bool> {
+        let simulate_error = self.simulate_error;
         AsyncStream::with_channel(move |sender| {
-            let _ = sender.send(!self.simulate_error);
+            let _ = sender.send(!simulate_error);
         })
     }
     

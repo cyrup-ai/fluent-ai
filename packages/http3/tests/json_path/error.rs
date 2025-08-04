@@ -2,11 +2,11 @@
 //!
 //! Tests for the JSONPath error handling and RFC 9535 error compliance
 
-use bytes::Bytes;
+
 use fluent_ai_http3::json_path::error::{
     JsonPathError, JsonPathResultExt, JsonPathResult, invalid_expression_error,
 };
-use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
+use fluent_ai_http3::json_path::JsonPathParser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -79,13 +79,13 @@ mod wellformedness_validity_tests {
             ("key.value", "No root identifier"),
         ];
 
-        for (invalid_expr, description) in syntax_errors {
+        for (invalid_expr, _description) in syntax_errors {
             let result = JsonPathParser::compile(invalid_expr);
             assert!(
                 result.is_err(),
                 "Syntax error '{}' should fail: {}",
                 invalid_expr,
-                description
+                _description
             );
 
             if let Err(error) = result {
@@ -111,17 +111,17 @@ mod wellformedness_validity_tests {
             ("$.['property']", "Mixed bracket/dot notation"),
         ];
 
-        for (invalid_expr, description) in validity_errors {
+        for (invalid_expr, _description) in validity_errors {
             let result = JsonPathParser::compile(invalid_expr);
             // Some validity errors may be caught at compile time, others at runtime
             match result {
                 Ok(_) => println!(
                     "Validity check '{}' passed compilation: {}",
-                    invalid_expr, description
+                    invalid_expr, _description
                 ),
                 Err(_) => println!(
                     "Validity check '{}' failed compilation: {}",
-                    invalid_expr, description
+                    invalid_expr, _description
                 ),
             }
         }

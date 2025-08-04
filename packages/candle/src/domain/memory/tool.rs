@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use super::{Memory, MemoryError, MemoryNode, MemoryType};
 // Removed unused imports: AsyncStream, AsyncTask, spawn_async
 use crate::domain::error::ZeroAllocError;
-use crate::tool::McpToolData;
+use crate::domain::tool::CandleMcpToolData;
 
 /// Maximum number of memory nodes in result collections
 const MAX_MEMORY_TOOL_RESULTS: usize = 1000;
@@ -39,7 +39,7 @@ static RESULT_QUEUE: Lazy<SegQueue<MemoryNode>> = Lazy::new(|| SegQueue::new());
 pub struct MemoryTool {
     /// Tool metadata
     #[allow(dead_code)]
-    data: McpToolData,
+    data: CandleMcpToolData,
     /// Shared memory instance for lock-free concurrent access
     memory: Arc<Memory>}
 /// Memory tool operation types
@@ -105,7 +105,7 @@ pub type MemoryToolResult<T> = Result<T, MemoryToolError>;
 impl MemoryTool {
     /// Create a new memory tool instance
     pub fn new(memory: Arc<Memory>) -> Self {
-        let data = McpToolData {
+        let data = CandleMcpToolData {
             name: "memory".to_string(),
             description: "Memory management tool for storing and retrieving information"
                 .to_string(),
@@ -132,7 +132,7 @@ impl MemoryTool {
 
     /// Get tool metadata
     #[inline]
-    pub fn tool_data(&self) -> &McpToolData {
+    pub fn tool_data(&self) -> &CandleMcpToolData {
         &self.data
     }
 

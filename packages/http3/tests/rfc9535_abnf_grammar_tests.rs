@@ -12,7 +12,7 @@
 //! - Lexical token validation
 
 use bytes::Bytes;
-use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser, JsonPathError};
+use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
 
 /// Test data for ABNF grammar validation
 const ABNF_TEST_JSON: &str = r#"{
@@ -86,20 +86,20 @@ mod abnf_grammar_tests {
             ("$.store.book.", false, "Trailing dot in chain"),
         ];
 
-        for (expr, should_be_valid, description) in dot_notation_tests {
+        for (expr, _should_be_valid, _description) in dot_notation_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid dot notation should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid dot notation should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -144,20 +144,20 @@ mod abnf_grammar_tests {
             ("$.store.book[?@.price > 10]", true, "Space after >"),
         ];
 
-        for (expr, should_be_valid, description) in comparison_tests {
+        for (expr, _should_be_valid, _description) in comparison_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid comparison operator should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid comparison operator should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -205,20 +205,20 @@ mod abnf_grammar_tests {
             ("$[::]", false, "Empty slice parameters"),
         ];
 
-        for (expr, should_be_valid, description) in shorthand_tests {
+        for (expr, _should_be_valid, _description) in shorthand_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid shorthand syntax should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid shorthand syntax should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -268,20 +268,20 @@ mod abnf_grammar_tests {
             ("$[\"mixed quote']", false, "Reverse mismatched quotes"),
         ];
 
-        for (expr, should_be_valid, description) in escape_tests {
+        for (expr, _should_be_valid, _description) in escape_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid escape sequence should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid escape sequence should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -338,20 +338,20 @@ mod abnf_grammar_tests {
             ("$[0:::2]", false, "Triple colon"),
         ];
 
-        for (expr, should_be_valid, description) in token_tests {
+        for (expr, _should_be_valid, _description) in token_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid token sequence should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid token sequence should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -370,16 +370,16 @@ mod abnf_grammar_tests {
             ("$.store.book[0:2].category", 2, "Slice execution"),
         ];
 
-        for (expr, expected_count, description) in execution_tests {
+        for (expr, expected_count, _description) in execution_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(ABNF_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: ABNF grammar execution: {} ({}) should return {} results",
-                expr, description, expected_count
+                expr, _description, expected_count
             );
         }
     }
@@ -422,20 +422,20 @@ mod abnf_edge_cases {
             ("$['?filter']", true, "Question mark property"),
         ];
 
-        for (expr, should_be_valid, description) in complex_property_tests {
+        for (expr, _should_be_valid, _description) in complex_property_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Complex property name should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid complex property should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -467,20 +467,20 @@ mod abnf_edge_cases {
             ("$.store.bo ok", false, "Space in property name"),
         ];
 
-        for (expr, should_be_valid, description) in whitespace_tests {
+        for (expr, _should_be_valid, _description) in whitespace_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid whitespace should be accepted: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid whitespace should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -520,20 +520,20 @@ mod abnf_edge_cases {
             ("$[--1]", false, "Double negative"),
         ];
 
-        for (expr, should_be_valid, description) in number_tests {
+        for (expr, _should_be_valid, _description) in number_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid number format should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid number format should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }

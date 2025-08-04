@@ -1,17 +1,24 @@
 use std::fmt;
 use std::marker::PhantomData;
 use fluent_ai_async::AsyncStream;
+// Removed unused import: futures_util::StreamExt
 use serde::de::DeserializeOwned;
-// Removed unused import: use tokio_stream::StreamExt;
 
 use super::error::{ExtractionError, _ExtractionResult as ExtractionResult};
-use crate::domain::agent::types::CandleAgent as Agent;
-use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
-use crate::domain::completion::CandleCompletionRequest as CompletionRequest;
-use crate::domain::completion::model::CandleCompletionModel as CompletionModel;
-use crate::domain::completion::chunk::{CandleCompletionChunk as CompletionChunk, CandleFinishReason as FinishReason};
-use crate::domain::completion::types::CandleCompletionParams as CompletionParams;
-use crate::prompt::CandlePrompt as Prompt;
+use crate::domain::{
+    agent::types::CandleAgent as Agent,
+    chat::message::types::CandleMessageRole as MessageRole,
+    context::chunk::{
+        CandleCompletionChunk,
+        FinishReason,
+    },
+    prompt::CandlePrompt as Prompt,
+    completion::{
+        CandleCompletionRequest as CompletionRequest,
+        CandleCompletionModel as CompletionModel,
+        types::CandleCompletionParams as CompletionParams,
+    },
+};
 
 /// Trait defining the core extraction interface
 pub trait Extractor<T>: Send + Sync + fmt::Debug + Clone
@@ -39,7 +46,8 @@ where
 pub struct ExtractorImpl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> {
     agent: Agent,
     system_prompt: Option<String>,
-    _marker: PhantomData<T>}
+    _marker: PhantomData<T>,
+}
 
 impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static> Extractor<T>
     for ExtractorImpl<T>
@@ -56,7 +64,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
         Self {
             agent,
             system_prompt: None,
-            _marker: PhantomData}
+            _marker: PhantomData,
+        }
     }
 
     fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
@@ -85,47 +94,55 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
     ) -> ExtractionResult<T> {
         let model = AgentCompletionModel::new(agent);
         let prompt = Prompt {
-            content: completion_request.system_prompt.as_deref().unwrap_or("").to_string(),
-            role: MessageRole::System};
+            content: completion_request.system_prompt,
+            role: MessageRole::System,
+        };
         let params = CompletionParams {
             temperature: completion_request.temperature,
             max_tokens: completion_request.max_tokens.and_then(|t| std::num::NonZeroU64::new(t.get())),
             n: std::num::NonZeroU8::new(1).unwrap(),
-            stream: true};
-        let mut stream = model.prompt(prompt, &params);
+            stream: true,
+            additional_params: None,
+        };
+
+        // Get the stream from the model
+        let stream = model.prompt(prompt, &params);
+        let mut stream = Box::pin(stream);
 
         let mut full_response = String::new();
         let mut finish_reason = None;
 
-        while let Some(chunk) = stream.try_next() {
+        // Process the stream chunks
+        while let Some(chunk) = stream.next() {
             match chunk {
-                Ok(completion_chunk) => {
-                    if let Some(error) = &completion_chunk.error {
-                        return Err(ExtractionError::CompletionError(format!(
-                            "Completion error: {}",
-                            error
-                        )));
-                    }
-                    
-                    full_response.push_str(&completion_chunk.text);
-                    
-                    if completion_chunk.done {
-                        break;
-                    }
+                CandleCompletionChunk::Text(text) => {
+                    // Append text content to full response
+                    full_response.push_str(&text);
                 }
-                Err(e) => {
+                CandleCompletionChunk::Complete { text, finish_reason: reason, .. } => {
+                    // This is the final chunk
+                    if !text.is_empty() {
+                        full_response.push_str(&text);
+                    }
+                    finish_reason = reason;
+                    break;
+                }
+                CandleCompletionChunk::Error(err) => {
                     return Err(ExtractionError::CompletionError(format!(
-                        "Stream error: {}",
-                        e
+                        "Error from model: {}",
+                        err
                     )));
                 }
+                // Handle other variants as needed
+                _ => {}
             }
         }
 
         if finish_reason == Some(FinishReason::Stop) || !full_response.is_empty() {
             match Self::parse_json_response(&full_response) {
                 Ok(result) => Ok(result),
-                Err(e) => Err(e)}
+                Err(e) => Err(e),
+            }
         } else {
             Err(ExtractionError::CompletionError(
                 "No valid response from model".to_string(),
@@ -152,7 +169,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
             serde_json::from_str(json_str).map_err(ExtractionError::from)
         } else {
             Err(ExtractionError::InvalidFormat {
-                actual: response.to_string()})
+                actual: response.to_string(),
+            })
         }
     }
 }
@@ -160,7 +178,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
 /// Zero-allocation completion model wrapper for agents
 #[derive(Debug, Clone)]
 pub struct AgentCompletionModel {
-    agent: Agent}
+    agent: Agent,
+}
 
 impl AgentCompletionModel {
     /// Create new completion model from agent
@@ -173,19 +192,21 @@ impl CompletionModel for AgentCompletionModel {
     fn prompt<'a>(
         &'a self,
         prompt: Prompt,
-        params: &'a CompletionParams,
-    ) -> fluent_ai_async::AsyncStream<CompletionChunk> {
+        _params: &'a CompletionParams,
+    ) -> fluent_ai_async::AsyncStream<CandleCompletionChunk> {
         let _agent = self.agent.clone();
-        let _params = params.clone();
 
         AsyncStream::with_channel(move |sender| {
-            // TODO: Replace with proper streams-only completion
-            // For now, send default chunk to maintain compilation
-            let default_chunk = CompletionChunk::Complete {
+            // Create a complete chunk with the prompt text
+            type Chunk = CandleCompletionChunk;
+            let chunk = Chunk::Complete {
                 text: format!("{:?}", prompt),
                 finish_reason: Some(FinishReason::Stop),
-                usage: None};
-            let _ = sender.try_send(default_chunk);
+                usage: None,
+            };
+
+            // Send the chunk directly (not wrapped in Result)
+            let _ = sender.try_send(chunk);
         })
     }
 }

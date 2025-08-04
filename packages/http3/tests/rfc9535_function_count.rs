@@ -46,10 +46,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(&filter_expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "count() expression '{}' should return 1 result when count equals {}",
                 count_expr,
@@ -67,10 +67,10 @@ mod count_function_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(filter_expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             1,
             "count() of empty nodelist should return 1 result (the data object where count equals 0)"
         );
@@ -95,10 +95,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() comparison '{}' should return {} results",
                 expr,
@@ -132,10 +132,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() recursive descent '{}' should return {} results",
                 expr,
@@ -164,10 +164,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() filtered nodelist '{}' should return {} results",
                 expr,
@@ -202,12 +202,12 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() performance test '{}' should return {} results",
                 expr,
@@ -258,10 +258,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() nested structure '{}' should return {} results",
                 expr,
@@ -297,10 +297,10 @@ mod count_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "count() edge case '{}' should return {} results",
                 expr,
@@ -377,11 +377,11 @@ mod count_error_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 // Test that complex expressions either work or are properly rejected
                 assert!(
-                    results.len() >= 0,
+                    _results.len() >= 0,
                     "Complex count() expression '{}' should return valid results",
                     expr
                 );
@@ -392,7 +392,7 @@ mod count_error_tests {
     #[test]
     fn test_count_nested_function_calls() {
         // Test count() with nested function expressions
-        let _json_data = r#"{"groups": [
+        let json_data = r#"{"groups": [
             {"items": [{"name": "short"}, {"name": "medium_name"}]},
             {"items": [{"name": "long_item_name"}, {"name": "x"}]}
         ]}"#;

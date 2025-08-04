@@ -11,10 +11,15 @@ use super::core::{TemplateAst, TemplateError, TemplateResult, TemplateVariable, 
 /// Template parser configuration
 #[derive(Debug, Clone)]
 pub struct ParserConfig {
+    /// Maximum nesting depth for template structures
     pub max_depth: usize,
+    /// Maximum number of tokens to parse
     pub max_tokens: usize,
+    /// Whether to allow complex expressions in templates
     pub allow_expressions: bool,
+    /// Whether to allow function calls in templates
     pub allow_functions: bool,
+    /// Whether to require all variables to be explicitly defined
     pub strict_variables: bool}
 
 impl Default for ParserConfig {
@@ -34,11 +39,13 @@ pub struct TemplateParser {
     config: ParserConfig}
 
 impl TemplateParser {
+    /// Create a new template parser with default configuration
     pub fn new() -> Self {
         Self {
             config: ParserConfig::default()}
     }
 
+    /// Create a new template parser with custom configuration
     pub fn with_config(config: ParserConfig) -> Self {
         Self { config }
     }
@@ -265,9 +272,13 @@ impl Default for TemplateParser {
 /// Parser statistics for performance monitoring
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParserStats {
+    /// Total number of templates parsed
     pub parsed_count: usize,
+    /// Total time spent parsing in microseconds
     pub total_parse_time_us: usize,
+    /// Number of parse errors encountered
     pub error_count: usize,
+    /// Peak memory usage during parsing in bytes
     pub peak_memory_bytes: usize}
 
 /// Parse error type alias for convenience

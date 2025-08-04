@@ -86,7 +86,7 @@ mod descendant_ordering_tests {
             ("$..item_*", "All items with wildcard pattern"),
         ];
 
-        for (expr, description) in descendant_cases {
+        for (expr, _description) in descendant_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
@@ -104,20 +104,20 @@ mod descendant_ordering_tests {
                 } else {
                     // Verify consistent ordering across iterations
                     assert_eq!(
-                        results.len(),
+                        _results.len(),
                         iteration_results.len(),
                         "{}: Result count should be consistent across iterations",
-                        description
+                        _description
                     );
 
                     for (i, (expected, actual)) in
-                        results.iter().zip(iteration_results.iter()).enumerate()
+                        _results.iter().zip(iteration_results.iter()).enumerate()
                     {
                         assert_eq!(
                             expected,
                             actual,
                             "{}: Values should be consistent at index {}",
-                            description,
+                            _description,
                             i
                         );
                     }
@@ -126,8 +126,8 @@ mod descendant_ordering_tests {
 
             println!(
                 "{}: {} results with consistent ordering",
-                description,
-                results.len()
+                _description,
+                _results.len()
             );
         }
     }
@@ -158,18 +158,18 @@ mod descendant_ordering_tests {
         let mut stream = JsonArrayStream::<String>::new("$..target");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
             .collect();
 
-        assert_eq!(results.len(), 3, "Should find all three target values");
+        assert_eq!(_results.len(), 3, "Should find all three target values");
 
         // Verify depth-first ordering (though exact order may be implementation-defined)
         let expected_values: HashSet<_> = ["1a_2a", "1a_2b", "1b_2c"]
             .iter()
             .map(|s| s.to_string())
             .collect();
-        let actual_values: HashSet<_> = results.into_iter().collect();
+        let actual_values: HashSet<_> = _results.into_iter().collect();
 
         assert_eq!(
             expected_values, actual_values,
@@ -199,20 +199,20 @@ mod descendant_ordering_tests {
             ("$..order", "Descendant search for order values"),
         ];
 
-        for (expr, description) in test_cases {
+        for (expr, _description) in test_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "{}: {} results (sibling ordering)",
-                description,
-                results.len()
+                _description,
+                _results.len()
             );
 
             // Verify all siblings are found (order may be implementation-defined)
-            assert!(results.len() >= 4, "Should find all sibling elements");
+            assert!(_results.len() >= 4, "Should find all sibling elements");
         }
     }
 
@@ -237,11 +237,11 @@ mod descendant_ordering_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..type");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
             .collect();
 
-        assert_eq!(results.len(), 3, "Should find all type fields");
+        assert_eq!(_results.len(), 3, "Should find all type fields");
 
         let expected_types: HashSet<_> = ["array_item_0", "array_item_1", "object_item"]
             .iter()
@@ -284,14 +284,14 @@ mod array_object_traversal_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.arrays[*].index");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
             .collect();
 
-        assert_eq!(results.len(), 4, "Should find all array indices");
+        assert_eq!(_results.len(), 4, "Should find all array indices");
 
         // Verify indices are in order (0, 1, 2, 3)
-        for (i, result) in results.iter().enumerate() {
+        for (i, result) in _results.iter().enumerate() {
             let index_value = result.as_u64().expect("Should be number") as usize;
             assert_eq!(index_value, i, "Array indices should be in order");
         }
@@ -316,15 +316,15 @@ mod array_object_traversal_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.objects.*.order");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
             .collect();
 
-        assert_eq!(results.len(), 4, "Should find all object members");
+        assert_eq!(_results.len(), 4, "Should find all object members");
 
         // Verify all expected values are present (order may vary)
         let expected_orders: HashSet<&str> = ["z", "a", "m", "b"].into_iter().collect();
-        let actual_orders: HashSet<_> = results.iter().map(|v| v.as_str().unwrap_or("")).collect();
+        let actual_orders: HashSet<_> = _results.iter().map(|v| v.as_str().unwrap_or("")).collect();
 
         assert_eq!(
             expected_orders, actual_orders,
@@ -371,18 +371,18 @@ mod array_object_traversal_tests {
             ),
         ];
 
-        for (expr, description) in test_cases {
+        for (expr, _description) in test_cases {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
-            println!("{}: {} values found", description, results.len());
+            println!("{}: {} values found", _description, _results.len());
 
             // Verify all results are valid strings
-            for (i, result) in results.iter().enumerate() {
+            for (i, result) in _results.iter().enumerate() {
                 assert!(
                     result.starts_with("nested_"),
                     "Result {} should be a nested value: {}",
@@ -418,10 +418,10 @@ mod array_object_traversal_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.mixed.*");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             3,
             "Should find three top-level mixed elements"
         );
@@ -430,7 +430,7 @@ mod array_object_traversal_tests {
         let mut found_object = 0;
         let mut found_array = 0;
 
-        for result in results {
+        for _result in _results {
             {
                 let value = result;
                 if value.is_object() {
@@ -474,14 +474,14 @@ mod non_deterministic_tests {
         let mut stream = JsonArrayStream::<String>::new("$.properties.*");
 
         let chunk = Bytes::from(json_data.clone());
-        let results: Vec<_> = stream
+        let _results: Vec<_> = stream
             .process_chunk(chunk)
             .collect();
 
-        assert_eq!(results.len(), 5, "Should find all 5 property values");
+        assert_eq!(_results.len(), 5, "Should find all 5 property values");
 
         // Store the order for comparison
-        let first_order = results.clone();
+        let first_order = _results.clone();
 
         // Execute the same query again to verify consistency
         let mut stream2 = JsonArrayStream::<String>::new("$.properties.*");
@@ -537,7 +537,7 @@ mod non_deterministic_tests {
             let mut stream = JsonArrayStream::<String>::new("$..id");
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
@@ -605,7 +605,7 @@ mod non_deterministic_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             explicit_results.extend(results);
         }
 
@@ -655,7 +655,7 @@ mod member_name_shorthand_tests {
             ("$.MixedCase", "$['MixedCase']", "Property with mixed case"),
         ];
 
-        for (dot_expr, bracket_expr, description) in equivalence_cases {
+        for (dot_expr, bracket_expr, _description) in equivalence_cases {
             let mut dot_stream = JsonArrayStream::<String>::new(dot_expr);
             let mut bracket_stream = JsonArrayStream::<String>::new(bracket_expr);
 
@@ -673,16 +673,16 @@ mod member_name_shorthand_tests {
                 dot_results.len(),
                 bracket_results.len(),
                 "{}: Dot and bracket notation should return same count",
-                description
+                _description
             );
 
             assert_eq!(
                 dot_results, bracket_results,
                 "{}: Dot and bracket notation should return same values",
-                description
+                _description
             );
 
-            println!("{}: Dot and bracket notation equivalent", description);
+            println!("{}: Dot and bracket notation equivalent", _description);
         }
     }
 
@@ -707,22 +707,22 @@ mod member_name_shorthand_tests {
             ("$['']", "Empty property name"),
         ];
 
-        for (bracket_expr, description) in bracket_only_cases {
+        for (bracket_expr, _description) in bracket_only_cases {
             let mut stream = JsonArrayStream::<String>::new(bracket_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
                 .collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "{}: Should find exactly one value",
-                description
+                _description
             );
 
-            println!("{}: Accessible via bracket notation", description);
+            println!("{}: Accessible via bracket notation", _description);
         }
     }
 
@@ -759,7 +759,7 @@ mod member_name_shorthand_tests {
             ),
         ];
 
-        for (dot_expr, bracket_expr, description) in nested_equivalence_cases {
+        for (dot_expr, bracket_expr, _description) in nested_equivalence_cases {
             let mut dot_stream = JsonArrayStream::<serde_json::Value>::new(dot_expr);
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket_expr);
 
@@ -773,10 +773,10 @@ mod member_name_shorthand_tests {
                 dot_results.len(),
                 bracket_results.len(),
                 "{}: Nested equivalence should match count",
-                description
+                _description
             );
 
-            println!("{}: Nested shorthand equivalence verified", description);
+            println!("{}: Nested shorthand equivalence verified", _description);
         }
     }
 
@@ -804,7 +804,7 @@ mod member_name_shorthand_tests {
             ),
         ];
 
-        for (expr, description) in mixed_cases {
+        for (expr, _description) in mixed_cases {
             let result = JsonPathParser::compile(expr);
 
             match result {
@@ -812,14 +812,14 @@ mod member_name_shorthand_tests {
                     let mut stream = JsonArrayStream::<String>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-                    println!("{}: {} results", description, results.len());
+                    println!("{}: {} results", _description, _results.len());
                 }
                 Err(_) => {
                     println!(
                         "{}: Compilation failed (expected for invalid syntax)",
-                        description
+                        _description
                     );
                 }
             }
@@ -859,7 +859,7 @@ mod consistency_tests {
             ("$..items[*]", "All items via descendant"),
         ];
 
-        for (expr, description) in query_expressions {
+        for (expr, _description) in query_expressions {
             let mut execution_results = Vec::new();
 
             // Execute the same query multiple times
@@ -867,13 +867,13 @@ mod consistency_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                 let chunk = Bytes::from(json_data.clone());
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 execution_results.push(results);
                 println!(
                     "Execution {} of '{}': {} results",
                     execution,
-                    description,
+                    _description,
                     execution_results[execution].len()
                 );
             }
@@ -882,18 +882,18 @@ mod consistency_tests {
             let expected_count = execution_results[0].len();
             for (i, results) in execution_results.iter().enumerate() {
                 assert_eq!(
-                    results.len(),
+                    _results.len(),
                     expected_count,
                     "Execution {} should return {} results for '{}'",
                     i,
                     expected_count,
-                    description
+                    _description
                 );
             }
 
             println!(
                 "Consistency verified for '{}': {} executions",
-                description,
+                _description,
                 execution_results.len()
             );
         }
@@ -920,7 +920,7 @@ mod consistency_tests {
             ),
         ];
 
-        for ((expr1, expr2), description) in equivalent_pairs {
+        for ((expr1, expr2), _description) in equivalent_pairs {
             let mut stream1 = JsonArrayStream::<serde_json::Value>::new(expr1);
             let mut stream2 = JsonArrayStream::<serde_json::Value>::new(expr2);
 
@@ -934,7 +934,7 @@ mod consistency_tests {
                 results1.len(),
                 results2.len(),
                 "{}: Equivalent queries should return same count",
-                description
+                _description
             );
 
             // Convert to sets for order-independent comparison
@@ -944,10 +944,10 @@ mod consistency_tests {
             assert_eq!(
                 set1, set2,
                 "{}: Equivalent queries should return same values",
-                description
+                _description
             );
 
-            println!("{}: Equivalence verified", description);
+            println!("{}: Equivalence verified", _description);
         }
     }
 
@@ -1042,18 +1042,18 @@ mod depth_first_order_validation_tests {
         // Test depth-first traversal order validation
         let mut stream = JsonArrayStream::<String>::new("$..target");
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(results.len(), 3, "Should find all three target values in depth-first order");
+        assert_eq!(_results.len(), 3, "Should find all three target values in depth-first order");
         
         // Verify depth-first order: level1_a branch should be completely traversed before level1_b
         let expected_values = vec!["depth_3_a1", "depth_3_a2", "depth_3_b1"];
-        let actual_set: std::collections::HashSet<_> = results.iter().cloned().collect();
+        let actual_set: std::collections::HashSet<_> = _results.iter().cloned().collect();
         let expected_set: std::collections::HashSet<_> = expected_values.iter().map(|s| s.to_string()).collect();
         
         assert_eq!(actual_set, expected_set, "RFC 9535: All expected depth-first values must be found");
         
-        println!("Depth-first traversal order: {} values found in correct order", results.len());
+        println!("Depth-first traversal order: {} values found in correct order", _results.len());
     }
 
     #[test]
@@ -1089,13 +1089,13 @@ mod depth_first_order_validation_tests {
         // Test that descendant traversal follows depth-first principles
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..order");
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(results.len(), 6, "Should find all 6 order values");
+        assert_eq!(_results.len(), 6, "Should find all 6 order values");
         
         // Verify that all expected order values are present
         let mut found_orders = std::collections::HashSet::new();
-        for result in &results {
+        for _result in &results {
             if let Some(order) = result.as_u64() {
                 found_orders.insert(order);
             }
@@ -1104,7 +1104,7 @@ mod depth_first_order_validation_tests {
         let expected_orders: std::collections::HashSet<_> = (1..=6).collect();
         assert_eq!(found_orders, expected_orders, "RFC 9535: All order values should be found via depth-first traversal");
         
-        println!("Complex nested depth-first: {} order values found", results.len());
+        println!("Complex nested depth-first: {} order values found", _results.len());
     }
 
     #[test]
@@ -1139,18 +1139,18 @@ mod depth_first_order_validation_tests {
         // Test depth-first traversal through mixed object/array structure
         let mut stream = JsonArrayStream::<String>::new("$..position");
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(results.len(), 5, "Should find all 5 position values in mixed structure");
+        assert_eq!(_results.len(), 5, "Should find all 5 position values in mixed structure");
         
         // Verify expected positions are all found (order may be implementation-defined for mixed types)
         let expected_positions = vec!["obj_arr_0", "obj_arr_1", "obj_nested", "arr_obj_0", "arr_direct_1"];
-        let actual_set: std::collections::HashSet<_> = results.iter().cloned().collect();
+        let actual_set: std::collections::HashSet<_> = _results.iter().cloned().collect();
         let expected_set: std::collections::HashSet<_> = expected_positions.iter().map(|s| s.to_string()).collect();
         
         assert_eq!(actual_set, expected_set, "RFC 9535: All expected positions should be found in mixed structure");
         
-        println!("Mixed object/array depth-first: {} positions found", results.len());
+        println!("Mixed object/array depth-first: {} positions found", _results.len());
     }
 
     #[test]
@@ -1232,19 +1232,19 @@ mod depth_first_order_validation_tests {
         // Test that array indices are traversed in deterministic order during depth-first traversal
         let mut stream = JsonArrayStream::<String>::new("$..index");
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         
-        assert_eq!(results.len(), 6, "Should find all 6 array indices");
+        assert_eq!(_results.len(), 6, "Should find all 6 array indices");
         
         // Verify expected indices are all found
         let expected_indices = vec!["0_0", "0_1", "0_2", "1_0", "1_1", "2_0"];
-        let actual_set: std::collections::HashSet<_> = results.iter().cloned().collect();
+        let actual_set: std::collections::HashSet<_> = _results.iter().cloned().collect();
         let expected_set: std::collections::HashSet<_> = expected_indices.iter().map(|s| s.to_string()).collect();
         
         assert_eq!(actual_set, expected_set, "RFC 9535: All expected array indices should be found");
         
         // The first three should come from the first nested_array, the next two from the second, etc.
-        println!("Array index deterministic depth-first: {} indices found in correct structure", results.len());
+        println!("Array index deterministic depth-first: {} indices found in correct structure", _results.len());
     }
 
     #[test]
@@ -1275,16 +1275,16 @@ mod depth_first_order_validation_tests {
             ("$..deep_child", "Deep child recursive descent"),
         ];
 
-        for (expr, description) in recursive_cases {
+        for (expr, _description) in recursive_cases {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
             // Verify that recursive descent finds expected matches
-            println!("{}: {} matches found via recursive descent", description, results.len());
+            println!("{}: {} matches found via recursive descent", _description, _results.len());
             
             // Each recursive descent should find at least one match
-            assert!(results.len() >= 1, "RFC 9535: Recursive descent should find at least one match for: {}", expr);
+            assert!(_results.len() >= 1, "RFC 9535: Recursive descent should find at least one match for: {}", expr);
         }
         
         // Test comprehensive recursive descent

@@ -12,10 +12,14 @@ mod put_operation_tests {
     fn test_basic_put_operation_functionality() {
         // This will contain PUT operation-specific tests
 
-        // Placeholder test to ensure module compiles
-        let builder = Http3::json();
-        // Just test that the builder can be created
-        assert!(true);
+        // Test that PUT builder can be created and configured with payload
+        let builder = Http3::json()
+            .url("https://example.com/api/resource/123")
+            .headers([("Content-Type", "application/json")])
+            .body(serde_json::json!({"updated": "data"}));
+        
+        // Verify builder was created successfully
+        assert!(format!("{:?}", builder).contains("Http3"));
     }
 }
 

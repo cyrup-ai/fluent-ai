@@ -276,19 +276,33 @@ pub trait ModelConfigInfo: model_info::common::Model {
 
 /// Model configuration structure
 pub struct ModelConfig {
+    /// Maximum number of tokens to generate
     pub max_tokens: u32,
+    /// Sampling temperature for randomness (0.0 to 2.0)
     pub temperature: f64,
+    /// Nucleus sampling parameter (0.0 to 1.0)
     pub top_p: f64,
+    /// Frequency penalty for repetition reduction (-2.0 to 2.0)
     pub frequency_penalty: f64,
+    /// Presence penalty for topic diversity (-2.0 to 2.0)
     pub presence_penalty: f64,
+    /// Maximum context length in tokens
     pub context_length: u64,
+    /// Default system prompt for the model
     pub system_prompt: String,
+    /// Whether the model supports function/tool calling
     pub supports_tools: bool,
+    /// Whether the model supports vision/image inputs
     pub supports_vision: bool,
+    /// Whether the model supports audio processing
     pub supports_audio: bool,
+    /// Whether the model supports thinking/reasoning modes
     pub supports_thinking: bool,
+    /// Optimal thinking budget in tokens for reasoning
     pub optimal_thinking_budget: u32,
+    /// Name of the AI provider (e.g., "openai", "anthropic")
     pub provider: String,
+    /// Specific model name/identifier
     pub model_name: String,
 }
 

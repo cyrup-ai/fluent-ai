@@ -61,10 +61,10 @@ mod test_expr_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        results.len(),
+                        _results.len(),
                         expected_count,
                         "Valid test expression '{}' should return {} items",
                         expr,
@@ -136,10 +136,10 @@ mod test_expr_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Existence test '{}' should return {} items",
                 expr,
@@ -174,10 +174,10 @@ mod test_expr_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Logical operator test '{}' should return {} items",
                 expr,
@@ -229,10 +229,10 @@ mod comparable_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Comparable test '{}' should return {} items",
                 expr,
@@ -268,13 +268,13 @@ mod comparable_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Note: Cross-type comparison behavior may vary between implementations
             println!(
                 "Cross-type comparison '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -337,10 +337,10 @@ mod comparable_context_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Arithmetic comparison '{}' should return {} items",
                 expr,
@@ -383,12 +383,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Length argument test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -425,12 +425,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Count argument test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -446,9 +446,9 @@ mod function_argument_context_tests {
         // RFC 9535: match() requires ValueType string and string pattern
         let json_data = r#"{
             "match_test": [
-                {"code": "ABC123", "description": "Valid code"},
-                {"code": "XYZ789", "description": "Another valid code"},
-                {"code": "invalid", "description": "Invalid format"}
+                {"code": "ABC123", "_description": "Valid code"},
+                {"code": "XYZ789", "_description": "Another valid code"},
+                {"code": "invalid", "_description": "Invalid format"}
             ]
         }"#;
 
@@ -456,8 +456,8 @@ mod function_argument_context_tests {
             // Valid arguments: ValueType string, string pattern
             (r#"$.match_test[?match(@.code, "^[A-Z]{3}[0-9]{3}$")]"#, 2),
             (r#"$.match_test[?match(@.code, "^[A-Z]")]"#, 2),
-            (r#"$.match_test[?match(@.description, "valid")]"#, 2),
-            (r#"$.match_test[?match(@.description, "Invalid")]"#, 1),
+            (r#"$.match_test[?match(@._description, "valid")]"#, 2),
+            (r#"$.match_test[?match(@._description, "Invalid")]"#, 1),
         ];
 
         for (expr, expected_count) in match_argument_tests {
@@ -467,12 +467,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Match argument test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -510,12 +510,12 @@ mod function_argument_context_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Value argument test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -546,16 +546,16 @@ mod function_argument_context_tests {
             ), // Should be singular
         ];
 
-        for (expr, description) in invalid_argument_tests {
+        for (expr, _description) in invalid_argument_tests {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!(
                     "Invalid argument '{}' ({}) compiled (may error at runtime)",
-                    expr, description
+                    expr, _description
                 ),
                 Err(_) => println!(
                     "Invalid argument '{}' ({}) correctly rejected",
-                    expr, description
+                    expr, _description
                 ),
             }
         }
@@ -581,16 +581,16 @@ mod type_mismatch_error_tests {
             ("$.items[?@.*]", "Wildcard as test expression"),             // Invalid
         ];
 
-        for (expr, description) in logical_mismatches {
+        for (expr, _description) in logical_mismatches {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!(
                     "Logical type mismatch '{}' ({}) was accepted",
-                    expr, description
+                    expr, _description
                 ),
                 Err(_) => println!(
                     "Logical type mismatch '{}' ({}) correctly rejected",
-                    expr, description
+                    expr, _description
                 ),
             }
         }
@@ -611,16 +611,16 @@ mod type_mismatch_error_tests {
             ),
         ];
 
-        for (expr, description) in comparable_mismatches {
+        for (expr, _description) in comparable_mismatches {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!(
                     "Comparable type mismatch '{}' ({}) was accepted",
-                    expr, description
+                    expr, _description
                 ),
                 Err(_) => println!(
                     "Comparable type mismatch '{}' ({}) correctly rejected",
-                    expr, description
+                    expr, _description
                 ),
             }
         }
@@ -659,13 +659,13 @@ mod type_mismatch_error_tests {
             ),
         ];
 
-        for (expr, description) in argument_mismatches {
+        for (expr, _description) in argument_mismatches {
             let result = JsonPathParser::compile(expr);
             assert!(
                 result.is_err(),
                 "Function argument mismatch '{}' ({}) should be rejected",
                 expr,
-                description
+                _description
             );
         }
     }
@@ -699,16 +699,16 @@ mod type_mismatch_error_tests {
             ),
         ];
 
-        for (expr, description) in nested_type_errors {
+        for (expr, _description) in nested_type_errors {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!(
                     "Nested type error '{}' ({}) was accepted (may error at runtime)",
-                    expr, description
+                    expr, _description
                 ),
                 Err(_) => println!(
                     "Nested type error '{}' ({}) correctly rejected",
-                    expr, description
+                    expr, _description
                 ),
             }
         }
@@ -738,10 +738,10 @@ mod type_mismatch_error_tests {
             ("$.context_test[?length(@.number) > 0]", false), // Number to length() ❌
         ];
 
-        for (expr, should_be_valid) in context_requirements {
+        for (expr, _should_be_valid) in context_requirements {
             let result = JsonPathParser::compile(expr);
 
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok() || true, // Allow implementation variance
                     "Context requirement '{}' should be valid",

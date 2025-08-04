@@ -204,6 +204,9 @@ pub trait JsonPathResultExt<T> {
 
     /// Convert to stream-compatible error handling with logging
     fn handle_or_log(self, context: &str, default: T) -> T;
+
+    /// Add stream context to errors
+    fn with_stream_context(self, context: &str) -> JsonPathResult<T>;
 }
 
 impl<T> JsonPathResultExt<T> for JsonPathResult<T> {
@@ -222,6 +225,19 @@ impl<T> JsonPathResultExt<T> for JsonPathResult<T> {
                 default
             }
         }
+    }
+
+    fn with_stream_context(self, context: &str) -> JsonPathResult<T> {
+        self.map_err(|err| match err {
+            JsonPathError::StreamError { message, recoverable, .. } => {
+                JsonPathError::StreamError {
+                    message,
+                    state: context.to_string(),
+                    recoverable,
+                }
+            }
+            other => other,
+        })
     }
 }
 
@@ -288,5 +304,5 @@ pub fn deserialization_error(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // Tests for error module will be implemented here
 }

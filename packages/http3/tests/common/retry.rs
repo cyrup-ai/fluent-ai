@@ -13,7 +13,7 @@ mod retry_tests {
         // This will contain retry-specific tests
 
         // Placeholder test to ensure module compiles
-        let _stream = Http3::json().get("https://api.example.com/test");
+        let stream = Http3::json().get("https://api.example.com/test");
         // HttpStream doesn't implement is_ok/is_err, so we just verify it compiles
         assert!(true);
     }

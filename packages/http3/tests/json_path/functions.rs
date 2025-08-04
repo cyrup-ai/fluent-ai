@@ -38,10 +38,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "String length filter '{}' should return {} items",
                 expr,
@@ -71,10 +71,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Array length filter '{}' should return {} items",
                 expr,
@@ -104,10 +104,10 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Object length filter '{}' should return {} items",
                 expr,
@@ -129,9 +129,9 @@ mod length_function_tests {
             JsonArrayStream::<serde_json::Value>::new("$.items[?length(@.value) == null]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 1, "length(null) should equal null");
+        assert_eq!(_results.len(), 1, "length(null) should equal null");
     }
 
     #[test]
@@ -153,13 +153,13 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Document current behavior rather than asserting specific results
             println!(
                 "length() on primitives '{}' returned {} results",
                 expr,
-                results.len()
+                _results.len()
             );
         }
     }
@@ -185,13 +185,13 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Document behavior for Unicode handling
             println!(
                 "Unicode length test '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -216,12 +216,12 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Nested length test '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -257,14 +257,14 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Performance test '{}' returned {} results in {:?} (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 duration,
                 expected_count
             );
@@ -302,12 +302,12 @@ mod length_function_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Edge case test '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -382,12 +382,12 @@ mod length_error_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Complex length() expression '{}' returned {} results",
                         expr,
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(_) => println!("Complex length() expression '{}' not supported", expr),
@@ -442,10 +442,10 @@ mod count_function_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(filter_expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Document current behavior
-        println!("count() empty nodelist returned {} results", results.len());
+        println!("count() empty nodelist returned {} results", _results.len());
     }
 
     #[test]
@@ -471,12 +471,12 @@ mod count_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "count() comparison '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -514,14 +514,14 @@ mod count_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     let duration = start_time.elapsed();
 
                     println!(
                         "count() performance test '{}' returned {} results in {:?} (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         duration,
                         expected_count
                     );
@@ -586,12 +586,12 @@ mod count_error_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Complex count() expression '{}' returned {} results",
                         expr,
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(_) => println!("Complex count() expression '{}' not supported", expr),
@@ -631,10 +631,10 @@ mod match_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        results.len(),
+                        _results.len(),
                         expected_count,
                         "match() filter '{}' should return {} items",
                         expr,
@@ -701,17 +701,17 @@ mod search_function_tests {
     fn test_regex_search() {
         // RFC 9535: search() tests if string contains match for regex
         let json_data = r#"{"items": [
-            {"description": "This contains the word test"},
-            {"description": "No matching content here"},
-            {"description": "Another test example"},
-            {"description": "Testing is important"}
+            {"_description": "This contains the word test"},
+            {"_description": "No matching content here"},
+            {"_description": "Another test example"},
+            {"_description": "Testing is important"}
         ]}"#;
 
         let test_cases = vec![
-            ("$.items[?search(@.description, 'test')]", 3), // Contains 'test'
-            ("$.items[?search(@.description, '^This')]", 1), // Starts with 'This'
-            ("$.items[?search(@.description, 'important$')]", 1), // Ends with 'important'
-            ("$.items[?search(@.description, '[Tt]est')]", 3), // Case variations
+            ("$.items[?search(@._description, 'test')]", 3), // Contains 'test'
+            ("$.items[?search(@._description, '^This')]", 1), // Starts with 'This'
+            ("$.items[?search(@._description, 'important$')]", 1), // Ends with 'important'
+            ("$.items[?search(@._description, '[Tt]est')]", 3), // Case variations
         ];
 
         for (expr, expected_count) in test_cases {
@@ -722,10 +722,10 @@ mod search_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        results.len(),
+                        _results.len(),
                         expected_count,
                         "search() filter '{}' should return {} items",
                         expr,
@@ -910,10 +910,10 @@ mod type_system_overview_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Value type test '{}' should return {} items",
                 expr,
@@ -951,10 +951,10 @@ mod type_system_overview_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        results.len(),
+                        _results.len(),
                         expected_count,
                         "Logical type test '{}' should return {} items",
                         expr,
@@ -994,10 +994,10 @@ mod type_system_overview_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Nodes type test '{}' should return {} items",
                 expr,
@@ -1016,7 +1016,7 @@ mod function_argument_types_tests {
     fn test_length_function_argument_types() {
         // RFC 9535: length() function argument type validation
         let json_data = r#"{
-            "test_data": [
+            "_test_data": [
                 {"str_value": "hello", "num_value": 42, "arr_value": [1, 2, 3], "obj_value": {"a": 1, "b": 2}},
                 {"str_value": "world", "num_value": 99, "arr_value": [], "obj_value": {}},
                 {"str_value": "", "num_value": 0, "arr_value": [1], "obj_value": {"x": 10}}
@@ -1025,12 +1025,12 @@ mod function_argument_types_tests {
 
         let test_cases = vec![
             // Valid length() argument types
-            ("$.test_data[?length(@.str_value) == 5]", 1), // String argument
-            ("$.test_data[?length(@.arr_value) == 3]", 1), // Array argument
-            ("$.test_data[?length(@.obj_value) == 2]", 2), // Object argument
-            ("$.test_data[?length(@.str_value) == 0]", 1), // Empty string
-            ("$.test_data[?length(@.arr_value) == 0]", 1), // Empty array
-            ("$.test_data[?length(@.obj_value) == 0]", 1), // Empty object
+            ("$._test_data[?length(@.str_value) == 5]", 1), // String argument
+            ("$._test_data[?length(@.arr_value) == 3]", 1), // Array argument
+            ("$._test_data[?length(@.obj_value) == 2]", 2), // Object argument
+            ("$._test_data[?length(@.str_value) == 0]", 1), // Empty string
+            ("$._test_data[?length(@.arr_value) == 0]", 1), // Empty array
+            ("$._test_data[?length(@.obj_value) == 0]", 1), // Empty object
         ];
 
         for (expr, expected_count) in test_cases {
@@ -1040,12 +1040,12 @@ mod function_argument_types_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Length argument test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -1108,10 +1108,10 @@ mod function_argument_types_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Type comparison '{}' should return {} items",
                 expr,
@@ -1145,10 +1145,10 @@ mod function_argument_types_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Arithmetic comparison '{}' should return {} items",
                 expr,
@@ -1186,10 +1186,10 @@ mod type_conversion_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Conversion test '{}' should return {} items",
                 expr,
@@ -1221,14 +1221,14 @@ mod type_conversion_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Document behavior rather than asserting specific results
             // as error handling may vary between implementations
             println!(
                 "Logical type error test '{}' returned {} results",
                 expr,
-                results.len()
+                _results.len()
             );
         }
     }
@@ -1258,12 +1258,12 @@ mod type_conversion_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Function result type test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -1388,12 +1388,12 @@ mod nested_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Function composition '{}' returned {} results",
                         expr,
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(_) => println!("Function composition '{}' not supported", expr),
@@ -1426,12 +1426,12 @@ mod nested_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Complex nested expression '{}' returned {} results",
                         expr,
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(_) => println!("Complex nested expression '{}' not supported", expr),
@@ -1463,12 +1463,12 @@ mod nested_function_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Type error propagation '{}' returned {} results",
                         expr,
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(_) => println!("Type error propagation '{}' rejected", expr),
@@ -1522,10 +1522,10 @@ mod well_typedness_tests {
             ("$.items[?@.array == @.object]", false),  // Array == Object
         ];
 
-        for (expr, should_be_valid) in comparable_tests {
+        for (expr, _should_be_valid) in comparable_tests {
             let result = JsonPathParser::compile(expr);
 
-            if should_be_valid {
+            if _should_be_valid {
                 println!(
                     "Comparable expression '{}' should be valid: {:?}",
                     expr,

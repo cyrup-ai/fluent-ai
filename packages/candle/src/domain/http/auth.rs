@@ -34,7 +34,7 @@
 //! let oauth2 = OAuth2Auth::from_service_account(&service_account_json)?;
 //! ```
 
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]

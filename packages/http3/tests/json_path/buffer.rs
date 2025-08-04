@@ -2,7 +2,7 @@
 //!
 //! Tests for the streaming buffer functionality, moved from src/json_path/buffer.rs
 
-use std::io::Read;
+
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::buffer::StreamBuffer;
@@ -15,7 +15,7 @@ mod buffer_tests {
     fn test_buffer_creation() {
         let buffer = StreamBuffer::with_capacity(1024);
         assert_eq!(buffer.current_size(), 0);
-        assert!(buffer.buffer.capacity() >= 1024);
+        assert!(buffer.capacity() >= 1024);
     }
 
     #[test]

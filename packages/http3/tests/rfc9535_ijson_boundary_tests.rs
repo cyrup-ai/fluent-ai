@@ -11,7 +11,7 @@
 //! - Slice parameter boundary validation  
 //! - Comparison operand boundary validation
 //! - Function argument boundary validation
-//! - Edge cases at I-JSON boundaries
+//! - Edge cases at I-JSON _boundaries
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser, JsonPathError};
@@ -29,13 +29,13 @@ mod ijson_boundary_tests {
     fn test_array_index_ijson_boundaries() {
         // RFC 9535: Array indices MUST be within I-JSON range
         let boundary_tests = vec![
-            // Valid I-JSON range boundaries
+            // Valid I-JSON range _boundaries
             (format!("$[{}]", MAX_SAFE_INTEGER), true, "Max safe integer index"),
             (format!("$[{}]", MIN_SAFE_INTEGER), true, "Min safe integer index"),
             (format!("$[{}]", MAX_SAFE_INTEGER - 1), true, "Just below max safe"),
             (format!("$[{}]", MIN_SAFE_INTEGER + 1), true, "Just above min safe"),
             
-            // Beyond I-JSON boundaries - MUST be rejected per RFC
+            // Beyond I-JSON _boundaries - MUST be rejected per RFC
             (format!("$[{}]", MAX_SAFE_INTEGER + 1), false, "Beyond max safe integer"),
             (format!("$[{}]", MIN_SAFE_INTEGER - 1), false, "Beyond min safe integer"),
             (format!("$[{}]", i64::MAX), false, "Max i64 value"),
@@ -46,20 +46,20 @@ mod ijson_boundary_tests {
             ("$[9.007199254740992e15]".to_string(), false, "Decimal beyond safe range"),
         ];
 
-        for (expr, should_be_valid, description) in boundary_tests {
+        for (expr, _should_be_valid, _description) in boundary_tests {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: I-JSON boundary test should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: I-JSON boundary violation MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Verify error is related to I-JSON range violation
@@ -78,14 +78,14 @@ mod ijson_boundary_tests {
     fn test_array_slice_ijson_boundaries() {
         // RFC 9535: Array slice parameters MUST be within I-JSON range
         let slice_boundary_tests = vec![
-            // Valid I-JSON slice boundaries
+            // Valid I-JSON slice _boundaries
             (format!("$[{}:{}]", MIN_SAFE_INTEGER, MAX_SAFE_INTEGER), true, "Full I-JSON range slice"),
             (format!("$[{}:]", MAX_SAFE_INTEGER), true, "Max safe start"),
             (format!("$[:{}]", MAX_SAFE_INTEGER), true, "Max safe end"),
             (format!("$[::{}]", MAX_SAFE_INTEGER), true, "Max safe step"),
             (format!("$[{}:{}:{}]", MIN_SAFE_INTEGER, MAX_SAFE_INTEGER, 1), true, "Full valid slice"),
             
-            // Beyond I-JSON boundaries in slice parameters
+            // Beyond I-JSON _boundaries in slice parameters
             (format!("$[{}:]", MAX_SAFE_INTEGER + 1), false, "Start beyond max safe"),
             (format!("$[:{}]", MAX_SAFE_INTEGER + 1), false, "End beyond max safe"),
             (format!("$[::{}]", MAX_SAFE_INTEGER + 1), false, "Step beyond max safe"),
@@ -97,20 +97,20 @@ mod ijson_boundary_tests {
             (format!("$[{}:{}]", MAX_SAFE_INTEGER + 1, MAX_SAFE_INTEGER + 2), false, "Multiple violations"),
         ];
 
-        for (expr, should_be_valid, description) in slice_boundary_tests {
+        for (expr, _should_be_valid, _description) in slice_boundary_tests {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: I-JSON slice boundary test should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: I-JSON slice boundary violation MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -126,7 +126,7 @@ mod ijson_boundary_tests {
             (format!("$[?@.value > {}]", MAX_SAFE_INTEGER - 1), true, "Greater than near max"),
             (format!("$[?@.value < {}]", MIN_SAFE_INTEGER + 1), true, "Less than near min"),
             
-            // Beyond I-JSON boundaries in comparisons
+            // Beyond I-JSON _boundaries in comparisons
             (format!("$[?@.value == {}]", MAX_SAFE_INTEGER + 1), false, "Comparison beyond max safe"),
             (format!("$[?@.value == {}]", MIN_SAFE_INTEGER - 1), false, "Comparison beyond min safe"),
             (format!("$[?@.value > {}]", MAX_SAFE_INTEGER + 1), false, "Greater than beyond max"),
@@ -137,20 +137,20 @@ mod ijson_boundary_tests {
             (format!("$[?@.value < {} || @.other > {}]", MIN_SAFE_INTEGER - 1, 100), false, "Logical OR with violation"),
         ];
 
-        for (expr, should_be_valid, description) in comparison_tests {
+        for (expr, _should_be_valid, _description) in comparison_tests {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: I-JSON comparison boundary test should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: I-JSON comparison boundary violation MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -158,31 +158,31 @@ mod ijson_boundary_tests {
 
     #[test]
     fn test_function_argument_ijson_boundaries() {
-        // RFC 9535: Function arguments MUST respect I-JSON boundaries
+        // RFC 9535: Function arguments MUST respect I-JSON _boundaries
         let function_tests = vec![
             // Valid I-JSON function arguments (these test syntax, not execution)
             (format!("$[?length(@.array) == {}]", MAX_SAFE_INTEGER), true, "Function result comparison at max"),
             (format!("$[?count(@.items) > {}]", MAX_SAFE_INTEGER - 1), true, "Function count near max"),
             
-            // Beyond I-JSON boundaries in function contexts
+            // Beyond I-JSON _boundaries in function contexts
             (format!("$[?length(@.array) == {}]", MAX_SAFE_INTEGER + 1), false, "Function comparison beyond max"),
             (format!("$[?count(@.items) < {}]", MIN_SAFE_INTEGER - 1), false, "Function comparison beyond min"),
         ];
 
-        for (expr, should_be_valid, description) in function_tests {
+        for (expr, _should_be_valid, _description) in function_tests {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: I-JSON function boundary test should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: I-JSON function boundary violation MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -190,13 +190,13 @@ mod ijson_boundary_tests {
 
     #[test]
     fn test_edge_cases_at_ijson_boundaries() {
-        // RFC 9535: Test edge cases exactly at I-JSON boundaries
+        // RFC 9535: Test edge cases exactly at I-JSON _boundaries
         let edge_cases = vec![
-            // Exactly at boundaries (should be valid)
+            // Exactly at _boundaries (should be valid)
             (format!("$[{}]", MAX_SAFE_INTEGER), true, "Exactly max safe integer"),
             (format!("$[{}]", MIN_SAFE_INTEGER), true, "Exactly min safe integer"),
             
-            // One beyond boundaries (should be invalid)
+            // One beyond _boundaries (should be invalid)
             (format!("$[{}]", MAX_SAFE_INTEGER as u64 + 1), false, "One beyond max safe"),
             
             // Floating point representations of boundary values
@@ -208,20 +208,20 @@ mod ijson_boundary_tests {
             ("$['-9007199254740991']".to_string(), true, "String representation of min safe"),
         ];
 
-        for (expr, should_be_valid, description) in edge_cases {
+        for (expr, _should_be_valid, _description) in edge_cases {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: I-JSON edge case should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: I-JSON edge case violation MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -251,25 +251,25 @@ mod ijson_boundary_tests {
             (format!("$.items[?@.id < {}]", MAX_SAFE_INTEGER), 1, "Less than max safe"),
         ];
 
-        for (expr, expected_count, description) in execution_tests {
+        for (expr, _expected_count, _description) in execution_tests {
             // First verify the expression compiles
             let compile_result = JsonPathParser::compile(&expr);
             assert!(
                 compile_result.is_ok(),
                 "RFC 9535: I-JSON boundary execution should compile: {} ({})",
-                expr, description
+                expr, _description
             );
 
             // Then test execution
             let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: I-JSON boundary execution should return {} results: {} ({})",
-                expected_count, expr, description
+                expected_count, expr, _description
             );
         }
     }
@@ -294,20 +294,20 @@ mod precision_loss_tests {
             ("$[1.8014398509481984e16]".to_string(), false, "Large scientific notation"),
         ];
 
-        for (expr, should_be_valid, description) in precision_tests {
+        for (expr, _should_be_valid, _description) in precision_tests {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Precision test should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Precision loss scenario MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -315,31 +315,31 @@ mod precision_loss_tests {
 
     #[test]
     fn test_boundary_arithmetic() {
-        // RFC 9535: Test arithmetic operations near I-JSON boundaries
+        // RFC 9535: Test arithmetic operations near I-JSON _boundaries
         let arithmetic_tests = vec![
             // These are conceptual - testing if expressions parse correctly
             (format!("$[?@.value + 1 == {}]", MAX_SAFE_INTEGER), true, "Addition near max safe"),
             (format!("$[?@.value - 1 == {}]", MIN_SAFE_INTEGER), true, "Subtraction near min safe"),
             
-            // Operations that would exceed boundaries (if evaluated)
+            // Operations that would exceed _boundaries (if evaluated)
             (format!("$[?@.value + 2 == {}]", MAX_SAFE_INTEGER + 2), false, "Addition exceeding safe range"),
             (format!("$[?@.value - 2 == {}]", MIN_SAFE_INTEGER - 2), false, "Subtraction exceeding safe range"),
         ];
 
-        for (expr, should_be_valid, description) in arithmetic_tests {
+        for (expr, _should_be_valid, _description) in arithmetic_tests {
             let result = JsonPathParser::compile(&expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Arithmetic boundary test should pass: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Arithmetic boundary violation MUST be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }

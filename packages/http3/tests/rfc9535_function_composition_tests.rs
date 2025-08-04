@@ -136,20 +136,20 @@ mod function_composition_tests {
             ("$.library.books[?count(length(@.title))]", false, "Number to NodesType invalid"),
         ];
 
-        for (expr, should_be_valid, description) in type_conversion_tests {
+        for (expr, _should_be_valid, _description) in type_conversion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Type conversion should be valid: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid type conversion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -178,23 +178,23 @@ mod function_composition_tests {
             ("$.library.books[?length(invalid(@.title))]", false, "Invalid nested function"),
         ];
 
-        for (expr, should_be_valid, description) in nested_tests {
+        for (expr, _should_be_valid, _description) in nested_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid nested function should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
-                println!("✓ Valid nesting: {} ({})", expr, description);
+                println!("✓ Valid nesting: {} ({})", expr, _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid nested function should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
-                println!("✗ Invalid nesting rejected: {} ({})", expr, description);
+                println!("✗ Invalid nesting rejected: {} ({})", expr, _description);
             }
         }
     }
@@ -226,20 +226,20 @@ mod function_composition_tests {
             ("$.library.books[?count(length(@.title, @.tags))]", false, "Nested with wrong arg count"),
         ];
 
-        for (expr, should_be_valid, description) in argument_count_tests {
+        for (expr, _should_be_valid, _description) in argument_count_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Correct argument count should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Incorrect argument count should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -256,19 +256,19 @@ mod function_composition_tests {
             ("$.library.books[?length(@.title) + count(@.tags) > 15]", 2, "Combined length and count"),
         ];
 
-        for (expr, expected_count, description) in execution_tests {
+        for (expr, _expected_count, _description) in execution_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(FUNCTION_TEST_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: Function composition execution: {} ({}) should return {} results",
-                expr, description, expected_count
+                expr, _description, expected_count
             );
             
-            println!("✓ Execution test: {} -> {} results ({})", expr, results.len(), description);
+            println!("✓ Execution test: {} -> {} results ({})", expr, _results.len(), _description);
         }
     }
 }
@@ -291,20 +291,20 @@ mod function_type_system_tests {
             ("$.library.books[?count(@.tags)]", true, "Count result as LogicalType"),
         ];
 
-        for (expr, should_be_valid, description) in conversion_tests {
+        for (expr, _should_be_valid, _description) in conversion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: ValueType to LogicalType conversion should work: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid conversion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -324,19 +324,19 @@ mod function_type_system_tests {
             ("$.library.books[?value(@..title)]", false, "Descendant multi-node"),
         ];
 
-        for (expr, should_be_valid, description) in conversion_tests {
+        for (expr, _should_be_valid, _description) in conversion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: NodesType to ValueType conversion should work: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 // Note: This may be a runtime error rather than compile-time
                 // The test documents expected behavior
-                println!("NodesType conversion test: {} ({})", expr, description);
+                println!("NodesType conversion test: {} ({})", expr, _description);
             }
         }
     }
@@ -370,20 +370,20 @@ mod function_type_system_tests {
             ("$.library.books[?search(count(@.tags), 'pattern')]", false, "Number to search() first arg"),
         ];
 
-        for (expr, should_be_valid, description) in type_matching_tests {
+        for (expr, _should_be_valid, _description) in type_matching_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Type matching should work: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Type mismatch should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -416,21 +416,21 @@ mod complex_composition_tests {
             ("$.library.books[?(length(@.title) > 10) && (count(@.tags) > 1)]", true, "Parenthesized functions"),
         ];
 
-        for (expr, should_be_valid, description) in deep_nesting_tests {
+        for (expr, _should_be_valid, _description) in deep_nesting_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Complex composition should work: {} ({})",
-                    expr, description
+                    expr, _description
                 );
-                println!("✓ Complex composition: {} ({})", expr, description);
+                println!("✓ Complex composition: {} ({})", expr, _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid complex composition should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -478,20 +478,20 @@ mod complex_composition_tests {
             ("$.library.books[?count(@.items) > count(@.nested.items)]", true, "Parallel function calls with @"),
         ];
 
-        for (expr, should_be_valid, description) in current_node_tests {
+        for (expr, _should_be_valid, _description) in current_node_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Function with @ should work: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid function with @ should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }

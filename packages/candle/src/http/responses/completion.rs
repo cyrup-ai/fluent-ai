@@ -9,6 +9,8 @@
 //! - [`CompletionChunk`] - Streaming response chunk for real-time completion
 //! - [`CompletionChoice`] - Individual completion candidate
 //! - [`StreamingResponse`] - Unified streaming interface across providers
+
+#![allow(missing_docs)]
 //
 //! # Supported Providers
 //
@@ -45,7 +47,6 @@
 //     &anthropic_sse_data
 // )?;
 // ```
-#[warn(missing_docs)]
 #[forbid(unsafe_code)]
 #[deny(clippy::all)]
 #[deny(clippy::pedantic)]
@@ -764,7 +765,7 @@ pub struct TokenLogProb {
 /// This provides a unified format for streaming chunks across all providers,
 /// enabling consistent handling of real-time completion data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompletionChunk {
+pub struct CandleCompletionResponseChunk {
     /// Chunk ID for tracking
     pub id: ArrayString<MAX_IDENTIFIER_LEN>,
 
@@ -789,7 +790,7 @@ pub struct CompletionChunk {
     pub system_fingerprint: Option<ArrayString<64>>,
 }
 
-impl CompletionChunk {
+impl CandleCompletionResponseChunk {
     /// Create a new completion chunk
     #[inline]
     pub fn new(
@@ -1345,7 +1346,7 @@ impl StreamingResponse {
 
     /// Record a new chunk
     #[inline]
-    pub fn record_chunk(&mut self, chunk: &CompletionChunk) {
+    pub fn record_chunk(&mut self, chunk: &CandleCompletionResponseChunk) {
         self.chunk_count += 1;
 
         if chunk.is_final() {
@@ -1711,7 +1712,7 @@ mod tests {
         };
 
         let chunk =
-            CompletionChunk::new("chunk-123", "gpt-4", vec![choice]).expect("Should create chunk");
+            CandleCompletionResponseChunk::new("chunk-123", "gpt-4", vec![choice]).expect("Should create chunk");
 
         assert_eq!(chunk.id.as_str(), "chunk-123");
         assert_eq!(chunk.model.as_str(), "gpt-4");
@@ -1724,7 +1725,7 @@ mod tests {
     fn test_openai_chunk_parsing() {
         let data = br#"{"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}"#;
 
-        let chunk = CompletionChunk::from_provider_chunk(Provider::OpenAI, data)
+        let chunk = CandleCompletionResponseChunk::from_provider_chunk(Provider::OpenAI, data)
             .expect("Should parse OpenAI chunk");
 
         assert_eq!(chunk.id.as_str(), "chatcmpl-123");
@@ -1737,7 +1738,7 @@ mod tests {
     fn test_anthropic_chunk_parsing() {
         let data = br#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}"#;
 
-        let chunk = CompletionChunk::from_provider_chunk(Provider::Anthropic, data)
+        let chunk = CandleCompletionResponseChunk::from_provider_chunk(Provider::Anthropic, data)
             .expect("Should parse Anthropic chunk");
 
         assert_eq!(chunk.text(), Some("Hello"));
@@ -1755,7 +1756,7 @@ mod tests {
         assert!(!stream.completed);
         assert_eq!(stream.chunk_count, 0);
 
-        let chunk = CompletionChunk::new("chunk-1", "gpt-4", vec![]).expect("Should create chunk");
+        let chunk = CandleCompletionResponseChunk::new("chunk-1", "gpt-4", vec![]).expect("Should create chunk");
         stream.record_chunk(&chunk);
 
         assert_eq!(stream.chunk_count, 1);

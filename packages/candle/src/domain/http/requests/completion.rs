@@ -9,6 +9,8 @@
 //! - **Anthropic**: Claude models with cache control and tool use
 //! - **Google**: Vertex AI and Gemini with safety settings
 //! - **AWS Bedrock**: Multi-model support with converse API
+
+#![allow(missing_docs)]
 //! - **Cohere**: Command models with chat history
 //! - **Azure OpenAI**: All OpenAI models via Azure deployment
 //! - **Local/OSS**: Ollama, HuggingFace, Together, etc.
@@ -42,7 +44,6 @@
 //     .with_openai_response_format("json_object")
 //     .with_openai_seed(42);
 // ```
-#[warn(missing_docs)]
 #[forbid(unsafe_code)]
 #[deny(clippy::all)]
 #[deny(clippy::pedantic)]
@@ -56,7 +57,7 @@ use serde_json::Value;
 
 use std::collections::HashMap;
 use crate::domain::http::Provider;
-use crate::http::common::{
+use crate::domain::http::common::{
     BaseMessage, MAX_IDENTIFIER_LEN, MAX_MESSAGES, MAX_STOP_SEQUENCE_LEN, MAX_STOP_SEQUENCES,
     MAX_TOOLS, ModelParameters, ValidationError,
 };
@@ -1175,7 +1176,7 @@ impl From<serde_json::Error> for CompletionRequestError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::http::common::BaseMessage;
+    use crate::domain::http::common::BaseMessage;
 
     #[test]
     fn test_completion_request_creation() {

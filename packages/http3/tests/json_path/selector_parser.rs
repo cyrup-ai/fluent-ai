@@ -10,7 +10,7 @@
 //! - Performance validation for large datasets
 
 use bytes::Bytes;
-use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathError, JsonPathParser};
+use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -68,8 +68,8 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$['store']");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(results.len(), 1, "Should select store object");
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(_results.len(), 1, "Should select store object");
     }
 
     #[test]
@@ -85,8 +85,8 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$[\"store\"]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(results.len(), 1, "Should select store object");
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(_results.len(), 1, "Should select store object");
     }
 
     #[test]
@@ -99,8 +99,8 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(results.len(), 1, "Should select store object");
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(_results.len(), 1, "Should select store object");
     }
 
     #[test]
@@ -147,9 +147,9 @@ mod name_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.nonexistent");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Nonexistent property should return empty nodelist"
         );
@@ -168,9 +168,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "Wildcard should select all object members"
         );
@@ -183,9 +183,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.books[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             3,
             "Wildcard should select all array elements"
         );
@@ -198,9 +198,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             3,
             "Root wildcard should select all top-level members"
         );
@@ -213,9 +213,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.value[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Wildcard on primitive should return empty nodelist"
         );
@@ -231,9 +231,9 @@ mod wildcard_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store.*");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "Dot-star should select all store children"
         );
@@ -260,17 +260,16 @@ mod index_selector_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "Index [{}] should select one element",
                 expected_index
             );
-            if let Ok(ref value) = results[0] {
-                assert_eq!(value, expected_value, "Should select correct value");
-            }
+            let value = &_results[0];
+            assert_eq!(value, expected_value, "Should select correct value");
         }
     }
 
@@ -289,20 +288,19 @@ mod index_selector_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "Negative index '{}' should select one element",
                 expr
             );
-            if let Ok(ref value) = results[0] {
-                assert_eq!(
-                    value, expected_value,
-                    "Should select correct value from end"
-                );
-            }
+            let value = &_results[0];
+            assert_eq!(
+                value, expected_value,
+                "Should select correct value from end"
+            );
         }
     }
 
@@ -320,10 +318,10 @@ mod index_selector_tests {
             let mut stream = JsonArrayStream::<String>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 0,
                 "Out of bounds '{}' should return empty nodelist",
                 expr
@@ -338,9 +336,9 @@ mod index_selector_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store[0]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Index on object should return empty nodelist"
         );
@@ -356,12 +354,11 @@ mod index_selector_tests {
         let mut stream = JsonArrayStream::<String>::new("$.books[0]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 1, "Index 0 should select first element");
-        if let Ok(ref value) = results[0] {
-            assert_eq!(value, "first", "Should select first element");
-        }
+        assert_eq!(_results.len(), 1, "Index 0 should select first element");
+        let value = &_results[0];
+        assert_eq!(value, "first", "Should select first element");
     }
 }
 
@@ -385,9 +382,9 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
@@ -413,9 +410,9 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
@@ -442,9 +439,9 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
@@ -471,9 +468,9 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
@@ -500,9 +497,9 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
@@ -529,9 +526,9 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             assert_eq!(
@@ -549,9 +546,9 @@ mod array_slice_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$.store[1:3]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Slice on object should return empty nodelist"
         );
@@ -634,10 +631,10 @@ mod slice_performance_tests {
 
         let chunk = Bytes::from(json_data);
         let start_time = std::time::Instant::now();
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
-        assert_eq!(results.len(), 100, "Should select 100 elements");
+        assert_eq!(_results.len(), 100, "Should select 100 elements");
         println!("Large array slice took {:?}", duration);
 
         // Performance assertion - should complete in reasonable time
@@ -672,10 +669,10 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Positive index slice '{}' should return {} items",
                 expr,
@@ -703,12 +700,12 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Negative index slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -732,12 +729,12 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Out-of-bounds slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -760,10 +757,10 @@ mod normalize_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Empty array slice '{}' should return {} items",
                 expr,
@@ -796,12 +793,12 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Positive step slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -825,12 +822,12 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Negative step slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -856,12 +853,12 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Default values slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -886,10 +883,10 @@ mod bounds_function_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Edge case slice '{}' should return {} items",
                 expr,
@@ -939,12 +936,12 @@ mod step_value_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Large step slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -952,7 +949,7 @@ mod step_value_tests {
 
     #[test]
     fn test_step_value_boundaries() {
-        // Test step values at boundaries
+        // Test step values at _boundaries
         let json_data = r#"{"arrays": [
             {"data": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "name": "ten_elements"}
         ]}"#;
@@ -968,12 +965,12 @@ mod step_value_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Step boundary slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -1008,14 +1005,14 @@ mod array_slice_performance_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Large array slice '{}' returned {} results in {:?} (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 duration,
                 expected_count
             );
@@ -1052,19 +1049,19 @@ mod array_slice_performance_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             println!(
                 "Memory efficient slice '{}' returned {} results in {:?}",
                 expr,
-                results.len(),
+                _results.len(),
                 duration
             );
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Efficient slice '{}' should return exactly {} items",
                 expr,
@@ -1098,12 +1095,12 @@ mod array_slice_performance_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Complex slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -1137,12 +1134,12 @@ mod multidimensional_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Nested array slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -1169,12 +1166,12 @@ mod multidimensional_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Jagged array slice '{}' returned {} results (expected {})",
                 expr,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -1203,25 +1200,25 @@ mod algorithm_compliance_validation {
             ("$.test_array[:8:2]", 4, "start=0, end=8, step=2"),
         ];
 
-        for (expr, expected_count, description) in table8_tests {
+        for (expr, _expected_count, _description) in table8_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Table 8 test '{}' -> {} ({})",
                 expr,
-                results.len(),
-                description
+                _results.len(),
+                _description
             );
 
             // Some tests might not be exact due to implementation details
-            if results.len() != expected_count {
+            if _results.len() != expected_count {
                 println!(
                     "  WARNING: Expected {}, got {} for '{}'",
                     expected_count,
-                    results.len(),
+                    _results.len(),
                     expr
                 );
             }
@@ -1257,24 +1254,24 @@ mod algorithm_compliance_validation {
             ("$.numbers[5:5]", vec![], "Empty range: start == end"),
         ];
 
-        for (expr, expected_subset, description) in algorithm_tests {
+        for (expr, expected_subset, _description) in algorithm_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
+            let _results: Vec<_> = stream
                 .process_chunk(chunk)
-                .map(|r| r.expect("Valid deserialization"))
+                
                 .collect();
 
             println!(
                 "Algorithm test '{}' -> {:?} ({})",
-                expr, results, description
+                expr, results, _description
             );
 
             // For some tests, verify exact match
-            if !expected_subset.is_empty() && results.len() == expected_subset.len() {
+            if !expected_subset.is_empty() && _results.len() == expected_subset.len() {
                 for (i, expected) in expected_subset.iter().enumerate() {
-                    if i < results.len() && results[i] != *expected {
+                    if i < _results.len() && _results[i] != *expected {
                         println!(
                             "  WARNING: Expected {:?}, got {:?} for '{}'",
                             expected_subset, results, expr
@@ -1386,27 +1383,27 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() <= 1,
+                _results.len() <= 1,
                 "Singular query '{}' should return at most 1 result, got {}",
                 query,
-                results.len()
+                _results.len()
             );
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Singular query '{}' should return {} results, got {}",
                 query,
                 expected_count,
-                results.len()
+                _results.len()
             );
 
             println!(
                 "Singular query '{}' returned {} results (expected {})",
                 query,
-                results.len(),
+                _results.len(),
                 expected_count
             );
         }
@@ -1445,9 +1442,9 @@ mod singular_query_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).filter_map(|r| r.ok()).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-                results_sets.push(results);
+                results_sets.push(_results);
                 println!(
                     "Query '{}' returned {} results",
                     query,
@@ -1458,12 +1455,12 @@ mod singular_query_tests {
             // All equivalent queries should return the same results
             if results_sets.len() > 1 {
                 let first = &results_sets[0];
-                for (i, results) in results_sets.iter().enumerate().skip(1) {
-                    if first.len() == results.len() && first.len() <= 1 {
+                for (i, results) in _results_sets.iter().enumerate().skip(1) {
+                    if first.len() == _results.len() && first.len() <= 1 {
                         // For singular queries, check value equality if both have results
-                        if !first.is_empty() && !results.is_empty() {
+                        if !first.is_empty() && !_results.is_empty() {
                             assert_eq!(
-                                first[0], results[0],
+                                first[0], _results[0],
                                 "Equivalent queries '{}' and '{}' should return same value",
                                 group[0], group[i]
                             );
@@ -1539,7 +1536,7 @@ mod singular_query_tests {
 
             let chunk = Bytes::from(json_data);
             let jsonpath_results: Vec<_> =
-                stream.process_chunk(chunk).filter_map(|r| r.ok()).collect();
+                stream.process_chunk(chunk).collect();
 
             // Simulate JSON Pointer access (manual traversal for testing)
             let json_value: serde_json::Value =
@@ -1649,15 +1646,15 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() <= 1,
+                _results.len() <= 1,
                 "Singular query '{}' should return at most 1 result",
                 query
             );
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Edge case query '{}' should return {} results",
                 query,
@@ -1667,7 +1664,7 @@ mod singular_query_tests {
             println!(
                 "Edge case query '{}' returned {} results",
                 query,
-                results.len()
+                _results.len()
             );
         }
     }
@@ -1717,22 +1714,22 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
-                results.len() <= 1,
+                _results.len() <= 1,
                 "Deep singular query '{}' should return at most 1 result",
                 query
             );
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Deep query '{}' should return {} results",
                 query,
                 expected_count
             );
 
-            println!("Deep query '{}' returned {} results", query, results.len());
+            println!("Deep query '{}' returned {} results", query, _results.len());
         }
     }
 
@@ -1740,7 +1737,7 @@ mod singular_query_tests {
     fn test_singular_query_performance() {
         // RFC 9535: Performance characteristics of singular queries
         let large_object = serde_json::json!({
-            "data": (0..1000).map(|i| (format!("key_{}", i), i)).collect::<serde_json::Map<_, _>>(),
+            "data": (0..1000).map(|i| (format!("key_{}", i), serde_json::Value::Number(serde_json::Number::from(i)))).collect::<serde_json::Map<_, _>>(),
             "array": (0..1000).collect::<Vec<i32>>(),
             "deep": {
                 "nested": {
@@ -1767,12 +1764,12 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Performance query '{}' should return {} results",
                 query,
@@ -1782,7 +1779,7 @@ mod singular_query_tests {
             println!(
                 "Performance query '{}' returned {} results in {:?}",
                 query,
-                results.len(),
+                _results.len(),
                 duration
             );
 
@@ -1853,10 +1850,10 @@ mod singular_query_error_tests {
             ("$['length']", true), // Bracket property access
         ];
 
-        for (query, should_be_valid) in ambiguous_tests {
+        for (query, _should_be_valid) in ambiguous_tests {
             let result = JsonPathParser::compile(query);
 
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "Ambiguous query '{}' should be valid",
@@ -1904,16 +1901,16 @@ mod singular_query_error_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).filter_map(|r| r.ok()).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "Query '{}' should return exactly one result",
                 query
             );
 
-            let actual_type = match &results[0] {
+            let actual_type = match &_results[0] {
                 serde_json::Value::String(_) => "string",
                 serde_json::Value::Number(_) => "number",
                 serde_json::Value::Bool(_) => "boolean",

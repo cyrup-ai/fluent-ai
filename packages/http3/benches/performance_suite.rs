@@ -15,8 +15,9 @@ use std::time::Duration;
 
 use bytes::Bytes;
 use criterion::{
-    BatchSize, BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main,
+    BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main,
 };
+use std::hint::black_box;
 use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
 use serde_json::Value;
 use tokio::runtime::Runtime;
@@ -104,15 +105,11 @@ fn memory_profiling_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                match JsonArrayStream::new("$.data[*]") {
-                    Ok(mut stream) => {
-                        for chunk in &chunks {
-                            let chunk_bytes = Bytes::from(chunk.clone());
-                            let _results = stream.process_chunk(chunk_bytes);
-                            black_box(_results);
-                        }
-                    }
-                    Err(_) => {}
+                let mut stream = JsonArrayStream::new("$.data[*]");
+                for chunk in &chunks {
+                    let chunk_bytes = Bytes::from(chunk.clone());
+                    let _results = stream.process_chunk(chunk_bytes);
+                    black_box(_results);
                 }
             });
         });
@@ -155,9 +152,8 @@ fn large_dataset_benchmarks(c: &mut Criterion) {
                         Ok(expression) => black_box(expression),
                         Err(_) => {
                             // Fallback to simpler expression if complex one fails
-                            match JsonPathParser::compile("$.data[*]") {
-                                Ok(expr) => black_box(expr),
-                                Err(_) => black_box(()),
+                            if let Ok(expr) = JsonPathParser::compile("$.data[*]") {
+                                black_box(expr);
                             }
                         }
                     }
@@ -178,9 +174,10 @@ fn concurrent_access_benchmarks(c: &mut Criterion) {
         b.iter(|| {
             let handles: Vec<_> = (0..4)
                 .map(|_| {
-                    thread::spawn(|| match JsonPathParser::compile("$.data[*].id") {
-                        Ok(expr) => black_box(expr),
-                        Err(_) => black_box(()),
+                    thread::spawn(|| {
+                        if let Ok(expr) = JsonPathParser::compile("$.data[*].id") {
+                            black_box(expr);
+                        }
                     })
                 })
                 .collect();
@@ -233,25 +230,20 @@ fn streaming_backpressure_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                match JsonArrayStream::new("$.data[*]") {
-                    Ok(mut stream) => {
-                        for chunk in &chunks {
-                            let chunk_bytes = Bytes::from(chunk.clone());
-                            let results = stream.process_chunk(chunk_bytes);
+                let mut stream = JsonArrayStream::new("$.data[*]");
+                for chunk in &chunks {
+                    let chunk_bytes = Bytes::from(chunk.clone());
+                    let results = stream.process_chunk(chunk_bytes);
 
-                            // Simulate processing delay that could cause backpressure
-                            for result in results {
-                                black_box(result);
-                                // Minimal delay to simulate processing time
-                                tokio::time::sleep(Duration::from_micros(1)).await;
-                            }
-                        }
+                    // Simulate processing delay that could cause backpressure
+                    for result in results {
+                        black_box(result);
+                        // Minimal delay to simulate processing time
+                        tokio::time::sleep(Duration::from_micros(1)).await;
                     }
-                    Err(_) => {}
                 }
             });
         });
-    });
 
     // Test burst processing capability
     group.bench_function("burst_processing", |b| {
@@ -263,16 +255,12 @@ fn streaming_backpressure_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                match JsonArrayStream::new("$.data[*]") {
-                    Ok(mut stream) => {
-                        // Process all chunks rapidly to test burst handling
-                        for chunk in &chunks {
-                            let chunk_bytes = Bytes::from(chunk.clone());
-                            let results = stream.process_chunk(chunk_bytes);
-                            black_box(results);
-                        }
-                    }
-                    Err(_) => {}
+                let mut stream = JsonArrayStream::new("$.data[*]");
+                // Process all chunks rapidly to test burst handling
+                for chunk in &chunks {
+                    let chunk_bytes = Bytes::from(chunk.clone());
+                    let results = stream.process_chunk(chunk_bytes);
+                    black_box(results);
                 }
             });
         });
@@ -364,14 +352,10 @@ fn regression_testing_benchmarks(c: &mut Criterion) {
                 Err(_) => return,
             };
             rt.block_on(async {
-                match JsonArrayStream::new("$.data[*]") {
-                    Ok(mut stream) => {
-                        let chunk_bytes = Bytes::from(chunk.to_vec());
-                        let _results = stream.process_chunk(chunk_bytes);
-                        black_box(_results);
-                    }
-                    Err(_) => {}
-                }
+                let mut stream = JsonArrayStream::new("$.data[*]");
+                let chunk_bytes = Bytes::from(chunk.to_vec());
+                let _results = stream.process_chunk(chunk_bytes);
+                black_box(_results);
             });
         });
     });

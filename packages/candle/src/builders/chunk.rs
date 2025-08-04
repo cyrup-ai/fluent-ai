@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 
 use crate::domain::{
-    chunk::{CandleChatMessageChunk as ChatMessageChunk, CandleCompletionChunk as CompletionChunk, CandleDocumentChunk as DocumentChunk, CandleFinishReason as FinishReason, CandleUsage as Usage},
-    message::CandleMessageRole as MessageRole};
+    context::chunk::{CandleChatMessageChunk as ChatMessageChunk, CandleCompletionChunk as CompletionChunk, CandleDocumentChunk as DocumentChunk, CandleFinishReason as FinishReason, CandleUsage as Usage},
+    chat::message::types::CandleMessageRole as MessageRole};
 use serde_json::Value;
 
 /// Zero-allocation document chunk builder with blazing-fast construction

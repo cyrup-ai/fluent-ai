@@ -275,12 +275,15 @@ impl CandleAgentRoleImpl {
 /// Candle-specific chat error types
 #[derive(Error, Debug)]
 pub enum CandleChatError {
+    /// System-level error occurred
     #[error("System error: {0}")]
     System(String),
     
+    /// Memory subsystem error
     #[error("Memory error: {0}")]
     Memory(#[from] MemoryError),
     
+    /// Memory tool execution error
     #[error("Memory tool error: {0}")]
     MemoryTool(#[from] MemoryToolError),
 }

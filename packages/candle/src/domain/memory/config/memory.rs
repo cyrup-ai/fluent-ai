@@ -6,7 +6,7 @@ use super::database::DatabaseConfig;
 use super::vector::VectorStoreConfig;
 use crate::domain::chat::config::CandleModelConfig as ModelConfig;
 // Removed unused import: use crate::completion::CompletionModel;
-use crate::memory::cognitive::{CognitiveMemoryConfig, CognitiveProcessorConfig};
+use super::super::cognitive::types::{CognitiveMemoryConfig, CognitiveProcessorConfig};
 
 /// Comprehensive memory system configuration
 ///

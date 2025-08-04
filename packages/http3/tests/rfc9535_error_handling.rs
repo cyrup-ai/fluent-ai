@@ -66,16 +66,16 @@ mod wellformedness_validity_tests {
             ("$['key\\u123']", "Incomplete Unicode escape"),
         ];
 
-        for (invalid_path, description) in syntax_errors {
+        for (invalid_path, _description) in syntax_errors {
             let result = JsonPathParser::compile(invalid_path);
             match result {
                 Ok(_) => println!(
                     "UNEXPECTED: Syntax error '{}' compiled successfully ({})",
-                    invalid_path, description
+                    invalid_path, _description
                 ),
                 Err(e) => println!(
                     "Syntax error '{}' correctly rejected: {:?} ({})",
-                    invalid_path, e, description
+                    invalid_path, e, _description
                 ),
             }
         }
@@ -130,25 +130,25 @@ mod wellformedness_validity_tests {
             ),
         ];
 
-        for (invalid_path, description) in semantic_errors {
+        for (invalid_path, _description) in semantic_errors {
             let result = JsonPathParser::compile(invalid_path);
             match result {
                 Ok(_) => {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(invalid_path);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Semantic error '{}' compiled but may fail at runtime -> {} results ({})",
                         invalid_path,
-                        results.len(),
-                        description
+                        _results.len(),
+                        _description
                     );
                 }
                 Err(e) => println!(
                     "Semantic error '{}' rejected at compile time: {:?} ({})",
-                    invalid_path, e, description
+                    invalid_path, e, _description
                 ),
             }
         }
@@ -191,17 +191,17 @@ mod wellformedness_validity_tests {
             ),
         ];
 
-        for (path, expected_category, description) in error_categories {
+        for (path, expected_category, _description) in error_categories {
             let result = JsonPathParser::compile(path);
             match result {
                 Ok(_) => println!(
                     "Error classification: '{}' compiled ({})",
-                    path, description
+                    path, _description
                 ),
                 Err(e) => {
                     println!(
                         "Error classification: '{}' -> {:?} (expected: {}, {})",
-                        path, e, expected_category, description
+                        path, e, expected_category, _description
                     );
 
                     // Test that error messages contain useful information
@@ -242,12 +242,12 @@ mod wellformedness_validity_tests {
             ),
         ];
 
-        for (path, description) in nested_errors {
+        for (path, _description) in nested_errors {
             let result = JsonPathParser::compile(path);
             match result {
-                Ok(_) => println!("Nested error '{}' compiled ({})", path, description),
+                Ok(_) => println!("Nested error '{}' compiled ({})", path, _description),
                 Err(e) => {
-                    println!("Nested error '{}' -> {:?} ({})", path, e, description);
+                    println!("Nested error '{}' -> {:?} ({})", path, e, _description);
 
                     // Error should provide context about where the error occurred
                     let error_string = format!("{:?}", e);
@@ -466,23 +466,23 @@ mod graceful_degradation_tests {
             ("$.data.missing.anything", 0, "Missing early in path"),
         ];
 
-        for (path, expected_results, description) in partial_paths {
+        for (path, expected_results, _description) in partial_paths {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Partial path '{}' -> {} results (expected {}) - {}",
                 path,
-                results.len(),
+                _results.len(),
                 expected_results,
-                description
+                _description
             );
 
             // Should handle missing paths gracefully, not crash
             assert!(
-                results.len() <= expected_results,
+                _results.len() <= expected_results,
                 "Should not return more results than expected"
             );
         }
@@ -508,21 +508,21 @@ mod graceful_degradation_tests {
             ("$.mixed.missing.chain", "Chained access on missing"),
         ];
 
-        for (path, description) in type_mismatch_paths {
+        for (path, _description) in type_mismatch_paths {
             let result = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             match result {
                 Ok(count) => println!(
                     "Type mismatch '{}' handled gracefully -> {} results ({})",
-                    path, count, description
+                    path, count, _description
                 ),
-                Err(_) => println!("Type mismatch '{}' caused panic ({})", path, description),
+                Err(_) => println!("Type mismatch '{}' caused panic ({})", path, _description),
             }
         }
     }
@@ -551,21 +551,21 @@ mod graceful_degradation_tests {
             ),
         ];
 
-        for (path, description) in filter_error_paths {
+        for (path, _description) in filter_error_paths {
             let result = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             match result {
                 Ok(count) => println!(
                     "Filter error '{}' handled gracefully -> {} results ({})",
-                    path, count, description
+                    path, count, _description
                 ),
-                Err(_) => println!("Filter error '{}' caused panic ({})", path, description),
+                Err(_) => println!("Filter error '{}' caused panic ({})", path, _description),
             }
         }
     }
@@ -581,23 +581,23 @@ mod graceful_degradation_tests {
             ("{\"key\": 123,}", "Trailing comma in object"),
         ];
 
-        for (malformed_json, description) in malformed_inputs {
+        for (malformed_json, _description) in malformed_inputs {
             let result = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new("$.key");
 
                 let chunk = Bytes::from(malformed_json);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
-                results.len()
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
+                _results.len()
             });
 
             match result {
                 Ok(count) => println!(
                     "Malformed JSON '{}' processed -> {} results ({})",
-                    malformed_json, count, description
+                    malformed_json, count, _description
                 ),
                 Err(_) => println!(
                     "Malformed JSON '{}' properly rejected ({})",
-                    malformed_json, description
+                    malformed_json, _description
                 ),
             }
         }
@@ -690,7 +690,7 @@ mod resource_limit_tests {
             (100, "Very deep nesting"),
         ];
 
-        for (depth, description) in deep_expressions {
+        for (depth, _description) in deep_expressions {
             // Create deeply nested path
             let mut path = String::from("$");
             for i in 0..depth {
@@ -703,7 +703,7 @@ mod resource_limit_tests {
 
             println!(
                 "Recursion depth {} ({}): {:?}",
-                depth, description, processing_time
+                depth, _description, processing_time
             );
 
             match result {

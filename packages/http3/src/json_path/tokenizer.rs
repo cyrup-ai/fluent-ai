@@ -42,12 +42,12 @@ impl ExpressionParser {
             selectors.push(selector_parser.parse_selector()?);
         }
 
+        // RFC 9535: jsonpath-query = root-identifier segments
+        // where segments = *(S segment) means zero or more segments
+        // Therefore "$" (root-only) is valid and should return the root node
         if selectors.is_empty() {
-            return Err(invalid_expression_error(
-                &self.input,
-                "empty selector chain",
-                Some(0),
-            ));
+            // For root-only queries like "$", we don't add any selectors
+            // The JsonArrayStream will handle this by returning the root node itself
         }
 
         Ok(selectors)

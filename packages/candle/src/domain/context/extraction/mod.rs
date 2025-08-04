@@ -20,7 +20,6 @@ mod tests {
     use serde::Deserialize;
 
     use super::*;
-    use crate::domain::agent::CandleAgent;
 
     #[derive(Debug, Deserialize, PartialEq)]
     struct TestData {

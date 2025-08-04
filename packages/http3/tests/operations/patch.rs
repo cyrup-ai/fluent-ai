@@ -12,10 +12,14 @@ mod patch_operation_tests {
     fn test_basic_patch_operation_functionality() {
         // This will contain PATCH operation-specific tests
 
-        // Placeholder test to ensure module compiles
-        let builder = Http3::json();
-        // Just test that the builder can be created
-        assert!(true);
+        // Test that PATCH builder can be created and configured with partial update
+        let builder = Http3::json()
+            .url("https://example.com/api/resource/123")
+            .headers([("Content-Type", "application/json")])
+            .body(serde_json::json!({"field_to_update": "new_value"}));
+        
+        // Verify builder was created successfully
+        assert!(format!("{:?}", builder).contains("Http3"));
     }
 }
 

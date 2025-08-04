@@ -5,7 +5,7 @@ use std::sync::Arc;
 use fluent_ai_async::AsyncTask;
 use tokio::sync::{Mutex, mpsc, oneshot};
 
-use crate::core::ChannelError;
+use crate::domain::core::ChannelError;
 
 /// A multi-producer, single-consumer channel for sending values between tasks
 pub struct Channel<T> {

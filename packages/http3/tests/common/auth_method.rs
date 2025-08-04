@@ -13,8 +13,9 @@ mod auth_method_tests {
         // This will contain auth method-specific tests
 
         // Placeholder test to ensure module compiles
-        let builder = Http3::get("https://api.example.com/test");
-        assert!(builder.is_ok() || builder.is_err());
+        let stream = Http3::json().get("https://api.example.com/test");
+        // HttpStream doesn't implement is_ok/is_err, so we just verify it compiles
+        assert!(true);
     }
 }
 

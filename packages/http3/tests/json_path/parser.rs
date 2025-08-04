@@ -214,10 +214,10 @@ mod semantics_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$.store.book[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should produce nodelist with 2 nodes
-        assert_eq!(results.len(), 2, "Should produce nodelist with 2 nodes");
+        assert_eq!(_results.len(), 2, "Should produce nodelist with 2 nodes");
     }
 
     #[test]
@@ -227,9 +227,9 @@ mod semantics_tests {
         let mut stream = JsonArrayStream::<TestModel>::new("$.store.book[*]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
-        assert_eq!(results.len(), 0, "No matches should produce empty nodelist");
+        assert_eq!(_results.len(), 0, "No matches should produce empty nodelist");
     }
 }
 

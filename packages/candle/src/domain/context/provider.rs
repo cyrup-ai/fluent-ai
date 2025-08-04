@@ -115,6 +115,7 @@ pub enum CandleContextEvent {
         provider_id: String,
         /// When the provider was started
         timestamp: SystemTime},
+    /// Provider shutdown event
     ProviderStopped {
         /// Type of provider that was stopped (File, Directory, Github, etc.)
         provider_type: String,
@@ -404,7 +405,6 @@ pub struct CandleMemoryManagerInfo {
     pub supported_operations: Vec<String>}
 
 /// Streaming context processor with atomic state tracking for Candle
-#[derive(Debug)]
 pub struct CandleStreamingContextProcessor {
     /// Unique processor identifier
     processor_id: String,
@@ -425,6 +425,25 @@ pub struct CandleStreamingContextProcessor {
     _max_processing_time_ms: u64,
     _max_documents_per_context: usize,
     _max_concurrent_contexts: usize}
+
+impl std::fmt::Debug for CandleStreamingContextProcessor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CandleStreamingContextProcessor")
+            .field("processor_id", &self.processor_id)
+            .field("context_requests", &self.context_requests.load(std::sync::atomic::Ordering::Relaxed))
+            .field("active_contexts", &self.active_contexts.load(std::sync::atomic::Ordering::Relaxed))
+            .field("total_contexts_processed", &self.total_contexts_processed.load(std::sync::atomic::Ordering::Relaxed))
+            .field("successful_contexts", &self.successful_contexts.load(std::sync::atomic::Ordering::Relaxed))
+            .field("failed_contexts", &self.failed_contexts.load(std::sync::atomic::Ordering::Relaxed))
+            .field("total_documents_loaded", &self.total_documents_loaded.load(std::sync::atomic::Ordering::Relaxed))
+            .field("total_processing_time_nanos", &self.total_processing_time_nanos.load(std::sync::atomic::Ordering::Relaxed))
+            .field("event_sender", &self.event_sender.is_some())
+            .field("_max_processing_time_ms", &self._max_processing_time_ms)
+            .field("_max_documents_per_context", &self._max_documents_per_context)
+            .field("_max_concurrent_contexts", &self._max_concurrent_contexts)
+            .finish()
+    }
+}
 
 impl CandleStreamingContextProcessor {
     /// Create new streaming context processor
@@ -545,8 +564,8 @@ impl CandleStreamingContextProcessor {
         // For now, create a basic document structure
         Ok(Document {
             data: format!("Content from file: {}", context.path),
-            format: Some(crate::context::ContentFormat::Text),
-            media_type: Some(crate::context::DocumentMediaType::TXT),
+            format: Some(crate::domain::context::CandleContentFormat::Text),
+            media_type: Some(crate::domain::context::CandleDocumentMediaType::TXT),
             additional_props: {
                 let mut props = HashMap::new();
                 props.insert(
@@ -624,7 +643,7 @@ pub struct CandleContextProcessorStatistics {
     pub average_processing_time_nanos: u64}
 
 /// Context wrapper with zero Arc usage
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CandleContext<T> {
     source: CandleContextSourceType,
     processor: CandleStreamingContextProcessor,
@@ -637,6 +656,18 @@ pub enum CandleContextSourceType {
     Files(CandleImmutableFilesContext),
     Directory(CandleImmutableDirectoryContext),
     Github(CandleImmutableGithubContext)}
+
+impl<T> Clone for CandleContext<T> {
+    fn clone(&self) -> Self {
+        let processor_id = Uuid::new_v4().to_string();
+        let processor = CandleStreamingContextProcessor::new(processor_id);
+        Self {
+            source: self.source.clone(),
+            processor,
+            _marker: PhantomData,
+        }
+    }
+}
 
 impl<T> CandleContext<T> {
     /// Create new Candle context with streaming processor
@@ -723,9 +754,9 @@ impl CandleContext<CandleFiles> {
                                     if let Ok(content) = std::fs::read_to_string(&entry) {
                                         let document = Document {
                                             data: content,
-                                            format: Some(crate::context::ContentFormat::Text),
+                                            format: Some(crate::domain::context::CandleContentFormat::Text),
                                             media_type: Some(
-                                                crate::context::DocumentMediaType::TXT,
+                                                crate::domain::context::CandleDocumentMediaType::TXT,
                                             ),
                                             additional_props: {
                                                 let mut props = HashMap::new();
@@ -832,9 +863,9 @@ impl CandleContext<CandleDirectory> {
                                         if let Ok(content) = std::fs::read_to_string(&path) {
                                             let document = Document {
                                                 data: content,
-                                                format: Some(crate::context::ContentFormat::Text),
+                                                format: Some(crate::domain::context::CandleContentFormat::Text),
                                                 media_type: Some(
-                                                    crate::context::DocumentMediaType::TXT,
+                                                    crate::domain::context::CandleDocumentMediaType::TXT,
                                                 ),
                                                 additional_props: {
                                                     let mut props = HashMap::new();

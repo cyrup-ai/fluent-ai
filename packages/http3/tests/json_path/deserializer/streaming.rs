@@ -18,10 +18,10 @@ mod streaming_tests {
 
     #[test]
     fn test_jsonpath_stream_creation() {
-        let _stream = JsonArrayStream::<TestModel>::new("$.data[*]");
+        let stream = JsonArrayStream::<TestModel>::new("$.data[*]");
         // Stream creation now always succeeds, invalid paths are handled internally
 
-        let _invalid_stream = JsonArrayStream::<TestModel>::new("$.invalid[syntax");
+        let invalid_stream = JsonArrayStream::<TestModel>::new("$.invalid[syntax");
         // Invalid JSONPath expressions are handled via error emission, stream creation still succeeds
     }
 
@@ -32,10 +32,10 @@ mod streaming_tests {
         let json_data = r#"[{"id":"test1","value":42},{"id":"test2","value":24}]"#;
         let chunk = Bytes::from(json_data);
 
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(results.len(), 2);
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(_results.len(), 2);
 
-        let first = &results[0];
+        let first = &_results[0];
         assert_eq!(first.id, "test1");
         assert_eq!(first.value, 42);
     }
@@ -47,10 +47,10 @@ mod streaming_tests {
         let json_data = r#"{"data":[{"id":"nested1","value":100}],"meta":"info"}"#;
         let chunk = Bytes::from(json_data);
 
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
-        assert_eq!(results.len(), 1);
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
+        assert_eq!(_results.len(), 1);
 
-        let item = &results[0];
+        let item = &_results[0];
         assert_eq!(item.id, "nested1");
         assert_eq!(item.value, 100);
     }

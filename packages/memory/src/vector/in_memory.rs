@@ -21,7 +21,7 @@ use crate::utils::error::{Error, Result};
 /// wrap in Arc<RwLock<>> or use external synchronization.
 pub struct InMemoryVectorStore {
     vectors: HashMap<String, Vec<f32>>,
-    metadata: HashMap<String<String, Value>>}
+    metadata: HashMap<String, VectorMetadata>}
 
 impl Default for InMemoryVectorStore {
     fn default() -> Self {

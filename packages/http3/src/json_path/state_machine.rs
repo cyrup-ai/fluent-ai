@@ -531,7 +531,8 @@ impl StreamStateMachine {
         });
     }
 
-    fn exit_array(&mut self) {
+    /// Exit an array context, decrementing the current depth
+    pub fn exit_array(&mut self) {
         self.stats.current_depth = self.stats.current_depth.saturating_sub(1);
         self.depth_stack.pop_back();
     }
@@ -627,6 +628,5 @@ pub struct ObjectBoundary {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::json_path::parser::JsonPathParser;
+    // Tests for state machine module will be implemented here
 }

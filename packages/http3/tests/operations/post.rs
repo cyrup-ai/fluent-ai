@@ -12,10 +12,14 @@ mod post_operation_tests {
     fn test_basic_post_operation_functionality() {
         // This will contain POST operation-specific tests
 
-        // Placeholder test to ensure module compiles
-        let builder = Http3::json();
-        // Just test that the builder can be created
-        assert!(true);
+        // Test that POST builder can be created and configured with JSON payload
+        let builder = Http3::json()
+            .url("https://example.com/api")
+            .headers([("Content-Type", "application/json")])
+            .body(serde_json::json!({"test": "data"}));
+        
+        // Verify builder was created successfully
+        assert!(format!("{:?}", builder).contains("Http3"));
     }
 }
 

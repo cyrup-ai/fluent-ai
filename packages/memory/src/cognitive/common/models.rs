@@ -10,7 +10,7 @@ use fluent_ai_domain::{
     completion::CompletionResponse,
     http::common::CommonUsage as TokenUsage};
 use fluent_ai_http3::{Http3, HttpError, HttpClient, HttpConfig, HttpChunk};
-use model_info::{Provider, ModelInfo, ModelInfoBuilder};
+use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
 use model_info::providers::anthropic::AnthropicProvider;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -73,6 +73,19 @@ impl ModelType {
             ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => "huggingface",
         }
     }
+
+    pub fn to_provider(&self) -> Provider {
+        match self {
+            ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O | ModelType::Gpt4Turbo => {
+                Provider::OpenAI
+            }
+            ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
+                Provider::Anthropic
+            }
+            ModelType::GeminiPro => Provider::Google,
+            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => Provider::HuggingFace,
+        }
+    }
     
     pub fn from_name_and_provider(name: &str, provider: Provider) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         match (provider, name) {
@@ -80,9 +93,9 @@ impl ModelType {
             (Provider::OpenAI, "gpt-4") => Ok(ModelType::Gpt4),
             (Provider::OpenAI, "gpt-4o") => Ok(ModelType::Gpt4O),
             (Provider::OpenAI, "gpt-4-turbo") => Ok(ModelType::Gpt4Turbo),
-            (Provider::Anthropic(_), "claude-3-opus-20240229") => Ok(ModelType::Claude3Opus),
-            (Provider::Anthropic(_), "claude-3-sonnet-20240229") => Ok(ModelType::Claude3Sonnet),
-            (Provider::Anthropic(_), "claude-3-haiku-20240307") => Ok(ModelType::Claude3Haiku),
+            (Provider::Anthropic, "claude-3-opus-20240229") => Ok(ModelType::Claude3Opus),
+            (Provider::Anthropic, "claude-3-sonnet-20240229") => Ok(ModelType::Claude3Sonnet),
+            (Provider::Anthropic, "claude-3-haiku-20240307") => Ok(ModelType::Claude3Haiku),
             _ => Err(format!("Unsupported model: {} for provider: {:?}", name, provider).into()),
         }
     }
@@ -103,7 +116,7 @@ impl Model {
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let api_key_env = match provider {
             Provider::OpenAI => "OPENAI_API_KEY",
-            Provider::Anthropic(_) => "ANTHROPIC_API_KEY",  
+            Provider::Anthropic => "ANTHROPIC_API_KEY",  
             _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
         };
         
@@ -119,14 +132,14 @@ impl Model {
                 Provider::OpenAI
             }
             ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
-                Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider)
+                Provider::Anthropic
             }
             _ => return Err(format!("Model type {:?} is not yet implemented", model_type).into()),
         };
         
         let api_key_env = match provider {
             Provider::OpenAI => "OPENAI_API_KEY",
-            Provider::Anthropic(_) => "ANTHROPIC_API_KEY",  
+            Provider::Anthropic => "ANTHROPIC_API_KEY",  
             _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
         };
 
@@ -178,10 +191,10 @@ impl Model {
     pub async fn complete(
         &self,
         messages: Vec<Message>,
-    ) -> Result<CompletionResponse<String>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<CompletionResponse<'static>, Box<dyn std::error::Error + Send + Sync>> {
         let base_url = self.provider.default_base_url();
         let endpoint = match self.provider {
-            Provider::OpenAI | Provider::Anthropic(_) => "/chat/completions",
+            Provider::OpenAI | Provider::Anthropic => "/chat/completions",
             _ => return Err("Provider not implemented".into()),
         };
         
@@ -198,7 +211,7 @@ impl Model {
                     "stream": false
                 })
             }
-            Provider::Anthropic(_) => {
+            Provider::Anthropic => {
                 let system_msgs: Vec<_> = messages.iter().filter(|m| m.role == "system").collect();
                 let user_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
                 
@@ -231,7 +244,7 @@ impl Model {
                     .unwrap_or("")
                     .to_string()
             }
-            Provider::Anthropic(_) => {
+            Provider::Anthropic => {
                 response["content"][0]["text"]
                     .as_str()
                     .unwrap_or("")
@@ -286,7 +299,7 @@ impl Model {
             Box::pin(async move {
                 let base_url = provider.default_base_url();
                 let endpoint = match provider {
-                    Provider::OpenAI | Provider::Anthropic(_) => "/chat/completions",
+                    Provider::OpenAI | Provider::Anthropic => "/chat/completions",
                     _ => {
                         eprintln!("Provider not implemented for streaming");
                         return Ok(());
@@ -306,7 +319,7 @@ impl Model {
                             "stream": true
                         })
                     }
-                    Provider::Anthropic(_) => {
+                    Provider::Anthropic => {
                         let system_msgs: Vec<_> = messages.iter().filter(|m| m.role == "system").collect();
                         let user_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
                         
@@ -376,7 +389,7 @@ impl Model {
                                 .as_str()
                                 .map(|s| s.to_string())
                         }
-                        Provider::Anthropic(_) => {
+                        Provider::Anthropic => {
                             json_data["delta"]["text"]
                                 .as_str()
                                 .map(|s| s.to_string())

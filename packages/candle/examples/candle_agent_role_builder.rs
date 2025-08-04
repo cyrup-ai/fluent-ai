@@ -5,14 +5,7 @@
 //!
 //! Run with: cargo run --example candle_agent_role_builder
 
-use fluent_ai_candle::{
-    CandleFluentAi, 
-    AsyncStream,
-};
-use fluent_ai_candle::builders::agent_role::{
-    CandleContext, CandleMessageRole, CandleTool, CandleMessageChunk, CandleChatLoop,
-    CandleAgentRoleBuilder, // Import the trait so methods work
-};
+use fluent_ai_candle::prelude::*;
 // Note: Providers are available in src/providers but not re-exported at root level yet
 use fluent_ai_candle::providers::tokenizer::CandleTokenizer;
 use std::io::{self, Write};
@@ -43,7 +36,7 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait CandleTool
-            CandleTool<Perplexity>::new([
+            CandleTool::<Perplexity>::new([
                 ("citations", "true")
             ]),
             CandleTool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
@@ -56,7 +49,7 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
             // do stuff
         })
         .on_conversation_turn(|conversation, agent| {
-            log.info("Agent: " + conversation.last().message())
+            log::info!("Agent: {}", conversation.last().message());
             agent.chat(process_turn()) // your custom logic
         })
         .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
@@ -65,9 +58,9 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
         })
         .into_agent() // CandleAgent Now
         .conversation_history(
-            CandleMessageRole::User => "What time is it in Paris, France",
-            CandleMessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
-            CandleMessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
+            (CandleMessageRole::User, "What time is it in Paris, France"),
+            (CandleMessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
+            (CandleMessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
         )
         .chat(|conversation| {
             let user_input = conversation.latest_user_message();
@@ -75,10 +68,11 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
             if user_input.contains("finished") {
                 CandleChatLoop::Break
             } else {
-                CandleChatLoop::Reprompt("continue. use sequential thinking")
+                CandleChatLoop::Reprompt("continue. use sequential thinking".to_string())
             }
-        })
-        .collect()
+        });
+    
+    stream
 }
 
 /// Example 2: Candle ChatLoop Pattern with Real-time Streaming
@@ -151,7 +145,7 @@ fn candle_agent_simple_example() -> AsyncStream<CandleMessageChunk> {
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait CandleTool
-            CandleTool<Perplexity>::new([
+            CandleTool::<Perplexity>::new([
                 ("citations", "true")
             ]),
             CandleTool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
@@ -164,7 +158,7 @@ fn candle_agent_simple_example() -> AsyncStream<CandleMessageChunk> {
             // do stuff
         })
         .on_conversation_turn(|conversation, agent| {
-            log.info("Agent: " + conversation.last().message())
+            log::info!("Agent: {}", conversation.last().message());
             agent.chat(process_turn()) // your custom logic
         })
         .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
@@ -327,10 +321,7 @@ struct Stdio;
 struct Perplexity;
 struct Named;
 
-use fluent_ai_candle::{
-    CandleMessageChunk, CandleChatLoop, CandleModels,
-    CandleLibrary, CandleAgent,
-};
+// Types already imported via prelude above
 
 // Placeholder types for compilation testing
 impl Default for CandleKimiK2Config {

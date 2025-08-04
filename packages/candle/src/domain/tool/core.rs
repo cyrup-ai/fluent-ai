@@ -101,22 +101,18 @@ where
 
     fn execute(&self, args: Value) -> AsyncStream<Value> {
         let config = self.config.clone();
-        let tool_name = self.name.clone();
         
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                // Merge config with execution args
-                let mut result_data = config;
-                if let Value::Object(arg_map) = args {
-                    for (key, value) in arg_map {
-                        result_data.insert(key, value);
-                    }
+            // Merge config with execution args
+            let mut result_data = config;
+            if let Value::Object(arg_map) = args {
+                for (key, value) in arg_map {
+                    result_data.insert(key, value);
                 }
-                
-                let result = Value::Object(result_data.into_iter().collect());
-                let _ = sender.send(result).await;
-                Ok(())
-            })
+            }
+            
+            let result = Value::Object(result_data.into_iter().collect());
+            let _ = sender.send(result);
         })
     }
 }
@@ -185,48 +181,56 @@ impl CandleTool for CandleNamedTool {
         let bin_path = self.bin_path.clone();
         
         AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                // Execute named tool using configured path
-                let command = bin_path.as_deref().unwrap_or(&name);
-                
-                // Build command args from JSON value
-                let mut cmd_args = Vec::new();
-                if let Value::Object(arg_map) = args {
-                    for (key, value) in arg_map {
-                        cmd_args.push(format!("--{}", key));
-                        if let Value::String(s) = value {
-                            cmd_args.push(s);
-                        } else {
-                            cmd_args.push(value.to_string());
-                        }
+            // Execute named tool using configured path
+            let command = bin_path.as_deref().unwrap_or(&name);
+            
+            // Build command args from JSON value
+            let mut cmd_args = Vec::new();
+            if let Value::Object(arg_map) = args {
+                for (key, value) in arg_map {
+                    cmd_args.push(format!("--{}", key));
+                    if let Value::String(s) = value {
+                        cmd_args.push(s);
+                    } else {
+                        cmd_args.push(value.to_string());
                     }
                 }
-                
-                // Execute command and return output as JSON
-                let result = match std::process::Command::new(command)
-                    .args(&cmd_args)
-                    .output()
-                {
-                    Ok(output) => {
-                        let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-                        if output.status.success() {
-                            Value::String(stdout)
-                        } else {
-                            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-                            Value::String(format!("Error: {}", stderr))
-                        }
+            }
+            
+            // Execute command and return output as JSON
+            let result = match std::process::Command::new(command)
+                .args(&cmd_args)
+                .output()
+            {
+                Ok(output) => {
+                    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+                    if output.status.success() {
+                        Value::String(stdout)
+                    } else {
+                        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+                        Value::String(format!("Error: {}", stderr))
                     }
-                    Err(e) => Value::String(format!("Failed to execute {}: {}", command, e)),
-                };
-                
-                let _ = sender.send(result).await;
-                Ok(())
-            })
+                }
+                Err(e) => Value::String(format!("Failed to execute {}: {}", command, e)),
+            };
+            
+            let _ = sender.send(result);
         })
     }
 }
 
+/// Trait for converting command execution results to text
+/// This is used in the tooling system to convert command outputs to strings
+pub trait CandleExecToText {
+    /// Convert the command execution result to a string
+    fn exec_to_text(&self) -> String;
+}
 
+impl CandleExecToText for &str {
+    fn exec_to_text(&self) -> String {
+        self.to_string()
+    }
+}
 
 impl CandleExecToText for String {
     fn exec_to_text(&self) -> String {

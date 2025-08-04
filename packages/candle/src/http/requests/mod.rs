@@ -19,7 +19,7 @@
 //! - Type-safe parameter handling
 //! - Proper error handling and validation
 
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]

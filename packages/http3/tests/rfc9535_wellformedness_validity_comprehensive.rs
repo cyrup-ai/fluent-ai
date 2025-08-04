@@ -206,19 +206,19 @@ mod wellformedness_validity_comprehensive {
             ("$.store.book[0].available.nested", 0, "Property access on boolean"),
         ];
 
-        for (expr, expected_count, description) in semantic_validity_tests {
+        for (expr, expected_count, _description) in semantic_validity_tests {
             // First verify the expression is well-formed
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Expression '{}' should be well-formed: {}", expr, description);
+            assert!(result.is_ok(), "Expression '{}' should be well-formed: {}", expr, _description);
 
             // Then test semantic validity
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            assert_eq!(results.len(), expected_count,
+            assert_eq!(_results.len(), expected_count,
                 "Semantic validity test '{}' should return {} results: {}", 
-                expr, expected_count, description);
+                expr, expected_count, _description);
         }
     }
 
@@ -259,21 +259,21 @@ mod wellformedness_validity_comprehensive {
             ("$.items[?match(@.price, 'pattern')]", true, 0, "Regex function on number"),
         ];
 
-        for (expr, should_be_wellformed, expected_count, description) in filter_wellformedness_tests {
+        for (expr, should_be_wellformed, expected_count, _description) in filter_wellformedness_tests {
             let result = JsonPathParser::compile(expr);
             
             if should_be_wellformed {
-                assert!(result.is_ok(), "Filter expression '{}' should be well-formed: {}", expr, description);
+                assert!(result.is_ok(), "Filter expression '{}' should be well-formed: {}", expr, _description);
                 
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
-                assert_eq!(results.len(), expected_count,
+                assert_eq!(_results.len(), expected_count,
                     "Filter validity test '{}' should return {} results: {}", 
-                    expr, expected_count, description);
+                    expr, expected_count, _description);
             } else {
-                assert!(result.is_err(), "Filter expression '{}' should be malformed: {}", expr, description);
+                assert!(result.is_err(), "Filter expression '{}' should be malformed: {}", expr, _description);
             }
         }
     }
@@ -319,21 +319,21 @@ mod wellformedness_validity_comprehensive {
             ("$.mixed[?@ == null]", true, 1, "Null comparison on mixed types"),
         ];
 
-        for (expr, should_be_wellformed, expected_count, description) in type_safety_tests {
+        for (expr, should_be_wellformed, expected_count, _description) in type_safety_tests {
             let result = JsonPathParser::compile(expr);
             
             if should_be_wellformed {
-                assert!(result.is_ok(), "Type safety expression '{}' should be well-formed: {}", expr, description);
+                assert!(result.is_ok(), "Type safety expression '{}' should be well-formed: {}", expr, _description);
                 
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
-                assert_eq!(results.len(), expected_count,
+                assert_eq!(_results.len(), expected_count,
                     "Type safety test '{}' should return {} results: {}", 
-                    expr, expected_count, description);
+                    expr, expected_count, _description);
             } else {
-                assert!(result.is_err(), "Type safety expression '{}' should be malformed: {}", expr, description);
+                assert!(result.is_err(), "Type safety expression '{}' should be malformed: {}", expr, _description);
             }
         }
     }
@@ -371,15 +371,15 @@ mod wellformedness_validity_comprehensive {
             ("$[?null]", true, "Literal null in filter"),
         ];
 
-        for (expr, should_be_wellformed, description) in wellformedness_boundary_tests {
+        for (expr, should_be_wellformed, _description) in wellformedness_boundary_tests {
             let result = JsonPathParser::compile(expr);
             
             if should_be_wellformed {
                 assert!(result.is_ok(), 
-                    "Boundary test: '{}' should be well-formed ({})", expr, description);
+                    "Boundary test: '{}' should be well-formed ({})", expr, _description);
             } else {
                 assert!(result.is_err(), 
-                    "Boundary test: '{}' should be malformed ({})", expr, description);
+                    "Boundary test: '{}' should be malformed ({})", expr, _description);
             }
         }
     }

@@ -134,14 +134,20 @@ impl CandleTokenizer {
     }
     
     /// Encode text with streaming support for large inputs
-    pub fn encode_streaming(&self, text: &str, chunk_size: usize) -> impl Iterator<Item = Result<Vec<u32>, CandleTokenizerError>> + '_ {
-        text.chars()
-            .collect::<Vec<_>>()
+    pub fn encode_streaming<'a>(
+        &'a self, 
+        text: &'a str, 
+        chunk_size: usize
+    ) -> Vec<Result<Vec<u32>, CandleTokenizerError>> {
+        // Create an iterator over the text chunks
+        let chars: Vec<char> = text.chars().collect();
+        let chunks: Vec<String> = chars
             .chunks(chunk_size)
-            .map(move |chunk| {
-                let chunk_text: String = chunk.iter().collect();
-                self.encode(&chunk_text)
-            })
+            .map(|chunk| chunk.iter().collect::<String>())
+            .collect();
+            
+        // Map each chunk through the encoder
+        chunks.iter().map(|chunk| self.encode(chunk)).collect()
     }
     
     /// Decode token IDs to text

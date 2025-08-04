@@ -34,11 +34,23 @@ pub type ResultHandler<D, Res> =
     Box<dyn Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync>;
 
 /// Typestate marker types for compile-time safety in builder pattern
+
+/// Marker type indicating that tool name is required in builder
 pub struct NameRequired;
+
+/// Marker type indicating that tool description is required in builder
 pub struct DescriptionRequired;
+
+/// Marker type indicating that tool dependency is required in builder
 pub struct DependencyRequired;
+
+/// Marker type indicating that request schema is required in builder
 pub struct RequestSchemaRequired;
+
+/// Marker type indicating that response schema is required in builder
 pub struct ResponseSchemaRequired;
+
+/// Marker type indicating that invocation handler is required in builder
 pub struct InvocationRequired;
 
 /// Error types for tool registration and execution

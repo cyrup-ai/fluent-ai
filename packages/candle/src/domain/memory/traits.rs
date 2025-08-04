@@ -4,8 +4,10 @@
 //! enabling trait composition, testability, and 'room to move' architecture benefits.
 
 use fluent_ai_async::AsyncStream;
-use crate::memory::primitives::MemoryNode;
 use serde::{Serialize, Deserialize};
+use uuid::Uuid;
+
+use super::primitives::MemoryNode;
 
 /// CandleMemory trait - mirrors fluent-ai-domain::Memory exactly with Candle prefix
 /// 
@@ -91,7 +93,7 @@ impl Default for CandleMemoryStats {
 #[derive(Debug, Clone)]
 pub struct CandleMemoryImpl {
     /// Inner memory instance
-    inner: crate::memory::manager::Memory,
+    inner: crate::domain::memory::manager::Memory,
 }
 
 impl CandleMemoryImpl {
@@ -102,16 +104,16 @@ impl CandleMemoryImpl {
     ///
     /// # Returns
     /// AsyncStream containing configured memory implementation
-    pub fn new(config: crate::memory::manager::MemoryConfig) -> AsyncStream<Self> {
+    pub fn new(config: super::manager::MemoryConfig) -> AsyncStream<Self> {
         AsyncStream::with_channel(move |sender| {
             // Spawn async task to handle the memory creation
             tokio::spawn(async move {
-                let memory_stream = crate::memory::manager::Memory::new(config);
+                let memory_stream = crate::domain::memory::manager::Memory::new(config);
                 let mut memory_stream = Box::pin(memory_stream);
                 
                 // Collect the memory instance and wrap it
-                use futures_util::StreamExt;
-                if let Some(memory) = memory_stream.next().await {
+
+                if let Some(memory) = memory_stream.next() {
                     let implementation = Self { inner: memory };
                     let _ = sender.send(implementation);
                 }
@@ -124,7 +126,7 @@ impl CandleMemoryImpl {
     /// # Returns
     /// AsyncStream containing memory implementation with default settings
     pub fn with_defaults() -> AsyncStream<Self> {
-        let config = crate::memory::manager::MemoryConfig::default();
+        let config = super::manager::MemoryConfig::default();
         Self::new(config)
     }
 }
@@ -203,12 +205,19 @@ impl CandleMemory for MockCandleMemory {
     }
     
     fn get_memory(&self, id: &str) -> AsyncStream<Option<MemoryNode>> {
-        let search_id = id.to_string();
+        let search_uuid = match Uuid::parse_str(id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                return AsyncStream::with_channel(move |sender| {
+                    let _ = sender.send(None);
+                });
+            }
+        };
         let stored = self.stored_nodes.clone();
         
         AsyncStream::with_channel(move |sender| {
             if let Ok(nodes) = stored.lock() {
-                let found = nodes.iter().find(|node| node.base_memory.id == search_id).cloned();
+                let found = nodes.iter().find(|node| node.base_memory.id == search_uuid).cloned();
                 let _ = sender.send(found);
             } else {
                 let _ = sender.send(None);
@@ -217,13 +226,20 @@ impl CandleMemory for MockCandleMemory {
     }
     
     fn delete_memory(&self, id: &str) -> AsyncStream<bool> {
-        let search_id = id.to_string();
+        let search_uuid = match Uuid::parse_str(id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                return AsyncStream::with_channel(move |sender| {
+                    let _ = sender.send(false);
+                });
+            }
+        };
         let stored = self.stored_nodes.clone();
         
         AsyncStream::with_channel(move |sender| {
             if let Ok(mut nodes) = stored.lock() {
                 let initial_len = nodes.len();
-                nodes.retain(|node| node.base_memory.id != search_id);
+                nodes.retain(|node| node.base_memory.id != search_uuid);
                 let deleted = nodes.len() < initial_len;
                 let _ = sender.send(deleted);
             } else {

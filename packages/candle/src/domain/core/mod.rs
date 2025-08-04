@@ -9,7 +9,7 @@ use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 
 use crate::AsyncTask;
-use crate::memory::MemoryError;
+use crate::domain::memory::primitives::types::MemoryError;
 
 /// Domain initialization error types with semantic error handling
 #[derive(Debug, thiserror::Error)]

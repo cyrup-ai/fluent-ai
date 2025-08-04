@@ -61,7 +61,7 @@ mod canonical_bracket_notation_tests {
             ),
         ];
 
-        for (shorthand, bracket, description) in shorthand_to_bracket_tests {
+        for (shorthand, bracket, _description) in shorthand_to_bracket_tests {
             // Test that both forms produce equivalent results
             let mut shorthand_stream = JsonArrayStream::<serde_json::Value>::new(shorthand);
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket);
@@ -76,7 +76,7 @@ mod canonical_bracket_notation_tests {
                 bracket,
                 shorthand_results.len(),
                 bracket_results.len(),
-                description
+                _description
             );
 
             // Both forms should produce the same number of results
@@ -113,7 +113,7 @@ mod canonical_bracket_notation_tests {
             ("$.*", "$[*]", "Root wildcard"),
         ];
 
-        for (original, normalized, description) in wildcard_tests {
+        for (original, normalized, _description) in wildcard_tests {
             let mut original_stream = JsonArrayStream::<serde_json::Value>::new(original);
             let mut normalized_stream = JsonArrayStream::<serde_json::Value>::new(normalized);
 
@@ -125,7 +125,7 @@ mod canonical_bracket_notation_tests {
                 "Wildcard normalization: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
-                description,
+                _description,
                 original_results.len(),
                 normalized_results.len()
             );
@@ -160,7 +160,7 @@ mod canonical_bracket_notation_tests {
             ),
         ];
 
-        for (original, normalized, description) in descendant_tests {
+        for (original, normalized, _description) in descendant_tests {
             let mut original_stream = JsonArrayStream::<String>::new(original);
             let mut normalized_stream = JsonArrayStream::<String>::new(normalized);
 
@@ -172,7 +172,7 @@ mod canonical_bracket_notation_tests {
                 "Descendant normalization: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
-                description,
+                _description,
                 original_results.len(),
                 normalized_results.len()
             );
@@ -219,7 +219,7 @@ mod single_quote_delimiter_tests {
             ),
         ];
 
-        for (double_quoted, single_quoted, description) in quote_normalization_tests {
+        for (double_quoted, single_quoted, _description) in quote_normalization_tests {
             let mut double_stream = JsonArrayStream::<String>::new(double_quoted);
             let mut single_stream = JsonArrayStream::<String>::new(single_quoted);
 
@@ -231,7 +231,7 @@ mod single_quote_delimiter_tests {
                 "Quote normalization: '{}' -> '{}' ({}) -> {} vs {} results",
                 double_quoted,
                 single_quoted,
-                description,
+                _description,
                 double_results.len(),
                 single_results.len()
             );
@@ -271,10 +271,10 @@ mod single_quote_delimiter_tests {
             ),
         ];
 
-        for (original, normalized, description) in quote_escaping_tests {
+        for (original, normalized, _description) in quote_escaping_tests {
             println!(
                 "Quote escaping test: '{}' -> '{}' ({})",
-                original, normalized, description
+                original, normalized, _description
             );
 
             let original_result = JsonPathParser::compile(original);
@@ -316,7 +316,7 @@ mod single_quote_delimiter_tests {
             ("$.unicode.αβγ", "$['unicode']['αβγ']", "Greek letters"),
         ];
 
-        for (original, normalized, description) in unicode_key_tests {
+        for (original, normalized, _description) in unicode_key_tests {
             let mut original_stream = JsonArrayStream::<String>::new(original);
             let mut normalized_stream = JsonArrayStream::<String>::new(normalized);
 
@@ -328,7 +328,7 @@ mod single_quote_delimiter_tests {
                 "Unicode key test: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
-                description,
+                _description,
                 original_results.len(),
                 normalized_results.len()
             );
@@ -369,13 +369,13 @@ mod character_escaping_tests {
             ),
         ];
 
-        for (key, escaped_key, description) in escapable_tests {
+        for (key, escaped_key, _description) in escapable_tests {
             let original_path = format!("$.special['{}'']", key);
             let normalized_path = format!("$['special']['{}']", escaped_key);
 
             println!(
                 "Escaping test: '{}' -> '{}' ({})",
-                original_path, normalized_path, description
+                original_path, normalized_path, _description
             );
 
             let original_result = JsonPathParser::compile(&original_path);
@@ -401,14 +401,14 @@ mod character_escaping_tests {
             ('\u{000D}', "\\r", "Carriage return"),
         ];
 
-        for (control_char, escape_sequence, description) in control_characters {
+        for (control_char, escape_sequence, _description) in control_characters {
             let key_with_control = format!("test{}char", control_char);
             let escaped_key = format!("test{}char", escape_sequence);
             let normalized_path = format!("$['special']['{}']", escaped_key);
 
             println!(
                 "Control character test: '{}' -> '{}' ({})",
-                key_with_control, normalized_path, description
+                key_with_control, normalized_path, _description
             );
 
             let result = JsonPathParser::compile(&normalized_path);
@@ -429,13 +429,13 @@ mod character_escaping_tests {
             ("\\u1F680", "🚀", "Rocket emoji"),
         ];
 
-        for (escape_sequence, character, description) in unicode_escapes {
+        for (escape_sequence, character, _description) in unicode_escapes {
             let path_with_escape = format!("$['test']['{}']", escape_sequence);
             let path_with_char = format!("$['test']['{}']", character);
 
             println!(
                 "Unicode escape test: '{}' vs '{}' ({})",
-                path_with_escape, path_with_char, description
+                path_with_escape, path_with_char, _description
             );
 
             let escape_result = JsonPathParser::compile(&path_with_escape);
@@ -491,11 +491,11 @@ mod path_uniqueness_tests {
                 let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream
+                let _results: Vec<_> = stream
                     .process_chunk(chunk)
                     .collect();
 
-                results_sets.push(results);
+                results_sets.push(_results);
                 println!(
                     "  '{}' -> {} results",
                     path,
@@ -504,11 +504,11 @@ mod path_uniqueness_tests {
             }
 
             // All equivalent paths should produce the same results
-            for (i, results) in results_sets.iter().enumerate() {
-                for (j, other_results) in results_sets.iter().enumerate() {
+            for (i, results) in _results_sets.iter().enumerate() {
+                for (j, other_results) in _results_sets.iter().enumerate() {
                     if i != j {
                         assert_eq!(
-                            results.len(),
+                            _results.len(),
                             other_results.len(),
                             "Equivalent paths should produce same number of results: {} vs {}",
                             path_group[i],
@@ -524,7 +524,7 @@ mod path_uniqueness_tests {
     fn test_path_canonicalization() {
         // Test canonicalization of various path forms
         let canonicalization_tests = vec![
-            // [original_path, expected_canonical_form, description]
+            // [original_path, expected_canonical_form, _description]
             (
                 "$.store.book",
                 "$['store']['book']",
@@ -551,10 +551,10 @@ mod path_uniqueness_tests {
             ),
         ];
 
-        for (original, canonical, description) in canonicalization_tests {
+        for (original, canonical, _description) in canonicalization_tests {
             println!(
                 "Canonicalization: '{}' -> '{}' ({})",
-                original, canonical, description
+                original, canonical, _description
             );
 
             let original_result = JsonPathParser::compile(original);
@@ -595,11 +595,11 @@ mod path_uniqueness_tests {
                     let mut stream = JsonArrayStream::<i32>::new(path);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "  Compiled and executed successfully, {} results",
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(e) => println!("  Failed to compile: {:?}", e),
@@ -863,21 +863,21 @@ mod complex_normalized_path_tests {
             ("$['special']['key{with}braces']", "Key with braces"),
         ];
 
-        for (normalized_path, description) in special_key_tests {
+        for (normalized_path, _description) in special_key_tests {
             let mut stream = JsonArrayStream::<String>::new(normalized_path);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Special character key: '{}' -> {} results ({})",
                 normalized_path,
-                results.len(),
-                description
+                _results.len(),
+                _description
             );
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 1,
                 "Special character key should be accessible: {}",
                 normalized_path

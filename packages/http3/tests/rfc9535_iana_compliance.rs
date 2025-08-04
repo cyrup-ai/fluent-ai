@@ -3,7 +3,7 @@
 //! Tests IANA media type registration and function extension registry requirements
 //! Validates RFC 9535 Section 3.1 and 3.2 compliance
 
-use fluent_ai_http3::json_path::{JsonPathParser, JsonPathError};
+use fluent_ai_http3::json_path::JsonPathParser;
 
 /// RFC 9535 Section 3.1 - Media Type application/jsonpath Tests
 #[cfg(test)]
@@ -52,11 +52,11 @@ mod media_type_tests {
             ("$['test\\u0041']", true), // Unicode escape sequences
         ];
 
-        for (expr, should_be_valid) in utf8_test_cases {
+        for (expr, _should_be_valid) in utf8_test_cases {
             let is_valid_utf8 = std::str::from_utf8(expr.as_bytes()).is_ok();
-            assert_eq!(is_valid_utf8, should_be_valid, "UTF-8 validation failed for: {}", expr);
+            assert_eq!(is_valid_utf8, _should_be_valid, "UTF-8 validation failed for: {}", expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 let result = JsonPathParser::compile(expr);
                 assert!(
                     result.is_ok(),
@@ -177,13 +177,13 @@ mod media_type_tests {
             ("$.config.settings.*", "Get all setting values"),
         ];
 
-        for (expr, description) in common_usage_patterns {
+        for (expr, _description) in common_usage_patterns {
             let result = JsonPathParser::compile(expr);
             assert!(
                 result.is_ok(),
                 "Common usage pattern '{}' ({}) should be valid",
                 expr,
-                description
+                _description
             );
         }
     }
@@ -202,7 +202,7 @@ mod function_extension_registry_tests {
             ("length", "$[?length(@.name) > 5]"),
             ("count", "$[?count(@.items) > 0]"),
             ("match", "$[?match(@.email, '^[^@]+@[^@]+$')]"),
-            ("search", "$[?search(@.description, 'test')]"),
+            ("search", "$[?search(@._description, 'test')]"),
             ("value", "$[?value(@.active) == true]"),
         ];
 
@@ -268,13 +268,13 @@ mod function_extension_registry_tests {
             ("$[?value(@.flag) == true]", "value() returns value for comparison"),
         ];
 
-        for (expr, description) in type_correct_expressions {
+        for (expr, _description) in type_correct_expressions {
             let result = JsonPathParser::compile(expr);
             assert!(
                 result.is_ok(),
                 "Type-correct expression '{}' should be valid: {}",
                 expr,
-                description
+                _description
             );
         }
     }
@@ -402,7 +402,7 @@ mod iana_integration_tests {
             ("$.items[?count(@.tags[*]) > 2]", "Media type with count function"),
         ];
 
-        for (expr, description) in integrated_examples {
+        for (expr, _description) in integrated_examples {
             // Validate UTF-8 encoding (media type requirement)
             assert!(expr.is_ascii() || expr.chars().all(|c| (c as u32) <= 0x10FFFF));
             
@@ -411,7 +411,7 @@ mod iana_integration_tests {
             assert!(
                 result.is_ok(),
                 "IANA integration test '{}' should work: {}",
-                description,
+                _description,
                 expr
             );
         }

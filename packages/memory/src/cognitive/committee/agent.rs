@@ -18,7 +18,7 @@ pub struct ProviderEvaluationAgent {
 
 impl ProviderEvaluationAgent {
     pub async fn new(model_type: ModelType, perspective: &str) -> Result<Self, CognitiveError> {
-        let model = Model::create(model_type.clone())
+        let model = Model::create(model_type.display_name(), model_type.to_provider())
             .await
             .map_err(|e| CognitiveError::ConfigError(e.to_string()))?;
 

@@ -56,15 +56,15 @@ mod shorthand_syntax_tests {
             ("$.veryLongPropertyNameThatShouldStillWork", "Very long name"),
         ];
 
-        for (expr, description) in valid_shorthand_patterns {
+        for (expr, _description) in valid_shorthand_patterns {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Valid shorthand '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Valid shorthand '{}' should compile: {}", expr, _description);
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Shorthand test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Shorthand test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -96,10 +96,10 @@ mod shorthand_syntax_tests {
             ("$.undefined", "undefined keyword"),
         ];
 
-        for (expr, description) in invalid_shorthand_patterns {
+        for (expr, _description) in invalid_shorthand_patterns {
             let result = JsonPathParser::compile(expr);
             // Document the behavior - these may be valid depending on implementation
-            println!("Invalid shorthand test '{}' -> {:?} ({})", expr, result.is_ok(), description);
+            println!("Invalid shorthand test '{}' -> {:?} ({})", expr, result.is_ok(), _description);
         }
     }
 
@@ -125,7 +125,7 @@ mod shorthand_syntax_tests {
             // Note: These would need Unicode data to test properly
         ];
 
-        for (shorthand, bracket, description) in equivalence_tests {
+        for (shorthand, bracket, _description) in equivalence_tests {
             let mut shorthand_stream = JsonArrayStream::<serde_json::Value>::new(shorthand);
             let mut bracket_stream = JsonArrayStream::<serde_json::Value>::new(bracket);
 
@@ -137,7 +137,7 @@ mod shorthand_syntax_tests {
                 shorthand_results.len(),
                 bracket_results.len(),
                 "Shorthand '{}' and bracket '{}' should return same count: {}",
-                shorthand, bracket, description
+                shorthand, bracket, _description
             );
 
             // Check value equivalence if both have results
@@ -146,12 +146,12 @@ mod shorthand_syntax_tests {
                     shorthand_results[0],
                     bracket_results[0],
                     "Shorthand and bracket notation should return equivalent values: {}",
-                    description
+                    _description
                 );
             }
 
             println!("Equivalence test: '{}' ≡ '{}' -> {} results ({})", 
-                shorthand, bracket, shorthand_results.len(), description);
+                shorthand, bracket, shorthand_results.len(), _description);
         }
     }
 
@@ -190,15 +190,15 @@ mod shorthand_syntax_tests {
             ("$..items[*].value", "Complex descendant wildcard"),
         ];
 
-        for (expr, description) in wildcard_tests {
+        for (expr, _description) in wildcard_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Wildcard pattern '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Wildcard pattern '{}' should compile: {}", expr, _description);
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Wildcard test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Wildcard test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -240,15 +240,15 @@ mod shorthand_syntax_tests {
             ("$.level1..nested..target", "Multiple descendant operators"),
         ];
 
-        for (expr, description) in descendant_shorthand_tests {
+        for (expr, _description) in descendant_shorthand_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Descendant pattern '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Descendant pattern '{}' should compile: {}", expr, _description);
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Descendant test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Descendant test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -292,15 +292,15 @@ mod shorthand_syntax_tests {
             ("$.arrays.numbers[-999]", "Out of bounds negative"),
         ];
 
-        for (expr, description) in index_shorthand_tests {
+        for (expr, _description) in index_shorthand_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Index pattern '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Index pattern '{}' should compile: {}", expr, _description);
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Index test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Index test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -333,15 +333,15 @@ mod shorthand_syntax_tests {
             ("$.data[-20:-10]", "Negative out of bounds"),
         ];
 
-        for (expr, description) in slice_shorthand_tests {
+        for (expr, _description) in slice_shorthand_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Slice pattern '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Slice pattern '{}' should compile: {}", expr, _description);
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Slice test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Slice test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -385,15 +385,15 @@ mod shorthand_syntax_tests {
             ("$.store.books[*].categories[:]", "Wildcard with full slice"),
         ];
 
-        for (expr, description) in combined_shorthand_tests {
+        for (expr, _description) in combined_shorthand_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Combined pattern '{}' should compile: {}", expr, description);
+            assert!(result.is_ok(), "Combined pattern '{}' should compile: {}", expr, _description);
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
             
-            println!("Combined test '{}' returned {} results ({})", expr, results.len(), description);
+            println!("Combined test '{}' returned {} results ({})", expr, _results.len(), _description);
         }
     }
 
@@ -423,10 +423,10 @@ mod shorthand_syntax_tests {
             ("$.a.b.c.d.e[*].f.g.h", "Mixed long chain"),
         ];
 
-        for (expr, description) in edge_case_tests {
+        for (expr, _description) in edge_case_tests {
             let result = JsonPathParser::compile(expr);
             // Document behavior - these tests verify consistency
-            println!("Edge case '{}' -> {:?} ({})", expr, result.is_ok(), description);
+            println!("Edge case '{}' -> {:?} ({})", expr, result.is_ok(), _description);
         }
     }
 }

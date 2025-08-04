@@ -229,6 +229,7 @@ pub struct CandleAgentRoleAgent;
 
 /// Agent conversation type
 pub struct CandleAgentConversation {
+    /// Conversation messages as role-content pairs
     pub messages: Option<ZeroOneOrMany<(CandleMessageRole, String)>>}
 
 impl CandleAgentConversation {

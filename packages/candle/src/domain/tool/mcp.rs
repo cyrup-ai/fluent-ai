@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{RwLock, mpsc};
 
-use crate::tool::types::Tool;
+use crate::domain::tool::CandleMcpToolData;
 
 // Removed unused imports AsyncTask and spawn_async
 
@@ -284,14 +284,14 @@ impl<T: CandleTransport> CandleClient<T> {
     /// * `McpError::SerializationFailed` - If JSON parsing fails
     /// * `McpError::TransportClosed` - If the transport connection is closed
     #[inline]
-    pub async fn list_tools(&self) -> Result<Vec<Tool>, McpError> {
+    pub async fn list_tools(&self) -> Result<Vec<CandleMcpToolData>, McpError> {
         let result = self.call_tool_internal("tools/list", Value::Null).await?;
 
         if let Value::Object(obj) = result {
             if let Some(Value::Array(tools)) = obj.get("tools") {
             let mut parsed_tools = Vec::with_capacity(tools.len());
             for tool in tools {
-                if let Ok(parsed) = serde_json::from_value::<Tool>(tool.clone()) {
+                if let Ok(parsed) = serde_json::from_value::<CandleMcpToolData>(tool.clone()) {
                     parsed_tools.push(parsed);
                 }
             }

@@ -18,16 +18,13 @@ use super::types::{CandleMessage, CandleMessageRole};
 /// The on_chunk handler should validate the processed message.
 pub fn process_message(message: CandleMessage) -> AsyncStream<CandleMessage> {
     AsyncStream::with_channel(move |sender| {
-        Box::pin(async move {
-            let mut processed_message = message;
+        // Trim whitespace from the message content
+        let mut processed_message = message;
+        processed_message.content = processed_message.content.trim().to_string();
 
-            // Trim whitespace from the message content
-            processed_message.content = processed_message.content.trim().to_string();
-
-            // Always emit the processed message - validation handled by on_chunk handler
-            let _ = sender.send(processed_message).await;
-            Ok(())
-        })
+        // Always emit the processed message - validation handled by on_chunk handler
+        let _ = sender.send(processed_message);
+        ()
     })
 }
 
@@ -41,11 +38,9 @@ pub fn process_message(message: CandleMessage) -> AsyncStream<CandleMessage> {
 /// Invalid messages will be handled by the on_chunk error handler.
 pub fn validate_message(message: CandleMessage) -> AsyncStream<CandleMessage> {
     AsyncStream::with_channel(move |sender| {
-        Box::pin(async move {
-            // Always emit the message - the on_chunk handler decides validation behavior
-            let _ = sender.send(message).await;
-            Ok(())
-        })
+        // Always emit the message - the on_chunk handler decides validation behavior
+        let _ = sender.send(message);
+        ()
     })
 }
 
@@ -92,37 +87,47 @@ pub fn validate_message_sync(message: &CandleMessage) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::types::{Message, MessageRole};
+    use super::super::types::{CandleMessage, CandleMessageRole};
     use super::*;
+    use fluent_ai_async::AsyncStream;
 
-    #[test]
-    fn test_process_message() {
-        let mut message = Message {
-            role: MessageRole::User,
+    #[tokio::test]
+    async fn test_process_message() {
+        let message = CandleMessage {
+            role: CandleMessageRole::User,
             content: "  Hello, world!  ".to_string(),
             id: None,
-            timestamp: None};
+            timestamp: None
+        };
 
-        process_message(&mut message).unwrap();
-        assert_eq!(message.content, "Hello, world!");
+        let processed: Vec<_> = process_message(message).collect().await;
+        assert_eq!(processed.len(), 1);
+        assert_eq!(processed[0].content, "Hello, world!");
     }
 
-    #[test]
-    fn test_validate_message() {
-        let valid_message = Message {
-            role: MessageRole::User,
+    #[tokio::test]
+    async fn test_validate_message() {
+        let valid_message = CandleMessage {
+            role: CandleMessageRole::User,
             content: "Hello, world!".to_string(),
             id: None,
-            timestamp: None};
+            timestamp: None
+        };
 
-        let empty_message = Message {
-            role: MessageRole::User,
+        let empty_message = CandleMessage {
+            role: CandleMessageRole::User,
             content: "   ".to_string(),
             id: None,
-            timestamp: None};
+            timestamp: None
+        };
 
-        assert!(validate_message(&valid_message).is_ok());
-        assert!(validate_message(&empty_message).is_err());
+        let mut valid_stream = validate_message(valid_message);
+        let valid_result = valid_stream.next().await.unwrap();
+        assert_eq!(valid_result.content, "Hello, world!");
+        
+        let mut empty_stream = validate_message(empty_message);
+        let empty_result = empty_stream.next().await.unwrap();
+        assert_eq!(empty_result.content, "   "); // Validation is now handled by on_chunk handler
     }
 
     #[test]

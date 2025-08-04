@@ -23,7 +23,7 @@ use fluent_ai_domain::{
     completion::{CompletionBackend, CompletionRequest, CompletionResponse, CompletionCoreError}};
 // Use HTTP3 + model-info architecture instead of provider clients
 use fluent_ai_http3::{Http3, HttpClient, HttpConfig};
-use model_info::{Provider, ModelInfo, ModelInfoBuilder};
+use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
 use fluent_ai_async::{AsyncStream, AsyncTask};
 use fluent_ai_simd::smart_cosine_similarity;
 use serde_json::json;
@@ -97,6 +97,92 @@ pub enum WorkRequest {
     GenerateEmbedding {
         text: String,
         response_sender: Sender<Result<Vec<f32>>>}}
+
+/// HTTP3-based completion backend for cognitive memory manager
+#[derive(Debug, Clone)]
+struct CognitiveHttp3Backend {
+    provider: Provider,
+    model_info: ModelInfo,
+    api_key: String,
+    http_client: HttpClient,
+}
+
+impl CognitiveHttp3Backend {
+    #[inline]
+    fn new(api_key: String, model_name: &str) -> Result<Self> {
+        // Default to OpenAI GPT-4 for cognitive processing
+        let provider = Provider::OpenAI;
+        
+        // Create HTTP3 client optimized for AI operations
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| anyhow::anyhow!("Failed to create HTTP3 client: {}", e))?;
+
+        // Create model info using model-info package
+        let model_info = ModelInfoBuilder::new()
+            .provider_name("openai")
+            .name(model_name)
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to create model info: {}", e))?;
+
+        Ok(Self {
+            provider,
+            model_info,
+            api_key,
+            http_client,
+        })
+    }
+}
+
+impl CompletionBackend for CognitiveHttp3Backend {
+    #[inline]
+    fn submit_completion<'a>(
+        &'a self,
+        request: CompletionRequest,
+    ) -> AsyncTask<CompletionResponse<'a>> {
+        let provider = self.provider.clone();
+        let model_info = self.model_info.clone();
+        let api_key = self.api_key.clone();
+        let http_client = self.http_client.clone();
+
+        AsyncTask::spawn(async move {
+            let base_url = provider.default_base_url();
+            let url = format!("{}/chat/completions", base_url);
+
+            // Convert request to messages format
+            let messages = vec![Message {
+                role: "user".to_string(),
+                content: request.prompt().content().to_string(),
+            }];
+
+            // Build OpenAI request payload
+            let request_body = json!({
+                "model": model_info.name,
+                "messages": messages.iter().map(|m| {
+                    json!({"role": m.role, "content": m.content})
+                }).collect::<Vec<_>>(),
+                "stream": false
+            });
+
+            // Make HTTP3 request
+            let response = Http3::json()
+                .api_key(&api_key)
+                .body(&request_body)
+                .post(&url)
+                .collect::<serde_json::Value>()
+                .await
+                .map_err(|e| CompletionCoreError::RequestFailed(format!("HTTP3 request failed: {}", e)))?;
+
+            // Parse OpenAI response
+            let content = response["choices"][0]["message"]["content"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+
+            // Create completion response using domain types
+            Ok(CompletionResponse::text(content))
+        })
+    }
+}
 
 impl CognitiveMemoryManager {
     /// Create a new production-quality cognitive memory manager
@@ -181,93 +267,6 @@ impl CognitiveMemoryManager {
             evolution_engine,
             settings,
             worker_pool})
-    }
-
-    /// HTTP3-based completion backend for cognitive memory manager
-    #[derive(Debug, Clone)]
-    struct CognitiveHttp3Backend {
-        provider: Provider,
-        model_info: ModelInfo,
-        api_key: String,
-        http_client: HttpClient,
-    }
-
-    impl CognitiveHttp3Backend {
-        #[inline]
-        fn new(api_key: String, model_name: &str) -> Result<Self> {
-            // Default to OpenAI GPT-4 for cognitive processing
-            let provider = Provider::OpenAI;
-            
-            // Create HTTP3 client optimized for AI operations
-            let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
-                .map_err(|e| anyhow::anyhow!("Failed to create HTTP3 client: {}", e))?;
-
-            // Create model info using model-info package
-            let model_info = ModelInfoBuilder::new()
-                .provider_name("openai")
-                .name(model_name)
-                .with_streaming(true)
-                .build()
-                .map_err(|e| anyhow::anyhow!("Failed to create model info: {}", e))?;
-
-            Ok(Self {
-                provider,
-                model_info,
-                api_key,
-                http_client,
-            })
-        }
-    }
-
-    impl CompletionBackend for CognitiveHttp3Backend {
-        #[inline]
-        fn submit_completion<'a>(
-            &'a self,
-            request: CompletionRequest,
-        ) -> AsyncTask<CompletionResponse<'a>> {
-            let provider = self.provider.clone();
-            let model_info = self.model_info.clone();
-            let api_key = self.api_key.clone();
-            let http_client = self.http_client.clone();
-
-            AsyncTask::spawn(async move {
-                let base_url = provider.default_base_url();
-                let url = format!("{}/chat/completions", base_url);
-
-                // Convert request to messages format
-                let messages = vec![Message {
-                    role: "user".to_string(),
-                    content: request.prompt().content().to_string(),
-                }];
-
-                // Build OpenAI request payload
-                let request_body = json!({
-                    "model": model_info.name,
-                    "messages": messages.iter().map(|m| {
-                        json!({"role": m.role, "content": m.content})
-                    }).collect::<Vec<_>>(),
-                    "stream": false
-                });
-
-                // Make HTTP3 request
-                let response = Http3::json()
-                    .api_key(&api_key)
-                    .body(&request_body)
-                    .post(&url)
-                    .collect::<serde_json::Value>()
-                    .await
-                    .map_err(|e| CompletionCoreError::RequestFailed(format!("HTTP3 request failed: {}", e)))?;
-
-                // Parse OpenAI response
-                let content = response["choices"][0]["message"]["content"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
-
-                // Create completion response using domain types
-                Ok(CompletionResponse::text(content))
-            })
-        }
     }
 
     /// Create completion provider using HTTP3 + model-info architecture

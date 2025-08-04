@@ -17,11 +17,11 @@ use serde::{Deserialize, Serialize};
 use strsim;
 
 use crate::domain::model::error::{CandleModelError as ModelError, CandleResult as Result};
-use crate::model::info::ModelInfo;
-use crate::model::registry::ModelRegistry;
+use crate::domain::model::info::CandleModelInfo as ModelInfo;
+use crate::domain::model::registry::CandleModelRegistry as ModelRegistry;
+use crate::domain::model::registry::RegisteredModel;
 // Removed unused import: strsim::jaro_winkler
-use crate::model::registry::RegisteredModel;
-use crate::model::traits::Model;
+use crate::domain::model::traits::CandleModel as Model;
 
 /// A pattern that can be used to match model names
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -419,15 +419,19 @@ impl ModelResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Import ModelInfo::builder() from fluent-ai
-    use fluent_ai::builders::ModelInfoBuilder;
 
+    #[derive(Debug)]
     struct TestModel {
-        info: &'static ModelInfo}
+        info: &'static str,
+    }
 
-    impl Model for TestModel {
-        fn info(&self) -> &'static ModelInfo {
+    impl CandleModel for TestModel {
+        fn name(&self) -> &str {
             self.info
+        }
+        
+        fn provider(&self) -> &str {
+            "test"
         }
     }
 

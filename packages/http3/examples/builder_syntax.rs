@@ -12,7 +12,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post, put},
 };
-use cyrup_sugars::prelude::*;
+
 use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpStreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;

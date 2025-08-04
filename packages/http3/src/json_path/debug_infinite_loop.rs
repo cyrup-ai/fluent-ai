@@ -1,6 +1,11 @@
 use crate::json_path::{CoreJsonPathEvaluator, JsonPathParser};
-use serde_json::{json, Value};
+use serde_json::json;
 
+/// Debug utility function for testing JSONPath patterns that may cause infinite loops
+/// 
+/// This function tests known problematic JSONPath expressions against a sample JSON document
+/// to identify patterns that cause infinite loops or excessive processing time. It includes
+/// timeout mechanisms and panic catching to safely test potentially problematic patterns.
 pub fn debug_infinite_loop_patterns() {
     let bookstore_json = json!({
         "store": {

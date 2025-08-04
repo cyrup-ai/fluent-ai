@@ -11,7 +11,7 @@ use std::sync::Arc;
 use fluent_ai_async::AsyncStream;
 
 // use fluent_ai_async::channel; // Returns UnboundedReceiverStream, not AsyncStream
-use crate::core::DomainInitError;
+use crate::domain::core::DomainInitError;
 
 /// Placeholder memory manager type to avoid circular dependency
 pub struct PlaceholderMemoryManager;

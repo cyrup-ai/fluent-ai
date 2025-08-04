@@ -235,6 +235,20 @@ pub enum MemoryContent {
     }
 }
 
+impl std::fmt::Display for MemoryContent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MemoryContent::Empty => write!(f, ""),
+            MemoryContent::Text(text) => write!(f, "{}", text),
+            MemoryContent::Image(bytes) => write!(f, "[Image: {} bytes]", bytes.len()),
+            MemoryContent::Audio(bytes) => write!(f, "[Audio: {} bytes]", bytes.len()),
+            MemoryContent::Video(bytes) => write!(f, "[Video: {} bytes]", bytes.len()),
+            MemoryContent::Json(json) => write!(f, "{}", json),
+            MemoryContent::Binary { data, content_type } => write!(f, "[Binary({}): {} bytes]", content_type, data.len()),
+        }
+    }
+}
+
 impl MemoryContent {
     /// Create text content with zero-copy sharing
     #[inline]
@@ -613,16 +627,16 @@ impl MemoryError {
 // Dead code removed - FluentMemoryError type does not exist
 
 // Trait implementations for error conversions
-impl From<crate::memory::config::llm::LLMConfigError> for MemoryError {
-    fn from(err: crate::memory::config::llm::LLMConfigError) -> Self {
+impl From<crate::domain::memory::config::llm::LLMConfigError> for MemoryError {
+    fn from(err: crate::domain::memory::config::llm::LLMConfigError) -> Self {
         match err {
-            crate::memory::config::llm::LLMConfigError::InvalidModel(msg) => {
+            crate::domain::memory::config::llm::LLMConfigError::InvalidModel(msg) => {
                 Self::Validation(format!("Invalid LLM model: {}", msg))
             }
-            crate::memory::config::llm::LLMConfigError::InvalidParameter(msg) => {
+            crate::domain::memory::config::llm::LLMConfigError::InvalidParameter(msg) => {
                 Self::Validation(format!("Invalid LLM parameter: {}", msg))
             }
-            crate::memory::config::llm::LLMConfigError::ValidationError(msg) => {
+            crate::domain::memory::config::llm::LLMConfigError::ValidationError(msg) => {
                 Self::Validation(format!("LLM configuration validation failed: {}", msg))
             }
         }

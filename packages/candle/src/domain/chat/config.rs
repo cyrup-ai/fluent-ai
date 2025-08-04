@@ -568,6 +568,8 @@ pub struct CandleConfigUpdate {
 /// Candle type of configuration update operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CandleConfigUpdateType {
+    /// Configuration validation started
+    ValidationStarted,
     /// Configuration validation completed
     ValidationCompleted,
     /// Configuration validator registered

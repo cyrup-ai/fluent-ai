@@ -6,6 +6,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
+
+use crate::domain::memory::primitives::node::MemoryNode;
+
 // Removed unused import: std::time::Duration
 
 // Ultra-high-performance zero-allocation imports
@@ -52,9 +55,8 @@ pub struct SurrealDBMemoryManager {
 use fluent_ai_async::AsyncStream;
 use once_cell::sync::Lazy;
 
-use crate::memory::primitives::MemoryNode;
-use crate::memory::primitives::node::MemoryNodeMetadata;
-use crate::memory::primitives::types::MemoryContent;
+use super::primitives::node::MemoryNodeMetadata;
+use super::primitives::types::MemoryContent;
 // Removed unused import: super::types_legacy::MemoryType
 
 /// Memory stub that provides safe fallback for synchronous contexts

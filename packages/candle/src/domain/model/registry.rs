@@ -380,14 +380,20 @@ impl<M: CandleModel + 'static> Hash for RegisteredModel<M> {
 mod tests {
     use super::*;
     // Import CandleModelInfo::builder() from fluent-ai
-    use fluent_ai::builders::CandleModelInfoBuilder;
 
+
+    #[derive(Debug)]
     struct TestModel {
-        info: &'static CandleModelInfo}
+        name: &'static str,
+    }
 
-    impl Model for TestModel {
-        fn info(&self) -> &'static CandleModelInfo {
-            self.info
+    impl CandleModel for TestModel {
+        fn name(&self) -> &str {
+            self.name
+        }
+        
+        fn provider(&self) -> &str {
+            "test"
         }
     }
 

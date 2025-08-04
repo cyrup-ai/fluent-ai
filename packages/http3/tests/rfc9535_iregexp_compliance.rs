@@ -25,7 +25,7 @@ struct TestDocument {
     text: String,
     code: String,
     email: String,
-    description: String,
+    _description: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -64,12 +64,12 @@ mod iregexp_basic_compliance {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Literal matching '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -270,11 +270,11 @@ mod match_vs_search_behavior {
             ),
         ];
 
-        for (pattern, description) in test_cases {
+        for (pattern, _description) in test_cases {
             let expr = format!("$.items[?{}]", pattern);
             let result = JsonPathParser::compile(&expr);
             match result {
-                Ok(_) => println!("Pattern '{}' compiled - {}", pattern, description),
+                Ok(_) => println!("Pattern '{}' compiled - {}", pattern, _description),
                 Err(_) => println!("Pattern '{}' not supported", pattern),
             }
         }
@@ -343,7 +343,7 @@ mod invalid_pattern_handling {
             "$.items[?match(@.text, '(?i)case')]",  // Case-insensitive flag
             "$.items[?match(@.text, '(?m)multi')]", // Multiline flag
             "$.items[?match(@.text, '(?s)dot')]",   // Dotall flag
-            "$.items[?match(@.text, '\\b\\w+\\b')]", // Word boundaries
+            "$.items[?match(@.text, '\\b\\w+\\b')]", // Word _boundaries
             "$.items[?match(@.text, '\\d+')]",      // Digit shorthand
             "$.items[?match(@.text, '\\s+')]",      // Whitespace shorthand
             "$.items[?match(@.text, '\\w+')]",      // Word character shorthand
@@ -456,12 +456,12 @@ mod unicode_regex_handling {
             ("$.items[?match(@.text, 'cafe\\u0301')]", "decomposed form"),
         ];
 
-        for (expr, description) in test_cases {
+        for (expr, _description) in test_cases {
             let result = JsonPathParser::compile(expr);
             match result {
                 Ok(_) => println!(
                     "Unicode normalization test '{}' compiled - {}",
-                    expr, description
+                    expr, _description
                 ),
                 Err(_) => println!("Unicode normalization '{}' not supported", expr),
             }
@@ -501,13 +501,13 @@ mod regex_performance_tests {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 let execution_duration = execution_start.elapsed();
 
                 println!(
                     "Complex pattern executed in {:?}, found {} matches",
                     execution_duration,
-                    results.len()
+                    _results.len()
                 );
 
                 // Performance assertion
@@ -548,14 +548,14 @@ mod regex_performance_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
                     let duration = start_time.elapsed();
 
                     println!(
                         "Large input test '{}' completed in {:?}, found {} matches",
                         expr,
                         duration,
-                        results.len()
+                        _results.len()
                     );
 
                     // Performance assertion for large inputs
@@ -595,7 +595,7 @@ mod regex_performance_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
                     let duration = start_time.elapsed();
 
                     println!("DoS test '{}' completed in {:?}", expr, duration);

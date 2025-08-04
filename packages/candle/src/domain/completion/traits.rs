@@ -5,13 +5,10 @@
 
 use fluent_ai_async::AsyncStream;
 use super::{
-    request::CompletionRequest,
-    response::CompletionResponse,
     types::CandleCompletionParams,
 };
 use crate::domain::completion::{CandleCompletionRequest, CandleCompletionResponse};
 use crate::domain::{
-    context::chunk::CompletionChunk,
     prompt::CandlePrompt,
 };
 use crate::domain::completion::CandleCompletionChunk;

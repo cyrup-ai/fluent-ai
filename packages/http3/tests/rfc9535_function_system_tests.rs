@@ -104,20 +104,20 @@ mod function_type_system_tests {
             ("$.library.books[?match(@.authors, 'pattern')]", false, "match() with array instead of string"),
         ];
 
-        for (expr, should_be_valid, description) in valuetype_tests {
+        for (expr, _should_be_valid, _description) in valuetype_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid ValueType function should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid ValueType function should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -144,20 +144,20 @@ mod function_type_system_tests {
             ("$.library.books[?value(@.authors[*])]", false, "value() with multi-node (ambiguous)"),
         ];
 
-        for (expr, should_be_valid, description) in nodestype_tests {
+        for (expr, _should_be_valid, _description) in nodestype_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid NodesType function should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid NodesType function should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -184,20 +184,20 @@ mod function_type_system_tests {
             ("$.library.books[?length(@.title) != length(@.authors[0])]", true, "Function to function comparison"),
         ];
 
-        for (expr, should_be_valid, description) in logicaltype_tests {
+        for (expr, _should_be_valid, _description) in logicaltype_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid LogicalType function should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid LogicalType function should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -233,20 +233,20 @@ mod function_argument_type_tests {
             ("$.library.books[?search(@.title, 'pattern', 'extra')]", false, "search() with 3 arguments"),
         ];
 
-        for (expr, should_be_valid, description) in argument_count_tests {
+        for (expr, _should_be_valid, _description) in argument_count_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Correct argument count should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Incorrect argument count should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -278,20 +278,20 @@ mod function_argument_type_tests {
             ("$.library.books[?search(@.metadata, 'pattern')]", false, "Object to string in search()"),
         ];
 
-        for (expr, should_be_valid, description) in type_conversion_tests {
+        for (expr, _should_be_valid, _description) in type_conversion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid type conversion should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid type conversion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -318,20 +318,20 @@ mod function_argument_type_tests {
             ("$.library.books[?value(length(@.title))]", false, "Number to NodesType in value()"),
         ];
 
-        for (expr, should_be_valid, description) in nested_function_tests {
+        for (expr, _should_be_valid, _description) in nested_function_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid nested function types should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid nested function types should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -367,20 +367,20 @@ mod function_result_type_tests {
             ("$.library.books[?count(@.authors) == 1 || search(@.title, 'Kill')]", true, "Count and search mix"),
         ];
 
-        for (expr, should_be_valid, description) in result_type_tests {
+        for (expr, _should_be_valid, _description) in result_type_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid function result types should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid function result types should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -400,16 +400,16 @@ mod function_result_type_tests {
             ("$.library.books[?search(@.authors[0], 'Lee')]", 1, "Author search filtering"),
         ];
 
-        for (expr, expected_count, description) in execution_tests {
+        for (expr, _expected_count, _description) in execution_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "RFC 9535: Function execution with types: {} ({}) should return {} results",
-                expr, description, expected_count
+                expr, _description, expected_count
             );
         }
     }
@@ -438,28 +438,28 @@ mod function_result_type_tests {
             ("$.library.books[?count(@.availability.inStock)]", false, "count() with boolean"),
         ];
 
-        for (expr, should_be_valid, description) in coercion_tests {
+        for (expr, _should_be_valid, _description) in coercion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Valid type coercion should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution for valid expressions
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Type coercion test '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid type coercion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -489,28 +489,28 @@ mod complex_function_type_tests {
             ("$.library.books[?(value(@.id) > 1 && length(@.authors[0]) > 5) || search(@.title, '1984')]", true, "Nested logical with functions"),
         ];
 
-        for (expr, should_be_valid, description) in complex_scenarios {
+        for (expr, _should_be_valid, _description) in complex_scenarios {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Complex type scenario should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Complex type scenario '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid complex type scenario should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -576,28 +576,28 @@ mod type_conversion_boundary_tests {
             ("$.library.books[?value(@.metadata.year) && value(@.availability.inStock)]", true, "Multiple value() conversions"),
         ];
 
-        for (expr, should_be_valid, description) in conversion_tests {
+        for (expr, _should_be_valid, _description) in conversion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: ValueType→LogicalType conversion should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution to verify conversion behavior
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("ValueType→LogicalType test '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid ValueType→LogicalType conversion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -628,28 +628,28 @@ mod type_conversion_boundary_tests {
             ("$.library.books[?length(value(@.title)) > 0]", true, "Nested NodesType→ValueType→ValueType"),
         ];
 
-        for (expr, should_be_valid, description) in conversion_tests {
+        for (expr, _should_be_valid, _description) in conversion_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: NodesType→ValueType conversion should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution to verify conversion behavior
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("NodesType→ValueType test '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid NodesType→ValueType conversion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -674,28 +674,28 @@ mod type_conversion_boundary_tests {
             ("$.library.books[?value(@.metadata.category) || value(@.id)]", true, "Nested property null handling"),
         ];
 
-        for (expr, should_be_valid, description) in null_handling_tests {
+        for (expr, _should_be_valid, _description) in null_handling_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Null handling type conversion should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution to verify null handling behavior
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Null handling conversion test '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid null handling conversion should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }
@@ -721,28 +721,28 @@ mod type_conversion_boundary_tests {
             ("$.library.books[?length(count(@.authors))]", false, "Invalid: ValueType(number)→ValueType(string)"),
         ];
 
-        for (expr, should_be_valid, description) in chain_tests {
+        for (expr, _should_be_valid, _description) in chain_tests {
             let result = JsonPathParser::compile(expr);
             
-            if should_be_valid {
+            if _should_be_valid {
                 assert!(
                     result.is_ok(),
                     "RFC 9535: Complex type conversion chain should compile: {} ({})",
-                    expr, description
+                    expr, _description
                 );
                 
                 // Test execution for valid chains
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(FUNCTION_SYSTEM_JSON);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
                 
                 println!("Complex conversion chain '{}': {} results ({})", 
-                    expr, results.len(), description);
+                    expr, _results.len(), _description);
             } else {
                 assert!(
                     result.is_err(),
                     "RFC 9535: Invalid type conversion chain should be rejected: {} ({})",
-                    expr, description
+                    expr, _description
                 );
             }
         }

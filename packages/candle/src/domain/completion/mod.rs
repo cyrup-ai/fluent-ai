@@ -11,7 +11,7 @@
 //! - `types.rs` - Shared Candle types and constants
 
 pub mod candle;
-pub mod chunk;
+// pub mod chunk; // Module not yet implemented
 pub mod core;
 pub mod model;
 pub mod request;
@@ -35,7 +35,11 @@ pub type CandleCompletionRequest = CompletionRequest;
 pub type CandleCompletionRequestError = CompletionRequestError;
 pub use response::{CompactCompletionResponse, CompletionResponse};
 pub type CandleCompactCompletionResponse = CompactCompletionResponse;
-pub type CandleCompletionResponse = CompletionResponse;
-pub use types::{CandleCompletionChunk, CandleCompletionParams, CandleModelParams};
+pub type CandleCompletionResponse<'a> = CompletionResponse<'a>;
+pub use types::{CandleCompletionParams, CandleModelParams};
+
+// Re-export CandleCompletionChunk from context/chunk.rs
+pub use crate::domain::context::chunk::CandleCompletionChunk;
+
 // Re-export trait types for trait-backed architecture
 pub use traits::{CandleCompletionProvider, CandleCompletionModel};

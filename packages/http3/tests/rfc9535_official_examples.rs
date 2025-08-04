@@ -3,7 +3,7 @@
 //! Tests all official examples from RFC 9535 using the canonical bookstore JSON
 
 use bytes::Bytes;
-use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
+use fluent_ai_http3::json_path::JsonArrayStream;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -76,14 +76,14 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
@@ -96,10 +96,10 @@ mod rfc_examples_tests {
             "J. R. R. Tolkien",
         ];
 
-        assert_eq!(results.len(), 4, "Should find all 4 book authors");
+        assert_eq!(_results.len(), 4, "Should find all 4 book authors");
         for author in expected_authors {
             assert!(
-                results.contains(&author.to_string()),
+                _results.contains(&author.to_string()),
                 "Should contain author: {}",
                 author
             );
@@ -118,21 +118,21 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             4,
             "Descendant search should find all 4 authors"
         );
@@ -146,7 +146,7 @@ mod rfc_examples_tests {
 
         for author in expected_authors {
             assert!(
-                results.contains(&author.to_string()),
+                _results.contains(&author.to_string()),
                 "Descendant search should contain author: {}",
                 author
             );
@@ -165,21 +165,21 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "Store should contain 2 things: book array and bicycle"
         );
@@ -188,7 +188,7 @@ mod rfc_examples_tests {
         let mut has_book_array = false;
         let mut has_bicycle = false;
 
-        for result in results {
+        for _result in _results {
             if result.is_array() {
                 has_book_array = true;
             } else if result.is_object() && result.get("color").is_some() {
@@ -212,21 +212,21 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             5,
             "Should find 5 prices (4 books + 1 bicycle)"
         );
@@ -234,7 +234,7 @@ mod rfc_examples_tests {
         let expected_prices = vec![8.95, 12.99, 8.99, 22.99, 19.95];
 
         for price in expected_prices {
-            assert!(results.contains(&price), "Should contain price: {}", price);
+            assert!(_results.contains(&price), "Should contain price: {}", price);
         }
     }
 
@@ -250,26 +250,26 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 1, "Should find exactly one book");
+        assert_eq!(_results.len(), 1, "Should find exactly one book");
         assert_eq!(
-            results[0].title, "Moby Dick",
+            _results[0].title, "Moby Dick",
             "Third book should be Moby Dick"
         );
         assert_eq!(
-            results[0].author, "Herman Melville",
+            _results[0].author, "Herman Melville",
             "Author should be Herman Melville"
         );
     }
@@ -286,26 +286,26 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 1, "Should find exactly one book");
+        assert_eq!(_results.len(), 1, "Should find exactly one book");
         assert_eq!(
-            results[0].title, "The Lord of the Rings",
+            _results[0].title, "The Lord of the Rings",
             "Last book should be LOTR"
         );
         assert_eq!(
-            results[0].author, "J. R. R. Tolkien",
+            _results[0].author, "J. R. R. Tolkien",
             "Author should be Tolkien"
         );
     }
@@ -322,22 +322,22 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 2, "Should find exactly two books");
+        assert_eq!(_results.len(), 2, "Should find exactly two books");
 
-        let titles: Vec<String> = results.iter().map(|book| book.title.clone()).collect();
+        let titles: Vec<String> = _results.iter().map(|book| book.title.clone()).collect();
         assert!(
             titles.contains(&"Sayings of the Century".to_string()),
             "Should contain first book"
@@ -360,28 +360,28 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 2, "Should find exactly two books");
+        assert_eq!(_results.len(), 2, "Should find exactly two books");
 
         // Results should be in order
         assert_eq!(
-            results[0].title, "Sayings of the Century",
+            _results[0].title, "Sayings of the Century",
             "First book should be first"
         );
         assert_eq!(
-            results[1].title, "Sword of Honour",
+            _results[1].title, "Sword of Honour",
             "Second book should be second"
         );
     }
@@ -398,22 +398,22 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 2, "Should find 2 books with ISBN");
+        assert_eq!(_results.len(), 2, "Should find 2 books with ISBN");
 
-        let titles: Vec<String> = results.iter().map(|book| book.title.clone()).collect();
+        let titles: Vec<String> = _results.iter().map(|book| book.title.clone()).collect();
         assert!(
             titles.contains(&"Moby Dick".to_string()),
             "Moby Dick has ISBN"
@@ -424,7 +424,7 @@ mod rfc_examples_tests {
         );
 
         // Verify all results actually have ISBN
-        for book in results {
+        for book in _results {
             assert!(book.isbn.is_some(), "Book should have ISBN: {}", book.title);
         }
     }
@@ -441,20 +441,20 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 2, "Should find 2 books cheaper than 10");
+        assert_eq!(_results.len(), 2, "Should find 2 books cheaper than 10");
 
         let expected_books = vec![("Sayings of the Century", 8.95), ("Moby Dick", 8.99)];
 
@@ -466,7 +466,7 @@ mod rfc_examples_tests {
         }
 
         // Verify all results are actually cheaper than 10
-        for book in results {
+        for book in _results {
             assert!(
                 book.price < 10.0,
                 "Book should be <$10: {} at ${}",
@@ -488,26 +488,26 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             1,
             "Should find exactly one author (third book's author)"
         );
         assert_eq!(
-            results[0], "Herman Melville",
+            _results[0], "Herman Melville",
             "Third book's author should be Herman Melville"
         );
     }
@@ -524,21 +524,21 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             0,
             "Should find no publisher (field doesn't exist in third book)"
         );
@@ -556,14 +556,14 @@ mod rfc_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 1000 {
+            _results.push(result);
+            if _results.len() > 1000 {
                 // Higher safety bound for universal search
                 panic!("Too many results - likely infinite loop");
             }
@@ -573,9 +573,9 @@ mod rfc_examples_tests {
         // This includes: store object, book array, each book object, bicycle object,
         // and all primitive values within them
         assert!(
-            results.len() >= 25,
+            _results.len() >= 25,
             "Universal descendant search should find at least 25 values in bookstore JSON, found: {}",
-            results.len()
+            _results.len()
         );
 
         // Verify we find some expected values
@@ -619,22 +619,22 @@ mod extended_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 3, "Should find 3 fiction books");
+        assert_eq!(_results.len(), 3, "Should find 3 fiction books");
 
-        for book in results {
+        for book in _results {
             assert_eq!(book.category, "fiction", "All books should be fiction");
         }
     }
@@ -651,25 +651,25 @@ mod extended_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 1, "Should find 1 expensive book");
+        assert_eq!(_results.len(), 1, "Should find 1 expensive book");
         assert_eq!(
-            results[0].title, "The Lord of the Rings",
+            _results[0].title, "The Lord of the Rings",
             "LOTR should be the expensive book"
         );
-        assert!(results[0].price > 15.0, "Book should be >$15");
+        assert!(_results[0].price > 15.0, "Book should be >$15");
     }
 
     #[test]
@@ -690,21 +690,21 @@ mod extended_examples_tests {
             let start = std::time::Instant::now();
             let mut results = Vec::new();
 
-            for result in stream.process_chunk(chunk).collect() {
+            for _result in stream.process_chunk(chunk).collect() {
                 if start.elapsed() > timeout {
                     panic!(
                         "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                     );
                 }
-                results.push(result);
-                if results.len() > 100 {
+                _results.push(result);
+                if _results.len() > 100 {
                     // Safety bound
                     panic!("Too many results - likely infinite loop");
                 }
             }
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Author filter '{}' should return {} books",
                 expr,
@@ -731,21 +731,21 @@ mod extended_examples_tests {
             let start = std::time::Instant::now();
             let mut results = Vec::new();
 
-            for result in stream.process_chunk(chunk).collect() {
+            for _result in stream.process_chunk(chunk).collect() {
                 if start.elapsed() > timeout {
                     panic!(
                         "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                     );
                 }
-                results.push(result);
-                if results.len() > 100 {
+                _results.push(result);
+                if _results.len() > 100 {
                     // Safety bound
                     panic!("Too many results - likely infinite loop");
                 }
             }
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Complex filter '{}' should return {} books",
                 expr,
@@ -766,22 +766,22 @@ mod extended_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
-        assert_eq!(results.len(), 1, "Should find the bicycle");
-        assert_eq!(results[0].color, "red", "Bicycle should be red");
-        assert_eq!(results[0].price, 19.95, "Bicycle should cost $19.95");
+        assert_eq!(_results.len(), 1, "Should find the bicycle");
+        assert_eq!(_results[0].color, "red", "Bicycle should be red");
+        assert_eq!(_results[0].price, 19.95, "Bicycle should cost $19.95");
     }
 
     #[test]
@@ -796,21 +796,21 @@ mod extended_examples_tests {
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
-        for result in stream.process_chunk(chunk).collect() {
+        for _result in stream.process_chunk(chunk).collect() {
             if start.elapsed() > timeout {
                 panic!(
                     "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                 );
             }
-            results.push(result);
-            if results.len() > 100 {
+            _results.push(result);
+            if _results.len() > 100 {
                 // Safety bound
                 panic!("Too many results - likely infinite loop");
             }
         }
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             5,
             "Should find 5 items with prices (4 books + 1 bicycle)"
         );
@@ -841,14 +841,14 @@ mod performance_tests {
             let timeout = std::time::Duration::from_secs(5);
             let mut results = Vec::new();
 
-            for result in stream.process_chunk(chunk).collect() {
+            for _result in stream.process_chunk(chunk).collect() {
                 if start_time.elapsed() > timeout {
                     panic!(
                         "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                     );
                 }
-                results.push(result);
-                if results.len() > 100 {
+                _results.push(result);
+                if _results.len() > 100 {
                     // Safety bound
                     panic!("Too many results - likely infinite loop");
                 }
@@ -885,14 +885,14 @@ mod performance_tests {
             let timeout = std::time::Duration::from_secs(5);
             let mut results = Vec::new();
 
-            for result in stream.process_chunk(chunk).collect() {
+            for _result in stream.process_chunk(chunk).collect() {
                 if start_time.elapsed() > timeout {
                     panic!(
                         "Test timed out after 5 seconds - likely infinite loop in JSONPath processing"
                     );
                 }
-                results.push(result);
-                if results.len() > 100 {
+                _results.push(result);
+                if _results.len() > 100 {
                     // Safety bound
                     panic!("Too many results - likely infinite loop");
                 }

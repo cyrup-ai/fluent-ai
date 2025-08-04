@@ -17,7 +17,7 @@ use crate::domain::error::SimpleCircuitBreaker;
 // use fluent_ai_memory::memory::MemoryMetadata;
 
 // Use stub types from memory::manager
-use crate::memory::manager::{MemoryConfig, SurrealDBMemoryManager};
+use crate::domain::memory::manager::{MemoryConfig, SurrealDBMemoryManager};
 
 /// Global configuration cache with copy-on-write semantics for zero-allocation access
 pub static CONFIG_CACHE: Lazy<ArcSwap<MemoryConfig>> =

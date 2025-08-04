@@ -19,7 +19,7 @@ use fluent_ai_domain::{
     completion::{CompletionCoreError, CompletionBackend, CompletionRequest, CompletionResponse}};
 // Use HTTP3 + model-info architecture instead of provider clients
 use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
-use model_info::{Provider, ModelInfo, ModelInfoBuilder};
+use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
 use fluent_ai_async::{AsyncTask, AsyncStream};
 use serde_json::json;
 use tokio::sync::{RwLock, Semaphore};
@@ -52,15 +52,15 @@ impl Http3CompletionBackend {
             ModelType::Gpt35Turbo => (Provider::OpenAI, "gpt-3.5-turbo"),
             ModelType::Gpt4O => (Provider::OpenAI, "gpt-4o"),
             ModelType::Gpt4Turbo => (Provider::OpenAI, "gpt-4-turbo"),
-            ModelType::Claude3Opus => (Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider), "claude-3-opus-20240229"),
-            ModelType::Claude3Sonnet => (Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider), "claude-3-sonnet-20240229"),
-            ModelType::Claude3Haiku => (Provider::Anthropic(model_info::providers::anthropic::AnthropicProvider), "claude-3-haiku-20240307"),
+            ModelType::Claude3Opus => (Provider::Anthropic, "claude-3-opus-20240229"),
+            ModelType::Claude3Sonnet => (Provider::Anthropic, "claude-3-sonnet-20240229"),
+            ModelType::Claude3Haiku => (Provider::Anthropic, "claude-3-haiku-20240307"),
             _ => return Err(format!("Model type {:?} is not yet implemented", model_type).into()),
         };
 
         let api_key_env = match provider {
             Provider::OpenAI => "OPENAI_API_KEY",
-            Provider::Anthropic(_) => "ANTHROPIC_API_KEY",
+            Provider::Anthropic => "ANTHROPIC_API_KEY",
             _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
         };
 
@@ -75,11 +75,10 @@ impl Http3CompletionBackend {
         let model_info = ModelInfoBuilder::new()
             .provider_name(match provider {
                 Provider::OpenAI => "openai",
-                Provider::Anthropic(_) => "anthropic",
+                Provider::Anthropic => "anthropic",
                 _ => return Err("Unsupported provider".into()),
             })
             .name(model_name)
-            .with_streaming(true) // All models support streaming
             .build()
             .map_err(|e| format!("Failed to create model info: {}", e))?;
 
@@ -106,7 +105,7 @@ impl CompletionBackend for Http3CompletionBackend {
         AsyncTask::spawn(async move {
             let base_url = provider.default_base_url();
             let endpoint = match provider {
-                Provider::OpenAI | Provider::Anthropic(_) => "/chat/completions",
+                Provider::OpenAI | Provider::Anthropic => "/chat/completions",
                 _ => return Err(CompletionCoreError::ProviderUnavailable("Provider not implemented".to_string())),
             };
 
@@ -131,7 +130,7 @@ impl CompletionBackend for Http3CompletionBackend {
                         "stream": false
                     })
                 }
-                Provider::Anthropic(_) => {
+                Provider::Anthropic => {
                     json!({
                         "model": model_info.name,
                         "max_tokens": 4096,
@@ -160,7 +159,7 @@ impl CompletionBackend for Http3CompletionBackend {
                         .unwrap_or("")
                         .to_string()
                 }
-                Provider::Anthropic(_) => {
+                Provider::Anthropic => {
                     response["content"][0]["text"]
                         .as_str()
                         .unwrap_or("")

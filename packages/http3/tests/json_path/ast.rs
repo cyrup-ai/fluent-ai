@@ -47,10 +47,10 @@ mod ast_construction_tests {
             ),
         ];
 
-        for (original, canonical, description) in canonicalization_tests {
+        for (original, canonical, _description) in canonicalization_tests {
             println!(
                 "AST canonicalization: '{}' -> '{}' ({})",
-                original, canonical, description
+                original, canonical, _description
             );
 
             let original_result = JsonPathParser::compile(original);
@@ -98,12 +98,11 @@ mod ast_construction_tests {
                 let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream
+                let _results: Vec<_> = stream
                     .process_chunk(chunk)
-                    .map(|r| r.expect("Valid deserialization"))
                     .collect();
 
-                results_sets.push(results);
+                results_sets.push(_results);
                 println!(
                     "  AST path '{}' -> {} results",
                     path,
@@ -112,11 +111,11 @@ mod ast_construction_tests {
             }
 
             // All equivalent AST paths should produce the same results
-            for (i, results) in results_sets.iter().enumerate() {
-                for (j, other_results) in results_sets.iter().enumerate() {
+            for (i, results) in _results_sets.iter().enumerate() {
+                for (j, other_results) in _results_sets.iter().enumerate() {
                     if i != j {
                         assert_eq!(
-                            results.len(),
+                            _results.len(),
                             other_results.len(),
                             "Equivalent AST paths should produce same results: {} vs {}",
                             path_group[i],
@@ -270,13 +269,13 @@ mod ast_segment_tests {
         }"#;
 
         let mut stream =
-            JsonArrayStream::<serde_json::Value>::new("$..books[0]").expect("Valid JSONPath AST");
+            JsonArrayStream::<serde_json::Value>::new("$..books[0]");
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(),
+            _results.len(),
             2,
             "AST should handle descendant followed by child segment"
         );
@@ -296,14 +295,14 @@ mod ast_segment_tests {
 
         let json_data = serde_json::to_string(&nested_json).expect("JSON serialization");
 
-        let mut stream = JsonArrayStream::<i32>::new("$..value").expect("Valid JSONPath AST");
+        let mut stream = JsonArrayStream::<i32>::new("$..value");
 
         let chunk = Bytes::from(json_data);
         let start_time = std::time::Instant::now();
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
         let duration = start_time.elapsed();
 
-        assert_eq!(results.len(), 1, "AST should find the deeply nested value");
+        assert_eq!(_results.len(), 1, "AST should find the deeply nested value");
         println!("AST deep traversal took {:?}", duration);
 
         // AST traversal performance should be reasonable
@@ -377,14 +376,14 @@ mod ast_validation_tests {
             let result = JsonPathParser::compile(path);
             match result {
                 Ok(_) => {
-                    let mut stream = JsonArrayStream::<i32>::new(path).expect("Valid JSONPath AST");
+                    let mut stream = JsonArrayStream::<i32>::new(path);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "  AST compiled and executed successfully, {} results",
-                        results.len()
+                        _results.len()
                     );
                 }
                 Err(e) => println!("  AST failed to compile: {:?}", e),
@@ -416,11 +415,11 @@ mod ast_validation_tests {
             ),
         ];
 
-        for (original, normalized, description) in unicode_key_tests {
+        for (original, normalized, _description) in unicode_key_tests {
             let mut original_stream =
-                JsonArrayStream::<String>::new(original).expect("Valid JSONPath AST");
+                JsonArrayStream::<String>::new(original);
             let mut normalized_stream =
-                JsonArrayStream::<String>::new(normalized).expect("Valid JSONPath AST");
+                JsonArrayStream::<String>::new(normalized);
 
             let chunk = Bytes::from(json_data);
             let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
@@ -430,7 +429,7 @@ mod ast_validation_tests {
                 "AST Unicode key test: '{}' -> '{}' ({}) -> {} vs {} results",
                 original,
                 normalized,
-                description,
+                _description,
                 original_results.len(),
                 normalized_results.len()
             );

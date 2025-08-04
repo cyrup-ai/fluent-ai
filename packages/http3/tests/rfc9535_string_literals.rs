@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 struct StringTestModel {
     text: String,
-    description: String,
+    _description: String,
     code: String,
 }
 
@@ -47,10 +47,10 @@ mod string_literal_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Escape sequence test '{}' should return {} items",
                 expr,
@@ -95,10 +95,10 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     assert_eq!(
-                        results.len(),
+                        _results.len(),
                         expected_count,
                         "Standard escape '{}' should return {} items",
                         expr,
@@ -117,11 +117,11 @@ mod string_literal_tests {
         // RFC 9535: Unicode escape sequences \uXXXX
         let json_data = r#"{
             "unicode": [
-                {"char": "A", "description": "Latin A"},
-                {"char": "α", "description": "Greek alpha"},
-                {"char": "中", "description": "Chinese character"},
-                {"char": "🚀", "description": "Rocket emoji"},
-                {"char": "€", "description": "Euro symbol"}
+                {"char": "A", "_description": "Latin A"},
+                {"char": "α", "_description": "Greek alpha"},
+                {"char": "中", "_description": "Chinese character"},
+                {"char": "🚀", "_description": "Rocket emoji"},
+                {"char": "€", "_description": "Euro symbol"}
             ]
         }"#;
 
@@ -139,12 +139,12 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Unicode escape '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -184,12 +184,12 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Quote handling '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -229,12 +229,12 @@ mod string_literal_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Complex pattern '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }
@@ -270,10 +270,10 @@ mod string_literal_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Empty string test '{}' should return {} items",
                 expr,
@@ -312,10 +312,10 @@ mod string_literal_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "String comparison '{}' should return {} items",
                 expr,
@@ -430,11 +430,11 @@ mod extended_string_tests {
             (r#"\uABCD"#, true), // Valid: uppercase
         ];
 
-        for (escape_seq, should_be_valid) in hex_test_cases {
+        for (escape_seq, _should_be_valid) in hex_test_cases {
             let expr = format!(r#"$.test[?@.char == "{}"]"#, escape_seq);
             let result = JsonPathParser::compile(&expr);
 
-            if should_be_valid {
+            if _should_be_valid {
                 println!(
                     "Hex validation '{}' should be valid: {:?}",
                     escape_seq,
@@ -468,11 +468,11 @@ mod extended_string_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         let duration = start_time.elapsed();
 
-        assert_eq!(results.len(), 1, "Should find the long string");
+        assert_eq!(_results.len(), 1, "Should find the long string");
         assert!(
             duration.as_millis() < 1000,
             "String literal performance should complete in <1000ms, took {:?}",
@@ -505,10 +505,10 @@ mod extended_string_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
-                results.len(),
+                _results.len(),
                 expected_count,
                 "Multibyte test '{}' should return {} items",
                 expr,
@@ -549,12 +549,12 @@ mod extended_string_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(&expr);
 
                     let chunk = Bytes::from(json_str.clone());
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+                    let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
                     println!(
                         "Control character test '{}' returned {} results (expected {})",
                         expr,
-                        results.len(),
+                        _results.len(),
                         expected_count
                     );
                 }

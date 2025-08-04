@@ -11,8 +11,8 @@ pub trait OpTrait {
     fn execute(&self, input: Self::Input) -> Self::Output;
 }
 // use fluent_ai_memory::MemoryManager; // Temporarily disabled to break circular dependency
-use crate::memory::manager::MemoryManagerTrait;
-use crate::memory::primitives::MemoryError;
+use super::manager::MemoryManagerTrait;
+use super::primitives::MemoryError;
 
 /// Memory workflow operation implementation
 #[allow(dead_code)] // TODO: Implement memory workflow operation structure

@@ -540,21 +540,31 @@ impl ChatTemplate {
 /// Template configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateConfig {
+    /// Maximum size in bytes for a single template
     pub max_template_size: usize,
+    /// Maximum number of variables allowed in a template
     pub max_variables: usize,
+    /// Whether to allow templates to include other templates
     pub allow_nested_templates: bool,
+    /// Whether to cache compiled templates for reuse
     pub cache_compiled: bool,
+    /// Whether to apply optimizations to templates during compilation
     pub optimize_templates: bool,
+    /// Security restrictions for template execution
     pub security_mode: SecurityMode,
 }
 
 /// Security mode for templates
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityMode {
-    Strict,   // No external access, limited functions
-    Normal,   // Standard functions allowed
-    Relaxed,  // Most functions allowed
-    Disabled, // All functions allowed
+    /// No external access, limited functions
+    Strict,   
+    /// Standard functions allowed
+    Normal,   
+    /// Most functions allowed
+    Relaxed,  
+    /// All functions allowed
+    Disabled, 
 }
 
 impl Default for TemplateConfig {
@@ -573,21 +583,29 @@ impl Default for TemplateConfig {
 /// Template example for documentation
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateExample {
+    /// Name of the template example
     pub name: Arc<str>,
+    /// Description of what the template demonstrates
     pub description: Arc<str>,
+    /// Input variables and their example values
     pub input_variables: HashMap<Arc<str>, Arc<str>>,
+    /// Expected output when template is rendered with the input variables
     pub expected_output: Arc<str>,
 }
 
 /// Template tag for categorization
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TemplateTag {
+    /// Name of the tag
     pub name: Arc<str>,
+    /// Optional color for UI display
     pub color: Option<Arc<str>>,
+    /// Optional description of the tag's purpose
     pub description: Option<Arc<str>>,
 }
 
 impl TemplateTag {
+    /// Create a new template tag with the given name
     pub fn new(name: impl Into<Arc<str>>) -> Self {
         Self {
             name: name.into(),
@@ -596,11 +614,13 @@ impl TemplateTag {
         }
     }
 
+    /// Set the color for this tag
     pub fn with_color(mut self, color: impl Into<Arc<str>>) -> Self {
         self.color = Some(color.into());
         self
     }
 
+    /// Set the description for this tag
     pub fn with_description(mut self, description: impl Into<Arc<str>>) -> Self {
         self.description = Some(description.into());
         self

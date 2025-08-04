@@ -93,7 +93,7 @@ pub trait MemoryManagerTrait: Send + Sync {
 // Trait is already exported as public above
 
 // Primary error type is now the new MemoryError from primitives
-pub type Error = crate::memory::primitives::MemoryError;
+pub type Error = primitives::MemoryError;
 
 // Compatibility aliases
 pub type VectorStoreError = Error;
@@ -115,7 +115,7 @@ pub struct MemorySystemConfig {
 
 impl MemorySystemConfig {
     /// Create optimized configuration for production use
-    pub fn optimized() -> crate::memory::primitives::MemoryResult<Self> {
+    pub fn optimized() -> primitives::MemoryResult<Self> {
         Ok(Self {
             database: DatabaseConfig::default(),
             vector_store: VectorStoreConfig::default(),
@@ -125,7 +125,7 @@ impl MemorySystemConfig {
     }
 
     /// Create minimal configuration for testing
-    pub fn minimal() -> crate::memory::primitives::MemoryResult<Self> {
+    pub fn minimal() -> primitives::MemoryResult<Self> {
         Ok(Self {
             database: DatabaseConfig::default(),
             vector_store: VectorStoreConfig::new(
@@ -139,7 +139,7 @@ impl MemorySystemConfig {
     }
 
     /// Validate configuration consistency
-    pub fn validate(&self) -> crate::memory::primitives::MemoryResult<()> {
+    pub fn validate(&self) -> primitives::MemoryResult<()> {
         self.vector_store.validate()?;
         self.llm.validate()?;
         Ok(())
@@ -157,7 +157,7 @@ impl Default for MemorySystemConfig {
 impl MemorySystemConfig {
 
     /// Create configuration optimized for semantic search
-    pub fn for_semantic_search() -> crate::memory::primitives::MemoryResult<Self> {
+    pub fn for_semantic_search() -> primitives::MemoryResult<Self> {
         Ok(Self {
             database: DatabaseConfig::default(),
             vector_store: VectorStoreConfig::new(
@@ -174,7 +174,7 @@ impl MemorySystemConfig {
     }
 
     /// Create configuration optimized for real-time chat
-    pub fn for_realtime_chat() -> crate::memory::primitives::MemoryResult<Self> {
+    pub fn for_realtime_chat() -> primitives::MemoryResult<Self> {
         Ok(Self {
             database: DatabaseConfig::new(DatabaseType::Memory, "memory", "chat", "realtime")?
                 .with_pool_config(PoolConfig::minimal()),
@@ -187,7 +187,7 @@ impl MemorySystemConfig {
     }
 
     /// Create configuration optimized for large-scale data processing
-    pub fn for_large_scale() -> crate::memory::primitives::MemoryResult<Self> {
+    pub fn for_large_scale() -> primitives::MemoryResult<Self> {
         Ok(Self {
             database: DatabaseConfig::new(
                 DatabaseType::PostgreSQL,

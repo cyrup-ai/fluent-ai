@@ -255,7 +255,11 @@ impl Client {
 // ============================================================================
 // Typestate markers
 // ============================================================================
+
+/// Typestate marker indicating that prompt is required for XAI completion builder
 pub struct NeedsPrompt;
+
+/// Typestate marker indicating that prompt has been provided for XAI completion builder  
 pub struct HasPrompt;
 
 // ============================================================================

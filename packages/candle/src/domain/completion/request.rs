@@ -1,5 +1,5 @@
 //! Completion request types and builders
-//!
+//! 
 //! Contains request structures and builder patterns for completion functionality.
 
 // Removed unused import: std::borrow::Cow
@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
-use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition};
+use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE};
+use crate::domain::http::requests::completion::ToolDefinition;
 use cyrup_sugars::ZeroOneOrMany;
 use crate::domain::chat::message::types::CandleMessage as ChatMessage;
 use crate::domain::context::CandleDocument as Document;
@@ -33,7 +34,8 @@ pub struct CompletionRequest {
     /// Size of chunks for streaming
     pub chunk_size: Option<usize>,
     /// Additional provider-specific parameters
-    pub additional_params: Option<Value>}
+    pub additional_params: Option<Value>,
+}
 
 /// Error type for completion request validation
 #[derive(Debug, Error)]
@@ -99,4 +101,3 @@ impl CompletionRequest {
             additional_params: self.additional_params}
     }
 }
-
