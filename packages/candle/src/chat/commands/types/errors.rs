@@ -3,11 +3,11 @@
 //! This module defines all error types and result handling for command execution
 //! with minimal allocations and clear error reporting.
 
-use serde::{Deserialize, Serialize};
+
 use thiserror::Error;
 
 /// Command execution errors with minimal allocations
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum CommandError {
     /// Command name not recognized
     #[error("Unknown command: {command}")]
@@ -31,8 +31,25 @@ pub enum CommandError {
     #[error("Permission denied")]
     PermissionDenied,
     /// Error parsing command parameters
-    #[error("Parse error: {0}")]
-    ParseError(String),
+    #[error("Parse error: {message}")]
+    ParseError { 
+        /// Error message
+        message: String,
+        /// Input that failed to parse
+        input: String,
+    },
+    /// Command already exists
+    #[error("Command already exists: {command}")]
+    CommandAlreadyExists { 
+        /// Command name that already exists
+        command: String 
+    },
+    /// Alias already exists
+    #[error("Alias already exists: {alias}")]
+    AliasAlreadyExists { 
+        /// Alias name that already exists
+        alias: String 
+    },
     /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
     ConfigurationError { 
@@ -81,8 +98,8 @@ impl CommandError {
     }
 
     /// Create a new ParseError
-    pub fn parse_error(msg: impl Into<String>) -> Self {
-        Self::ParseError(msg.into())
+    pub fn parse_error(msg: impl Into<String>, input: impl Into<String>) -> Self {
+        Self::ParseError { message: msg.into(), input: input.into() }
     }
 
     /// Create a new ConfigurationError
@@ -113,13 +130,15 @@ impl CommandError {
             CommandError::InvalidSyntax { .. } => true,
             CommandError::ExecutionFailed(_) => false,
             CommandError::PermissionDenied => false,
-            CommandError::ParseError(_) => true,
+            CommandError::ParseError { .. } => true,
             CommandError::ConfigurationError { .. } => true,
             CommandError::IoError(_) => true,
             CommandError::NetworkError(_) => true,
             CommandError::Timeout => true,
             CommandError::NotFound => false,
             CommandError::InternalError(_) => false,
+            CommandError::CommandAlreadyExists { .. } => false,
+            CommandError::AliasAlreadyExists { .. } => false,
         }
     }
 
@@ -131,13 +150,15 @@ impl CommandError {
             CommandError::InvalidSyntax { .. } => "invalid_syntax",
             CommandError::ExecutionFailed(_) => "execution_failed",
             CommandError::PermissionDenied => "permission_denied",
-            CommandError::ParseError(_) => "parse_error", 
+            CommandError::ParseError { .. } => "parse_error", 
             CommandError::ConfigurationError { .. } => "configuration_error",
             CommandError::IoError(_) => "io_error",
             CommandError::NetworkError(_) => "network_error",
             CommandError::Timeout => "timeout",
             CommandError::NotFound => "not_found",
             CommandError::InternalError(_) => "internal_error",
+            CommandError::CommandAlreadyExists { .. } => "command_already_exists",
+            CommandError::AliasAlreadyExists { .. } => "alias_already_exists",
         }
     }
 }

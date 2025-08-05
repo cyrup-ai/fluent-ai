@@ -239,7 +239,7 @@ impl ResponseFormatter {
         );
 
         if let Some(data) = &output.data {
-            json_output.insert("data".to_string(), Value::String(data.clone()));
+            json_output.insert("data".to_string(), data.clone());
         }
 
         if self.include_timestamps {

@@ -149,11 +149,10 @@ mod whitespace_tests {
         ];
 
         for (expr, _desc) in expressions {
-            let result = JsonPathParser::compile(expr);
+            let _result = JsonPathParser::compile(expr);
             // Document current whitespace handling behavior
             // These expressions may be valid or invalid depending on implementation
             // The key is consistent handling across similar patterns
-            let result = result; // Allow either pass or fail, test for consistency
             // Future: Add specific whitespace behavior expectations based on RFC clarification
         }
     }

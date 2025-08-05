@@ -4,6 +4,7 @@
 //! for performance monitoring and help generation.
 
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 use super::parameters::ParameterInfo;
 
 /// Command information for command registry with owned strings
@@ -109,12 +110,23 @@ pub struct ResourceUsage {
     pub peak_memory_bytes: u64,
     /// Total execution time in microseconds
     pub total_time_us: u64,
+    /// Start time for resource tracking (not serialized)
+    #[serde(skip)]
+    pub start_time: Option<Instant>,
 }
 
 impl ResourceUsage {
     /// Create new empty resource usage
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create new resource usage with start time recorded
+    pub fn new_with_start_time() -> Self {
+        Self {
+            start_time: Some(Instant::now()),
+            ..Self::default()
+        }
     }
 
     /// Add memory usage
@@ -141,6 +153,14 @@ impl ResourceUsage {
     /// Set total execution time
     pub fn set_total_time(&mut self, microseconds: u64) {
         self.total_time_us = microseconds;
+    }
+
+    /// Finalize timing based on start_time (if set)
+    pub fn finalize_timing(&mut self) {
+        if let Some(start_time) = self.start_time.take() {
+            let elapsed = start_time.elapsed();
+            self.total_time_us = elapsed.as_micros() as u64;
+        }
     }
 
     /// Get formatted memory usage

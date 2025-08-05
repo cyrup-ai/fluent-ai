@@ -130,13 +130,13 @@ mod injection_attack_tests {
         ];
 
         // Parse JSON data for testing
-        let json_value: serde_json::Value = serde_json::from_str(json_data)
+        let _json_value: serde_json::Value = serde_json::from_str(json_data)
             .expect("Test JSON should be valid");
 
         for path in escape_injection_tests {
             let result = JsonPathParser::compile(path);
             match result {
-                Ok(expr) => {
+                Ok(_expr) => {
                     // Test that the compiled expression can safely process the JSON
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
                     let chunk = Bytes::from(json_data);
@@ -178,13 +178,13 @@ mod injection_attack_tests {
         ];
 
         // Parse JSON data for Unicode testing
-        let json_value: serde_json::Value = serde_json::from_str(json_data)
+        let _json_value: serde_json::Value = serde_json::from_str(json_data)
             .expect("Unicode test JSON should be valid");
 
         for path in unicode_injection_tests {
             let result = JsonPathParser::compile(path);
             match result {
-                Ok(expr) => {
+                Ok(_expr) => {
                     // Test that Unicode paths can safely process the JSON data
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
                     let chunk = Bytes::from(json_data);
@@ -901,7 +901,7 @@ mod parser_vulnerability_tests {
     fn test_buffer_overflow_protection() {
         // Test protection against buffer overflow attacks through oversized inputs
         let extremely_long_property = "a".repeat(100000);
-        let oversized_json = format!(r#"{{"{}": "value"}}"#, extremely_long_property);
+        let _oversized_json = format!(r#"{{"{}": "value"}}"#, extremely_long_property);
 
         let buffer_overflow_tests = vec![
             (format!("$.{}", extremely_long_property), "Extremely long property name"),
@@ -1138,7 +1138,7 @@ mod error_recovery_tests {
             let streamresult = std::panic::catch_unwind(|| {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(invalid_path);
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream.process_chunk(chunk).collect();
+                let _results: Vec<_> = stream.process_chunk(chunk).collect();
             });
 
             // Either the stream creation should panic or handle gracefully
@@ -1206,7 +1206,7 @@ mod error_recovery_tests {
                     if let Ok(_) = parseresult {
                         let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
                         let chunk = Bytes::from(r#"{"test": "data"}"#);
-                        let results: Vec<_> = stream.process_chunk(chunk).collect();
+                        let _results: Vec<_> = stream.process_chunk(chunk).collect();
                     }
                 });
 

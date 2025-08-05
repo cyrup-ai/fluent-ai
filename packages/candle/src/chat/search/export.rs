@@ -49,25 +49,28 @@ impl SearchExporter {
             results
         };
 
+        // Clone self to avoid borrowing issues
+        let self_clone = self.clone();
+
         AsyncStream::with_channel(move |sender| {
             match export_options.format {
                 ExportFormat::Json => {
-                    if let Ok(json) = self.export_json_sync(&limited_results, &export_options) {
+                    if let Ok(json) = self_clone.export_json_sync(&limited_results, &export_options) {
                         let _ = sender.send(json);
                     }
                 }
                 ExportFormat::Csv => {
-                    if let Ok(csv) = self.export_csv_sync(&limited_results, &export_options) {
+                    if let Ok(csv) = self_clone.export_csv_sync(&limited_results, &export_options) {
                         let _ = sender.send(csv);
                     }
                 }
                 ExportFormat::Xml => {
-                    if let Ok(xml) = self.export_xml_sync(&limited_results, &export_options) {
+                    if let Ok(xml) = self_clone.export_xml_sync(&limited_results, &export_options) {
                         let _ = sender.send(xml);
                     }
                 }
                 ExportFormat::Text => {
-                    if let Ok(text) = self.export_text_sync(&limited_results, &export_options) {
+                    if let Ok(text) = self_clone.export_text_sync(&limited_results, &export_options) {
                         let _ = sender.send(text);
                     }
                 }

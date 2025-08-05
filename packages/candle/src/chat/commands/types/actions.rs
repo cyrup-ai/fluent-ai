@@ -52,6 +52,12 @@ pub enum SearchScope {
     Assistant,
     /// Search system messages only
     System,
+    /// Search current conversation only
+    Current,
+    /// Search recent messages only
+    Recent,
+    /// Search bookmarked messages only
+    Bookmarked,
 }
 
 /// Branch operations for conversation management

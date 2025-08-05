@@ -39,10 +39,13 @@ impl SearchExporter {
             results
         };
 
+        // Clone self to avoid borrowing issues
+        let self_clone = self.clone();
+
         AsyncStream::with_channel(move |sender| {
             match export_options.format {
                 ExportFormat::Json => {
-                    if let Ok(json) = self.export_json_sync(&limited_results, &export_options) {
+                    if let Ok(json) = self_clone.export_json_sync(&limited_results, &export_options) {
                         let _ = sender.send(json);
                     }
                 }

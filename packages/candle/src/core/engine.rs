@@ -531,7 +531,7 @@ impl Engine {
             let is_deterministic = sampling_config.temperature <= 0.0;
             
             // Create special tokens from model config  
-            let candle_tokenizer = match crate::providers::tokenizer::CandleTokenizer::from_file(&model_config.tokenizer_path) {
+            let _candle_tokenizer = match crate::providers::tokenizer::CandleTokenizer::from_file(&model_config.tokenizer_path) {
                 Ok(tokenizer) => tokenizer,
                 Err(e) => {
                     let error_response = CompletionResponse {
@@ -549,9 +549,8 @@ impl Engine {
                 }
             };
             
-            let special_tokens = SpecialTokens::new(
-                candle_tokenizer,
-                model_config.special_tokens.eos_token_id,
+            let special_tokens = SpecialTokens::new_basic(
+                model_config.special_tokens.eos_token_id
             );
             
             // Tokenize input prompt  

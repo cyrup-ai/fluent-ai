@@ -995,16 +995,16 @@ impl MacroProcessor {
         );
 
         // Update statistics
-        self.stats
+        self_clone.stats
             .total_executions
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.stats
+        self_clone.stats
             .active_executions
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         // Merge context variables with global variables
         let mut execution_context = {
-            let global_vars = self.variables.read().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let global_vars = self_clone.variables.read().unwrap_or_else(|poisoned| poisoned.into_inner());
             let mut context = global_vars.clone();
             context.extend(context_variables.clone());
             context.extend(macro_def.variables.clone());

@@ -92,20 +92,11 @@ impl ResponseFormatter {
     fn format_text(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut result = String::new();
 
-        // Add status indicator based on output type
-        if matches!(output.output_type, OutputType::Text) {
-            result.push_str("✓ ");
-        } else {
-            result.push_str("✗ ");
-        }
-
-        // Add main message
+        // Per streams-only architecture: output is CandleMessageChunk directly, no Result wrapping
+        // Success indicator
+        result.push_str("✓ ");
+        // Add main message from CandleMessageChunk
         result.push_str(&output.content);
-
-        // Add execution time if metrics are enabled
-        if self.include_metrics && output.execution_time > 0 {
-            result.push_str(&format!(" ({}μs)", output.execution_time));
-        }
 
         // Add timestamp if enabled
         if self.include_timestamps {
@@ -120,40 +111,15 @@ impl ResponseFormatter {
     fn format_json(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut json_output = Map::new();
 
-        json_output.insert(
-            "success".to_string(),
-            Value::Bool(matches!(output.output_type, OutputType::Text)),
-        );
+        // Per streams-only architecture: output is CandleMessageChunk directly, no Result wrapping
+        json_output.insert("success".to_string(), Value::Bool(true));
         json_output.insert("message".to_string(), Value::String(output.content.clone()));
+        json_output.insert("done".to_string(), Value::Bool(output.done));
 
         // Note: CommandOutput doesn't have a data field, so we'll skip this for now
 
-        if self.include_metrics {
-            let mut metrics = Map::new();
-            metrics.insert(
-                "execution_time_us".to_string(),
-                Value::Number(output.execution_time.into()),
-            );
-            if let Some(ref usage) = output.resource_usage {
-                metrics.insert(
-                    "memory_bytes".to_string(),
-                    Value::Number(usage.memory_bytes.into()),
-                );
-                metrics.insert(
-                    "cpu_time_us".to_string(),
-                    Value::Number(usage.cpu_time_us.into()),
-                );
-                metrics.insert(
-                    "network_requests".to_string(),
-                    Value::Number(usage.network_requests.into()),
-                );
-                metrics.insert(
-                    "disk_operations".to_string(),
-                    Value::Number(usage.disk_operations.into()),
-                );
-            }
-            json_output.insert("metrics".to_string(), Value::Object(metrics));
-        }
+        // Note: Metrics are not available in basic CandleMessageChunk
+        // They would need to be added if required
 
         if self.include_timestamps {
             let timestamp = chrono::Utc::now().to_rfc3339();
@@ -179,39 +145,15 @@ impl ResponseFormatter {
         // Header
         result.push_str("=== Command Response ===\n");
 
+        // Per streams-only architecture: output is CandleMessageChunk directly, no Result wrapping
         // Status
-        result.push_str(&format!(
-            "Status: {}\n",
-            if output.success { "SUCCESS" } else { "FAILED" }
-        ));
-
+        result.push_str("Status: SUCCESS\n");
         // Message
-        result.push_str(&format!("Message: {}\n", output.message));
+        result.push_str(&format!("Message: {}\n", output.content));
+        // Done status
+        result.push_str(&format!("Complete: {}\n", output.done));
 
-        // Data section
-        if let Some(data) = &output.data {
-            result.push_str("Data:\n");
-            let data_str = serde_json::to_string_pretty(data).map_err(|e| {
-                ResponseError::SerializationError {
-                    detail: Arc::from(e.to_string()),
-                }
-            })?;
-            for line in data_str.lines() {
-                result.push_str(&format!("  {}\n", line));
-            }
-        }
-
-        // Metrics section
-        if self.include_metrics {
-            result.push_str("Metrics:\n");
-            result.push_str(&format!("  Execution Time: {}μs\n", output.execution_time));
-            if let Some(ref usage) = output.resource_usage {
-                result.push_str(&format!("  Memory Usage: {} bytes\n", usage.memory_bytes));
-                result.push_str(&format!("  CPU Time: {}μs\n", usage.cpu_time_us));
-                result.push_str(&format!("  Network Requests: {}\n", usage.network_requests));
-                result.push_str(&format!("  Disk Operations: {}\n", usage.disk_operations));
-            }
-        }
+        // Note: Metrics are not available in basic CandleMessageChunk
 
         // Timestamp
         if self.include_timestamps {
@@ -232,15 +174,11 @@ impl ResponseFormatter {
             "type".to_string(),
             Value::String("command_response".to_string()),
         );
-        json_output.insert("success".to_string(), Value::Bool(output.success));
-        json_output.insert(
-            "message".to_string(),
-            Value::String(output.message.to_string()),
-        );
-
-        if let Some(data) = &output.data {
-            json_output.insert("data".to_string(), Value::String(data.clone()));
-        }
+        
+        // Per streams-only architecture: output is CandleMessageChunk directly, no Result wrapping
+        json_output.insert("success".to_string(), Value::Bool(true));
+        json_output.insert("message".to_string(), Value::String(output.content.clone()));
+        json_output.insert("done".to_string(), Value::Bool(output.done));
 
         if self.include_timestamps {
             let timestamp = chrono::Utc::now().timestamp_millis();
@@ -254,22 +192,11 @@ impl ResponseFormatter {
 
     /// Format error response
     pub fn format_error(&self, error: &CommandError) -> Result<String, ResponseError> {
-        let output = CommandOutput {
-            execution_id: 0,
-            content: error.to_string(),
-            output_type: OutputType::Text,
-            timestamp_nanos: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_nanos() as u64)
-                .unwrap_or(0),
-            is_final: true,
-            execution_time: 0,
-            success: false,
-            message: error.to_string(),
-            data: None,
-            resource_usage: None,
+        // Per streams-only architecture: convert error to CandleMessageChunk
+        let output: CommandOutput = crate::domain::chat::message::types::CandleMessageChunk {
+            content: format!("Error: {}", error),
+            done: true
         };
-
         self.format_output(&output)
     }
 

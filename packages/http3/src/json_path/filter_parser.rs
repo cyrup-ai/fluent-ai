@@ -289,13 +289,11 @@ impl<'a> FilterParser<'a> {
                 let name = name.clone();
                 self.consume_token();
                 
-                // Check if there are more tokens - if not, this is a simple property access
-                if self.peek_token().is_none() || matches!(self.peek_token(), Some(Token::EOF)) {
-                    // Simple property access should create a Property expression, not JsonPath
-                    return Ok(FilterExpression::Property { 
-                        path: vec![name]
-                    });
-                }
+                // Simple property access: @.property should always return Property expression
+                // Don't try to parse complex JSONPath for simple property access
+                return Ok(FilterExpression::Property { 
+                    path: vec![name]
+                });
             } else {
                 return Err(invalid_expression_error(
                     self.input,

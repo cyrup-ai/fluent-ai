@@ -93,12 +93,7 @@ impl CommandValidator {
                     self.validate_integer_parameter("limit", *n as i64, Some(1), Some(100))?;
                 }
             }
-            ImmutableChatCommand::Template {
-                name,
-                content,
-                variables,
-                ..
-            } => {
+            ImmutableChatCommand::Template { name, content, variables, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -107,9 +102,12 @@ impl CommandValidator {
                 }
                 self.validate_variables(variables)?;
             }
-            ImmutableChatCommand::Macro { name, .. } => {
+            ImmutableChatCommand::Macro { name, commands, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
+                }
+                for (i, cmd) in commands.iter().enumerate() {
+                    self.validate_string_parameter(&format!("command_{}", i), cmd, false)?;
                 }
             }
             ImmutableChatCommand::Branch { name, source, .. } => {
@@ -133,12 +131,10 @@ impl CommandValidator {
             }
             ImmutableChatCommand::Stats { period, .. } => {
                 if let Some(p) = period {
-                    self.validate_enum_parameter("period", p, &["day", "week", "month", "all"])?;
+                    self.validate_enum_parameter("period", p, &["day", "week", "month", "year"])?;
                 }
             }
-            ImmutableChatCommand::Theme {
-                name, properties, ..
-            } => {
+            ImmutableChatCommand::Theme { name, properties, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -146,19 +142,12 @@ impl CommandValidator {
             }
             ImmutableChatCommand::Debug { level, .. } => {
                 if let Some(l) = level {
-                    self.validate_enum_parameter(
-                        "level",
-                        l,
-                        &["error", "warn", "info", "debug", "trace"],
-                    )?;
+                    self.validate_enum_parameter("level", l, &["trace", "debug", "info", "warn", "error"])?;
                 }
             }
-            ImmutableChatCommand::History { limit, filter, .. } => {
-                if let Some(n) = limit {
-                    self.validate_integer_parameter("limit", *n as i64, Some(1), Some(10000))?;
-                }
+            ImmutableChatCommand::History { filter, .. } => {
                 if let Some(f) = filter {
-                    self.validate_string_parameter("filter", f, false)?;
+                    self.validate_string_parameter("filter", f, true)?;
                 }
             }
             ImmutableChatCommand::Save { name, location, .. } => {
@@ -170,22 +159,77 @@ impl CommandValidator {
                 }
             }
             ImmutableChatCommand::Load { name, location, .. } => {
-                self.validate_name_parameter("name", name)?;
+                self.validate_string_parameter("name", name, false)?;
                 if let Some(l) = location {
                     self.validate_path_parameter("location", l)?;
                 }
             }
             ImmutableChatCommand::Import { source, .. } => {
-                self.validate_path_parameter("source", source)?;
+                self.validate_string_parameter("source", source, false)?;
+                // Additional import source validation could be added here
             }
-            ImmutableChatCommand::Settings { key, .. } => {
+            ImmutableChatCommand::Settings { key, value, .. } => {
                 if let Some(k) = key {
                     self.validate_string_parameter("key", k, false)?;
                 }
+                if let Some(v) = value {
+                    self.validate_string_parameter("value", v, true)?;
+                }
             }
-            ImmutableChatCommand::Custom { name, .. } => {
-                self.validate_string_parameter("name", name, false)?;
+            ImmutableChatCommand::Custom { name, args, .. } => {
+                self.validate_name_parameter("name", name)?;
+                for (k, v) in args {
+                    self.validate_string_parameter(&format!("arg_{}", k), v, true)?;
+                }
             }
+            ImmutableChatCommand::Copy { message_id, content, format: _ } => {
+                if let Some(msg_id) = message_id {
+                    self.validate_string_parameter("message_id", msg_id, false)?;
+                }
+                if let Some(ctnt) = content {
+                    self.validate_string_parameter("content", ctnt, false)?;
+                }
+                // Format is an enum, so no need to validate
+            }
+            ImmutableChatCommand::Retry { command, attempts, .. } => {
+                if let Some(cmd) = command {
+                    self.validate_string_parameter("command", cmd, false)?;
+                }
+                if let Some(attempts) = attempts {
+                    if *attempts == 0 || *attempts > 100 {
+                        return Err(ValidationError::InvalidParameterFormat {
+                            parameter: "attempts".to_string().into(),
+                            value: attempts.to_string().into(),
+                            expected_format: "1-100".to_string().into(),
+                        });
+                    }
+                }
+            }
+            ImmutableChatCommand::Undo { count, .. } => {
+                if let Some(cnt) = count {
+                    if *cnt == 0 || *cnt > 1000 {
+                        return Err(ValidationError::InvalidParameterFormat {
+                            parameter: "count".to_string().into(),
+                            value: cnt.to_string().into(),
+                            expected_format: "1-1000".to_string().into(),
+                        });
+                    }
+                }
+            }
+            ImmutableChatCommand::Chat { message, context, priority } => {
+                self.validate_string_parameter("message", message, false)?;
+                if let Some(ctx) = context {
+                    self.validate_string_parameter("context", ctx, true)?;
+                }
+                if *priority > 10 {
+                    return Err(ValidationError::InvalidParameterFormat {
+                        parameter: "priority".to_string().into(),
+                        value: priority.to_string().into(),
+                        expected_format: "0-10".to_string().into(),
+                    });
+                }
+            }
+
         }
 
         Ok(())

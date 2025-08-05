@@ -363,13 +363,16 @@ impl MacroSystem {
             metadata,
         };
         
+        // Capture session_id in owned variable before any operations
+        let owned_session_id = session_id;
+        
         // Insert the new session directly
         self.recording_sessions.insert(session_id, new_session);
         
         // Create a stream that immediately yields the session ID using AsyncStream pattern
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
-                let _ = sender.send(session_id);
+                let _ = sender.send(owned_session_id);
             });
         })
     }
@@ -796,6 +799,7 @@ pub struct MacroProcessor {
     /// Execution statistics
     stats: Arc<MacroProcessorStats>,
     /// Variable context for macro execution
+    #[allow(dead_code)] // TODO: Implement variable system for macro expansion
     variables: Arc<RwLock<HashMap<Arc<str>, Arc<str>>>>,
     /// Execution queue for async processing
     #[allow(dead_code)] // TODO: Implement in macro execution system
@@ -1143,6 +1147,44 @@ impl MacroProcessor {
     /// Get active executions count
     pub fn get_active_executions(&self) -> usize {
         self.stats.active_executions.load(Ordering::Relaxed)
+    }
+    
+    /// Set a global variable that persists across macro executions
+    pub fn set_global_variable(&self, name: Arc<str>, value: Arc<str>) -> Result<(), MacroSystemError> {
+        match self.variables.write() {
+            Ok(mut vars) => {
+                vars.insert(name, value);
+                Ok(())
+            }
+            Err(_) => Err(MacroSystemError::ValidationError("Failed to acquire lock on variables".to_string()))
+        }
+    }
+    
+    /// Get a global variable value by name
+    pub fn get_global_variable(&self, name: &str) -> Option<Arc<str>> {
+        match self.variables.read() {
+            Ok(vars) => vars.get(name).cloned(),
+            Err(_) => None
+        }
+    }
+    
+    /// Get all global variables as a snapshot
+    pub fn get_global_variables_snapshot(&self) -> HashMap<Arc<str>, Arc<str>> {
+        match self.variables.read() {
+            Ok(vars) => vars.clone(),
+            Err(_) => HashMap::new()
+        }
+    }
+    
+    /// Clear all global variables
+    pub fn clear_global_variables(&self) -> Result<(), MacroSystemError> {
+        match self.variables.write() {
+            Ok(mut vars) => {
+                vars.clear();
+                Ok(())
+            }
+            Err(_) => Err(MacroSystemError::ValidationError("Failed to acquire lock on variables".to_string()))
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 //! Search result ranking algorithms
 
 use std::collections::HashMap;
-use std::sync::Arc;
+
 
 use super::types::{SearchResult, ProcessedQuery, RankingAlgorithm};
 

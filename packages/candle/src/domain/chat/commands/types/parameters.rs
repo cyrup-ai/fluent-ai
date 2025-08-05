@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use super::errors::{CandleCommandError, CommandResult, ValidationResult};
+use super::errors::{CandleCommandError, ValidationResult};
 
 /// Parameter type enumeration for command parameters with zero allocation dispatch
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

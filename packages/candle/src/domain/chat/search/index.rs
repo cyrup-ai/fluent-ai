@@ -14,8 +14,7 @@ use fluent_ai_async::AsyncStream;
 
 use crate::domain::chat::message::CandleSearchChatMessage as SearchChatMessage;
 use super::types::{
-    SearchError, SearchStatistics, TermFrequency, IndexEntry, SearchResult,
-    QueryOperator, MatchPosition, SearchResultMetadata,
+    SearchError, SearchStatistics, TermFrequency, IndexEntry,
 };
 
 /// Chat search index with SIMD optimization
@@ -190,7 +189,7 @@ impl ChatSearchIndex {
                     .to_lowercase();
                 Arc::from(cleaned)
             })
-            .filter(|token| !token.is_empty())
+            .filter(|token: &Arc<str>| !token.is_empty())
             .collect()
     }
 

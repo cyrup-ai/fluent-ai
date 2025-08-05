@@ -10,11 +10,11 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
-#[cfg(feature = "bincode-serialization")]
+#[cfg(feature = "bincode")]
 use bincode;
 use crossbeam_queue::SegQueue;
 use fluent_ai_async::{AsyncStream, emit};
-#[cfg(feature = "rkyv-serialization")]
+#[cfg(feature = "rkyv")]
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::sync::RwLock;
@@ -232,11 +232,11 @@ impl CandleModelConfig {
 /// Core Candle chat configuration
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(
-    feature = "bincode-serialization",
+    feature = "bincode",
     derive(bincode::Encode, bincode::Decode)
 )]
 #[cfg_attr(
-    feature = "rkyv-serialization",
+    feature = "rkyv",
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
 pub struct CandleChatConfig {
@@ -261,11 +261,11 @@ pub struct CandleChatConfig {
 /// Candle personality configuration for AI behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(
-    feature = "bincode-serialization",
+    feature = "bincode",
     derive(bincode::Encode, bincode::Decode)
 )]
 #[cfg_attr(
-    feature = "rkyv-serialization",
+    feature = "rkyv",
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
 pub struct CandlePersonalityConfig {
@@ -295,11 +295,11 @@ pub struct CandlePersonalityConfig {
 /// Candle behavior configuration for chat system
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(
-    feature = "bincode-serialization",
+    feature = "bincode",
     derive(bincode::Encode, bincode::Decode)
 )]
 #[cfg_attr(
-    feature = "rkyv-serialization",
+    feature = "rkyv",
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
 pub struct CandleBehaviorConfig {
@@ -325,11 +325,11 @@ pub struct CandleBehaviorConfig {
 /// Candle user interface configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(
-    feature = "bincode-serialization",
+    feature = "bincode",
     derive(bincode::Encode, bincode::Decode)
 )]
 #[cfg_attr(
-    feature = "rkyv-serialization",
+    feature = "rkyv",
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
 pub struct CandleUIConfig {
@@ -353,11 +353,11 @@ pub struct CandleUIConfig {
 /// Candle integration configuration for external services
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(
-    feature = "bincode-serialization",
+    feature = "bincode",
     derive(bincode::Encode, bincode::Decode)
 )]
 #[cfg_attr(
-    feature = "rkyv-serialization",
+    feature = "rkyv",
     derive(Archive, RkyvDeserialize, RkyvSerialize)
 )]
 pub struct CandleIntegrationConfig {

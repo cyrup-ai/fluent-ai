@@ -20,10 +20,13 @@ impl FilterEvaluator {
         context: &serde_json::Value,
         expr: &FilterExpression,
     ) -> JsonPathResult<bool> {
+        println!("DEBUG: evaluate_predicate called with context={:?}, expr={:?}", 
+                 serde_json::to_string(context).unwrap_or("invalid".to_string()), expr);
         match expr {
             FilterExpression::Property { path } => {
                 // RFC 9535: Property access in filter context checks existence and truthiness
                 // For @.author, this should return false if the object doesn't have an 'author' property
+                println!("DEBUG: Evaluating property filter with path={:?}", path);
                 Self::property_exists_and_truthy(context, path)
             }
             FilterExpression::Comparison {
@@ -64,45 +67,37 @@ impl FilterEvaluator {
     /// This is the correct semantics for [?@.property] filters  
     #[inline]
     fn property_exists_and_truthy(context: &serde_json::Value, path: &[String]) -> JsonPathResult<bool> {
+        println!("DEBUG: property_exists_and_truthy called with context={:?}, path={:?}", 
+                 serde_json::to_string(context).unwrap_or("invalid".to_string()), path);
         let mut current = context;
 
         for property in path {
+            println!("DEBUG: Checking property '{}' in current={:?}", property, 
+                     serde_json::to_string(current).unwrap_or("invalid".to_string()));
             if let Some(obj) = current.as_object() {
                 if let Some(value) = obj.get(property) {
+                    println!("DEBUG: Found property '{}', value={:?}", property, 
+                             serde_json::to_string(value).unwrap_or("invalid".to_string()));
                     current = value;
                 } else {
                     // Property doesn't exist - return false
+                    println!("DEBUG: Property '{}' does not exist, returning false", property);
                     return Ok(false);
                 }
             } else {
                 // Current value is not an object - can't access properties
+                println!("DEBUG: Current value is not an object, returning false");
                 return Ok(false);
             }
         }
 
         // Property exists - check if it's truthy
-        Ok(Self::is_truthy(&Self::json_value_to_filter_value(current)))
+        let result = Self::is_truthy(&Self::json_value_to_filter_value(current));
+        println!("DEBUG: Property path exists, is_truthy result={}", result);
+        Ok(result)
     }
 
-    /// Check if property path exists in context (legacy method)
-    #[inline]
-    fn property_exists(context: &serde_json::Value, path: &[String]) -> JsonPathResult<bool> {
-        let mut current = context;
 
-        for property in path {
-            if let Some(obj) = current.as_object() {
-                if let Some(value) = obj.get(property) {
-                    current = value;
-                } else {
-                    return Ok(false);
-                }
-            } else {
-                return Ok(false);
-            }
-        }
-
-        Ok(!current.is_null())
-    }
 
     /// Resolve property path from context object
     #[inline]

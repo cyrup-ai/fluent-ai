@@ -24,23 +24,13 @@ fluent_ai_http3 = { path = "../http3" }
 candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
 candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
 candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+tokenizers = "0.21.4"
 # — Optional acceleration dependencies —
 half = { version = "2.6.0", optional = true }
 
 
 # Platform-specific acceleration dependencies
-cudarc = { version = "0.17.0", optional = true, default-features = false, features = [
-    "cublas",
-    "cublaslt",
-    "cudnn",
-    "curand",
-    "dynamic-linking",
-    "f16",
-    "std",
-] }
 metal = { version = "0.32.0", optional = true }
-bindgen_cuda = { version = "0.1.5", optional = true }
-candle-kernels = { git = "https://github.com/huggingface/candle", branch = "main", optional = true }
 candle-metal-kernels = { git = "https://github.com/huggingface/candle", branch = "main", optional = true }
 
 # — audio / resampling —
@@ -174,9 +164,31 @@ mkl = [
 # OS-specific acceleration dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
 intel-mkl-src = { version = "0.8.1", optional = true }
+cudarc = { version = "0.17.0", optional = true, default-features = false, features = [
+    "cublas",
+    "cublaslt",
+    "cudnn",
+    "curand",
+    "dynamic-linking",
+    "f16",
+    "std",
+] }
+bindgen_cuda = { version = "0.1.5", optional = true }
+candle-kernels = { git = "https://github.com/huggingface/candle", branch = "main", optional = true }
 
 [target.'cfg(all(target_os = "windows", target_arch = "x86_64"))'.dependencies]
 intel-mkl-src = { version = "0.8.1", optional = true }
+cudarc = { version = "0.17.0", optional = true, default-features = false, features = [
+    "cublas",
+    "cublaslt",
+    "cudnn",
+    "curand",
+    "dynamic-linking",
+    "f16",
+    "std",
+] }
+bindgen_cuda = { version = "0.1.5", optional = true }
+candle-kernels = { git = "https://github.com/huggingface/candle", branch = "main", optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 accelerate-src = { version = "0.3.2", optional = true }

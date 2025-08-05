@@ -5,7 +5,7 @@
 //! blazing-fast algorithms and elegant ergonomic APIs.
 
 use std::sync::Arc;
-use std::time::Instant;
+
 use fluent_ai_async::AsyncStream;
 
 // Submodules

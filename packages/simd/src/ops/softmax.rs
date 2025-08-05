@@ -215,7 +215,7 @@ unsafe fn neon_softmax(logits: &[f32]) -> SimdResult<Vec<f32>> {
         let shifted = vsubq_f32(v, max_b);
 
         // Fast exp approximation for NEON
-        let log2e = vdupq_n_f32(1.442695041f32);
+        let log2e = vdupq_n_f32(std::f32::consts::LOG2_E);
         let c127 = vdupq_n_f32(127.0f32);
         let tmp = vmulq_f32(shifted, log2e);
         let y = vaddq_f32(tmp, c127);

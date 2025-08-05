@@ -246,7 +246,10 @@ impl CoreJsonPathEvaluator {
                         }
                         Value::Object(_) => {
                             // For objects: test the object itself (@ refers to the object)
-                            if FilterEvaluator::evaluate_predicate(value, expression)? {
+                            let filter_result = FilterEvaluator::evaluate_predicate(value, expression)?;
+                            println!("DEBUG: Filter evaluation for object {:?} = {}", 
+                                   serde_json::to_string(value).unwrap_or("invalid".to_string()), filter_result);
+                            if filter_result {
                                 results.push(value.clone());
                             }
                         }
@@ -982,38 +985,7 @@ mod tests {
             println!("Result {}: has_author={}, value={:?}", i + 1, has_author, result);
         }
         
-        // DEBUG: Test filter evaluation separately 
-        use crate::json_path::{filter::FilterEvaluator, filter_parser::FilterParser};
-        use crate::json_path::tokens::Token;
-        use std::collections::VecDeque;
-        
-        let filter_expr = "@.author";
-        let mut tokens = VecDeque::new();
-        // Manually create tokens for "@.author"
-        tokens.push_back(Token::At);
-        tokens.push_back(Token::Dot);
-        tokens.push_back(Token::Identifier("author".to_string()));
-        tokens.push_back(Token::EOF);
-        
-        let mut parser = FilterParser::new(&mut tokens, filter_expr, 0);
-        let filter_ast = parser.parse_filter_expression().expect("Parse filter");
-        
-        println!("\n=== DEBUG: Individual filter tests ===");
-        let book1_obj = json!({"author": "Author 1"});
-        let book2_obj = json!({"author": "Author 2"});
-        let no_author_obj = json!({"title": "No Author"});
-        let test_objects = vec![
-            ("root", &json),
-            ("store", json.get("store").unwrap()),
-            ("book1", &book1_obj),
-            ("book2", &book2_obj),
-            ("no_author", &no_author_obj),
-        ];
-        
-        for (name, obj) in test_objects {
-            let filter_result = FilterEvaluator::evaluate_predicate(obj, &filter_ast).expect("Filter eval");
-            println!("Filter '{}': {} -> {}", name, filter_result, obj);
-        }
+        // RFC-compliant filter should return only objects with author property
         
         // RFC-compliant filter returns only objects that have author property
         assert_eq!(results.len(), 2); // Only the 2 book objects that have author

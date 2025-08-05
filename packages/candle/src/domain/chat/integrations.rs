@@ -503,7 +503,7 @@ impl ExternalIntegration {
 
     /// Execute HTTP request synchronously (REST API or Webhook)
     fn execute_http_request_sync(
-        &mut self,
+        &self,
         request: IntegrationRequest,
     ) -> Option<IntegrationResponse> {
         let client = self
@@ -622,7 +622,7 @@ impl ExternalIntegration {
 
     /// Test integration connectivity
     pub fn test_connection(&mut self) -> AsyncStream<bool> {
-        let mut self_clone = self.clone();
+        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {

@@ -717,7 +717,7 @@ mod type_mismatch_error_tests {
     #[test]
     fn test_context_specific_requirements() {
         // RFC 9535: Different contexts have different type requirements
-        let json_data = r#"{
+        let _json_data = r#"{
             "context_test": [
                 {"number": 42, "string": "test", "boolean": true, "array": [1, 2, 3]}
             ]

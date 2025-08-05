@@ -5,8 +5,8 @@
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use serde::{Deserialize, Serialize};
-use crate::{AsyncStream, AsyncStreamSender};
-use super::{errors::CommandResult, metadata::ResourceUsage};
+
+use super::metadata::ResourceUsage;
 
 /// Command execution context with streaming capabilities
 #[derive(Debug)]

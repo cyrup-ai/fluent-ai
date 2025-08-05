@@ -271,7 +271,7 @@ mod current_node_context_tests {
             ("$.store.books[?@.metadata && length(@.metadata) > 0]", 2, "Function with @ existence check"),
         ];
 
-        for (expr, expected_count, _description) in function_tests {
+        for (expr, _expected_count, _description) in function_tests {
             // Note: These tests validate syntax compilation
             // Actual function execution depends on implementation
             let result = JsonPathParser::compile(expr);
@@ -430,7 +430,7 @@ mod current_node_scope_tests {
             ("$.store.books[?@.nonexistent == null]", 0, "Missing property comparison"),
         ];
 
-        for (expr, expected_count, _description) in comparison_tests {
+        for (expr, _expected_count, _description) in comparison_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(TEST_JSON);
             let results: Vec<_> = stream.process_chunk(chunk).collect();

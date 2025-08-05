@@ -88,6 +88,27 @@ impl JsonPathParser {
             ));
         }
 
+        // RFC 9535: Check for invalid patterns like "$.property..property"
+        // Valid: "$..property" (recursive descent from root)
+        // Invalid: "$.property..property" (property followed by recursive descent followed by property)
+        if let Some(double_dot_pos) = expression.find("..") {
+            if double_dot_pos > 2 { // More than just "$."
+                let before_double_dot = &expression[..double_dot_pos];
+                let after_double_dot = &expression[double_dot_pos + 2..];
+                
+                // Check if we have a property before .. and a property after ..
+                if before_double_dot.len() > 2 && !before_double_dot.ends_with('.') && 
+                   !after_double_dot.is_empty() && !after_double_dot.starts_with('[') && !after_double_dot.starts_with('*') {
+                    // This is a pattern like "$.store..book" which is invalid
+                    return Err(invalid_expression_error(
+                        expression,
+                        "invalid recursive descent pattern: use either '$.property.subproperty' for direct access or '$..property' for recursive search",
+                        Some(double_dot_pos),
+                    ));
+                }
+            }
+        }
+
         // RFC 9535: descendant-segment = ".." S bracket-segment  
         // According to RFC 9535, ".." can be followed by bracket-segment, wildcard '*', or identifier
         // Valid: "$..*", "$..[*]", "$..level1", "$..['key']"

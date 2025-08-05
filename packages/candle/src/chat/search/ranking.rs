@@ -4,7 +4,6 @@
 //! including TF-IDF, BM25, and custom scoring functions.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use super::types::{SearchResult, ProcessedQuery, RankingAlgorithm};
 

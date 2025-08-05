@@ -16,7 +16,7 @@ use tokio::sync::broadcast;
 
 use super::events::RealTimeEvent;
 // Use the domain's RealTimeError
-use super::RealTimeError;
+
 use crate::domain::chat::message::types::{CandleMessage as Message, CandleMessageRole as MessageRole};
 
 /// Live update message with zero-allocation string handling
@@ -191,6 +191,7 @@ pub struct LiveMessageStreamer {
     /// Queue size limit for backpressure
     queue_size_limit: Arc<AtomicUsize>,
     /// Backpressure threshold
+    #[allow(dead_code)] // TODO: Implement backpressure throttling logic
     backpressure_threshold: Arc<AtomicUsize>,
     /// Processing rate in messages per second
     processing_rate: Arc<AtomicU64>,
@@ -348,6 +349,7 @@ impl LiveMessageStreamer {
         };
 
         let queue_size_limit = self.queue_size_limit.clone();
+        let backpressure_threshold = self.backpressure_threshold.clone();
         let backpressure_events = self.backpressure_events.clone();
         let sequence_generator = self.sequence_generator.clone();
         let bytes_processed = self.bytes_processed.clone();
@@ -357,7 +359,9 @@ impl LiveMessageStreamer {
             // Check for backpressure
             let current_queue_size = counter.load(Ordering::Acquire);
             let queue_limit = queue_size_limit.load(Ordering::Acquire);
+            let bp_threshold = backpressure_threshold.load(Ordering::Acquire);
 
+            // Hard limit check - reject messages
             if current_queue_size >= queue_limit {
                 backpressure_events.fetch_add(1, Ordering::AcqRel);
                 
@@ -367,6 +371,15 @@ impl LiveMessageStreamer {
                     message_id: message.id.clone()};
                 emit!(sender, result);
                 return;
+            }
+            
+            // Soft limit check - emit warning but allow message
+            if current_queue_size >= bp_threshold {
+                let warning_result = StreamingResult::BackpressureWarning {
+                    current_size: current_queue_size,
+                    threshold: bp_threshold,
+                    message_id: message.id.clone()};
+                emit!(sender, warning_result);
             }
 
             // Assign sequence number
@@ -528,6 +541,18 @@ impl LiveMessageStreamer {
     pub fn stop_processing(&self) {
         self.processing_active.store(false, Ordering::Release);
     }
+    
+    /// Get current backpressure threshold
+    #[inline]
+    pub fn get_backpressure_threshold(&self) -> usize {
+        self.backpressure_threshold.load(Ordering::Acquire)
+    }
+    
+    /// Update backpressure threshold dynamically
+    #[inline]
+    pub fn set_backpressure_threshold(&self, threshold: usize) {
+        self.backpressure_threshold.store(threshold, Ordering::Release);
+    }
 
     /// Get comprehensive streaming statistics
     pub fn get_statistics(&self) -> StreamingStatistics {
@@ -564,6 +589,11 @@ pub enum StreamingResult {
         message_id: Arc<str>,
         sequence_number: u64,
         queue_position: usize},
+    /// Backpressure warning - queue size approaching limit
+    BackpressureWarning {
+        current_size: usize,
+        threshold: usize,
+        message_id: Arc<str>},
     /// Backpressure error occurred
     BackpressureError {
         current_size: usize,

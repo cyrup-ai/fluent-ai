@@ -1,6 +1,6 @@
 //! Real-time chat system implementation
 
-use std::sync::Arc;
+
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
@@ -41,7 +41,9 @@ pub struct RealtimeChat {
     connection_manager: ConnectionManager,
     message_streamer: LiveMessageStreamer,
     typing_indicator: TypingIndicator,
+    #[allow(dead_code)] // TODO: Use config for runtime configuration access
     config: RealtimeConfig,
+    #[allow(dead_code)] // TODO: Implement event broadcasting system
     event_sender: broadcast::Sender<RealTimeEvent>,
     is_running: bool,
 }
@@ -75,17 +77,48 @@ impl RealtimeChat {
         }
         self.is_running = true;
         self.connection_manager.start_health_check();
-        let message_processing = self.message_streamer.start_processing();
-        let typing_cleanup = self.typing_indicator.start_cleanup_task();
+        let _message_processing = self.message_streamer.start_processing();
+        let _typing_cleanup = self.typing_indicator.start_cleanup_task();
         
         // Merge streams manually since AsyncStream::merge doesn't exist
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |_sender| {
             // Start both streams concurrently
             std::thread::spawn(move || {
                 // This is a simplified merge - in a full implementation you'd handle both streams properly
                 // For now, just return empty to satisfy the type system
             });
         })
+    }
+    
+    /// Get the current configuration
+    pub fn get_config(&self) -> &RealtimeConfig {
+        &self.config
+    }
+    
+    /// Update configuration dynamically (selected fields)
+    pub fn update_config(&mut self, new_config: RealtimeConfig) {
+        self.config = new_config;
+        // Update child components with new config
+        self.message_streamer = LiveMessageStreamer::new(
+            self.config.message_queue_limit,
+            self.config.backpressure_threshold,
+            self.config.processing_rate,
+        );
+    }
+    
+    /// Broadcast an event to all subscribers
+    pub fn broadcast_event(&self, event: RealTimeEvent) -> Result<usize, broadcast::error::SendError<RealTimeEvent>> {
+        self.event_sender.send(event)
+    }
+    
+    /// Create a receiver for real-time events
+    pub fn subscribe_to_events(&self) -> broadcast::Receiver<RealTimeEvent> {
+        self.event_sender.subscribe()
+    }
+    
+    /// Get the number of active event subscribers
+    pub fn get_event_subscriber_count(&self) -> usize {
+        self.event_sender.receiver_count()
     }
 }
 

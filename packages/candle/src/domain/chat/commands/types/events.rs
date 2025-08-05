@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{AsyncStream, AsyncStreamSender};
+use crate::AsyncStreamSender;
 use super::commands::{ImmutableChatCommand, CommandExecutionResult, OutputType};
 use super::metadata::ResourceUsage;
 
@@ -139,19 +139,19 @@ pub enum CommandEvent {
     Progress {
         /// Unique identifier for this execution
         execution_id: u64,
-        /// Progress as percentage (0.0 to 100.0)
-        progress_percent: f32,
-        /// Optional progress message (owned string allocated once)
-        message: Option<String>,
-        /// Current timestamp in microseconds since epoch
-        timestamp_us: u64,
+        /// Progress percentage (0-100)
+        progress: f32,
+        /// Status message
+        message: String,
+        /// Timestamp
+        timestamp: u64,
     },
     /// Command produced output
     Output {
         /// Unique identifier for this execution
         execution_id: u64,
-        /// The output content produced (owned string allocated once)
-        output: String,
+        /// Output content
+        content: String,
         /// Type/format of the output
         output_type: OutputType,
         /// Current timestamp in microseconds since epoch
@@ -239,14 +239,14 @@ impl CommandEvent {
     #[inline]
     pub fn progress(
         execution_id: u64,
-        progress_percent: f32,
-        message: Option<String>
+        progress: f32,
+        message: String
     ) -> Self {
         Self::Progress {
             execution_id,
-            progress_percent,
+            progress,
             message,
-            timestamp_us: Self::current_timestamp_us(),
+            timestamp: Self::current_timestamp_us(),
         }
     }
     
@@ -259,7 +259,7 @@ impl CommandEvent {
     ) -> Self {
         Self::Output {
             execution_id,
-            output: output.into(),
+            content: output.into(),
             output_type,
             timestamp_us: Self::current_timestamp_us(),
         }
@@ -379,13 +379,13 @@ impl CommandEvent {
     pub const fn timestamp_us(&self) -> u64 {
         match self {
             Self::Started { timestamp_us, .. } |
-            Self::Progress { timestamp_us, .. } |
             Self::Output { timestamp_us, .. } |
             Self::Completed { timestamp_us, .. } |
             Self::Failed { timestamp_us, .. } |
             Self::Cancelled { timestamp_us, .. } |
             Self::Warning { timestamp_us, .. } |
             Self::ResourceAlert { timestamp_us, .. } => *timestamp_us,
+            Self::Progress { timestamp, .. } => *timestamp,
         }
     }
     
@@ -430,7 +430,6 @@ impl CommandEvent {
 }
 
 /// Streaming command executor with atomic state tracking for zero allocation
-#[derive(Debug)]
 pub struct StreamingCommandExecutor {
     /// Execution counter (atomic) - thread-safe incrementing
     execution_counter: AtomicU64,
@@ -559,11 +558,11 @@ impl StreamingCommandExecutor {
     pub fn send_progress(
         &self,
         execution_id: u64,
-        progress_percent: f32,
+        progress: f32,
         message: Option<String>
     ) {
         if let Some(ref sender) = self.event_sender {
-            let event = CommandEvent::progress(execution_id, progress_percent, message);
+            let event = CommandEvent::progress(execution_id, progress, message.unwrap_or_default());
             if sender.send(event).is_err() {
                 // Event channel closed, continue
             }
@@ -679,5 +678,19 @@ impl CommandExecutorStats {
     #[inline]
     pub const fn is_idle(&self) -> bool {
         self.active_executions == 0
+    }
+}
+
+impl std::fmt::Debug for StreamingCommandExecutor {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamingCommandExecutor")
+            .field("execution_counter", &self.execution_counter.load(Ordering::Relaxed))
+            .field("active_executions", &self.active_executions.load(Ordering::Relaxed))
+            .field("total_executions", &self.total_executions.load(Ordering::Relaxed))
+            .field("successful_executions", &self.successful_executions.load(Ordering::Relaxed))
+            .field("failed_executions", &self.failed_executions.load(Ordering::Relaxed))
+            .field("event_sender", &self.event_sender.is_some())
+            .finish()
     }
 }

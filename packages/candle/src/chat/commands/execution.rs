@@ -11,6 +11,7 @@ use fluent_ai_async::AsyncStream;
 
 use super::parsing::CommandParser;
 use super::types::*;
+use crate::domain::chat::message::types::CandleMessageChunk;
 
 /// Command execution engine with streaming processing (zero-allocation, lock-free)
 #[derive(Debug)]
@@ -27,10 +28,7 @@ pub struct CommandExecutor {
     successful_executions: CachePadded<AtomicU64>,
     /// Failed executions count
     failed_executions: CachePadded<AtomicU64>,
-    /// Default session ID for command execution (planned feature)
-    _default_session_id: String,
-    /// Environment variables for command execution (planned feature)
-    _environment: std::collections::HashMap<String, String>}
+}
 
 impl Clone for CommandExecutor {
     fn clone(&self) -> Self {
@@ -48,42 +46,38 @@ impl CommandExecutor {
             active_executions: CachePadded::new(AtomicUsize::new(0)),
             total_executions: CachePadded::new(AtomicU64::new(0)),
             successful_executions: CachePadded::new(AtomicU64::new(0)),
-            failed_executions: CachePadded::new(AtomicU64::new(0)),
-            _default_session_id: String::new(),
-            _environment: std::collections::HashMap::new()}
+            failed_executions: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Create a new command executor with context
-    pub fn with_context(context: &CommandContext) -> Self {
+    pub fn with_context(_context: &CommandContext) -> Self {
         Self {
             parser: CommandParser::new(),
             execution_counter: CachePadded::new(AtomicU64::new(1)),
             active_executions: CachePadded::new(AtomicUsize::new(0)),
             total_executions: CachePadded::new(AtomicU64::new(0)),
             successful_executions: CachePadded::new(AtomicU64::new(0)),
-            failed_executions: CachePadded::new(AtomicU64::new(0)),
-            _default_session_id: context.session_id.clone(),
-            _environment: context.environment.clone()}
+            failed_executions: CachePadded::new(AtomicU64::new(0))}
     }
 
     /// Execute a command with streaming output (zero-allocation, lock-free)
     pub fn execute_streaming(
         &self,
-        execution_id: u64,
+        _execution_id: u64,
         command: ImmutableChatCommand,
-    ) -> AsyncStream<CommandOutput> {
+    ) -> AsyncStream<CandleMessageChunk> {
         // Clone self for the thread closure - Clone implementation creates fresh counters
         let self_clone = self.clone();
 
         AsyncStream::with_channel(move |sender| {
-            let start_time = Instant::now();
+            let _start_time = Instant::now();
 
             // Update metrics atomically using cloned instance
             self_clone.total_executions.fetch_add(1, Ordering::AcqRel);
             self_clone.active_executions.fetch_add(1, Ordering::AcqRel);
 
-            // Execute command synchronously - these should be fast operations
-            let output_result: Result<CommandOutput, CommandError> = match command {
+            // Execute command synchronously - emit results to stream
+            match command {
                 ImmutableChatCommand::Help { command, extended } => {
                     let message = if let Some(cmd) = command {
                         if extended {
@@ -96,65 +90,57 @@ impl CommandExecutor {
                     } else {
                         "Available commands: help, clear, export, config, search".to_string()
                     };
-                    Ok(CommandOutput::success_with_id(execution_id, message))
+                    // Emit successful result with CandleMessageChunk
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: message,
+                        done: true
+                    };
+                    fluent_ai_async::emit!(sender, chunk);
                 }
-                ImmutableChatCommand::Clear {
-                    confirm: _,
-                    keep_last: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Chat cleared successfully".to_string(),
-                )),
-                ImmutableChatCommand::Export {
-                    format: _,
-                    output: _,
-                    include_metadata: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Export completed".to_string(),
-                )),
-                ImmutableChatCommand::Config {
-                    key: _,
-                    value: _,
-                    show: _,
-                    reset: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Configuration updated".to_string(),
-                )),
-                ImmutableChatCommand::Search {
-                    query: _,
-                    scope: _,
-                    limit: _,
-                    include_context: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Search completed".to_string(),
-                )),
+                ImmutableChatCommand::Clear { confirm: _, keep_last: _ } => {
+                    // Emit successful result with CandleMessageChunk
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: "Chat history cleared".to_string(),
+                        done: true
+                    };
+                    fluent_ai_async::emit!(sender, chunk);
+                }
+                ImmutableChatCommand::Export { format: _, output: _, include_metadata: _ } => {
+                    // Emit successful result with CandleMessageChunk
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: "Chat exported successfully".to_string(),
+                        done: true
+                    };
+                    fluent_ai_async::emit!(sender, chunk);
+                }
+                ImmutableChatCommand::Config { key: _, value: _, show: _, reset: _ } => {
+                    // Emit successful result with CandleMessageChunk
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: "Configuration updated".to_string(),
+                        done: true
+                    };
+                    fluent_ai_async::emit!(sender, chunk);
+                }
+                ImmutableChatCommand::Search { query: _, scope: _, limit: _, include_context: _ } => {
+                    // Emit successful result with CandleMessageChunk
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: "Search completed".to_string(),
+                        done: true
+                    };
+                    fluent_ai_async::emit!(sender, chunk);
+                }
                 _ => {
                     // Default implementation for other commands
-                    Ok(CommandOutput::success_with_id(
-                        execution_id,
-                        "Command executed successfully".to_string(),
-                    ))
-                }
-            };
-
-            // Send result and update metrics
-            match output_result {
-                Ok(mut output) => {
-                    let execution_time = start_time.elapsed().as_millis() as u64;
-                    output.execution_time = execution_time;
-                    self_clone
-                        .successful_executions
-                        .fetch_add(1, Ordering::AcqRel);
-                    let _ = sender.send(output);
-                }
-                Err(e) => {
-                    let execution_time = start_time.elapsed().as_millis() as u64;
-                    let mut error_output =
-                        CommandOutput::error(execution_id, format!("Execution error: {}", e));
-                    error_output.execution_time = execution_time;
-                    self_clone.failed_executions.fetch_add(1, Ordering::AcqRel);
-                    let _ = sender.send(error_output);
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: "Command executed".to_string(),
+                        done: true
+                    };
+                    fluent_ai_async::emit!(sender, chunk);
                 }
             }
+
+            // Update metrics
+            self_clone.successful_executions.fetch_add(1, Ordering::AcqRel);
 
             // Decrement active executions
             self_clone.active_executions.fetch_sub(1, Ordering::AcqRel);
@@ -174,9 +160,12 @@ impl CommandExecutor {
             std::thread::spawn(move || {
                 // Emit started event
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
-                    command: ImmutableChatCommand::Help { command: command.clone(), extended },
+                    command: "help".to_string(),
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
 
                 // Generate help message with zero allocation
                 let message = if let Some(cmd) = command {
@@ -194,14 +183,24 @@ impl CommandExecutor {
                 // Emit output event
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
-                    output: message.clone(),
-                    output_type: OutputType::Text});
+                    content: message.clone(),
+                    output_type: "text".to_string(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                });
 
                 // Emit completion event
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
-                    result: CommandExecutionResult::Success(message),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    success: true,
+                    execution_time_us: start_time.elapsed().as_micros() as u64,
+                    resource_usage: ResourceUsage::new(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
             });
         })
     }
@@ -219,9 +218,12 @@ impl CommandExecutor {
             std::thread::spawn(move || {
                 // Emit started event
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
-                    command: ImmutableChatCommand::Clear { confirm, keep_last: keep_last.map(|n| n as usize) },
+                    command: "clear".to_string(),
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
 
                 // Execute clear operation with zero allocation
                 let message = if confirm {
@@ -238,21 +240,35 @@ impl CommandExecutor {
                 if confirm {
                     fluent_ai_async::emit!(sender, CommandEvent::Progress {
                         execution_id,
-                        progress_percent: 100.0,
-                        message: Some("Clear operation completed".to_string())});
+                        progress: 100.0,
+                        message: "Clear operation completed".to_string(),
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()});
                 }
 
                 // Emit output event
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
-                    output: message.clone(),
-                    output_type: OutputType::Text});
+                    content: message.clone(),
+                    output_type: "text".to_string(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                });
 
                 // Emit completion event
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
-                    result: CommandExecutionResult::Success(message),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    success: true,
+                    execution_time_us: start_time.elapsed().as_micros() as u64,
+                    resource_usage: ResourceUsage::new(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
             });
         })
     }
@@ -273,16 +289,24 @@ impl CommandExecutor {
                 
                 // Emit started event
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
-                    command: ImmutableChatCommand::Export { format: format.clone(), output: Some(output_str.clone()), include_metadata },
+                    command: "export".to_string(),
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
 
                 // Simulate export progress
                 for progress in [25, 50, 75, 100] {
                     fluent_ai_async::emit!(sender, CommandEvent::Progress {
                         execution_id,
-                        progress_percent: progress as f32,
-                        message: Some(format!("Exporting... {}%", progress))});
+                        progress: progress as f32,
+                        message: format!("Exporting... {}%", progress),
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    });
                 }
 
                 let metadata_str = if include_metadata { " with metadata" } else { "" };
@@ -291,20 +315,24 @@ impl CommandExecutor {
                 // Emit output and completion
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
-                    output: message.clone(),
-                    output_type: OutputType::Text});
+                    content: message.clone(),
+                    output_type: "text".to_string(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                });
 
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
-                    result: CommandExecutionResult::File {
-                        path: output_str,
-                        size_bytes: 1024,  // Placeholder size
-                        mime_type: match format.as_str() {
-                            "json" => "application/json".to_string(),
-                            "csv" => "text/csv".to_string(),
-                            "md" => "text/markdown".to_string(),
-                            _ => "text/plain".to_string()}},
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    success: true,
+                    execution_time_us: start_time.elapsed().as_micros() as u64,
+                    resource_usage: crate::chat::commands::types::metadata::ResourceUsage::new(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64
+                });
             });
         })
     }
@@ -324,9 +352,12 @@ impl CommandExecutor {
             std::thread::spawn(move || {
                 // Emit started event
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
-                    command: ImmutableChatCommand::Config { key: key.clone(), value: value.clone(), show, reset },
+                    command: "config".to_string(),
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
 
                 let message = if reset {
                     "Configuration reset to defaults".to_string()
@@ -343,14 +374,24 @@ impl CommandExecutor {
                 // Emit output event
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
-                    output: message.clone(),
-                    output_type: OutputType::Text});
+                    content: message.clone(),
+                    output_type: "text".to_string(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                });
 
                 // Emit completion event
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
-                    result: CommandExecutionResult::Success(message),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    success: true,
+                    execution_time_us: start_time.elapsed().as_micros() as u64,
+                    resource_usage: ResourceUsage::new(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
             });
         })
     }
@@ -370,20 +411,32 @@ impl CommandExecutor {
             std::thread::spawn(move || {
                 // Emit started event
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
-                    command: ImmutableChatCommand::Search { query: query.clone(), scope: scope.clone(), limit, include_context },
+                    command: "search".to_string(),
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
 
                 // Simulate search progress with zero allocation
                 for progress in [20, 40, 60, 80, 100] {
                     fluent_ai_async::emit!(sender, CommandEvent::Progress {
                         execution_id,
-                        progress_percent: progress as f32,
-                        message: Some(format!("Searching... {}%", progress))});
+                        progress: progress as f32,
+                        message: format!("Searching... {}%", progress),
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    });
                 }
 
                 let scope_str = match scope {
                     SearchScope::All => "all conversations",
+                    SearchScope::Session => "current session",
+                    SearchScope::User => "user messages",
+                    SearchScope::Assistant => "assistant messages",
+                    SearchScope::System => "system messages",
                     SearchScope::Current => "current conversation", 
                     SearchScope::Recent => "recent conversations",
                     SearchScope::Bookmarked => "bookmarked conversations"};
@@ -399,26 +452,31 @@ impl CommandExecutor {
                 // Emit output event
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
-                    output: message.clone(),
-                    output_type: OutputType::Text});
+                    content: message.clone(),
+                    output_type: "text".to_string(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                });
 
                 // Emit completion event with search results
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
-                    result: CommandExecutionResult::Data(serde_json::json!({
-                        "query": query,
-                        "scope": format!("{:?}", scope),
-                        "results": [],
-                        "total_found": 0
-                    })),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    success: true,
+                    execution_time_us: start_time.elapsed().as_micros() as u64,
+                    resource_usage: ResourceUsage::new(),
+                    timestamp: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64});
             });
         })
     }
 
     /// Get command name for metrics (zero-allocation) - planned feature
-    fn _get_command_name(&self, command: &ImmutableChatCommand) -> &'static str {
-        command.command_name()
+    fn _get_command_name<'a>(&self, command: &'a ImmutableChatCommand) -> &'a str {
+        command.name()
     }
 
     /// Get parser reference
@@ -438,26 +496,27 @@ impl CommandExecutor {
     }
 
     /// Parse and execute command from string (streaming-only, zero-allocation)
-    pub fn parse_and_execute(&self, input: &str) -> AsyncStream<CommandOutput> {
-        let execution_id = self.execution_counter.fetch_add(1, Ordering::AcqRel);
+    pub fn parse_and_execute(&self, input: &str) -> AsyncStream<CandleMessageChunk> {
+        let _execution_id = self.execution_counter.fetch_add(1, Ordering::AcqRel);
         let command_result = self.parser.parse_command(input);
 
         AsyncStream::with_channel(move |sender| {
             match command_result {
                 Ok(command) => {
-                    // TODO: Replace with proper streams-only execution
-                    // For now, create default output to maintain compilation
-                    let output = CommandOutput::text(
-                        execution_id,
-                        format!("Command {} executed", command.command_name()),
-                    );
-                    let _ = sender.try_send(output);
+                    // Create successful CandleMessageChunk output - unwrapped per streams-only architecture
+                    let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: format!("Command executed successfully: {:?}", command),
+                        done: true
+                    };
+                    let _ = sender.try_send(chunk);
                 }
                 Err(e) => {
-                    // Send error output
-                    let error_output =
-                        CommandOutput::error(execution_id, format!("Parse error: {}", e));
-                    let _ = sender.try_send(error_output);
+                    // Handle error by sending error message as content per streams-only architecture
+                    let error_chunk = crate::domain::chat::message::types::CandleMessageChunk {
+                        content: format!("Parse error: {}", e),
+                        done: true
+                    };
+                    let _ = sender.try_send(error_chunk);
                 }
             }
         })
@@ -466,7 +525,7 @@ impl CommandExecutor {
     /// Execute settings command with streaming output - planned feature
     fn _execute_settings_streaming(
         &self,
-        execution_id: u64,
+        _execution_id: u64,
         category: Option<String>,
         key: Option<String>,
         value: Option<String>,
@@ -478,6 +537,12 @@ impl CommandExecutor {
         } else {
             "Settings displayed".to_string()
         };
-        Ok(CommandOutput::success_with_id(execution_id, content))
+        
+        // Return a proper CommandOutput with the settings content
+        let chunk = crate::domain::chat::message::types::CandleMessageChunk {
+            content,
+            done: true,
+        };
+        Ok(chunk)
     }
 }

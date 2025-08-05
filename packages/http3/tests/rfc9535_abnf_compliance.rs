@@ -991,7 +991,7 @@ mod wellformedness_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(query);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             if should_execute {
                 // Valid queries should execute without panicking - test passes if we get here

@@ -4,20 +4,12 @@
 //! for high-performance text search and matching.
 
 use std::sync::Arc;
-use std::time::Instant;
 use fluent_ai_async::AsyncStream;
 
-use super::types::{SearchResult, SearchError, MatchPosition, SearchResultMetadata};
+use super::types::{SearchResult, MatchPosition, SearchResultMetadata};
 use super::index::ChatSearchIndex;
-use crate::chat::message::SearchChatMessage;
 
-/// Streaming architecture macros for zero-futures implementation
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error)
-        // Continue processing instead of returning error
-    };
-}
+
 
 /// Stream collection trait to provide .collect() method for future-like behavior
 pub trait StreamCollect<T> {
@@ -57,7 +49,7 @@ impl ChatSearchIndex {
             let mut candidate_docs = None;
 
             for term in &terms_clone {
-                if let Some(entries) = self_clone.inverted_index().get(term) {
+                if let Some(entries) = self_clone.inverted_index().get(term.as_ref()) {
                     let doc_ids: std::collections::HashSet<Arc<str>> = entries
                         .value()
                         .iter()
@@ -98,8 +90,8 @@ impl ChatSearchIndex {
         })
     }
 
-    /// Search with OR operator (any term must match)
-    pub fn search_or_stream(
+    /// Search with streaming results (any term must match)
+    pub fn search_stream(
         &self,
         terms: &[Arc<str>],
         fuzzy_matching: bool,
@@ -111,7 +103,7 @@ impl ChatSearchIndex {
             let mut all_docs = std::collections::HashSet::new();
 
             for term in &terms_clone {
-                if let Some(entries) = self_clone.inverted_index().get(term) {
+                if let Some(entries) = self_clone.inverted_index().get(term.as_ref()) {
                     for entry in entries.value() {
                         all_docs.insert(entry.doc_id.clone());
                     }
@@ -126,7 +118,7 @@ impl ChatSearchIndex {
                         .iter()
                         .filter(|term| {
                             self_clone.inverted_index()
-                                .get(term)
+                                .get(&**term)
                                 .map(|entries| entries.value().iter().any(|e| e.doc_id == doc_id))
                                 .unwrap_or(false)
                         })
@@ -167,7 +159,7 @@ impl ChatSearchIndex {
 
             // Collect all documents that contain any of the terms
             for term in &terms_clone {
-                if let Some(entries) = self_clone.inverted_index().get(term) {
+                if let Some(entries) = self_clone.inverted_index().get(term.as_ref()) {
                     for entry in entries.value() {
                         excluded_docs.insert(entry.doc_id.clone());
                     }
@@ -289,12 +281,17 @@ impl ChatSearchIndex {
         let mut score = 0.0;
 
         for term in terms {
-            let doc_terms = self.get_term_frequency(term, doc_id);
-            if let Some(entries) = self.inverted_index().get(term) {
-                for entry in entries.value() {
-                    if entry.doc_id == *doc_id {
-                        score += doc_terms.calculate_tfidf();
-                        break;
+            if let Some(tf) = self.get_term_frequency(term, doc_id) {
+                if let Some(entries) = self.inverted_index().get(&**term) {
+                    for entry in entries.value() {
+                        if entry.doc_id == *doc_id {
+                            // Calculate TF-IDF: tf * log(total_docs / doc_frequency)
+                            let doc_freq = entries.value().len() as f32;
+                            let total_docs = self.document_store().len() as f32;
+                            let idf = if doc_freq > 0.0 { (total_docs / doc_freq).ln() } else { 0.0 };
+                            score += tf * idf;
+                            break;
+                        }
                     }
                 }
             }
@@ -367,7 +364,7 @@ impl ChatSearchIndex {
 
         // Check proximity for each combination of positions
         let position_lists: Vec<_> = terms.iter()
-            .filter_map(|term| term_positions.get(term))
+            .filter_map(|term| term_positions.get(term.as_ref()))
             .collect();
 
         self.check_proximity_recursive(&position_lists, 0, Vec::new(), distance)

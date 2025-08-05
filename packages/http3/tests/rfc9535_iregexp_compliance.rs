@@ -43,7 +43,7 @@ mod iregexp_basic_compliance {
     #[test]
     fn test_literal_character_matching() {
         // RFC 9485: Basic literal character matching
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "hello"},
             {"text": "world"},
             {"text": "test"},
@@ -81,7 +81,7 @@ mod iregexp_basic_compliance {
     #[test]
     fn test_character_class_compliance() {
         // RFC 9485: Character class patterns
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"code": "ABC123"},
             {"code": "xyz789"},
             {"code": "MiX3d1"},
@@ -110,7 +110,7 @@ mod iregexp_basic_compliance {
     #[test]
     fn test_quantifier_compliance() {
         // RFC 9485: Quantifier patterns
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "a"},
             {"text": "aa"},
             {"text": "aaa"},
@@ -141,7 +141,7 @@ mod iregexp_basic_compliance {
     #[test]
     fn test_anchor_compliance() {
         // RFC 9485: Anchor patterns (^ and $)
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "start_middle_end"},
             {"text": "start_only"},
             {"text": "only_end"},
@@ -169,7 +169,7 @@ mod iregexp_basic_compliance {
     #[test]
     fn test_alternation_compliance() {
         // RFC 9485: Alternation patterns (|)
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"category": "fiction"},
             {"category": "non-fiction"},
             {"category": "reference"},
@@ -204,7 +204,7 @@ mod match_vs_search_behavior {
     #[test]
     fn test_full_string_vs_substring_matching() {
         // RFC 9535: match() requires full string match, search() finds substrings
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "target"},
             {"text": "prefix_target"},
             {"text": "target_suffix"},
@@ -251,7 +251,7 @@ mod match_vs_search_behavior {
     #[test]
     fn test_anchored_vs_unanchored_behavior() {
         // Demonstrate how match() is implicitly anchored while search() is not
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "abc"},
             {"text": "abcdef"},
             {"text": "xyzabc"},
@@ -283,7 +283,7 @@ mod match_vs_search_behavior {
     #[test]
     fn test_case_sensitivity_behavior() {
         // Both match() and search() should be case-sensitive by default
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "Hello"},
             {"text": "hello"},
             {"text": "HELLO"},
@@ -390,7 +390,7 @@ mod unicode_regex_handling {
     #[test]
     fn test_unicode_character_matching() {
         // Test Unicode character handling in regex patterns
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "café"},
             {"text": "naïve"},
             {"text": "résumé"},
@@ -419,7 +419,7 @@ mod unicode_regex_handling {
     #[test]
     fn test_unicode_escape_sequences() {
         // Test Unicode escape sequences in patterns
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "©2023"},
             {"text": "™brand"},
             {"text": "hello"},
@@ -444,7 +444,7 @@ mod unicode_regex_handling {
     #[test]
     fn test_unicode_normalization() {
         // Test Unicode normalization handling
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "café"},
             {"text": "cafe\u0301"},
             {"text": "normal"}
@@ -477,7 +477,7 @@ mod regex_performance_tests {
     #[test]
     fn test_complex_pattern_performance() {
         // Test performance with complex but valid I-Regexp patterns
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"email": "user@example.com"},
             {"email": "test.user+tag@domain.org"},
             {"email": "invalid-email"},
@@ -573,7 +573,7 @@ mod regex_performance_tests {
     #[test]
     fn test_regex_dos_prevention() {
         // Test prevention of regex denial-of-service attacks
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaX"},
             {"text": "short"},
             {"text": "normal_text"}
@@ -623,7 +623,7 @@ mod escape_sequence_validation {
     #[test]
     fn test_valid_escape_sequences() {
         // Test valid escape sequences in I-Regexp
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "line1\nline2"},
             {"text": "tab\there"},
             {"text": "quote\"test"},
@@ -673,7 +673,7 @@ mod escape_sequence_validation {
     #[test]
     fn test_character_class_escapes() {
         // Test escape sequences within character classes
-        let json_data = r#"{"items": [
+        let _json_data = r#"{"items": [
             {"text": "special-char"},
             {"text": "bracket[test]"},
             {"text": "caret^test"},

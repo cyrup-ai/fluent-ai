@@ -383,6 +383,9 @@ impl SearchScope {
         match self {
             Self::All => "all",
             Self::Session => "session",
+            Self::Current => "current",
+            Self::Recent => "recent",
+            Self::Bookmarked => "bookmarked",
             Self::User => "user",
             Self::Assistant => "assistant",
             Self::System => "system",
@@ -390,6 +393,7 @@ impl SearchScope {
             Self::TimeRange => "time_range",
             Self::MessageType => "message_type",
             Self::Tags => "tags",
+
             Self::Archived => "archived",
         }
     }

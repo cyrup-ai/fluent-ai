@@ -6,16 +6,11 @@
 use std::sync::Arc;
 use fluent_ai_async::AsyncStream;
 
-use super::types::{SearchResult, SearchError, MatchPosition, SearchResultMetadata};
+use super::types::{SearchResult, SearchResultMetadata, MatchPosition};
 use super::index::ChatSearchIndex;
-use crate::domain::chat::message::CandleSearchChatMessage as SearchChatMessage;
 
-/// Streaming architecture macros for zero-futures implementation
-macro_rules! handle_error {
-    ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error)
-    };
-}
+
+
 
 impl ChatSearchIndex {
     /// Search with AND operator (all terms must match)
@@ -36,7 +31,7 @@ impl ChatSearchIndex {
             let mut candidate_docs = None;
 
             for term in &terms_clone {
-                if let Some(entries) = self_clone.inverted_index().get(term) {
+                if let Some(entries) = self_clone.inverted_index().get(&**term) {
                     let doc_ids: std::collections::HashSet<Arc<str>> = entries
                         .value()
                         .iter()
@@ -90,7 +85,7 @@ impl ChatSearchIndex {
             let mut all_docs = std::collections::HashSet::new();
 
             for term in &terms_clone {
-                if let Some(entries) = self_clone.inverted_index().get(term) {
+                if let Some(entries) = self_clone.inverted_index().get(&**term) {
                     for entry in entries.value() {
                         all_docs.insert(entry.doc_id.clone());
                     }
@@ -103,7 +98,7 @@ impl ChatSearchIndex {
                         .iter()
                         .filter(|term| {
                             self_clone.inverted_index()
-                                .get(term)
+                                .get(&**term)
                                 .map(|entries| entries.value().iter().any(|e| e.doc_id == doc_id))
                                 .unwrap_or(false)
                         })
@@ -135,8 +130,8 @@ impl ChatSearchIndex {
         let mut score = 0.0;
 
         for term in terms {
-            if let Some(tf_entry) = self.term_frequencies.get(term) {
-                if let Some(entries) = self.inverted_index().get(term) {
+            if let Some(tf_entry) = self.term_frequencies.get(&**term) {
+                if let Some(entries) = self.inverted_index().get(&**term) {
                     for entry in entries.value() {
                         if entry.doc_id == *doc_id {
                             score += tf_entry.value().calculate_tfidf();

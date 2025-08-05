@@ -15,7 +15,8 @@ use smallvec::SmallVec;
 // Real imports to connect to domain types instead of placeholder implementations
 use crate::domain::model::error::{CandleModelError as CandleError};
 use crate::domain::model::traits::CandleModel;
-use crate::providers::tokenizer::CandleTokenizer;
+// TODO: Re-enable once tokenizers dependency is added to Cargo.toml
+// use crate::providers::tokenizer::CandleTokenizer;
 use fluent_ai_simd::{get_cpu_features, CpuFeatures};
 
 pub type CandleResult<T> = Result<T, CandleError>;
@@ -25,23 +26,32 @@ pub struct SpecialTokens {
     pub eos_token_id: Option<u32>,
     pub bos_token_id: Option<u32>,
     pub pad_token_id: Option<u32>,
-    tokenizer: CandleTokenizer,
+    // TODO: Re-enable once tokenizers dependency is added
+    // tokenizer: CandleTokenizer,
 }
 
 impl SpecialTokens {
-    /// Create new special tokens from tokenizer
-    pub fn new(tokenizer: CandleTokenizer, eos_token_id: Option<u32>) -> Self {
+    /// Create new special tokens
+    pub fn new(eos_token_id: Option<u32>, bos_token_id: Option<u32>, pad_token_id: Option<u32>) -> Self {
         Self { 
             eos_token_id, 
-            bos_token_id: None, // TODO: Extract from tokenizer
-            pad_token_id: None, // TODO: Extract from tokenizer
-            tokenizer 
+            bos_token_id,
+            pad_token_id,
         }
     }
     
-    /// Check if token is a special token using real tokenizer
+    /// Temporary constructor without tokenizer
+    pub fn new_basic(eos_token_id: Option<u32>) -> Self {
+        Self { 
+            eos_token_id, 
+            bos_token_id: None,
+            pad_token_id: None,
+        }
+    }
+    
+    /// Check if token is a special token
     pub fn is_special_token(&self, token_id: u32) -> bool {
-        self.tokenizer.is_special_token(token_id)
+        Some(token_id) == self.eos_token_id || Some(token_id) == self.bos_token_id || Some(token_id) == self.pad_token_id
     }
     
     /// Get token name from tokenizer (placeholder implementation for now)

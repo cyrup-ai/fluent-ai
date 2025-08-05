@@ -44,6 +44,21 @@ pub enum CandleMessageChunk {
     Complete { text: String, finish_reason: Option<String>, usage: Option<String> },
 }
 
+impl CandleMessageChunk {
+    /// Get the text content of this chunk
+    pub fn text(&self) -> &str {
+        match self {
+            CandleMessageChunk::Text(text) => text,
+            CandleMessageChunk::Complete { text, .. } => text,
+        }
+    }
+    
+    /// Check if this chunk indicates completion
+    pub fn done(&self) -> bool {
+        matches!(self, CandleMessageChunk::Complete { .. })
+    }
+}
+
 impl std::fmt::Display for CandleMessageChunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -59,6 +74,8 @@ pub enum CandleChatLoop {
     Break,
     Reprompt(String),
 }
+
+
 
 /// Agent conversation
 pub struct CandleAgentConversation;
@@ -88,7 +105,7 @@ impl CandleMessage {
 pub struct CandleAgentRoleAgent;
 
 /// Agent role builder trait - elegant zero-allocation builder pattern
-pub trait CandleAgentRoleBuilder: Sized {
+pub trait CandleAgentRoleBuilder: Sized + Send {
     /// Create a new agent role builder - EXACT syntax: CandleFluentAi::agent_role("name")
     fn new(name: impl Into<String>) -> impl CandleAgentRoleBuilder;
     
@@ -120,24 +137,31 @@ pub trait CandleAgentRoleBuilder: Sized {
     fn tools<T>(self, tools: T) -> impl CandleAgentRoleBuilder
     where
         T: CandleTool;
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| chunk)
+    fn on_chunk<F>(self, handler: F) -> impl CandleAgentRoleBuilder
+    where
+        F: Fn(CandleMessageChunk) -> CandleMessageChunk + Send + Sync + 'static;
         
     /// Convert to agent - EXACT syntax: .into_agent()
-    fn into_agent(self) -> impl CandleAgentBuilder;
+    fn into_agent(self) -> impl CandleAgentBuilder + Send;
 }
 
 /// Agent builder trait
-pub trait CandleAgentBuilder: Sized {
+pub trait CandleAgentBuilder: Sized + Send + Sync {
     /// Set conversation history
     fn conversation_history<H>(self, history: H) -> impl CandleAgentBuilder;
     
     /// Chat with closure - EXACT syntax: .chat(|conversation| ChatLoop)
     fn chat<F>(self, handler: F) -> AsyncStream<CandleMessageChunk>
     where
-        F: FnOnce(&CandleAgentConversation) -> CandleChatLoop;
+        F: FnOnce(&CandleAgentConversation) -> CandleChatLoop + Send + 'static;
 }
 
 /// Hidden implementation struct - zero-allocation builder state
+#[derive(Debug, Clone)]
 struct CandleAgentRoleBuilderImpl {
+    #[allow(dead_code)] // TODO: Use name for agent identification/debugging
     name: String,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
@@ -212,14 +236,34 @@ impl CandleAgentRoleBuilder for CandleAgentRoleBuilderImpl {
         self
     }
 
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| chunk)
+    fn on_chunk<F>(self, _handler: F) -> impl CandleAgentRoleBuilder
+    where
+        F: Fn(CandleMessageChunk) -> CandleMessageChunk + Send + Sync + 'static,
+    {
+        self
+    }
+
+
     /// Convert to agent - EXACT syntax: .into_agent()
-    fn into_agent(self) -> impl CandleAgentBuilder {
+    fn into_agent(self) -> impl CandleAgentBuilder + Send {
         CandleAgentBuilderImpl { inner: self }
     }
 }
 
+/// Debug information for agent configuration
+#[derive(Debug, Clone)]
+pub struct AgentDebugInfo {
+    pub name: String,
+    pub temperature: Option<f64>,
+    pub max_tokens: Option<u64>,
+    pub has_system_prompt: bool,
+}
+
 /// Agent builder implementation
+#[derive(Debug, Clone)]
 pub struct CandleAgentBuilderImpl {
+    #[allow(dead_code)] // Builder state container
     inner: CandleAgentRoleBuilderImpl,
 }
 
@@ -230,16 +274,27 @@ impl CandleAgentBuilder for CandleAgentBuilderImpl {
     }
 
     /// Chat with closure - EXACT syntax: .chat(|conversation| ChatLoop)
-    fn chat<F>(self, _handler: F) -> AsyncStream<CandleMessageChunk>
+    fn chat<F>(self, handler: F) -> AsyncStream<CandleMessageChunk>
     where
-        F: FnOnce(&CandleAgentConversation) -> CandleChatLoop,
+        F: FnOnce(&CandleAgentConversation) -> CandleChatLoop + Send + 'static,
     {
-        AsyncStream::with_channel(|sender| {
+        AsyncStream::with_channel(move |sender| {
             // Placeholder implementation - real implementation would use the handler
-            let chunk = CandleMessageChunk::Text("Hello from Candle!".to_string());
+            let _result = handler(&CandleAgentConversation);
+            let chunk = CandleMessageChunk::Text("Hello from Candle closure!".to_string());
             let _ = sender.send(chunk);
+            
+            // Send completion chunk
+            let final_chunk = CandleMessageChunk::Complete {
+                text: String::new(),
+                finish_reason: Some("stop".to_string()),
+                usage: None,
+            };
+            let _ = sender.send(final_chunk);
         })
     }
+    
+
 }
 
 /// CandleFluentAi entry point for creating agent roles

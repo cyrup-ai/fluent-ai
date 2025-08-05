@@ -14,8 +14,7 @@ use fluent_ai_async::AsyncStream;
 
 use crate::chat::message::SearchChatMessage;
 use super::types::{
-    SearchError, SearchStatistics, TermFrequency, IndexEntry, SearchResult,
-    QueryOperator, MatchPosition, SearchResultMetadata,
+    SearchError, SearchStatistics, TermFrequency, IndexEntry,
 };
 
 /// Chat search index with SIMD optimization
@@ -354,5 +353,20 @@ impl ChatSearchIndex {
         &self.document_store
     }
 
+    /// Increment query counter (for statistics tracking)
+    #[inline]
+    pub fn increment_query_counter(&self) {
+        self.query_counter.inc();
+    }
+
+    /// Get statistics with write access for updates
+    #[inline]
+    pub fn update_statistics<F, R>(&self, f: F) -> Result<R, std::sync::PoisonError<std::sync::RwLockWriteGuard<'_, crate::chat::search::types::SearchStatistics>>>
+    where
+        F: FnOnce(&mut crate::chat::search::types::SearchStatistics) -> R,
+    {
+        let mut stats = self.statistics.write()?;
+        Ok(f(&mut *stats))
+    }
 
 }

@@ -46,7 +46,10 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
         executor
             .parser()
             .parse(input)
-            .map_err(|e| CommandError::ParseError(e.to_string()))
+            .map_err(|e| CommandError::ParseError { 
+                message: e.to_string(),
+                input: "command input".to_string(),
+            })
     } else {
         Err(CommandError::ConfigurationError {
             detail: "Command executor not initialized".to_string()})

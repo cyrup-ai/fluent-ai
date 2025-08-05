@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossbeam_skiplist::SkipMap;
@@ -9,8 +9,8 @@ use regex::Regex;
 use uuid::Uuid;
 
 use super::types::*;
-use crate::chat::message::SearchChatMessage;
-use super::SearchError;
+
+
 
 /// Conversation tagger with lock-free operations
 #[derive(Debug)]
@@ -18,14 +18,18 @@ pub struct ConversationTagger {
     /// Map of tag ID to tag
     tags: SkipMap<Arc<str>, ConversationTag>,
     /// Map of message ID to set of tag IDs
+    #[allow(dead_code)] // TODO: Implement message tagging system
     message_tags: SkipMap<Arc<str>, HashSet<Arc<str>>>,
     /// Map of tag ID to set of message IDs
+    #[allow(dead_code)] // TODO: Implement reverse tag lookup
     tag_messages: SkipMap<Arc<str>, HashSet<Arc<str>>>,
     /// Auto-tagging rules (regex pattern to tag IDs)
+    #[allow(dead_code)] // TODO: Implement automatic tagging rules
     auto_tag_rules: Vec<(Regex, Vec<Arc<str>>)>,
     /// Tag usage statistics
     stats: TaggingStatistics,
     /// Total number of tagged messages
+    #[allow(dead_code)] // TODO: Implement message counting
     total_tagged_messages: AtomicUsize,
 }
 
@@ -44,12 +48,12 @@ impl ConversationTagger {
 
     /// Create a new tag (streaming)
     pub fn create_tag_stream(
-        &self,
+        &mut self,
         name: Arc<str>,
         description: Arc<str>,
         category: Arc<str>,
     ) -> AsyncStream<Arc<str>> {
-        let id = Arc::from(Uuid::new_v4().to_string());
+        let id: Arc<str> = Arc::from(Uuid::new_v4().to_string());
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()

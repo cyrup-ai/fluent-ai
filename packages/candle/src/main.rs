@@ -44,7 +44,7 @@ impl std::fmt::Display for SupportedModel {
 }
 
 /// Command line arguments for the Candle chat loop
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[command(name = "candle-chat")]
 #[command(about = "Interactive chat loop using Candle ML framework")]
 #[command(version = "1.0")]
@@ -81,25 +81,20 @@ fn main() {
     println!("Type 'quit', 'exit', or 'bye' to end the session");
     println!("Type '/help' for available commands\n");
 
-    // Create the agent with the specified model using streams-only architecture
-    let mut agent_stream = create_agent_for_model(&args);
-    if let Some(agent) = agent_stream.try_next() {
-        // Start the interactive chat loop using streams-only architecture
-        let mut chat_stream = run_chat_loop(agent, &args);
-        // Process the chat loop stream to completion
-        while let Some(_) = chat_stream.try_next() {
-            // Chat loop completed
-        }
+    // Start the interactive chat loop using streams-only architecture
+    let mut chat_stream = run_chat_loop(&args);
+    // Process the chat loop stream to completion
+    while chat_stream.try_next().is_some() {
+        // Chat loop completed
     }
 }
 
 /// Create a Candle agent for the specified model with progresshub integration
-fn create_agent_for_model(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
-    let args = args.clone();
+fn create_agent_for_model(args: Args) -> AsyncStream<impl CandleAgentBuilder> {
     AsyncStream::with_channel(move |sender| {
         match args.model {
             SupportedModel::KimiK2 => {
-                let mut agent_stream = create_kimi_k2_agent(&args);
+                let mut agent_stream = create_kimi_k2_agent(args.clone());
                 if let Some(agent) = agent_stream.try_next() {
                     let _ = sender.send(agent);
                 }
@@ -115,8 +110,7 @@ fn create_agent_for_model(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
 }
 
 /// Create a Candle agent with kimi-k2 model and progresshub integration
-fn create_kimi_k2_agent(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
-    let args = args.clone();
+fn create_kimi_k2_agent(args: Args) -> AsyncStream<impl CandleAgentBuilder> {
     AsyncStream::with_channel(move |sender| {
         println!("🚀 Initializing kimi-k2 model...");
         
@@ -125,7 +119,7 @@ fn create_kimi_k2_agent(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
         
         if args.verbose {
             println!("📦 Config: temperature={}, max_tokens={}", args.temperature, args.max_tokens);
-            println!("📦 Model path: {}", model_path);
+            println!("📦 Model path: {model_path}");
         }
         
         println!("📦 Loading model (if needed)...");
@@ -146,7 +140,7 @@ fn create_kimi_k2_agent(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
                     )
                     .on_chunk(|chunk| {
                         // Real-time streaming - print each token as it arrives
-                        print!("{:?}", chunk); // Use debug format for now until Display is implemented
+                        print!("{chunk:?}"); // Use debug format for now until Display is implemented
                         let _ = io::stdout().flush(); // Ignore flush errors to prevent panic
                         chunk
                     })
@@ -155,7 +149,7 @@ fn create_kimi_k2_agent(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
                 let _ = sender.send(agent_builder);
             },
             Err(e) => {
-                eprintln!("Failed to load model: {}", e);
+                eprintln!("Failed to load model: {e}");
                 // Don't send anything on error - stream will be empty
             }
         }
@@ -165,7 +159,7 @@ fn create_kimi_k2_agent(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
 
 
 /// Run the interactive chat loop
-fn run_chat_loop(agent_builder: impl CandleAgentBuilder, args: &Args) -> AsyncStream<()> {
+fn run_chat_loop(args: &Args) -> AsyncStream<()> {
     let args = args.clone();
     AsyncStream::with_channel(move |sender| {
         // Use the agent builder directly for chat
@@ -205,7 +199,7 @@ fn run_chat_loop(agent_builder: impl CandleAgentBuilder, args: &Args) -> AsyncSt
                     continue;
                 },
                 "/stats" => {
-                    print_stats(&agent_builder, &args);
+                    print_stats(&args);
                     continue;
                 },
                 _ if user_input.is_empty() => {
@@ -224,27 +218,36 @@ fn run_chat_loop(agent_builder: impl CandleAgentBuilder, args: &Args) -> AsyncSt
                 break;
             }
             
-            // Use the agent builder's chat method for streaming response
-            let mut response_stream = agent_builder.chat(user_input);
-            let mut full_response = String::new();
-            
-            // Stream the response chunks using try_next()
-            while let Some(chunk) = response_stream.try_next() {
-                print!("{}", chunk.text);
-                let _ = io::stdout().flush();
-                full_response.push_str(&chunk.text);
+            // Create a new agent builder for this chat since chat() consumes self
+            // In production, we'd want to maintain state better, but for this demo it's ok
+            let mut agent_stream = create_agent_for_model(args.clone());
+            if let Some(current_agent) = agent_stream.try_next() {
+                let user_input_copy = user_input.to_string();
+                let mut response_stream = current_agent.chat(move |_conversation| {
+                    // For now, just continue the conversation
+                    // In the future, we could use conversation.latest_user_message() here
+                    CandleChatLoop::Reprompt(user_input_copy.clone())
+                });
+                let mut full_response = String::new();
                 
-                if chunk.done {
-                    break;
+                // Stream the response chunks using try_next()
+                while let Some(chunk) = response_stream.try_next() {
+                    print!("{}", chunk.text());
+                    let _ = io::stdout().flush();
+                    full_response.push_str(chunk.text());
+                    
+                    if chunk.done() {
+                        break;
+                    }
                 }
+                
+                // Add assistant response to history
+                conversation_history.push((CandleMessageRole::Assistant, full_response));
+                
+                println!(); // Add newline after response
+            } else {
+                println!("❌ Failed to create agent for this request");
             }
-            
-            println!(); // Add newline after response
-            
-            // Add assistant response to history
-            conversation_history.push((CandleMessageRole::Assistant, full_response));
-            
-            println!(); // Add newline after response
         }
         
         // Send completion signal
@@ -293,7 +296,7 @@ fn print_history(history: &[(CandleMessageRole, String)]) {
 }
 
 /// Print model statistics
-fn print_stats(_agent_builder: &impl CandleAgentBuilder, args: &Args) {
+fn print_stats(args: &Args) {
     println!("📊 Model Statistics:");
     println!("===================");
     println!("Model: {}", args.model);

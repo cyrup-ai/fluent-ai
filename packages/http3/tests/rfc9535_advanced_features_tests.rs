@@ -566,7 +566,7 @@ mod edge_case_validation_tests {
         
         // Use multiple times with different data
         for i in 1..=5 {
-            let test_data = format!(r#"{{"test": "run{}", "value": {}}}"#, i, i);
+            let _test_data = format!(r#"{{"test": "run{}", "value": {}}}"#, i, i);
             
             let mut stream = JsonArrayStream::<serde_json::Value>::new(reuse_expr);
             let chunk = Bytes::from(ADVANCED_FEATURES_JSON); // Use consistent data

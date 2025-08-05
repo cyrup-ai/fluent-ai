@@ -373,7 +373,7 @@ mod streaming_stats_tests {
         );
 
         let chunk = Bytes::from(json_data);
-        let results: Vec<_> = stream.process_chunk(chunk).collect();
+        let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Stream completion status depends on implementation
         let is_complete = stream.is_complete();
@@ -396,7 +396,7 @@ mod streaming_stats_tests {
             let json_data = format!(r#"{{"data": ["{}"]}}"#, large_data);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream.process_chunk(chunk).collect();
+            let _results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let stats = stream.stats();
             println!(

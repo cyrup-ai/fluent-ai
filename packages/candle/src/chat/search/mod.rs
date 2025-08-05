@@ -80,14 +80,14 @@ impl ChatSearcher {
 
         AsyncStream::with_channel(move |sender| {
             let start_time = Instant::now();
-            self_clone.index.query_counter.inc();
+            self_clone.index.increment_query_counter();
 
             let results = match query_operator {
                 QueryOperator::And => self_clone.index
                     .search_and_stream(&query_terms, query_fuzzy_matching)
                     .collect(),
                 QueryOperator::Or => self_clone.index
-                    .search_or_stream(&query_terms, query_fuzzy_matching)
+                    .search_stream(&query_terms, query_fuzzy_matching)
                     .collect(),
                 QueryOperator::Not => self_clone.index
                     .search_not_stream(&query_terms, query_fuzzy_matching)
@@ -284,12 +284,12 @@ impl ChatSearcher {
 
     /// Update query statistics
     fn update_query_statistics(&self, query_time_ms: f64) {
-        if let Ok(mut stats) = self.index.statistics.try_write() {
+        if let Ok(()) = self.index.update_statistics(|stats| {
             stats.total_queries += 1;
             stats.average_query_time = 
                 (stats.average_query_time * (stats.total_queries - 1) as f64 + query_time_ms) / 
                 stats.total_queries as f64;
-        }
+        }) {}
     }
 }
 

@@ -193,6 +193,7 @@ pub struct LiveMessageStreamer {
     /// Queue size limit for backpressure
     queue_size_limit: Arc<AtomicUsize>,
     /// Backpressure threshold
+    #[allow(dead_code)] // TODO: Implement backpressure throttling logic
     backpressure_threshold: Arc<AtomicUsize>,
     /// Processing rate in messages per second
     processing_rate: Arc<AtomicU64>,
