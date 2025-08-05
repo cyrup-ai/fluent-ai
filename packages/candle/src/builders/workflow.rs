@@ -397,27 +397,37 @@ pub struct WorkflowExecutor {
 
 impl WorkflowExecutor {
     /// Execute the workflow with the given input
-    pub async fn execute(&self, input: Value) -> Result<Value, WorkflowError> {
-        if self.workflow.steps.len() == 0 {
-            return Ok(input);
-        }
+    pub fn execute(&self, input: Value) -> AsyncStream<Value> {
+        let self_clone = self.clone();
+        AsyncStream::with_channel(move |sender| {
+            if self_clone.workflow.steps.len() == 0 {
+                let _ = sender.send(input);
+                return;
+            }
 
-        let execution_context = ExecutionContext::new(
-            input,
-            self.timeout_ms,
-            self.max_retries,
-            &self.error_strategy,
-        );
+            let execution_context = ExecutionContext::new(
+                input,
+                self_clone.timeout_ms,
+                self_clone.max_retries,
+                &self_clone.error_strategy,
+            );
 
-        self.execute_with_context(execution_context).await
+            // Use on_chunk pattern for error handling instead of Result wrapping
+            self_clone.execute_with_context(execution_context)
+                .on_chunk(move |result| {
+                    let _ = sender.send(result);
+                });
+        })
     }
 
-    /// Execute with streaming support for intermediate results
-    async fn execute_with_streaming(
+    /// Execute with streaming support for intermediate results  
+    fn execute_with_streaming(
         &self,
         mut context: ExecutionContext,
-        tx: &mpsc::UnboundedSender<Value>,
-    ) -> Result<Value, WorkflowError> {
+        tx: &crossbeam_channel::Sender<Value>,
+    ) -> AsyncStream<Value> {
+        let self_clone = self.clone();
+        AsyncStream::with_channel(move |sender| {
         let steps = &self.workflow.steps;
         let step_count = steps.len();
         let mut step_index = 0;
@@ -525,7 +535,7 @@ impl ExecutableWorkflow {
         let executor = &self.executor;
 
         // Execute workflow with intermediate result streaming
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             let execution_context = ExecutionContext::new(
                 input,
                 executor.timeout_ms,

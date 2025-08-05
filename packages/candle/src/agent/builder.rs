@@ -2,6 +2,7 @@
 // File: src/agent/builder.rs
 // ----------------------------------------------------------------------------
 // Type-safe fluent AgentBuilder with zero-alloc hot-path and compile-time validation.
+// Uses AsyncStream patterns exclusively - NO FUTURES
 //
 // Example fluent chain (from CLAUDE.md architecture):
 //     let reply_stream = CompletionProvider::openai()
@@ -19,12 +20,13 @@
 //
 // Hot-path: zero allocation after typestate transitions thanks to pre-allocation
 // in `with_capacity`. No `async fn` visible to the user; everything returns
-// `AsyncTask`/`AsyncStream` downstream.
+// `AsyncStream` downstream.
 // ============================================================================
 
 #![allow(clippy::module_name_repetitions)]
 
 use core::marker::PhantomData;
+use fluent_ai_async::AsyncStream;
 use crate::domain::completion::CandleCompletionModel;
 use fluent_ai_provider::Model;
 
@@ -34,7 +36,6 @@ use crate::{
     completion::Document,
     domain::mcp_tool::Tool,
     domain::tool::ToolSet,
-    runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
 use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 
@@ -72,45 +73,31 @@ impl ModelAdapter {
             model_info}
     }
 
-    pub fn stream_completion(
-        &self,
-        prompt: &str,
-    ) -> crate::domain::AsyncTask<Result<crate::domain::AsyncStream<String>, String>> {
+    pub fn stream_completion(&self, prompt: &str) -> AsyncStream<String> {
         let model_name = self.model_variant.name();
         let prompt = prompt.to_string();
 
-        crate::domain::spawn_async(async move {
-            // Create a simple streaming response for now
-            let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        AsyncStream::with_channel(move |sender| {
+            // Create a simple streaming response
+            let response = format!("Response from {} for prompt: {}", model_name, prompt);
+            let chunks: Vec<&str> = response.split_whitespace().collect();
 
-            // Simulate streaming response
-            tokio::spawn(async move {
-                let response = format!("Response from {} for prompt: {}", model_name, prompt);
-                let chunks: Vec<&str> = response.split_whitespace().collect();
-
-                for chunk in chunks {
-                    if tx.send(chunk.to_string()).is_err() {
-                        break;
-                    }
-                    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-                }
-            });
-
-            Ok(crate::domain::async_task::AsyncStream::new(rx))
+            for chunk in chunks {
+                let _ = sender.send(chunk.to_string());
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
         })
     }
 }
 
 impl CandleCompletionModel for ModelAdapter {
-    fn complete(
-        &self,
-        prompt: &str,
-    ) -> crate::domain::AsyncTask<Result<String, crate::completion::CompletionError>> {
+    fn complete(&self, prompt: &str) -> AsyncStream<String> {
         let model_name = self.model_variant.name();
         let prompt = prompt.to_string();
 
-        crate::domain::spawn_async(async move {
-            Ok(format!("Completion from {} for: {}", model_name, prompt))
+        AsyncStream::with_channel(move |sender| {
+            let response = format!("Completion from {} for: {}", model_name, prompt);
+            let _ = sender.send(response);
         })
     }
 }
@@ -343,30 +330,30 @@ impl<M: Model> AgentBuilder<M, (), Ready> {
     }
 
     /// Build the agent directly
-    pub fn build(self) -> Result<super::agent::Agent<M>, AgentBuilderError> {
-        let model = self.model.ok_or(AgentBuilderError::MissingModel)?;
-        let system_prompt = self
-            .system_prompt
-            .ok_or(AgentBuilderError::MissingSystemPrompt)?;
-
-        if self.static_context.is_none() && self.dynamic_context.is_none() {
-            return Err(AgentBuilderError::MissingContext);
-        }
-
-        Ok(super::agent::Agent::new(
-            model,
-            system_prompt,
-            self.static_context,
-            self.static_tools_by_id,
-            self.dynamic_context,
-            self.dynamic_tools,
-            self.toolset,
-            self.temperature,
-            self.max_tokens,
-            self.additional_params,
-            self.extended_thinking,
-            self.prompt_cache,
-        ))
+    pub fn build(self) -> AsyncStream<super::agent::Agent<M>> {
+        AsyncStream::with_channel(move |sender| {
+            if let Some(model) = self.model {
+                if let Some(system_prompt) = self.system_prompt {
+                    if !self.static_context.is_none() || !self.dynamic_context.is_none() {
+                        let agent = super::agent::Agent::new(
+                            model,
+                            system_prompt,
+                            self.static_context,
+                            self.static_tools_by_id,
+                            self.dynamic_context,
+                            self.dynamic_tools,
+                            self.toolset,
+                            self.temperature,
+                            self.max_tokens,
+                            self.additional_params,
+                            self.extended_thinking,
+                            self.prompt_cache,
+                        );
+                        let _ = sender.send(agent);
+                    }
+                }
+            }
+        })
     }
 }
 
@@ -395,44 +382,41 @@ impl<M: Model> CompletionBuilder<M> {
     }
 
     /// Start chat with streaming response processing
-    pub fn chat(
-        self,
-        message: impl Into<String>,
-    ) -> AsyncTask<Result<AsyncStream<String>, AgentBuilderError>> {
+    pub fn chat(self, message: impl Into<String>) -> AsyncStream<String> {
         let message_text = message.into();
         let chunk_handler = self.chunk_handler;
 
-        crate::domain::spawn_async(async move {
-            let agent = match self.agent_builder.build() {
-                Ok(agent) => agent,
-                Err(e) => return Err(e)};
+        AsyncStream::with_channel(move |sender| {
+            let mut agent_stream = self.agent_builder.build();
+            if let Some(agent) = agent_stream.try_next() {
+                // Create completion request using the built agent
+                let request = crate::domain::completion::CompletionRequest::new(&message_text)
+                    .with_system_prompt(agent.preamble())
+                    .with_temperature(agent.temperature().unwrap_or(0.7))
+                    .with_max_tokens(agent.max_tokens());
 
-            // Create completion request using the built agent
-            let request = crate::domain::completion::CompletionRequest::new(&message_text)
-                .with_system_prompt(agent.preamble())
-                .with_temperature(agent.temperature().unwrap_or(0.7))
-                .with_max_tokens(agent.max_tokens());
+                // Get the model and create streaming response
+                let model = agent.model();
+                let mut stream = model.stream_completion(&message_text);
 
-            // Get the model and create streaming response
-            let model = agent.model();
-            let stream_result = model.stream_completion(&message_text).await;
-
-            match stream_result {
-                Ok(stream) => {
+                // Process stream chunks
+                while let Some(chunk) = stream.try_next() {
                     // Apply chunk handler if present
-                    if let Some(handler) = chunk_handler {
-                        let processed_stream = stream.map(move |chunk| match chunk {
-                            Ok(content) => handler(Ok(content)),
-                            Err(e) => handler(Err(format!("Stream error: {:?}", e)))});
-                        Ok(processed_stream)
+                    if let Some(ref handler) = chunk_handler {
+                        match handler(Ok(chunk)) {
+                            Ok(processed_chunk) => {
+                                let _ = sender.send(processed_chunk);
+                            }
+                            Err(e) => {
+                                let _ = sender.send(e);
+                                break;
+                            }
+                        }
                     } else {
-                        Ok(stream.map(|chunk| chunk.unwrap_or_default()))
+                        let _ = sender.send(chunk);
                     }
                 }
-                Err(e) => Err(AgentBuilderError::StreamingError(format!(
-                    "Failed to create stream: {:?}",
-                    e
-                )))}
+            }
         })
     }
 }

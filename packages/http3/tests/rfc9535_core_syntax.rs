@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 struct TestModel {
     id: String,
-    value: i32,
+    #[serde(default)]
+    value: Option<i32>,
 }
 
 /// RFC 9535 Section 2.2 - Root Identifier Tests
@@ -35,12 +36,9 @@ mod root_identifier_tests {
         }
     }
 
-    #[test]
-    fn test_bare_root_rejected() {
-        // RFC 9535: Bare '$' is not a valid expression
-        let result = JsonPathParser::compile("$");
-        assert!(result.is_err(), "Bare root $ should be rejected");
-    }
+    // REMOVED: test_bare_root_rejected - This test contradicted RFC 9535 specification
+    // RFC 9535 Section 2.2.3 Examples explicitly shows that "$" is valid and returns the root node
+    // The ABNF grammar allows jsonpath-query = root-identifier segments where segments = *(S segment) (zero or more)
 
     #[test]
     fn test_valid_root_expressions() {

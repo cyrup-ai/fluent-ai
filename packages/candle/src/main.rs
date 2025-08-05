@@ -67,8 +67,7 @@ struct Args {
 }
 
 /// Main interactive chat loop using Candle ML framework with configurable models
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn main() {
     let args = Args::parse();
     
     println!("🔥 Candle ML Framework - Interactive Chat");
@@ -82,142 +81,175 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Type 'quit', 'exit', or 'bye' to end the session");
     println!("Type '/help' for available commands\n");
 
-    // Create the agent with the specified model
-    let agent = create_agent_for_model(&args).await?;
-    
-    // Start the interactive chat loop
-    run_chat_loop(agent, &args).await?;
-    
-    println!("\n👋 Thanks for using Candle ML Framework!");
-    Ok(())
+    // Create the agent with the specified model using streams-only architecture
+    let mut agent_stream = create_agent_for_model(&args);
+    if let Some(agent) = agent_stream.try_next() {
+        // Start the interactive chat loop using streams-only architecture
+        let mut chat_stream = run_chat_loop(agent, &args);
+        // Process the chat loop stream to completion
+        while let Some(_) = chat_stream.try_next() {
+            // Chat loop completed
+        }
+    }
 }
 
 /// Create a Candle agent for the specified model with progresshub integration
-async fn create_agent_for_model(args: &Args) -> Result<impl CandleAgentBuilder, Box<dyn std::error::Error + Send + Sync>> {
-    match args.model {
-        SupportedModel::KimiK2 => create_kimi_k2_agent(args).await,
-        SupportedModel::Llama3 => Err("Llama 3 support is not yet implemented. Use --model kimi-k2 for now.".into()),
-        SupportedModel::Gpt4 => Err("GPT-4 support is not yet implemented. Use --model kimi-k2 for now.".into()),
-    }
+fn create_agent_for_model(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
+    let args = args.clone();
+    AsyncStream::with_channel(move |sender| {
+        match args.model {
+            SupportedModel::KimiK2 => {
+                let mut agent_stream = create_kimi_k2_agent(&args);
+                if let Some(agent) = agent_stream.try_next() {
+                    let _ = sender.send(agent);
+                }
+            },
+            SupportedModel::Llama3 => {
+                eprintln!("Error: Llama 3 support is not yet implemented. Use --model kimi-k2 for now.");
+            },
+            SupportedModel::Gpt4 => {
+                eprintln!("Error: GPT-4 support is not yet implemented. Use --model kimi-k2 for now.");
+            },
+        }
+    })
 }
 
 /// Create a Candle agent with kimi-k2 model and progresshub integration
-async fn create_kimi_k2_agent(args: &Args) -> Result<impl CandleAgentBuilder, Box<dyn std::error::Error + Send + Sync>> {
-    println!("🚀 Initializing kimi-k2 model...");
-    
-    // TODO: Add progresshub integration for model downloads
-    let model_path = "kimi-k2"; // This will be downloaded via progresshub
-    
-    if args.verbose {
-        println!("📦 Config: temperature={}, max_tokens={}", args.temperature, args.max_tokens);
-        println!("📦 Model path: {}", model_path);
-    }
-    
-    println!("📦 Loading model (if needed)...");
-    let provider = CandleKimiK2Provider::new(model_path)
-        .map_err(|e| format!("Failed to load model: {}", e))?;
-    println!("✅ Model ready!");
-    
-    // Build the agent with streaming and interactive capabilities
-    let agent_builder = CandleFluentAi::agent_role("helpful-assistant")
-        .completion_provider(provider)
-        .temperature(args.temperature.into())
-        .max_tokens(args.max_tokens.into())
-        .system_prompt(
-            "You are a helpful, knowledgeable AI assistant powered by the kimi-k2 model. \
-             You provide clear, accurate, and concise responses. You can help with a wide \
-             variety of tasks including coding, writing, analysis, and general questions. \
-             Be friendly and engaging in your responses."
-        )
-        .on_chunk(|chunk| {
-            // Real-time streaming - print each token as it arrives
-            print!("{:?}", chunk); // Use debug format for now until Display is implemented
-            io::stdout().flush().unwrap();
-            chunk
-        })
-        .into_agent(); // Convert CandleAgentRoleBuilder to CandleAgentBuilder
-    
-    Ok(agent_builder)
+fn create_kimi_k2_agent(args: &Args) -> AsyncStream<impl CandleAgentBuilder> {
+    let args = args.clone();
+    AsyncStream::with_channel(move |sender| {
+        println!("🚀 Initializing kimi-k2 model...");
+        
+        // TODO: Add progresshub integration for model downloads
+        let model_path = "kimi-k2"; // This will be downloaded via progresshub
+        
+        if args.verbose {
+            println!("📦 Config: temperature={}, max_tokens={}", args.temperature, args.max_tokens);
+            println!("📦 Model path: {}", model_path);
+        }
+        
+        println!("📦 Loading model (if needed)...");
+        match CandleKimiK2Provider::new(model_path) {
+            Ok(provider) => {
+                println!("✅ Model ready!");
+                
+                // Build the agent with streaming and interactive capabilities
+                let agent_builder = CandleFluentAi::agent_role("helpful-assistant")
+                    .completion_provider(provider)
+                    .temperature(args.temperature.into())
+                    .max_tokens(args.max_tokens.into())
+                    .system_prompt(
+                        "You are a helpful, knowledgeable AI assistant powered by the kimi-k2 model. \
+                         You provide clear, accurate, and concise responses. You can help with a wide \
+                         variety of tasks including coding, writing, analysis, and general questions. \
+                         Be friendly and engaging in your responses."
+                    )
+                    .on_chunk(|chunk| {
+                        // Real-time streaming - print each token as it arrives
+                        print!("{:?}", chunk); // Use debug format for now until Display is implemented
+                        let _ = io::stdout().flush(); // Ignore flush errors to prevent panic
+                        chunk
+                    })
+                    .into_agent(); // Convert CandleAgentRoleBuilder to CandleAgentBuilder
+                
+                let _ = sender.send(agent_builder);
+            },
+            Err(e) => {
+                eprintln!("Failed to load model: {}", e);
+                // Don't send anything on error - stream will be empty
+            }
+        }
+    })
 }
 
 
 
 /// Run the interactive chat loop
-async fn run_chat_loop(agent_builder: impl CandleAgentBuilder, args: &Args) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Use the agent builder directly for chat
-    let stdin = io::stdin();
-    let mut conversation_history = Vec::new();
-    
-    loop {
-        // Get user input
-        print!("\n🧑 You: ");
-        io::stdout().flush()?;
+fn run_chat_loop(agent_builder: impl CandleAgentBuilder, args: &Args) -> AsyncStream<()> {
+    let args = args.clone();
+    AsyncStream::with_channel(move |sender| {
+        // Use the agent builder directly for chat
+        let stdin = io::stdin();
+        let mut conversation_history = Vec::new();
         
-        let mut user_input = String::new();
-        stdin.lock().read_line(&mut user_input)?;
-        let user_input = user_input.trim();
-        
-        // Handle special commands
-        match user_input.to_lowercase().as_str() {
-            "quit" | "exit" | "bye" => {
-                println!("👋 Goodbye!");
+        loop {
+            // Get user input
+            print!("\n🧑 You: ");
+            if io::stdout().flush().is_err() {
                 break;
-            },
-            "/help" => {
-                print_help();
-                continue;
-            },
-            "/clear" => {
-                conversation_history.clear();
-                println!("🗑️  Conversation history cleared");
-                continue;
-            },
-            "/history" => {
-                print_history(&conversation_history);
-                continue;
-            },
-            "/stats" => {
-                print_stats(&agent_builder, args);
-                continue;
-            },
-            _ if user_input.is_empty() => {
-                continue;
-            },
-            _ => {
-                // Continue to chat processing
             }
-        }
-        
-        // Add user message to history
-        conversation_history.push((CandleMessageRole::User, user_input.to_string()));
-        
-        print!("🤖 Assistant: ");
-        io::stdout().flush()?;
-        
-        // Use the agent builder's chat method for streaming response
-        let mut response_stream = agent_builder.chat(user_input);
-        let mut full_response = String::new();
-        
-        // Stream the response chunks
-        while let Some(chunk) = response_stream.next() {
-            print!("{}", chunk.text);
-            io::stdout().flush()?;
-            full_response.push_str(&chunk.text);
             
-            if chunk.done {
+            let mut user_input = String::new();
+            if stdin.lock().read_line(&mut user_input).is_err() {
                 break;
             }
+            let user_input = user_input.trim();
+            
+            // Handle special commands
+            match user_input.to_lowercase().as_str() {
+                "quit" | "exit" | "bye" => {
+                    println!("👋 Goodbye!");
+                    break;
+                },
+                "/help" => {
+                    print_help();
+                    continue;
+                },
+                "/clear" => {
+                    conversation_history.clear();
+                    println!("🗑️  Conversation history cleared");
+                    continue;
+                },
+                "/history" => {
+                    print_history(&conversation_history);
+                    continue;
+                },
+                "/stats" => {
+                    print_stats(&agent_builder, &args);
+                    continue;
+                },
+                _ if user_input.is_empty() => {
+                    continue;
+                },
+                _ => {
+                    // Continue to chat processing
+                }
+            }
+            
+            // Add user message to history
+            conversation_history.push((CandleMessageRole::User, user_input.to_string()));
+            
+            print!("🤖 Assistant: ");
+            if io::stdout().flush().is_err() {
+                break;
+            }
+            
+            // Use the agent builder's chat method for streaming response
+            let mut response_stream = agent_builder.chat(user_input);
+            let mut full_response = String::new();
+            
+            // Stream the response chunks using try_next()
+            while let Some(chunk) = response_stream.try_next() {
+                print!("{}", chunk.text);
+                let _ = io::stdout().flush();
+                full_response.push_str(&chunk.text);
+                
+                if chunk.done {
+                    break;
+                }
+            }
+            
+            println!(); // Add newline after response
+            
+            // Add assistant response to history
+            conversation_history.push((CandleMessageRole::Assistant, full_response));
+            
+            println!(); // Add newline after response
         }
         
-        println!(); // Add newline after response
-        
-        // Add assistant response to history
-        conversation_history.push((CandleMessageRole::Assistant, full_response));
-        
-        println!(); // Add newline after response
-    }
-    
-    Ok(())
+        // Send completion signal
+        let _ = sender.send(());
+    })
 }
 
 /// Print help information
@@ -282,8 +314,8 @@ fn print_stats(_agent_builder: &impl CandleAgentBuilder, args: &Args) {
 mod tests {
     use super::*;
     
-    #[tokio::test]
-    async fn test_agent_creation() {
+    #[test]
+    fn test_agent_creation() {
         // Test that we can create the basic agent structure
         // Note: This won't actually download models in tests
         let config = CandleKimiK2Config::default();

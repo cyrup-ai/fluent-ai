@@ -24,6 +24,7 @@ metal = [
 # fluent-ai-candle MUST remain completely standalone and independent
 # ONLY ALLOWED fluent-ai dependencies: fluent-ai-async and fluent_ai_http3
 fluent_ai_async = { path = "../async-stream" }
+fluent-ai-simd = { path = "../simd" }
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 fluent_ai_http3 = { path = "../http3" }
@@ -82,6 +83,8 @@ lz4 = "1.28.1"
 
 # Additional dependencies for memory migration
 fastrand = "2.3.0"
+rand = "0.9.2"
+rand_pcg = "0.9.0"
 num_cpus = "1.17.0"
 bytes = "1.10.1"
 toml = "0.9.4"

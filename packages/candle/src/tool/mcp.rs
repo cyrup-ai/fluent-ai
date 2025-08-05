@@ -9,12 +9,11 @@ use hashbrown::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
+use fluent_ai_async::AsyncStream;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::{RwLock, mpsc};
-
-// Removed unused imports AsyncTask and spawn_async
+use std::sync::{RwLock, mpsc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct JsonRpcRequest {
@@ -70,32 +69,32 @@ pub trait Transport: Send + Sync + 'static {
     ///
     /// # Returns
     ///
-    /// A future that resolves to `Ok(())` on successful send, or `McpError` on failure.
-    fn send(&self, data: &[u8]) -> impl std::future::Future<Output = Result<(), McpError>> + Send;
+    /// Stream that emits unit value on successful send, or nothing on failure.
+    fn send(&self, data: &[u8]) -> AsyncStream<()>;
 
     /// Receive data from the transport endpoint.
     ///
     /// # Returns
     ///
-    /// A future that resolves to the received bytes on success, or `McpError` on failure.
+    /// Stream that emits received bytes on success, or nothing on failure.
     /// May block until data is available or an error occurs.
-    fn receive(&self) -> impl std::future::Future<Output = Result<Vec<u8>, McpError>> + Send;
+    fn receive(&self) -> AsyncStream<Vec<u8>>;
 }
 
 /// Standard input/output transport implementation for MCP communication.
 ///
 /// This transport uses stdin/stdout for bidirectional communication with MCP servers,
-/// which is the most common transport method for MCP tools. It uses async channels
+/// which is the most common transport method for MCP tools. It uses standard channels
 /// to handle the communication without blocking.
 pub struct StdioTransport {
-    stdin_tx: mpsc::UnboundedSender<Vec<u8>>,
-    stdout_rx: Arc<RwLock<mpsc::UnboundedReceiver<Vec<u8>>>>}
+    stdin_tx: mpsc::Sender<Vec<u8>>,
+    stdout_rx: Arc<RwLock<mpsc::Receiver<Vec<u8>>>>}
 
 impl StdioTransport {
     /// Create a new StdioTransport instance.
     ///
     /// This method sets up bidirectional communication channels using stdin/stdout
-    /// and spawns async tasks to handle the I/O operations. The transport is ready
+    /// and spawns standard threads to handle the I/O operations. The transport is ready
     /// to use immediately after creation.
     ///
     /// # Returns
@@ -103,33 +102,33 @@ impl StdioTransport {
     /// A new `StdioTransport` instance ready for MCP communication.
     #[inline]
     pub fn new() -> Self {
-        let (stdin_tx, mut stdin_rx) = mpsc::unbounded_channel::<Vec<u8>>();
-        let (stdout_tx, stdout_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+        let (stdin_tx, stdin_rx) = mpsc::channel::<Vec<u8>>();
+        let (stdout_tx, stdout_rx) = mpsc::channel::<Vec<u8>>();
 
-        tokio::spawn(async move {
-            use tokio::io::AsyncWriteExt;
-            let mut stdout = tokio::io::stdout();
+        std::thread::spawn(move || {
+            use std::io::{Write, stdout};
+            let mut stdout_handle = stdout();
 
-            while let Some(mut data) = stdin_rx.recv().await {
+            while let Ok(mut data) = stdin_rx.recv() {
                 data.push(b'\n');
-                if stdout.write_all(&data).await.is_err() {
+                if stdout_handle.write_all(&data).is_err() {
                     break;
                 }
-                if stdout.flush().await.is_err() {
+                if stdout_handle.flush().is_err() {
                     break;
                 }
             }
         });
 
-        tokio::spawn(async move {
-            use tokio::io::{AsyncBufReadExt, BufReader};
-            let stdin = tokio::io::stdin();
-            let mut reader = BufReader::new(stdin);
+        std::thread::spawn(move || {
+            use std::io::{BufRead, BufReader, stdin};
+            let stdin_handle = stdin();
+            let mut reader = BufReader::new(stdin_handle);
             let mut line_buffer = String::with_capacity(8192);
 
             loop {
                 line_buffer.clear();
-                match reader.read_line(&mut line_buffer).await {
+                match reader.read_line(&mut line_buffer) {
                     Ok(0) => break,
                     Ok(_) => {
                         let trimmed = line_buffer.trim_end();
@@ -151,16 +150,33 @@ impl StdioTransport {
 
 impl Transport for StdioTransport {
     #[inline]
-    async fn send(&self, data: &[u8]) -> Result<(), McpError> {
-        self.stdin_tx
-            .send(data.to_vec())
-            .map_err(|_| McpError::TransportClosed)
+    fn send(&self, data: &[u8]) -> AsyncStream<()> {
+        let data = data.to_vec();
+        let stdin_tx = self.stdin_tx.clone();
+        AsyncStream::with_channel(move |sender| {
+            match stdin_tx.send(data) {
+                Ok(()) => {
+                    let _ = sender.send(());
+                },
+                Err(_) => {
+                    // Transport closed - don't send anything
+                }
+            }
+        })
     }
 
     #[inline]
-    async fn receive(&self) -> Result<Vec<u8>, McpError> {
-        let mut rx = self.stdout_rx.write().await;
-        rx.recv().await.ok_or(McpError::TransportClosed)
+    fn receive(&self) -> AsyncStream<Vec<u8>> {
+        let stdout_rx = self.stdout_rx.clone();
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                if let Ok(rx) = stdout_rx.try_read() {
+                    if let Ok(data) = rx.recv() {
+                        let _ = sender.send(data);
+                    }
+                }
+            });
+        })
     }
 }
 
@@ -218,49 +234,68 @@ impl<T: Transport> Client<T> {
     /// * `McpError::ExecutionFailed` - If the tool execution fails
     /// * `McpError::SerializationFailed` - If JSON serialization/deserialization fails
     /// * `McpError::TransportClosed` - If the transport connection is closed
-    pub async fn call_tool(&self, name: &str, args: Value) -> Result<Value, McpError> {
-        let id = self.request_id.fetch_add(1, Ordering::Relaxed);
-        let start_time = Instant::now();
+    pub fn call_tool(&self, name: &str, args: Value) -> AsyncStream<Value> {
+        let name = name.to_string();
+        let transport = self.transport.clone();
+        let request_id = self.request_id.fetch_add(1, Ordering::Relaxed);
+        let request_timeout = self.request_timeout;
+        let response_cache = self.response_cache.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let request = JsonRpcRequest {
+                jsonrpc: "2.0",
+                method: "tools/call".to_string(),
+                params: serde_json::json!({
+                    "name": name,
+                    "arguments": args
+                }),
+                id: request_id
+            };
 
-        let request = JsonRpcRequest {
-            jsonrpc: "2.0",
-            method: "tools/call".to_string(),
-            params: serde_json::json!({
-                "name": name,
-                "arguments": args
-            }),
-            id};
-
-        let mut buffer = Vec::with_capacity(1024);
-        serde_json::to_writer(&mut buffer, &request).map_err(|_| McpError::SerializationFailed)?;
-
-        self.transport.send(&buffer).await?;
-
-        loop {
-            if start_time.elapsed() > self.request_timeout {
-                return Err(McpError::Timeout);
+            let mut buffer = Vec::with_capacity(1024);
+            if serde_json::to_writer(&mut buffer, &request).is_err() {
+                return; // SerializationFailed - don't send anything
             }
 
-            let response_data = self.transport.receive().await?;
+            // Send request
+            let mut send_stream = transport.send(&buffer);
+            if send_stream.try_next().is_none() {
+                return; // Transport send failed
+            }
 
-            let response: JsonRpcResponse = serde_json::from_slice(&response_data)
-                .map_err(|_| McpError::SerializationFailed)?;
-
-            if response.id == id {
-                if let Some(error) = response.error {
-                    return Err(McpError::ExecutionFailed(error.message));
+            let start_time = Instant::now();
+            loop {
+                if start_time.elapsed() > request_timeout {
+                    return; // Timeout - don't send anything
                 }
 
-                return response.result.ok_or(McpError::InvalidResponse);
-            }
+                let mut receive_stream = transport.receive();
+                if let Some(response_data) = receive_stream.try_next() {
+                    if let Ok(response) = serde_json::from_slice::<JsonRpcResponse>(&response_data) {
+                        if response.id == request_id {
+                            if let Some(_error) = response.error {
+                                return; // ExecutionFailed - don't send anything
+                            }
 
-            {
-                let mut cache = self.response_cache.write().await;
-                if let Some(result) = response.result {
-                    cache.insert(response.id, result);
+                            if let Some(result) = response.result {
+                                let _ = sender.send(result);
+                                return;
+                            }
+                        } else {
+                            // Cache response for different request ID
+                            if let Ok(mut cache) = response_cache.try_write() {
+                                if let Some(result) = response.result {
+                                    cache.insert(response.id, result);
+                                }
+                            }
+                        }
+                    }
                 }
+                
+                // Small delay to prevent busy waiting
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
-        }
+        })
     }
 
     /// List all available tools from the MCP server.
@@ -279,56 +314,81 @@ impl<T: Transport> Client<T> {
     /// * `McpError::SerializationFailed` - If JSON parsing fails
     /// * `McpError::TransportClosed` - If the transport connection is closed
     #[inline]
-    pub async fn list_tools(&self) -> Result<Vec<super::types::Tool>, McpError> {
-        let result = self.call_tool_internal("tools/list", Value::Null).await?;
-
-        if let Value::Object(obj) = result {
-            if let Some(Value::Array(tools)) = obj.get("tools") {
-            let mut parsed_tools = Vec::with_capacity(tools.len());
-            for tool in tools {
-                if let Ok(parsed) = serde_json::from_value::<super::types::Tool>(tool.clone()) {
-                    parsed_tools.push(parsed);
+    pub fn list_tools(&self) -> AsyncStream<Vec<super::types::Tool>> {
+        let mut internal_stream = self.call_tool_internal("tools/list", Value::Null);
+        
+        AsyncStream::with_channel(move |sender| {
+            if let Some(result) = internal_stream.try_next() {
+                if let Value::Object(obj) = result {
+                    if let Some(Value::Array(tools)) = obj.get("tools") {
+                        let mut parsed_tools = Vec::with_capacity(tools.len());
+                        for tool in tools {
+                            if let Ok(parsed) = serde_json::from_value::<super::types::Tool>(tool.clone()) {
+                                parsed_tools.push(parsed);
+                            }
+                        }
+                        let _ = sender.send(parsed_tools);
+                        return;
+                    }
                 }
+                // Send empty vector if parsing failed
+                let _ = sender.send(Vec::new());
             }
-            return Ok(parsed_tools);
-            }
-        }
-        Ok(Vec::new())
+            // Don't send anything if no result from internal call
+        })
     }
 
     #[inline]
-    async fn call_tool_internal(&self, method: &str, params: Value) -> Result<Value, McpError> {
-        let id = self.request_id.fetch_add(1, Ordering::Relaxed);
-        let start_time = Instant::now();
+    fn call_tool_internal(&self, method: &str, params: Value) -> AsyncStream<Value> {
+        let method = method.to_string();
+        let transport = self.transport.clone();
+        let request_id = self.request_id.fetch_add(1, Ordering::Relaxed);
+        let request_timeout = self.request_timeout;
+        
+        AsyncStream::with_channel(move |sender| {
+            let request = JsonRpcRequest {
+                jsonrpc: "2.0",
+                method,
+                params,
+                id: request_id
+            };
 
-        let request = JsonRpcRequest {
-            jsonrpc: "2.0",
-            method: method.to_string(),
-            params,
-            id};
-
-        let mut buffer = Vec::with_capacity(512);
-        serde_json::to_writer(&mut buffer, &request).map_err(|_| McpError::SerializationFailed)?;
-
-        self.transport.send(&buffer).await?;
-
-        loop {
-            if start_time.elapsed() > self.request_timeout {
-                return Err(McpError::Timeout);
+            let mut buffer = Vec::with_capacity(512);
+            if serde_json::to_writer(&mut buffer, &request).is_err() {
+                return; // SerializationFailed - don't send anything
             }
 
-            let response_data = self.transport.receive().await?;
+            // Send request
+            let mut send_stream = transport.send(&buffer);
+            if send_stream.try_next().is_none() {
+                return; // Transport send failed
+            }
 
-            let response: JsonRpcResponse = serde_json::from_slice(&response_data)
-                .map_err(|_| McpError::SerializationFailed)?;
-
-            if response.id == id {
-                if let Some(error) = response.error {
-                    return Err(McpError::ExecutionFailed(error.message));
+            let start_time = Instant::now();
+            loop {
+                if start_time.elapsed() > request_timeout {
+                    return; // Timeout - don't send anything
                 }
 
-                return response.result.ok_or(McpError::InvalidResponse);
+                let mut receive_stream = transport.receive();
+                if let Some(response_data) = receive_stream.try_next() {
+                    if let Ok(response) = serde_json::from_slice::<JsonRpcResponse>(&response_data) {
+                        if response.id == request_id {
+                            if let Some(_error) = response.error {
+                                return; // ExecutionFailed - don't send anything
+                            }
+
+                            if let Some(result) = response.result {
+                                let _ = sender.send(result);
+                                return;
+                            }
+                        }
+                    }
+                }
+                
+                // Small delay to prevent busy waiting
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
-        }
+        })
     }
 }

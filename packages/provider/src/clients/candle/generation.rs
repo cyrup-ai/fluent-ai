@@ -600,7 +600,7 @@ impl Default for GenerationStatistics {
             total_tokens_generated: AtomicCell::new(0),
             total_sampling_calls: AtomicCell::new(0),
             avg_sampling_candidates: AtomicCell::new(0.0),
-            model: CandleModel::Devstral_22B,
+            model: CandleModel::Devstral22B,
             config: SamplingConfig::default()}
     }
 }
@@ -618,11 +618,11 @@ impl GenerationStatistics {
     pub fn sampling_diversity(&self) -> f32 {
         let avg_candidates = self.avg_sampling_candidates.load();
         let vocab_size = match self.model {
-            CandleModel::Devstral_22B => 102400.0,
-            CandleModel::Llama2_7B | CandleModel::Llama2_13B | CandleModel::Mistral_7B => 32000.0,
-            CandleModel::CodeLlama_7B => 32016.0,
-            CandleModel::Phi3_Mini => 32064.0,
-            CandleModel::Gemma_2B | CandleModel::Gemma_7B => 256000.0};
+            CandleModel::Devstral22B => 102400.0,
+            CandleModel::Llama27B | CandleModel::Llama213B | CandleModel::Mistral7B => 32000.0,
+            CandleModel::CodeLlama7B => 32016.0,
+            CandleModel::Phi3Mini => 32064.0,
+            CandleModel::Gemma2B | CandleModel::Gemma7B => 256000.0};
 
         if vocab_size > 0.0 {
             avg_candidates / vocab_size
@@ -664,11 +664,11 @@ mod tests {
     #[test]
     fn test_text_generator_creation() {
         let config = SamplingConfig::balanced();
-        let generator = TextGenerator::new(CandleModel::Mistral_7B, config);
+        let generator = TextGenerator::new(CandleModel::Mistral7B, config);
         assert!(generator.is_ok());
 
         let generator_instance = generator.unwrap();
-        assert_eq!(generator_instance.model, CandleModel::Mistral_7B);
+        assert_eq!(generator_instance.model, CandleModel::Mistral7B);
     }
 
     #[test]

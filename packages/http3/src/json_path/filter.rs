@@ -89,10 +89,11 @@ impl FilterEvaluator {
                 if let Some(value) = obj.get(property) {
                     current = value;
                 } else {
-                    return Ok(FilterValue::Null);
+                    // RFC 9535: Missing properties are distinct from null values
+                    return Ok(FilterValue::Missing);
                 }
             } else {
-                return Ok(FilterValue::Null);
+                return Ok(FilterValue::Missing);
             }
         }
 
@@ -191,6 +192,10 @@ impl FilterEvaluator {
                 ComparisonOp::NotEqual => a != b,
                 _ => false,
             }),
+            // RFC 9535: Missing properties do not participate in comparisons - always evaluate to false
+            (FilterValue::Missing, _) => Ok(false),
+            (_, FilterValue::Missing) => Ok(false),
+            // RFC 9535: Null value comparisons
             (FilterValue::Null, FilterValue::Null) => Ok(match op {
                 ComparisonOp::Equal => true,
                 ComparisonOp::NotEqual => false,
@@ -238,10 +243,10 @@ impl FilterEvaluator {
                         if let Some(value) = obj.get(name) {
                             current = value;
                         } else {
-                            return Ok(FilterValue::Null);
+                            return Ok(FilterValue::Missing);
                         }
                     } else {
-                        return Ok(FilterValue::Null);
+                        return Ok(FilterValue::Missing);
                     }
                 }
                 JsonSelector::Wildcard => {
@@ -249,7 +254,7 @@ impl FilterEvaluator {
                     if current.is_array() {
                         return Ok(Self::json_value_to_filter_value(current));
                     } else {
-                        return Ok(FilterValue::Null);
+                        return Ok(FilterValue::Missing);
                     }
                 }
                 JsonSelector::Index { index, from_end } => {
@@ -263,10 +268,10 @@ impl FilterEvaluator {
                         if let Some(value) = arr.get(actual_index) {
                             current = value;
                         } else {
-                            return Ok(FilterValue::Null);
+                            return Ok(FilterValue::Missing);
                         }
                     } else {
-                        return Ok(FilterValue::Null);
+                        return Ok(FilterValue::Missing);
                     }
                 }
                 _ => {
@@ -288,6 +293,7 @@ impl FilterEvaluator {
             FilterValue::Number(f) => *f != 0.0 && !f.is_nan(),
             FilterValue::String(s) => !s.is_empty(),
             FilterValue::Null => false,
+            FilterValue::Missing => false,
         }
     }
 }

@@ -55,7 +55,7 @@ pub struct CandleConfig {
 impl Default for CandleConfig {
     fn default() -> Self {
         Self {
-            model: CandleModel::Mistral_7B,
+            model: CandleModel::Mistral7B,
             device: None,          // Auto-select best device
             model_cache_dir: None, // Use default cache directory
             sampling_config: SamplingConfig::balanced(),

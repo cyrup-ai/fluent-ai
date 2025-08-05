@@ -1,9 +1,11 @@
 //! Core agent data structures with automatic memory tool injection
+//! Uses AsyncStream patterns exclusively - NO FUTURES
 
 use std::sync::{Arc, atomic::AtomicUsize};
 
 use crossbeam_utils::CachePadded;
 use serde_json::Value;
+use fluent_ai_async::AsyncStream;
 
 use cyrup_sugars::ZeroOneOrMany;
 use crate::context::Document;
@@ -19,9 +21,6 @@ pub const MAX_AGENT_TOOLS: usize = 32;
 /// Agent statistics for performance monitoring
 #[allow(dead_code)] // TODO: Implement in agent monitoring system
 static AGENT_STATS: CachePadded<AtomicUsize> = CachePadded::new(AtomicUsize::new(0));
-
-/// Result type for agent operations
-pub type AgentResult<T> = Result<T, AgentError>;
 
 /// Agent creation error types
 #[derive(Debug, thiserror::Error)]
@@ -69,47 +68,46 @@ impl Agent {
     /// * `system_prompt` - System prompt for the agent
     ///
     /// # Returns
-    /// Result containing configured agent with memory tool
+    /// Stream containing configured agent with memory tool
     ///
     /// # Performance
     /// Zero allocation agent construction with lock-free memory manager sharing
     #[inline]
-    pub async fn new(
+    pub fn new(
         model: &'static dyn Model,
         system_prompt: impl Into<String>,
-    ) -> Result<Self, AgentError> {
-        // Initialize memory system with cognitive settings optimized for performance
-        let comprehensive_config = ComprehensiveMemoryConfig::default();
-        // Convert comprehensive config to Memory::new() format
-        let memory_config = MemoryConfig {
-            database_url: comprehensive_config.database.connection_string.to_string(),
-            embedding_dimension: comprehensive_config.vector_store.dimension};
-        let memory_stream = Memory::new(memory_config);
-        // Use streaming-only pattern to get the Memory instance
-        let mut stream = memory_stream;
-        let memory = match stream.try_next() {
-            Some(memory) => memory,
-            None => {
-                return Err(AgentError::Config(
-                    "Failed to initialize memory: no memory returned".to_string(),
-                ));
+    ) -> AsyncStream<Self> {
+        let system_prompt = system_prompt.into();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Initialize memory system with cognitive settings optimized for performance
+            let comprehensive_config = ComprehensiveMemoryConfig::default();
+            // Convert comprehensive config to Memory::new() format
+            let memory_config = MemoryConfig {
+                database_url: comprehensive_config.database.connection_string.to_string(),
+                embedding_dimension: comprehensive_config.vector_store.dimension};
+            let mut memory_stream = Memory::new(memory_config);
+            
+            // Use streaming-only pattern to get the Memory instance
+            if let Some(memory) = memory_stream.try_next() {
+                // Create memory tool with zero-allocation initialization
+                let memory_arc = Arc::new(memory);
+                let memory_tool = MemoryTool::new(memory_arc.clone());
+
+                let agent = Self {
+                    model,
+                    system_prompt,
+                    context: ZeroOneOrMany::None,
+                    tools: ZeroOneOrMany::None,
+                    memory: Some((*memory_arc).clone()),
+                    memory_tool: Some(memory_tool),
+                    temperature: None,
+                    max_tokens: None,
+                    additional_params: None};
+                    
+                let _ = sender.send(agent);
             }
-        };
-
-        // Create memory tool with zero-allocation initialization
-        let memory_arc = Arc::new(memory);
-        let memory_tool = MemoryTool::new(memory_arc.clone());
-
-        Ok(Self {
-            model,
-            system_prompt: system_prompt.into(),
-            context: ZeroOneOrMany::None,
-            tools: ZeroOneOrMany::None,
-            memory: Some((*memory_arc).clone()),
-            memory_tool: Some(memory_tool),
-            temperature: None,
-            max_tokens: None,
-            additional_params: None})
+        })
     }
 
     /// Create a new agent with custom memory configuration
@@ -120,47 +118,46 @@ impl Agent {
     /// * `memory_config` - Custom memory configuration
     ///
     /// # Returns
-    /// Result containing configured agent with memory tool
+    /// Stream containing configured agent with memory tool
     ///
     /// # Performance
     /// Zero allocation with custom cognitive settings
     #[inline]
-    pub async fn with_memory_config(
+    pub fn with_memory_config(
         model: &'static dyn Model,
         system_prompt: impl Into<String>,
         memory_config: ComprehensiveMemoryConfig,
-    ) -> Result<Self, AgentError> {
-        // Initialize memory system with custom configuration
-        // Convert comprehensive config to Memory::new() format
-        let memory_cfg = MemoryConfig {
-            database_url: memory_config.database.connection_string.to_string(),
-            embedding_dimension: memory_config.vector_store.dimension};
-        let memory_stream = Memory::new(memory_cfg);
-        // Use streaming-only pattern to get the Memory instance
-        let mut stream = memory_stream;
-        let memory = match stream.try_next() {
-            Some(memory) => memory,
-            None => {
-                return Err(AgentError::Config(
-                    "Failed to initialize memory: no memory returned".to_string(),
-                ));
+    ) -> AsyncStream<Self> {
+        let system_prompt = system_prompt.into();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Initialize memory system with custom configuration
+            // Convert comprehensive config to Memory::new() format
+            let memory_cfg = MemoryConfig {
+                database_url: memory_config.database.connection_string.to_string(),
+                embedding_dimension: memory_config.vector_store.dimension};
+            let mut memory_stream = Memory::new(memory_cfg);
+            
+            // Use streaming-only pattern to get the Memory instance
+            if let Some(memory) = memory_stream.try_next() {
+                // Create memory tool with zero-allocation initialization
+                let memory_arc = Arc::new(memory);
+                let memory_tool = MemoryTool::new(memory_arc.clone());
+
+                let agent = Self {
+                    model,
+                    system_prompt,
+                    context: ZeroOneOrMany::None,
+                    tools: ZeroOneOrMany::None,
+                    memory: Some((*memory_arc).clone()),
+                    memory_tool: Some(memory_tool),
+                    temperature: None,
+                    max_tokens: None,
+                    additional_params: None};
+                    
+                let _ = sender.send(agent);
             }
-        };
-
-        // Create memory tool with zero-allocation initialization
-        let memory_arc = Arc::new(memory);
-        let memory_tool = MemoryTool::new(memory_arc.clone());
-
-        Ok(Self {
-            model,
-            system_prompt: system_prompt.into(),
-            context: ZeroOneOrMany::None,
-            tools: ZeroOneOrMany::None,
-            memory: Some((*memory_arc).clone()),
-            memory_tool: Some(memory_tool),
-            temperature: None,
-            max_tokens: None,
-            additional_params: None})
+        })
     }
 
     /// Create a new agent with shared memory instance
@@ -171,30 +168,36 @@ impl Agent {
     /// * `memory` - Shared memory instance for lock-free concurrent access
     ///
     /// # Returns
-    /// Result containing configured agent with shared memory
+    /// Stream containing configured agent with shared memory
     ///
     /// # Performance
     /// Zero allocation with lock-free memory sharing between agents
     #[inline]
-    pub async fn with_shared_memory(
+    pub fn with_shared_memory(
         model: &'static dyn Model,
         system_prompt: impl Into<String>,
         memory: Memory,
-    ) -> Result<Self, AgentError> {
-        // Create memory tool with zero-allocation initialization
-        let memory_arc = Arc::new(memory);
-        let memory_tool = MemoryTool::new(memory_arc.clone());
+    ) -> AsyncStream<Self> {
+        let system_prompt = system_prompt.into();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Create memory tool with zero-allocation initialization
+            let memory_arc = Arc::new(memory);
+            let memory_tool = MemoryTool::new(memory_arc.clone());
 
-        Ok(Self {
-            model,
-            system_prompt: system_prompt.into(),
-            context: ZeroOneOrMany::None,
-            tools: ZeroOneOrMany::None,
-            memory: Some((*memory_arc).clone()),
-            memory_tool: Some(memory_tool),
-            temperature: None,
-            max_tokens: None,
-            additional_params: None})
+            let agent = Self {
+                model,
+                system_prompt,
+                context: ZeroOneOrMany::None,
+                tools: ZeroOneOrMany::None,
+                memory: Some((*memory_arc).clone()),
+                memory_tool: Some(memory_tool),
+                temperature: None,
+                max_tokens: None,
+                additional_params: None};
+                
+            let _ = sender.send(agent);
+        })
     }
 
     /// Get memory tool reference for direct access

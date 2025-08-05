@@ -1035,28 +1035,30 @@ impl CognitiveState {
     }
 
     /// Add quantum entanglement bond to another cognitive state
+    ///
+    /// Note: This method currently cannot modify the quantum signature due to Arc<QuantumSignature>
+    /// immutability. To properly implement this, the quantum_signature field would need to use
+    /// Arc<Mutex<QuantumSignature>> or similar interior mutability pattern.
     #[inline]
     pub fn add_quantum_entanglement_bond(
         &self,
         target_id: Uuid,
         bond_strength: f32,
         entanglement_type: EntanglementType,
-    ) -> bool {
-        // Since QuantumSignature.entanglement_bonds is private and create_entanglement_bond requires &mut,
-        // we'll implement this by creating a log entry and returning success for now
-        // In a full implementation, this would modify the quantum signature's bonds
-        log::info!(
-            "Adding quantum entanglement bond to {} with strength {} and type {:?}",
+    ) -> Result<(), String> {
+        // Record the quantum operation for statistics
+        self.stats.record_quantum_operation();
+
+        // Log the attempted operation for debugging
+        log::warn!(
+            "Cannot add quantum entanglement bond to {} (strength: {}, type: {:?}) - quantum signature is immutable. Use CognitiveState::with_entanglement_bond() at construction time instead.",
             target_id,
             bond_strength,
             entanglement_type
         );
 
-        // Record the quantum operation for statistics
-        self.stats.record_quantum_operation();
-
-        // Simulate successful entanglement creation
-        true
+        // Return error indicating architectural limitation
+        Err("Cannot modify quantum signature after creation - use with_entanglement_bond() during construction".to_string())
     }
 
     /// Get count of quantum entanglement bonds

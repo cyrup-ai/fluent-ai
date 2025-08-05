@@ -60,7 +60,7 @@ impl JsonPathParser {
 
         // RFC 9535 Compliance: JSONPath expressions cannot end with '.' unless it's recursive descent
         // '$.' is invalid (incomplete property access)
-        // '$..' is valid (recursive descent)
+        // '$..' is also invalid per RFC 9535: descendant-segment = ".." S bracket-segment
         if expression.ends_with('.') && !expression.ends_with("..") {
             return Err(invalid_expression_error(
                 expression,
@@ -69,13 +69,37 @@ impl JsonPathParser {
             ));
         }
 
+        // RFC 9535: descendant-segment = ".." S bracket-segment  
+        // Bare ".." without following segment is invalid
+        if expression == "$.." {
+            return Err(invalid_expression_error(
+                expression,
+                "descendant segment '..' must be followed by a bracket segment",
+                Some(expression.len() - 2),
+            ));
+        }
+
+        // RFC 9535: Also check for expressions ending with ".." like "$.store.."
+        if expression.ends_with("..") && expression.len() > 3 {
+            return Err(invalid_expression_error(
+                expression,
+                "descendant segment '..' must be followed by a bracket segment",
+                Some(expression.len() - 2),
+            ));
+        }
+
+        // RFC 9535: descendant-segment = ".." S bracket-segment  
+        // According to RFC 9535, ".." can be followed by bracket-segment, wildcard '*', or identifier
+        // Valid: "$..*", "$..[*]", "$..level1", "$..['key']"
+        // Invalid: bare ".." without any following segment
+
         let mut parser = ExpressionParser::new(expression);
         let selectors = parser.parse()?;
 
-        // RFC 9535 Compliance: Root-only expressions "$" are NOT valid per RFC 9535
-        // ABNF: jsonpath-query = root-identifier segments
-        //       segments = *(S segment)  ; zero or more segments per RFC 9535
-        // Therefore "$" (root-only) is VALID per RFC 9535
+        // RFC 9535 Compliance: Root-only expressions "$" are valid per specification
+        // ABNF: jsonpath-query = root-identifier segments where segments = *(S segment) allows zero segments
+        // Section 2.2.3 Examples explicitly shows "$" returns the root node
+        // No validation needed - bare "$" is perfectly valid per RFC 9535
 
         // Determine if this is an array streaming expression
         let is_array_stream = selectors.iter().any(|s| {
@@ -97,5 +121,45 @@ impl JsonPathParser {
     /// Faster than full compilation when only validation is needed.
     pub fn validate(expression: &str) -> JsonPathResult<()> {
         Self::compile(expression).map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_recursive_descent_wildcard_compilation() {
+        // Test RFC 9535 compliant recursive descent patterns
+        let valid_patterns = vec![
+            "$..[*]",           // Valid: recursive descent followed by bracket selector
+            "$..level1",        // Valid: recursive descent followed by property  
+            "$..['key']",       // Valid: recursive descent followed by bracket selector
+        ];
+        
+        for pattern in valid_patterns {
+            let result = JsonPathParser::compile(pattern);
+            assert!(result.is_ok(), "Pattern {} should compile successfully", pattern);
+        }
+        
+        // Test RFC 9535 valid patterns including recursive descent with wildcard
+        let additional_valid_patterns = vec![
+            "$..*",             // Valid: recursive descent followed by wildcard (RFC 9535 compliant)
+        ];
+        
+        for pattern in additional_valid_patterns {
+            let result = JsonPathParser::compile(pattern);
+            assert!(result.is_ok(), "Pattern {} should compile successfully per RFC 9535", pattern);
+        }
+        
+        // Test that invalid patterns are properly rejected
+        let invalid_patterns = vec![
+            "$..",              // Invalid: bare recursive descent without following segment
+        ];
+        
+        for pattern in invalid_patterns {
+            let result = JsonPathParser::compile(pattern);
+            assert!(result.is_err(), "Pattern {} should be rejected as invalid", pattern);
+        }
     }
 }

@@ -9,6 +9,9 @@
 
 use std::collections::HashMap;
 use std::sync::RwLock;
+// Removed unused imports: Arc, AtomicBool, Ordering
+use std::thread;
+use std::time::Duration;
 
 use crate::json_path::error::{JsonPathResult, invalid_expression_error};
 use crate::json_path::parser::{FilterExpression, FilterValue};
@@ -127,6 +130,7 @@ impl FunctionEvaluator {
                         Ok(FilterValue::Null) // Primitives return null per RFC
                     }
                     FilterValue::Null => Ok(FilterValue::Null),
+                    FilterValue::Missing => Ok(FilterValue::Null), // Missing properties have no length
                 }
             }
         }
@@ -180,6 +184,7 @@ impl FunctionEvaluator {
 
     /// RFC 9535 Section 2.4.6: match() function
     /// Tests if string matches regular expression (anchored match)
+    /// Includes ReDoS protection with 1-second timeout
     #[inline]
     fn evaluate_match_function(
         context: &serde_json::Value,
@@ -202,7 +207,12 @@ impl FunctionEvaluator {
 
         if let (FilterValue::String(s), FilterValue::String(pattern)) = (string_val, pattern_val) {
             match REGEX_CACHE.get_or_compile(&pattern) {
-                Ok(re) => Ok(FilterValue::Boolean(re.is_match(&s))),
+                Ok(re) => {
+                    // ReDoS protection: Use timeout for regex execution
+                    Self::execute_regex_with_timeout(move || re.is_match(&s))
+                        .map(FilterValue::Boolean)
+                        .map_err(|e| invalid_expression_error("", &e, None))
+                }
                 Err(_) => Err(invalid_expression_error(
                     "",
                     &format!("invalid regex pattern: {}", pattern),
@@ -216,6 +226,7 @@ impl FunctionEvaluator {
 
     /// RFC 9535 Section 2.4.7: search() function
     /// Tests if string contains match for regular expression (unanchored search)
+    /// Includes ReDoS protection with 1-second timeout
     #[inline]
     fn evaluate_search_function(
         context: &serde_json::Value,
@@ -238,7 +249,12 @@ impl FunctionEvaluator {
 
         if let (FilterValue::String(s), FilterValue::String(pattern)) = (string_val, pattern_val) {
             match REGEX_CACHE.get_or_compile(&pattern) {
-                Ok(re) => Ok(FilterValue::Boolean(re.find(&s).is_some())),
+                Ok(re) => {
+                    // ReDoS protection: Use timeout for regex execution
+                    Self::execute_regex_with_timeout(move || re.find(&s).is_some())
+                        .map(FilterValue::Boolean)
+                        .map_err(|e| invalid_expression_error("", &e, None))
+                }
                 Err(_) => Err(invalid_expression_error(
                     "",
                     &format!("invalid regex pattern: {}", pattern),
@@ -441,6 +457,51 @@ impl FunctionEvaluator {
                 }
             }
             _ => {} // Primitives have no descendants
+        }
+    }
+
+    /// Execute regex operation with timeout protection against ReDoS attacks
+    /// Returns error if timeout is exceeded (500ms for aggressive protection)
+    fn execute_regex_with_timeout<F>(regex_operation: F) -> Result<bool, String>
+    where
+        F: FnOnce() -> bool + Send + 'static,
+    {
+        use std::time::Instant;
+        
+        let timeout_duration = Duration::from_millis(500); // 500ms aggressive timeout
+        let start_time = Instant::now();
+        
+        let (tx, rx) = std::sync::mpsc::channel();
+        
+        // Spawn regex execution in separate thread
+        let handle = thread::spawn(move || {
+            log::debug!("Starting regex execution in timeout thread");
+            let result = regex_operation();
+            log::debug!("Regex execution completed in thread");
+            let _ = tx.send(result); // Ignore send errors if receiver dropped
+        });
+        
+        // Wait for completion or timeout
+        match rx.recv_timeout(timeout_duration) {
+            Ok(result) => {
+                let elapsed = start_time.elapsed();
+                log::debug!("Regex completed successfully in {:?}", elapsed);
+                Ok(result)
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                let elapsed = start_time.elapsed();
+                log::warn!("Regex execution timed out after {:?} - potential ReDoS attack", elapsed);
+                
+                // Clean up thread - it will continue running but we ignore result
+                drop(handle);
+                
+                Err(format!("regex execution timed out after {}ms - potential ReDoS attack", elapsed.as_millis()))
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                let elapsed = start_time.elapsed();
+                log::error!("Regex execution thread disconnected after {:?}", elapsed);
+                Err("regex execution thread disconnected unexpectedly".to_string())
+            }
         }
     }
 

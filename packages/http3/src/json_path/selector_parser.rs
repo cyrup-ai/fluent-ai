@@ -266,6 +266,8 @@ impl<'a> SelectorParser<'a> {
             Some(n)
         } else if matches!(self.peek_token(), Some(Token::RightBracket)) {
             None // Open-ended slice like [1:]
+        } else if matches!(self.peek_token(), Some(Token::Colon)) {
+            None // Empty end in patterns like [1::2]
         } else {
             None
         };
@@ -273,14 +275,23 @@ impl<'a> SelectorParser<'a> {
         // Parse optional step
         let step = if matches!(self.peek_token(), Some(Token::Colon)) {
             self.consume_token(); // consume second colon
+            // After second colon, step is REQUIRED per RFC 9535
             if let Some(Token::Integer(n)) = self.peek_token() {
                 let n = *n;
                 self.consume_token();
+                // RFC 9535: step must not be zero
+                if n == 0 {
+                    return Err(invalid_expression_error(
+                        self.input,
+                        "step value cannot be zero in slice expression",
+                        Some(self.position),
+                    ));
+                }
                 Some(n)
             } else {
                 return Err(invalid_expression_error(
                     self.input,
-                    "expected integer after second colon in slice",
+                    "step value required after second colon in slice",
                     Some(self.position),
                 ));
             }
@@ -305,6 +316,8 @@ impl<'a> SelectorParser<'a> {
             let n = *n;
             self.consume_token();
             Some(n)
+        } else if matches!(self.peek_token(), Some(Token::Colon)) {
+            None // Empty end in patterns like [::2]
         } else {
             None
         };
@@ -312,14 +325,23 @@ impl<'a> SelectorParser<'a> {
         // Parse optional step
         let step = if matches!(self.peek_token(), Some(Token::Colon)) {
             self.consume_token(); // consume second colon
+            // After second colon, step is REQUIRED per RFC 9535
             if let Some(Token::Integer(n)) = self.peek_token() {
                 let n = *n;
                 self.consume_token();
+                // RFC 9535: step must not be zero
+                if n == 0 {
+                    return Err(invalid_expression_error(
+                        self.input,
+                        "step value cannot be zero in slice expression",
+                        Some(self.position),
+                    ));
+                }
                 Some(n)
             } else {
                 return Err(invalid_expression_error(
                     self.input,
-                    "expected integer after second colon in slice",
+                    "step value required after second colon in slice",
                     Some(self.position),
                 ));
             }

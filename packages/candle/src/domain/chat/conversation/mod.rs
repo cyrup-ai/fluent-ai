@@ -11,6 +11,16 @@ use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 // REMOVED: use fluent_ai_async::AsyncStream::with_channel;
 use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
 use crate::domain::chat::message::types::CandleMessageRole;
+use thiserror::Error;
+
+/// Error types for conversation operations
+#[derive(Error, Debug)]
+pub enum CandleConversationError {
+    #[error("Message vector corruption: {message}")]
+    MessageVectorCorruption { message: String },
+    #[error("System error: {0}")]
+    System(String),
+}
 
 /// Candle immutable message in a conversation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,7 +201,7 @@ impl CandleStreamingConversation {
 
     /// Add Candle user message (creates new immutable message)
     #[inline]
-    pub fn add_user_message(&mut self, content: impl Into<String>) -> &CandleImmutableMessage {
+    pub fn add_user_message(&mut self, content: impl Into<String>) -> Result<&CandleImmutableMessage, CandleConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = CandleImmutableMessage::user(content, sequence);
 
@@ -206,15 +216,16 @@ impl CandleStreamingConversation {
 
         // Safety: We just pushed a message, so messages cannot be empty
         match self.messages.last() {
-            Some(msg) => msg,
-            None => panic!(
-                "Critical error: message vector empty after push - possible memory corruption"
-            )}
+            Some(msg) => Ok(msg),
+            None => Err(CandleConversationError::MessageVectorCorruption {
+                message: "Message vector empty after push - possible memory corruption".to_string()
+            })
+        }
     }
 
     /// Add Candle assistant message (creates new immutable message)
     #[inline]
-    pub fn add_assistant_message(&mut self, content: impl Into<String>) -> &CandleImmutableMessage {
+    pub fn add_assistant_message(&mut self, content: impl Into<String>) -> Result<&CandleImmutableMessage, CandleConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = CandleImmutableMessage::assistant(content, sequence);
 
@@ -229,15 +240,16 @@ impl CandleStreamingConversation {
 
         // Safety: We just pushed a message, so messages cannot be empty
         match self.messages.last() {
-            Some(msg) => msg,
-            None => panic!(
-                "Critical error: message vector empty after push - possible memory corruption"
-            )}
+            Some(msg) => Ok(msg),
+            None => Err(CandleConversationError::MessageVectorCorruption {
+                message: "Message vector empty after push - possible memory corruption".to_string()
+            })
+        }
     }
 
     /// Add Candle system message (creates new immutable message)
     #[inline]
-    pub fn add_system_message(&mut self, content: impl Into<String>) -> &CandleImmutableMessage {
+    pub fn add_system_message(&mut self, content: impl Into<String>) -> Result<&CandleImmutableMessage, CandleConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = CandleImmutableMessage::system(content, sequence);
 
@@ -252,10 +264,11 @@ impl CandleStreamingConversation {
 
         // Safety: We just pushed a message, so messages cannot be empty
         match self.messages.last() {
-            Some(msg) => msg,
-            None => panic!(
-                "Critical error: message vector empty after push - possible memory corruption"
-            )}
+            Some(msg) => Ok(msg),
+            None => Err(CandleConversationError::MessageVectorCorruption {
+                message: "Message vector empty after push - possible memory corruption".to_string()
+            })
+        }
     }
 
     /// Get all Candle messages as borrowed slice (zero allocation)

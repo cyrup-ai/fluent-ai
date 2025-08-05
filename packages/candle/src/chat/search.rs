@@ -14,7 +14,7 @@ use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 // Removed unused import: wide::f32x8
@@ -1124,20 +1124,15 @@ impl ConversationTagger {
         })
     }
 
-    /// Create a child tag (legacy)
-    pub async fn create_child_tag(
+    /// Create a child tag (streams)
+    pub fn create_child_tag(
         &self,
         parent_id: Arc<str>,
         name: Arc<str>,
         description: Arc<str>,
         category: Arc<str>,
-    ) -> Result<Arc<str>, SearchError> {
-        let mut stream = self.create_child_tag_stream(parent_id, name, description, category);
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(tag_id) => Ok(tag_id),
-            None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+    ) -> AsyncStream<Arc<str>> {
+        self.create_child_tag_stream(parent_id, name, description, category)
     }
 
     /// Tag a message (streaming)
@@ -1181,18 +1176,13 @@ impl ConversationTagger {
         })
     }
 
-    /// Tag a message (legacy)
-    pub async fn tag_message(
+    /// Tag a message (streams)
+    pub fn tag_message(
         &self,
         message_id: Arc<str>,
         tag_ids: Vec<Arc<str>>,
-    ) -> Result<(), SearchError> {
-        let mut stream = self.tag_message_stream(message_id, tag_ids);
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(_) => Ok(()),
-            None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+    ) -> AsyncStream<()> {
+        self.tag_message_stream(message_id, tag_ids)
     }
 
     /// Auto-tag message based on content (streaming)
@@ -1312,18 +1302,13 @@ impl ConversationTagger {
         })
     }
 
-    /// Add auto-tagging rule (legacy)
-    pub async fn add_auto_tagging_rule(
+    /// Add auto-tagging rule (streams)
+    pub fn add_auto_tagging_rule(
         &self,
         pattern: Arc<str>,
         tag_ids: Vec<Arc<str>>,
-    ) -> Result<(), SearchError> {
-        let mut stream = self.add_auto_tagging_rule_stream(pattern, tag_ids);
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(_) => Ok(()),
-            None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+    ) -> AsyncStream<()> {
+        self.add_auto_tagging_rule_stream(pattern, tag_ids)
     }
 
     /// Remove auto-tagging rule (streaming)
@@ -1354,14 +1339,9 @@ impl ConversationTagger {
         })
     }
 
-    /// Remove auto-tagging rule (legacy)
-    pub async fn remove_auto_tagging_rule(&self, pattern: &Arc<str>) -> Result<(), SearchError> {
-        let mut stream = self.remove_auto_tagging_rule_stream(pattern.clone());
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(_) => Ok(()),
-            None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+    /// Remove auto-tagging rule (streams)
+    pub fn remove_auto_tagging_rule(&self, pattern: &Arc<str>) -> AsyncStream<()> {
+        self.remove_auto_tagging_rule_stream(pattern.clone())
     }
 
     /// Get tagging statistics
@@ -1608,18 +1588,13 @@ impl HistoryExporter {
         })
     }
 
-    /// Export conversation history (legacy)
-    pub async fn export_history(
+    /// Export conversation history (streams)
+    pub fn export_history(
         &self,
         messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut stream = self.export_history_stream(messages, options.clone());
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(result) => Ok(result),
-            None => Err(SearchError::ExportError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+    ) -> AsyncStream<String> {
+        self.export_history_stream(messages, options.clone())
     }
 
     /// Export conversation history with full format support (synchronous implementation calling async methods)
@@ -1645,51 +1620,44 @@ impl HistoryExporter {
 
             // Execute all async operations using the runtime handle
             rt.block_on(async move {
-                // First filter messages
-                let filtered_messages = match self_clone.filter_messages(messages, &options_clone).await {
-                    Ok(msgs) => msgs,
-                    Err(e) => {
-                        eprintln!("Export failed: Filter error: {}", e);
+                // First filter messages  
+                let filtered_messages = match self_clone.filter_messages(messages, &options_clone).collect().first() {
+                    Some(msgs) => msgs.clone(),
+                    None => {
+                        eprintln!("Export failed: No filtered messages");
                         return;
                     }
                 };
 
-                // Then export based on format using the actual async methods
+                // Then export based on format using streaming collection
                 let export_result = match options_clone.format {
                     ExportFormat::Json => {
-                        self_clone.export_json(&filtered_messages, &options_clone).await
+                        self_clone.export_json(&filtered_messages, &options_clone).collect().first().cloned().unwrap_or_default()
                     }
                     ExportFormat::Csv => {
-                        self_clone.export_csv(&filtered_messages, &options_clone).await
+                        self_clone.export_csv(&filtered_messages, &options_clone).collect().first().cloned().unwrap_or_default()
                     }
                     ExportFormat::Markdown => {
-                        self_clone.export_markdown(&filtered_messages, &options_clone).await
+                        self_clone.export_markdown(&filtered_messages, &options_clone).collect().first().cloned().unwrap_or_default()
                     }
                     ExportFormat::Html => {
-                        self_clone.export_html(&filtered_messages, &options_clone).await
+                        self_clone.export_html(&filtered_messages, &options_clone).collect().first().cloned().unwrap_or_default()
                     }
                     ExportFormat::Xml => {
-                        self_clone.export_xml(&filtered_messages, &options_clone).await
+                        self_clone.export_xml(&filtered_messages, &options_clone).collect().first().cloned().unwrap_or_default()
                     }
                     ExportFormat::PlainText => {
-                        self_clone.export_plain_text(&filtered_messages, &options_clone).await
+                        self_clone.export_plain_text(&filtered_messages, &options_clone).collect().first().cloned().unwrap_or_default()
                     }
                 };
 
-                match export_result {
-                    Ok(exported_data) => {
-                        // Apply compression if needed
-                        let final_data = if options_clone.compress {
-                            self_clone.compress_data(&exported_data).await.unwrap_or(exported_data)
-                        } else {
-                            exported_data
-                        };
-                        emit!(sender, final_data);
-                    }
-                    Err(e) => {
-                        eprintln!("Export failed: {}", e);
-                    }
-                }
+                // Apply compression if needed - export_result is now String directly
+                let final_data = if options_clone.compress {
+                    self_clone.compress_data(&export_result).collect().first().cloned().unwrap_or(export_result.clone())
+                } else {
+                    export_result
+                };
+                emit!(sender, final_data);
             });
         })
     }
@@ -1741,23 +1709,24 @@ impl HistoryExporter {
         })
     }
 
-    /// Filter messages based on export options (legacy)
-    async fn filter_messages(
+    /// Filter messages based on export options (streams)
+    fn filter_messages(
         &self,
         messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
-    ) -> Result<Vec<SearchChatMessage>, SearchError> {
+    ) -> AsyncStream<Vec<SearchChatMessage>> {
         // Use proper AsyncStream pattern from fluent_ai_async
         let stream = self._filter_messages_stream(messages, options);
-        Ok(stream.collect())
+        stream.collect_sync()
     }
 
     /// Export to JSON format
-    async fn export_json(
+    fn export_json(
         &self,
         messages: &[SearchChatMessage],
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
+    ) -> AsyncStream<String> {
+        AsyncStream::with_channel(move |sender| {
         let mut json_messages = Vec::new();
 
         for message in messages {
@@ -1780,277 +1749,309 @@ impl HistoryExporter {
             json_messages.push(json_obj);
         }
 
-        let export_obj = serde_json::json!({
-            "messages": json_messages,
-            "export_info": {
-                "format": "json",
-                "exported_at": std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
-                "total_messages": messages.len()}
-        });
+            let export_obj = serde_json::json!({
+                "messages": json_messages,
+                "export_info": {
+                    "format": "json",
+                    "exported_at": std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                    "total_messages": messages.len()}
+            });
 
-        serde_json::to_string_pretty(&export_obj).map_err(|e| SearchError::ExportError {
-            reason: Arc::from(e.to_string())})
+            match serde_json::to_string_pretty(&export_obj) {
+                Ok(json_string) => {
+                    let _ = sender.send(json_string);
+                }
+                Err(e) => {
+                    handle_error!(e, "JSON export failed");
+                }
+            }
+        })
     }
 
     /// Export to CSV format
-    async fn export_csv(
+    fn export_csv(
         &self,
         messages: &[SearchChatMessage],
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut csv_output = String::new();
+    ) -> AsyncStream<String> {
+        let messages_clone = messages.to_vec();
+        let options_clone = options.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut csv_output = String::new();
 
-        // Header
-        let mut headers = vec!["role", "content", "tokens"];
-        if options.include_timestamps {
-            headers.push("timestamp");
-        }
-        if options.include_metadata {
-            headers.push("metadata");
-        }
-        csv_output.push_str(&headers.join(","));
-        csv_output.push('\n');
-
-        // Data rows
-        for message in messages {
-            let escaped_content = message
-                .message
-                .content
-                .replace(',', "\\,")
-                .replace('\n', "\\n");
-            let timestamp_str = message
-                .message
-                .timestamp
-                .map_or_else(|| "0".to_string(), |t| t.to_string());
-            let tokens_str = "0"; // tokens field not available in Message struct
-            let role_str = message.message.role.to_string();
-            let relevance_str = message.relevance_score.to_string();
-
-            let mut row = vec![role_str.as_str(), &escaped_content, tokens_str];
-
-            if options.include_timestamps {
-                row.push(&timestamp_str);
+            // Header
+            let mut headers = vec!["role", "content", "tokens"];
+            if options_clone.include_timestamps {
+                headers.push("timestamp");
             }
-
-            if options.include_metadata {
-                // Note: Message struct doesn't have metadata field, using relevance_score instead
-                row.push(&relevance_str);
+            if options_clone.include_metadata {
+                headers.push("metadata");
             }
-
-            csv_output.push_str(&row.join(","));
+            csv_output.push_str(&headers.join(","));
             csv_output.push('\n');
-        }
 
-        Ok(csv_output)
+            // Data rows
+            for message in &messages_clone {
+                let escaped_content = message
+                    .message
+                    .content
+                    .replace(',', "\\,")
+                    .replace('\n', "\\n");
+                let timestamp_str = message
+                    .message
+                    .timestamp
+                    .map_or_else(|| "0".to_string(), |t| t.to_string());
+                let tokens_str = "0"; // tokens field not available in Message struct
+                let role_str = message.message.role.to_string();
+                let relevance_str = message.relevance_score.to_string();
+
+                let mut row = vec![role_str.as_str(), &escaped_content, tokens_str];
+
+                if options_clone.include_timestamps {
+                    row.push(&timestamp_str);
+                }
+
+                if options_clone.include_metadata {
+                    // Note: Message struct doesn't have metadata field, using relevance_score instead
+                    row.push(&relevance_str);
+                }
+
+                csv_output.push_str(&row.join(","));
+                csv_output.push('\n');
+            }
+
+            let _ = sender.send(csv_output);
+        })
     }
 
     /// Export to Markdown format
-    async fn export_markdown(
+    fn export_markdown(
         &self,
         messages: &[SearchChatMessage],
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut markdown_output = String::new();
+    ) -> AsyncStream<String> {
+        let messages_clone = messages.to_vec();
+        let options_clone = options.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut markdown_output = String::new();
 
-        markdown_output.push_str("# Conversation History\n\n");
+            markdown_output.push_str("# Conversation History\n\n");
 
-        if options.include_timestamps {
-            markdown_output.push_str(&format!(
-                "Exported at: {}\n\n",
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()
-            ));
-        }
-
-        for message in messages {
-            markdown_output.push_str(&format!("## {}\n\n", message.message.role));
-            markdown_output.push_str(&format!("{}\n\n", message.message.content));
-
-            if options.include_timestamps {
-                let timestamp_str = message
-                    .message
-                    .timestamp
-                    .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
-                markdown_output.push_str(&format!("*Timestamp: {}*\n\n", timestamp_str));
-            }
-
-            // Note: metadata field not available in Message struct - using relevance_score instead
-            if options.include_metadata {
+            if options_clone.include_timestamps {
                 markdown_output.push_str(&format!(
-                    "*Relevance Score: {:.2}*\n\n",
-                    message.relevance_score
+                    "Exported at: {}\n\n",
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs()
                 ));
             }
 
-            markdown_output.push_str("---\n\n");
-        }
+            for message in &messages_clone {
+                markdown_output.push_str(&format!("## {}\n\n", message.message.role));
+                markdown_output.push_str(&format!("{}\n\n", message.message.content));
 
-        Ok(markdown_output)
+                if options_clone.include_timestamps {
+                    let timestamp_str = message
+                        .message
+                        .timestamp
+                        .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+                    markdown_output.push_str(&format!("*Timestamp: {}*\n\n", timestamp_str));
+                }
+
+                // Note: metadata field not available in Message struct - using relevance_score instead
+                if options_clone.include_metadata {
+                    markdown_output.push_str(&format!(
+                        "*Relevance Score: {:.2}*\n\n",
+                        message.relevance_score
+                    ));
+                }
+
+                markdown_output.push_str("---\n\n");
+            }
+
+            let _ = sender.send(markdown_output);
+        })
     }
 
     /// Export to HTML format
-    async fn export_html(
+    fn export_html(
         &self,
         messages: &[SearchChatMessage],
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut html_output = String::new();
+    ) -> AsyncStream<String> {
+        let messages_clone = messages.to_vec();
+        let options_clone = options.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut html_output = String::new();
 
-        html_output.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
-        html_output.push_str("<title>Conversation History</title>\n");
-        html_output.push_str("<style>\n");
-        html_output.push_str("body { font-family: Arial, sans-serif; margin: 20px; }\n");
-        html_output.push_str(".message { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }\n");
-        html_output.push_str(".role { font-weight: bold; color: #333; }\n");
-        html_output.push_str(".timestamp { color: #666; font-size: 0.9em; }\n");
-        html_output.push_str(".metadata { color: #999; font-size: 0.8em; }\n");
-        html_output.push_str("</style>\n");
-        html_output.push_str("</head>\n<body>\n");
+            html_output.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
+            html_output.push_str("<title>Conversation History</title>\n");
+            html_output.push_str("<style>\n");
+            html_output.push_str("body { font-family: Arial, sans-serif; margin: 20px; }\n");
+            html_output.push_str(".message { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }\n");
+            html_output.push_str(".role { font-weight: bold; color: #333; }\n");
+            html_output.push_str(".timestamp { color: #666; font-size: 0.9em; }\n");
+            html_output.push_str(".metadata { color: #999; font-size: 0.8em; }\n");
+            html_output.push_str("</style>\n");
+            html_output.push_str("</head>\n<body>\n");
 
-        html_output.push_str("<h1>Conversation History</h1>\n");
+            html_output.push_str("<h1>Conversation History</h1>\n");
 
-        for message in messages {
-            html_output.push_str("<div class=\"message\">\n");
-            html_output.push_str(&format!(
-                "<div class=\"role\">{}</div>\n",
-                message.message.role
-            ));
-            html_output.push_str(&format!(
-                "<div class=\"content\">{}</div>\n",
-                message
-                    .message
-                    .content
-                    .replace('<', "&lt;")
-                    .replace('>', "&gt;")
-            ));
-
-            if options.include_timestamps {
-                let timestamp_str = message
-                    .message
-                    .timestamp
-                    .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+            for message in &messages_clone {
+                html_output.push_str("<div class=\"message\">\n");
                 html_output.push_str(&format!(
-                    "<div class=\"timestamp\">Timestamp: {}</div>\n",
-                    timestamp_str
+                    "<div class=\"role\">{}</div>\n",
+                    message.message.role
                 ));
+                html_output.push_str(&format!(
+                    "<div class=\"content\">{}</div>\n",
+                    message
+                        .message
+                        .content
+                        .replace('<', "&lt;")
+                        .replace('>', "&gt;")
+                ));
+
+                if options_clone.include_timestamps {
+                    let timestamp_str = message
+                        .message
+                        .timestamp
+                        .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+                    html_output.push_str(&format!(
+                        "<div class=\"timestamp\">Timestamp: {}</div>\n",
+                        timestamp_str
+                    ));
+                }
+
+                // Note: metadata field not available in Message struct - using relevance_score instead
+                if options_clone.include_metadata {
+                    html_output.push_str(&format!(
+                        "<div class=\"metadata\">Relevance Score: {:.2}</div>\n",
+                        message.relevance_score
+                    ));
+                }
+
+                html_output.push_str("</div>\n");
             }
 
-            // Note: metadata field not available in Message struct - using relevance_score instead
-            if options.include_metadata {
-                html_output.push_str(&format!(
-                    "<div class=\"metadata\">Relevance Score: {:.2}</div>\n",
-                    message.relevance_score
-                ));
-            }
+            html_output.push_str("</body>\n</html>");
 
-            html_output.push_str("</div>\n");
-        }
-
-        html_output.push_str("</body>\n</html>");
-
-        Ok(html_output)
+            let _ = sender.send(html_output);
+        })
     }
 
     /// Export to XML format
-    async fn export_xml(
+    fn export_xml(
         &self,
         messages: &[SearchChatMessage],
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut xml_output = String::new();
+    ) -> AsyncStream<String> {
+        let messages_clone = messages.to_vec();
+        let options_clone = options.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut xml_output = String::new();
 
-        xml_output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml_output.push_str("<conversation>\n");
+            xml_output.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+            xml_output.push_str("<conversation>\n");
 
-        if options.include_timestamps {
-            xml_output.push_str(&format!(
-                "  <export_info exported_at=\"{}\"/>\n",
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()
-            ));
-        }
-
-        for message in messages {
-            xml_output.push_str("  <message>\n");
-            xml_output.push_str(&format!("    <role>{}</role>\n", message.message.role));
-            xml_output.push_str(&format!(
-                "    <content>{}</content>\n",
-                message
-                    .message
-                    .content
-                    .replace('<', "&lt;")
-                    .replace('>', "&gt;")
-            ));
-            xml_output.push_str("    <tokens>0</tokens>\n"); // tokens field not available in Message struct
-
-            if options.include_timestamps {
-                let timestamp_str = message
-                    .message
-                    .timestamp
-                    .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
-                xml_output.push_str(&format!("    <timestamp>{}</timestamp>\n", timestamp_str));
-            }
-
-            // Note: metadata field not available in Message struct - using relevance_score instead
-            if options.include_metadata {
+            if options_clone.include_timestamps {
                 xml_output.push_str(&format!(
-                    "    <relevance_score>{:.2}</relevance_score>\n",
-                    message.relevance_score
+                    "  <export_info exported_at=\"{}\"/>\n",
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs()
                 ));
             }
 
-            xml_output.push_str("  </message>\n");
-        }
+            for message in &messages_clone {
+                xml_output.push_str("  <message>\n");
+                xml_output.push_str(&format!("    <role>{}</role>\n", message.message.role));
+                xml_output.push_str(&format!(
+                    "    <content>{}</content>\n",
+                    message
+                        .message
+                        .content
+                        .replace('<', "&lt;")
+                        .replace('>', "&gt;")
+                ));
+                xml_output.push_str("    <tokens>0</tokens>\n"); // tokens field not available in Message struct
 
-        xml_output.push_str("</conversation>");
+                if options_clone.include_timestamps {
+                    let timestamp_str = message
+                        .message
+                        .timestamp
+                        .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+                    xml_output.push_str(&format!("    <timestamp>{}</timestamp>\n", timestamp_str));
+                }
 
-        Ok(xml_output)
+                // Note: metadata field not available in Message struct - using relevance_score instead
+                if options_clone.include_metadata {
+                    xml_output.push_str(&format!(
+                        "    <relevance_score>{:.2}</relevance_score>\n",
+                        message.relevance_score
+                    ));
+                }
+
+                xml_output.push_str("  </message>\n");
+            }
+
+            xml_output.push_str("</conversation>");
+
+            let _ = sender.send(xml_output);
+        })
     }
 
     /// Export to plain text format
-    async fn export_plain_text(
+    fn export_plain_text(
         &self,
         messages: &[SearchChatMessage],
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut text_output = String::new();
+    ) -> AsyncStream<String> {
+        let messages_clone = messages.to_vec();
+        let options_clone = options.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut text_output = String::new();
 
-        text_output.push_str("CONVERSATION HISTORY\n");
-        text_output.push_str("===================\n\n");
+            text_output.push_str("CONVERSATION HISTORY\n");
+            text_output.push_str("===================\n\n");
 
-        for message in messages {
-            text_output.push_str(&format!(
-                "{}: {}\n",
-                message.message.role, message.message.content
-            ));
-
-            if options.include_timestamps {
-                let timestamp_str = message
-                    .message
-                    .timestamp
-                    .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
-                text_output.push_str(&format!("Timestamp: {}\n", timestamp_str));
-            }
-
-            // Note: metadata field not available in Message struct - using relevance_score instead
-            if options.include_metadata {
+            for message in &messages_clone {
                 text_output.push_str(&format!(
-                    "Relevance Score: {:.2}\n",
-                    message.relevance_score
+                    "{}: {}\n",
+                    message.message.role, message.message.content
                 ));
+
+                if options_clone.include_timestamps {
+                    let timestamp_str = message
+                        .message
+                        .timestamp
+                        .map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+                    text_output.push_str(&format!("Timestamp: {}\n", timestamp_str));
+                }
+
+                // Note: metadata field not available in Message struct - using relevance_score instead
+                if options_clone.include_metadata {
+                    text_output.push_str(&format!(
+                        "Relevance Score: {:.2}\n",
+                        message.relevance_score
+                    ));
+                }
+
+                text_output.push_str("\n");
             }
 
-            text_output.push_str("\n");
-        }
-
-        Ok(text_output)
+            let _ = sender.send(text_output);
+        })
     }
 
     /// Compress data using LZ4 (streaming)
@@ -2069,14 +2070,9 @@ impl HistoryExporter {
         })
     }
 
-    /// Compress data using LZ4 (legacy)
-    async fn compress_data(&self, data: &str) -> Result<String, SearchError> {
-        let mut stream = self.compress_data_stream(data);
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(result) => Ok(result),
-            None => Err(SearchError::ExportError {
-                reason: Arc::from("Compression stream closed unexpectedly")})}
+    /// Compress data using LZ4 (streams)
+    fn compress_data(&self, data: &str) -> AsyncStream<String> {
+        self.compress_data_stream(data)
     }
 
     /// Get export statistics (streaming)
@@ -2269,14 +2265,14 @@ impl EnhancedHistoryManager {
         })
     }
 
-    /// Search messages (legacy)
-    pub async fn search_messages(
+    /// Search messages (streams)
+    pub fn search_messages(
         &self,
         query: &SearchQuery,
-    ) -> Result<Vec<SearchResult>, SearchError> {
+    ) -> AsyncStream<Vec<SearchResult>> {
         // Use proper AsyncStream pattern from fluent_ai_async
         let stream = self.search_messages_stream(query.clone());
-        Ok(stream.collect())
+        stream.collect_sync()
     }
 
     /// Export conversation history (streaming)
@@ -2301,18 +2297,13 @@ impl EnhancedHistoryManager {
         })
     }
 
-    /// Export conversation history (legacy)
-    pub async fn export_history(
+    /// Export conversation history (streams)
+    pub fn export_history(
         &self,
         messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
-    ) -> Result<String, SearchError> {
-        let mut stream = self.export_history_stream(messages, options.clone());
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(result) => Ok(result),
-            None => Err(SearchError::ExportError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+    ) -> AsyncStream<String> {
+        self.export_history_stream(messages, options.clone())
     }
 
     /// Get system statistics (streaming)
@@ -2446,7 +2437,8 @@ pub struct ChatSearcher {
     /// Query processor for advanced queries
     query_processor: Arc<QueryProcessor>,
     /// Result ranker for relevance scoring
-    result_ranker: Arc<ResultRanker>}
+    result_ranker: Arc<ResultRanker>,
+}
 
 impl std::fmt::Debug for ChatSearcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -2527,7 +2519,8 @@ pub struct ChatSearcherStats {
     /// Total results returned
     pub total_results: ConsistentCounter,
     /// Failed searches
-    pub failed_searches: ConsistentCounter}
+    pub failed_searches: ConsistentCounter,
+}
 
 /// Query processor for advanced query parsing
 #[derive(Debug)]
@@ -2537,7 +2530,8 @@ pub struct QueryProcessor {
     expansion_enabled: bool,
     /// Expansion dictionary
     #[allow(dead_code)] // TODO: Implement in query expansion system
-    expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>}
+    expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>,
+}
 
 /// Result ranker for relevance scoring
 #[derive(Debug)]
@@ -2547,7 +2541,8 @@ pub struct ResultRanker {
     algorithm: RankingAlgorithm,
     /// Boost factors for different fields
     #[allow(dead_code)] // TODO: Implement in ranking system
-    field_boosts: HashMap<Arc<str>, f32>}
+    field_boosts: HashMap<Arc<str>, f32>,
+}
 
 /// Ranking algorithm enumeration
 #[derive(Debug, Clone, Copy)]
@@ -2610,109 +2605,153 @@ impl ChatSearcher {
     }
 
     /// Perform a search with the given query
-    pub async fn search(
+    pub fn search(
         &self,
         query: &str,
-    ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error + Send + Sync>> {
-        if query.len() < self.options.min_query_length {
-            return Err(format!(
-                "Query too short, minimum length: {}",
-                self.options.min_query_length
-            )
-            .into());
-        }
+    ) -> AsyncStream<Vec<SearchResult>> {
+        let query_string = query.to_string();
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            if query_string.len() < self_clone.options.min_query_length {
+                handle_error!(
+                    format!("Query too short, minimum length: {}", self_clone.options.min_query_length),
+                    "Query validation"
+                );
+                return;
+            }
 
-        if query.len() > self.options.max_query_length {
-            return Err(format!(
-                "Query too long, maximum length: {}",
-                self.options.max_query_length
-            )
-            .into());
-        }
+            if query_string.len() > self_clone.options.max_query_length {
+                handle_error!(
+                    format!("Query too long, maximum length: {}", self_clone.options.max_query_length),
+                    "Query validation"
+                );
+                return;
+            }
 
-        let start_time = Instant::now();
-        self.stats.total_searches.inc();
+            let start_time = Instant::now();
+            self_clone.stats.total_searches.inc();
 
-        // Check cache first
-        let query_hash = Arc::from(format!("{:x}", md5::compute(query.as_bytes())));
-        if self.options.enable_caching {
-            if let Some(cached) = self.cache.get(&query_hash) {
-                let cached_result = cached.value();
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
+            // Check cache first
+            let query_hash = Arc::from(format!("{:x}", md5::compute(query_string.as_bytes())));
+            if self_clone.options.enable_caching {
+                if let Some(cached) = self_clone.cache.get(&query_hash) {
+                    let cached_result = cached.value();
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
 
-                if now - cached_result.cached_at < cached_result.ttl_seconds {
-                    self.stats.cache_hits.inc();
-                    return Ok(cached_result.results.clone());
+                    if now - cached_result.cached_at < cached_result.ttl_seconds {
+                        self_clone.stats.cache_hits.inc();
+                        let _ = sender.send(cached_result.results.clone());
+                        return;
+                    }
                 }
             }
-        }
 
-        self.stats.cache_misses.inc();
+            self_clone.stats.cache_misses.inc();
 
-        // Process query
-        let processed_query = self
-            .query_processor
-            .process_query(query, &self.options)
-            .await?;
+            // Process query - convert to synchronous using streams
+            let processed_query = match self_clone.query_processor.process_query(&query_string, &self_clone.options) {
+                Ok(query) => query,
+                Err(e) => {
+                    handle_error!(e, "Query processing failed");
+                    return;
+                }
+            };
 
-        // Perform search
-        let search_results = self.perform_search(&processed_query).await?;
+            // Perform search - convert to synchronous 
+            let search_results = match self_clone.perform_search_sync(&processed_query) {
+                Ok(results) => results,
+                Err(e) => {
+                    handle_error!(e, "Search execution failed");
+                    return;
+                }
+            };
 
-        // Rank results
-        let ranked_results = self
-            .result_ranker
-            .rank_results(search_results, &processed_query)
-            .await?;
+            // Rank results - convert to synchronous
+            let ranked_results = match self_clone.result_ranker.rank_results_sync(search_results, &processed_query) {
+                Ok(results) => results,
+                Err(e) => {
+                    handle_error!(e, "Result ranking failed");
+                    return;
+                }
+            };
 
-        // Apply highlighting if enabled
-        let final_results = if self.options.enable_highlighting {
-            self.apply_highlighting(ranked_results, &processed_query)
-                .await?
-        } else {
-            ranked_results
-        };
+            // Apply highlighting if enabled - convert to synchronous
+            let final_results = if self_clone.options.enable_highlighting {
+                match self_clone.apply_highlighting_sync(ranked_results, &processed_query) {
+                    Ok(results) => results,
+                    Err(e) => {
+                        handle_error!(e, "Highlighting failed");
+                        return;
+                    }
+                }
+            } else {
+                ranked_results
+            };
 
-        // Cache results
-        if self.options.enable_caching {
+            // Cache results
+            if self_clone.options.enable_caching {
             let cached_result = CachedSearchResult {
                 results: final_results.clone(),
                 cached_at: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs(),
-                ttl_seconds: self.options.cache_ttl_seconds,
+                ttl_seconds: self_clone.options.cache_ttl_seconds,
                 query_hash: query_hash.clone()};
-            self.cache.insert(query_hash, cached_result);
+            self_clone.cache.insert(query_hash, cached_result);
         }
 
-        // Update statistics
-        let search_time = start_time.elapsed().as_micros() as usize;
-        let current_avg = self.stats.avg_search_time_us.load(Ordering::Relaxed);
-        let total_searches = self.stats.total_searches.get();
-        let new_avg = ((current_avg * (total_searches - 1)) + search_time) / total_searches;
-        self.stats
-            .avg_search_time_us
-            .store(new_avg, Ordering::Relaxed);
-        self.stats.total_results.add(final_results.len());
+            // Update statistics
+            let search_time = start_time.elapsed().as_micros() as usize;
+            let current_avg = self_clone.stats.avg_search_time_us.load(Ordering::Relaxed);
+            let total_searches = self_clone.stats.total_searches.get();
+            let new_avg = ((current_avg * (total_searches - 1)) + search_time) / total_searches;
+            self_clone.stats
+                .avg_search_time_us
+                .store(new_avg, Ordering::Relaxed);
+            self_clone.stats.total_results.add(final_results.len());
 
-        Ok(final_results)
+            // Send results through stream
+            let _ = sender.send(final_results);
+        })
     }
 
-    /// Perform the actual search operation
-    async fn perform_search(
+    /// Perform the actual search operation (synchronous helper for streaming)
+    fn perform_search_sync(
         &self,
-        _query: &ProcessedQuery,
+        query: &ProcessedQuery,
     ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error + Send + Sync>> {
-        // This would integrate with the existing ChatSearchIndex
-        // For now, return empty results as a placeholder
-        Ok(Vec::new())
+        // Create SearchQuery from ProcessedQuery
+        let search_query = SearchQuery {
+            terms: query.expanded_terms.clone(),
+            operator: if query.expanded_terms.len() > 1 {
+                QueryOperator::And
+            } else {
+                QueryOperator::Or
+            },
+            date_range: None, // ProcessedQuery doesn't have time_range, so use None
+            user_filter: None,
+            session_filter: None,
+            tag_filter: None, // ProcessedQuery doesn't have include_tags, so use None
+            content_type_filter: None,
+            fuzzy_matching: self.options.enable_fuzzy_matching,
+            max_results: self.options.max_results,
+            offset: 0,
+            sort_order: SortOrder::Relevance,
+        };
+        
+        // Use the real search index to perform the search
+        self.search_index
+            .search(&search_query)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
     }
 
-    /// Apply highlighting to search results
-    async fn apply_highlighting(
+    /// Apply highlighting to search results (synchronous helper for streaming)
+    fn apply_highlighting_sync(
         &self,
         results: Vec<SearchResult>,
         _query: &ProcessedQuery,
@@ -2754,7 +2793,8 @@ pub struct ProcessedQuery {
     /// Query operator
     pub operator: QueryOperator,
     /// Processing metadata
-    pub metadata: QueryMetadata}
+    pub metadata: QueryMetadata,
+}
 
 /// Query metadata
 #[derive(Debug, Clone)]
@@ -2766,7 +2806,8 @@ pub struct QueryMetadata {
     /// Expansion applied
     pub expansion_applied: bool,
     /// Normalization applied
-    pub normalization_applied: bool}
+    pub normalization_applied: bool,
+}
 
 impl QueryProcessor {
     /// Create a new query processor
@@ -2777,12 +2818,12 @@ impl QueryProcessor {
     }
 
     /// Process a query string
-    pub async fn process_query(
+    pub fn process_query(
         &self,
         query: &str,
         options: &SearchOptions,
     ) -> Result<ProcessedQuery, Box<dyn std::error::Error + Send + Sync>> {
-        let start_time = Instant::now();
+        let start_time = std::time::Instant::now();
 
         // Basic query processing
         let terms: Vec<Arc<str>> = query
@@ -2792,14 +2833,16 @@ impl QueryProcessor {
 
         // Apply query expansion if enabled
         let expanded_terms = if options.enable_query_expansion {
-            self.expand_terms(&terms, &options.expansion_dictionary)
-                .await?
+            match self.expand_terms_sync(&terms, &options.expansion_dictionary) {
+                Ok(terms) => terms,
+                Err(_) => Vec::new(), // Fallback to no expansion on error
+            }
         } else {
             Vec::new()
         };
 
-        Ok(ProcessedQuery {
-            original: Arc::from(query),
+        let result = ProcessedQuery {
+            original: Arc::from(query.to_string()),
             terms,
             expanded_terms,
             operator: QueryOperator::And, // Default to AND
@@ -2810,11 +2853,15 @@ impl QueryProcessor {
                     .as_secs(),
                 processing_time_us: start_time.elapsed().as_micros() as u64,
                 expansion_applied: options.enable_query_expansion,
-                normalization_applied: true}})
+                normalization_applied: true,
+            }
+        };
+
+        Ok(result)
     }
 
-    /// Expand query terms using synonyms
-    async fn expand_terms(
+    /// Expand query terms using synonyms (synchronous for streams-only architecture)  
+    fn expand_terms_sync(
         &self,
         terms: &[Arc<str>],
         dictionary: &HashMap<Arc<str>, Vec<Arc<str>>>,
@@ -2839,8 +2886,8 @@ impl ResultRanker {
             field_boosts: HashMap::new()}
     }
 
-    /// Rank search results by relevance
-    pub async fn rank_results(
+    /// Rank search results by relevance (synchronous for streams-only architecture)
+    pub fn rank_results_sync(
         &self,
         results: Vec<SearchResult>,
         _query: &ProcessedQuery,

@@ -34,20 +34,30 @@ impl ExpressionParser {
     pub fn parse(&mut self) -> JsonPathResult<Vec<JsonSelector>> {
         self.tokenize()?;
 
+        // RFC 9535 validation: Check for invalid token sequences
+        // Valid: [$, Dot, Identifier] or [$, LeftBracket, ...] or [$, DoubleDot, ...]
+        // Invalid: [$, Identifier] (direct identifier after root without dot or bracket)
+        // Note: Multiple root identifiers are allowed in complex expressions with functions
+        let tokens_vec: Vec<_> = self.tokens.iter().collect();
+        
+        if self.tokens.len() >= 3 {
+            if matches!(tokens_vec[0], Token::Root) && 
+               matches!(tokens_vec[1], Token::Identifier(_)) {
+                // This is the invalid pattern: $identifier (without dot or bracket)
+                return Err(invalid_expression_error(
+                    &self.input,
+                    "property access requires '.' (dot) or '[]' (bracket) notation after root '$'",
+                    Some(1), // Position of the identifier token
+                ));
+            }
+        }
+
         let mut selectors = Vec::new();
 
         while !matches!(self.peek_token(), Some(Token::EOF) | None) {
             let mut selector_parser =
                 SelectorParser::new(&mut self.tokens, &self.input, self.position);
             selectors.push(selector_parser.parse_selector()?);
-        }
-
-        // RFC 9535: jsonpath-query = root-identifier segments
-        // where segments = *(S segment) means zero or more segments
-        // Therefore "$" (root-only) is valid and should return the root node
-        if selectors.is_empty() {
-            // For root-only queries like "$", we don't add any selectors
-            // The JsonArrayStream will handle this by returning the root node itself
         }
 
         Ok(selectors)
@@ -124,7 +134,57 @@ impl ExpressionParser {
                                     }
                                     let hex_digits: String = chars[i+1..i+5].iter().collect();
                                     if let Ok(code_point) = u32::from_str_radix(&hex_digits, 16) {
-                                        if let Some(unicode_char) = char::from_u32(code_point) {
+                                        // Handle Unicode surrogate pairs (UTF-16)
+                                        if (0xD800..=0xDBFF).contains(&code_point) {
+                                            // High surrogate - look for low surrogate
+                                            if i + 10 < chars.len() && chars[i+5] == '\\' && chars[i+6] == 'u' {
+                                                let low_hex: String = chars[i+7..i+11].iter().collect();
+                                                if let Ok(low_surrogate) = u32::from_str_radix(&low_hex, 16) {
+                                                    if (0xDC00..=0xDFFF).contains(&low_surrogate) {
+                                                        // Valid surrogate pair - convert to Unicode scalar
+                                                        let high = code_point - 0xD800;
+                                                        let low = low_surrogate - 0xDC00;
+                                                        let unicode_scalar = 0x10000 + (high << 10) + low;
+                                                        if let Some(unicode_char) = char::from_u32(unicode_scalar) {
+                                                            string_value.push(unicode_char);
+                                                            i += 10; // Skip both \uXXXX sequences
+                                                        } else {
+                                                            return Err(invalid_expression_error(
+                                                                &self.input,
+                                                                "invalid surrogate pair result",
+                                                                Some(i),
+                                                            ));
+                                                        }
+                                                    } else {
+                                                        return Err(invalid_expression_error(
+                                                            &self.input,
+                                                            "high surrogate not followed by valid low surrogate",
+                                                            Some(i),
+                                                        ));
+                                                    }
+                                                } else {
+                                                    return Err(invalid_expression_error(
+                                                        &self.input,
+                                                        "invalid low surrogate hex digits",
+                                                        Some(i),
+                                                    ));
+                                                }
+                                            } else {
+                                                return Err(invalid_expression_error(
+                                                    &self.input,
+                                                    "high surrogate not followed by low surrogate escape sequence",
+                                                    Some(i),
+                                                ));
+                                            }
+                                        } else if (0xDC00..=0xDFFF).contains(&code_point) {
+                                            // Low surrogate without high surrogate is invalid
+                                            return Err(invalid_expression_error(
+                                                &self.input,
+                                                "low surrogate without preceding high surrogate",
+                                                Some(i),
+                                            ));
+                                        } else if let Some(unicode_char) = char::from_u32(code_point) {
+                                            // Regular Unicode character (not surrogate)
                                             string_value.push(unicode_char);
                                             i += 4; // Skip the 4 hex digits
                                         } else {

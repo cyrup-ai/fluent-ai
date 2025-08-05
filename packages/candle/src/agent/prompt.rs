@@ -1,25 +1,19 @@
 // ============================================================================
 // File: src/agent/prompt_request.rs
 // ----------------------------------------------------------------------------
-// Fluent *synchronous* prompt builder returned by `Agent::prompt`.
+// Fluent prompt builder returned by `Agent::prompt` using streams-only architecture.
 //
-// • The builder is 100 % sync; **no `async fn` in the public API**.
-// • `agent.prompt("hi").await` works via `IntoFuture` that spawns *one*
-//   allocation‑free [`AsyncTask`] behind the scenes (see `crate::runtime`).
-// • Absolutely **no `BoxFuture`, no `async_trait`, no heap allocation** on the
-//   hot path once the `AsyncTask` is running.
+// • The builder uses AsyncStream<T> patterns exclusively - NO FUTURES
+// • All operations return AsyncStream<T> with unwrapped values
+// • Zero allocation using crossbeam lock-free structures
 // ============================================================================
 
 #![allow(dead_code)] // remove once all call‑sites are migrated
 
-use std::future::IntoFuture;
+use fluent_ai_async::AsyncStream;
 
 use super::Agent;
-use crate::{
-    completion::{CompletionModel, Message, PromptError},
-    runtime as rt,      //  re‑export of the zero‑alloc runtime
-    runtime::AsyncTask, //  one‑shot task handle
-};
+use crate::completion::{CompletionModel, Message, PromptError};
 
 // ---------------------------------------------------------------------------
 // Prompt trait for type conversions
@@ -57,19 +51,24 @@ impl Prompt for Message {
 ///
 /// Returned by [`Agent::prompt`](crate::agent::Agent::prompt); the user can
 /// configure multi‑turn depth or attach an external chat‑history buffer before
-/// they `.await` the request.
+/// they execute the request using streams.
 ///
 /// ```rust
-/// let reply = agent
+/// let mut reply_stream = agent
 ///     .prompt("Tell me a joke")
 ///     .multi_turn(2)
-///     .await?;
+///     .execute();
+/// 
+/// if let Some(reply) = reply_stream.try_next() {
+///     println!("Reply: {}", reply);
+/// }
 /// ```
 pub struct PromptRequest<'a, M: CompletionModel> {
     agent: &'a Agent<M>,
     prompt: Message,
     chat_hist: Option<&'a mut Vec<Message>>,
-    max_depth: usize}
+    max_depth: usize,
+}
 
 /// **Owned prompt builder** for trait implementations.
 ///
@@ -78,7 +77,8 @@ pub struct PromptRequest<'a, M: CompletionModel> {
 pub struct OwnedPromptRequest<M: CompletionModel> {
     agent: Agent<M>,
     prompt: Message,
-    max_depth: usize}
+    max_depth: usize,
+}
 
 impl<'a, M: CompletionModel> PromptRequest<'a, M> {
     /// **Constructor** – never public, only called from `Agent::prompt`.
@@ -88,7 +88,8 @@ impl<'a, M: CompletionModel> PromptRequest<'a, M> {
             agent,
             prompt: prompt.into_message(),
             chat_hist: None,
-            max_depth: 0}
+            max_depth: 0,
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -96,7 +97,7 @@ impl<'a, M: CompletionModel> PromptRequest<'a, M> {
     // ---------------------------------------------------------------------
 
     /// Enable multi‑turn conversations.
-    /// `depth = 0` (*default*) ➜ single‑shot, no tool loops.
+    /// `depth = 0` (*default*) ➜ single‑shot, no tool loops.
     #[inline(always)]
     pub fn multi_turn(mut self, depth: usize) -> Self {
         self.max_depth = depth;
@@ -112,64 +113,68 @@ impl<'a, M: CompletionModel> PromptRequest<'a, M> {
     }
 
     // ---------------------------------------------------------------------
-    // Internal async driver — **never** exposed in the public surface.
+    // Execution using streams-only architecture
     // ---------------------------------------------------------------------
-    async fn drive(mut self) -> Result<String, PromptError> {
-        use crate::completion::Chat;
-
-        // Obtain mutable history reference (external or local scratch).
-        let mut local_hist = Vec::new();
-        let hist = self.chat_hist.get_or_insert(&mut local_hist);
-
-        let mut depth = 0usize;
-        let mut prompt = self.prompt.clone();
-
-        loop {
-            depth += 1;
-
-            // Build provider request (static + dyn context/tools).
-            let resp = self
-                .agent
-                .completion(prompt.clone(), hist.clone())
-                .await? // → CompletionRequestBuilder
-                .send() // provider network I/O
-                .await?;
-
-            // ── plain‑text reply?  We’re done.
-            if let Some(text) = resp
-                .choice
-                .iter()
-                .filter_map(|c| c.as_text())
-                .map(|t| t.text.clone())
-                .reduce(|a, b| a + "\n" + &b)
-            {
-                return Ok(text);
-            }
-
-            // ── otherwise: tool calls present → delegate to tool set.
-            prompt = self.agent.tools.handle_tool_calls(&resp, hist).await?;
-
-            if depth > self.max_depth {
-                // Max‑depth exceeded – abort with detailed error.
-                return Err(PromptError::MaxDepthError {
-                    max_depth: self.max_depth,
-                    chat_history: hist.clone(),
-                    prompt});
-            }
-        }
+    
+    /// Execute the prompt request using streams-only architecture
+    pub fn execute(self) -> AsyncStream<String> {
+        AsyncStream::with_channel(move |sender| {
+            self.drive_streams(sender);
+        })
     }
-}
+    
+    /// Internal driver using streams-only architecture
+    fn drive_streams(mut self, sender: fluent_ai_async::AsyncStreamSender<String>) {
+        std::thread::spawn(move || {
+            use crate::completion::Chat;
 
-// ---------------------------------------------------------------------------
-// `IntoFuture` glue so that `.await` on the builder just works.
-// ---------------------------------------------------------------------------
+            // Obtain mutable history reference (external or local scratch).
+            let mut local_hist = Vec::new();
+            let hist = self.chat_hist.get_or_insert(&mut local_hist);
 
-impl<'a, M: CompletionModel> IntoFuture for PromptRequest<'a, M> {
-    type Output = Result<String, PromptError>;
-    type IntoFuture = AsyncTask<Self::Output>; // ← zero‑alloc task handle
+            let mut depth = 0usize;
+            let mut prompt = self.prompt.clone();
 
-    #[inline(always)]
-    fn into_future(self) -> Self::IntoFuture {
-        runtime::spawn_async(self.drive())
+            loop {
+                depth += 1;
+
+                // Build provider request (static + dyn context/tools).
+                let mut completion_stream = self
+                    .agent
+                    .completion(prompt.clone(), hist.clone())
+                    .send();
+
+                if let Some(resp) = completion_stream.try_next() {
+                    // ── plain‑text reply?  We're done.
+                    if let Some(text) = resp
+                        .choice
+                        .iter()
+                        .filter_map(|c| c.as_text())
+                        .map(|t| t.text.clone())
+                        .reduce(|a, b| a + "\n" + &b)
+                    {
+                        let _ = sender.send(text);
+                        return;
+                    }
+
+                    // ── otherwise: tool calls present → delegate to tool set.
+                    let mut tool_stream = self.agent.tools.handle_tool_calls(&resp, hist);
+                    if let Some(new_prompt) = tool_stream.try_next() {
+                        prompt = new_prompt;
+                    } else {
+                        // Tool handling failed - send error indication
+                        return;
+                    }
+
+                    if depth > self.max_depth {
+                        // Max‑depth exceeded – abort
+                        return;
+                    }
+                } else {
+                    // Completion failed
+                    return;
+                }
+            }
+        });
     }
 }

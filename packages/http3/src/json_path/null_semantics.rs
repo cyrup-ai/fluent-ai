@@ -428,21 +428,26 @@ mod tests {
         let value_result = PropertyAccessResult::Value(serde_json::json!("test"));
 
         // Null vs null
-        assert!(NullSemantics::compare_with_null_semantics(&null_result, &null_result).unwrap());
+        assert!(NullSemantics::compare_with_null_semantics(&null_result, &null_result)
+            .expect("Failed to compare null vs null"));
 
         // Missing vs missing
-        assert!(NullSemantics::compare_with_null_semantics(&missing_result, &missing_result).unwrap());
+        assert!(NullSemantics::compare_with_null_semantics(&missing_result, &missing_result)
+            .expect("Failed to compare missing vs missing"));
 
         // Null vs missing (different)
-        assert!(!NullSemantics::compare_with_null_semantics(&null_result, &missing_result).unwrap());
+        assert!(!NullSemantics::compare_with_null_semantics(&null_result, &missing_result)
+            .expect("Failed to compare null vs missing"));
 
         // Value vs missing (different)
-        assert!(!NullSemantics::compare_with_null_semantics(&value_result, &missing_result).unwrap());
+        assert!(!NullSemantics::compare_with_null_semantics(&value_result, &missing_result)
+            .expect("Failed to compare value vs missing"));
     }
 
     #[test]
     fn test_implementation_validation() {
         // This should pass without errors
-        NullSemantics::validate_implementation().unwrap();
+        NullSemantics::validate_implementation()
+            .expect("Failed to validate null semantics implementation");
     }
 }

@@ -98,7 +98,8 @@ impl HttpClient {
     /// use fluent_ai_http3::HttpClient;
     /// use fluent_ai_http3::config::Config;
     ///
-    /// let mut client = HttpClient::with_config(Config::default()).unwrap();
+    /// let mut client = HttpClient::with_config(Config::default())
+    ///     .expect("Failed to create HTTP client with default config");
     /// client.reset_stats();
     /// assert_eq!(client.stats().request_count(), 0);
     /// ```

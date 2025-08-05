@@ -1,5 +1,83 @@
 # Candle Package TODO - Production Readiness
 
+## 🚨 BLOCKING COMPILATION ISSUES - Must Fix First 🚨
+
+### STATUS: ACTIVE - Fix All Compilation Errors and Warnings
+
+**Current Status: 3 WARNINGS + 6+ ERRORS - BLOCKING ALL PROGRESS**
+
+#### 1. Fix unused import: `mpsc` in `src/domain/concurrency/mod.rs:6`
+- **Issue**: `use std::sync::{Mutex, mpsc};` - mpsc is imported but never used
+- **Solution**: Either implement mpsc usage for cross-thread communication or remove unused import
+- **Technical Notes**: Research all concurrency module call sites, understand if mpsc channels needed for AsyncStream integration
+
+#### 2. QA unused import fix for `mpsc`
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 3. Fix unsafe code usage in `src/core/engine.rs:452` 
+- **Issue**: `unsafe { VarBuilder::from_mmaped_safetensors(...) }` triggers warning
+- **Solution**: Document safety requirements and ensure memory safety guarantees, or find safe alternative
+- **Technical Notes**: This is model loading - research candle framework docs for safe memory-mapped tensor loading
+
+#### 4. QA unsafe code fix
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 5. Fix unused import: `SimdResult` in `src/core/simd_adapters.rs:9`
+- **Issue**: `use fluent_ai_simd::{SimdResult, SimdError};` - SimdResult imported but never used
+- **Solution**: Research SIMD adapter usage patterns, implement proper error handling or remove unused import
+- **Technical Notes**: Check if SIMD operations need SimdResult for error handling in computation paths
+
+#### 6. QA unused import fix for `SimdResult`
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 7. Fix thread safety issue: `CandleStdioTransport` not Sync in `src/domain/tool/mcp.rs:156`
+- **Issue**: `std::sync::mpsc::Receiver<Vec<u8>>` cannot be shared between threads safely
+- **Solution**: Replace std::sync::mpsc with crossbeam channels or use Arc<Mutex<>> wrapper for thread safety
+- **Technical Notes**: MCP transport needs to be thread-safe for concurrent tool execution, use fluent_ai_async patterns
+
+#### 8. QA thread safety fix
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 9. Fix trait bound error: `()` not implementing `CandleCompletionProvider` in `src/builders/agent_role.rs:83`
+- **Issue**: Generic type parameter defaults to `()` which doesn't implement required traits
+- **Solution**: Provide proper default implementations or use PhantomData for optional generics
+- **Technical Notes**: Builder pattern needs proper type parameter handling for optional components
+
+#### 10. QA trait bound fix for CandleCompletionProvider
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 11. Fix trait bound error: `()` not implementing `CandleContext` in `src/builders/agent_role.rs:84`
+- **Issue**: CandleContext trait has no implementations, generic defaults to `()`
+- **Solution**: Implement CandleContext for common types (File, Directory, etc.) or provide NoContext default
+- **Technical Notes**: Context system needs implementations for file/directory/github contexts
+
+#### 12. QA trait bound fix for CandleContext
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 13. Fix trait bound error: `()` not implementing `CandleTool` in `src/builders/agent_role.rs:85`
+- **Issue**: CandleTool trait has no implementations, generic defaults to `()`
+- **Solution**: Implement CandleTool for common tool types or provide NoTool default
+- **Technical Notes**: Tool system needs implementations for MCP tools, shell tools, etc.
+
+#### 14. QA trait bound fix for CandleTool
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 15. Fix trait bound error: `()` not implementing `CandleMemory` in `src/builders/agent_role.rs:86`
+- **Issue**: CandleMemory trait has no implementations, generic defaults to `()`
+- **Solution**: Implement CandleMemory for memory backend types or provide NoMemory default
+- **Technical Notes**: Memory system integration with existing memory package
+
+#### 16. QA trait bound fix for CandleMemory
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+#### 17. Fix complex trait bound error in builder struct definition `src/builders/agent_role.rs:297`
+- **Issue**: Function types used as generic parameters don't implement required traits
+- **Solution**: Refactor builder to use proper type parameters with appropriate bounds and defaults
+- **Technical Notes**: Builder architecture needs complete rework of generic type handling
+
+#### 18. QA complex trait bound fix
+Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work (objectively without bragging).
+
 ## CRITICAL ISSUES - Non-Production Code Patterns
 
 ### STATUS: PLANNED - Fix All Placeholder Code
@@ -216,3 +294,35 @@
 2. Maintain `AsyncStream` pattern throughout (no Future trait usage)
 3. Zero dependency on domain/fluent-ai packages (standalone requirement)
 4. Proper integration with cyrup_sugars utilities
+---
+
+## SIMD INFERENCE CONNECTION - PRODUCTION IMPLEMENTATION
+
+### 117. Connect Engine to Existing SIMD Core
+**File**: `src/domain/engine.rs`  
+**Lines**: 407-413 (replace execute_completion_stream TODO stub)  
+**Architecture**: Wire existing engine parameters to existing CompletionCoreRequest::from_builder() and CompletionCoreResponse in candle.rs SIMD system  
+**Implementation**: Replace "TODO: Implement actual completion logic" with: (1) Import CompletionCoreRequest, CompletionCoreResponse from crate::domain::completion::candle, (2) Convert engine request parameters to CompletionCoreRequest using from_builder(), (3) Process through existing SIMD completion system, (4) Stream CompletionCoreResponse back through AsyncStream::with_channel, (5) Use existing atomic performance counters  
+**Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. Never use unwrap() or expect() in src/*. Use AsyncStream patterns only.
+
+### 118. QA Engine SIMD Connection  
+Act as an Objective QA Rust developer and rate the work performed previously on connecting Engine to SIMD core (1-10). Verify: (1) CompletionCoreRequest::from_builder() properly used, (2) CompletionCoreResponse streaming works via AsyncStream, (3) No unwrap/expect used, (4) Existing atomic performance counters utilized, (5) Zero-allocation patterns maintained, (6) Only surgical changes made to lines 407-413.
+
+### 119. Connect KimiK2 to Existing Candle ML Infrastructure
+**File**: `src/providers/kimi_k2.rs`  
+**Lines**: 128 (replace "Simulate response" comment)  
+**Architecture**: Use existing candle_core::Device, candle_transformers::models::llama imports for real ML inference. Connect to existing CandleTokenizer from tokenizer.rs  
+**Implementation**: Replace simulation comment with: (1) Load Llama model using existing imports and config, (2) Use existing CandleTokenizer for input encoding and output decoding, (3) Process tokens through loaded Candle model, (4) Stream results as CandleCompletionChunk via AsyncStream, (5) Connect to existing performance counters from memory/ops.rs  
+**Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. Never use unwrap() or expect() in src/*. Use AsyncStream patterns only.
+
+### 120. QA KimiK2 Candle ML Connection
+Act as an Objective QA Rust developer and rate the work performed previously on connecting KimiK2 to Candle ML (1-10). Verify: (1) Actual Candle ML model loading using existing imports, (2) Existing CandleTokenizer properly utilized, (3) Streaming inference via AsyncStream with CandleCompletionChunk, (4) No unwrap/expect used, (5) Existing performance counters connected, (6) Real model outputs generated, (7) Only surgical changes made to line 128.
+
+### 121. Final SIMD Pipeline Validation
+**Files**: Complete inference pipeline  
+**Architecture**: Verify Builder → Engine → KimiK2 → SIMD Core pipeline functional using all existing infrastructure  
+**Implementation**: (1) Run cargo check for 0 errors/warnings, (2) Test complete pipeline from builder API to SIMD core, (3) Verify streaming works end-to-end, (4) Validate performance counters tracking, (5) Confirm chat loop functionality with local inference  
+**Constraints**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. Never use unwrap() or expect() in src/*. Use AsyncStream patterns only.
+
+### 122. QA Final SIMD Pipeline Validation  
+Act as an Objective QA Rust developer and rate the work performed previously on final pipeline validation (1-10). Verify: (1) cargo check shows 0 errors/warnings, (2) Complete pipeline functional using existing infrastructure, (3) Streaming works end-to-end, (4) Performance counters tracking correctly, (5) Chat loop with local inference functional, (6) All existing infrastructure properly utilized.

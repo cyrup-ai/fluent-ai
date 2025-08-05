@@ -448,18 +448,7 @@ pub mod utils {
 mod tests {
     use super::*;
     
-    fn create_test_tokenizer() -> CandleTokenizer {
-        // For testing, create a simple mock tokenizer
-        // In real implementation, this would use actual tokenizer files
-        let config = CandleTokenizerConfig {
-            tokenizer_path: PathBuf::from("test_tokenizer.json"),
-            max_length: 100,
-            ..Default::default()
-        };
-        
-        // This would normally load from file, but for tests we'll create a mock
-        unimplemented!("Test implementation requires actual tokenizer file")
-    }
+
     
     #[test]
     fn test_tokenizer_config_default() {

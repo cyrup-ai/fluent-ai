@@ -76,11 +76,11 @@ pub struct CompletionCoreRequest<'a> {
     /// Maximum tokens to generate
     pub max_tokens: u32,
     /// Temperature for sampling (0.0 = deterministic, 1.0 = random)
-    pub temperature: f32,
+    pub temperature: f64,
     /// Top-k sampling parameter
     pub top_k: u32,
     /// Top-p (nucleus) sampling parameter
-    pub top_p: f32,
+    pub top_p: f64,
     /// Stop tokens (inline small collection)
     stop_tokens: SmallVec<&'a str, MAX_STOP_TOKENS>,
     /// Enable streaming response
@@ -97,9 +97,9 @@ impl<'a> CompletionCoreRequest<'a> {
     pub fn from_builder(
         prompt: ArrayVec<u8, MAX_PROMPT_SIZE>,
         max_tokens: u32,
-        temperature: f32,
+        temperature: f64,
         top_k: u32,
-        top_p: f32,
+        top_p: f64,
         stop_tokens: SmallVec<&'a str, MAX_STOP_TOKENS>,
         stream: bool,
         model_params: ModelParams,
@@ -135,6 +135,56 @@ impl<'a> CompletionCoreRequest<'a> {
     pub fn estimate_token_count(&self) -> u32 {
         // Simple approximation: ~4 characters per token
         (self.prompt.len() / 4) as u32
+    }
+    
+    /// Create a new default completion request
+    #[inline(always)]
+    pub fn new() -> Self {
+        Self {
+            prompt: ArrayVec::new(),
+            max_tokens: 1000,
+            temperature: 0.7,
+            top_k: 50,
+            top_p: 0.9,
+            stop_tokens: SmallVec::new(),
+            stream: true,
+            model_params: ModelParams::default(),
+            seed: None,
+        }
+    }
+    
+    /// Set the prompt text
+    #[inline(always)]
+    pub fn set_prompt(&mut self, prompt: &str) -> Result<(), CompletionCoreError> {
+        self.prompt.clear();
+        self.prompt.try_extend_from_slice(prompt.as_bytes())
+            .map_err(|_| CompletionCoreError::InvalidRequest("Prompt too large".into()))?;
+        Ok(())
+    }
+    
+    /// Set maximum tokens to generate
+    #[inline(always)]
+    pub fn set_max_tokens(&mut self, max_tokens: u32) {
+        self.max_tokens = max_tokens;
+    }
+    
+    /// Set temperature for sampling
+    #[inline(always)]
+    pub fn set_temperature(&mut self, temperature: f32) {
+        self.temperature = temperature as f64;
+    }
+    
+    /// Enable or disable streaming
+    #[inline(always)]
+    pub fn set_stream(&mut self, stream: bool) {
+        self.stream = stream;
+    }
+}
+
+impl<'a> Default for CompletionCoreRequest<'a> {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -229,6 +279,28 @@ impl CompletionCoreResponse {
     #[inline(always)]
     pub fn set_tokens_per_second(&self, tps: u32) {
         self.tokens_per_second.store(tps, Ordering::Relaxed);
+    }
+    
+    /// Create a new completion response
+    #[inline(always)]
+    pub fn new() -> Self {
+        Self {
+            text: ArrayVec::new(),
+            tokens_generated: AtomicU32::new(0),
+            generation_time_ms: AtomicU32::new(0),
+            tokens_per_second: AtomicU32::new(0),
+            finish_reason: ArrayVec::new(),
+            model: ArrayVec::new(),
+        }
+    }
+    
+    /// Set the response text
+    #[inline(always)]
+    pub fn set_text(&mut self, text: &str) -> Result<(), CompletionCoreError> {
+        self.text.clear();
+        self.text.try_extend_from_slice(text.as_bytes())
+            .map_err(|_| CompletionCoreError::Internal("Response text too large".into()))?;
+        Ok(())
     }
 }
 

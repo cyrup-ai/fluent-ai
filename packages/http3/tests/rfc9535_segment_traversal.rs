@@ -87,9 +87,9 @@ mod descendant_ordering_tests {
         ];
 
         for (expr, _description) in descendant_cases {
-            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
+            let _stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
-            let chunk = Bytes::from(json_data.clone());
+            let _chunk = Bytes::from(json_data.clone());
             let mut results = Vec::new();
 
             // Collect results multiple times to verify ordering consistency

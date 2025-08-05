@@ -779,7 +779,17 @@ impl CandleContext<CandleFiles> {
                                 }
                                 let result = match documents.len() {
                                     0 => ZeroOneOrMany::None,
-                                    1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
+                                    1 => match documents.into_iter().next() {
+                                        Some(doc) => ZeroOneOrMany::One(doc),
+                                        None => {
+                                            fluent_ai_async::handle_error!(
+                                                CandleContextError::ContextNotFound(
+                                                    "Vector length mismatch: expected 1 document but got 0".to_string()
+                                                ), "glob_provider"
+                                            );
+                                            ZeroOneOrMany::None
+                                        }
+                                    },
                                     _ => ZeroOneOrMany::Many(documents)};
                                 let _ = sender.send(result);
                             }
@@ -913,7 +923,17 @@ impl CandleContext<CandleDirectory> {
                             Ok(()) => {
                                 let result = match documents.len() {
                                     0 => ZeroOneOrMany::None,
-                                    1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
+                                    1 => match documents.into_iter().next() {
+                                        Some(doc) => ZeroOneOrMany::One(doc),
+                                        None => {
+                                            fluent_ai_async::handle_error!(
+                                                CandleContextError::ContextNotFound(
+                                                    "Vector length mismatch: expected 1 document but got 0".to_string()
+                                                ), "directory_provider"
+                                            );
+                                            ZeroOneOrMany::None
+                                        }
+                                    },
                                     _ => ZeroOneOrMany::Many(documents)};
                                 let _ = sender.send(result);
                             }

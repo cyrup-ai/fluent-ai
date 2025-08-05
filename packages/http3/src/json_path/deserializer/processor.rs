@@ -10,7 +10,7 @@
 use serde::de::DeserializeOwned;
 
 use super::iterator::JsonPathIterator;
-use crate::json_path::{error::JsonPathResult, state_machine::JsonStreamState};
+use crate::json_path::error::JsonPathResult;
 
 /// Result of processing a single JSON byte
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

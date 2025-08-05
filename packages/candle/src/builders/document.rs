@@ -13,7 +13,7 @@ use crate::util::ZeroOneOrMany;
 use fluent_ai_async::{AsyncTask, AsyncStream, spawn_task};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpMethod, HttpRequest};
 use serde_json::Value;
-use tokio::fs;
+use std::fs;
 
 /// Document builder data enumeration for zero-allocation type tracking
 #[derive(Debug, Clone)]
@@ -91,12 +91,13 @@ pub trait DocumentBuilder: Sized {
 }
 
 /// Hidden implementation struct - zero-allocation builder state using DOMAIN OBJECTS
+#[derive(Clone)]
 struct DocumentBuilderImpl<
     F1 = fn(String),
     F2 = fn(DocumentChunk) -> DocumentChunk,
 > where
-    F1: Fn(String) + Send + Sync + 'static,
-    F2: Fn(DocumentChunk) -> DocumentChunk + Send + Sync + 'static,
+    F1: Fn(String) + Send + Sync + 'static + Clone,
+    F2: Fn(DocumentChunk) -> DocumentChunk + Send + Sync + 'static + Clone,
 {
     data: DocumentBuilderData,
     format: Option<ContentFormat>,
@@ -340,10 +341,11 @@ where
     fn load_async(self) -> AsyncTask<Document> {
         let error_handler = self.error_handler.unwrap_or_else(|| |e| eprintln!("Document error: {}", e));
         
-        spawn_async(async move {
-            match Self::load_document_data(self, error_handler).await {
-                Ok(document) => document,
-                Err(error) => {
+        spawn_task(move || {
+            let mut stream = Self::load_document_data(self, error_handler);
+            match stream.try_next() {
+                Some(document) => document,
+                None => {
                     // Return empty document on error
                     Document {
                         data: String::new(),
@@ -360,16 +362,22 @@ where
     fn load_all(self) -> AsyncTask<ZeroOneOrMany<Document>> {
         let error_handler = self.error_handler.unwrap_or_else(|| |e| eprintln!("Document error: {}", e));
         
-        spawn_async(async move {
+        spawn_task(move || {
             match self.data {
                 DocumentBuilderData::Glob(pattern) => {
-                    Self::load_glob_documents(pattern, self, error_handler).await
+                    {
+                        let mut stream = Self::load_glob_documents(pattern, self, error_handler);
+                        stream.try_next().unwrap_or(ZeroOneOrMany::None)
+                    }
                 }
                 _ => {
                     // Single document
-                    match Self::load_document_data(self, error_handler).await {
-                        Ok(doc) => ZeroOneOrMany::One(doc),
-                        Err(_) => ZeroOneOrMany::None
+                    {
+                        let mut stream = Self::load_document_data(self, error_handler);
+                        match stream.try_next() {
+                            Some(doc) => ZeroOneOrMany::One(doc),
+                            None => ZeroOneOrMany::None
+                        }
                     }
                 }
             }
@@ -382,7 +390,7 @@ where
         let error_handler = self.error_handler.unwrap_or_else(|| |e| eprintln!("Document error: {}", e));
         let chunk_handler = self.chunk_handler;
 
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             match self.data {
                 DocumentBuilderData::Glob(pattern) => {
                     if let Ok(paths) = glob::glob(&pattern) {
@@ -402,22 +410,24 @@ where
                                 _marker: PhantomData,
                             };
 
-                            match Self::load_document_data(doc_builder, &error_handler).await {
-                                Ok(doc) => {
-                                    if tx.send(doc).is_err() {
-                                        break;
-                                    }
+                            let mut doc_stream = Self::load_document_data(doc_builder, &error_handler);
+                            if let Some(doc) = doc_stream.try_next() {
+                                if tx.send(doc).is_err() {
+                                    break;
                                 }
-                                Err(error) => error_handler(error)
+                            } else {
+                                error_handler("Failed to load document".to_string());
                             }
                         }
                     }
                 }
-                _ => match Self::load_document_data(self, &error_handler).await {
-                    Ok(doc) => {
+                _ => {
+                    let mut doc_stream = Self::load_document_data(self, &error_handler);
+                    if let Some(doc) = doc_stream.try_next() {
                         let _ = tx.send(doc);
+                    } else {
+                        error_handler("Failed to load document".to_string());
                     }
-                    Err(error) => error_handler(error)
                 }
             }
         });
@@ -430,8 +440,17 @@ where
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let chunk_handler = self.chunk_handler;
 
-        tokio::spawn(async move {
-            match self.load_async().await {
+        std::thread::spawn(move || {
+            let doc = {
+                let task = self.load_async();
+                task.join().unwrap_or_else(|_| Document {
+                    data: String::new(),
+                    format: Some(ContentFormat::Text),
+                    media_type: Some(DocumentMediaType::PlainText),
+                    metadata: std::collections::HashMap::new()
+                })
+            };
+            match doc {
                 doc => {
                     let content = &doc.data;
                     let mut offset = 0;
@@ -463,8 +482,17 @@ where
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let chunk_handler = self.chunk_handler;
 
-        tokio::spawn(async move {
-            match self.load_async().await {
+        std::thread::spawn(move || {
+            let doc = {
+                let task = self.load_async();
+                task.join().unwrap_or_else(|_| Document {
+                    data: String::new(),
+                    format: Some(ContentFormat::Text),
+                    media_type: Some(DocumentMediaType::PlainText),
+                    metadata: std::collections::HashMap::new()
+                })
+            };
+            match doc {
                 doc => {
                     let mut offset = 0;
                     for line in doc.data.lines() {
@@ -498,226 +526,254 @@ where
     F1: Fn(String) + Send + Sync + 'static,
     F2: Fn(DocumentChunk) -> DocumentChunk + Send + Sync + 'static,
 {
-    async fn load_document_data<G>(
+    fn load_document_data<G>(
         builder: DocumentBuilderImpl<F1, F2>,
         error_handler: G,
-    ) -> Result<Document, String>
+    ) -> fluent_ai_async::AsyncStream<Document>
     where
-        G: Fn(String),
+        G: Fn(String) + Send + 'static,
     {
-        let content = match builder.data {
-            DocumentBuilderData::File(path) => Self::load_file_content(&path, &builder).await?,
-            DocumentBuilderData::Url(url) => Self::load_url_content(&url, &builder).await?,
-            DocumentBuilderData::Github { repo, path, branch } => {
-                Self::load_github_content(&repo, &path, branch.as_deref(), &builder).await?
+        fluent_ai_async::AsyncStream::with_channel(move |sender| {
+            let content = match builder.data {
+                DocumentBuilderData::File(path) => {
+                    let mut file_stream = Self::load_file_content(&path, &builder);
+                    if let Some(content_result) = file_stream.try_next() {
+                        content_result
+                    } else {
+                        error_handler("Failed to load file content".to_string());
+                        return;
+                    }
+                }
+                DocumentBuilderData::Url(url) => {
+                    let mut url_stream = Self::load_url_content(&url, &builder);
+                    if let Some(content_result) = url_stream.try_next() {
+                        content_result
+                    } else {
+                        error_handler("Failed to load URL content".to_string());
+                        return;
+                    }
+                }
+                DocumentBuilderData::Github { repo, path, branch } => {
+                    let mut github_stream = Self::load_github_content(&repo, &path, branch.as_deref(), &builder);
+                    if let Some(content_result) = github_stream.try_next() {
+                        content_result
+                    } else {
+                        error_handler("Failed to load GitHub content".to_string());
+                        return;
+                    }
+                }
+                DocumentBuilderData::Text(text) => text,
+                DocumentBuilderData::Glob(_) => {
+                    error_handler("Glob patterns require load_all() or stream()".to_string());
+                    return;
+                }
+            };
+
+            // Detect format if not specified
+            let format = builder
+                .format
+                .unwrap_or_else(|| Self::detect_format(&content, &builder.data));
+
+            // Detect media type if not specified
+            let media_type = builder
+                .media_type
+                .unwrap_or_else(|| Self::detect_media_type(&format, &builder.data));
+
+            // Build metadata
+            let mut metadata = std::collections::HashMap::with_capacity(builder.additional_props.len() + 4);
+            for (key, value) in builder.additional_props {
+                metadata.insert(key, value);
             }
-            DocumentBuilderData::Text(text) => text,
-            DocumentBuilderData::Glob(_) => {
-                return Err("Glob patterns require load_all() or stream()".to_string());
+
+            if let Some(encoding) = builder.encoding {
+                metadata.insert("encoding".to_string(), Value::String(encoding));
             }
-        };
 
-        // Detect format if not specified
-        let format = builder
-            .format
-            .unwrap_or_else(|| Self::detect_format(&content, &builder.data));
+            metadata.insert("size".to_string(), Value::Number(content.len().into()));
+            metadata.insert(
+                "cache_enabled".to_string(),
+                Value::Bool(builder.cache_enabled),
+            );
 
-        // Detect media type if not specified
-        let media_type = builder
-            .media_type
-            .unwrap_or_else(|| Self::detect_media_type(&format, &builder.data));
-
-        // Build metadata
-        let mut metadata = std::collections::HashMap::with_capacity(builder.additional_props.len() + 4);
-        for (key, value) in builder.additional_props {
-            metadata.insert(key, value);
-        }
-
-        if let Some(encoding) = builder.encoding {
-            metadata.insert("encoding".to_string(), Value::String(encoding));
-        }
-
-        metadata.insert("size".to_string(), Value::Number(content.len().into()));
-        metadata.insert(
-            "cache_enabled".to_string(),
-            Value::Bool(builder.cache_enabled),
-        );
-
-        Ok(Document {
-            data: content,
-            format: Some(format),
-            media_type: Some(media_type),
-            metadata
+            let document = Document {
+                data: content,
+                format: Some(format),
+                media_type: Some(media_type),
+                metadata
+            };
+            
+            let _ = sender.send(document);
         })
     }
 
-    async fn load_glob_documents<G>(
+    fn load_glob_documents<G>(
         pattern: String,
         builder: DocumentBuilderImpl<F1, F2>,
         error_handler: G,
-    ) -> ZeroOneOrMany<Document>
+    ) -> AsyncStream<ZeroOneOrMany<Document>>
     where
-        G: Fn(String),
+        G: Fn(String) + Send + 'static,
     {
-        let paths = match glob::glob(&pattern) {
-            Ok(paths) => paths.filter_map(Result::ok).collect::<Vec<_>>(),
-            Err(e) => {
-                error_handler(format!("Invalid glob pattern: {}", e));
-                return ZeroOneOrMany::None;
-            }
-        };
-
-        if paths.is_empty() {
-            return ZeroOneOrMany::None;
-        }
-
-        let mut documents = Vec::with_capacity(paths.len());
-
-        for path in paths {
-            let doc_builder = DocumentBuilderImpl {
-                data: DocumentBuilderData::File(path),
-                format: builder.format.clone(),
-                media_type: builder.media_type.clone(),
-                additional_props: builder.additional_props.clone(),
-                encoding: builder.encoding.clone(),
-                max_size: builder.max_size,
-                timeout_ms: builder.timeout_ms,
-                retry_attempts: builder.retry_attempts,
-                cache_enabled: builder.cache_enabled,
-                error_handler: None,
-                chunk_handler: None,
-                _marker: PhantomData,
+        AsyncStream::with_channel(move |sender| {
+            let paths = match glob::glob(&pattern) {
+                Ok(paths) => paths.filter_map(Result::ok).collect::<Vec<_>>(),
+                Err(e) => {
+                    error_handler(format!("Invalid glob pattern: {}", e));
+                    let _ = sender.send(ZeroOneOrMany::None);
+                    return;
+                }
             };
 
-            match Self::load_document_data(doc_builder, &error_handler).await {
-                Ok(doc) => documents.push(doc),
-                Err(error) => error_handler(error)
+            if paths.is_empty() {
+                let _ = sender.send(ZeroOneOrMany::None);
+                return;
             }
-        }
 
-        match documents.len() {
-            0 => ZeroOneOrMany::None,
-            1 => {
-                let mut iter = documents.into_iter();
-                match iter.next() {
-                    Some(doc) => ZeroOneOrMany::One(doc),
-                    None => ZeroOneOrMany::None
+            let mut documents = Vec::with_capacity(paths.len());
+
+            for path in paths {
+                let doc_builder = DocumentBuilderImpl {
+                    data: DocumentBuilderData::File(path),
+                    format: builder.format.clone(),
+                    media_type: builder.media_type.clone(),
+                    additional_props: builder.additional_props.clone(),
+                    encoding: builder.encoding.clone(),
+                    max_size: builder.max_size,
+                    timeout_ms: builder.timeout_ms,
+                    retry_attempts: builder.retry_attempts,
+                    cache_enabled: builder.cache_enabled,
+                    error_handler: None,
+                    chunk_handler: None,
+                    _marker: PhantomData,
+                };
+
+                let mut doc_stream = Self::load_document_data(doc_builder, &error_handler);
+                if let Some(doc) = doc_stream.try_next() {
+                    documents.push(doc);
+                } else {
+                    error_handler("Failed to load document from glob pattern".to_string());
                 }
             }
-            _ => ZeroOneOrMany::Many(documents)
-        }
-    }
 
-    async fn load_file_content(path: &Path, builder: &DocumentBuilderImpl<F1, F2>) -> Result<String, String> {
-        // Check file size first if max_size is set
-        if let Some(max_size) = builder.max_size {
-            let metadata = fs::metadata(path)
-                .await
-                .map_err(|e| format!("Failed to read file metadata: {}", e))?;
-
-            if metadata.len() as usize > max_size {
-                return Err(format!(
-                    "File size {} exceeds maximum {}",
-                    metadata.len(),
-                    max_size
-                ));
-            }
-        }
-
-        // Attempt to read with retries
-        let mut last_error = String::new();
-        for attempt in 0..=builder.retry_attempts {
-            match fs::read_to_string(path).await {
-                Ok(content) => return Ok(content),
-                Err(e) => {
-                    last_error = format!("Attempt {}: {}", attempt + 1, e);
-                    if attempt < builder.retry_attempts {
-                        tokio::time::sleep(tokio::time::Duration::from_millis(
-                            100 * (1 << attempt), // Exponential backoff
-                        ))
-                        .await;
+            let result = match documents.len() {
+                0 => ZeroOneOrMany::None,
+                1 => {
+                    let mut iter = documents.into_iter();
+                    match iter.next() {
+                        Some(doc) => ZeroOneOrMany::One(doc),
+                        None => ZeroOneOrMany::None
                     }
                 }
-            }
-        }
-
-        Err(format!(
-            "Failed to read file after {} attempts: {}",
-            builder.retry_attempts + 1,
-            last_error
-        ))
+                _ => ZeroOneOrMany::Many(documents)
+            };
+            
+            let _ = sender.send(result);
+        })
     }
 
-    async fn load_url_content(url: &str, builder: &DocumentBuilderImpl<F1, F2>) -> Result<String, String> {
-        let client = HttpClient::with_config(HttpConfig::ai_optimized())
-            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-
-        let mut request = HttpRequest::new(HttpMethod::Get, url.to_string());
-
-        // Set timeout if specified
-        if let Some(timeout_ms) = builder.timeout_ms {
-            request = request.with_timeout(std::time::Duration::from_millis(timeout_ms));
-        }
-
-        // Attempt request with retries
-        let mut last_error = String::new();
-        for attempt in 0..=builder.retry_attempts {
-            match client.send(request.clone()).await {
-                Ok(response) => {
-                    if response.status().is_success() {
-                        let content = response
-                            .text()
-                            .await
-                            .map_err(|e| format!("Failed to read response body: {}", e))?;
-
-                        // Check size if max_size is set
-                        if let Some(max_size) = builder.max_size {
-                            if content.len() > max_size {
-                                return Err(format!(
-                                    "Response size {} exceeds maximum {}",
-                                    content.len(),
-                                    max_size
-                                ));
-                            }
+    fn load_file_content(path: &Path, builder: &DocumentBuilderImpl<F1, F2>) -> AsyncStream<String> {
+        let path = path.to_path_buf();
+        let builder = builder.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Check file size first if max_size is set
+            if let Some(max_size) = builder.max_size {
+                match fs::metadata(&path) {
+                    Ok(metadata) => {
+                        if metadata.len() as usize > max_size {
+                            return; // Skip sending - file too large
                         }
-
-                        return Ok(content);
-                    } else {
-                        return Err(format!("HTTP error: {}", response.status()));
                     }
-                }
-                Err(e) => {
-                    last_error = format!("Attempt {}: {}", attempt + 1, e);
-                    if attempt < builder.retry_attempts {
-                        tokio::time::sleep(tokio::time::Duration::from_millis(
-                            100 * (1 << attempt), // Exponential backoff
-                        ))
-                        .await;
+                    Err(_) => {
+                        return; // Skip sending - metadata error
                     }
                 }
             }
-        }
 
-        Err(format!(
-            "Failed to fetch URL after {} attempts: {}",
-            builder.retry_attempts + 1,
-            last_error
-        ))
+            // Attempt to read with retries
+            let mut last_error = String::new();
+            for attempt in 0..=builder.retry_attempts {
+                match fs::read_to_string(&path) {
+                    Ok(content) => {
+                        let _ = sender.send(content);
+                        return;
+                    }
+                    Err(e) => {
+                        last_error = format!("Attempt {}: {}", attempt + 1, e);
+                        if attempt < builder.retry_attempts {
+                            std::thread::sleep(std::time::Duration::from_millis(
+                                100 * (1 << attempt), // Exponential backoff
+                            ));
+                        }
+                    }
+                }
+            }
+            // If all attempts failed, don't send anything
+        })
     }
 
-    async fn load_github_content(
+    fn load_url_content(url: &str, builder: &DocumentBuilderImpl<F1, F2>) -> AsyncStream<String> {
+        let url = url.to_string();
+        let builder = builder.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let client = match HttpClient::with_config(HttpConfig::ai_optimized()) {
+                Ok(client) => client,
+                Err(_) => return, // Skip sending - client creation failed
+            };
+
+            let mut request = HttpRequest::new(HttpMethod::Get, url);
+
+            // Set timeout if specified
+            if let Some(timeout_ms) = builder.timeout_ms {
+                request = request.with_timeout(std::time::Duration::from_millis(timeout_ms));
+            }
+
+            // Attempt request with retries
+            let mut last_error = String::new();
+            for attempt in 0..=builder.retry_attempts {
+                let mut response_stream = client.send(request.clone()).collect();
+                if let Some(response) = response_stream.try_next() {
+                    if response.status().is_success() {
+                        let mut text_stream = response.text().collect();
+                        if let Some(content) = text_stream.try_next() {
+                            // Check size if max_size is set
+                            if let Some(max_size) = builder.max_size {
+                                if content.len() > max_size {
+                                    return; // Skip sending - content too large
+                                }
+                            }
+
+                            let _ = sender.send(content);
+                            return;
+                        }
+                    }
+                } else {
+                    last_error = format!("Attempt {}: HTTP request failed", attempt + 1);
+                    if attempt < builder.retry_attempts {
+                        std::thread::sleep(std::time::Duration::from_millis(
+                            100 * (1 << attempt), // Exponential backoff
+                        ));
+                    }
+                }
+            }
+            // If all attempts failed, don't send anything
+        })
+    }
+
+    fn load_github_content(
         repo: &str,
         path: &str,
         branch: Option<&str>,
         builder: &DocumentBuilderImpl<F1, F2>,
-    ) -> Result<String, String> {
+    ) -> AsyncStream<String> {
         let branch = branch.unwrap_or("main");
         let url = format!(
             "https://raw.githubusercontent.com/{}/{}/{}",
             repo, branch, path
         );
 
-        Self::load_url_content(&url, builder).await
+        Self::load_url_content(&url, builder)
     }
 
     #[inline]

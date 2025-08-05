@@ -143,9 +143,8 @@ where
     /// Uses zero-copy byte processing and pre-allocated buffers for optimal performance.
     /// Inlined hot paths minimize function call overhead during streaming.
     pub fn process_available(&mut self) -> JsonPathIterator<'_, 'a, T> {
-        // Reset buffer position to start of current buffer when processing new chunks
-        // This ensures we don't miss any data when new chunks are appended
-        self.buffer_position = 0;
+        // Continue from current buffer position to process newly available data
+        // Buffer position tracks our progress through the streaming data
         JsonPathIterator::new(self)
     }
 
@@ -170,7 +169,6 @@ where
     /// Process single JSON byte and update parsing state
     #[inline]
     pub(super) fn process_json_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
-        eprintln!("DEBUG: Processing byte '{}' (char: '{}') in state: {:?}", byte, byte as char, self.state);
         match &self.state {
             DeserializerState::Initial => self.process_initial_byte(byte),
             DeserializerState::Navigating => self.process_navigating_byte(byte),
@@ -215,21 +213,6 @@ where
             }
             _ => Ok(super::processor::JsonProcessResult::Continue),
         }
-    }
-
-    /// Check if current position matches JSONPath root array selector
-    #[inline]
-    pub(super) fn matches_root_array_path(&self) -> bool {
-        let expression = self.path_expression.as_string();
-        
-        // For simple root array patterns like $[*]
-        if expression == "$[*]" {
-            return self.current_depth == 1; // We just entered an array at root level
-        }
-        
-        // For patterns like $.data[*], we don't match at root level
-        // We need to navigate deeper first
-        false
     }
 
     /// Process byte when navigating through JSON structure

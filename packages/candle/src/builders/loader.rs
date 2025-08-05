@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use crate::domain::context::{CandleLoader as Loader, CandleLoaderImpl as LoaderImpl};
 use crate::util::ZeroOneOrMany;
-use fluent_ai_async::{AsyncTask, spawn_task};
+use fluent_ai_async::{AsyncTask, AsyncStream};
 
 /// Local NotResult trait for candle standalone operation
 pub trait CandleNotResult: Send + Sync + 'static {}
@@ -232,7 +232,7 @@ where
     where
         LoaderImpl<T>: Loader<T> + CandleNotResult,
     {
-        spawn_async(async move { self.build() })
+        AsyncTask::from_result(self.build())
     }
     
     /// Load files immediately - EXACT syntax: .load_files()
@@ -284,21 +284,24 @@ where
         T: CandleNotResult,
     {
         let load_task = self.load_files();
-        spawn_async(async move {
-            let items = match load_task.await {
-                Ok(items) => items,
-                Err(_) => return, // Handle JoinError
-            };
-            match items {
-                ZeroOneOrMany::None => {}
-                ZeroOneOrMany::One(item) => handler(&item),
-                ZeroOneOrMany::Many(items) => {
-                    for item in &items {
-                        handler(item);
+        AsyncTask::from_stream(AsyncStream::with_channel(|stream_sender| {
+            std::thread::spawn(move || {
+                if let Some(items_result) = load_task.try_next() {
+                    if let Ok(items) = items_result {
+                        match items {
+                            ZeroOneOrMany::None => {}
+                            ZeroOneOrMany::One(item) => handler(&item),
+                            ZeroOneOrMany::Many(items) => {
+                                for item in &items {
+                                    handler(item);
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        })
+                let _ = stream_sender.send(());
+            });
+        }))
     }
 }
 

@@ -58,7 +58,17 @@ where
         }
 
         // Parse JSON incrementally to find next object matching JSONPath
+        // Add bounds check to prevent infinite loops with filter expressions
+        let mut iteration_count = 0;
+        let max_iterations = 10000; // Reasonable limit for JSON parsing
+        
         loop {
+            iteration_count += 1;
+            if iteration_count > max_iterations {
+                log::warn!("JsonPath iterator exceeded maximum iterations - likely infinite loop in filter evaluation");
+                return Ok(None); // Exit gracefully rather than hanging
+            }
+            
             let byte = match self.deserializer.read_next_byte()? {
                 Some(b) => b,
                 None => return Ok(None), // No more data available

@@ -332,8 +332,8 @@ mod abnf_grammar_tests {
             ("$[\"\\n\"]", true),     // Newline
             ("$[\"\\f\"]", true),     // Form feed
             ("$[\"\\r\"]", true),     // Carriage return
-            ("$[\"\\\"\\\"]]", true), // Quote
-            ("$[\"\\'\"]]", true),    // Apostrophe
+            ("$[\"\\\"\"]", true), // Quote
+            ("$[\"\\'\"]", true),    // Apostrophe
             ("$[\"\\/\"]", true),     // Solidus
             ("$[\"\\\\\"]", true),    // Backslash
             ("$[\"\\u0041\"]", true), // Unicode escape

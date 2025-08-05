@@ -7,9 +7,10 @@ use arc_swap::ArcSwap;
 use crossbeam_channel;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
+use fluent_ai_async::AsyncStream;
 
 use crate::AsyncTask;
-use crate::memory::MemoryError;
+use crate::domain::memory::MemoryError;
 
 /// Domain initialization error types with semantic error handling
 #[derive(Debug, thiserror::Error)]
@@ -107,28 +108,55 @@ impl CircuitBreaker {
     }
 }
 
-/// Execute operation with circuit breaker protection
-pub async fn execute_with_circuit_breaker<F, T, E, Fut>(
+/// Execute operation with circuit breaker protection using AsyncStream
+pub fn execute_with_circuit_breaker<F, T, E>(
     operation: F,
-) -> std::result::Result<T, DomainInitError>
+) -> AsyncStream<std::result::Result<T, DomainInitError>>
 where
-    F: FnOnce() -> Fut,
-    Fut: std::future::Future<Output = std::result::Result<T, E>>,
-    E: Into<DomainInitError>,
+    F: FnOnce() -> std::result::Result<T, E> + Send + 'static,
+    T: Send + 'static,
+    E: Into<DomainInitError> + Send + 'static,
 {
-    let circuit_breaker = CIRCUIT_BREAKER.load();
-    if circuit_breaker.is_open() {
-        return Err(DomainInitError::CircuitBreakerOpen);
-    }
+    AsyncStream::with_channel(move |sender| {
+        std::thread::spawn(move || {
+            let circuit_breaker = CIRCUIT_BREAKER.load();
+            if circuit_breaker.is_open() {
+                let _ = sender.send(Err(DomainInitError::CircuitBreakerOpen));
+                return;
+            }
 
-    match operation().await {
-        Ok(result) => Ok(result),
-        Err(err) => {
-            circuit_breaker.record_failure();
-            Err(err.into())
-        }
-    }
+            match operation() {
+                Ok(result) => {
+                    let _ = sender.send(Ok(result));
+                },
+                Err(err) => {
+                    circuit_breaker.record_failure();
+                    let _ = sender.send(Err(err.into()));
+                }
+            }
+        });
+    })
 }
 
 // Re-export commonly used types
 // REMOVED: pub use futures::stream::Stream; - ALL FUTURES ELIMINATED!
+/// Core engine for completion processing
+pub mod engine;
+
+/// Advanced constrained generation with sampling strategies
+pub mod generation;
+
+/// Unified model configuration system for hundreds of models
+pub mod model_config;
+
+/// SIMD adapter functions for bridging fluent_ai_simd with generation types
+pub mod simd_adapters;
+
+// Re-export core types
+pub use engine::*;
+pub use generation::*;
+pub use model_config::*;
+pub use simd_adapters::{
+    simd_temperature_scale, simd_softmax_with_cache, simd_argmax_with_bounds,
+    should_use_simd, simd_error_to_fallback_strategy
+};

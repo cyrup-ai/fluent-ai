@@ -128,6 +128,8 @@ pub enum FilterValue {
     Boolean(bool),
     /// Null literal value
     Null,
+    /// Missing property (different from null per RFC 9535)
+    Missing,
 }
 
 /// Comparison operators for filter expressions

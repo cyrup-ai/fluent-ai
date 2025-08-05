@@ -14,7 +14,7 @@ use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::{AsyncStream, handle_error};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 use crate::chat::commands::ImmutableChatCommand;
@@ -319,7 +319,7 @@ impl MacroSystem {
     }
 
     /// Start recording a new macro
-    pub async fn start_recording(
+    pub fn start_recording(
         &self,
         name: Arc<str>,
         description: Arc<str>,
@@ -362,19 +362,19 @@ impl MacroSystem {
             variables: HashMap::new(),
             metadata};
 
-        let mut sessions = self.recording_sessions.write().await;
+        let mut sessions = self.recording_sessions.write().unwrap_or_else(|poisoned| poisoned.into_inner());
         sessions.insert(session_id, session);
 
         Ok(session_id)
     }
 
     /// Record a macro action
-    pub async fn record_action(
+    pub fn record_action(
         &self,
         session_id: Uuid,
         action: MacroAction,
     ) -> Result<(), MacroSystemError> {
-        let sessions = self.recording_sessions.read().await;
+        let sessions = self.recording_sessions.read().unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(session) = sessions.get(&session_id) {
             if session.state == MacroRecordingState::Recording {
@@ -389,8 +389,8 @@ impl MacroSystem {
     }
 
     /// Stop recording and save the macro
-    pub async fn stop_recording(&self, session_id: Uuid) -> Result<Uuid, MacroSystemError> {
-        let mut sessions = self.recording_sessions.write().await;
+    pub fn stop_recording(&self, session_id: Uuid) -> Result<Uuid, MacroSystemError> {
+        let mut sessions = self.recording_sessions.write().unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(mut session) = sessions.remove(&session_id) {
             session.state = MacroRecordingState::Completed;
@@ -466,7 +466,7 @@ impl MacroSystem {
     }
 
     /// Start macro playback
-    pub async fn start_playback(
+    pub fn start_playback(
         &self,
         macro_id: Uuid,
         variables: HashMap<Arc<str>, Arc<str>>,
@@ -493,7 +493,7 @@ impl MacroSystem {
             total_actions: macro_def.actions.len(),
             error: None};
 
-        let mut sessions = self.playback_sessions.write().await;
+        let mut sessions = self.playback_sessions.write().unwrap_or_else(|poisoned| poisoned.into_inner());
         sessions.insert(session_id, session);
 
         self.execution_counter.inc();
@@ -502,11 +502,11 @@ impl MacroSystem {
     }
 
     /// Execute the next action in a playback session
-    pub async fn execute_next_action(
+    pub fn execute_next_action(
         &self,
         session_id: Uuid,
     ) -> Result<MacroPlaybackResult, MacroSystemError> {
-        let mut sessions = self.playback_sessions.write().await;
+        let mut sessions = self.playback_sessions.write().unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if let Some(session) = sessions.get_mut(&session_id) {
             if session.state != MacroPlaybackState::Playing {
@@ -537,7 +537,7 @@ impl MacroSystem {
                     }
                 }
                 ActionExecutionResult::Wait(duration) => {
-                    tokio::time::sleep(duration).await;
+                    std::thread::sleep(duration);
                     Ok(MacroPlaybackResult::ActionExecuted)
                 }
                 ActionExecutionResult::SkipToAction(index) => {
@@ -852,7 +852,7 @@ pub struct MacroExecutionRequest {
     pub requested_at: Duration}
 
 /// Macro execution result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MacroExecutionResult {
     /// Execution success indicator
     pub success: bool,
@@ -868,7 +868,7 @@ pub struct MacroExecutionResult {
     pub metadata: MacroExecutionMetadata}
 
 /// Macro execution metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MacroExecutionMetadata {
     /// Execution ID
     pub execution_id: Uuid,
@@ -884,7 +884,7 @@ pub struct MacroExecutionMetadata {
     pub performance: MacroPerformanceMetrics}
 
 /// Macro performance metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MacroPerformanceMetrics {
     /// CPU time used in microseconds
     pub cpu_time_us: u64,
@@ -951,7 +951,7 @@ impl MacroProcessor {
     }
 
     /// Execute a macro by ID
-    pub async fn execute_macro(
+    pub fn execute_macro(
         &self,
         macro_id: &Uuid,
         context_variables: HashMap<Arc<str>, Arc<str>>,
@@ -963,30 +963,34 @@ impl MacroProcessor {
             .value()
             .clone();
 
-        self.execute_macro_impl(macro_def, context_variables).await
+        Ok(self.execute_macro_impl(macro_def, context_variables).collect().first().cloned().unwrap_or_default())
     }
 
     /// Execute a macro directly
-    pub async fn execute_macro_direct(
+    pub fn execute_macro_direct(
         &self,
         macro_def: ChatMacro,
         context_variables: HashMap<Arc<str>, Arc<str>>,
     ) -> Result<MacroExecutionResult, MacroSystemError> {
-        self.execute_macro_impl(macro_def, context_variables).await
+        Ok(self.execute_macro_impl(macro_def, context_variables).collect().first().cloned().unwrap_or_default())
     }
 
     /// Internal macro execution implementation
-    async fn execute_macro_impl(
+    fn execute_macro_impl(
         &self,
         macro_def: ChatMacro,
         context_variables: HashMap<Arc<str>, Arc<str>>,
-    ) -> Result<MacroExecutionResult, MacroSystemError> {
-        let execution_id = Uuid::new_v4();
+    ) -> AsyncStream<MacroExecutionResult> {
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                let execution_id = Uuid::new_v4();
         let start_time = Instant::now();
         let started_at = Duration::from_secs(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map_err(|_| MacroSystemError::SystemTimeError)?
+                .unwrap_or_default()
                 .as_secs(),
         );
 
@@ -1000,7 +1004,7 @@ impl MacroProcessor {
 
         // Merge context variables with global variables
         let mut execution_context = {
-            let global_vars = self.variables.read().await;
+            let global_vars = self.variables.read().unwrap_or_else(|poisoned| poisoned.into_inner());
             let mut context = global_vars.clone();
             context.extend(context_variables.clone());
             context.extend(macro_def.variables.clone());
@@ -1012,20 +1016,20 @@ impl MacroProcessor {
 
         // Execute actions
         for action in macro_def.actions.iter() {
-            match self.execute_action(action, &mut execution_context).await {
+            match self_clone.execute_action_sync(action, &mut execution_context) {
                 Ok(modified_vars) => {
                     actions_executed += 1;
                     modified_variables.extend(modified_vars);
                 }
                 Err(e) => {
-                    self.stats
+                    self_clone.stats
                         .failed_executions
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    self.stats
+                    self_clone.stats
                         .active_executions
                         .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
 
-                    return Ok(MacroExecutionResult {
+                    let result = MacroExecutionResult {
                         success: false,
                         message: Arc::from(format!("Action execution failed: {}", e)),
                         actions_executed,
@@ -1046,26 +1050,31 @@ impl MacroProcessor {
                                 cpu_time_us: start_time.elapsed().as_micros() as u64,
                                 memory_bytes: 0, // Would need memory profiling
                                 network_requests: 0,
-                                disk_operations: 0}}});
+                                disk_operations: 0,
+                            },
+                        },
+                    };
+                    let _ = sender.send(result);
+                    return;
                 }
             }
         }
 
-        let execution_duration = start_time.elapsed();
+                let execution_duration = start_time.elapsed();
 
-        // Update statistics
-        self.stats
-            .successful_executions
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.stats
-            .active_executions
-            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
-        self.stats.total_execution_time_us.fetch_add(
-            execution_duration.as_micros() as usize,
-            std::sync::atomic::Ordering::Relaxed,
-        );
+                // Update statistics
+                self_clone.stats
+                    .successful_executions
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                self_clone.stats
+                    .active_executions
+                    .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+                self_clone.stats.total_execution_time_us.fetch_add(
+                    execution_duration.as_micros() as usize,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
 
-        Ok(MacroExecutionResult {
+                let result = MacroExecutionResult {
             success: true,
             message: Arc::from("Macro executed successfully"),
             actions_executed,
@@ -1086,11 +1095,18 @@ impl MacroProcessor {
                     cpu_time_us: execution_duration.as_micros() as u64,
                     memory_bytes: 0, // Would need memory profiling
                     network_requests: 0,
-                    disk_operations: 0}}})
+                    disk_operations: 0,
+                },
+            },
+        };
+        
+        let _ = sender.send(result);
+            });
+        })
     }
 
     /// Execute a single macro action iteratively (zero-allocation, blazing-fast)
-    async fn execute_action(
+    fn execute_action_sync(
         &self,
         action: &MacroAction,
         context: &mut HashMap<Arc<str>, Arc<str>>,
@@ -1121,7 +1137,7 @@ impl MacroProcessor {
                     println!("Executing command: {:?}", command);
                 }
                 MacroAction::Wait { duration, .. } => {
-                    tokio::time::sleep(*duration).await;
+                    std::thread::sleep(*duration);
                 }
                 MacroAction::SetVariable { name, value, .. } => {
                     let processed_value = if self.config.enable_variable_substitution {
@@ -1289,20 +1305,20 @@ impl MacroProcessor {
     }
 
     /// Set global variable
-    pub async fn set_variable(&self, name: Arc<str>, value: Arc<str>) {
-        let mut vars = self.variables.write().await;
+    pub fn set_variable(&self, name: Arc<str>, value: Arc<str>) {
+        let mut vars = self.variables.write().unwrap_or_else(|poisoned| poisoned.into_inner());
         vars.insert(name, value);
     }
 
     /// Get global variable
-    pub async fn get_variable(&self, name: &str) -> Option<Arc<str>> {
-        let vars = self.variables.read().await;
+    pub fn get_variable(&self, name: &str) -> Option<Arc<str>> {
+        let vars = self.variables.read().unwrap_or_else(|poisoned| poisoned.into_inner());
         vars.get(name).cloned()
     }
 
     /// Clear all global variables
-    pub async fn clear_variables(&self) {
-        let mut vars = self.variables.write().await;
+    pub fn clear_variables(&self) {
+        let mut vars = self.variables.write().unwrap_or_else(|poisoned| poisoned.into_inner());
         vars.clear();
     }
 }

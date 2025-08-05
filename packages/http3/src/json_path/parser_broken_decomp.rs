@@ -589,7 +589,12 @@ impl JsonPathParser {
                     
                     while let Some(&next_ch) = chars.peek() {
                         if next_ch.is_alphanumeric() || next_ch == '_' {
-                            identifier.push(chars.next().unwrap());
+                            if let Some(ch) = chars.next() {
+                                identifier.push(ch);
+                            } else {
+                                // This should never happen since peek() returned Some, but break gracefully
+                                break;
+                            }
                         } else {
                             break;
                         }
@@ -608,7 +613,12 @@ impl JsonPathParser {
                     
                     while let Some(&next_ch) = chars.peek() {
                         if next_ch.is_ascii_digit() || next_ch == '.' {
-                            number_str.push(chars.next().unwrap());
+                            if let Some(ch) = chars.next() {
+                                number_str.push(ch);
+                            } else {
+                                // This should never happen since peek() returned Some, but break gracefully
+                                break;
+                            }
                         } else {
                             break;
                         }

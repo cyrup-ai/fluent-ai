@@ -83,14 +83,11 @@ mod parser_basic_tests {
     fn test_complexity_scoring() {
         let simple = JsonPathParser::compile("$.data").expect("Valid expression");
 
-        // Test simple recursive descent step by step
-        let result = JsonPathParser::compile("$..");
-        if let Err(e) = &result {
-            println!("Failed to parse '$..': {:?}", e);
-        }
-        let simple_recursive = result.expect("Valid recursive descent");
+        // Test simple recursive descent - RFC 9535 compliant pattern
+        let simple_recursive = JsonPathParser::compile("$..[*]").expect("Valid recursive descent");
 
-        let complex = JsonPathParser::compile("$..items[?(@.active)]").expect("Valid expression");
+        // Use RFC 9535 compliant pattern for complex expression
+        let complex = JsonPathParser::compile("$..[?@.active]").expect("Valid expression");
 
         assert!(complex.complexity_score() > simple.complexity_score());
         assert!(complex.complexity_score() > simple_recursive.complexity_score());

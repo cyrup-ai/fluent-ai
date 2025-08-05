@@ -14,7 +14,7 @@ use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 // Removed unused import: wide::f32x8
@@ -494,9 +494,16 @@ impl ChatSearchIndex {
                 if candidates.is_none() {
                     candidates = Some(term_candidates);
                 } else {
-                    let current = candidates.unwrap();
-                    let intersection = self_clone.intersect_results(current, term_candidates);
-                    candidates = Some(intersection);
+                    match candidates {
+                        Some(current) => {
+                            let intersection = self_clone.intersect_results(current, term_candidates);
+                            candidates = Some(intersection);
+                        }
+                        None => {
+                            // This should never happen due to the if-else structure above
+                            candidates = Some(term_candidates);  
+                        }
+                    }
                 }
             }
 
@@ -1124,19 +1131,29 @@ impl ConversationTagger {
     }
 
     /// Create a child tag (legacy)
-    pub async fn create_child_tag(
+    pub fn create_child_tag(
         &self,
         parent_id: Arc<str>,
         name: Arc<str>,
         description: Arc<str>,
         category: Arc<str>,
-    ) -> Result<Arc<str>, SearchError> {
+    ) -> AsyncStream<Result<Arc<str>, SearchError>> {
         let mut stream = self.create_child_tag_stream(parent_id, name, description, category);
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(tag_id) => Ok(tag_id),
-            None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Use AsyncStream try_next method (NO FUTURES architecture)
+                match stream.try_next() {
+                    Some(tag_id) => {
+                        let _ = sender.send(Ok(tag_id));
+                    }
+                    None => {
+                        let _ = sender.send(Err(SearchError::TagError {
+                            reason: Arc::from("Stream closed unexpectedly"),
+                        }));
+                    }
+                }
+            });
+        })
     }
 
     /// Tag a message (streaming)
@@ -1181,17 +1198,27 @@ impl ConversationTagger {
     }
 
     /// Tag a message (legacy)
-    pub async fn tag_message(
+    pub fn tag_message(
         &self,
         message_id: Arc<str>,
         tag_ids: Vec<Arc<str>>,
-    ) -> Result<(), SearchError> {
+    ) -> AsyncStream<Result<(), SearchError>> {
         let mut stream = self.tag_message_stream(message_id, tag_ids);
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        match stream.try_next() {
-            Some(_) => Ok(()),
-            None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Use AsyncStream try_next method (NO FUTURES architecture)
+                match stream.try_next() {
+                    Some(_) => {
+                        let _ = sender.send(Ok(()));
+                    }
+                    None => {
+                        let _ = sender.send(Err(SearchError::TagError {
+                            reason: Arc::from("Stream closed unexpectedly"),
+                        }));
+                    }
+                }
+            });
+        })
     }
 
     /// Auto-tag message based on content (streaming)

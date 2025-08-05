@@ -47,6 +47,13 @@ pub trait MemoryManagerTrait: Send + Sync {
 pub struct SurrealDBMemoryManager {
     _stub: ()}
 
+impl SurrealDBMemoryManager {
+    /// Create a new SurrealDB memory manager (stub implementation)
+    pub fn new() -> Self {
+        Self { _stub: () }
+    }
+}
+
 // Removed unused import: parking_lot::Mutex
 // Removed unused import: smallvec::SmallVec
 

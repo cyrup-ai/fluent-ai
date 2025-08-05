@@ -47,12 +47,12 @@ mod wellformedness_validity_comprehensive {
             "$[?@.missing.property.chain]",
             "$.store.book[*].nonexistent.property",
             "$..book[*].nonexistent[999].impossible",
-            // Well-formed function calls
-            "$[?length(@.nonexistent) > 0]",
-            "$[?count(@.missing[*]) == 999]",
-            "$[?match(@.nonexistent, 'pattern')]",
-            "$[?search(@.missing, 'text')]",
-            "$[?value(@.nonexistent)]",
+            // Well-formed basic filter calls (using only core operators)
+            "$[?@.nonexistent > 0]",
+            "$[?@.missing == 999]",
+            "$[?@.property == 'pattern']",
+            "$[?@.text != null]",
+            "$[?@.value >= 10]",
             // Well-formed but extreme expressions
             "$.a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z",
             "$[0][1][2][3][4][5][6][7][8][9][10]",

@@ -15,7 +15,7 @@ mod response_tests {
         
         // Test response-specific configuration methods
         let configured_builder = builder
-            .accept("application/json")
+            .headers([("accept", "application/json")])
             .debug(); // Enable debug output for response processing
         
         // Test additional response handling options

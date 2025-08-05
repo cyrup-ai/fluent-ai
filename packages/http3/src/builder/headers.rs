@@ -5,7 +5,43 @@
 
 use http::{HeaderName, HeaderValue};
 
-use crate::builder::core::Http3Builder;
+use crate::builder::core::{Http3Builder, ContentType};
+
+/// Helper type for accept method that can handle both strings and ContentType enums
+pub enum AcceptValue {
+    /// String representation of content type
+    String(String),
+    /// ContentType enum variant
+    ContentType(ContentType),
+}
+
+impl AcceptValue {
+    /// Convert to string representation
+    pub fn as_str(&self) -> &str {
+        match self {
+            AcceptValue::String(s) => s,
+            AcceptValue::ContentType(ct) => ct.as_str(),
+        }
+    }
+}
+
+impl From<&str> for AcceptValue {
+    fn from(s: &str) -> Self {
+        AcceptValue::String(s.to_string())
+    }
+}
+
+impl From<String> for AcceptValue {
+    fn from(s: String) -> Self {
+        AcceptValue::String(s)
+    }
+}
+
+impl From<ContentType> for AcceptValue {
+    fn from(ct: ContentType) -> Self {
+        AcceptValue::ContentType(ct)
+    }
+}
 
 /// Header constants for common HTTP headers
 pub mod header {
@@ -154,25 +190,32 @@ impl<S> Http3Builder<S> {
         }
     }
 
-    /// Set Accept header  
+    /// Set Accept header - supports both string and ContentType enum
     ///
     /// # Arguments
-    /// * `accept` - The accept header value (e.g., "application/json", "text/html")
+    /// * `accept` - The accept header value (string or ContentType enum)
     ///
     /// # Returns
     /// `Self` for method chaining
     ///
     /// # Examples
     /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
+    /// use fluent_ai_http3::{Http3Builder, ContentType};
     ///
-    /// let response = Http3Builder::json()
+    /// // Using string
+    /// let response1 = Http3Builder::json()
     ///     .accept("application/json")
+    ///     .get("https://api.example.com/data");
+    ///
+    /// // Using ContentType enum
+    /// let response2 = Http3Builder::json()
+    ///     .accept(ContentType::ApplicationJson)
     ///     .get("https://api.example.com/data");
     /// ```
     #[must_use]
-    pub fn accept(self, accept: &str) -> Self {
-        match HeaderValue::from_str(accept) {
+    pub fn accept<T: Into<AcceptValue>>(self, accept: T) -> Self {
+        let accept_value = accept.into();
+        match HeaderValue::from_str(accept_value.as_str()) {
             Ok(header_value) => self.header(header::ACCEPT, header_value),
             Err(_) => self, // Skip invalid header value
         }

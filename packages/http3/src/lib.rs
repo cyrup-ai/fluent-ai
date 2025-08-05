@@ -154,3 +154,5 @@ pub fn init_global_client(_config: HttpConfig) -> HttpResult<()> {
     // Users should create their own client instances if they need custom configuration
     Ok(())
 }
+
+

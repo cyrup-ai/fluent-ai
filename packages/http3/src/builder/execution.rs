@@ -3,7 +3,6 @@
 //! Provides extension traits and implementations for executing HTTP requests
 //! and processing responses with streaming support and error handling.
 
-use cyrup_sugars::prelude::*;
 use fluent_ai_async::thread_pool::global_executor;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, emit};
 use futures_util::StreamExt;
@@ -142,12 +141,27 @@ impl HttpStreamExt for HttpStream {
         if TypeId::of::<T>() == TypeId::of::<Vec<u8>>() {
             // Safe cast for Vec<u8> - return raw bytes without JSON deserialization
             let bytes = self.collect_bytes_internal();
-            // Safe cast using Any trait
+            // Safe cast using Any trait with proper error handling
             let any_bytes: Box<dyn std::any::Any> = Box::new(bytes);
-            let typed_bytes = any_bytes.downcast::<Vec<u8>>().unwrap();
-            let result: Box<dyn std::any::Any> = typed_bytes;
-            let final_result = result.downcast::<T>().unwrap();
-            vec![*final_result]
+            let typed_bytes = any_bytes.downcast::<Vec<u8>>().map_err(|_| {
+                // This should never happen due to TypeId check, but handle gracefully
+                log::error!("Failed to downcast bytes to Vec<u8> despite TypeId match");
+                vec![]
+            });
+            
+            match typed_bytes {
+                Ok(bytes_box) => {
+                    let result: Box<dyn std::any::Any> = bytes_box;
+                    match result.downcast::<T>() {
+                        Ok(final_result) => vec![*final_result],
+                        Err(_) => {
+                            log::error!("Failed to downcast Vec<u8> to target type T despite TypeId match");
+                            vec![]
+                        }
+                    }
+                }
+                Err(empty_vec) => empty_vec,
+            }
         } else {
             vec![self.collect_internal()]
         }

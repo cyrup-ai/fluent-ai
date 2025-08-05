@@ -231,37 +231,37 @@ pub trait ModelConfigInfo: model_info::common::Model {
     /// Get model name (zero allocation string literal)
     #[inline(always)]
     fn name(&self) -> &'static str {
-        self.name()
+        <Self as model_info::common::Model>::name(self)
     }
 
     /// Get context length from model-info
     #[inline(always)]
     fn context_length(&self) -> u64 {
-        self.max_context_length()
+        <Self as model_info::common::Model>::max_context_length(self)
     }
 
     /// Get pricing information from model-info
     #[inline(always)]
     fn pricing_input(&self) -> f64 {
-        self.pricing_input()
+        <Self as model_info::common::Model>::pricing_input(self).unwrap_or(0.0)
     }
 
     /// Get pricing information from model-info
     #[inline(always)]
     fn pricing_output(&self) -> f64 {
-        self.pricing_output()
+        <Self as model_info::common::Model>::pricing_output(self).unwrap_or(0.0)
     }
 
     /// Check if thinking model from model-info
     #[inline(always)]
     fn is_thinking(&self) -> bool {
-        self.is_thinking()  
+        <Self as model_info::common::Model>::supports_thinking(self)
     }
 
     /// Get required temperature from model-info
     #[inline(always)]
     fn required_temperature(&self) -> Option<f64> {
-        self.required_temperature()
+        <Self as model_info::common::Model>::required_temperature(self)
     }
 }
 

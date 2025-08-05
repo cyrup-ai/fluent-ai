@@ -10,6 +10,16 @@ use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
 // REMOVED: use fluent_ai_async::AsyncStream::with_channel;
 use cyrup_sugars::ZeroOneOrMany;
+use thiserror::Error;
+
+/// Error types for conversation operations
+#[derive(Error, Debug)]
+pub enum ConversationError {
+    #[error("Message vector corruption: {message}")]
+    MessageVectorCorruption { message: String },
+    #[error("System error: {0}")]
+    System(String),
+}
 
 /// Immutable message in a conversation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -199,7 +209,7 @@ impl StreamingConversation {
 
     /// Add user message (creates new immutable message)
     #[inline]
-    pub fn add_user_message(&mut self, content: impl Into<String>) -> &ImmutableMessage {
+    pub fn add_user_message(&mut self, content: impl Into<String>) -> Result<&ImmutableMessage, ConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = ImmutableMessage::user(content, sequence);
 
@@ -214,15 +224,16 @@ impl StreamingConversation {
 
         // Safety: We just pushed a message, so messages cannot be empty
         match self.messages.last() {
-            Some(msg) => msg,
-            None => panic!(
-                "Critical error: message vector empty after push - possible memory corruption"
-            )}
+            Some(msg) => Ok(msg),
+            None => Err(ConversationError::MessageVectorCorruption {
+                message: "Message vector empty after push - possible memory corruption".to_string()
+            })
+        }
     }
 
     /// Add assistant message (creates new immutable message)
     #[inline]
-    pub fn add_assistant_message(&mut self, content: impl Into<String>) -> &ImmutableMessage {
+    pub fn add_assistant_message(&mut self, content: impl Into<String>) -> Result<&ImmutableMessage, ConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = ImmutableMessage::assistant(content, sequence);
 
@@ -237,15 +248,16 @@ impl StreamingConversation {
 
         // Safety: We just pushed a message, so messages cannot be empty
         match self.messages.last() {
-            Some(msg) => msg,
-            None => panic!(
-                "Critical error: message vector empty after push - possible memory corruption"
-            )}
+            Some(msg) => Ok(msg),
+            None => Err(ConversationError::MessageVectorCorruption {
+                message: "Message vector empty after push - possible memory corruption".to_string()
+            })
+        }
     }
 
     /// Add system message (creates new immutable message)
     #[inline]
-    pub fn add_system_message(&mut self, content: impl Into<String>) -> &ImmutableMessage {
+    pub fn add_system_message(&mut self, content: impl Into<String>) -> Result<&ImmutableMessage, ConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = ImmutableMessage::system(content, sequence);
 
@@ -260,10 +272,11 @@ impl StreamingConversation {
 
         // Safety: We just pushed a message, so messages cannot be empty
         match self.messages.last() {
-            Some(msg) => msg,
-            None => panic!(
-                "Critical error: message vector empty after push - possible memory corruption"
-            )}
+            Some(msg) => Ok(msg),
+            None => Err(ConversationError::MessageVectorCorruption {
+                message: "Message vector empty after push - possible memory corruption".to_string()
+            })
+        }
     }
 
     /// Get all messages as borrowed slice (zero allocation)

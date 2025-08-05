@@ -463,18 +463,21 @@ mod tests {
         assert!(Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Strict).is_err());
         
         // Replace mode should succeed with replacement character
-        let replaced = Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Replace).unwrap();
+        let replaced = Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Replace)
+            .expect("Failed to validate UTF-8 with replacement strategy");
         assert!(replaced.contains('\u{FFFD}')); // Unicode replacement character
         
         // Ignore mode should succeed by skipping invalid bytes
-        let ignored = Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Ignore).unwrap();
+        let ignored = Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Ignore)
+            .expect("Failed to validate UTF-8 with ignore strategy");
         assert_eq!(ignored, "hello  world"); // Invalid byte skipped
     }
 
     #[test]
     fn test_unicode_escape_handling() {
         // Valid Unicode escape
-        let result = Utf8Handler::validate_jsonpath_string("hello\\u0041world", true).unwrap();
+        let result = Utf8Handler::validate_jsonpath_string("hello\\u0041world", true)
+            .expect("Failed to validate JSONPath string with Unicode escape");
         assert_eq!(result, "helloAworld");
         
         // Invalid Unicode escape
@@ -500,7 +503,8 @@ mod tests {
         assert!(buffer.append(b"!").is_err());
         
         // Should convert to string successfully
-        let string = buffer.to_string(Utf8RecoveryStrategy::Strict).unwrap();
+        let string = buffer.to_string(Utf8RecoveryStrategy::Strict)
+            .expect("Failed to convert buffer to string with strict strategy");
         assert_eq!(string, "helloworld");
     }
 

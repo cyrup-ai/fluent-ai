@@ -28,8 +28,8 @@ mod debug_tests {
         let result = JsonPathParser::compile("$.items[?length(@.name) == 5]");
         println!("Property function result: {:?}", result);
 
-        if result.is_err() {
-            println!("Error details: {}", result.err().unwrap());
+        if let Err(error) = result {
+            println!("Error details: {}", error);
         }
     }
 

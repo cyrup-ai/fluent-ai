@@ -10,25 +10,25 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CandleModel {
     /// DeepSeek-V3 Devstral 22B parameter model (DEFAULT)
-    Devstral_22B,
+    Devstral22B,
     /// LLaMA 2 7B parameter model
-    Llama2_7B,
+    Llama27B,
     /// LLaMA 2 13B parameter model
-    Llama2_13B,
+    Llama213B,
     /// Mistral 7B parameter model
-    Mistral_7B,
+    Mistral7B,
     /// Code Llama 7B parameter model
-    CodeLlama_7B,
+    CodeLlama7B,
     /// Phi-3 Mini parameter model
-    Phi3_Mini,
+    Phi3Mini,
     /// Gemma 2B parameter model
-    Gemma_2B,
+    Gemma2B,
     /// Gemma 7B parameter model
-    Gemma_7B,
+    Gemma7B,
     /// Kimi-K2 FP16 parameter model
-    KimiK2_FP16,
+    KimiK2Fp16,
     /// Kimi-K2 FP8 parameter model
-    KimiK2_FP8}
+    KimiK2Fp8}
 
 const DEVSTRAL_22B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -223,39 +223,39 @@ const KIMI_K2_FP8_INFO: ModelInfo = ModelInfo {
 impl Model for CandleModel {
     fn info(&self) -> &'static ModelInfo {
         match self {
-            CandleModel::Devstral_22B => &DEVSTRAL_22B_INFO,
-            CandleModel::Llama2_7B => &LLAMA2_7B_INFO,
-            CandleModel::Llama2_13B => &LLAMA2_13B_INFO,
-            CandleModel::Mistral_7B => &MISTRAL_7B_INFO,
-            CandleModel::CodeLlama_7B => &CODELLAMA_7B_INFO,
-            CandleModel::Phi3_Mini => &PHI3_MINI_INFO,
-            CandleModel::Gemma_2B => &GEMMA_2B_INFO,
-            CandleModel::Gemma_7B => &GEMMA_7B_INFO,
-            CandleModel::KimiK2_FP16 => &KIMI_K2_FP16_INFO,
-            CandleModel::KimiK2_FP8 => &KIMI_K2_FP8_INFO}
+            CandleModel::Devstral22B => &DEVSTRAL_22B_INFO,
+            CandleModel::Llama27B => &LLAMA2_7B_INFO,
+            CandleModel::Llama213B => &LLAMA2_13B_INFO,
+            CandleModel::Mistral7B => &MISTRAL_7B_INFO,
+            CandleModel::CodeLlama7B => &CODELLAMA_7B_INFO,
+            CandleModel::Phi3Mini => &PHI3_MINI_INFO,
+            CandleModel::Gemma2B => &GEMMA_2B_INFO,
+            CandleModel::Gemma7B => &GEMMA_7B_INFO,
+            CandleModel::KimiK2Fp16 => &KIMI_K2_FP16_INFO,
+            CandleModel::KimiK2Fp8 => &KIMI_K2_FP8_INFO}
     }
 }
 
 impl std::fmt::Display for CandleModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
-            CandleModel::Devstral_22B => "DeepSeek-V3 Devstral 22B",
-            CandleModel::Llama2_7B => "LLaMA 2 7B",
-            CandleModel::Llama2_13B => "LLaMA 2 13B",
-            CandleModel::Mistral_7B => "Mistral 7B",
-            CandleModel::CodeLlama_7B => "Code Llama 7B",
-            CandleModel::Phi3_Mini => "Phi-3 Mini",
-            CandleModel::Gemma_2B => "Gemma 2B",
-            CandleModel::Gemma_7B => "Gemma 7B",
-            CandleModel::KimiK2_FP16 => "Kimi-K2 FP16",
-            CandleModel::KimiK2_FP8 => "Kimi-K2 FP8"};
+            CandleModel::Devstral22B => "DeepSeek-V3 Devstral 22B",
+            CandleModel::Llama27B => "LLaMA 2 7B",
+            CandleModel::Llama213B => "LLaMA 2 13B",
+            CandleModel::Mistral7B => "Mistral 7B",
+            CandleModel::CodeLlama7B => "Code Llama 7B",
+            CandleModel::Phi3Mini => "Phi-3 Mini",
+            CandleModel::Gemma2B => "Gemma 2B",
+            CandleModel::Gemma7B => "Gemma 7B",
+            CandleModel::KimiK2Fp16 => "Kimi-K2 FP16",
+            CandleModel::KimiK2Fp8 => "Kimi-K2 FP8"};
         write!(f, "{}", name)
     }
 }
 
 impl Default for CandleModel {
     fn default() -> Self {
-        CandleModel::Devstral_22B
+        CandleModel::Devstral22B
     }
 }
 
@@ -314,16 +314,16 @@ impl CandleModelInfo {
     /// Create new model info
     pub fn new(model: CandleModel, device: CandleDevice) -> Self {
         let (parameters, context_length, supports_tools, supports_vision) = match model {
-            CandleModel::Devstral_22B => (22_000_000_000, 32768, true, false),
-            CandleModel::Llama2_7B => (7_000_000_000, 4096, false, false),
-            CandleModel::Llama2_13B => (13_000_000_000, 4096, false, false),
-            CandleModel::Mistral_7B => (7_000_000_000, 8192, true, false),
-            CandleModel::CodeLlama_7B => (7_000_000_000, 16384, false, false),
-            CandleModel::Phi3_Mini => (3_800_000_000, 128000, false, false),
-            CandleModel::Gemma_2B => (2_000_000_000, 8192, false, false),
-            CandleModel::Gemma_7B => (7_000_000_000, 8192, false, false),
-            CandleModel::KimiK2_FP16 => (2_600_000_000, 128000, true, true),
-            CandleModel::KimiK2_FP8 => (2_600_000_000, 128000, true, true),
+            CandleModel::Devstral22B => (22_000_000_000, 32768, true, false),
+            CandleModel::Llama27B => (7_000_000_000, 4096, false, false),
+            CandleModel::Llama213B => (13_000_000_000, 4096, false, false),
+            CandleModel::Mistral7B => (7_000_000_000, 8192, true, false),
+            CandleModel::CodeLlama7B => (7_000_000_000, 16384, false, false),
+            CandleModel::Phi3Mini => (3_800_000_000, 128000, false, false),
+            CandleModel::Gemma2B => (2_000_000_000, 8192, false, false),
+            CandleModel::Gemma7B => (7_000_000_000, 8192, false, false),
+            CandleModel::KimiK2Fp16 => (2_600_000_000, 128000, true, true),
+            CandleModel::KimiK2Fp8 => (2_600_000_000, 128000, true, true),
         };
 
         Self {

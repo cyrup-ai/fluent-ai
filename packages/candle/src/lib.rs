@@ -6,11 +6,12 @@
 
 #![allow(missing_docs)]
 #![warn(rustdoc::missing_crate_level_docs)]
-#![forbid(unsafe_code)]
+#![warn(unsafe_code)] // Allow unsafe for model loading from safetensors
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::must_use_candidate)]
+// #![feature(return_position_impl_trait_in_traits)] // Removed unstable feature
 
 // Candle-specific modules (minimal set for core functionality)
 /// Candle domain types (replaces fluent_ai_domain dependency)
@@ -21,8 +22,8 @@ pub mod builders;
 pub mod providers;
 /// Chat functionality and loop control
 pub mod chat;
-/// Core engine for completion processing (temporarily disabled)
-// pub mod engine;
+/// Core components (engine, generation, etc.)
+pub mod core;
 
 // Essential Candle re-exports for public API (minimal set)
 // Domain types will be added as they become available
@@ -43,6 +44,13 @@ pub mod prelude {
     };
     
     pub use crate::providers::{CandleKimiK2Provider, CandleKimiK2Config};
+    
+    // Core engine types for model-agnostic inference
+    pub use crate::core::{
+        Engine, EngineConfig, EngineError, EngineResult,
+        ModelConfig, ModelArchitecture, ModelConfigError,
+        TextGenerator, SamplingConfig,
+    };
     
     // Placeholder types for ARCHITECTURE.md completeness
     pub struct CandleModels;
@@ -74,6 +82,9 @@ pub use prelude::*;
 
 // Streaming primitives from fluent-ai-async (kept as-is per requirements)
 pub use fluent_ai_async::{AsyncStream, AsyncStreamSender, AsyncTask, spawn_task};
+
+// SIMD operations from fluent-ai-simd for high-performance ML workloads
+pub use fluent_ai_simd;
 
 // Alias for backward compatibility - people expect async_task module
 pub use fluent_ai_async as async_task;

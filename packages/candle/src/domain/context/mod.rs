@@ -27,5 +27,5 @@ pub use provider::*;
 // Re-export trait types for trait-backed architecture
 pub use traits::{
     CandleContext, CandleContextChunk, CandleContextType, CandleContextMetadata,
-    CandleContextSource, CandleContextCapabilities, CandleFileContext, MockCandleContext
+    CandleContextSource, CandleContextCapabilities, CandleFileContext
 };

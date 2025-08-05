@@ -41,6 +41,20 @@ impl ContentType {
     }
 }
 
+impl From<&str> for ContentType {
+    fn from(s: &str) -> Self {
+        match s {
+            "application/json" => ContentType::ApplicationJson,
+            "application/x-www-form-urlencoded" => ContentType::ApplicationFormUrlEncoded,
+            "application/octet-stream" => ContentType::ApplicationOctetStream,
+            "text/plain" => ContentType::TextPlain,
+            "text/html" => ContentType::TextHtml,
+            "multipart/form-data" => ContentType::MultipartFormData,
+            _ => ContentType::ApplicationJson, // Default fallback
+        }
+    }
+}
+
 /// State marker indicating no body has been set
 #[derive(Debug, Clone, Copy)]
 pub struct BodyNotSet;

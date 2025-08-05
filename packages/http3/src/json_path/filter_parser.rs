@@ -153,6 +153,10 @@ impl<'a> FilterParser<'a> {
                     self.consume_token(); // consume '('
                     let args = self.parse_function_arguments()?;
                     self.expect_token(Token::RightParen)?;
+                    
+                    // RFC 9535: Validate function argument count
+                    self.validate_function_arguments(&name, &args)?;
+                    
                     Ok(FilterExpression::Function { name, args })
                 } else {
                     Err(invalid_expression_error(
@@ -164,6 +168,78 @@ impl<'a> FilterParser<'a> {
                         Some(self.position),
                     ))
                 }
+            }
+            Some(Token::Root) => {
+                // Parse JSONPath expression starting with $ or @
+                let mut jsonpath_tokens = Vec::new();
+                
+                // Consume all tokens until we hit a delimiter or end
+                while let Some(token) = self.peek_token() {
+                    match token {
+                        Token::Root | Token::At | Token::Dot | Token::DoubleDot | Token::LeftBracket | 
+                        Token::RightBracket | Token::Star | Token::Identifier(_) | 
+                        Token::Integer(_) | Token::String(_) | Token::Colon => {
+                            if let Some(consumed_token) = self.consume_token() {
+                                jsonpath_tokens.push(consumed_token);
+                            }
+                        }
+                        _ => break, // Stop at other tokens (comma, right paren, operators, etc.)
+                    }
+                }
+                
+                // Parse the collected tokens into selectors
+                use crate::json_path::ast::JsonSelector;
+                
+                if jsonpath_tokens.is_empty() {
+                    return Err(invalid_expression_error(
+                        self.input,
+                        "empty JSONPath expression",
+                        Some(self.position),
+                    ));
+                }
+                
+                // Convert tokens to selectors using a simple direct mapping
+                let mut selectors = Vec::new();
+                let mut i = 0;
+                
+                while i < jsonpath_tokens.len() {
+                    match &jsonpath_tokens[i] {
+                        Token::Root => {
+                            selectors.push(JsonSelector::Root);
+                            i += 1;
+                        }
+                        Token::At => {
+                            // @ represents current node - in JSONPath context, this becomes root
+                            selectors.push(JsonSelector::Root);
+                            i += 1;
+                        }
+                        Token::DoubleDot => {
+                            selectors.push(JsonSelector::RecursiveDescent);
+                            i += 1;
+                        }
+                        Token::Star => {
+                            selectors.push(JsonSelector::Wildcard);
+                            i += 1;
+                        }
+                        Token::Identifier(name) => {
+                            selectors.push(JsonSelector::Child {
+                                name: name.clone(),
+                                exact_match: true,
+                            });
+                            i += 1;
+                        }
+                        Token::Dot => {
+                            // Skip dot tokens as they're structural
+                            i += 1;
+                        }
+                        _ => {
+                            // For now, skip other complex patterns
+                            i += 1;
+                        }
+                    }
+                }
+                
+                Ok(FilterExpression::JsonPath { selectors })
             }
             _ => Err(invalid_expression_error(
                 self.input,
@@ -197,34 +273,64 @@ impl<'a> FilterParser<'a> {
     /// Parse property access after @ token
     fn parse_property_access(&mut self) -> JsonPathResult<FilterExpression> {
         // Check for just @ (current node)
-        if !matches!(self.peek_token(), Some(Token::Dot)) {
+        if !matches!(self.peek_token(), Some(Token::Dot) | Some(Token::DoubleDot)) {
             return Ok(FilterExpression::Current);
         }
 
-        let mut path = Vec::new();
+        // Handle complex JSONPath patterns like @..book, @.*, etc.
+        let mut selectors = Vec::new();
+        use crate::json_path::ast::JsonSelector;
+        
+        // @ represents current node in filter context
+        selectors.push(JsonSelector::Root);
 
-        while matches!(self.peek_token(), Some(Token::Dot)) {
-            self.consume_token(); // consume dot
-
-            match self.peek_token() {
-                Some(Token::Identifier(name)) => {
-                    path.push(name.clone());
+        // Parse the remaining tokens as JSONPath selectors
+        while let Some(token) = self.peek_token() {
+            match token {
+                Token::Dot => {
                     self.consume_token();
+                    // After dot, expect identifier
+                    if let Some(Token::Identifier(name)) = self.peek_token() {
+                        let name = name.clone();
+                        self.consume_token();
+                        selectors.push(JsonSelector::Child {
+                            name,
+                            exact_match: true,
+                        });
+                    } else {
+                        return Err(invalid_expression_error(
+                            self.input,
+                            "expected property name after '.'",
+                            Some(self.position),
+                        ));
+                    }
                 }
-                _ => {
-                    return Err(invalid_expression_error(
-                        self.input,
-                        "expected property name after '.'",
-                        Some(self.position),
-                    ));
+                Token::DoubleDot => {
+                    self.consume_token();
+                    selectors.push(JsonSelector::RecursiveDescent);
                 }
+                Token::Star => {
+                    self.consume_token();
+                    selectors.push(JsonSelector::Wildcard);
+                }
+                Token::Identifier(name) => {
+                    // Bare identifier (should not happen after @ but handle gracefully)
+                    let name = name.clone();
+                    self.consume_token();
+                    selectors.push(JsonSelector::Child {
+                        name,
+                        exact_match: true,
+                    });
+                }
+                _ => break, // Stop at other tokens
             }
         }
 
-        if path.is_empty() {
-            Ok(FilterExpression::Current)
+        // Return appropriate expression type
+        if selectors.len() == 1 {
+            Ok(FilterExpression::Current) // Just @
         } else {
-            Ok(FilterExpression::Property { path })
+            Ok(FilterExpression::JsonPath { selectors })
         }
     }
 
@@ -277,4 +383,52 @@ impl<'a> FilterParser<'a> {
         use crate::json_path::tokens::TokenMatcher;
         TokenMatcher::tokens_match(actual, expected)
     }
+
+    /// Validate function arguments according to RFC 9535
+    fn validate_function_arguments(&self, function_name: &str, args: &[FilterExpression]) -> JsonPathResult<()> {
+        // Check for known functions with case sensitivity
+        let expected_count = match function_name {
+            "count" => 1,
+            "length" => 1,
+            "value" => 1,
+            "match" => 2,
+            "search" => 2,
+            _ => {
+                // Check if this might be a case-sensitivity error
+                let lowercase_name = function_name.to_lowercase();
+                if matches!(lowercase_name.as_str(), "count" | "length" | "value" | "match" | "search") {
+                    return Err(invalid_expression_error(
+                        self.input,
+                        &format!(
+                            "unknown function '{}' - did you mean '{}'? (function names are case-sensitive)",
+                            function_name,
+                            lowercase_name
+                        ),
+                        Some(self.position),
+                    ));
+                }
+                
+                // Unknown function - let it pass for now (could be user-defined)
+                return Ok(());
+            }
+        };
+
+        if args.len() != expected_count {
+            return Err(invalid_expression_error(
+                self.input,
+                &format!(
+                    "function '{}' requires exactly {} argument{}, found {}",
+                    function_name,
+                    expected_count,
+                    if expected_count == 1 { "" } else { "s" },
+                    args.len()
+                ),
+                Some(self.position),
+            ));
+        }
+
+        Ok(())
+    }
+
+
 }

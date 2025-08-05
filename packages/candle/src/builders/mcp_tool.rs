@@ -55,14 +55,9 @@ impl Tool for McpToolImpl {
         &self,
         _args: Value,
     ) -> fluent_ai_async::AsyncStream<Result<Value, String>> {
-        use fluent_ai_async::AsyncStreamSender;
-        
-        fluent_ai_async::AsyncStream::with_channel(|sender: AsyncStreamSender<Result<Value, String>>| {
-            Box::pin(async move {
-                let result = Ok(Value::Null);
-                let _ = sender.send(result).await;
-                Ok(())
-            })
+        fluent_ai_async::AsyncStream::with_channel(|sender| {
+            let result = Ok(Value::Null);
+            let _ = sender.send(result);
         })
     }
 }

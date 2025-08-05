@@ -3,7 +3,8 @@
 
 use std::sync::Arc;
 
-use crate::domain::{tool::{CandleClient as Client, CandleMcpError as McpError, CandleTool as Tool, CandleTransport as Transport, types::CandleMcpToolType as McpClient}, AsyncTask, spawn_task as spawn_async};
+use crate::domain::{tool::{CandleClient as Client, CandleMcpError as McpError, CandleTool as Tool, CandleTransport as Transport, types::CandleMcpToolType as McpClient}, AsyncTask};
+use fluent_ai_async::AsyncStream;
 use serde_json::Value;
 
 pub struct McpClientBuilder<T: Transport> {
@@ -56,33 +57,36 @@ impl<T: Transport> McpClientBuilder<T> {
             client: self.client}
     }
 
-    #[inline]
-    pub fn execute(self, args: Value) -> AsyncTask<Value> {
+    #[inline]  
+    pub fn execute(self, args: Value) -> AsyncStream<Value> {
         let tool = self.register();
         let client = tool.client.clone();
         let name = tool.definition.name.clone();
 
-        spawn_async(async move {
-            match client.call_tool(&name, args).await {
-                Ok(result) => result,
-                Err(McpError::ToolNotFound) => Value::String(format!("Tool '{}' not found", name)),
-                Err(McpError::ExecutionFailed(msg)) => {
-                    Value::String(format!("Execution failed: {}", msg))
+        AsyncStream::with_channel(|stream_sender| {
+            std::thread::spawn(move || {
+                let mut call_stream = client.call_tool(&name, args);
+                if let Some(result) = call_stream.try_next() {
+                    let final_result = match result {
+                        Ok(value) => value,
+                        Err(McpError::ToolNotFound) => Value::String(format!("Tool '{}' not found", name)),
+                        Err(McpError::ExecutionFailed(msg)) => {
+                            Value::String(format!("Execution failed: {}", msg))
+                        }
+                        Err(McpError::Timeout) => Value::String("Request timeout".to_string()),
+                        Err(McpError::InvalidResponse) => {
+                            Value::String("Invalid response from server".to_string())
+                        }
+                        Err(McpError::TransportClosed) => {
+                            Value::String("Transport connection closed".to_string())
+                        }
+                        Err(McpError::SerializationFailed) => {
+                            Value::String("Serialization failed".to_string())
+                        }
+                    };
+                    let _ = stream_sender.send(final_result);
                 }
-                Err(McpError::Transport(msg)) => Value::String(format!("Transport error: {}", msg)),
-                Err(McpError::Protocol(msg)) => Value::String(format!("Protocol error: {}", msg)),
-                Err(McpError::Timeout) => Value::String("Request timeout".to_string()),
-                Err(McpError::InvalidResponse) => {
-                    Value::String("Invalid response from server".to_string())
-                }
-                Err(McpError::ConnectionFailed(msg)) => {
-                    Value::String(format!("Connection failed: {}", msg))
-                }
-                Err(McpError::Authentication(msg)) => {
-                    Value::String(format!("Authentication failed: {}", msg))
-                }
-                Err(McpError::ResourceNotFound) => Value::String("Resource not found".to_string()),
-                Err(McpError::Internal(msg)) => Value::String(format!("Internal error: {}", msg))}
+            });
         })
     }
 }

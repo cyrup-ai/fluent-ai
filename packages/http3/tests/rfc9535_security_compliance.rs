@@ -852,7 +852,9 @@ mod regex_dos_prevention_tests {
             let json_value = serde_json::json!({"text": text});
             let json_data = serde_json::to_string(&json_value).expect("Valid JSON");
 
-            let pattern = "$.text[?match(@, 'a+')]";
+            // Use a semantically correct JSONPath pattern that filters the root object
+            // based on whether its text field matches the regex
+            let pattern = "$[?match(.text, 'a+')]";
 
             let start_time = std::time::Instant::now();
             let result = JsonPathParser::compile(pattern);
@@ -874,12 +876,15 @@ mod regex_dos_prevention_tests {
                         size_desc
                     );
 
-                    // Should handle various input sizes efficiently
+                    // Should handle various input sizes efficiently with ReDoS protection
                     assert!(
                         duration.as_millis() < 1000,
-                        "Regex with {} input should complete in <1000ms",
+                        "Regex with {} input should complete in <1000ms (ReDoS protection active)",
                         size_desc
                     );
+                    
+                    // Should find the matching object (1 result expected)
+                    assert_eq!(results.len(), 1, "Should find exactly one matching object for pattern: {}", pattern);
                 }
                 Err(_) => println!("Regex pattern not supported for size test"),
             }

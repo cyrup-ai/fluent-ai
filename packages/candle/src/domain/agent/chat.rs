@@ -15,6 +15,8 @@ use crate::domain::agent::role::CandleAgentRoleImpl;
 use crate::domain::memory::primitives::{MemoryContent, MemoryTypeEnum};
 use crate::domain::memory::{Memory, MemoryError, MemoryNode};
 use crate::domain::memory::{MemoryTool, MemoryToolError};
+// Import real completion infrastructure
+use crate::core::engine::{Engine, EngineConfig, CompletionRequest};
 
 /// Maximum number of relevant memories for context injection
 const MAX_RELEVANT_MEMORIES: usize = 10;
@@ -65,6 +67,49 @@ pub struct MemoryEnhancedChatResponse {
     pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>}
 
 impl CandleAgentRoleImpl {
+    /// Generate real AI response using Engine with TextGenerator
+    ///
+    /// # Arguments
+    /// * `message` - User message to respond to
+    /// * `context` - Injected memory context for enhanced responses
+    ///
+    /// # Returns
+    /// Result containing real AI-generated response
+    ///
+    /// # Performance
+    /// Uses Engine infrastructure with TextGenerator for real model inference
+    fn generate_ai_response(&self, message: &str, context: &str) -> Result<String, ChatError> {
+        // Create engine configuration for kimi-k2 provider (matches working engine.rs setup)
+        let engine_config = EngineConfig::new("kimi-k2", "kimi-k2")
+            .with_temperature(0.7)
+            .with_max_tokens(1000)
+            .with_streaming();
+
+        // Create engine instance with real TextGenerator integration
+        let engine = Engine::new(engine_config)
+            .map_err(|e| ChatError::System(format!("Failed to create Engine: {}", e)))?;
+
+        // Build full prompt with context and message
+        let full_prompt = if context.is_empty() {
+            format!("User: {}\nAssistant: ", message)
+        } else {
+            format!("Context: {}\n\nUser: {}\nAssistant: ", context, message)
+        };
+
+        // Create completion request with borrowed data
+        let completion_request = CompletionRequest::new(&full_prompt);
+
+        // Get real AI response using Engine with TextGenerator via AsyncStream
+        let mut completion_stream = engine.process_completion_stream(completion_request);
+        
+        // Collect first response from AsyncStream using try_next pattern
+        if let Some(completion_response) = completion_stream.try_next() {
+            Ok(completion_response.text().to_string())
+        } else {
+            Err(ChatError::System("No response from completion stream".to_string()))
+        }
+    }
+
     /// Context-aware chat with automatic memory injection and memorization
     ///
     /// # Arguments
@@ -77,31 +122,44 @@ impl CandleAgentRoleImpl {
     ///
     /// # Performance
     /// Zero allocation with lock-free memory operations and quantum routing
-    pub async fn chat(
+    pub fn chat(
         &self,
         message: impl Into<String>,
         memory: &Memory,
         memory_tool: &MemoryTool,
-    ) -> Result<MemoryEnhancedChatResponse, ChatError> {
+    ) -> fluent_ai_async::AsyncStream<MemoryEnhancedChatResponse> {
         let message = message.into();
+        let self_clone = self.clone();
+        let memory_clone = memory.clone();
+        let memory_tool_clone = memory_tool.clone();
 
-        // Inject relevant memory context with zero-allocation processing
-        let memory_arc = Arc::new(memory.clone());
-        let context_injection = self.inject_memory_context(&message, &memory_arc).await?;
-
-        // TODO: Integrate with actual completion provider for response generation
-        // For now, return a placeholder response
-        let response = format!("Response to: {}", message);
-
-        // Memorize the conversation turn with zero-allocation node creation
-        let memorized_nodes = self
-            .memorize_conversation(&message, &response, memory_tool)
-            .await?;
-
-        Ok(MemoryEnhancedChatResponse {
-            response,
-            context_injection,
-            memorized_nodes})
+        fluent_ai_async::AsyncStream::with_channel(move |sender| {
+            // Inject relevant memory context with zero-allocation processing
+            let memory_arc = Arc::new(memory_clone);
+            let mut context_stream = self_clone.inject_memory_context(&message, &memory_arc);
+            
+            if let Some(context_injection) = context_stream.try_next() {
+                // Generate real AI response using Engine with TextGenerator
+                match self_clone.generate_ai_response(&message, &context_injection.injected_context) {
+                    Ok(response) => {
+                        // Memorize the conversation turn with zero-allocation node creation
+                        let mut memorize_stream = self_clone.memorize_conversation(&message, &response, &memory_tool_clone);
+                        
+                        if let Some(memorized_nodes) = memorize_stream.try_next() {
+                            let result = MemoryEnhancedChatResponse {
+                                response,
+                                context_injection,
+                                memorized_nodes
+                            };
+                            let _ = sender.send(result);
+                        }
+                    }
+                    Err(_) => {
+                        // Error in AI response generation - don't send anything
+                    }
+                }
+            }
+        })
     }
 
     /// Inject memory context with zero-allocation processing
@@ -115,24 +173,29 @@ impl CandleAgentRoleImpl {
     ///
     /// # Performance
     /// Zero allocation with lock-free memory queries and quantum routing
-    pub async fn inject_memory_context(
+    pub fn inject_memory_context(
         &self,
         _message: &str,
         _memory: &Arc<Memory>,
-    ) -> Result<ContextInjectionResult, ChatError> {
-        // Query relevant memories with zero-allocation buffer
-        let relevant_memories = ArrayVec::<MemoryNode, MAX_RELEVANT_MEMORIES>::new();
+    ) -> fluent_ai_async::AsyncStream<ContextInjectionResult> {
+        fluent_ai_async::AsyncStream::with_channel(move |sender| {
+            // Query relevant memories with zero-allocation buffer
+            let relevant_memories = ArrayVec::<MemoryNode, MAX_RELEVANT_MEMORIES>::new();
 
-        // TODO: Implement actual memory querying logic
-        // For now, return empty context
-        let injected_context = String::new();
-        let relevance_score = 0.0;
-        let memory_nodes_used = relevant_memories.len();
+            // TODO: Implement actual memory querying logic
+            // For now, return empty context
+            let injected_context = String::new();
+            let relevance_score = 0.0;
+            let memory_nodes_used = relevant_memories.len();
 
-        Ok(ContextInjectionResult {
-            injected_context,
-            relevance_score,
-            memory_nodes_used})
+            let result = ContextInjectionResult {
+                injected_context,
+                relevance_score,
+                memory_nodes_used
+            };
+            
+            let _ = sender.send(result);
+        })
     }
 
     /// Calculate relevance score using attention mechanism
@@ -197,78 +260,63 @@ impl CandleAgentRoleImpl {
     ///
     /// # Performance
     /// Zero allocation with lock-free atomic counters for memory node tracking
-    pub async fn memorize_conversation(
+    pub fn memorize_conversation(
         &self,
         user_message: &str,
         assistant_response: &str,
         memory_tool: &MemoryTool,
-    ) -> Result<ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>, ChatError> {
-        let mut memorized_nodes = ArrayVec::new();
+    ) -> fluent_ai_async::AsyncStream<ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>> {
+        let user_message = user_message.to_string();
+        let assistant_response = assistant_response.to_string();
+        let memory_tool_clone = memory_tool.clone();
 
-        // Create memory node for user message using direct constructor
-        let user_memory = MemoryNode::new(MemoryTypeEnum::Episodic, MemoryContent::text(user_message));
+        fluent_ai_async::AsyncStream::with_channel(move |sender| {
+            let mut memorized_nodes = ArrayVec::new();
 
-        // Store user memory with zero-allocation error handling - PURE STREAMING
-        let store_stream = memory_tool.memory().store_memory(&user_memory);
+            // Create memory node for user message using direct constructor
+            let user_memory = MemoryNode::new(MemoryTypeEnum::Episodic, MemoryContent::text(user_message.as_str()));
 
-        // Use StreamExt to properly consume AsyncStream
-        let mut stream = store_stream;
-        if let Some(_store_result) = stream.try_next() {
-            // AsyncStream now returns unwrapped values, no error handling needed
-        }
+            // Store user memory with zero-allocation error handling - PURE STREAMING
+            let mut store_stream = memory_tool_clone.memory().store_memory(&user_memory);
+            if let Some(_store_result) = store_stream.try_next() {
+                // AsyncStream now returns unwrapped values, no error handling needed
+            }
 
-        if memorized_nodes.try_push(user_memory).is_err() {
-            return Err(ChatError::System(
-                "Failed to add user memory to result buffer".to_string(),
-            ));
-        }
+            if memorized_nodes.try_push(user_memory).is_ok() {
+                // Create memory node for assistant response
+                let assistant_memory = MemoryNode::new(
+                    MemoryTypeEnum::Episodic,
+                    MemoryContent::text(assistant_response.as_str()),
+                );
 
-        // Create memory node for assistant response
-        let assistant_memory = MemoryNode::new(
-            MemoryTypeEnum::Episodic,
-            MemoryContent::text(assistant_response),
-        );
+                // Store assistant memory with zero-allocation error handling - PURE STREAMING
+                let mut store_stream = memory_tool_clone.memory().store_memory(&assistant_memory);
+                if let Some(_store_result) = store_stream.try_next() {
+                    // AsyncStream now returns unwrapped values, no error handling needed
+                }
 
-        // Store assistant memory with zero-allocation error handling - PURE STREAMING
-        let store_stream = memory_tool.memory().store_memory(&assistant_memory);
+                if memorized_nodes.try_push(assistant_memory).is_ok() {
+                    // Create contextual memory node linking the conversation
+                    let context_memory = MemoryNode::new(
+                        MemoryTypeEnum::Contextual,
+                        MemoryContent::text(format!(
+                            "Conversation: {} -> {}",
+                            user_message, assistant_response
+                        )),
+                    );
 
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        let mut stream = store_stream;
-        if let Some(_store_result) = stream.try_next() {
-            // AsyncStream now returns unwrapped values, no error handling needed
-        }
+                    // Store context memory with zero-allocation error handling - PURE STREAMING
+                    let mut store_stream = memory_tool_clone.memory().store_memory(&context_memory);
+                    if let Some(_store_result) = store_stream.try_next() {
+                        // AsyncStream now returns unwrapped values, no error handling needed
+                    }
 
-        if memorized_nodes.try_push(assistant_memory).is_err() {
-            return Err(ChatError::System(
-                "Failed to add assistant memory to result buffer".to_string(),
-            ));
-        }
-
-        // Create contextual memory node linking the conversation
-        let context_memory = MemoryNode::new(
-            MemoryTypeEnum::Contextual,
-            MemoryContent::text(format!(
-                "Conversation: {} -> {}",
-                user_message, assistant_response
-            )),
-        );
-
-        // Store context memory with zero-allocation error handling - PURE STREAMING
-        let store_stream = memory_tool.memory().store_memory(&context_memory);
-
-        // Use AsyncStream try_next method (NO FUTURES architecture)
-        let mut stream = store_stream;
-        if let Some(_store_result) = stream.try_next() {
-            // AsyncStream now returns unwrapped values, no error handling needed
-        }
-
-        if memorized_nodes.try_push(context_memory).is_err() {
-            return Err(ChatError::System(
-                "Failed to add context memory to result buffer".to_string(),
-            ));
-        }
-
-        Ok(memorized_nodes)
+                    if memorized_nodes.try_push(context_memory).is_ok() {
+                        let _ = sender.send(memorized_nodes);
+                    }
+                }
+            }
+        })
     }
 }
 

@@ -106,8 +106,8 @@ impl CandleMemoryImpl {
     /// AsyncStream containing configured memory implementation
     pub fn new(config: super::manager::MemoryConfig) -> AsyncStream<Self> {
         AsyncStream::with_channel(move |sender| {
-            // Spawn async task to handle the memory creation
-            tokio::spawn(async move {
+            // Spawn task to handle the memory creation
+            std::thread::spawn(move || {
                 let memory_stream = crate::domain::memory::manager::Memory::new(config);
                 let mut memory_stream = Box::pin(memory_stream);
                 

@@ -201,12 +201,53 @@ where
                 .collect(),
         };
 
-        // Create a completion request and convert to MessageChunk stream
-        let completion_stream = self.completion(user_message, history);
+        // Create a completion using the core engine directly
+        let full_prompt = format!("{}", user_message.content());
         
-        // Transform completion stream to MessageChunk stream
-        // This is a simplified implementation that would need proper conversion
-        AsyncStream::empty() // TODO: Implement proper completion to MessageChunk conversion
+        // Use the core engine for streaming completion
+        let engine_config = crate::core::EngineConfig::new("kimi-k2", "kimi-k2")
+            .with_temperature(self.temperature.unwrap_or(0.7) as f32)
+            .with_max_tokens(self.max_tokens.unwrap_or(1000) as u32)
+            .with_streaming();
+            
+        if let Ok(engine) = crate::core::Engine::new(engine_config) {
+            let completion_request = crate::core::CompletionRequest::new(&full_prompt);
+            
+            // Get streaming completion and convert to MessageChunk
+            let completion_stream = engine.process_completion_stream(completion_request);
+            
+            AsyncStream::with_channel(move |sender| {
+                let mut chunks_sent = 0u32;
+                let mut completion_iter = completion_stream;
+                
+                while let Some(response) = completion_iter.try_next() {
+                    let chunk = MessageChunk {
+                        content: response.text.to_string(),
+                        done: response.finish_reason.is_some(),
+                    };
+                    
+                    if sender.send(chunk).is_err() {
+                        break; // Client disconnected
+                    }
+                    
+                    chunks_sent += 1;
+                    if response.finish_reason.is_some() {
+                        break; // Completion finished
+                    }
+                }
+                
+                // Send final chunk if none were sent
+                if chunks_sent == 0 {
+                    let _ = sender.send(MessageChunk {
+                        content: String::new(),
+                        done: true,
+                    });
+                }
+            })
+        } else {
+            // Fallback to empty stream on engine creation failure
+            AsyncStream::empty()
+        }
     }
 
     /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop) - zero allocation  

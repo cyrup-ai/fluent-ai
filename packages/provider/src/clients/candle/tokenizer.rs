@@ -118,17 +118,17 @@ impl SpecialTokens {
         let mut tokens = Self::default();
 
         match model {
-            CandleModel::Llama2_7B | CandleModel::Llama2_13B => {
+            CandleModel::Llama27B | CandleModel::Llama213B => {
                 tokens.bos_token_id = Some(1);
                 tokens.eos_token_id = Some(2);
                 tokens.unk_token_id = Some(0);
             }
-            CandleModel::Mistral_7B => {
+            CandleModel::Mistral7B => {
                 tokens.bos_token_id = Some(1);
                 tokens.eos_token_id = Some(2);
                 tokens.unk_token_id = Some(0);
             }
-            CandleModel::CodeLlama_7B => {
+            CandleModel::CodeLlama7B => {
                 tokens.bos_token_id = Some(1);
                 tokens.eos_token_id = Some(2);
                 tokens.unk_token_id = Some(0);
@@ -145,13 +145,13 @@ impl SpecialTokens {
                 }
                 tokens.additional_special_tokens = additional;
             }
-            CandleModel::Phi3_Mini => {
+            CandleModel::Phi3Mini => {
                 tokens.bos_token_id = Some(1);
                 tokens.eos_token_id = Some(32000);
                 tokens.unk_token_id = Some(0);
                 tokens.pad_token_id = Some(32000);
             }
-            CandleModel::Gemma_2B | CandleModel::Gemma_7B => {
+            CandleModel::Gemma2B | CandleModel::Gemma7B => {
                 tokens.bos_token_id = Some(2);
                 tokens.eos_token_id = Some(1);
                 tokens.unk_token_id = Some(3);
@@ -296,11 +296,11 @@ impl TokenizerConfig {
     /// Create configuration for a specific model
     pub fn for_model(model: CandleModel) -> Self {
         let (vocab_size, max_seq_len) = match model {
-            CandleModel::Llama2_7B | CandleModel::Llama2_13B => (32000, 4096),
-            CandleModel::Mistral_7B => (32000, 8192),
-            CandleModel::CodeLlama_7B => (32016, 16384),
-            CandleModel::Phi3_Mini => (32064, 4096),
-            CandleModel::Gemma_2B | CandleModel::Gemma_7B => (256000, 8192)};
+            CandleModel::Llama27B | CandleModel::Llama213B => (32000, 4096),
+            CandleModel::Mistral7B => (32000, 8192),
+            CandleModel::CodeLlama7B => (32016, 16384),
+            CandleModel::Phi3Mini => (32064, 4096),
+            CandleModel::Gemma2B | CandleModel::Gemma7B => (256000, 8192)};
 
         Self {
             model,
@@ -732,7 +732,7 @@ impl TokenizerStatistics {
 
 impl Default for CandleTokenizer {
     fn default() -> Self {
-        Self::new(CandleModel::Mistral_7B)
+        Self::new(CandleModel::Mistral7B)
     }
 }
 
@@ -742,14 +742,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_tokenizer_creation() {
-        let tokenizer = CandleTokenizer::new(CandleModel::Mistral_7B);
-        assert_eq!(tokenizer.config.model, CandleModel::Mistral_7B);
+        let tokenizer = CandleTokenizer::new(CandleModel::Mistral7B);
+        assert_eq!(tokenizer.config.model, CandleModel::Mistral7B);
         assert_eq!(tokenizer.vocab_size(), 32000);
     }
 
     #[tokio::test]
     async fn test_special_tokens() {
-        let special_tokens = SpecialTokens::for_model(CandleModel::Llama2_7B);
+        let special_tokens = SpecialTokens::for_model(CandleModel::Llama27B);
         assert_eq!(special_tokens.bos_token_id, Some(1));
         assert_eq!(special_tokens.eos_token_id, Some(2));
         assert!(special_tokens.is_special_token(1));
@@ -776,7 +776,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_basic_encoding() {
-        let tokenizer = CandleTokenizer::new(CandleModel::Mistral_7B);
+        let tokenizer = CandleTokenizer::new(CandleModel::Mistral7B);
         tokenizer.initialize_basic_vocabulary().await.unwrap();
 
         let result = tokenizer.encode("Hello world").unwrap();

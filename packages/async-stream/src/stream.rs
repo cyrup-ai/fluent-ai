@@ -133,9 +133,9 @@ where
         let mut results = Vec::new();
         
         // Wait for producer thread to potentially emit values
-        // Use a timeout to avoid infinite waiting - increased to 10 seconds for HTTP requests
+        // Use a timeout to avoid infinite waiting - reduced to 1.5 seconds to match JSONPath timeout
         let start = std::time::Instant::now();
-        let timeout = std::time::Duration::from_millis(10000);
+        let timeout = std::time::Duration::from_millis(1500);
         
         loop {
             if let Some(item) = self.try_next() {

@@ -6,9 +6,9 @@ use std::time::{Duration, SystemTime};
 
 use fluent_ai_http3::common::cache::httpdate;
 use fluent_ai_http3::middleware::cache::CacheMiddleware;
-use fluent_ai_http3::{HttpRequest, HttpResponse, Middleware};
+use fluent_ai_http3::{HttpResponse, Middleware};
 use http::StatusCode;
-use http::header::{HeaderMap, HeaderName, HeaderValue};
+use http::header::HeaderMap;
 
 #[cfg(test)]
 mod middleware_cache_tests {

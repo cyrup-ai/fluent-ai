@@ -123,9 +123,9 @@ impl<'a> CompletionCoreRequestBuilder<'a> {
         Ok(CompletionCoreRequest::from_builder(
             self.prompt,
             self.max_tokens,
-            self.temperature,
+            self.temperature.into(),  // f32 -> f64
             self.top_k,
-            self.top_p,
+            self.top_p.into(),  // f32 -> f64
             self.stop_tokens,
             self.stream,
             self.model_params,

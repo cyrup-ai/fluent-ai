@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
+use fluent_ai_async::AsyncStream;
 
 use super::core::{Agent, AgentError, AgentResult, MAX_AGENT_TOOLS};
 use crate::memory::Memory;
@@ -106,72 +107,78 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
     }
 
     /// Build agent with comprehensive error handling
-    pub async fn build(self) -> AgentResult<Agent> {
-        // Validate required fields
-        let model = self
-            .model
-            .ok_or_else(|| AgentError::Config("Model is required".to_string()))?;
-        let system_prompt = self
-            .system_prompt
-            .unwrap_or_else(|| "You are a helpful AI assistant.".to_string());
+    pub fn build(self) -> AsyncStream<AgentResult<Agent>> {
+        AsyncStream::with_channel(|stream_sender| {
+            let result = (|| {
+                // Validate required fields
+                let model = self
+                    .model
+                    .ok_or_else(|| AgentError::Config("Model is required".to_string()))?;
+                let system_prompt = self
+                    .system_prompt
+                    .unwrap_or_else(|| "You are a helpful AI assistant.".to_string());
 
-        // Increment atomic counter for lock-free statistics
-        AGENT_STATS.fetch_add(1, Ordering::Relaxed);
+                // Increment atomic counter for lock-free statistics
+                AGENT_STATS.fetch_add(1, Ordering::Relaxed);
 
-        // Initialize memory system
-        let memory = if let Some(shared_memory) = self.shared_memory {
-            shared_memory
-        } else {
-            let comprehensive_config = self.memory_config.unwrap_or_default();
-            // Convert comprehensive config to Memory::new() format
-            let memory_config = MemoryConfig {
-                database_url: comprehensive_config.database.connection_string.to_string(),
-                embedding_dimension: comprehensive_config.vector_store.dimension};
-            let mut memory_stream = Memory::new(memory_config);
+                // Initialize memory system
+                let memory = if let Some(shared_memory) = self.shared_memory {
+                    shared_memory
+                } else {
+                    let comprehensive_config = self.memory_config.unwrap_or_default();
+                    // Convert comprehensive config to Memory::new() format
+                    let memory_config = MemoryConfig {
+                        database_url: comprehensive_config.database.connection_string.to_string(),
+                        embedding_dimension: comprehensive_config.vector_store.dimension};
+                    let mut memory_stream = Memory::new(memory_config);
 
-            // Use AsyncStream's try_next method (NO FUTURES architecture)
-            let memory_instance = match memory_stream.try_next() {
-                Some(memory) => memory,
-                None => {
-                    return Err(AgentError::InitializationError(
-                        "Failed to initialize memory".to_string(),
-                    ));
-                }
-            };
-            let memory_arc = Arc::new(memory_instance);
-            memory_arc
-        };
+                    // Use AsyncStream's try_next method (NO FUTURES architecture)
+                    let memory_instance = match memory_stream.try_next() {
+                        Some(memory) => memory,
+                        None => {
+                            return Err(AgentError::InitializationError(
+                                "Failed to initialize memory".to_string(),
+                            ));
+                        }
+                    };
+                    let memory_arc = Arc::new(memory_instance);
+                    memory_arc
+                };
 
-        // Create memory tool
-        let memory_tool = crate::memory::MemoryTool::new(memory.clone());
+                // Create memory tool
+                let memory_tool = crate::memory::MemoryTool::new(memory.clone());
 
-        // Convert tools with zero-allocation
-        let tools = match self.tools.len() {
-            0 => crate::ZeroOneOrMany::None,
-            1 => match self.tools.into_iter().next() {
-                Some(tool) => crate::ZeroOneOrMany::One(tool),
-                None => {
-                    return Err(AgentError::InitializationError(
-                        "Expected one tool but found none".to_string(),
-                    ));
-                }
-            },
-            _ => {
-                let tools_vec: Vec<_> = self.tools.into_iter().collect();
-                crate::ZeroOneOrMany::Many(tools_vec)
-            }
-        };
+                // Convert tools with zero-allocation
+                let tools = match self.tools.len() {
+                    0 => crate::ZeroOneOrMany::None,
+                    1 => match self.tools.into_iter().next() {
+                        Some(tool) => crate::ZeroOneOrMany::One(tool),
+                        None => {
+                            return Err(AgentError::InitializationError(
+                                "Expected one tool but found none".to_string(),
+                            ));
+                        }
+                    },
+                    _ => {
+                        let tools_vec: Vec<_> = self.tools.into_iter().collect();
+                        crate::ZeroOneOrMany::Many(tools_vec)
+                    }
+                };
 
-        Ok(Agent {
-            model,
-            system_prompt,
-            context: crate::ZeroOneOrMany::None,
-            tools,
-            memory: Some((*memory).clone()),
-            memory_tool: Some(memory_tool),
-            temperature: self.temperature,
-            max_tokens: self.max_tokens,
-            additional_params: None})
+                Ok(Agent {
+                    model,
+                    system_prompt,
+                    context: crate::ZeroOneOrMany::None,
+                    tools,
+                    memory: Some((*memory).clone()),
+                    memory_tool: Some(memory_tool),
+                    temperature: self.temperature,
+                    max_tokens: self.max_tokens,
+                    additional_params: None})
+            })();
+            
+            let _ = stream_sender.send(result);
+        })
     }
 }
 

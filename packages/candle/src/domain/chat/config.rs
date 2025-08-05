@@ -17,7 +17,8 @@ use fluent_ai_async::{AsyncStream, emit};
 #[cfg(feature = "rkyv-serialization")]
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use tokio::sync::{RwLock, broadcast};
+use std::sync::RwLock;
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 /// Duration serialization helper
@@ -924,9 +925,9 @@ impl CandleConfigurationManager {
 
         // Initialize default validators using shared references
         let validation_rules = manager.validation_rules.clone();
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             {
-                let mut rules = validation_rules.write().await;
+                let mut rules = validation_rules.write().unwrap_or_else(|poisoned| poisoned.into_inner());
                 rules.insert("personality".into(), Arc::new(CandlePersonalityValidator));
                 rules.insert("behavior".into(), Arc::new(CandleBehaviorValidator));
                 rules.insert("ui".into(), Arc::new(CandleUIValidator));
