@@ -3,8 +3,7 @@
 //! Provides extension traits and implementations for executing HTTP requests
 //! and processing responses with streaming support and error handling.
 
-use fluent_ai_async::thread_pool::global_executor;
-use fluent_ai_async::{AsyncStream, AsyncStreamSender, emit};
+
 use futures_util::StreamExt;
 use serde::de::DeserializeOwned;
 
@@ -163,7 +162,103 @@ impl HttpStreamExt for HttpStream {
                 Err(empty_vec) => empty_vec,
             }
         } else {
-            vec![self.collect_internal()]
+            // Elite crossbeam polling for mixed results - process ALL chunks
+            log::debug!("🔍 collect: Starting mixed results collection");
+            let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
+            
+            // Spawn async task on current runtime
+            match tokio::runtime::Handle::try_current() {
+                Ok(handle) => {
+                    let _task_handle = handle.spawn(async move {
+                        log::debug!("🔍 collect: Starting HTTP stream polling");
+                        let mut http_stream = self;
+                        let mut chunk_count = 0;
+                        while let Some(chunk_result) = http_stream.next().await {
+                            chunk_count += 1;
+                            log::debug!("🔍 collect: Received chunk #{}", chunk_count);
+                            if chunk_tx.send(chunk_result).is_err() {
+                                break; // Receiver dropped
+                            }
+                        }
+                        log::debug!("🔍 collect: HTTP stream polling completed, {} chunks processed", chunk_count);
+                        // Sender drops naturally here - channel closes
+                    });
+                }
+                Err(_) => {
+                    log::error!("🔍 collect: No tokio runtime available");
+                    return Vec::new();
+                }
+            }
+            
+            // Synchronous consumption - collect mixed results (good + bad)
+            log::debug!("🔍 collect: Starting synchronous mixed collection");
+            let mut results = Vec::new();
+            let mut all_bytes = Vec::new();
+            let mut chunk_count = 0;
+            
+            while let Ok(chunk_result) = chunk_rx.recv() {
+                chunk_count += 1;
+                log::debug!("🔍 collect: Processing chunk #{}", chunk_count);
+                match chunk_result {
+                    Ok(HttpChunk::Body(bytes)) => {
+                        log::debug!("Received body chunk: {} bytes", bytes.len());
+                        all_bytes.extend_from_slice(&bytes);
+                    }
+                    Ok(HttpChunk::Head(status, _)) => {
+                        log::debug!("HTTP Response Status: {}", status.as_u16());
+                        // Process but don't add to results
+                    }
+                    Ok(HttpChunk::Deserialized(json_value)) => {
+                        // Handle pre-deserialized data from on_chunk processors
+                        match serde_json::from_value::<T>(json_value) {
+                            Ok(value) => {
+                                log::debug!("Successfully converted pre-deserialized chunk");
+                                results.push(value);
+                            }
+                            Err(e) => {
+                                log::error!("Failed to convert pre-deserialized chunk: {}", e);
+                                let bad_chunk = crate::BadChunk::from_processing_error(
+                                    crate::HttpError::Generic(format!("JSON conversion failed: {}", e)),
+                                    "Pre-deserialized chunk conversion failed".to_string()
+                                );
+                                results.push(T::from(bad_chunk));
+                            }
+                        }
+                    }
+                    Ok(HttpChunk::Error(http_error)) => {
+                        log::error!("HttpChunk error: {}", http_error);
+                        let bad_chunk = crate::BadChunk::from_err(http_error);
+                        results.push(T::from(bad_chunk));
+                    }
+                    Err(stream_error) => {
+                        log::error!("Stream error: {}", stream_error);
+                        let bad_chunk = crate::BadChunk::from_err(stream_error);
+                        results.push(T::from(bad_chunk));
+                    }
+                }
+            }
+            
+            // Try to deserialize accumulated body bytes if any
+            if !all_bytes.is_empty() {
+                log::debug!("🔍 collect: Attempting to deserialize {} bytes", all_bytes.len());
+                match serde_json::from_slice(&all_bytes) {
+                    Ok(value) => {
+                        log::debug!("🔍 collect: Successfully deserialized response");
+                        results.push(value);
+                    }
+                    Err(e) => {
+                        log::error!("🔍 collect: Deserialization failed: {}", e);
+                        let bad_chunk = crate::BadChunk::from_processing_error(
+                            crate::HttpError::Generic(format!("JSON deserialization failed: {}", e)),
+                            "Response format incompatible with requested type".to_string()
+                        );
+                        results.push(T::from(bad_chunk));
+                    }
+                }
+            }
+            
+            log::debug!("🔍 collect: Finished mixed collection - {} total items", results.len());
+            results
         }
     }
 
@@ -209,270 +304,74 @@ impl HttpStream {
 
         log::debug!("🔍 collect_bytes_internal: Starting HTTP raw bytes collection");
 
-        // Convert HttpStream to AsyncStream using pure streaming architecture
-        let stream =
-            AsyncStream::<Vec<u8>, 1024>::with_channel(move |sender: AsyncStreamSender<Vec<u8>, 1024>| {
-                log::debug!("🔍 collect_bytes_internal: Inside AsyncStream channel closure");
-                
-                // Use global_executor for HTTP polling encapsulation with crossbeam bridge
-                log::debug!("🔍 collect_bytes_internal: Calling global_executor().execute_with_result()");
-                let response_rx = global_executor().execute_with_result(move || {
-                    log::debug!("🔍 collect_bytes_internal: Inside global_executor closure - START");
-                    // Create crossbeam channel for synchronous HttpStream consumption
-                    log::debug!("🔍 collect_bytes_internal: Creating crossbeam channels");
-                    let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
+        // Elite crossbeam polling - direct implementation
+        log::debug!("🔍 collect_bytes_internal: Creating crossbeam channels");
+        let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
 
-                    // Spawn dedicated thread for async HttpStream polling
-                    log::debug!("🔍 collect_bytes_internal: Spawning tokio thread for HTTP polling");
-                    std::thread::spawn(move || {
-                        log::debug!("🔍 collect_bytes_internal: Inside tokio thread - creating runtime");
-                        // Minimal tokio runtime ONLY for HttpStream polling - isolated async work
-                        let rt = tokio::runtime::Runtime::new().unwrap_or_else(|e| {
-                            log::error!("Failed to create HTTP polling runtime: {}", e);
-                            panic!("HTTP polling runtime required for futures::Stream consumption");
-                        });
-                        log::debug!("🔍 collect_bytes_internal: Tokio runtime created, starting block_on");
-                        rt.block_on(async move {
-                            log::debug!("🔍 collect_bytes_internal: Inside async block, starting HTTP stream polling");
-                            let mut http_stream = self;
-                            let mut chunk_count = 0;
-                            while let Some(chunk_result) = http_stream.next().await {
-                                chunk_count += 1;
-                                log::debug!("🔍 collect_bytes_internal: Received chunk #{} in tokio thread", chunk_count);
-                                if chunk_tx.send(chunk_result).is_err() {
-                                    log::debug!("🔍 collect_bytes_internal: Receiver dropped, breaking");
-                                    break; // Receiver dropped
-                                }
-                            }
-                            log::debug!("🔍 collect_bytes_internal: HTTP stream polling completed, {} chunks processed", chunk_count);
-                        });
-                        log::debug!("🔍 collect_bytes_internal: Tokio thread finished");
-                    });
-
-                    // Synchronous consumption in main thread - NO FUTURES
-                    log::debug!("🔍 collect_bytes_internal: Starting synchronous chunk consumption in main thread");
-                    let mut all_bytes = Vec::new();
-                    let mut chunk_count = 0;
-
-                    while let Ok(chunk_result) = chunk_rx.recv() {
-                        chunk_count += 1;
-                        log::debug!("🔍 collect_bytes_internal: Processing chunk #{} in main thread", chunk_count);
-                        match chunk_result {
-                            Ok(HttpChunk::Body(bytes)) => {
-                                log::debug!("Received body chunk: {} bytes", bytes.len());
-                                all_bytes.extend_from_slice(&bytes);
-                            }
-                            Ok(HttpChunk::Head(status, _)) => {
-                                log::debug!("HTTP Response Status: {}", status.as_u16());
-                            }
-                            Ok(HttpChunk::Deserialized(_)) => {
-                                log::debug!("Ignoring deserialized chunk for raw bytes collection");
-                            }
-                            Ok(HttpChunk::Error(http_error)) => {
-                                log::error!("HttpChunk error: {}", http_error);
-                                panic!("HTTP request failed: {} - check network connectivity and server response", http_error);
-                            }
-                            Err(e) => {
-                                log::error!("Error receiving chunk: {}", e);
-                                panic!("HTTP stream processing failed: {} - check network connectivity", e);
-                            }
-                        }
-                    }
-
-                    // Return collected raw bytes
-                    log::debug!("🔍 collect_bytes_internal: Finished chunk processing - {} chunks total, {} bytes collected", chunk_count, all_bytes.len());
-                    all_bytes
-                });
-
-                // Synchronous processing - receive result from global_executor
-                log::debug!("🔍 collect_bytes_internal: Waiting for response from global_executor");
-                match response_rx.recv() {
-                    Ok(bytes) => {
-                        log::debug!("🔍 collect_bytes_internal: Successfully received {} bytes from global_executor, emitting to AsyncStream", bytes.len());
-                        emit!(sender, bytes);
-                    }
-                    Err(e) => {
-                        log::error!("🔍 collect_bytes_internal: Failed to receive HTTP response from global executor: {:?}", e);
-                    }
+        // Spawn async task on current runtime
+        log::debug!("🔍 collect_bytes_internal: Using elite crossbeam polling");
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                let _task_handle = handle.spawn(async move {
+            log::debug!("🔍 collect_bytes_internal: Starting HTTP stream polling");
+            let mut http_stream = self;
+            let mut chunk_count = 0;
+            while let Some(chunk_result) = http_stream.next().await {
+                chunk_count += 1;
+                log::debug!("🔍 collect_bytes_internal: Received chunk #{}", chunk_count);
+                if chunk_tx.send(chunk_result).is_err() {
+                    log::debug!("🔍 collect_bytes_internal: Receiver dropped, breaking");
+                    break; // Receiver dropped
                 }
-                log::debug!("🔍 collect_bytes_internal: AsyncStream channel closure completed");
-            });
+            }
+            log::debug!("🔍 collect_bytes_internal: HTTP stream polling completed, {} chunks processed", chunk_count);
+            // Sender drops naturally here - channel will close
+                });
+            }
+            Err(_) => {
+                log::error!("🔍 collect_bytes_internal: No tokio runtime available");
+                return Vec::new();
+            }
+        }
 
-        // Return single collected bytes using streams-only architecture
-        log::debug!("🔍 collect_bytes_internal: Calling stream.collect() to get final result");
-        let result = stream
-            .collect()
-            .into_iter()
-            .next()
-            .unwrap_or_else(Vec::new);
-        log::debug!("🔍 collect_bytes_internal: Final result obtained, returning {} bytes", result.len());
-        result
+        // Synchronous consumption in main thread - NO FUTURES
+        log::debug!("🔍 collect_bytes_internal: Starting synchronous chunk consumption");
+        let mut all_bytes = Vec::new();
+        let mut chunk_count = 0;
+
+        while let Ok(chunk_result) = chunk_rx.recv() {
+            chunk_count += 1;
+            log::debug!("🔍 collect_bytes_internal: Processing chunk #{}", chunk_count);
+            match chunk_result {
+                Ok(HttpChunk::Body(bytes)) => {
+                    log::debug!("Received body chunk: {} bytes", bytes.len());
+                    all_bytes.extend_from_slice(&bytes);
+                }
+                Ok(HttpChunk::Head(status, _)) => {
+                    log::debug!("HTTP Response Status: {}", status.as_u16());
+                }
+                Ok(HttpChunk::Deserialized(_)) => {
+                    log::debug!("Ignoring deserialized chunk for raw bytes collection");
+                }
+                Ok(HttpChunk::Error(http_error)) => {
+                    log::error!("HttpChunk error: {}", http_error);
+                    all_bytes.clear(); // Clear on error
+                    break;
+                }
+                Err(_) => {
+                    // Channel closed - sender dropped, stream completed naturally
+                    log::debug!("🔍 collect_bytes_internal: Channel closed, stream completed");
+                    break;
+                }
+            }
+        }
+
+        // Return collected raw bytes
+        log::debug!("🔍 collect_bytes_internal: Finished - {} chunks, {} bytes", chunk_count, all_bytes.len());
+        all_bytes
     }
 
-    /// Internal collection implementation using pure AsyncStream pattern
-    ///
-    /// NO FUTURES - Pure AsyncStream pattern for HTTP response collection with JSON deserialization
-    pub(crate) fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> T
-    where
-        T: Default + From<crate::BadChunk>,
-    {
-        use futures_util::StreamExt;
 
-        log::debug!("🔍 collect_internal: Starting HTTP response collection");
-
-        // Convert HttpStream to AsyncStream using pure streaming architecture
-        let stream =
-            AsyncStream::<T, 1024>::with_channel(move |sender: AsyncStreamSender<T, 1024>| {
-                log::debug!("🔍 collect_internal: Inside AsyncStream channel closure");
-                
-                // Use global_executor for HTTP polling encapsulation with crossbeam bridge
-                log::debug!("🔍 collect_internal: Calling global_executor().execute_with_result()");
-                let response_rx = global_executor().execute_with_result(move || {
-                    log::debug!("🔍 collect_internal: Inside global_executor closure - START");
-                    // Create crossbeam channel for synchronous HttpStream consumption
-                    log::debug!("🔍 collect_internal: Creating crossbeam channels");
-                    let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
-
-                    // Spawn dedicated thread for async HttpStream polling
-                    log::debug!("🔍 collect_internal: Spawning tokio thread for HTTP polling");
-                    std::thread::spawn(move || {
-                        log::debug!("🔍 collect_internal: Inside tokio thread - creating runtime");
-                        // Minimal tokio runtime ONLY for HttpStream polling - isolated async work
-                        let rt = tokio::runtime::Runtime::new().unwrap_or_else(|e| {
-                            log::error!("Failed to create HTTP polling runtime: {}", e);
-                            panic!("HTTP polling runtime required for futures::Stream consumption");
-                        });
-                        log::debug!("🔍 collect_internal: Tokio runtime created, starting block_on");
-                        rt.block_on(async move {
-                            log::debug!("🔍 collect_internal: Inside async block, starting HTTP stream polling");
-                            let mut http_stream = self;
-                            let mut chunk_count = 0;
-                            while let Some(chunk_result) = http_stream.next().await {
-                                chunk_count += 1;
-                                log::debug!("🔍 collect_internal: Received chunk #{} in tokio thread", chunk_count);
-                                if chunk_tx.send(chunk_result).is_err() {
-                                    log::debug!("🔍 collect_internal: Receiver dropped, breaking");
-                                    break; // Receiver dropped
-                                }
-                            }
-                            log::debug!("🔍 collect_internal: HTTP stream polling completed, {} chunks processed", chunk_count);
-                        });
-                        log::debug!("🔍 collect_internal: Tokio thread finished");
-                    });
-
-                    // Synchronous consumption in main thread - NO FUTURES
-                    log::debug!("🔍 collect_internal: Starting synchronous chunk consumption in main thread");
-                    let mut all_bytes = Vec::new();
-                    let mut status_code = None;
-                    let mut processed_value = None;
-                    let mut chunk_count = 0;
-
-                    while let Ok(chunk_result) = chunk_rx.recv() {
-                        chunk_count += 1;
-                        log::debug!("🔍 collect_internal: Processing chunk #{} in main thread", chunk_count);
-                        match chunk_result {
-                            Ok(HttpChunk::Body(bytes)) => {
-                                log::debug!("Received body chunk: {} bytes", bytes.len());
-                                all_bytes.extend_from_slice(&bytes);
-                            }
-                            Ok(HttpChunk::Head(status, _)) => {
-                                status_code = Some(status);
-                                log::debug!("HTTP Response Status: {}", status.as_u16());
-                            }
-                            Ok(HttpChunk::Deserialized(json_value)) => {
-                                // Handle pre-deserialized data from on_chunk processors
-                                match serde_json::from_value::<T>(json_value) {
-                                    Ok(value) => {
-                                        processed_value = Some(value);
-                                        break;
-                                    }
-                                    Err(e) => {
-                                        log::error!("Failed to convert deserialized chunk: {}", e);
-                                        processed_value = Some(T::default());
-                                        break;
-                                    }
-                                }
-                            }
-                            Ok(HttpChunk::Error(http_error)) => {
-                                log::error!("HttpChunk error: {}", http_error);
-                                processed_value = Some(T::default());
-                                break;
-                            }
-                            Err(e) => {
-                                log::error!("Error receiving chunk: {}", e);
-                                processed_value = Some(T::default());
-                                break;
-                            }
-                        }
-                    }
-
-                    // Return processed value or attempt deserialization
-                    log::debug!("🔍 collect_internal: Finished chunk processing - {} chunks total", chunk_count);
-                    log::debug!("Processing response: all_bytes.len()={}, status_code={:?}, processed_value={}", 
-                        all_bytes.len(), status_code, processed_value.is_some());
-                    
-                    if let Some(value) = processed_value {
-                        log::debug!("Returning processed value");
-                        value
-                    } else if status_code.map_or(false, |s| s.as_u16() == 204)
-                        || all_bytes.is_empty()
-                    {
-                        // HTTP request failed or returned empty response - fail fast with descriptive error
-                        if let Some(status) = status_code {
-                            if status.as_u16() == 204 {
-                                log::error!("HTTP request returned 204 No Content, cannot deserialize to type T");
-                                panic!("HTTP 204 No Content response cannot be deserialized - use Option<T> or handle empty responses explicitly");
-                            }
-                        }
-                        log::error!("HTTP request returned empty response body, cannot deserialize to type T");
-                        panic!("Empty HTTP response body cannot be deserialized - check network connectivity and server response")
-                    } else {
-                        // Try to deserialize the response
-                        log::debug!("Attempting to deserialize {} bytes: {}", all_bytes.len(), 
-                            String::from_utf8_lossy(&all_bytes[..std::cmp::min(100, all_bytes.len())]));
-                        match serde_json::from_slice(&all_bytes) {
-                            Ok(value) => {
-                                log::debug!("Successfully deserialized response");
-                                value
-                            },
-                            Err(e) => {
-                                log::error!("Failed to deserialize HTTP response: {}", e);
-                                log::error!("Response bytes (first 200): {}", 
-                                    String::from_utf8_lossy(&all_bytes[..std::cmp::min(200, all_bytes.len())]));
-                                // Create BadChunk and convert to T via From<BadChunk> bound
-                                T::from(crate::BadChunk::from_processing_error(
-                                    crate::HttpError::Generic(format!("JSON deserialization failed: {}", e)),
-                                    "Response format incompatible with requested type".to_string()
-                                ))
-                            }
-                        }
-                    }
-                });
-
-                // Synchronous processing - receive result from global_executor
-                log::debug!("🔍 collect_internal: Waiting for response from global_executor");
-                match response_rx.recv() {
-                    Ok(value) => {
-                        log::debug!("🔍 collect_internal: Successfully received value from global_executor, emitting to AsyncStream");
-                        emit!(sender, value);
-                    }
-                    Err(e) => {
-                        log::error!("🔍 collect_internal: Failed to receive HTTP response from global executor: {:?}", e);
-                    }
-                }
-                log::debug!("🔍 collect_internal: AsyncStream channel closure completed");
-            });
-
-        // Return single collected item using streams-only architecture
-        log::debug!("🔍 collect_internal: Calling stream.collect() to get final result");
-        let result = stream
-            .collect()
-            .into_iter()
-            .next()
-            .unwrap_or_else(T::default);
-        log::debug!("🔍 collect_internal: Final result obtained, returning");
-        result
-    }
 
     /// Internal collection implementation with error handling
     pub(crate) fn collect_or_else_impl<T, F>(self, error_handler: F) -> Vec<T>
@@ -480,134 +379,108 @@ impl HttpStream {
         T: DeserializeOwned + Send + 'static,
         F: Fn(HttpError) -> Vec<T> + Send + Sync + 'static + Clone,
     {
-        // Convert HttpStream to AsyncStream for error-aware collection using pure streaming
-        let stream =
-            AsyncStream::<T, 1024>::with_channel(move |sender: AsyncStreamSender<T, 1024>| {
-                // Use global_executor for HTTP polling encapsulation with crossbeam bridge
-                let response_rx = global_executor().execute_with_result(move || {
-                    // Create crossbeam channel for synchronous HttpStream consumption
-                    let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
+        use futures_util::StreamExt;
 
-                    // Spawn dedicated thread for async HttpStream polling
-                    std::thread::spawn(move || {
-                        // Minimal tokio runtime ONLY for HttpStream polling - isolated async work
-                        let rt = tokio::runtime::Runtime::new().unwrap_or_else(|e| {
-                            log::error!("Failed to create HTTP polling runtime: {}", e);
-                            panic!("HTTP polling runtime required for futures::Stream consumption");
-                        });
-                        rt.block_on(async move {
-                            let mut http_stream = self;
-                            while let Some(chunk_result) = http_stream.next().await {
-                                if chunk_tx.send(chunk_result).is_err() {
-                                    break; // Receiver dropped
-                                }
-                            }
-                        });
-                    });
+        log::debug!("🔍 collect_or_else_impl: Starting HTTP response collection with error handling");
 
-                    // Synchronous consumption in main thread - NO FUTURES
-                    let mut all_bytes = Vec::new();
-                    let mut status_code = None;
-                    let mut processed_value = None;
-                    let mut error_result = None;
+        // Elite crossbeam polling - direct implementation
+        log::debug!("🔍 collect_or_else_impl: Creating crossbeam channels");
+        let (chunk_tx, chunk_rx) = crossbeam_channel::unbounded();
 
-                    while let Ok(chunk_result) = chunk_rx.recv() {
-                        match chunk_result {
-                            Ok(HttpChunk::Body(bytes)) => {
-                                all_bytes.extend_from_slice(&bytes);
-                            }
-                            Ok(HttpChunk::Head(status, _)) => {
-                                status_code = Some(status);
-                                log::debug!("HTTP Response Status: {}", status.as_u16());
-                            }
-                            Ok(HttpChunk::Deserialized(json_value)) => {
-                                // Handle pre-deserialized data from on_chunk processors
-                                match serde_json::from_value::<T>(json_value) {
-                                    Ok(value) => {
-                                        processed_value = Some(vec![value]);
-                                        break;
-                                    }
-                                    Err(e) => {
-                                        log::error!("Failed to convert deserialized chunk: {}", e);
-                                        error_result = Some(HttpError::Generic(
-                                            "Stream processing failed".to_string(),
-                                        ));
-                                        break;
-                                    }
-                                }
-                            }
-                            Ok(HttpChunk::Error(http_error)) => {
-                                log::error!("HttpChunk error: {}", http_error);
-                                error_result = Some(http_error);
-                                break;
-                            }
-                            Err(e) => {
-                                log::error!("Error receiving chunk: {}", e);
-                                error_result = Some(e);
-                                break;
-                            }
+        // Spawn async task on current runtime
+        log::debug!("🔍 collect_or_else_impl: Using elite crossbeam polling");
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                let _task_handle = handle.spawn(async move {
+                    log::debug!("🔍 collect_or_else_impl: Starting HTTP stream polling");
+                    let mut http_stream = self;
+                    let mut chunk_count = 0;
+                    while let Some(chunk_result) = http_stream.next().await {
+                        chunk_count += 1;
+                        log::debug!("🔍 collect_or_else_impl: Received chunk #{}", chunk_count);
+                        if chunk_tx.send(chunk_result).is_err() {
+                            log::debug!("🔍 collect_or_else_impl: Receiver dropped, breaking");
+                            break; // Receiver dropped
                         }
                     }
-
-                    // Return result structure
-                    (processed_value, all_bytes, status_code, error_result)
+                    log::debug!("🔍 collect_or_else_impl: HTTP stream polling completed, {} chunks processed", chunk_count);
+                    // Sender drops naturally here - channel will close
                 });
+            }
+            Err(_) => {
+                log::error!("🔍 collect_or_else_impl: No tokio runtime available");
+                return error_handler(HttpError::Generic("No runtime available".to_string()));
+            }
+        }
 
-                // Synchronous processing - receive result from global_executor and handle errors
-                let (processed_value, all_bytes, status_code, error_result) =
-                    match response_rx.recv() {
-                        Ok(result) => result,
-                        Err(_) => {
-                            log::error!("Failed to receive HTTP response from global executor");
-                            for item in error_handler(HttpError::Generic(
-                                "Global executor communication failed".to_string(),
-                            )) {
-                                emit!(sender, item);
-                            }
-                            return;
+        // Synchronous consumption in main thread - NO FUTURES
+        log::debug!("🔍 collect_or_else_impl: Starting synchronous chunk consumption");
+        let mut all_bytes = Vec::new();
+        let mut status_code = None;
+        let mut processed_value = None;
+        let mut chunk_count = 0;
+
+        while let Ok(chunk_result) = chunk_rx.recv() {
+            chunk_count += 1;
+            log::debug!("🔍 collect_or_else_impl: Processing chunk #{}", chunk_count);
+            match chunk_result {
+                Ok(HttpChunk::Body(bytes)) => {
+                    log::debug!("Received body chunk: {} bytes", bytes.len());
+                    all_bytes.extend_from_slice(&bytes);
+                }
+                Ok(HttpChunk::Head(status, _)) => {
+                    status_code = Some(status);
+                    log::debug!("HTTP Response Status: {}", status.as_u16());
+                }
+                Ok(HttpChunk::Deserialized(json_value)) => {
+                    // Handle pre-deserialized data from on_chunk processors
+                    match serde_json::from_value::<T>(json_value) {
+                        Ok(value) => {
+                            processed_value = Some(vec![value]);
+                            break;
                         }
-                    };
-
-                // Handle error cases first
-                if let Some(error) = error_result {
-                    for item in error_handler(error) {
-                        emit!(sender, item);
-                    }
-                    return;
-                }
-
-                // Handle pre-processed values
-                if let Some(values) = processed_value {
-                    for value in values {
-                        emit!(sender, value);
-                    }
-                    return;
-                }
-
-                // Handle empty response or 204 No Content
-                if status_code.map_or(false, |s| s.as_u16() == 204) || all_bytes.is_empty() {
-                    // 204 No Content is not an error, just empty
-                    return;
-                }
-
-                // Try to deserialize the response
-                match serde_json::from_slice(&all_bytes) {
-                    Ok(value) => {
-                        emit!(sender, value);
-                    }
-                    Err(e) => {
-                        log::error!("Failed to deserialize response: {}", e);
-                        for item in error_handler(HttpError::Generic(format!(
-                            "Deserialization failed: {}",
-                            e
-                        ))) {
-                            emit!(sender, item);
+                        Err(e) => {
+                            log::error!("Failed to convert deserialized chunk: {}", e);
+                            return error_handler(HttpError::Generic("Stream processing failed".to_string()));
                         }
                     }
                 }
-            });
+                Ok(HttpChunk::Error(http_error)) => {
+                    log::error!("HttpChunk error: {}", http_error);
+                    return error_handler(http_error);
+                }
+                Err(_) => {
+                    // Channel closed - sender dropped, stream completed naturally
+                    log::debug!("🔍 collect_or_else_impl: Channel closed, stream completed");
+                    break;
+                }
+            }
+        }
 
-        // Return collected items
-        stream.collect()
+        // Handle pre-processed values first
+        if let Some(values) = processed_value {
+            log::debug!("🔍 collect_or_else_impl: Returning pre-processed values");
+            return values;
+        }
+
+        // Handle empty response or 204 No Content
+        if status_code.map_or(false, |s| s.as_u16() == 204) || all_bytes.is_empty() {
+            // 204 No Content is not an error, just empty
+            log::debug!("🔍 collect_or_else_impl: Empty response, returning empty vec");
+            return Vec::new();
+        }
+
+        // Try to deserialize the response - if it fails, call error handler (enters ELSE clause)
+        log::debug!("🔍 collect_or_else_impl: Attempting to deserialize {} bytes", all_bytes.len());
+        match serde_json::from_slice(&all_bytes) {
+            Ok(value) => {
+                log::debug!("🔍 collect_or_else_impl: Successfully deserialized response - all chunks good");
+                vec![value]
+            }
+            Err(e) => {
+                log::error!("Deserialization failed - entering ELSE clause: {}", e);
+                error_handler(HttpError::Generic(format!("Deserialization failed: {}", e)))
+            }
+        }
     }
 }

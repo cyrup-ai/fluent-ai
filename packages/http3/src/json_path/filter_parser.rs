@@ -277,9 +277,36 @@ impl<'a> FilterParser<'a> {
             return Ok(FilterExpression::Current);
         }
 
+        // Handle property access patterns like @.author
+        use crate::json_path::ast::JsonSelector;
+        
+        // After @, check for simple property access (dot followed by identifier)
+        if matches!(self.peek_token(), Some(Token::Dot)) {
+            self.consume_token(); // consume the dot
+            
+            // After dot, expect identifier
+            if let Some(Token::Identifier(name)) = self.peek_token() {
+                let name = name.clone();
+                self.consume_token();
+                
+                // Check if there are more tokens - if not, this is a simple property access
+                if self.peek_token().is_none() || matches!(self.peek_token(), Some(Token::EOF)) {
+                    // Simple property access should create a Property expression, not JsonPath
+                    return Ok(FilterExpression::Property { 
+                        path: vec![name]
+                    });
+                }
+            } else {
+                return Err(invalid_expression_error(
+                    self.input,
+                    "expected property name after '.'",
+                    Some(self.position),
+                ));
+            }
+        }
+
         // Handle complex JSONPath patterns like @..book, @.*, etc.
         let mut selectors = Vec::new();
-        use crate::json_path::ast::JsonSelector;
         
         // @ represents current node in filter context
         selectors.push(JsonSelector::Root);

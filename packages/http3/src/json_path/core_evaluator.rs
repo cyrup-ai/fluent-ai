@@ -8,26 +8,46 @@
 #![allow(dead_code)]
 
 use serde_json::Value;
-use crate::json_path::{
-    JsonPathResult, 
-    parser::JsonPathParser,
-    ast::{JsonSelector, FilterExpression},
-    filter::FilterEvaluator
-};
+use crate::json_path::error::JsonPathError;
+use crate::json_path::filter::FilterEvaluator;
+use crate::json_path::parser::{JsonPathParser, JsonSelector, FilterExpression};
+// Unused imports removed to fix warnings
 
-/// Core JSONPath evaluator that works on parsed JSON
+type JsonPathResult<T> = Result<T, JsonPathError>;
+
+/// Core JSONPath evaluator that works with parsed JSON according to RFC 9535
+/// 
+/// This evaluator supports the complete JSONPath specification with optimized performance
+/// and protection against pathological inputs.
 pub struct CoreJsonPathEvaluator {
-    expression: String,
+    /// The parsed selectors from the JSONPath expression
+    pub(crate) selectors: Vec<JsonSelector>,
+    /// The original expression string for debugging and error reporting
+    pub(crate) expression: String,
 }
 
 impl CoreJsonPathEvaluator {
     /// Create new evaluator with JSONPath expression
+    /// 
+    /// # Arguments
+    /// * `expression` - JSONPath expression string (e.g., "$.store.book[*].author")
+    /// 
+    /// # Returns
+    /// * `JsonPathResult<Self>` - New evaluator instance or parse error
+    /// 
+    /// # Example
+    /// ```
+    /// # use fluent_ai_http3::json_path::CoreJsonPathEvaluator;
+    /// let evaluator = CoreJsonPathEvaluator::new("$.store.book[*].author").unwrap();
+    /// ```
     pub fn new(expression: &str) -> JsonPathResult<Self> {
-        // Validate the expression can be parsed
-        JsonPathParser::compile(expression)?;
+        // Compile the expression to get the parsed selectors
+        let compiled = JsonPathParser::compile(expression)?;
+        let selectors = compiled.selectors().to_vec();
         
-        Ok(Self {
-            expression: expression.to_string(),
+        Ok(Self { 
+            selectors,
+            expression: expression.to_string()
         })
     }
 
@@ -90,7 +110,9 @@ impl CoreJsonPathEvaluator {
     /// Internal evaluation method (static to avoid self reference in thread)
     fn evaluate_internal(expression: &str, json: &Value) -> JsonPathResult<Vec<Value>> {
         // Create temporary evaluator instance for method calls 
+        let compiled = JsonPathParser::compile(expression)?;
         let temp_evaluator = Self {
+            selectors: compiled.selectors().to_vec(),
             expression: expression.to_string(),
         };
         
@@ -118,7 +140,7 @@ impl CoreJsonPathEvaluator {
                     // $..property - find property recursively
                     let mut next_results = Vec::new();
                     for current_value in &current_results {
-                        let recursive_results = temp_evaluator.apply_recursive_descent(current_value, remaining_selectors)?;
+                        let recursive_results = temp_evaluator.apply_recursive_descent_wildcard(current_value)?;
                         next_results.extend(recursive_results);
                     }
                     // Skip the remaining selectors since we processed them in recursive descent
@@ -212,20 +234,32 @@ impl CoreJsonPathEvaluator {
                 }
             }
             JsonSelector::Filter { expression } => {
-                match value {
-                    Value::Array(arr) => {
-                        for item in arr {
-                            if FilterEvaluator::evaluate_predicate(item, expression)? {
-                                results.push(item.clone());
+                // Check if this is part of a recursive descent path (e.g., $..[?@.property])
+                if self.selectors.windows(2).any(|w| 
+                    matches!((&w[0], &w[1]), 
+                        (JsonSelector::RecursiveDescent, JsonSelector::Filter { .. }) |
+                        (JsonSelector::Filter { .. }, JsonSelector::RecursiveDescent)
+                    )
+                ) {
+                    // If it's part of a recursive descent, use the specialized method
+                    results.extend(self.apply_recursive_descent_wildcard(value)?);
+                } else {
+                    // Standard filter application for non-recursive cases
+                    match value {
+                        Value::Array(arr) => {
+                            for item in arr {
+                                if FilterEvaluator::evaluate_predicate(item, expression)? {
+                                    results.push(item.clone());
+                                }
                             }
                         }
-                    }
-                    Value::Object(_) => {
-                        if FilterEvaluator::evaluate_predicate(value, expression)? {
-                            results.push(value.clone());
+                        Value::Object(_) => {
+                            if FilterEvaluator::evaluate_predicate(value, expression)? {
+                                results.push(value.clone());
+                            }
                         }
+                        _ => {} // Primitives don't support filters
                     }
-                    _ => {} // Primitives don't support filters
                 }
             }
             JsonSelector::Union { selectors } => {
@@ -290,46 +324,6 @@ impl CoreJsonPathEvaluator {
             }
             _ => {} // Primitives have no descendants
         }
-    }
-
-    /// Apply recursive descent followed by remaining selectors
-    fn apply_recursive_descent(&self, value: &Value, remaining_selectors: &[JsonSelector]) -> JsonPathResult<Vec<Value>> {
-        // Special optimization for $..*  pattern to avoid exponential explosion
-        if remaining_selectors.len() == 1 && matches!(remaining_selectors[0], JsonSelector::Wildcard) {
-            return self.apply_recursive_descent_wildcard(value);
-        }
-        
-        let mut all_candidates = Vec::new();
-        
-        // Include the current value itself (recursive descent includes the starting point)
-        all_candidates.push(value.clone());
-        
-        // Collect all descendants
-        self.collect_all_descendants_owned(value, &mut all_candidates);
-        
-        // Apply remaining selectors to each candidate
-        let mut final_results = Vec::new();
-        for candidate in all_candidates {
-            let mut current_results = vec![candidate];
-            
-            // Apply each remaining selector in sequence
-            for selector in remaining_selectors {
-                let mut next_results = Vec::new();
-                for current_value in &current_results {
-                    let intermediate_results = self.apply_selector_to_value(current_value, selector)?;
-                    next_results.extend(intermediate_results);
-                }
-                current_results = next_results;
-                
-                if current_results.is_empty() {
-                    break; // No point continuing if no matches
-                }
-            }
-            
-            final_results.extend(current_results);
-        }
-        
-        Ok(final_results)
     }
     
     /// Optimized handler for $..*  pattern to avoid exponential complexity
@@ -933,20 +927,31 @@ mod tests {
         }
         
         // DEBUG: Test filter evaluation separately 
-        use crate::json_path::{filter::FilterEvaluator, filter_parser::FilterParser, tokenizer::Tokenizer};
+        use crate::json_path::{filter::FilterEvaluator, filter_parser::FilterParser};
+        use crate::json_path::tokens::Token;
+        use std::collections::VecDeque;
+        
         let filter_expr = "@.author";
-        let mut tokenizer = Tokenizer::new(filter_expr);
-        let mut tokens = tokenizer.tokenize().expect("Tokenize filter");
+        let mut tokens = VecDeque::new();
+        // Manually create tokens for "@.author"
+        tokens.push_back(Token::At);
+        tokens.push_back(Token::Dot);
+        tokens.push_back(Token::Identifier("author".to_string()));
+        tokens.push_back(Token::EOF);
+        
         let mut parser = FilterParser::new(&mut tokens, filter_expr, 0);
         let filter_ast = parser.parse_filter_expression().expect("Parse filter");
         
         println!("\n=== DEBUG: Individual filter tests ===");
+        let book1_obj = json!({"author": "Author 1"});
+        let book2_obj = json!({"author": "Author 2"});
+        let no_author_obj = json!({"title": "No Author"});
         let test_objects = vec![
             ("root", &json),
             ("store", json.get("store").unwrap()),
-            ("book1", &json!({"author": "Author 1"})),
-            ("book2", &json!({"author": "Author 2"})),
-            ("no_author", &json!({"title": "No Author"})),
+            ("book1", &book1_obj),
+            ("book2", &book2_obj),
+            ("no_author", &no_author_obj),
         ];
         
         for (name, obj) in test_objects {

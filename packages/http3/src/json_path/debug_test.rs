@@ -10,8 +10,8 @@ mod debug_tests {
 
     #[test]
     fn debug_core_function_call() {
-        // Test the simplest function call first
-        let result = JsonPathParser::compile("$.test[?length() == 0]");
+        // Test the simplest function call first - length() requires exactly one argument per RFC 9535
+        let result = JsonPathParser::compile("$.test[?length(@) == 0]");
         println!("Core function result: {:?}", result);
 
         // This should work if the basic parsing is correct

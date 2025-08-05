@@ -207,35 +207,28 @@ where
     /// to bridge between the async HttpStream and synchronous processing.
     fn collect_http_chunks_sync(mut http_stream: HttpStream) -> Result<Vec<HttpChunk>, HttpError> {
         use crossbeam_channel::{bounded, Receiver};
-        use std::thread;
         use std::time::Duration;
 
         // Create bounded channel for chunk communication
         let (tx, rx): (crossbeam_channel::Sender<Result<HttpChunk, HttpError>>, Receiver<Result<HttpChunk, HttpError>>) = bounded(1024);
 
-        // Spawn thread to handle async HttpStream polling - isolated async work
-        let handle = thread::spawn(move || {
-            // Use minimal tokio runtime ONLY for HttpStream polling
-            let rt = match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build() {
-                Ok(rt) => rt,
-                Err(e) => {
-                    let _ = tx.send(Err(HttpError::Generic(format!("Failed to create HTTP polling runtime: {}", e))));
-                    return;
-                }
-            };
-
-            rt.block_on(async move {
-                use futures_util::StreamExt;
-                
-                while let Some(chunk_result) = http_stream.next().await {
-                    if tx.send(chunk_result).is_err() {
-                        break; // Receiver dropped
+        // Elite crossbeam polling - use existing runtime directly
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                let _task_handle = handle.spawn(async move {
+                    use futures_util::StreamExt;
+                    
+                    while let Some(chunk_result) = http_stream.next().await {
+                        if tx.send(chunk_result).is_err() {
+                            break; // Receiver dropped
+                        }
                     }
-                }
-            });
-        });
+                });
+            }
+            Err(_) => {
+                let _ = tx.send(Err(HttpError::Generic("No tokio runtime available".to_string())));
+            }
+        }
 
         // Synchronous collection from crossbeam channel - no futures
         let mut chunks = Vec::new();
@@ -258,11 +251,6 @@ where
                     break;
                 }
             }
-        }
-
-        // Wait for thread completion
-        if let Err(e) = handle.join() {
-            return Err(HttpError::Generic(format!("HTTP collection thread failed: {:?}", e)));
         }
 
         Ok(chunks)
