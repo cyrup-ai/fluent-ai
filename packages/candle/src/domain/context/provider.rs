@@ -1,3 +1,4 @@
+
 //! Zero-Allocation Context Provider System
 //!
 //! Production-ready context management with streaming-only architecture, zero Arc usage,
@@ -86,7 +87,8 @@ pub enum CandleProviderError {
     GithubProvider(String),
     #[error("Embedding provider error: {0}")]
     /// Vector embedding provider error. Manages embedding generation, storage, and retrieval failures.
-    EmbeddingProvider(String)}
+    EmbeddingProvider(String),
+}
 
 /// Validation error types with semantic meaning for Candle
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
@@ -565,7 +567,9 @@ impl CandleStreamingContextProcessor {
         Ok(Document {
             data: format!("Content from file: {}", context.path),
             format: Some(crate::domain::context::CandleContentFormat::Text),
-            media_type: Some(crate::domain::context::CandleDocumentMediaType::TXT),
+            media_type: Some(
+                crate::domain::context::CandleDocumentMediaType::TXT,
+            ),
             additional_props: {
                 let mut props = HashMap::new();
                 props.insert(
@@ -787,7 +791,6 @@ impl CandleContext<CandleFiles> {
                                                     "Vector length mismatch: expected 1 document but got 0".to_string()
                                                 ), "glob_provider"
                                             );
-                                            ZeroOneOrMany::None
                                         }
                                     },
                                     _ => ZeroOneOrMany::Many(documents)};
@@ -931,7 +934,6 @@ impl CandleContext<CandleDirectory> {
                                                     "Vector length mismatch: expected 1 document but got 0".to_string()
                                                 ), "directory_provider"
                                             );
-                                            ZeroOneOrMany::None
                                         }
                                     },
                                     _ => ZeroOneOrMany::Many(documents)};
@@ -997,12 +999,12 @@ impl CandleContext<CandleGithub> {
                         fluent_ai_async::handle_error!(
                             CandleContextError::ContextNotFound(format!(
                                 "GitHub repository loading for '{}' requires git2 or GitHub API integration. \
-                        Pattern: '{}', Branch: '{}'",
+                        Pattern: '{}', Branch: '{}'", 
                                 github_context.repository_url,
                                 github_context.pattern,
                                 github_context.branch
                             )),
-                            "GitHub integration not implemented"
+                            "GitHub provider requires external dependencies"
                         );
                     }
                     _ => {
@@ -1016,22 +1018,3 @@ impl CandleContext<CandleGithub> {
         })
     }
 }
-
-/// Backward compatibility aliases (deprecated) - now reference Candle types
-#[deprecated(note = "Use CandleImmutableFileContext instead")]
-pub type FileContext = CandleImmutableFileContext;
-
-#[deprecated(note = "Use CandleImmutableFilesContext instead")]
-pub type FilesContext = CandleImmutableFilesContext;
-
-#[deprecated(note = "Use CandleImmutableDirectoryContext instead")]
-pub type DirectoryContext = CandleImmutableDirectoryContext;
-
-#[deprecated(note = "Use CandleImmutableGithubContext instead")]
-pub type GithubContext = CandleImmutableGithubContext;
-
-#[deprecated(note = "Use CandleImmutableEmbeddingModel instead")]
-pub trait EmbeddingModel: CandleImmutableEmbeddingModel {}
-
-#[deprecated(note = "Use CandleImmutableMemoryManager instead")]
-pub trait MemoryManager: CandleImmutableMemoryManager {}

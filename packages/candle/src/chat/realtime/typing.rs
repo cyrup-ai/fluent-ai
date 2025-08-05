@@ -8,38 +8,15 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
 use std::time::Duration;
 
-use arc_swap::ArcSwap;
+
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::{AsyncStream, emit};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
-use super::events::{RealTimeEvent, NotificationLevel};
 
-/// Real-time system errors with zero-allocation string handling
-#[derive(Debug, thiserror::Error)]
-pub enum RealTimeError {
-    #[error("Backpressure exceeded: current size {current_size}, limit {limit}")]
-    BackpressureExceeded { current_size: usize, limit: usize },
-    #[error("Connection not found: {user_id}:{session_id}")]
-    ConnectionNotFound { user_id: Arc<str>, session_id: Arc<str> },
-    #[error("Subscription failed: {reason}")]
-    SubscriptionFailed { reason: Arc<str> },
-    #[error("Message delivery failed: {reason}")]
-    MessageDeliveryFailed { reason: Arc<str> },
-    #[error("System timeout: {operation}")]
-    SystemTimeout { operation: Arc<str> },
-    #[error("Invalid message format: {details}")]
-    InvalidMessageFormat { details: Arc<str> },
-    #[error("Rate limit exceeded: {current_rate}/{limit}")]
-    RateLimitExceeded { current_rate: usize, limit: usize },
-    #[error("System overload: {resource}")]
-    SystemOverload { resource: Arc<str> },
-    #[error("Typing state error: {message}")]
-    TypingStateError { message: Arc<str> },
-    #[error("Cleanup task error: {message}")]
-    CleanupTaskError { message: Arc<str> }}
+use super::events::RealTimeEvent;
 
 /// Typing indicator state with atomic operations for zero-allocation performance
 #[derive(Debug)]

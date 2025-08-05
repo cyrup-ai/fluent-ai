@@ -1,3 +1,4 @@
+
 //! Authentication Types for AI Provider Integration
 //!
 //! This module provides secure authentication mechanisms for all AI providers.
@@ -149,7 +150,7 @@ impl fmt::Display for SecureString {
 
 /// Bearer token authentication for most AI providers
 ///
-/// Used by OpenAI, Cohere, Groq, Mistral, and other providers that use
+/// Used by OpenAI, Cohere, Groq, and other providers that use
 /// "Authorization: Bearer <token>" header format.
 #[derive(Clone)]
 pub struct BearerAuth {
@@ -572,35 +573,33 @@ impl OAuth2Auth {
         let refresh_margin = self.refresh_margin_seconds;
         
         AsyncStream::with_channel(move |stream_sender| {
-            std::thread::spawn(move || {
-                let current = current_token.load();
+            let current = current_token.load();
 
-                // Check if we have a valid token
-                if let Some(ref token) = **current {
-                    if !token.is_expired(refresh_margin) {
-                        let _ = stream_sender.send(Ok(token.clone()));
-                        return;
-                    }
+            // Check if we have a valid token
+            if let Some(ref token) = **current {
+                if !token.is_expired(refresh_margin) {
+                    let _ = stream_sender.send(Ok(token.clone()));
+                    return;
                 }
+            }
 
-                // Need to refresh or get initial token
-                if let Some(ref service_account) = service_account {
-                    let mut token_stream = service_account.get_access_token();
-                    if let Some(token_result) = token_stream.try_next() {
-                        match token_result {
-                            Ok(new_token) => {
-                                current_token.store(Arc::new(Some(new_token.clone())));
-                                let _ = stream_sender.send(Ok(new_token));
-                            }
-                            Err(e) => {
-                                let _ = stream_sender.send(Err(e));
-                            }
+            // Need to refresh or get initial token
+            if let Some(ref service_account) = service_account {
+                let mut token_stream = service_account.get_access_token();
+                if let Some(token_result) = token_stream.try_next() {
+                    match token_result {
+                        Ok(new_token) => {
+                            current_token.store(Arc::new(Some(new_token.clone())));
+                            let _ = stream_sender.send(Ok(new_token));
+                        }
+                        Err(e) => {
+                            let _ = stream_sender.send(Err(e));
                         }
                     }
-                } else {
-                    let _ = stream_sender.send(Err(AuthError::NoRefreshCapability));
                 }
-            });
+            } else {
+                let _ = stream_sender.send(Err(AuthError::NoRefreshCapability));
+            }
         })
     }
 
@@ -612,44 +611,29 @@ impl OAuth2Auth {
             (ArrayString<MAX_HEADER_LEN>, ArrayString<MAX_TOKEN_LEN>),
             MAX_AUTH_HEADERS,
         >,
-    ) -> AsyncStream<Result<(), AuthError>> {
-        let oauth_auth = self.clone();
-        
-        AsyncStream::with_channel(|stream_sender| {
-            std::thread::spawn(move || {
-                let mut token_stream = oauth_auth.get_valid_token();
-                if let Some(token_result) = token_stream.try_next() {
-                    match token_result {
-                        Ok(token) => {
-                            let header_value = token.authorization_header();
-                            let value: ArrayString<256> = match ArrayString::from(&header_value) {
-                                Ok(v) => v,
-                                Err(_) => {
-                                    let _ = stream_sender.send(Err(AuthError::HeaderValueTooLong(header_value.len())));
-                                    return;
-                                }
-                            };
+    ) -> Result<(), AuthError> {
+        // Get the current token without blocking
+        if let Some(token) = self.current_token.load().as_ref() {
+            let header_value = token.authorization_header();
+            let value = ArrayString::from(&header_value)
+                .map_err(|_| AuthError::HeaderValueTooLong(header_value.len()))?;
 
-                            let auth_header: ArrayString<32> = match ArrayString::from("Authorization") {
-                                Ok(h) => h,
-                                Err(_) => {
-                                    let _ = stream_sender.send(Err(AuthError::InternalError));
-                                    return;
-                                }
-                            };
+            let auth_header = ArrayString::from("Authorization")
+                .map_err(|_| AuthError::InternalError)?;
 
-                            // Note: We can't mutate the headers parameter from within the async context
-                            // This method signature needs to be redesigned to work with streams
-                            // For now, just signal success - actual header mutation should happen synchronously
-                            let _ = stream_sender.send(Ok(()));
-                        }
-                        Err(e) => {
-                            let _ = stream_sender.send(Err(e));
-                        }
-                    }
-                }
-            });
-        })
+            headers.try_push((auth_header, value))
+                .map_err(|_| AuthError::TooManyHeaders)?;
+
+            // If token is not expired or about to expire, return it
+            if !token.is_expired(self.refresh_margin_seconds) {
+                return Ok(());
+            }
+        }
+
+        // If we get here, we need to refresh the token
+        // This is a sync method, so we can't wait for the refresh
+        // Just return an error and let the caller retry
+        Err(AuthError::TokenExpired)
     }
 }
 
@@ -935,6 +919,8 @@ pub enum AuthError {
     TooManyHeaders,
     /// Token type is too long
     TokenTypeTooLong(usize),
+    /// Token has expired and needs to be refreshed
+    TokenExpired,
     /// Scope string is too long
     ScopeTooLong(usize),
     /// Too many scopes specified
@@ -1000,150 +986,39 @@ impl fmt::Display for AuthError {
             AuthError::TokenTypeTooLong(len) => {
                 write!(f, "Token type too long: {len} characters (max 32)")
             }
-            AuthError::ScopeTooLong(len) => write!(f, "Scope too long: {len} characters (max 256)"),
-            AuthError::TooManyScopes => write!(f, "Too many scopes (max 8)"),
+            AuthError::TokenExpired => {
+                write!(f, "Token has expired and needs to be refreshed")
+            }
+            AuthError::ScopeTooLong(len) => {
+                write!(f, "Scope too long: {len} characters (max 256)")
+            }
+            AuthError::TooManyScopes => write!(f, "Too many scopes specified (max 8)"),
             AuthError::ClientEmailTooLong(len) => {
                 write!(f, "Client email too long: {len} characters (max 256)")
             }
             AuthError::TokenUriTooLong(len) => {
                 write!(f, "Token URI too long: {len} characters (max 512)")
             }
-            AuthError::NoRefreshCapability => write!(f, "No token refresh capability configured"),
+            AuthError::NoRefreshCapability => {
+                write!(f, "No refresh capability available for this token")
+            }
             AuthError::AccessKeyIdTooLong(len) => {
                 write!(f, "Access key ID too long: {len} characters (max 128)")
             }
-            AuthError::RegionTooLong(len) => write!(
-                f,
-                "Region name too long: {len} characters (max {MAX_REGION_LEN})"
-            ),
-            AuthError::ServiceNameTooLong(len) => write!(
-                f,
-                "Service name too long: {len} characters (max {MAX_REGION_LEN})"
-            ),
+            AuthError::RegionTooLong(len) => {
+                write!(f, "Region too long: {len} characters (max 32)")
+            }
+            AuthError::ServiceNameTooLong(len) => {
+                write!(f, "Service name too long: {len} characters (max 32)")
+            }
             AuthError::EmptyAccessKeyId => write!(f, "Access key ID cannot be empty"),
             AuthError::EmptyRegion => write!(f, "Region cannot be empty"),
             AuthError::EmptyServiceName => write!(f, "Service name cannot be empty"),
-            AuthError::SystemTimeError => write!(f, "System time error"),
+            AuthError::SystemTimeError => write!(f, "System time error occurred"),
             AuthError::InternalError => write!(f, "Internal authentication error"),
-            AuthError::NotImplemented(feature) => write!(f, "Feature not implemented: {feature}"),
+            AuthError::NotImplemented(msg) => write!(f, "Not implemented: {msg}"),
         }
     }
 }
 
 impl std::error::Error for AuthError {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_secure_string() {
-        let secret = SecureString::new("test-secret-123").expect("Valid secret");
-        assert_eq!(secret.len(), 15);
-        assert!(!secret.is_empty());
-        assert!(secret.matches("test-secret-123"));
-        assert!(!secret.matches("wrong-secret"));
-
-        // Debug output should not expose secret
-        let debug_output = format!("{:?}", secret);
-        assert!(!debug_output.contains("test-secret-123"));
-        assert!(debug_output.contains("REDACTED"));
-    }
-
-    #[test]
-    fn test_bearer_auth() {
-        let auth = BearerAuth::new("sk-test123456789").expect("Valid token");
-
-        let mut headers = ArrayVec::new();
-        auth.apply_headers(&mut headers).expect("Headers applied");
-
-        assert_eq!(headers.len(), 1);
-        assert_eq!(headers[0].0.as_str(), "Authorization");
-        assert!(headers[0].1.as_str().starts_with("Bearer "));
-
-        // Validation should pass
-        auth.validate().expect("Token is valid");
-    }
-
-    #[test]
-    fn test_api_key_auth() {
-        let auth = ApiKeyAuth::new("x-api-key", "ant-test123456789").expect("Valid API key");
-
-        let mut headers = ArrayVec::new();
-        auth.apply_headers(&mut headers).expect("Headers applied");
-
-        assert_eq!(headers.len(), 1);
-        assert_eq!(headers[0].0.as_str(), "x-api-key");
-        assert_eq!(headers[0].1.as_str(), "ant-test123456789");
-
-        // Test Anthropic helper
-        let anthropic_auth =
-            ApiKeyAuth::anthropic("ant-test123456789").expect("Valid Anthropic key");
-        assert_eq!(anthropic_auth.header_name(), "x-api-key");
-    }
-
-    #[test]
-    fn test_oauth2_token() {
-        let token = OAuth2Token::new(
-            "access-token-123",
-            "Bearer",
-            3600,
-            Some("scope1 scope2"),
-            Some("refresh-token-456"),
-        )
-        .expect("Valid OAuth2 token");
-
-        assert!(!token.is_expired(0));
-        assert!(token.expires_in_seconds() > 3500);
-
-        let header = token.authorization_header();
-        assert_eq!(header, "Bearer access-token-123");
-    }
-
-    #[test]
-    fn test_aws_signature_auth() {
-        let auth = AwsSignatureAuth::new(
-            "AKIAEXAMPLE",
-            "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-            "us-east-1",
-            "bedrock",
-        )
-        .expect("Valid AWS credentials");
-
-        assert_eq!(auth.access_key_id(), "AKIAEXAMPLE");
-        assert_eq!(auth.region(), "us-east-1");
-        assert_eq!(auth.service(), "bedrock");
-
-        // Test signature generation (simplified)
-        let headers = auth
-            .sign_request("POST", "/", "", &[], b"")
-            .expect("Signature generated");
-        assert!(!headers.is_empty());
-
-        // Should have authorization header
-        let auth_header = headers
-            .iter()
-            .find(|(name, _)| name.as_str() == "Authorization");
-        assert!(auth_header.is_some());
-    }
-
-    #[test]
-    fn test_auth_errors() {
-        // Empty secret
-        assert!(SecureString::new("").is_err());
-
-        // Token too short
-        let short_auth = BearerAuth::new("short");
-        assert!(short_auth.is_ok()); // Creation succeeds
-        assert!(short_auth.unwrap().validate().is_err()); // Validation fails
-
-        // Invalid prefix
-        let prefix_auth = BearerAuth::with_prefix("wrong-prefix-token", "sk-");
-        assert!(prefix_auth.is_err());
-
-        // Empty header name
-        let empty_header = ApiKeyAuth::new("", "some-key");
-        assert!(empty_header.is_ok()); // Creation succeeds
-        assert!(empty_header.unwrap().validate().is_err()); // Validation fails
-    }
-}

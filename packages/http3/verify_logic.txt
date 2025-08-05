@@ -1,0 +1,50 @@
+DESCENDANT SEGMENT LOGIC VERIFICATION
+====================================
+
+JSON Structure:
+{
+  "store": {              // Depth 1 - store object
+    "book": [             // Depth 2 - book array  
+      {"author": "Author 1"},  // Depth 3 - book1 object
+      {"author": "Author 2"}   // Depth 3 - book2 object
+    ]
+  }
+}
+
+RFC 9535 Section 2.5.2.2: "The descendant segment applies the child segment to every node at every depth"
+
+For $..[?@.author]:
+- .. = descendant segment
+- [?@.author] = child segment (filter for nodes with 'author' property)
+
+Apply [?@.author] to every node:
+
+Depth 1: store object
+- Has 'author' property? NO
+- Match: NO
+
+Depth 2: book array  
+- Has 'author' property? NO
+- Match: NO
+
+Depth 3: book1 object
+- Has 'author' property? YES ({"author": "Author 1"})
+- Match: YES
+
+Depth 3: book2 object  
+- Has 'author' property? YES ({"author": "Author 2"})
+- Match: YES
+
+EXPECTED RESULT: Exactly 2 matches
+- book1 object: {"author": "Author 1"}
+- book2 object: {"author": "Author 2"}
+
+PREVIOUS INCORRECT BEHAVIOR: 5 results
+- 1 incorrect match (book array)
+- 2 correct matches (book objects)  
+- 2 duplicates (same book objects again)
+
+NEW IMPLEMENTATION:
+apply_descendant_segment_recursive() applies child selectors to current node,
+then recursively applies to all children. This should eliminate duplicates
+and ensure correct RFC 9535 compliance.

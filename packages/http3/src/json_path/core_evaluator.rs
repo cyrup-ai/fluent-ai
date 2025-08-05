@@ -127,7 +127,7 @@ impl CoreJsonPathEvaluator {
         for (i, selector) in selectors.iter().enumerate() {
             // Special handling for recursive descent
             if matches!(selector, JsonSelector::RecursiveDescent) {
-                // For recursive descent, apply all remaining selectors to all descendants
+                // RFC 9535 Section 2.5.2.2: Apply child segment to every node at every depth
                 let remaining_selectors = &selectors[i + 1..];
                 if remaining_selectors.is_empty() {
                     // $.. with no following selectors - collect all descendants
@@ -137,13 +137,13 @@ impl CoreJsonPathEvaluator {
                     }
                     current_results = next_results;
                 } else {
-                    // $..property - find property recursively
+                    // RFC 9535 Section 2.5.2.2: Apply child segment to every node at every depth
                     let mut next_results = Vec::new();
+                    
                     for current_value in &current_results {
-                        let recursive_results = temp_evaluator.apply_recursive_descent_wildcard(current_value)?;
-                        next_results.extend(recursive_results);
+                        // Apply child segment to every descendant node
+                        temp_evaluator.apply_descendant_segment_recursive(current_value, remaining_selectors, &mut next_results)?;
                     }
-                    // Skip the remaining selectors since we processed them in recursive descent
                     return Ok(next_results);
                 }
             } else {
@@ -234,18 +234,8 @@ impl CoreJsonPathEvaluator {
                 }
             }
             JsonSelector::Filter { expression } => {
-                // Check if this is part of a recursive descent path (e.g., $..[?@.property])
-                if self.selectors.windows(2).any(|w| 
-                    matches!((&w[0], &w[1]), 
-                        (JsonSelector::RecursiveDescent, JsonSelector::Filter { .. }) |
-                        (JsonSelector::Filter { .. }, JsonSelector::RecursiveDescent)
-                    )
-                ) {
-                    // If it's part of a recursive descent, use the specialized method
-                    results.extend(self.apply_recursive_descent_wildcard(value)?);
-                } else {
-                    // Standard filter application for non-recursive cases
-                    match value {
+                // Standard filter application
+                match value {
                         Value::Array(arr) => {
                             for item in arr {
                                 if FilterEvaluator::evaluate_predicate(item, expression)? {
@@ -260,7 +250,6 @@ impl CoreJsonPathEvaluator {
                         }
                         _ => {} // Primitives don't support filters
                     }
-                }
             }
             JsonSelector::Union { selectors } => {
                 for union_selector in selectors {
@@ -273,6 +262,49 @@ impl CoreJsonPathEvaluator {
         Ok(results)
     }
     
+    /// Apply child segment to every descendant node (RFC 9535 Section 2.5.2.2)
+    /// Correctly implements descendant segment: applies child selectors to every node at every depth
+    fn apply_descendant_segment_recursive(
+        &self, 
+        value: &Value, 
+        child_selectors: &[JsonSelector], 
+        results: &mut Vec<Value>
+    ) -> JsonPathResult<()> {
+        // Step 1: Collect all descendants of the input value  
+        let mut all_descendants = Vec::new();
+        self.collect_all_descendants_owned(value, &mut all_descendants);
+        
+        // Step 2: Apply child selectors to each descendant individually
+        for descendant in all_descendants {
+            let mut temp_results = vec![descendant];
+            
+            // Apply each child selector in sequence
+            for selector in child_selectors {
+                let mut selector_results = Vec::new();
+                for temp_value in &temp_results {
+                    let intermediate = self.apply_selector_to_value(temp_value, selector)?;
+                    selector_results.extend(intermediate);  
+                }
+                temp_results = selector_results;
+                
+                // If no matches for this descendant, stop processing remaining selectors
+                if temp_results.is_empty() {
+                    break;
+                }
+            }
+            
+            // Only add results if all child selectors matched
+            if !temp_results.is_empty() {
+                results.extend(temp_results);
+            }
+        }
+        
+        Ok(())
+    }
+        
+        Ok(())
+    }
+
     /// Collect all descendants using recursive descent, returning owned values
     /// Protected against deep nesting with depth limits and result count limits
     fn collect_all_descendants_owned(&self, value: &Value, results: &mut Vec<Value>) {
@@ -325,6 +357,8 @@ impl CoreJsonPathEvaluator {
             _ => {} // Primitives have no descendants
         }
     }
+    
+
     
     /// Optimized handler for $..*  pattern to avoid exponential complexity
     /// Protected with depth and count limits

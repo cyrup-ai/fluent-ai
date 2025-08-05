@@ -48,6 +48,6 @@ pub use macros::{MacroAction, MacroSystem};
 pub use message::message_processing::{
     process_message, sanitize_content, validate_message, validate_message_sync};
 pub use message::types::{Message, MessageChunk, MessageRole};
-pub use realtime::RealTimeSystem;
+
 pub use search::{ChatSearchIndex, SearchQuery};
 pub use templates::{ChatTemplate, TemplateManager};

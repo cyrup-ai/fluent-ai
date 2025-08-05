@@ -4,8 +4,78 @@
 //! zero-allocation string handling and atomic operations for blazing-fast performance.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use flume;
 use serde::{Deserialize, Serialize};
 use crate::domain::chat::message::types::CandleMessage as Message;
+
+/// Connection status for real-time communication with atomic operations support
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum ConnectionStatus {
+    /// Connected and active
+    Connected,
+    /// Connecting to the server
+    Connecting,
+    /// Disconnected from the server
+    Disconnected,
+    /// Connection error occurred
+    Error,
+    /// Reconnecting after disconnection
+    Reconnecting,
+    /// Connection failed
+    Failed,
+    /// Idle (connected but inactive)
+    Idle,
+    /// Connection is unstable (high latency/packet loss)
+    Unstable,
+}
+
+/// Trait for broadcasting real-time events to connected clients
+pub trait EventBroadcaster: Send + Sync + 'static {
+    /// Broadcast an event to all connected clients
+    fn broadcast(&self, event: RealTimeEvent);
+    
+    /// Subscribe to receive real-time events
+    fn subscribe(&self) -> flume::Receiver<RealTimeEvent>;
+    
+    /// Get the number of active subscribers
+    fn subscriber_count(&self) -> usize;
+}
+
+/// Default implementation of EventBroadcaster using flume channels
+#[derive(Clone)]
+pub struct FlumeEventBroadcaster {
+    sender: flume::Sender<RealTimeEvent>,
+    receiver: flume::Receiver<RealTimeEvent>,
+    subscriber_count: Arc<AtomicUsize>,
+}
+
+impl Default for FlumeEventBroadcaster {
+    fn default() -> Self {
+        let (sender, receiver) = flume::unbounded();
+        Self {
+            sender,
+            receiver,
+            subscriber_count: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+}
+
+impl EventBroadcaster for FlumeEventBroadcaster {
+    fn broadcast(&self, event: RealTimeEvent) {
+        // Ignore send errors (no subscribers)
+        let _ = self.sender.send(event);
+    }
+    
+    fn subscribe(&self) -> flume::Receiver<RealTimeEvent> {
+        self.subscriber_count.fetch_add(1, Ordering::Relaxed);
+        self.receiver.clone()
+    }
+    
+    fn subscriber_count(&self) -> usize {
+        self.subscriber_count.load(Ordering::Relaxed)
+    }
+}
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -196,25 +266,7 @@ impl RealTimeEvent {
     }
 }
 
-/// Connection status enumeration with atomic-friendly operations
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum ConnectionStatus {
-    /// Connected and active
-    Connected,
-    /// Connecting
-    Connecting,
-    /// Disconnected
-    Disconnected,
-    /// Connection error
-    Error,
-    /// Reconnecting
-    Reconnecting,
-    /// Connection failed
-    Failed,
-    /// Idle (connected but inactive)
-    Idle,
-    /// Unstable connection
-    Unstable}
+
 
 impl ConnectionStatus {
     /// Convert to atomic representation (u8) for lock-free storage

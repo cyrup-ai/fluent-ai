@@ -48,6 +48,7 @@ base64 = "0.22.1"
 tracing = "0.1.41"
 termcolor = { path = "../termcolor" }
 jwalk = "0.8.1"
+flume = "0.11.0"
 rayon = "1.10.0"
 gix = "0.73.0"
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}

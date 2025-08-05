@@ -7,6 +7,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
+/// Type alias for message streams using AsyncStream
+pub type MessageStream<T> = fluent_ai_async::AsyncStream<T>;
+
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
@@ -15,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::events::RealTimeEvent;
-use super::typing::RealTimeError;
+
 use crate::domain::chat::message::types::{CandleMessage as Message, CandleMessageRole as MessageRole};
 
 /// Live update message with zero-allocation string handling

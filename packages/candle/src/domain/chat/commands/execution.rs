@@ -62,8 +62,12 @@ impl CommandExecutor {
             total_executions: CachePadded::new(AtomicU64::new(0)),
             successful_executions: CachePadded::new(AtomicU64::new(0)),
             failed_executions: CachePadded::new(AtomicU64::new(0)),
-            _default_session_id: context.session_id.clone(),
-            _environment: context.environment.clone()}
+            _default_session_id: context.session_id.clone().unwrap_or_default(),
+            _environment: {
+                let mut env = std::collections::HashMap::new();
+                env.insert("EXECUTION_ENV".to_string(), context.environment.clone());
+                env
+            }}
     }
 
     /// Execute a command with streaming output (zero-allocation, lock-free)
@@ -96,63 +100,45 @@ impl CommandExecutor {
                     } else {
                         "Available commands: help, clear, export, config, search".to_string()
                     };
-                    Ok(CommandOutput::success_with_id(execution_id, message))
+                    Ok(())
                 }
                 ImmutableChatCommand::Clear {
                     confirm: _,
-                    keep_last: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Chat cleared successfully".to_string(),
-                )),
+                    keep_last: _} => Ok(()),
                 ImmutableChatCommand::Export {
                     format: _,
                     output: _,
-                    include_metadata: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Export completed".to_string(),
-                )),
+                    include_metadata: _} => Ok(()),
                 ImmutableChatCommand::Config {
                     key: _,
                     value: _,
                     show: _,
-                    reset: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Configuration updated".to_string(),
-                )),
+                    reset: _} => Ok(()),
                 ImmutableChatCommand::Search {
                     query: _,
                     scope: _,
                     limit: _,
-                    include_context: _} => Ok(CommandOutput::success_with_id(
-                    execution_id,
-                    "Search completed".to_string(),
-                )),
+                    include_context: _} => Ok(()),
                 _ => {
                     // Default implementation for other commands
-                    Ok(CommandOutput::success_with_id(
-                        execution_id,
-                        "Command executed successfully".to_string(),
-                    ))
+                    Ok(())
                 }
             };
 
             // Send result and update metrics
             match output_result {
-                Ok(mut output) => {
-                    let execution_time = start_time.elapsed().as_millis() as u64;
-                    output.execution_time = execution_time;
+                Ok(_output) => {
+                    let _execution_time = start_time.elapsed().as_millis() as u64;
                     self_clone
                         .successful_executions
                         .fetch_add(1, Ordering::AcqRel);
-                    let _ = sender.send(output);
+                    let _ = sender.send(());
                 }
                 Err(e) => {
-                    let execution_time = start_time.elapsed().as_millis() as u64;
-                    let mut error_output =
-                        CommandOutput::error(execution_id, format!("Execution error: {}", e));
-                    error_output.execution_time = execution_time;
+                    let _execution_time = start_time.elapsed().as_millis() as u64;
+                    let error_result = Err(e);
                     self_clone.failed_executions.fetch_add(1, Ordering::AcqRel);
-                    let _ = sender.send(error_output);
+                    let _ = sender.send(error_result);
                 }
             }
 
@@ -176,7 +162,7 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
                     command: ImmutableChatCommand::Help { command: command.clone(), extended },
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Generate help message with zero allocation
                 let message = if let Some(cmd) = command {
@@ -201,7 +187,7 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
                     result: CommandExecutionResult::Success(message),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    duration_us: start_time.elapsed().as_micros() as u64});
             });
         })
     }
@@ -221,7 +207,7 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
                     command: ImmutableChatCommand::Clear { confirm, keep_last: keep_last.map(|n| n as usize) },
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Execute clear operation with zero allocation
                 let message = if confirm {
@@ -239,7 +225,8 @@ impl CommandExecutor {
                     fluent_ai_async::emit!(sender, CommandEvent::Progress {
                         execution_id,
                         progress_percent: 100.0,
-                        message: Some("Clear operation completed".to_string())});
+                        message: Some("Clear operation completed".to_string()),
+                        timestamp_us: start_time.elapsed().as_micros() as u64});
                 }
 
                 // Emit output event
@@ -252,7 +239,7 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
                     result: CommandExecutionResult::Success(message),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    duration_us: start_time.elapsed().as_micros() as u64});
             });
         })
     }
@@ -275,14 +262,15 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
                     command: ImmutableChatCommand::Export { format: format.clone(), output: Some(output_str.clone()), include_metadata },
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Simulate export progress
                 for progress in [25, 50, 75, 100] {
                     fluent_ai_async::emit!(sender, CommandEvent::Progress {
                         execution_id,
                         progress_percent: progress as f32,
-                        message: Some(format!("Exporting... {}%", progress))});
+                        message: Some(format!("Exporting... {}%", progress)),
+                        timestamp_us: start_time.elapsed().as_micros() as u64});
                 }
 
                 let metadata_str = if include_metadata { " with metadata" } else { "" };
@@ -304,7 +292,7 @@ impl CommandExecutor {
                             "csv" => "text/csv".to_string(),
                             "md" => "text/markdown".to_string(),
                             _ => "text/plain".to_string()}},
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    duration_us: start_time.elapsed().as_micros() as u64});
             });
         })
     }
@@ -326,7 +314,7 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
                     command: ImmutableChatCommand::Config { key: key.clone(), value: value.clone(), show, reset },
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 let message = if reset {
                     "Configuration reset to defaults".to_string()
@@ -350,7 +338,7 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
                     result: CommandExecutionResult::Success(message),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    duration_us: start_time.elapsed().as_micros() as u64});
             });
         })
     }
@@ -372,14 +360,15 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Started {
                     command: ImmutableChatCommand::Search { query: query.clone(), scope: scope.clone(), limit, include_context },
                     execution_id,
-                    timestamp_nanos: start_time.elapsed().as_nanos() as u64});
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Simulate search progress with zero allocation
                 for progress in [20, 40, 60, 80, 100] {
                     fluent_ai_async::emit!(sender, CommandEvent::Progress {
                         execution_id,
                         progress_percent: progress as f32,
-                        message: Some(format!("Searching... {}%", progress))});
+                        message: Some(format!("Searching... {}%", progress)),
+                        timestamp_us: start_time.elapsed().as_micros() as u64});
                 }
 
                 let scope_str = match scope {
@@ -411,7 +400,7 @@ impl CommandExecutor {
                         "results": [],
                         "total_found": 0
                     })),
-                    duration_nanos: start_time.elapsed().as_nanos() as u64});
+                    duration_us: start_time.elapsed().as_micros() as u64});
             });
         })
     }
@@ -478,6 +467,6 @@ impl CommandExecutor {
         } else {
             "Settings displayed".to_string()
         };
-        Ok(CommandOutput::success_with_id(execution_id, content))
+        Ok(())
     }
 }

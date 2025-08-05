@@ -1,3 +1,4 @@
+
 //! Chat integrations functionality
 //!
 //! Provides zero-allocation integration capabilities for external services and plugins.
@@ -633,8 +634,9 @@ impl ExternalIntegration {
                     timeout_ms: Some(5000), // 5 second timeout for health check
                 };
 
-                // Simulate test result for now
-                let _ = sender.send(true); // Assume connection test passes
+                let result = self_clone.execute_http_request_sync(test_request);
+                let is_connected = result.is_some();
+                let _ = sender.send(is_connected);
             });
         })
     }
