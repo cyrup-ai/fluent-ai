@@ -352,6 +352,12 @@ pub enum SearchScope {
     All,
     /// Search current session only
     Session,
+    /// Search current conversation
+    Current,
+    /// Search recent conversations
+    Recent,
+    /// Search bookmarked conversations
+    Bookmarked,
     /// Search user messages only
     User,
     /// Search assistant messages only

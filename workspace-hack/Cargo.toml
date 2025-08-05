@@ -74,9 +74,9 @@ futures-lite = { version = "2" }
 futures-sink = { version = "0.3" }
 futures-task = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
-generic-array = { version = "1.2", default-features = false, features = ["zeroize"] }
+generic-array = { version = "0.14", default-features = false, features = ["more_lengths", "zeroize"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
-getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "rdrand", "std"] }
 gix-features = { version = "0.42", features = ["fs-read-dir", "progress", "walkdir"] }
 gix-utils = { version = "0.3", default-features = false, features = ["bstr"] }
 hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
@@ -166,7 +166,7 @@ sha2 = { version = "0.10", features = ["oid"] }
 simd-adler32 = { version = "0.3" }
 smallvec-474770a3030e73b7 = { package = "smallvec", version = "2.0.0-alpha.11", default-features = false, features = ["serde"] }
 smallvec-dff4ba8e3ae991db = { package = "smallvec", version = "1", default-features = false, features = ["const_new", "serde", "union", "write"] }
-spin = { version = "0.9", default-features = false, features = ["once", "spin_mutex"] }
+spin = { version = "0.9" }
 stable_deref_trait = { version = "1" }
 string_cache = { version = "0.8" }
 strum-2f80eeee3b1b6c7e = { package = "strum", version = "0.26", features = ["derive"] }
@@ -174,6 +174,8 @@ strum-754bda37e0fb3874 = { package = "strum", version = "0.27", features = ["der
 subtle = { version = "2" }
 surrealdb = { version = "2", features = ["http", "jwks", "kv-mem", "kv-surrealkv", "protocol-http"] }
 surrealdb-core = { version = "2", default-features = false, features = ["http", "jwks", "kv-mem", "kv-surrealkv"] }
+symphonia = { version = "0.5", features = ["all"] }
+symphonia-format-riff = { version = "0.5", default-features = false, features = ["aiff", "wav"] }
 target-lexicon = { version = "0.13", features = ["std"] }
 thrift = { version = "0.17" }
 time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing", "serde"] }
@@ -274,9 +276,9 @@ futures-lite = { version = "2" }
 futures-sink = { version = "0.3" }
 futures-task = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
-generic-array = { version = "1.2", default-features = false, features = ["zeroize"] }
+generic-array = { version = "0.14", default-features = false, features = ["more_lengths", "zeroize"] }
 getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
-getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "rdrand", "std"] }
 gix-features = { version = "0.42", features = ["fs-read-dir", "progress", "walkdir"] }
 gix-utils = { version = "0.3", default-features = false, features = ["bstr"] }
 hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
@@ -368,7 +370,7 @@ sha2 = { version = "0.10", features = ["oid"] }
 simd-adler32 = { version = "0.3" }
 smallvec-474770a3030e73b7 = { package = "smallvec", version = "2.0.0-alpha.11", default-features = false, features = ["serde"] }
 smallvec-dff4ba8e3ae991db = { package = "smallvec", version = "1", default-features = false, features = ["const_new", "serde", "union", "write"] }
-spin = { version = "0.9", default-features = false, features = ["once", "spin_mutex"] }
+spin = { version = "0.9" }
 stable_deref_trait = { version = "1" }
 string_cache = { version = "0.8" }
 strum-2f80eeee3b1b6c7e = { package = "strum", version = "0.26", features = ["derive"] }
@@ -376,6 +378,8 @@ strum-754bda37e0fb3874 = { package = "strum", version = "0.27", features = ["der
 subtle = { version = "2" }
 surrealdb = { version = "2", features = ["http", "jwks", "kv-mem", "kv-surrealkv", "protocol-http"] }
 surrealdb-core = { version = "2", default-features = false, features = ["http", "jwks", "kv-mem", "kv-surrealkv"] }
+symphonia = { version = "0.5", features = ["all"] }
+symphonia-format-riff = { version = "0.5", default-features = false, features = ["aiff", "wav"] }
 syn-dff4ba8e3ae991db = { package = "syn", version = "1", features = ["extra-traits", "full", "visit"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 target-lexicon = { version = "0.13", features = ["std"] }

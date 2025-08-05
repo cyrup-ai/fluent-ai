@@ -11,6 +11,7 @@ use fluent_ai_async::AsyncStream;
 
 use super::parsing::CommandParser;
 use super::types::{CandleCommandError, *};
+use super::types::commands::CommandExecutionResult;
 
 /// Command execution engine with streaming processing (zero-allocation, lock-free)
 #[derive(Debug)]
@@ -181,7 +182,8 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
                     output: message.clone(),
-                    output_type: OutputType::Text});
+                    output_type: OutputType::Text,
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Emit completion event
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
@@ -233,7 +235,8 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
                     output: message.clone(),
-                    output_type: OutputType::Text});
+                    output_type: OutputType::Text,
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Emit completion event
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
@@ -280,7 +283,8 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
                     output: message.clone(),
-                    output_type: OutputType::Text});
+                    output_type: OutputType::Text,
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
                     execution_id,
@@ -332,7 +336,8 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
                     output: message.clone(),
-                    output_type: OutputType::Text});
+                    output_type: OutputType::Text,
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Emit completion event
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {
@@ -389,7 +394,8 @@ impl CommandExecutor {
                 fluent_ai_async::emit!(sender, CommandEvent::Output {
                     execution_id,
                     output: message.clone(),
-                    output_type: OutputType::Text});
+                    output_type: OutputType::Text,
+                    timestamp_us: start_time.elapsed().as_micros() as u64});
 
                 // Emit completion event with search results
                 fluent_ai_async::emit!(sender, CommandEvent::Completed {

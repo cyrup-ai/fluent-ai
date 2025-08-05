@@ -234,9 +234,10 @@ impl CoreJsonPathEvaluator {
                 }
             }
             JsonSelector::Filter { expression } => {
-                // Standard filter application
+                // RFC 9535 Section 2.3.5.2: Filter selector tests children of input value
                 match value {
                         Value::Array(arr) => {
+                            // For arrays: test each element (child) against filter
                             for item in arr {
                                 if FilterEvaluator::evaluate_predicate(item, expression)? {
                                     results.push(item.clone());
@@ -244,6 +245,7 @@ impl CoreJsonPathEvaluator {
                             }
                         }
                         Value::Object(_) => {
+                            // For objects: test the object itself (@ refers to the object)
                             if FilterEvaluator::evaluate_predicate(value, expression)? {
                                 results.push(value.clone());
                             }
@@ -270,13 +272,20 @@ impl CoreJsonPathEvaluator {
         child_selectors: &[JsonSelector], 
         results: &mut Vec<Value>
     ) -> JsonPathResult<()> {
+        println!("DEBUG: apply_descendant_segment_recursive called with value: {:?}", 
+                 serde_json::to_string(value).unwrap_or_else(|_| "invalid_json".to_string()));
+        
         // Step 1: Collect all descendants of the input value  
         let mut all_descendants = Vec::new();
         self.collect_all_descendants_owned(value, &mut all_descendants);
+        println!("DEBUG: collected {} descendants", all_descendants.len());
         
-        // Step 2: Apply child selectors to each descendant individually
-        for descendant in all_descendants {
-            let mut temp_results = vec![descendant];
+        // Step 2: Apply child selectors to each descendant individually  
+        for (i, descendant) in all_descendants.iter().enumerate() {
+            println!("DEBUG: processing descendant {}: {:?}", i, 
+                     serde_json::to_string(descendant).unwrap_or_else(|_| "invalid_json".to_string()));
+            
+            let mut temp_results = vec![descendant.clone()];
             
             // Apply each child selector in sequence
             for selector in child_selectors {
@@ -295,12 +304,25 @@ impl CoreJsonPathEvaluator {
             
             // Only add results if all child selectors matched
             if !temp_results.is_empty() {
-                results.extend(temp_results);
+                println!("DEBUG: descendant {} matched, adding {} results", i, temp_results.len());
+                
+                // Add results, filtering out duplicates for descendant segments with filters
+                // This handles cases like $..[?@.author] where same objects can be reached via multiple paths
+                let has_filter = child_selectors.iter().any(|s| matches!(s, JsonSelector::Filter { .. }));
+                if has_filter {
+                    for result in temp_results {
+                        // Only add if not already present (by value equality)
+                        if !results.iter().any(|existing| existing == &result) {
+                            results.push(result);
+                        }
+                    }
+                } else {
+                    results.extend(temp_results);
+                }
+            } else {
+                println!("DEBUG: descendant {} did not match", i);
             }
         }
-        
-        Ok(())
-    }
         
         Ok(())
     }

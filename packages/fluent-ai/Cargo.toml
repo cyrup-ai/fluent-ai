@@ -48,7 +48,7 @@ cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "mai
 # PDF/EPUB loader dependencies
 lopdf = "0.36.0"
 epub = "2.1.4"
-quick-xml = "0.38.0"
+quick-xml = "0.38.1"
 
 # Zeroshot integration dependencies
 pulldown-cmark = "0.13.0"

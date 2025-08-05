@@ -45,3 +45,5 @@ edition = "2024"
 license = "MIT"
 authors = ["CYRUP AI"]
 repository = "https://github.com/cyrup-ai/fluent-ai"
+
+

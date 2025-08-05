@@ -48,6 +48,17 @@ pub enum CommandExecutionResult {
     Partial(String),
     /// Cancelled execution
     Cancelled,
+    /// File result with metadata
+    File {
+        /// Path to the file
+        path: String,
+        /// File size in bytes
+        size_bytes: u64,
+        /// MIME type of the file
+        mime_type: String,
+    },
+    /// Data result with structured content
+    Data(serde_json::Value),
 }
 
 // Submodules with clear separation of concerns and single responsibilities

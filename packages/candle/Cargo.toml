@@ -8,16 +8,7 @@ edition = "2021"
 # name = "architecture_example"
 # path = "examples/architecture_example.rs"
 
-[features]
-default = ["bincode-serialization", "metal"]
-cylo = []
-bincode-serialization = ["bincode"]
-rkyv-serialization = ["rkyv"]
-metal = [
-    "candle-core/metal",
-    "candle-nn/metal",
-    "candle-transformers/metal"
-]
+
 
 [dependencies]
 # CRITICAL: NEVER ADD DEPENDENCY ON ./packages/domain or ./packages/fluent-ai
@@ -29,12 +20,34 @@ fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 fluent_ai_http3 = { path = "../http3" }
 
-# Candle framework for local model inference
-candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["metal"] }
-candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["metal"] }
-candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["metal"] }
-candle-metal-kernels = { git = "https://github.com/huggingface/candle", branch = "main" }
-tokenizers = "0.21.4"
+# — DSP / NN (base dependencies - no acceleration features) —
+candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+# — Optional acceleration dependencies —
+half = { version = "2.6.0", optional = true }
+
+
+# Platform-specific acceleration dependencies
+cudarc = { version = "0.17.0", optional = true, default-features = false, features = [
+    "cublas",
+    "cublaslt",
+    "cudnn",
+    "curand",
+    "dynamic-linking",
+    "f16",
+    "std",
+] }
+metal = { version = "0.32.0", optional = true }
+bindgen_cuda = { version = "0.1.5", optional = true }
+candle-kernels = { git = "https://github.com/huggingface/candle", branch = "main", optional = true }
+candle-metal-kernels = { git = "https://github.com/huggingface/candle", branch = "main", optional = true }
+
+# — audio / resampling —
+# rubato is in workspace-hack
+# rustfft is in workspace-hack
+hound = "3.5.1"
+symphonia = { version = "0.5.4", features = ["all"], optional = true }
 
 # Core dependencies
 serde = { version = "1.0.219", features = ["derive"] }
@@ -48,7 +61,7 @@ base64 = "0.22.1"
 tracing = "0.1.41"
 termcolor = { path = "../termcolor" }
 jwalk = "0.8.1"
-flume = "0.11.0"
+flume = "0.11.1"
 rayon = "1.10.0"
 gix = "0.73.0"
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
@@ -88,7 +101,7 @@ rand = "0.9.2"
 rand_pcg = "0.9.0"
 num_cpus = "1.17.0"
 bytes = "1.10.1"
-toml = "0.9.4"
+toml = "0.9.5"
 rkyv = { version = "0.8.11", optional = true }
 bincode = { version = "2.0.1", optional = true }
 reqwest = { version = "0.12.22", features = ["json"] }
@@ -96,7 +109,7 @@ md5 = "0.8.0"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 async-stream = "0.3.6"
-clap = { version = "4.5.31", features = ["derive"] }
+clap = { version = "4.5.42", features = ["derive"] }
 
 [dev-dependencies]
 tracing-subscriber = "0.3.19"
@@ -114,3 +127,59 @@ path = "src/main.rs"
 [lib]
 name = "fluent_ai_candle"
 path = "src/lib.rs"
+
+# GPU features temporarily disabled for warning fixes
+[features]
+# ───────────── default: metal acceleration enabled ─────────────
+default = ["metal", "reqwest_unstable"]
+
+# --- Developer conveniences (opt-in) -----------------------
+dev = ["debug"] # ← enable with `--features dev`
+debug = []                 # extra logging / assertions
+
+# --- SIMD features ---
+portable_simd = []
+reqwest_unstable = []
+
+# --- Candle backend features (required for all candle crates) -----
+cuda = [
+    "dep:cudarc",
+    "dep:bindgen_cuda",
+    "dep:candle-kernels",
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "candle-transformers/cuda",
+]
+cudnn = ["cuda", "cudarc/cudnn"]
+metal = [
+    "dep:metal",
+    "dep:candle-metal-kernels",
+    "candle-core/metal",
+    "candle-nn/metal",
+    "candle-transformers/metal",
+]
+accelerate = [
+    "dep:accelerate-src",
+    "candle-core/accelerate",
+    "candle-nn/accelerate",
+    "candle-transformers/accelerate",
+]
+mkl = [
+    "dep:intel-mkl-src",
+    "candle-core/mkl",
+    "candle-nn/mkl",
+    "candle-transformers/mkl",
+]
+
+# OS-specific acceleration dependencies
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+intel-mkl-src = { version = "0.8.1", optional = true }
+
+[target.'cfg(all(target_os = "windows", target_arch = "x86_64"))'.dependencies]
+intel-mkl-src = { version = "0.8.1", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+accelerate-src = { version = "0.3.2", optional = true }
+
+
+
