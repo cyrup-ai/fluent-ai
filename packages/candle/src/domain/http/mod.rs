@@ -445,7 +445,7 @@ impl std::str::FromStr for Provider {
             "together" => Ok(Provider::Together),
             "xai" => Ok(Provider::XAI),
             "deepseek" => Ok(Provider::DeepSeek),
-            _ => Err(format!("Unknown provider: {}", s)),
+            _ => Err(format!("Unknown provider: {s}")),
         }
     }
 }

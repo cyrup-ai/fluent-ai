@@ -6,7 +6,9 @@
 
 use std::path::PathBuf;
 use candle_core::DType;
-use candle_transformers::models::llama::Config as CandleLlamaConfig;
+use candle_transformers::models::llama::{Config as LlamaConfig};
+#[cfg(test)]
+use candle_transformers::models::llama::LlamaEosToks;
 use serde::{Deserialize, Serialize};
 
 /// Model-agnostic configuration that ANY model can provide to the core engine
@@ -120,7 +122,7 @@ impl ModelConfig {
 #[derive(Debug, Clone)]
 pub enum ModelArchitecture {
     /// Llama family models (Llama 2, Code Llama, etc.)
-    Llama(CandleLlamaConfig),
+    Llama(LlamaConfig),
     /// Mistral family models
     Mistral(MistralConfig),
     /// Gemma family models  
@@ -342,11 +344,15 @@ mod tests {
             intermediate_size: 11008,
             num_hidden_layers: 32,
             num_attention_heads: 32,
-            num_key_value_heads: Some(32),
+            num_key_value_heads: 32,
             max_position_embeddings: 2048,
             rms_norm_eps: 1e-6,
             rope_theta: 10000.0,
             use_flash_attn: false,
+            bos_token_id: Some(1),
+            eos_token_id: Some(LlamaEosToks::Single(2)),
+            rope_scaling: None,
+            tie_word_embeddings: false,
         };
         
         let config = ModelConfig::new(
@@ -390,11 +396,15 @@ mod tests {
             intermediate_size: 11008,
             num_hidden_layers: 32,
             num_attention_heads: 32,
-            num_key_value_heads: Some(32),
+            num_key_value_heads: 32,
             max_position_embeddings: 2048,
             rms_norm_eps: 1e-6,
             rope_theta: 10000.0,
             use_flash_attn: false,
+            bos_token_id: Some(1),
+            eos_token_id: Some(LlamaEosToks::Single(2)),
+            rope_scaling: None,
+            tie_word_embeddings: false,
         });
         
         let defaults = llama_arch.get_defaults();

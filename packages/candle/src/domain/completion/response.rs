@@ -81,9 +81,9 @@ impl<'a> CompletionResponse<'a> {
         self.tokens_per_second = Some(tps);
     }
 
-    /// Get the number of tokens generated (completion tokens) if available
+    /// Get the number of tokens generated (output tokens) if available
     pub fn tokens_generated(&self) -> Option<u32> {
-        self.usage.as_ref().map(|u| u.completion_tokens)
+        self.usage.as_ref().map(|u| u.output_tokens)
     }
 }
 
@@ -115,8 +115,8 @@ impl CompactCompletionResponse {
             provider: Some(Cow::Owned((*self.provider).to_owned())),
             usage: Some(Usage {
                 total_tokens: self.tokens_used,
-                prompt_tokens: 0,     // Not available in compact form
-                completion_tokens: 0, // Not available in compact form
+                input_tokens: 0,     // Not available in compact form
+                output_tokens: 0, // Not available in compact form
             }),
             finish_reason: Some(Cow::Owned((*self.finish_reason).to_owned())),
             response_time_ms: if self.response_time_ms > 0 {

@@ -7,7 +7,6 @@
 
 use fluent_ai_candle::prelude::*;
 // Note: Providers are available in src/providers but not re-exported at root level yet
-use fluent_ai_candle::providers::tokenizer::CandleTokenizer;
 use std::io::{self, Write};
 
 /// Example 1: Full Candle AgentRole with kimi_k2 Integration
@@ -29,10 +28,10 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
 
             ~ Be Useful, Not Thorough")
         .context( // trait CandleContext
-            (CandleContext::<CandleFile>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            CandleContext::<CandleFile>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
             CandleContext::<CandleFiles>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
             CandleContext::<CandleDirectory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-            CandleContext::<CandleGithub>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}"))
+            CandleContext::<CandleGithub>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait CandleTool
@@ -138,10 +137,10 @@ fn candle_agent_simple_example() -> AsyncStream<CandleMessageChunk> {
 
             ~ Be Useful, Not Thorough")
         .context( // trait CandleContext
-            (CandleContext::<CandleFile>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            CandleContext::<CandleFile>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
             CandleContext::<CandleFiles>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
             CandleContext::<CandleDirectory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-            CandleContext::<CandleGithub>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}"))
+            CandleContext::<CandleGithub>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
         )
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait CandleTool
@@ -183,7 +182,7 @@ fn candle_agent_simple_example() -> AsyncStream<CandleMessageChunk> {
 fn candle_model_info_example() {
     // Get model information
     let config = CandleKimiK2Config::default();
-    let provider = CandleKimiK2Provider::with_config("./models/kimi-k2".to_string(), config).unwrap();
+    let provider = CandleKimiK2Provider::with_config_sync("./models/kimi-k2".to_string(), config).unwrap();
     
     println!("Candle Model Information:");
     println!("- Model: kimi_k2");
@@ -191,22 +190,9 @@ fn candle_model_info_example() {
     println!("- Max tokens: {}", provider.max_tokens());
     println!("- Temperature: {}", provider.temperature());
     
-    // Demonstrate tokenizer capabilities
-    let tokenizer = provider.tokenizer();
-    let sample_text = "Hello, this is a test of the Candle tokenizer!";
-    
-    match tokenizer.encode(sample_text) {
-        Ok(tokens) => {
-            println!("Tokenized '{}' into {} tokens", sample_text, tokens.len());
-            println!("Tokens: {:?}", tokens);
-            
-            match tokenizer.decode(&tokens) {
-                Ok(decoded) => println!("Decoded back to: '{}'", decoded),
-                Err(e) => eprintln!("Decode error: {}", e),
-            }
-        }
-        Err(e) => eprintln!("Encode error: {}", e),
-    }
+    // Note: Tokenizer is embedded in the GGUF model file
+    // For demonstration, we'll show the tokenizer path (same as model path)
+    println!("- Tokenizer embedded in: {}", provider.tokenizer_path());
 }
 
 /// Main example runner - demonstrates all patterns
@@ -324,16 +310,3 @@ struct Named;
 // Types already imported via prelude above
 
 // Placeholder types for compilation testing removed - using actual implementations from provider module
-    
-    fn max_tokens(&self) -> usize {
-        unimplemented!("Placeholder for compilation testing")
-    }
-    
-    fn temperature(&self) -> f32 {
-        unimplemented!("Placeholder for compilation testing")
-    }
-    
-    fn tokenizer(&self) -> &CandleTokenizer {
-        unimplemented!("Placeholder for compilation testing")
-    }
-}

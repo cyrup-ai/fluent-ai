@@ -281,7 +281,23 @@ mod single_quote_delimiter_tests {
             let normalizedresult = JsonPathParser::compile(normalized);
 
             match (originalresult, normalizedresult) {
-                (Ok(_), Ok(_)) => println!("  Both forms compiled successfully"),
+                (Ok(_), Ok(_)) => {
+                    println!("  Both forms compiled successfully");
+                    
+                    // Test that both forms produce equivalent results when executed
+                    let mut original_stream = JsonArrayStream::<serde_json::Value>::new(original);
+                    let mut normalized_stream = JsonArrayStream::<serde_json::Value>::new(normalized);
+
+                    let chunk = Bytes::from(json_data);
+                    let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+                    let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk.clone()).collect();
+                    
+                    assert_eq!(
+                        original_results.len(), 
+                        normalized_results.len(),
+                        "Results count should match for equivalent paths"
+                    );
+                }
                 (Ok(_), Err(_)) => println!("  Original compiled, normalized failed"),
                 (Err(_), Ok(_)) => println!("  Original failed, normalized compiled"),
                 (Err(_), Err(_)) => println!("  Both forms failed to compile"),
@@ -382,7 +398,23 @@ mod character_escaping_tests {
             let normalizedresult = JsonPathParser::compile(&normalized_path);
 
             match (originalresult, normalizedresult) {
-                (Ok(_), Ok(_)) => println!("  Both paths compiled successfully"),
+                (Ok(_), Ok(_)) => {
+                    println!("  Both paths compiled successfully");
+                    
+                    // Test that both forms produce equivalent results when executed
+                    let mut original_stream = JsonArrayStream::<serde_json::Value>::new(&original_path);
+                    let mut normalized_stream = JsonArrayStream::<serde_json::Value>::new(&normalized_path);
+
+                    let chunk = Bytes::from(json_data);
+                    let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
+                    let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk.clone()).collect();
+                    
+                    assert_eq!(
+                        original_results.len(), 
+                        normalized_results.len(),
+                        "Results count should match for equivalent paths"
+                    );
+                }
                 (Ok(_), Err(_)) => println!("  Original compiled, normalized failed"),
                 (Err(_), Ok(_)) => println!("  Original failed, normalized compiled"),
                 (Err(_), Err(_)) => println!("  Both paths failed to compile"),

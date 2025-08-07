@@ -1,0 +1,24 @@
+{
+  "id": "cartesia/sonic",
+  "object": "model",
+  "created": 0,
+  "type": "audio",
+  "running": false,
+  "display_name": "Cartesia Sonic",
+  "organization": "Together",
+  "link": "https://www.cartesia.ai",
+  "context_length": 0,
+  "config": {
+    "chat_template": null,
+    "stop": [],
+    "bos_token": null,
+    "eos_token": null
+  },
+  "pricing": {
+    "hourly": 0,
+    "input": 65,
+    "output": 0,
+    "base": 0,
+    "finetune": 0
+  }
+}

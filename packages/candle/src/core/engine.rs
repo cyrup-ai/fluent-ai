@@ -8,18 +8,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use candle_core::{Device, Tensor};
-use candle_nn::VarBuilder;
-use candle_transformers::models::llama::{Llama, Cache};
-use tokenizers::Tokenizer;
 
 
 use crate::domain::completion::response::CompletionResponse;
-use crate::core::generation::{SamplingConfig, SpecialTokens, LogitsBuffer, TokenProb};
-use crate::core::model_config::{ModelConfig, ModelArchitecture};
-use crate::core::{simd_temperature_scale, simd_softmax_with_cache, simd_argmax_with_bounds};
-use crate::{AsyncStream, AsyncStreamSender, AsyncTask, spawn_task};
-use arrayvec::ArrayVec;
+use crate::{AsyncStream, AsyncTask, spawn_task};
 
 /// Handle errors in streaming context without panicking
 macro_rules! handle_error {
@@ -395,20 +387,35 @@ impl Engine {
         })
     }
 
-    /// Execute completion with real model inference using ModelConfig and TextGenerator
-    pub fn execute_model_inference(
-        model_config: ModelConfig,
-        prompt: String,
-        max_tokens: u32,
-        sampling_config: SamplingConfig,
+    
+
+
+    /// Execute completion request as stream (internal implementation)
+    fn execute_completion_stream(
+        _request_id: u64,
+        model_name: String,
+        provider: String,
+        _api_key: Option<String>,
+        _timeout: u64,
+        _max_tokens: Option<u32>,
+        _temperature: Option<f32>,
+        _streaming: bool,
+        _endpoint: Option<String>,
+        _prompt: String,
+        _system_prompt: Option<String>,
+        _history: Vec<String>,
+        _tools: Vec<String>,
+        _metadata: Option<String>,
     ) -> AsyncStream<CompletionResponse<'static>> {
-        AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionResponse<'static>>| {
-            // Validate model configuration
-            if let Err(e) = model_config.validate() {
+        AsyncStream::with_channel(move |sender| {
+            // Clean delegation pattern: route to appropriate provider
+            if provider == "kimi-k2" {
+                // TODO: Delegate to Kimi-K2 provider (which uses generation system internally)
+                // Provider handles ALL generation details including model loading, sampling, etc.
                 let error_response = CompletionResponse {
-                    text: format!("Model config validation failed: {}", e).into(),
-                    model: model_config.model_name.clone().into(),
-                    provider: Some(model_config.provider_name.clone().into()),
+                    text: "Error: Kimi-K2 provider delegation not yet implemented. Provider should handle all generation internally.".into(),
+                    model: model_name.into(),
+                    provider: Some(provider.into()),
                     usage: None,
                     finish_reason: Some("error".into()),
                     response_time_ms: Some(0),
@@ -416,371 +423,6 @@ impl Engine {
                     tokens_per_second: Some(0.0),
                 };
                 let _ = sender.send(error_response);
-                return;
-            }
-            
-            // Initialize device (prefer CUDA if available, fallback to CPU)
-            let device = Device::new_cuda(0).unwrap_or(Device::Cpu);
-            
-            // Load tokenizer
-            let tokenizer = match Tokenizer::from_file(&model_config.tokenizer_path) {
-                Ok(tokenizer) => tokenizer,
-                Err(e) => {
-                    let error_response = CompletionResponse {
-                        text: format!("Failed to load tokenizer: {}", e).into(),
-                        model: model_config.model_name.clone().into(),
-                        provider: Some(model_config.provider_name.clone().into()),
-                        usage: None,
-                        finish_reason: Some("error".into()),
-                        response_time_ms: Some(0),
-                        generation_time_ms: Some(0),
-                        tokens_per_second: Some(0.0),
-                    };
-                    let _ = sender.send(error_response);
-                    return;
-                }
-            };
-        
-            // Load model based on architecture
-            let (model, llama_config) = match &model_config.architecture {
-                ModelArchitecture::Llama(config) => {
-                    // Load safetensors with memory mapping for efficiency
-                    // SAFETY: from_mmaped_safetensors requires unsafe due to memory mapping of safetensors files
-                    // This is safe because:
-                    // 1. ModelConfig validates file paths during construction
-                    // 2. safetensors format includes integrity checks and header validation  
-                    // 3. Memory mapping is read-only and cannot corrupt memory
-                    // 4. Candle's VarBuilder handles all bounds checking internally
-                    #[allow(unsafe_code)]
-                    let vs = match unsafe { VarBuilder::from_mmaped_safetensors(&[&model_config.model_path], model_config.dtype, &device) } {
-                        Ok(vs) => vs,
-                        Err(e) => {
-                            let error_response = CompletionResponse {
-                                text: format!("Failed to load model weights: {}", e).into(),
-                                model: model_config.model_name.clone().into(),
-                                provider: Some(model_config.provider_name.clone().into()),
-                                usage: None,
-                                finish_reason: Some("error".into()),
-                                response_time_ms: Some(0),
-                                generation_time_ms: Some(0),
-                                tokens_per_second: Some(0.0),
-                            };
-                            let _ = sender.send(error_response);
-                            return;
-                        }
-                    };
-                
-                // Create Candle Llama config
-                let candle_config = candle_transformers::models::llama::Config {
-                    hidden_size: config.hidden_size,
-                    intermediate_size: config.intermediate_size,
-                    vocab_size: config.vocab_size,
-                    num_hidden_layers: config.num_hidden_layers,
-                    num_attention_heads: config.num_attention_heads,
-                    num_key_value_heads: config.num_key_value_heads,
-                    use_flash_attn: false, // Disable for compatibility
-                    rms_norm_eps: config.rms_norm_eps,
-                    rope_theta: config.rope_theta,
-                    bos_token_id: config.bos_token_id,
-                    eos_token_id: config.eos_token_id.clone(),
-                    rope_scaling: config.rope_scaling.clone(),
-                    max_position_embeddings: config.max_position_embeddings,
-                    tie_word_embeddings: config.tie_word_embeddings,
-                };
-                    
-                    // Load Llama model
-                    let llama_model = match Llama::load(vs, &candle_config) {
-                        Ok(model) => model,
-                        Err(e) => {
-                            let error_response = CompletionResponse {
-                                text: format!("Failed to load Llama model: {}", e).into(),
-                                model: model_config.model_name.clone().into(),
-                                provider: Some(model_config.provider_name.clone().into()),
-                                usage: None,
-                                finish_reason: Some("error".into()),
-                                response_time_ms: Some(0),
-                                generation_time_ms: Some(0),
-                                tokens_per_second: Some(0.0),
-                            };
-                            let _ = sender.send(error_response);
-                            return;
-                        }
-                    };
-                    
-                    (llama_model, candle_config)
-                },
-                _ => {
-                    let error_response = CompletionResponse {
-                        text: format!("Architecture {} not yet implemented", model_config.architecture.name()).into(),
-                        model: model_config.model_name.clone().into(),
-                        provider: Some(model_config.provider_name.clone().into()),
-                        usage: None,
-                        finish_reason: Some("error".into()),
-                        response_time_ms: Some(0),
-                        generation_time_ms: Some(0),
-                        tokens_per_second: Some(0.0),
-                    };
-                    let _ = sender.send(error_response);
-                    return;
-                }
-            };
-            
-            // Initialize SIMD-optimized sampling components
-            const SAMPLING_CACHE_SIZE: usize = 1024;
-            let mut prob_cache: ArrayVec<TokenProb, SAMPLING_CACHE_SIZE> = ArrayVec::new();
-            let is_deterministic = sampling_config.temperature <= 0.0;
-            
-            // Create special tokens from model config  
-            let _candle_tokenizer = match crate::providers::tokenizer::CandleTokenizer::from_file(&model_config.tokenizer_path) {
-                Ok(tokenizer) => tokenizer,
-                Err(e) => {
-                    let error_response = CompletionResponse {
-                        text: format!("Failed to load tokenizer: {}", e).into(),
-                        model: model_config.model_name.clone().into(),
-                        provider: Some(model_config.provider_name.clone().into()),
-                        usage: None,
-                        finish_reason: Some("error".into()),
-                        response_time_ms: Some(0),
-                        generation_time_ms: Some(0),
-                        tokens_per_second: Some(0.0),
-                    };
-                    let _ = sender.send(error_response);
-                    return;
-                }
-            };
-            
-            let special_tokens = SpecialTokens::new_basic(
-                model_config.special_tokens.eos_token_id
-            );
-            
-            // Tokenize input prompt  
-            let tokens = match tokenizer.encode(prompt.as_str(), true) {
-                Ok(encoding) => encoding.get_ids().to_vec(),
-                Err(e) => {
-                    let error_response = CompletionResponse {
-                        text: format!("Tokenization failed: {}", e).into(),
-                        model: model_config.model_name.clone().into(),
-                        provider: Some(model_config.provider_name.clone().into()),
-                        usage: None,
-                        finish_reason: Some("error".into()),
-                        response_time_ms: Some(0),
-                        generation_time_ms: Some(0),
-                        tokens_per_second: Some(0.0),
-                    };
-                    let _ = sender.send(error_response);
-                    return;
-                }
-            };
-            
-            // Initialize cache for KV caching
-            let mut cache = match Cache::new(true, model_config.dtype, &llama_config, &device) {
-                Ok(cache) => cache,
-                Err(e) => {
-                    let error_response = CompletionResponse {
-                        text: format!("Failed to create cache: {}", e).into(),
-                        model: model_config.model_name.clone().into(),
-                        provider: Some(model_config.provider_name.clone().into()),
-                        usage: None,
-                        finish_reason: Some("error".into()),
-                        response_time_ms: Some(0),
-                        generation_time_ms: Some(0),
-                        tokens_per_second: Some(0.0),
-                    };
-                    let _ = sender.send(error_response);
-                    return;
-                }
-            };
-            
-            // Initialize generation state
-            let mut all_tokens = tokens;
-            let mut _generated_text = String::new();
-            let mut index_pos = 0;
-            let start_time = std::time::Instant::now();
-            
-            // Main generation loop
-            for step in 0..max_tokens {
-                // Prepare input for model forward pass
-                let context_size = if cache.use_kv_cache && index_pos > 0 { 1 } else { all_tokens.len() };
-                let context_index = if cache.use_kv_cache && index_pos > 0 { index_pos } else { 0 };
-                
-                // Get input tokens for this step
-                let input_tokens: Vec<u32> = all_tokens[all_tokens.len().saturating_sub(context_size)..].to_vec();
-                let input_tensor = match Tensor::new(input_tokens.as_slice(), &device) {
-                    Ok(tensor) => match tensor.unsqueeze(0) {
-                        Ok(tensor) => tensor,
-                        Err(e) => {
-                            eprintln!("Failed to unsqueeze tensor: {}", e);
-                            break;
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Failed to create input tensor: {}", e);
-                        break;
-                    }
-                };
-                
-                // Forward pass through model
-                let logits = match model.forward(&input_tensor, context_index, &mut cache) {
-                    Ok(logits) => match logits.squeeze(0) {
-                        Ok(logits) => logits,
-                        Err(e) => {
-                            eprintln!("Failed to squeeze logits: {}", e);
-                            break;
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Model forward pass failed: {}", e);
-                        break;
-                    }
-                };
-                
-                // SIMD-optimized sampling pipeline
-                let next_token = match sample_with_simd(&logits, &sampling_config, &mut prob_cache, is_deterministic) {
-                    Ok(token) => token,
-                    Err(e) => {
-                        eprintln!("SIMD sampling failed: {}", e);
-                        break;
-                    }
-                };
-                
-                // Check for stop conditions
-                if special_tokens.is_eos_token(next_token) {
-                    break;
-                }
-                
-                // Add token to sequence and update position
-                all_tokens.push(next_token);
-                index_pos += input_tokens.len();
-                
-                // Decode token and send as response
-                if let Ok(decoded) = tokenizer.decode(&[next_token], false) {
-                    if !decoded.is_empty() {
-                        _generated_text.push_str(&decoded);
-                        
-                        // Create and send streaming response
-                        let response = CompletionResponse {
-                            text: decoded.into(),
-                            model: model_config.model_name.clone().into(),
-                            provider: Some(model_config.provider_name.clone().into()),
-                            usage: None,
-                            finish_reason: None,
-                            response_time_ms: Some(start_time.elapsed().as_millis() as u64),
-                            generation_time_ms: Some(start_time.elapsed().as_millis() as u32),
-                            tokens_per_second: Some((step as f32 / start_time.elapsed().as_secs_f32()) as f64),
-                        };
-                        
-                        if sender.send(response).is_err() {
-                            break; // Client disconnected
-                        }
-                    }
-                }
-            }
-            
-            // Send final completion response
-            let final_response = CompletionResponse {
-                text: String::new().into(),
-                model: model_config.model_name.into(),
-                provider: Some(model_config.provider_name.into()),
-                usage: None,
-                finish_reason: Some("stop".into()),
-                response_time_ms: Some(start_time.elapsed().as_millis() as u64),
-                generation_time_ms: Some(start_time.elapsed().as_millis() as u32),
-                tokens_per_second: Some((all_tokens.len() as f32 / start_time.elapsed().as_secs_f32()) as f64),
-            };
-            
-            let _ = sender.send(final_response);
-        })
-    }
-    
-
-    
-    /// Convert Tensor logits to LogitsBuffer for TextGenerator
-    // convert_tensor_to_logits_buffer removed - unused utility method
-
-    /// Execute completion request as stream (internal implementation)
-    fn execute_completion_stream(
-        request_id: u64,
-        model_name: String,
-        provider: String,
-        _api_key: Option<String>,
-        _timeout: u64,
-        max_tokens: Option<u32>,
-        temperature: Option<f32>,
-        _streaming: bool,
-        _endpoint: Option<String>,
-        prompt: String,
-        system_prompt: Option<String>,
-        _history: Vec<String>,
-        _tools: Vec<String>,
-        _metadata: Option<String>,
-    ) -> AsyncStream<CompletionResponse<'static>> {
-        AsyncStream::with_channel(move |sender| {
-            // For Kimi K2 provider, implement actual Candle inference
-            if provider == "kimi-k2" {
-                // Build the full prompt with system prompt if provided
-                let full_prompt = if let Some(sys) = system_prompt {
-                    format!("{}\n\nUser: {}\nAssistant: ", sys, prompt)
-                } else {
-                    format!("User: {}\nAssistant: ", prompt)
-                };
-                
-                // Create SamplingConfig from request parameters
-                let config = SamplingConfig {
-                    temperature: temperature.unwrap_or(0.7),  // f32 is correct for SamplingConfig
-                    top_k: 50,  // Default top_k
-                    top_p: 0.9,  // Default top_p
-                    repetition_penalty: 1.0,
-                    length_penalty: 1.0,
-                    frequency_penalty: 0.0,
-                    presence_penalty: 0.0,
-                    min_prob_threshold: 1e-8,
-                    seed: Some(request_id),  // Use request_id as seed
-                    deterministic: false,
-                    enable_simd: true,
-                    simd_threshold: 16,
-                };
-                
-                // Use real inference engine - providers must supply ModelConfig
-                // For now, create a basic ModelConfig for kimi-k2 until providers are updated
-                let llama_config = candle_transformers::models::llama::Config {
-                    vocab_size: 32000,
-                    hidden_size: 4096,
-                    intermediate_size: 11008,
-                    num_hidden_layers: 32,
-                    num_attention_heads: 32,
-                    num_key_value_heads: 32,
-                    use_flash_attn: false,
-                    rms_norm_eps: 1e-6,
-                    rope_theta: 10000.0,
-                    bos_token_id: Some(1),
-                    eos_token_id: Some(candle_transformers::models::llama::LlamaEosToks::Single(2)),
-                    rope_scaling: None,
-                    max_position_embeddings: 2048,
-                    tie_word_embeddings: false,
-                };
-                
-                let model_config = ModelConfig::new(
-                    format!("{}/model.safetensors", model_name), // Temporary path construction
-                    format!("{}/tokenizer.json", model_name),    // Temporary path construction  
-                    ModelArchitecture::Llama(llama_config),
-                    "kimi-k2".to_string(),
-                    "kimi-k2".to_string()
-                );
-                
-                // Execute real model inference using TextGenerator - now returns AsyncStream
-                let mut inference_stream = Self::execute_model_inference(
-                    model_config,
-                    full_prompt,
-                    max_tokens.unwrap_or(1000),
-                    config,
-                );
-                
-                // Forward all responses from inference stream to sender
-                while let Some(response) = inference_stream.try_next() {
-                    if sender.send(response).is_err() {
-                        break; // Client disconnected
-                    }
-                }
             } else {
                 // For other providers, return a proper error response
                 let error_response = CompletionResponse {
@@ -919,42 +561,5 @@ impl EngineStats {
     }
 }
 
-/// SIMD-optimized token sampling pipeline
-/// 
-/// Replaces Candle's LogitsProcessor with direct SIMD operations for maximum performance
-#[inline(always)]
-fn sample_with_simd(
-    logits: &Tensor,
-    sampling_config: &SamplingConfig,
-    prob_cache: &mut ArrayVec<TokenProb, 1024>,
-    is_deterministic: bool,
-) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-    // Convert tensor to LogitsBuffer (SmallVec)
-    let logits_vec = logits.to_vec1::<f32>()
-        .map_err(|e| format!("Failed to extract logits: {}", e))?;
-    
-    let mut logits_buffer: LogitsBuffer = logits_vec.into();
-    
-    // Apply temperature scaling for non-deterministic sampling
-    if !is_deterministic {
-        simd_temperature_scale(&mut logits_buffer, sampling_config.temperature)
-            .map_err(|e| format!("Temperature scaling failed: {}", e))?;
-    }
-    
-    // Apply SIMD softmax to compute probabilities
-    let probabilities = simd_softmax_with_cache(&logits_buffer, prob_cache)
-        .map_err(|e| format!("Softmax computation failed: {}", e))?;
-    
-    // Select token using SIMD argmax (deterministic) or sampling
-    if is_deterministic {
-        simd_argmax_with_bounds(&probabilities, prob_cache)
-            .map_err(|e| format!("Argmax selection failed: {}", e).into())
-    } else {
-        // For non-deterministic sampling, use argmax as fallback
-        // TODO: Implement proper sampling in a future task
-        simd_argmax_with_bounds(&probabilities, prob_cache)
-            .map_err(|e| format!("Sampling selection failed: {}", e).into())
-    }
-}
 
 // Engine is automatically Send + Sync due to atomic operations - no unsafe impl needed

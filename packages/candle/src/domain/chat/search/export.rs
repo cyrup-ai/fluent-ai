@@ -13,6 +13,7 @@ pub struct SearchExporter {
 }
 
 /// History exporter for chat conversation history (domain version)
+#[derive(Debug)]
 pub struct HistoryExporter {
     /// Default export options
     default_options: ExportOptions,

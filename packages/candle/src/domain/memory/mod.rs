@@ -35,8 +35,7 @@ mod pool;
 /// Memory serialization utilities
 mod serialization;
 
-/// Memory workflow management
-mod workflow;
+/// Memory workflow management - removed fake implementation
 
 /// Memory trait definitions for trait-backed architecture
 pub mod traits;

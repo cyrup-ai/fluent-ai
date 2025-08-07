@@ -27,6 +27,32 @@ mod config_tests {
         // Test passes if configuration methods can be chained without panicking
         assert!(true, "HTTP3 builder configuration should be chainable and functional");
     }
+
+    #[test]
+    fn test_content_type_configuration() {
+        // Test ContentType enum functionality and integration with Http3 builder
+        let _json_builder = Http3::json()
+            .accept(ContentType::ApplicationJson);
+            
+        let _form_builder = Http3::form_urlencoded()
+            .accept(ContentType::TextPlain);
+            
+        // Test using the generic builder start  
+        let client = fluent_ai_http3::HttpClient::default();
+        let _text_builder = fluent_ai_http3::Http3Builder::new(&client)
+            .content_type(ContentType::TextHtml)
+            .accept(ContentType::ApplicationOctetStream);
+        
+        // Test ContentType as_str() method
+        assert_eq!(ContentType::ApplicationJson.as_str(), "application/json");
+        assert_eq!(ContentType::ApplicationFormUrlEncoded.as_str(), "application/x-www-form-urlencoded");
+        assert_eq!(ContentType::TextPlain.as_str(), "text/plain");
+        assert_eq!(ContentType::TextHtml.as_str(), "text/html");
+        assert_eq!(ContentType::ApplicationOctetStream.as_str(), "application/octet-stream");
+        
+        // Test that builders can be created with different content types
+        println!("ContentType configuration tests passed - builders created successfully");
+    }
 }
 
 // Config-specific test modules will be organized here:

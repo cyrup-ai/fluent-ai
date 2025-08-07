@@ -89,7 +89,7 @@ pub fn validate_message_sync(message: &CandleMessage) -> Result<(), String> {
 mod tests {
     use super::super::types::{CandleMessage, CandleMessageRole};
     use super::*;
-    use fluent_ai_async::AsyncStream;
+
 
     #[tokio::test]
     async fn test_process_message() {
@@ -100,7 +100,7 @@ mod tests {
             timestamp: None
         };
 
-        let processed: Vec<_> = process_message(message).collect().await;
+        let processed: Vec<_> = process_message(message).collect();
         assert_eq!(processed.len(), 1);
         assert_eq!(processed[0].content, "Hello, world!");
     }
@@ -122,11 +122,11 @@ mod tests {
         };
 
         let mut valid_stream = validate_message(valid_message);
-        let valid_result = valid_stream.next().await.unwrap();
+        let valid_result = valid_stream.next().unwrap();
         assert_eq!(valid_result.content, "Hello, world!");
         
         let mut empty_stream = validate_message(empty_message);
-        let empty_result = empty_stream.next().await.unwrap();
+        let empty_result = empty_stream.next().unwrap();
         assert_eq!(empty_result.content, "   "); // Validation is now handled by on_chunk handler
     }
 

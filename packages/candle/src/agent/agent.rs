@@ -13,7 +13,7 @@ use crate::{
     runtime::{AsyncStream, AsyncTask},
     vector_store::VectorStoreIndexDyn};
 use crate::domain::chat::message::types::{CandleMessageRole as MessageRole, CandleMessageChunk as MessageChunk, CandleConversationTrait as AgentConversation, CandleZeroOneOrMany as ZeroOneOrMany};
-use crate::chat::ChatLoop;
+use crate::domain::chat::CandleChatLoop;
 
 // ============================================================================
 // Configuration constants
@@ -250,10 +250,10 @@ where
         }
     }
 
-    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| ChatLoop) - zero allocation  
+    /// Closure-based chat loop - EXACT syntax: .chat(|conversation| CandleChatLoop) - zero allocation  
     pub fn chat_with_closure<F>(&self, closure: F) -> Result<(), String>
     where
-        F: FnOnce(&AgentConversation) -> ChatLoop,
+        F: FnOnce(&AgentConversation) -> CandleChatLoop,
     {
         // Create conversation from current history
         let conversation = AgentConversation {
@@ -263,17 +263,17 @@ where
             }
         };
         
-        // Execute closure to get ChatLoop decision
+        // Execute closure to get CandleChatLoop decision
         let chat_result = closure(&conversation);
         
         match chat_result {
-            ChatLoop::Break => Ok(()),
-            ChatLoop::Reprompt(response) => {
+            CandleChatLoop::Break => Ok(()),
+            CandleChatLoop::Reprompt(response) => {
                 // Process reprompt - this would integrate with the chat system
                 println!("Reprompt: {}", response);
                 Ok(())
             }
-            ChatLoop::UserPrompt(prompt) => {
+            CandleChatLoop::UserPrompt(prompt) => {
                 // Handle user prompt request
                 if let Some(prompt_text) = prompt {
                     println!("User prompt: {}", prompt_text);

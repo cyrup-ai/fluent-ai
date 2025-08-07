@@ -36,8 +36,7 @@ pub mod prompt;
 pub mod tool;
 pub mod util;
 pub mod voice;
-/// Agent workflow and execution patterns
-pub mod workflow;
+/// Agent workflow and execution patterns - removed fake implementation
 
 // Re-export HashMap from hashbrown for domain consistency
 pub use hashbrown::HashMap;

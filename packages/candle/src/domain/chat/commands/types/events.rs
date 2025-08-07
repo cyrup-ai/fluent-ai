@@ -12,7 +12,7 @@ use super::commands::{ImmutableChatCommand, CommandExecutionResult, OutputType};
 use super::metadata::ResourceUsage;
 
 /// Command execution context with owned strings allocated once for performance
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct CommandExecutionContext {
     /// Unique identifier for this execution
     pub execution_id: u64,
@@ -34,6 +34,10 @@ pub struct CommandExecutionContext {
     pub timeout_ms: u64,
     /// Execution metadata
     pub metadata: Option<serde_json::Value>,
+    /// Atomic execution counter for sequence numbering
+    execution_counter: AtomicU64,
+    /// Atomic event counter for event sequence numbering
+    event_counter: AtomicUsize,
 }
 
 impl CommandExecutionContext {
@@ -60,6 +64,8 @@ impl CommandExecutionContext {
             priority: 128, // Default medium priority
             timeout_ms: 30_000, // Default 30 second timeout
             metadata: None,
+            execution_counter: AtomicU64::new(0),
+            event_counter: AtomicUsize::new(0),
         }
     }
     
@@ -120,6 +126,24 @@ impl CommandExecutionContext {
         let timeout_us = self.timeout_ms * 1000;
         let elapsed = self.elapsed_time_us();
         timeout_us.saturating_sub(elapsed)
+    }
+
+    /// Get next execution sequence number (atomic operation)
+    #[inline]
+    pub fn next_execution_id(&self) -> u64 {
+        self.execution_counter.fetch_add(1, Ordering::SeqCst)
+    }
+
+    /// Get next event sequence number (atomic operation)
+    #[inline]
+    pub fn next_event_id(&self) -> usize {
+        self.event_counter.fetch_add(1, Ordering::SeqCst)
+    }
+
+    /// Get elapsed time in microseconds (alias for elapsed_time_us for compatibility)
+    #[inline]
+    pub fn elapsed_time(&self) -> u64 {
+        self.elapsed_time_us()
     }
 }
 

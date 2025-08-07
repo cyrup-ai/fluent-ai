@@ -603,3 +603,66 @@ Act as an Objective QA Rust developer and rate the work performed previously on 
     - **Solution**: Implement usage or remove if not needed
     - **Technical Notes**: JSONPath filter system may be incomplete
 
+
+## 🎯 GGUF METADATA EXTRACTION - PRODUCTION IMPLEMENTATION
+
+### STATUS: APPROVED - Extract Real Model Configuration from GGUF Files
+
+**Replace hardcoded configuration values with real metadata from downloaded GGUF files**
+
+### **PRIORITY 1: GGUF File Discovery and Loading (2 TASKS)**
+
+#### 123. Implement GGUF File Discovery in ProgressHub Results
+**File**: `src/providers/kimi_k2.rs`  
+**Lines**: 147-152 (after ProgressHub download, before with_config_sync call)  
+**Architecture**: Scan ProgressHub model.files for `.gguf` files, prioritize model weights over tokenizer files  
+**Implementation**: (1) Iterate through `model.files` vector from ProgressHub download results, (2) Filter files with `.gguf` extension using `file.filename.ends_with(".gguf")`, (3) Select the largest GGUF file (likely model weights, not tokenizer), (4) Return `file.path` as model file path for GGUF loading, (5) Handle case where no GGUF files found with descriptive error  
+**Constraints**: Zero allocation using `Iterator::filter()` and `Iterator::max_by_key()`. No unsafe code. Never use unwrap() or expect() in src/*. Use `Result<PathBuf, Box<dyn std::error::Error + Send + Sync>>` for error handling. Inline critical path with `#[inline(always)]`.
+
+#### 124. QA GGUF File Discovery Implementation  
+Act as an Objective Rust Expert and rate the quality of GGUF file discovery implementation on a scale of 1-10. Verify: (1) Zero allocation iterator chains used, (2) Proper error handling without unwrap/expect, (3) Largest GGUF file selection logic, (4) Inline annotations for performance, (5) Result type error propagation.
+
+### **PRIORITY 2: GGUF Metadata Reading and Parsing (3 TASKS)**
+
+#### 125. Replace Hardcoded KimiK2 Configuration with GGUF Metadata
+**File**: `src/providers/kimi_k2.rs`  
+**Lines**: 169-177 (LlamaConfig struct creation with hardcoded values)  
+**Architecture**: Use `candle::quantized::gguf_file::Content::read()` to extract real model configuration from GGUF metadata  
+**Implementation**: (1) Open GGUF file using `std::fs::File::open(&gguf_file_path)?`, (2) Read GGUF content with `gguf_file::Content::read(&mut file)?`, (3) Extract metadata values: `hidden_size = content.metadata.get("llama.embedding_length")?.to_u64()? as usize`, `intermediate_size = content.metadata.get("llama.feed_forward_length")?.to_u64()? as usize`, `num_hidden_layers = content.metadata.get("llama.block_count")?.to_u64()? as usize`, `num_attention_heads = content.metadata.get("llama.attention.head_count")?.to_u64()? as usize`, `num_key_value_heads = content.metadata.get("llama.attention.head_count_kv").map(|v| v.to_u64().ok()).flatten().map(|v| v as usize)`, `rope_theta = content.metadata.get("llama.rope.freq_base").map(|v| v.to_f64().unwrap_or(10000.0)).unwrap_or(10000.0)`, (4) Use extracted values in LlamaConfig creation, (5) Add error handling for missing metadata keys with fallback to sensible defaults  
+**Constraints**: Zero allocation metadata parsing. No unsafe code. Never use unwrap() or expect() in src/* (use Result propagation). Use `Arc::clone()` for shared metadata access. Memory-map file reading for large models. Error type: `Result<LlamaConfig, Box<dyn std::error::Error + Send + Sync>>`.
+
+#### 126. QA KimiK2 GGUF Metadata Extraction  
+Act as an Objective Rust Expert and rate the quality of KimiK2 GGUF metadata extraction on a scale of 1-10. Verify: (1) Proper GGUF Content::read() usage, (2) All hardcoded values replaced with metadata extraction, (3) Fallback defaults for missing metadata, (4) Zero allocation patterns maintained, (5) Error handling without unwrap/expect.
+
+#### 127. Replace Hardcoded Qwen3Coder Configuration with GGUF Metadata  
+**File**: `src/providers/qwen3_coder.rs`  
+**Lines**: 177-191 (LlamaConfig struct creation with hardcoded values)  
+**Architecture**: Same as KimiK2 but with Qwen3-specific metadata keys and values  
+**Implementation**: (1) Open GGUF file using `std::fs::File::open(&gguf_file_path)?`, (2) Read GGUF content with `gguf_file::Content::read(&mut file)?`, (3) Extract Qwen3-specific metadata: `hidden_size = content.metadata.get("qwen3.embedding_length").or(content.metadata.get("llama.embedding_length"))?.to_u64()? as usize`, `intermediate_size = content.metadata.get("qwen3.feed_forward_length").or(content.metadata.get("llama.feed_forward_length"))?.to_u64()? as usize`, `num_hidden_layers = content.metadata.get("qwen3.block_count").or(content.metadata.get("llama.block_count"))?.to_u64()? as usize`, `num_attention_heads = content.metadata.get("qwen3.attention.head_count").or(content.metadata.get("llama.attention.head_count"))?.to_u64()? as usize`, `rope_theta = content.metadata.get("qwen3.rope.freq_base").or(content.metadata.get("llama.rope.freq_base")).map(|v| v.to_f64().unwrap_or(1000000.0)).unwrap_or(1000000.0)` (Qwen3 uses higher rope_theta), (4) Handle both Qwen3-specific and fallback Llama metadata keys, (5) Use extracted values in LlamaConfig creation with Qwen3 defaults  
+**Constraints**: Same as KimiK2 task. Zero allocation, no unsafe, Result propagation, memory-mapped reading, inline performance critical paths.
+
+#### 128. QA Qwen3Coder GGUF Metadata Extraction  
+Act as an Objective Rust Expert and rate the quality of Qwen3Coder GGUF metadata extraction on a scale of 1-10. Verify: (1) Qwen3-specific metadata key handling, (2) Fallback to Llama keys when Qwen3 keys missing, (3) All hardcoded values replaced, (4) Proper rope_theta for Qwen3 models, (5) Zero allocation and error handling compliance.
+
+### **PRIORITY 3: Integration and Testing (2 TASKS)**
+
+#### 129. Update Both Providers GGUF File Discovery Integration  
+**File**: `src/providers/qwen3_coder.rs`  
+**Lines**: 156-161 (after ProgressHub download, before with_config_sync call)  
+**Architecture**: Same GGUF file discovery logic as KimiK2 but for Qwen3Coder provider  
+**Implementation**: Duplicate exact GGUF file discovery logic from task 123, ensuring both providers use identical file selection patterns. (1) Scan `model.files` from ProgressHub results, (2) Filter for `.gguf` extensions, (3) Select largest file, (4) Pass discovered GGUF file path to metadata extraction, (5) Maintain consistency between both providers  
+**Constraints**: Code reuse through shared helper function. Zero allocation. No unsafe. Result error propagation. DRY principle - extract common GGUF discovery logic to shared utility function.
+
+#### 130. QA Qwen3Coder GGUF File Discovery Integration  
+Act as an Objective Rust Expert and rate the quality of Qwen3Coder GGUF file discovery integration on a scale of 1-10. Verify: (1) Identical logic to KimiK2 provider, (2) DRY principle compliance with shared utility function, (3) Consistent error handling patterns, (4) Zero allocation iterator usage, (5) Result type consistency.
+
+### **PRIORITY 4: Validation and Documentation (2 TASKS)**
+
+#### 131. Comprehensive GGUF Extraction Testing  
+**File**: Integration testing across both providers  
+**Architecture**: Validate real model configuration extraction works end-to-end with actual GGUF files  
+**Implementation**: (1) Run `cargo check` to verify compilation with 0 errors/warnings, (2) Test both providers with ProgressHub model downloads, (3) Verify extracted metadata values are sensible (hidden_size > 0, layers > 0, etc.), (4) Compare extracted values against known model specifications from HuggingFace model cards, (5) Ensure fallback defaults work when metadata keys missing, (6) Validate memory usage and performance with large model files  
+**Constraints**: No mocking or simulation. Use actual model downloads. Performance profiling for memory usage. Zero allocation verification. Error handling validation with malformed GGUF files.
+
+#### 132. QA Comprehensive GGUF Extraction Testing  
+Act as an Objective Rust Expert and rate the quality of comprehensive GGUF extraction testing on a scale of 1-10. Verify: (1) Real model downloads tested, (2) Extracted values validated against specifications, (3) Memory usage profiled, (4) Error handling tested with edge cases, (5) Zero allocation patterns maintained throughout, (6) Performance benchmarks meet requirements.

@@ -1,0 +1,23 @@
+# RFC 9535 Compliance Implementation
+
+## STATUS: APPROVED FOR IMPLEMENTATION
+
+- [ ] **Fix filter parser to accept property chains in filter expressions** - File: `src/json_path/filter_parser.rs`, Lines: Property access parsing logic, Issue: Parser rejecting valid syntax `@.author.length`, Solution: Modify property chain parsing to allow multiple property access levels, Architecture: Ensure FilterExpression::Property supports nested property paths - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] **Act as an Objective QA Rust developer** - Validate that `$.store.book[?@.author.length]` compiles successfully, verify that the filter parser correctly handles nested property access, confirm no regression in existing filter functionality, test edge cases like `@.a.b.c.d` property chains.
+
+- [ ] **Fix null vs missing property semantics in filter evaluation** - File: `src/json_path/core_evaluator.rs`, Lines: Filter evaluation methods around line 250-300, Issue: Not correctly distinguishing null values from missing properties, Solution: Modify filter evaluation to treat `null` as a valid value distinct from missing, Architecture: Ensure FilterEvaluator properly handles JSON null values per RFC 9535 Section 2.6 - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] **Act as an Objective QA Rust developer** - Test that filters like `[?@.metadata != null]` return correct results, verify null values are treated as valid JSON values not missing properties, confirm RFC 9535 Section 2.6 null semantics are correctly implemented, test edge cases with explicit null comparisons.
+
+- [ ] **Fix recursive descent to include null values per RFC 9535** - File: `src/json_path/core_evaluator.rs`, Lines: Around line 300-350 in descendant segment evaluation methods, Issue: `$..* ` not returning correct count (should be 9 results including nulls), Solution: Modify recursive descent logic to include null values as valid results, Architecture: Ensure descendant segment evaluation follows RFC 9535 Section 2.5.2 exactly - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] **Act as an Objective QA Rust developer** - Test that `$..* ` returns exactly 9 results as expected, verify null values are included in recursive descent results, confirm descendant segment behavior matches RFC 9535 specification, test various recursive descent patterns with null values.
+
+- [ ] **Fix path normalization to meet RFC 9535 Section 2.7 standards** - File: `src/json_path/normalized_paths.rs`, Lines: Around line 100-200 in path normalization logic, Issue: Normalized paths not meeting RFC 9535 canonical form requirements, Solution: Implement RFC-compliant path normalization with proper bracket notation and escaping, Architecture: Ensure NormalizedPath generation follows RFC 9535 Section 2.7 exactly - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] **Act as an Objective QA Rust developer** - Test that normalized paths use bracket notation exclusively as per RFC, verify single quotes are used for member names in normalized form, confirm decimal integers for array indices with no leading zeros, test edge cases like special characters and escape sequences.
+
+- [ ] **Run complete RFC 9535 compliance test suite verification** - Command: `cargo test --test rfc9535_core_requirements_tests`, Expected result: "test result: ok. 13 passed; 0 failed; 0 ignored", Verify all 13 tests pass without any failures or timeouts, Architecture: Ensure complete end-to-end RFC 9535 compliance - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+- [ ] **Act as an Objective QA Rust developer** - Run all RFC compliance tests and confirm 100% pass rate, test additional edge cases beyond the test suite, verify no performance regressions in the crossbeam implementation, confirm the JSONPath implementation is fully RFC 9535 compliant.

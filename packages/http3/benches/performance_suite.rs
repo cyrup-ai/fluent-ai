@@ -147,8 +147,15 @@ fn large_dataset_benchmarks(c: &mut Criterion) {
             size_mb,
             |b, &size| {
                 b.iter(|| {
-                    // Test JSONPath compilation performance
-                    match JsonPathParser::compile("$.data[*].metadata.nested.level1.level2.value") {
+                    // Test JSONPath compilation performance with complexity based on size
+                    let complexity_expr = match size {
+                        1 => "$.data[*]",
+                        10 => "$.data[*].metadata.nested",
+                        50 => "$.data[*].metadata.nested.level1.level2.value",
+                        _ => "$.data[*].metadata.nested.level1.level2.value.extended.path.for.large.inputs"
+                    };
+                    
+                    match JsonPathParser::compile(complexity_expr) {
                         Ok(expression) => {
                             black_box(expression);
                         }
@@ -331,7 +338,7 @@ fn regression_testing_benchmarks(c: &mut Criterion) {
     group.bench_function("baseline_parsing_performance", |b| {
         b.iter(|| {
             let _expr = JsonPathParser::compile("$.data[*].id");
-            black_box(_expr);
+            let _ = black_box(_expr);
         });
     });
 

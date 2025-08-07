@@ -9,6 +9,12 @@
 use crate::json_path::error::{JsonPathResult, deserialization_error};
 use crate::json_path::functions::FunctionEvaluator;
 use crate::json_path::parser::{ComparisonOp, FilterExpression, FilterValue, LogicalOp};
+use std::cell::RefCell;
+
+// Shared thread-local storage for missing property context
+thread_local! {
+    static MISSING_PROPERTY_CONTEXT: RefCell<Option<(String, bool)>> = RefCell::new(None);
+}
 
 /// Filter Expression Evaluator
 pub struct FilterEvaluator;
@@ -19,6 +25,18 @@ impl FilterEvaluator {
     pub fn evaluate_predicate(
         context: &serde_json::Value,
         expr: &FilterExpression,
+    ) -> JsonPathResult<bool> {
+        // Use empty context for backward compatibility
+        let empty_context = std::collections::HashSet::new();
+        Self::evaluate_predicate_with_context(context, expr, &empty_context)
+    }
+    
+    /// Evaluate filter predicate with property existence context
+    #[inline]
+    pub fn evaluate_predicate_with_context(
+        context: &serde_json::Value,
+        expr: &FilterExpression,
+        existing_properties: &std::collections::HashSet<String>,
     ) -> JsonPathResult<bool> {
         println!("DEBUG: evaluate_predicate called with context={:?}, expr={:?}", 
                  serde_json::to_string(context).unwrap_or("invalid".to_string()), expr);
@@ -34,17 +52,17 @@ impl FilterEvaluator {
                 operator,
                 right,
             } => {
-                let left_val = Self::evaluate_expression(context, left)?;
-                let right_val = Self::evaluate_expression(context, right)?;
-                Self::compare_values(&left_val, *operator, &right_val)
+                let left_val = Self::evaluate_expression_with_context(context, left, existing_properties)?;
+                let right_val = Self::evaluate_expression_with_context(context, right, existing_properties)?;
+                Self::compare_values_with_context(&left_val, *operator, &right_val, existing_properties)
             }
             FilterExpression::Logical {
                 left,
                 operator,
                 right,
             } => {
-                let left_result = Self::evaluate_predicate(context, left)?;
-                let right_result = Self::evaluate_predicate(context, right)?;
+                let left_result = Self::evaluate_predicate_with_context(context, left, existing_properties)?;
+                let right_result = Self::evaluate_predicate_with_context(context, right, existing_properties)?;
                 Ok(match operator {
                     LogicalOp::And => left_result && right_result,
                     LogicalOp::Or => left_result || right_result,
@@ -55,11 +73,11 @@ impl FilterEvaluator {
                     context,
                     name,
                     args,
-                    &Self::evaluate_expression,
+                    &|ctx, expr| Self::evaluate_expression_with_context(ctx, expr, existing_properties),
                 )?;
                 Ok(Self::is_truthy(&value))
             }
-            _ => Ok(Self::is_truthy(&Self::evaluate_expression(context, expr)?)),
+            _ => Ok(Self::is_truthy(&Self::evaluate_expression_with_context(context, expr, existing_properties)?)),
         }
     }
 
@@ -99,20 +117,32 @@ impl FilterEvaluator {
 
 
 
-    /// Resolve property path from context object
+
+    
+    /// Resolve property path with context about which properties exist
     #[inline]
-    fn resolve_property_path(
+    fn resolve_property_path_with_context(
         context: &serde_json::Value,
         path: &[String],
+        existing_properties: &std::collections::HashSet<String>,
     ) -> JsonPathResult<FilterValue> {
         let mut current = context;
 
-        for property in path {
+        for (i, property) in path.iter().enumerate() {
             if let Some(obj) = current.as_object() {
                 if let Some(value) = obj.get(property) {
                     current = value;
                 } else {
                     // RFC 9535: Missing properties are distinct from null values
+                    // For top-level properties, we need to consider context
+                    if i == 0 && !path.is_empty() {
+                        let exists_in_context = existing_properties.contains(property);
+                        println!("DEBUG: Property '{}' is missing, exists_in_context={}", property, exists_in_context);
+                        // Store property name for context-aware comparison
+                        MISSING_PROPERTY_CONTEXT.with(|ctx| {
+                            *ctx.borrow_mut() = Some((property.clone(), exists_in_context));
+                        });
+                    }
                     return Ok(FilterValue::Missing);
                 }
             } else {
@@ -152,9 +182,20 @@ impl FilterEvaluator {
         context: &serde_json::Value,
         expr: &FilterExpression,
     ) -> JsonPathResult<FilterValue> {
+        let empty_context = std::collections::HashSet::new();
+        Self::evaluate_expression_with_context(context, expr, &empty_context)
+    }
+    
+    /// Evaluate expression with property context
+    #[inline]
+    pub fn evaluate_expression_with_context(
+        context: &serde_json::Value,
+        expr: &FilterExpression,
+        existing_properties: &std::collections::HashSet<String>,
+    ) -> JsonPathResult<FilterValue> {
         match expr {
             FilterExpression::Current => Ok(Self::json_value_to_filter_value(context)),
-            FilterExpression::Property { path } => Self::resolve_property_path(context, path),
+            FilterExpression::Property { path } => Self::resolve_property_path_with_context(context, path, existing_properties),
             FilterExpression::JsonPath { selectors } => {
                 Self::evaluate_jsonpath_selectors(context, selectors)
             }
@@ -164,7 +205,7 @@ impl FilterEvaluator {
                     context,
                     name,
                     args,
-                    &Self::evaluate_expression,
+                    &|ctx, expr| Self::evaluate_expression_with_context(ctx, expr, existing_properties),
                 )
             }
             _ => Err(deserialization_error(
@@ -181,6 +222,18 @@ impl FilterEvaluator {
         left: &FilterValue,
         op: ComparisonOp,
         right: &FilterValue,
+    ) -> JsonPathResult<bool> {
+        let empty_context = std::collections::HashSet::new();
+        Self::compare_values_with_context(left, op, right, &empty_context)
+    }
+    
+    /// Compare two filter values with property existence context
+    #[inline]
+    fn compare_values_with_context(
+        left: &FilterValue,
+        op: ComparisonOp,
+        right: &FilterValue,
+        _existing_properties: &std::collections::HashSet<String>,
     ) -> JsonPathResult<bool> {
         match (left, right) {
             (FilterValue::Integer(a), FilterValue::Integer(b)) => Ok(match op {
@@ -215,7 +268,45 @@ impl FilterEvaluator {
                 ComparisonOp::NotEqual => a != b,
                 _ => false,
             }),
-            // RFC 9535: Missing properties do not participate in comparisons - always evaluate to false
+            // RFC 9535: Missing properties context-aware comparison
+            (FilterValue::Missing, FilterValue::Null) => {
+                MISSING_PROPERTY_CONTEXT.with(|ctx| {
+                    let context_info = ctx.borrow().clone();
+                    println!("DEBUG: Missing vs Null comparison, context={:?}, op={:?}", context_info, op);
+                    if let Some((property_name, exists_in_context)) = context_info {
+                        // Clear the context after use
+                        *ctx.borrow_mut() = None;
+                        let result = match op {
+                            ComparisonOp::Equal => false, // missing is never equal to null
+                            ComparisonOp::NotEqual => exists_in_context, // missing != null only if property exists somewhere
+                            _ => false,
+                        };
+                        println!("DEBUG: Context-aware result for property '{}': exists_in_context={}, result={}", property_name, exists_in_context, result);
+                        Ok(result)
+                    } else {
+                        // Fallback: missing properties don't participate in comparisons
+                        println!("DEBUG: No context available, returning false");
+                        Ok(false)
+                    }
+                })
+            },
+            (FilterValue::Null, FilterValue::Missing) => {
+                MISSING_PROPERTY_CONTEXT.with(|ctx| {
+                    if let Some((_, exists_in_context)) = ctx.borrow().clone() {
+                        // Clear the context after use
+                        *ctx.borrow_mut() = None;
+                        Ok(match op {
+                            ComparisonOp::Equal => false, // null is never equal to missing
+                            ComparisonOp::NotEqual => exists_in_context, // null != missing only if property exists somewhere
+                            _ => false,
+                        })
+                    } else {
+                        // Fallback: missing properties don't participate in comparisons
+                        Ok(false)
+                    }
+                })
+            },
+            // Other missing property comparisons always false
             (FilterValue::Missing, _) => Ok(false),
             (_, FilterValue::Missing) => Ok(false),
             // RFC 9535: Null value comparisons

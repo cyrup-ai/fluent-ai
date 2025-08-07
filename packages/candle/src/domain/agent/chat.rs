@@ -67,7 +67,7 @@ pub struct MemoryEnhancedChatResponse {
     pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>}
 
 impl CandleAgentRoleImpl {
-    /// Generate real AI response using Engine with TextGenerator
+    /// Generate real AI response using `Engine` with `TextGenerator`
     ///
     /// # Arguments
     /// * `message` - User message to respond to
@@ -77,7 +77,7 @@ impl CandleAgentRoleImpl {
     /// Result containing real AI-generated response
     ///
     /// # Performance
-    /// Uses Engine infrastructure with TextGenerator for real model inference
+    /// Uses `Engine` infrastructure with `TextGenerator` for real model inference
     fn generate_ai_response(&self, message: &str, context: &str) -> Result<String, ChatError> {
         // Create engine configuration for kimi-k2 provider (matches working engine.rs setup)
         let engine_config = EngineConfig::new("kimi-k2", "kimi-k2")

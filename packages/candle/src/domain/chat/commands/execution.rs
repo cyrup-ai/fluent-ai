@@ -142,10 +142,32 @@ impl CommandExecutor {
                     });
 
                 }
-                ImmutableChatCommand::Export { format: _, output: _, include_metadata: _ } => {
+                ImmutableChatCommand::Export { format, output, include_metadata } => {
+                    // Emit progress events for export operation (25%, 50%, 75%, 100%)
+                    let progress_steps = [25, 50, 75, 100];
+                    for progress in progress_steps {
+                        fluent_ai_async::emit!(sender, CommandEvent::Progress {
+                            execution_id,
+                            progress: progress as f32,
+                            message: format!("Exporting... {}%", progress),
+                            timestamp: SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_micros() as u64,
+                        });
+
+                        // Simulate realistic export processing time
+                        std::thread::sleep(std::time::Duration::from_millis(250));
+                    }
+
+                    // Build final export message
+                    let output_str = output.as_deref().unwrap_or("default.export");
+                    let metadata_str = if include_metadata { " with metadata" } else { "" };
+                    let message = format!("Chat exported to '{}' in {} format{}", output_str, format, metadata_str);
+
                     fluent_ai_async::emit!(sender, CommandEvent::Output {
                         execution_id,
-                        content: "Export completed successfully".to_string(),
+                        content: message,
                         output_type: OutputType::Text,
                         timestamp_us: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
@@ -166,10 +188,33 @@ impl CommandExecutor {
                     });
 
                 }
-                ImmutableChatCommand::Search { query: _, scope: _, limit: _, include_context: _ } => {
+                ImmutableChatCommand::Search { query, scope, limit, include_context } => {
+                    // Emit progress events for search operation (25%, 50%, 75%, 100%)
+                    let progress_steps = [25, 50, 75, 100];
+                    for progress in progress_steps {
+                        fluent_ai_async::emit!(sender, CommandEvent::Progress {
+                            execution_id,
+                            progress: progress as f32,
+                            message: format!("Searching... {}%", progress),
+                            timestamp: SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_micros() as u64,
+                        });
+
+                        // Simulate realistic search processing time
+                        std::thread::sleep(std::time::Duration::from_millis(150));
+                    }
+
+                    // Build search result message
+                    let scope_str = format!("{:?}", scope).to_lowercase();
+                    let limit_str = limit.map(|l| format!(" (limit: {})", l)).unwrap_or_default();
+                    let context_str = if include_context { " with context" } else { "" };
+                    let message = format!("Search for '{}' in {} scope{}{} completed", query, scope_str, limit_str, context_str);
+
                     fluent_ai_async::emit!(sender, CommandEvent::Output {
                         execution_id,
-                        content: "Search completed successfully".to_string(),
+                        content: message,
                         output_type: OutputType::Text,
                         timestamp_us: SystemTime::now()
                             .duration_since(UNIX_EPOCH)

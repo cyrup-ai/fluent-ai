@@ -97,7 +97,7 @@ impl AgentRoleImpl {
                 let full_prompt = if context_injection.injected_context.is_empty() {
                     message.clone()
                 } else {
-                    format!("Context: {}\n\nUser: {}", context_injection.injected_context, message)
+                    format!("Context: {}\n\nUser: {message}", context_injection.injected_context)
                 };
                 
                 // Use the core engine for completion

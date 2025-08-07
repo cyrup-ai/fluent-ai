@@ -51,4 +51,5 @@ chrono = { version = "0.4.41", features = ["serde"] }
 dashmap = "6.1"
 once_cell = "1.21.3"
 http = "1.3.1"
+sha2 = "0.10.9"
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }

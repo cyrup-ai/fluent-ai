@@ -68,7 +68,7 @@ pub trait CandleAgentRole: Send + Sync + fmt::Debug + Clone {
     fn new(name: impl Into<String>) -> Self;
 }
 
-/// Default implementation of the CandleAgentRole trait
+/// Default implementation of the `CandleAgentRole` trait
 pub struct CandleAgentRoleImpl {
     name: String,
     #[allow(dead_code)] // TODO: Use for completion provider integration (OpenAI, Anthropic, etc.)
@@ -76,7 +76,7 @@ pub struct CandleAgentRoleImpl {
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     system_prompt: Option<String>,
-    /// OpenAI API key for completions (reads from OPENAI_API_KEY environment variable if not set)
+    /// `OpenAI` API key for completions (reads from `OPENAI_API_KEY` environment variable if not set)
     api_key: Option<String>,
     #[allow(dead_code)] // TODO: Use for document context loading and management
     contexts: Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>,
@@ -197,7 +197,7 @@ impl CandleAgentRoleImpl {
         self
     }
 
-    /// Set the API key for OpenAI completions
+    /// Set the API key for `OpenAI` completions
     /// Zero allocation with direct field assignment
     #[inline]
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {

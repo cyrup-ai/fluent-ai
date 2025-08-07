@@ -1,47 +1,80 @@
-use fluent_ai_http3::json_path::core_evaluator::CoreJsonPathEvaluator;
-use serde_json::json;
+//! Debug test to understand the filter evaluation issue
+
+use serde_json::{Value, json};
 
 fn main() {
-    println!("=== DEBUGGING FILTER EVALUATION ===");
-    
-    let json = json!({
-        "store": {
-            "book": [
-                {"author": "Author 1"},
-                {"author": "Author 2"}
-            ]
-        }
+    let json_data = json!({
+      "store": {
+        "book": [
+          {
+            "category": "reference",
+            "author": "Nigel Rees",
+            "title": "Sayings of the Century", 
+            "price": 8.95,
+            "isbn": "0-553-21311-3",
+            "metadata": null,
+            "tags": ["classic", "quotes"]
+          },
+          {
+            "category": "fiction",
+            "author": "Evelyn Waugh",
+            "title": "Sword of Honour",
+            "price": 12.99,
+            "availability": null,
+            "tags": ["fiction", "war"]
+          },
+          {
+            "category": "fiction",
+            "author": "Herman Melville",
+            "title": "Moby Dick",
+            "price": 8.99,
+            "tags": null
+          }
+        ]
+      }
     });
     
-    println!("JSON: {}", serde_json::to_string_pretty(&json).unwrap());
-    println!();
-    
-    // Test the failing pattern
-    let expression = "$..[?@.author]";
-    println!("Testing: {}", expression);
-    println!("Expected: 2 results (the two book objects with author property)");
-    println!("Current problem: Getting 3 results including store object");
-    println!();
-    
-    match CoreJsonPathEvaluator::new(expression) {
-        Ok(evaluator) => {
-            match evaluator.evaluate(&json) {
-                Ok(results) => {
-                    println!("Results count: {}", results.len());
-                    for (i, result) in results.iter().enumerate() {
-                        println!("  [{}]: {}", i, result);
+    if let Some(books) = json_data.pointer("/store/book").and_then(|v| v.as_array()) {
+        for (i, book) in books.iter().enumerate() {
+            println!("Book {}: {}", i, serde_json::to_string_pretty(book).unwrap());
+            
+            // Check metadata field
+            let has_metadata_key = book.as_object().unwrap().contains_key("metadata");
+            let metadata_value = book.get("metadata");
+            
+            println!("  Has metadata key: {}", has_metadata_key);
+            println!("  Metadata value: {:?}", metadata_value);
+            
+            // Check what happens with comparison logic
+            if has_metadata_key {
+                if let Some(meta) = metadata_value {
+                    if meta.is_null() {
+                        println!("  metadata is explicitly null");
+                        println!("  null != null = {}", false);
+                    } else {
+                        println!("  metadata is not null: {:?}", meta);
+                        println!("  value != null = {}", true);
                     }
-                    println!();
-                    
-                    if results.len() == 3 {
-                        println!("❌ BUG CONFIRMED: Store object without author property is matching [?@.author] filter");
-                        println!("Store object: {}", results[0]);
-                        println!("This should NOT match because it has no 'author' property");
-                    }
+                } else {
+                    println!("  ERROR: has key but no value");
                 }
-                Err(e) => println!("❌ Evaluation error: {}", e),
+            } else {
+                println!("  metadata is missing (no key)");
+                println!("  missing != null = should be false per RFC (current impl) or true (test expects?)");
             }
+            println!();
         }
-        Err(e) => println!("❌ Parser error: {}", e),
     }
+
+    // Now let's test what the expected behavior should be according to the test
+    println!("ANALYSIS:");
+    println!("Test expects $.store.book[?@.metadata != null] to return 2 results");
+    println!("Looking at the books:");
+    println!("- Book 0: metadata = null, so null != null = false (no match)");
+    println!("- Book 1: metadata missing, so missing != null = ??? (test expects match)");
+    println!("- Book 2: metadata missing, so missing != null = ??? (test expects match)");
+    println!();
+    println!("Conclusion: Test expects missing properties in != null comparison to be true");
+    println!("This contradicts the other test that expects missing != null to be false");
+    println!("Maybe there's a different interpretation...");
 }

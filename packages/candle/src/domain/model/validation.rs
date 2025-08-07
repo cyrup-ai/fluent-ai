@@ -43,7 +43,20 @@ pub enum ValidationError {
     InvalidCapability { description: String },
 
     /// Configuration safety error
-    UnsafeConfiguration { description: String }}
+    UnsafeConfiguration { description: String },
+
+    /// Tool call ID too long
+    ToolCallIdTooLong(usize),
+
+    /// Function name too long  
+    FunctionNameTooLong(usize),
+
+    /// Message name too long
+    NameTooLong(usize),
+
+    /// Too many tools in message
+    TooManyTools,
+}
 
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -82,6 +95,18 @@ impl std::fmt::Display for ValidationError {
             }
             ValidationError::UnsafeConfiguration { description } => {
                 write!(f, "Unsafe configuration: {}", description)
+            }
+            ValidationError::ToolCallIdTooLong(len) => {
+                write!(f, "Tool call ID too long: {} characters", len)
+            }
+            ValidationError::FunctionNameTooLong(len) => {
+                write!(f, "Function name too long: {} characters", len)
+            }
+            ValidationError::NameTooLong(len) => {
+                write!(f, "Name too long: {} characters", len)
+            }
+            ValidationError::TooManyTools => {
+                write!(f, "Too many tools in message")
             }
         }
     }
@@ -129,7 +154,8 @@ pub struct ValidationReport {
     readiness_score: f32,
 
     /// Whether the model is production-ready
-    is_production_ready: bool}
+    is_production_ready: bool,
+}
 
 impl ValidationReport {
     /// Create a new empty validation report
@@ -137,7 +163,8 @@ impl ValidationReport {
         Self {
             issues: Vec::new(),
             readiness_score: 1.0,
-            is_production_ready: true}
+            is_production_ready: true,
+        }
     }
 
     /// Add a validation issue to the report

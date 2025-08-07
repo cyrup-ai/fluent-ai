@@ -64,11 +64,11 @@ impl<'a> CompletionResponseBuilder<'a> {
         self
     }
 
-    /// Set the number of tokens generated (completion tokens)
+    /// Set the number of tokens generated (output tokens)
     pub fn tokens_generated(mut self, tokens: u32) -> Self {
         let usage = self.inner.usage.get_or_insert_with(Usage::zero);
-        usage.completion_tokens = tokens;
-        usage.total_tokens = usage.prompt_tokens + tokens;
+        usage.output_tokens = tokens;
+        usage.total_tokens = usage.input_tokens + tokens;
         self
     }
 

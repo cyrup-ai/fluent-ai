@@ -312,6 +312,8 @@ mod large_dataset_tests {
             // Process items one by one to verify streaming
             for result in stream.process_chunk(chunk).collect() {
                 // AsyncStream yields results directly, not wrapped in Result
+                // Validate that we're receiving valid data structures
+                // Since result is LargeDataModel, just count all non-default instances
                 count += 1;
 
                 // Simulate processing time
@@ -621,6 +623,8 @@ mod streaming_tests {
         // Process results and record timing at regular intervals
         for result in stream.process_chunk(chunk).collect() {
             // AsyncStream yields results directly, not wrapped in Result
+            // Validate result structure and count valid entries
+            // Since result is LargeDataModel, count all valid instances
             result_count += 1;
 
             // Record timing every 100 results

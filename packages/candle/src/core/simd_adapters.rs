@@ -56,7 +56,6 @@ pub fn simd_softmax_with_cache(
     for (token_id, &prob) in probabilities.iter().enumerate() {
         if prob_cache.try_push(TokenProb::new(
             token_id as u32,
-            prob.ln(), // Store log probability
             prob,
         )).is_err() {
             // Cache full, use what we have

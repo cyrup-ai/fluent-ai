@@ -78,6 +78,15 @@ pub struct CandleModelInfo {
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "type")]
     pub model_type: Option<String>,
 
+    /// Short CLI identifier for model selection (e.g., "kimi-k2", "qwen-coder")
+    pub model_id: &'static str,
+
+    /// HuggingFace repository URL for automatic model downloads
+    pub hf_repo_url: &'static str,
+
+    /// Model quantization format (e.g., "Q4_0", "Q5_0", "F16")
+    pub quantization: &'static str,
+
     /// Patch configuration for API requests
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub patch: Option<serde_json::Value>}
@@ -142,6 +151,24 @@ impl CandleModelInfo {
     #[inline]
     pub fn thinking_budget(&self) -> Option<u32> {
         self.optimal_thinking_budget
+    }
+
+    /// Get the model's short CLI identifier
+    #[inline]
+    pub fn model_id(&self) -> &'static str {
+        self.model_id
+    }
+
+    /// Get the HuggingFace repository URL for automatic downloads
+    #[inline]
+    pub fn hf_repo_url(&self) -> &'static str {
+        self.hf_repo_url
+    }
+
+    /// Get the model's quantization format
+    #[inline]
+    pub fn quantization(&self) -> &'static str {
+        self.quantization
     }
 
     /// Get the price for a given number of input tokens

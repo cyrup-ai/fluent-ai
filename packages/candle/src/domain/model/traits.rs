@@ -62,6 +62,24 @@ pub trait CandleModel: Send + Sync + std::fmt::Debug + 'static {
     fn requires_max_tokens(&self) -> bool {
         self.info().requires_max_tokens()
     }
+
+    /// Get the model's short CLI identifier (e.g., "kimi-k2", "qwen-coder")
+    #[inline]
+    fn model_id(&self) -> &'static str {
+        self.info().model_id()
+    }
+
+    /// Get the HuggingFace repository URL for automatic model downloads
+    #[inline]
+    fn hf_repo_url(&self) -> &'static str {
+        self.info().hf_repo_url()
+    }
+
+    /// Get the model's quantization format (e.g., "Q4_0", "Q5_0", "F16")
+    #[inline]
+    fn quantization(&self) -> &'static str {
+        self.info().quantization()
+    }
 }
 
 /// A message in a chat conversation

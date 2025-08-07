@@ -1626,8 +1626,8 @@ mod tests {
         assert_eq!(response.id.as_str(), "test-id");
         assert_eq!(response.model.as_str(), "gpt-4");
         assert_eq!(response.choices.len(), 1);
-        assert_eq!(response.usage.prompt_tokens, 10);
-        assert_eq!(response.usage.completion_tokens, 20);
+        assert_eq!(response.usage.input_tokens, 10);
+        assert_eq!(response.usage.output_tokens, 20);
     }
 
     #[test]
@@ -1662,8 +1662,8 @@ mod tests {
             response.choices[0].text(),
             "Hello! How can I help you today?"
         );
-        assert_eq!(response.usage.prompt_tokens, 9);
-        assert_eq!(response.usage.completion_tokens, 12);
+        assert_eq!(response.usage.input_tokens, 9);
+        assert_eq!(response.usage.output_tokens, 12);
     }
 
     #[test]
@@ -1694,8 +1694,8 @@ mod tests {
             response.choices[0].text(),
             "Hello! I'm Claude, an AI assistant created by Anthropic."
         );
-        assert_eq!(response.usage.prompt_tokens, 10);
-        assert_eq!(response.usage.completion_tokens, 25);
+        assert_eq!(response.usage.input_tokens, 10);
+        assert_eq!(response.usage.output_tokens, 25);
     }
 
     #[test]
@@ -1791,8 +1791,8 @@ mod tests {
             .expect("Should parse tool call")
             .expect("Should return Some");
 
-        assert_eq!(tool_call.id().unwrap_or_default(), "call_123");
-        assert_eq!(tool_call.function_name().unwrap_or_default(), "get_weather");
+        assert_eq!(tool_call.id.as_str(), "call_123");
+        assert_eq!(tool_call.function.name.as_str(), "get_weather");
     }
 
     #[test]

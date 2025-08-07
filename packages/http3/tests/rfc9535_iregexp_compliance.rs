@@ -43,7 +43,7 @@ mod iregexp_basic_compliance {
     #[test]
     fn test_literal_character_matching() {
         // RFC 9485: Basic literal character matching
-        let _json_data = r#"{"items": [
+        let json_data = r#"{"items": [
             {"text": "hello"},
             {"text": "world"},
             {"text": "test"},
@@ -204,7 +204,7 @@ mod match_vs_search_behavior {
     #[test]
     fn test_full_string_vs_substring_matching() {
         // RFC 9535: match() requires full string match, search() finds substrings
-        let _json_data = r#"{"items": [
+        let json_data = r#"{"items": [
             {"text": "target"},
             {"text": "prefix_target"},
             {"text": "target_suffix"},
@@ -477,7 +477,7 @@ mod regex_performance_tests {
     #[test]
     fn test_complex_pattern_performance() {
         // Test performance with complex but valid I-Regexp patterns
-        let _json_data = r#"{"items": [
+        let json_data = r#"{"items": [
             {"email": "user@example.com"},
             {"email": "test.user+tag@domain.org"},
             {"email": "invalid-email"},
@@ -573,7 +573,7 @@ mod regex_performance_tests {
     #[test]
     fn test_regex_dos_prevention() {
         // Test prevention of regex denial-of-service attacks
-        let _json_data = r#"{"items": [
+        let json_data = r#"{"items": [
             {"text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaX"},
             {"text": "short"},
             {"text": "normal_text"}

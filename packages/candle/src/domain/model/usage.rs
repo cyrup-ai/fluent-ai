@@ -10,21 +10,21 @@ use serde::{Deserialize, Serialize};
 #[must_use = "Candle token usage should be handled or logged"]
 #[repr(C)]
 pub struct CandleUsage {
-    /// Number of tokens in the prompt
-    pub prompt_tokens: u32,
-    /// Number of tokens in the completion
-    pub completion_tokens: u32,
-    /// Total tokens used (prompt + completion)
+    /// Number of tokens in the input/prompt
+    pub input_tokens: u32,
+    /// Number of tokens in the output/completion
+    pub output_tokens: u32,
+    /// Total tokens used (input + output)
     pub total_tokens: u32}
 
 impl CandleUsage {
     /// Creates a new `Usage` instance with the given token counts
     #[inline]
-    pub const fn new(prompt_tokens: u32, completion_tokens: u32) -> Self {
+    pub const fn new(input_tokens: u32, output_tokens: u32) -> Self {
         Self {
-            prompt_tokens,
-            completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens}
+            input_tokens,
+            output_tokens,
+            total_tokens: input_tokens + output_tokens}
     }
 
     /// Creates a new `Usage` instance with zero tokens
@@ -37,15 +37,36 @@ impl CandleUsage {
     #[inline]
     #[must_use = "Returns a new Usage instance"]
     pub const fn add(&self, other: &Self) -> Self {
-        let prompt = self.prompt_tokens + other.prompt_tokens;
-        let completion = self.completion_tokens + other.completion_tokens;
-        Self::new(prompt, completion)
+        let input = self.input_tokens + other.input_tokens;
+        let output = self.output_tokens + other.output_tokens;
+        Self::new(input, output)
     }
 
     /// Returns whether no tokens have been used
     #[inline]
     pub const fn is_zero(&self) -> bool {
-        self.prompt_tokens == 0 && self.completion_tokens == 0
+        self.input_tokens == 0 && self.output_tokens == 0
+    }
+
+    /// Backward compatibility: get input tokens as prompt tokens
+    #[inline]
+    #[deprecated(since = "0.1.0", note = "Use `input_tokens` instead for HTTP3 API standardization")]
+    pub const fn prompt_tokens(&self) -> u32 {
+        self.input_tokens
+    }
+
+    /// Backward compatibility: get output tokens as completion tokens
+    #[inline]
+    #[deprecated(since = "0.1.0", note = "Use `output_tokens` instead for HTTP3 API standardization")]
+    pub const fn completion_tokens(&self) -> u32 {
+        self.output_tokens
+    }
+
+    /// Create from legacy OpenAI-style field names
+    #[inline]
+    #[deprecated(since = "0.1.0", note = "Use `new` instead for HTTP3 API standardization")]
+    pub const fn from_openai(prompt_tokens: u32, completion_tokens: u32) -> Self {
+        Self::new(prompt_tokens, completion_tokens)
     }
 }
 
@@ -54,9 +75,9 @@ impl std::ops::Add for CandleUsage {
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        let prompt = self.prompt_tokens + rhs.prompt_tokens;
-        let completion = self.completion_tokens + rhs.completion_tokens;
-        Self::new(prompt, completion)
+        let input = self.input_tokens + rhs.input_tokens;
+        let output = self.output_tokens + rhs.output_tokens;
+        Self::new(input, output)
     }
 }
 

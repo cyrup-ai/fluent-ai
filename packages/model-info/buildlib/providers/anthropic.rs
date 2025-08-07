@@ -46,6 +46,7 @@ impl ProviderBuilder for AnthropicProvider {
                 return ProcessProviderResult {
                     success: false,
                     status: format!("No static models defined for {}", self.provider_name()),
+                    generated_code: None,
                 };
             }
         };
@@ -54,18 +55,21 @@ impl ProviderBuilder for AnthropicProvider {
             return ProcessProviderResult {
                 success: false,
                 status: format!("No models found for {}", self.provider_name()),
+                generated_code: None,
             };
         }
 
         // Generate code using syn
         match self.generate_code(&models) {
-            Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+            Ok((enum_code, impl_code)) => ProcessProviderResult {
                 success: true,
                 status: format!("Successfully processed {} static models for {}", models.len(), self.provider_name()),
+                generated_code: Some((enum_code, impl_code)),
             },
             Err(e) => ProcessProviderResult {
                 success: false,
                 status: format!("Code generation failed for {}: {}", self.provider_name(), e),
+                generated_code: None,
             },
         }
     }

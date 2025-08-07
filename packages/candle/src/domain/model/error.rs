@@ -53,6 +53,12 @@ impl fmt::Display for CandleModelError {
 
 impl Error for CandleModelError {}
 
+impl From<candle_core::Error> for CandleModelError {
+    fn from(err: candle_core::Error) -> Self {
+        Self::Internal(err.to_string().into())
+    }
+}
+
 /// Result type for Candle model operations
 pub type CandleResult<T> = std::result::Result<T, CandleModelError>;
 
@@ -152,38 +158,38 @@ mod tests {
     fn test_model_error_display() {
         assert_eq!(
             CandleModelError::ModelNotFound {
-                provider: "test",
-                name: "test"
+                provider: Cow::Borrowed("test"),
+                name: Cow::Borrowed("test")
             }
             .to_string(),
             "Model not found: test:test"
         );
         assert_eq!(
-            CandleModelError::ProviderNotFound("test").to_string(),
+            CandleModelError::ProviderNotFound(Cow::Borrowed("test")).to_string(),
             "Provider not found: test"
         );
         assert_eq!(
             CandleModelError::ModelAlreadyExists {
-                provider: "test",
-                name: "test"
+                provider: Cow::Borrowed("test"),
+                name: Cow::Borrowed("test")
             }
             .to_string(),
             "Model already registered: test:test"
         );
         assert_eq!(
-            CandleModelError::InvalidConfiguration("test").to_string(),
+            CandleModelError::InvalidConfiguration(Cow::Borrowed("test")).to_string(),
             "Invalid model configuration: test"
         );
         assert_eq!(
-            CandleModelError::OperationNotSupported("test").to_string(),
+            CandleModelError::OperationNotSupported(Cow::Borrowed("test")).to_string(),
             "Operation not supported by model: test"
         );
         assert_eq!(
-            CandleModelError::InvalidInput("test").to_string(),
+            CandleModelError::InvalidInput(Cow::Borrowed("test")).to_string(),
             "Invalid input: test"
         );
         assert_eq!(
-            CandleModelError::Internal("test").to_string(),
+            CandleModelError::Internal(Cow::Borrowed("test")).to_string(),
             "Internal error: test"
         );
     }
@@ -197,26 +203,37 @@ mod tests {
         assert!(matches!(
             none.or_model_not_found("test", "test"),
             Err(CandleModelError::ModelNotFound {
-                provider: "test",
-                name: "test"
+                provider: _,
+                name: _
             })
         ));
     }
 
     #[test]
     fn test_result_ext() {
-        let ok: std::result::Result<u32, &str> = Ok(42);
-        assert_eq!(ok.invalid_config("test").unwrap(), 42);
+        #[derive(Debug, Clone)]
+        struct TestError(String);
+        
+        impl fmt::Display for TestError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+        
+        impl std::error::Error for TestError {}
+        
+        let ok: std::result::Result<u32, TestError> = Ok(42);
+        assert_eq!(ok.clone().invalid_config("test").unwrap(), 42);
         assert_eq!(ok.not_supported("test").unwrap(), 42);
 
-        let err: std::result::Result<u32, &str> = Err("error");
+        let err: std::result::Result<u32, TestError> = Err(TestError("error".to_string()));
         assert!(matches!(
-            err.invalid_config("test"),
-            Err(CandleModelError::InvalidConfiguration("test"))
+            err.clone().invalid_config("test"),
+            Err(CandleModelError::InvalidConfiguration(_))
         ));
         assert!(matches!(
             err.not_supported("test"),
-            Err(CandleModelError::OperationNotSupported("test"))
+            Err(CandleModelError::OperationNotSupported(_))
         ));
     }
 
@@ -225,36 +242,36 @@ mod tests {
         assert!(matches!(
             model_err!(not_found: "test", "test"),
             CandleModelError::ModelNotFound {
-                provider: "test",
-                name: "test"
+                provider: _,
+                name: _
             }
         ));
         assert!(matches!(
             model_err!(provider_not_found: "test"),
-            CandleModelError::ProviderNotFound("test")
+            CandleModelError::ProviderNotFound(_)
         ));
         assert!(matches!(
             model_err!(already_exists: "test", "test"),
             CandleModelError::ModelAlreadyExists {
-                provider: "test",
-                name: "test"
+                provider: _,
+                name: _
             }
         ));
         assert!(matches!(
             model_err!(invalid_config: "test"),
-            CandleModelError::InvalidConfiguration("test")
+            CandleModelError::InvalidConfiguration(_)
         ));
         assert!(matches!(
             model_err!(not_supported: "test"),
-            CandleModelError::OperationNotSupported("test")
+            CandleModelError::OperationNotSupported(_)
         ));
         assert!(matches!(
             model_err!(invalid_input: "test"),
-            CandleModelError::InvalidInput("test")
+            CandleModelError::InvalidInput(_)
         ));
         assert!(matches!(
             model_err!(internal: "test"),
-            CandleModelError::Internal("test")
+            CandleModelError::Internal(_)
         ));
     }
 }

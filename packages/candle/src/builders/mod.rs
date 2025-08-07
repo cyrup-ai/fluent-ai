@@ -7,5 +7,9 @@
 pub mod agent_role;
 pub mod completion;
 
+// Real workflow builders
+pub mod workflow;
+pub mod memory_workflow;
+
 // Re-export main builder types for public API
 pub use agent_role::{CandleFluentAi, CandleAgentRoleBuilder, CandleAgentBuilder};

@@ -43,7 +43,8 @@ pub mod utils;
 // Re-export constants
 pub use constants::{SIMD_WIDTH_8, VERSION};
 pub use error::{SimdError, SimdResult};
-// Logits operations are handled by the ops module
+// Re-export logits operations
+pub use logits::{topk_filtering_simd, prepare_nucleus_sampling_simd, apply_penalties_simd};
 // Re-export ops (temperature and softmax operations)
 pub use ops::{argmax, scale_temperature, softmax};
 // Re-export runtime CPU detection

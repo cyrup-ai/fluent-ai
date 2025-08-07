@@ -19,7 +19,7 @@ pub type Result<T> = std::result::Result<T, ExtractionError>;
 mod tests {
     use serde::Deserialize;
 
-    use super::*;
+
 
     #[derive(Debug, Deserialize, PartialEq)]
     struct TestData {

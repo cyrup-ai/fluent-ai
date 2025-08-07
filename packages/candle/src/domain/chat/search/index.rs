@@ -214,4 +214,19 @@ impl ChatSearchIndex {
     pub fn document_store(&self) -> &SkipMap<Arc<str>, SearchChatMessage> {
         &self.document_store
     }
+
+
+
+
+    /// Update search statistics with performance tracking
+    pub fn update_statistics(&self) {
+        // TODO: Implement statistics update with atomic operations
+        // This will be enhanced with atomic counters for query time averaging
+    }
+
+    /// Increment query counter for usage metrics
+    pub fn increment_query_counter(&self) {
+        // Increment the query counter atomically
+        self.query_counter.inc();
+    }
 }

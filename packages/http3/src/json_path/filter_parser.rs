@@ -280,27 +280,45 @@ impl<'a> FilterParser<'a> {
         // Handle property access patterns like @.author
         use crate::json_path::ast::JsonSelector;
         
-        // After @, check for simple property access (dot followed by identifier)
+        // After @, check for property access chain (e.g., @.author.length)
         if matches!(self.peek_token(), Some(Token::Dot)) {
-            self.consume_token(); // consume the dot
+            self.consume_token(); // consume the first dot
             
-            // After dot, expect identifier
-            if let Some(Token::Identifier(name)) = self.peek_token() {
-                let name = name.clone();
-                self.consume_token();
-                
-                // Simple property access: @.property should always return Property expression
-                // Don't try to parse complex JSONPath for simple property access
-                return Ok(FilterExpression::Property { 
-                    path: vec![name]
-                });
-            } else {
+            let mut path = Vec::new();
+            
+            // Parse property chain: @.prop1.prop2.prop3...
+            loop {
+                if let Some(Token::Identifier(name)) = self.peek_token() {
+                    let name = name.clone();
+                    self.consume_token();
+                    path.push(name);
+                    
+                    // Check if there's another dot for chaining
+                    if matches!(self.peek_token(), Some(Token::Dot)) {
+                        self.consume_token(); // consume the dot and continue
+                    } else {
+                        // No more dots, end of property chain
+                        break;
+                    }
+                } else {
+                    return Err(invalid_expression_error(
+                        self.input,
+                        "expected property name after '.'",
+                        Some(self.position),
+                    ));
+                }
+            }
+            
+            if path.is_empty() {
                 return Err(invalid_expression_error(
                     self.input,
                     "expected property name after '.'",
                     Some(self.position),
                 ));
             }
+            
+            // Return property with full chain path
+            return Ok(FilterExpression::Property { path });
         }
 
         // Handle complex JSONPath patterns like @..book, @.*, etc.

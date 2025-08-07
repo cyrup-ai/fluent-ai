@@ -92,6 +92,7 @@ pub type StandardModel = OpenAiModel;
 pub struct ProcessProviderResult {
     pub success: bool,
     pub status: String,
+    pub generated_code: Option<(String, String)>, // (enum_code, impl_code)
 }
 
 /// Strategy pattern interface for all provider modules
@@ -147,13 +148,15 @@ pub trait ProviderBuilder: Send + Sync {
             let _processed_models = self.response_to_models(dummy_response);
             
             match self.generate_code(&static_models) {
-                Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                Ok((enum_code, impl_code)) => ProcessProviderResult {
                     success: true,
                     status: format!("Batch processed {} with static models (using get_url: {})", self.provider_name(), self.get_url()),
+                    generated_code: Some((enum_code, impl_code)),
                 },
                 Err(e) => ProcessProviderResult {
                     success: false,
                     status: format!("Batch processing failed for {}: {}", self.provider_name(), e),
+                    generated_code: None,
                 },
             }
         } else {
@@ -161,16 +164,57 @@ pub trait ProviderBuilder: Send + Sync {
             ProcessProviderResult {
                 success: false,
                 status: format!("Batch processing not available for {} (no static models)", self.provider_name()),
+                generated_code: None,
             }
         }
     }
 
     /// Process provider: fetch models, generate code, return result
+    /// ENHANCED WITH CACHING: Never regenerate already cached models (David's requirement)
     /// DEFAULT IMPLEMENTATION works for OpenAI-compatible providers (OpenAI, Mistral, XAI)
     /// Override for providers with different response formats (Anthropic, Together, HuggingFace)
     fn process(&self) -> ProcessProviderResult {
         use std::env;
         use fluent_ai_http3::Http3;
+        use crate::buildlib::cache::ModelCache;
+        
+        // Initialize cache system - NEVER REGENERATE GUARANTEE
+        let cache = match ModelCache::with_defaults() {
+            Ok(cache) => cache,
+            Err(e) => {
+                return ProcessProviderResult {
+                    success: false,
+                    status: format!("Failed to initialize cache for {}: {}", self.provider_name(), e),
+                    generated_code: None,
+                };
+            }
+        };
+
+        // Check if we have cached models first - NEVER REGENERATE  
+        let cached_models = match cache.get_provider_models(self.provider_name()) {
+            Ok(models) => models,
+            Err(e) => {
+                eprintln!("Cache read error for {}: {}, proceeding with API fetch", self.provider_name(), e);
+                Vec::new()
+            }
+        };
+
+        // If we have cached models, use them exclusively (David's requirement)
+        if !cached_models.is_empty() {
+            let models: Vec<ModelData> = cached_models.into_iter().map(|(_, data)| data).collect();
+            match self.generate_code(&models) {
+                Ok((enum_code, impl_code)) => return ProcessProviderResult {
+                    success: true,
+                    status: format!("Using {} cached models for {} (never regenerate)", models.len(), self.provider_name()),
+                    generated_code: Some((enum_code, impl_code)),
+                },
+                Err(e) => return ProcessProviderResult {
+                    success: false,
+                    status: format!("Code generation failed for cached models in {}: {}", self.provider_name(), e),
+                    generated_code: None,
+                },
+            }
+        }
         
         // Get API key if required
         if let Some(env_var) = self.api_key_env_var() {
@@ -179,20 +223,28 @@ pub trait ProviderBuilder: Send + Sync {
                 Err(_) => {
                     // Check for static models fallback
                     if let Some(static_models) = self.static_models() {
+                        // Cache static models too
+                        if let Err(e) = cache.cache_models_batch(self.provider_name(), &static_models, "static") {
+                            eprintln!("Warning: Failed to cache static models for {}: {}", self.provider_name(), e);
+                        }
+                        
                         match self.generate_code(&static_models) {
-                            Ok((_enum_code, _impl_code)) => return ProcessProviderResult {
+                            Ok((enum_code, impl_code)) => return ProcessProviderResult {
                                 success: true,
-                                status: format!("Using static models for {} (API key {} not found)", self.provider_name(), env_var),
+                                status: format!("Using static models for {} (API key {} not found, cached for future)", self.provider_name(), env_var),
+                                generated_code: Some((enum_code, impl_code)),
                             },
                             Err(e) => return ProcessProviderResult {
                                 success: false,
                                 status: format!("Code generation failed for static models in {}: {}", self.provider_name(), e),
+                                generated_code: None,
                             },
                         }
                     } else {
                         return ProcessProviderResult {
                             success: false,
                             status: format!("Missing API key {} for {} and no static models available", env_var, self.provider_name()),
+                            generated_code: None,
                         };
                     }
                 }
@@ -206,7 +258,7 @@ pub trait ProviderBuilder: Send + Sync {
             let provider_name = self.provider_name().to_string();
             
             // TRUE STREAMING: Use JSONPath streaming to get individual models
-            let streamed_models: Vec<Self::GetResponse> = Http3::json()
+            let streamed_models: Vec<Self::GetResponse> = fluent_ai_http3::Http3::json()
                 .bearer_auth(&api_key)
                 .array_stream(&selector)
                 .get::<Self::GetResponse>(&full_url)
@@ -225,37 +277,53 @@ pub trait ProviderBuilder: Send + Sync {
                 return ProcessProviderResult {
                     success: false,
                     status: format!("No models found for {}", self.provider_name()),
+                    generated_code: None,
                 };
+            }
+
+            // Cache the new models before generating code
+            if let Err(e) = cache.cache_models_batch(self.provider_name(), &models, "api") {
+                eprintln!("Warning: Failed to cache models for {}: {}", self.provider_name(), e);
             }
 
             // Generate code using syn
             match self.generate_code(&models) {
-                Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                Ok((enum_code, impl_code)) => ProcessProviderResult {
                     success: true,
-                    status: format!("Successfully processed {} models for {}", models.len(), self.provider_name()),
+                    status: format!("Successfully processed {} models for {} (cached for future)", models.len(), self.provider_name()),
+                    generated_code: Some((enum_code, impl_code)),
                 },
                 Err(e) => ProcessProviderResult {
                     success: false,
                     status: format!("Code generation failed for {}: {}", self.provider_name(), e),
+                    generated_code: None,
                 },
             }
         } else {
             // No API key required - use static models if available
             if let Some(static_models) = self.static_models() {
+                // Cache static models
+                if let Err(e) = cache.cache_models_batch(self.provider_name(), &static_models, "static") {
+                    eprintln!("Warning: Failed to cache static models for {}: {}", self.provider_name(), e);
+                }
+                
                 match self.generate_code(&static_models) {
-                    Ok((_enum_code, _impl_code)) => ProcessProviderResult {
+                    Ok((enum_code, impl_code)) => ProcessProviderResult {
                         success: true,
-                        status: format!("Using static models for {} (no API key required)", self.provider_name()),
+                        status: format!("Using static models for {} (no API key required, cached for future)", self.provider_name()),
+                        generated_code: Some((enum_code, impl_code)),
                     },
                     Err(e) => ProcessProviderResult {
                         success: false,
                         status: format!("Code generation failed for static models in {}: {}", self.provider_name(), e),
+                        generated_code: None,
                     },
                 }
             } else {
                 ProcessProviderResult {
                     success: false,
                     status: format!("No API key configured and no static models for {}", self.provider_name()),
+                    generated_code: None,
                 }
             }
         }

@@ -24,7 +24,7 @@ mod deserializer_tests {
         let json_data = r#"[{"id":"test1","value":42},{"id":"test2","value":24}]"#;
         let path_expr = JsonPathParser::compile("$[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
+        let state = StreamStateMachine::new();
 
         buffer.append_chunk(Bytes::from(json_data));
 
@@ -46,7 +46,7 @@ mod deserializer_tests {
         let json_data = r#"{"data":[{"id":"nested1","value":100}],"meta":"info"}"#;
         let path_expr = JsonPathParser::compile("$.data[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
+        let state = StreamStateMachine::new();
 
         buffer.append_chunk(Bytes::from(json_data));
 
@@ -66,7 +66,7 @@ mod deserializer_tests {
     fn test_streaming_chunks() {
         let path_expr = JsonPathParser::compile("$.items[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
+        let state = StreamStateMachine::new();
 
         // Add data in chunks to simulate streaming
         buffer.append_chunk(Bytes::from(
@@ -89,7 +89,7 @@ mod deserializer_tests {
         let json_data = r#"{"data":[{"id":"test1","invalid":}]}"#; // Missing value
         let path_expr = JsonPathParser::compile("$.data[*]").expect("Valid JSONPath expression");
         let mut buffer = StreamBuffer::with_capacity(1024);
-        let mut state = StreamStateMachine::new();
+        let state = StreamStateMachine::new();
 
         buffer.append_chunk(Bytes::from(json_data));
 

@@ -30,7 +30,7 @@ bit-vec-3b31131e45eafb45 = { package = "bit-vec", version = "0.6", default-featu
 bit-vec-c38e5c1d305a1b54 = { package = "bit-vec", version = "0.8" }
 bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
 blake2 = { version = "0.10" }
-brotli = { version = "3" }
+brotli = { version = "8.0.1" }
 bstr = { version = "1" }
 bumpalo = { version = "3", features = ["allocator-api2"] }
 bytecount = { version = "0.6", default-features = false, features = ["runtime-dispatch-simd"] }

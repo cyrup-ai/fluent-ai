@@ -3,4 +3,240 @@
 // Successfully processed 1/6 providers
 // Failed providers: No models found for openai, No models found for mistral, No models found for xai, No models found for together, No API key configured and no static models for huggingface
 
-// Provider implementations will be added here by each provider's process() method
+use serde::{Serialize, Deserialize};
+
+// Generated Provider Enums
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AnthropicModel {
+    Claude4Sonnet,
+    Claude4SonnetThinking,
+    Claude4Opus,
+    Claude4OpusThinking,
+}
+impl AnthropicModel {
+    /// Get all available model variants
+    pub const fn all_variants() -> &'static [AnthropicModel] {
+        &[
+            AnthropicModel::Claude4Sonnet,
+            AnthropicModel::Claude4SonnetThinking,
+            AnthropicModel::Claude4Opus,
+            AnthropicModel::Claude4OpusThinking,
+        ]
+    }
+    /// Get all model variants as Vec
+    pub fn all_models() -> Vec<AnthropicModel> {
+        Self::all_variants().to_vec()
+    }
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Anthropic {
+    Claude4Sonnet,
+    Claude4SonnetThinking,
+    Claude4Opus,
+    Claude4OpusThinking,
+}
+impl Anthropic {
+    /// Get all available model variants
+    pub const fn all_variants() -> &'static [Anthropic] {
+        &[
+            Anthropic::Claude4Sonnet,
+            Anthropic::Claude4SonnetThinking,
+            Anthropic::Claude4Opus,
+            Anthropic::Claude4OpusThinking,
+        ]
+    }
+    /// Get all model variants as Vec
+    pub fn all_models() -> Vec<Anthropic> {
+        Self::all_variants().to_vec()
+    }
+}
+
+
+// Generated Provider Implementations
+impl crate::common::Model for AnthropicModel {
+    #[inline]
+    fn name(&self) -> &'static str {
+        match self {
+            AnthropicModel::Claude4Sonnet => "claude-4-sonnet",
+            AnthropicModel::Claude4SonnetThinking => "claude-4-sonnet-thinking",
+            AnthropicModel::Claude4Opus => "claude-4-opus",
+            AnthropicModel::Claude4OpusThinking => "claude-4-opus-thinking",
+        }
+    }
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "anthropic"
+    }
+    #[inline]
+    fn max_input_tokens(&self) -> Option<u32> {
+        match self {
+            AnthropicModel::Claude4Sonnet => Some(150000u32),
+            AnthropicModel::Claude4SonnetThinking => Some(150000u32),
+            AnthropicModel::Claude4Opus => Some(150000u32),
+            AnthropicModel::Claude4OpusThinking => Some(150000u32),
+        }
+    }
+    #[inline]
+    fn max_output_tokens(&self) -> Option<u32> {
+        match self {
+            AnthropicModel::Claude4Sonnet => Some(50000u32),
+            AnthropicModel::Claude4SonnetThinking => Some(50000u32),
+            AnthropicModel::Claude4Opus => Some(50000u32),
+            AnthropicModel::Claude4OpusThinking => Some(50000u32),
+        }
+    }
+    #[inline]
+    fn pricing_input(&self) -> Option<f64> {
+        match self {
+            AnthropicModel::Claude4Sonnet => Some(3f64),
+            AnthropicModel::Claude4SonnetThinking => Some(3f64),
+            AnthropicModel::Claude4Opus => Some(15f64),
+            AnthropicModel::Claude4OpusThinking => Some(15f64),
+        }
+    }
+    #[inline]
+    fn pricing_output(&self) -> Option<f64> {
+        match self {
+            AnthropicModel::Claude4Sonnet => Some(15f64),
+            AnthropicModel::Claude4SonnetThinking => Some(15f64),
+            AnthropicModel::Claude4Opus => Some(75f64),
+            AnthropicModel::Claude4OpusThinking => Some(75f64),
+        }
+    }
+    #[inline]
+    fn supports_vision(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn supports_function_calling(&self) -> bool {
+        true
+    }
+    #[inline]
+    fn supports_embeddings(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn requires_max_tokens(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn supports_thinking(&self) -> bool {
+        match self {
+            AnthropicModel::Claude4SonnetThinking => true,
+            AnthropicModel::Claude4OpusThinking => true,
+            _ => false,
+        }
+    }
+    #[inline]
+    fn required_temperature(&self) -> Option<f64> {
+        match self {
+            AnthropicModel::Claude4SonnetThinking => Some(1f64),
+            AnthropicModel::Claude4OpusThinking => Some(1f64),
+            _ => None,
+        }
+    }
+    #[inline]
+    fn optimal_thinking_budget(&self) -> Option<u32> {
+        match self {
+            AnthropicModel::Claude4SonnetThinking => Some(100000u32),
+            AnthropicModel::Claude4OpusThinking => Some(100000u32),
+            _ => None,
+        }
+    }
+}
+
+
+impl crate::common::Model for Anthropic {
+    #[inline]
+    fn name(&self) -> &'static str {
+        match self {
+            Anthropic::Claude4Sonnet => "claude-4-sonnet",
+            Anthropic::Claude4SonnetThinking => "claude-4-sonnet-thinking",
+            Anthropic::Claude4Opus => "claude-4-opus",
+            Anthropic::Claude4OpusThinking => "claude-4-opus-thinking",
+        }
+    }
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "anthropic"
+    }
+    #[inline]
+    fn max_input_tokens(&self) -> Option<u32> {
+        match self {
+            Anthropic::Claude4Sonnet => Some(150000u32),
+            Anthropic::Claude4SonnetThinking => Some(150000u32),
+            Anthropic::Claude4Opus => Some(150000u32),
+            Anthropic::Claude4OpusThinking => Some(150000u32),
+        }
+    }
+    #[inline]
+    fn max_output_tokens(&self) -> Option<u32> {
+        match self {
+            Anthropic::Claude4Sonnet => Some(50000u32),
+            Anthropic::Claude4SonnetThinking => Some(50000u32),
+            Anthropic::Claude4Opus => Some(50000u32),
+            Anthropic::Claude4OpusThinking => Some(50000u32),
+        }
+    }
+    #[inline]
+    fn pricing_input(&self) -> Option<f64> {
+        match self {
+            Anthropic::Claude4Sonnet => Some(3f64),
+            Anthropic::Claude4SonnetThinking => Some(3f64),
+            Anthropic::Claude4Opus => Some(15f64),
+            Anthropic::Claude4OpusThinking => Some(15f64),
+        }
+    }
+    #[inline]
+    fn pricing_output(&self) -> Option<f64> {
+        match self {
+            Anthropic::Claude4Sonnet => Some(15f64),
+            Anthropic::Claude4SonnetThinking => Some(15f64),
+            Anthropic::Claude4Opus => Some(75f64),
+            Anthropic::Claude4OpusThinking => Some(75f64),
+        }
+    }
+    #[inline]
+    fn supports_vision(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn supports_function_calling(&self) -> bool {
+        true
+    }
+    #[inline]
+    fn supports_embeddings(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn requires_max_tokens(&self) -> bool {
+        false
+    }
+    #[inline]
+    fn supports_thinking(&self) -> bool {
+        match self {
+            Anthropic::Claude4SonnetThinking => true,
+            Anthropic::Claude4OpusThinking => true,
+            _ => false,
+        }
+    }
+    #[inline]
+    fn required_temperature(&self) -> Option<f64> {
+        match self {
+            Anthropic::Claude4SonnetThinking => Some(1f64),
+            Anthropic::Claude4OpusThinking => Some(1f64),
+            _ => None,
+        }
+    }
+    #[inline]
+    fn optimal_thinking_budget(&self) -> Option<u32> {
+        match self {
+            Anthropic::Claude4SonnetThinking => Some(100000u32),
+            Anthropic::Claude4OpusThinking => Some(100000u32),
+            _ => None,
+        }
+    }
+}
+
