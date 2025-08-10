@@ -108,11 +108,11 @@ impl CandleAgentRoleAgent {
     pub fn chat(&self, chat_loop: CandleChatLoop) -> AsyncStream<CandleMessageChunk> {
         AsyncStream::with_channel(|sender| match chat_loop {
             CandleChatLoop::Break => {
-                let final_chunk = CandleMessageChunk::Complete {
-                    text: String::new(),
-                    finish_reason: Some("break".to_string()),
-                    usage: None,
-                };
+                let final_chunk = CandleMessageChunk::Complete(
+                    String::new(),
+                    Some("break".to_string()),
+                    None,
+                );
                 let _ = sender.send(final_chunk);
             }
             CandleChatLoop::UserPrompt(message) | CandleChatLoop::Reprompt(message) => {
@@ -668,25 +668,25 @@ where
                                 text,
                                 finish_reason,
                                 usage,
-                            } => CandleMessageChunk::Complete {
+                            } => CandleMessageChunk::Complete(
                                 text,
-                                finish_reason: finish_reason.map(|f| format!("{:?}", f)),
-                                usage: usage.map(|u| format!("{:?}", u)),
-                            },
+                                finish_reason.map(|f| format!("{:?}", f)),
+                                usage.map(|u| format!("{:?}", u)),
+                            ),
                             CandleCompletionChunk::ToolCallStart { id, name } => {
-                                CandleMessageChunk::ToolCallStart { id, name }
+                                CandleMessageChunk::ToolCallStart(id, name)
                             }
                             CandleCompletionChunk::ToolCall {
                                 id,
                                 name,
                                 partial_input,
-                            } => CandleMessageChunk::ToolCall {
+                            } => CandleMessageChunk::ToolCall(
                                 id,
                                 name,
                                 partial_input,
-                            },
+                            ),
                             CandleCompletionChunk::ToolCallComplete { id, name, input } => {
-                                CandleMessageChunk::ToolCallComplete { id, name, input }
+                                CandleMessageChunk::ToolCallComplete(id, name, input)
                             }
                             CandleCompletionChunk::Error(error) => CandleMessageChunk::Error(error),
                         };
@@ -703,11 +703,11 @@ where
     fn chat_direct(self, input: CandleChatLoop) -> AsyncStream<CandleMessageChunk> {
         AsyncStream::with_channel(move |sender| match input {
             CandleChatLoop::Break => {
-                let final_chunk = CandleMessageChunk::Complete {
-                    text: String::new(),
-                    finish_reason: Some("break".to_string()),
-                    usage: None,
-                };
+                let final_chunk = CandleMessageChunk::Complete(
+                    String::new(),
+                    Some("break".to_string()),
+                    None,
+                );
                 let _ = sender.send(final_chunk);
             }
             CandleChatLoop::UserPrompt(message) | CandleChatLoop::Reprompt(message) => {
