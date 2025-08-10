@@ -93,4 +93,16 @@
 - ✅ ASK DAVID for clarification on complex issues
 - ✅ Use latest dependency versions
 - ✅ Test functionality works for end users
-- ✅ Zero tolerance for warnings - fix or properly annotate ALL of them
+- ✅ Zero tolerance for warnings - fix or properly annotate ALL of them# TODO List for Fixing Errors and Warnings
+
+## Introduction
+This document lists all errors and warnings identified in the project via `cargo check`. Each item will be addressed to achieve 0 errors and 0 warnings. After each item, a QA task will be added to review the quality of the fix.
+
+## Errors and Warnings
+- **Placeholder**: Errors and warnings will be listed here once `cargo check` output is available.
+  - **QA Task**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1 - 10 (complete failure through significant improvement). Provide specific feedback on any issues or truly great work (objectively without bragging).
+
+## Notes
+- All fixes will be production-ready, focusing on zero-allocation, non-locking, asynchronous code where possible.
+- No blocking code will be used unless explicitly approved by David Maple with a timestamped annotation.
+- Code style will adhere to high standards, avoiding `async_trait` and preferring sync methods returning `AsyncTask` or `AsyncStream`.
