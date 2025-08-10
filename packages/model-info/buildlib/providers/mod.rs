@@ -82,7 +82,7 @@ pub trait ProviderBuilder: Send + Sync {
     fn process(&self) -> ProcessProviderResult {
         use std::env;
 
-        // use fluent_ai_http3::Http3; // Currently unused, Http3 accessed via module path
+        // Removed unused import: fluent_ai_http3::Http3
         use super::cache::ModelCache;
 
         // Initialize cache system - NEVER REGENERATE GUARANTEE

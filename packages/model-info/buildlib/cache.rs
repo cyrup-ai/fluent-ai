@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::PathBuf; // Kept for future use or reference
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
@@ -386,7 +386,7 @@ impl ModelCache {
     }
 
     /// Get cache statistics - Library API
-    #[allow(dead_code)] // Public API - used by downstream consumers  
+    #[allow(dead_code)] // Public API - used by downstream consumers
     pub fn get_stats(&self) -> Result<CacheStats> {
         let mut stats = CacheStats::default();
 
