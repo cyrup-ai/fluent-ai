@@ -178,8 +178,8 @@ impl HttpError {
     }
 }
 
-impl From<reqwest::Error> for HttpError {
-    fn from(error: reqwest::Error) -> Self {
+impl From<crate::hyper::Error> for HttpError {
+    fn from(error: crate::hyper::Error) -> Self {
         if error.is_timeout() {
             HttpError::Timeout {
                 message: error.to_string(),
@@ -188,7 +188,7 @@ impl From<reqwest::Error> for HttpError {
             HttpError::HttpStatus {
                 status: error.status().map_or(0, |s| s.as_u16()),
                 message: error.to_string(),
-                body: "".to_string(), // reqwest::Error doesn't expose the body
+                body: "".to_string(), // crate::hyper::Error doesn't expose the body
             }
         } else if error.is_connect() {
             HttpError::ConnectionError {
@@ -268,3 +268,17 @@ impl From<std::io::Error> for HttpError {
 
 /// Result type for HTTP operations
 pub type HttpResult<T> = Result<T, HttpError>;
+
+// Re-export internal hyper error types and helpers for legacy paths expecting `crate::error::*`
+#[cfg(any(
+    feature = "gzip",
+    feature = "zstd",
+    feature = "brotli",
+    feature = "deflate",
+    feature = "blocking",
+))]
+pub(crate) use crate::hyper::error::into_io;
+pub(crate) use crate::hyper::error::{
+    BadScheme, BoxError, Error, TimedOut, body, builder, decode, decode_io, redirect, request,
+    status_code, upgrade, url_bad_scheme,
+};
