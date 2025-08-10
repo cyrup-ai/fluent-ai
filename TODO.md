@@ -1,136 +1,96 @@
-# CANDLE PACKAGE WARNING/ERROR FIXES
+# FLUENT-AI WARNING/ERROR FIXES - FOCUS ZERO TOLERANCE 🎯
 
-## STATUS: WORKING - Fix All Compilation Errors and Warnings
+## CURRENT STATUS: ERRORS AND WARNINGS FROM CARGO CHECK
 
-### COMPILATION ERRORS (Found via `cargo check --all-targets`)
+### COMPILATION ERRORS (CRITICAL - BLOCKING COMPILATION)
 
-1. **[ERROR]** Syntax error in candle_agent_role_builder.rs:339 - unexpected closing delimiter `}` - STATUS: PLANNED
-2. **[QA]** Rate the fix for syntax error (1-10 scale) and provide feedback - STATUS: PLANNED
-3. **[ERROR]** Unresolved import `tempfile` in model_config.rs:326 - should be `gix::tempfile` - STATUS: PLANNED
-4. **[QA]** Rate the fix for tempfile import (1-10 scale) and provide feedback - STATUS: PLANNED  
-5. **[ERROR]** Cannot find trait `CandleModel` in domain/model/resolver.rs:428 - need import - STATUS: PLANNED
-6. **[QA]** Rate the fix for CandleModel trait import (1-10 scale) and provide feedback - STATUS: PLANNED
-7. **[ERROR]** Cannot find struct `LlamaConfig` in model_config.rs:339 - need import - STATUS: PLANNED
-8. **[QA]** Rate the fix for LlamaConfig import (1-10 scale) and provide feedback - STATUS: PLANNED
-9. **[ERROR]** Cannot find struct `LlamaConfig` in model_config.rs:387 - same import issue - STATUS: PLANNED
-10. **[QA]** Rate the fix for second LlamaConfig import (1-10 scale) and provide feedback - STATUS: PLANNED
+1. **[ERROR]** Method `chat_with_message` not member of trait `CandleAgentBuilder` in `packages/candle/src/builders/agent_role.rs:630` - STATUS: PLANNED
+2. **[QA]** Rate fix for trait method mismatch (1-10) - STATUS: PLANNED
 
-### COMPILATION WARNINGS (Found via `cargo check --all-targets`)
+3. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:404` - STATUS: PLANNED  
+4. **[QA]** Rate fix for ambiguous associated type (1-10) - STATUS: PLANNED
 
-11. **[WARNING]** Unused import `fluent_ai_async::AsyncStream` in message_processing.rs:92 - STATUS: PLANNED
-12. **[QA]** Rate the fix for unused AsyncStream import (1-10 scale) and provide feedback - STATUS: PLANNED
-13. **[WARNING]** Unused import `super::*` in extraction/mod.rs:22 - STATUS: PLANNED  
-14. **[QA]** Rate the fix for unused super::* import (1-10 scale) and provide feedback - STATUS: PLANNED
+5. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:521` - STATUS: PLANNED
+6. **[QA]** Rate fix for missing Text variant (1-10) - STATUS: PLANNED
 
-### DEPENDENCY ERRORS (Found via `cargo check --all-features`)
+7. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:561` - STATUS: PLANNED
+8. **[QA]** Rate fix for second ambiguous associated type (1-10) - STATUS: PLANNED  
 
-15. **[ERROR]** Missing package `cas-client` (should be `cas_client`) in dependency chain from progresshub - STATUS: PLANNED
-16. **[QA]** Rate the fix for cas-client dependency issue (1-10 scale) and provide feedback - STATUS: PLANNED
+9. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:594` - STATUS: PLANNED
+10. **[QA]** Rate fix for second missing Text variant (1-10) - STATUS: PLANNED
 
-### CUDA FEATURE COMPILATION ISSUE (In Progress from Previous Session)
+11. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:597` - STATUS: PLANNED
+12. **[QA]** Rate fix for third ambiguous associated type (1-10) - STATUS: PLANNED
 
-17. **[ERROR]** Fix CUDA feature compilation on macOS - disable CUDA in --all-features builds - STATUS: WORKING
-18. **[QA]** Rate CUDA feature fix (1-10 scale) and provide feedback - STATUS: PLANNED
+13. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:604` - STATUS: PLANNED
+14. **[QA]** Rate fix for third missing Text variant (1-10) - STATUS: PLANNED
 
-### END-USER FUNCTIONALITY TESTING
+15. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:607` - STATUS: PLANNED
+16. **[QA]** Rate fix for fourth missing Text variant (1-10) - STATUS: PLANNED
 
-19. **[TEST]** Test end-user functionality to ensure code actually works - STATUS: PLANNED
-20. **[QA]** Rate overall functionality testing (1-10 scale) and provide feedback - STATUS: PLANNED
+17. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:610` - STATUS: PLANNED
+18. **[QA]** Rate fix for fifth missing Text variant (1-10) - STATUS: PLANNED
 
-## WORKFLOW PRODUCTION QUALITY HARDENING
+19. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:613` - STATUS: PLANNED
+20. **[QA]** Rate fix for fourth ambiguous associated type (1-10) - STATUS: PLANNED
 
-### CRITICAL PRODUCTION FIXES
+21. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:660` - STATUS: PLANNED
+22. **[QA]** Rate fix for sixth missing Text variant (1-10) - STATUS: PLANNED
 
-21. **[CRITICAL]** ELIMINATE PANIC RISKS - Remove all unwrap() usage
-    **File:** `/packages/candle/src/workflow/core.rs:43`
-    **Scope:** Replace example code unwrap() with proper error handling
-    **Architecture:** Maintain streams-only architecture while eliminating crash risks
-    **Implementation:** Replace `sender.send(...).unwrap()` with `let _ = sender.send(...)` pattern or proper Result handling
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+23. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:663` - STATUS: PLANNED
+24. **[QA]** Rate fix for fifth ambiguous associated type (1-10) - STATUS: PLANNED
 
-22. **[QA]** Production Risk Assessment
-    Act as an Objective QA Rust developer and rate the unwrap() elimination work on panic safety (1-10), ensuring zero crash risks remain in the workflow system. - STATUS: PLANNED
+25. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:670` - STATUS: PLANNED
+26. **[QA]** Rate fix for seventh missing Text variant (1-10) - STATUS: PLANNED
 
-23. **[CRITICAL]** FIX BLOCKING STREAM ITERATION - Replace synchronous loops with proper async patterns  
-    **File:** `/packages/candle/src/workflow/core.rs:224-235` (ComposedStep::execute)
-    **Scope:** Replace blocking `while let Some(mid_value) = first_stream.try_next()` with event-driven pattern
-    **Architecture:** Implement timeout-aware, non-blocking stream consumption using AsyncStream::with_channel closure pattern
-    **Implementation:** Use nested AsyncStream::with_channel calls with proper stream forwarding, add timeout mechanisms
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+27. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:673` - STATUS: PLANNED  
+28. **[QA]** Rate fix for eighth missing Text variant (1-10) - STATUS: PLANNED
 
-24. **[QA]** Async Pattern Compliance
-    Act as an Objective QA Rust developer and rate the stream iteration fix on non-blocking compliance (1-10), ensuring no synchronous blocking patterns remain. - STATUS: PLANNED
+29. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:676` - STATUS: PLANNED
+30. **[QA]** Rate fix for ninth missing Text variant (1-10) - STATUS: PLANNED
 
-25. **[CRITICAL]** THREAD RESOURCE MANAGEMENT - Implement bounded thread execution
-    **File:** `/packages/candle/src/workflow/parallel.rs:87-110` (Parallel::call implementation)
-    **Scope:** Replace unbounded thread::spawn with bounded execution pattern
-    **Architecture:** Implement thread pool pattern or use crossbeam scoped threads for bounded resource usage
-    **Implementation:** Replace direct thread::spawn with scoped thread execution, add proper cleanup and timeout handling
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+31. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:679` - STATUS: PLANNED
+32. **[QA]** Rate fix for sixth ambiguous associated type (1-10) - STATUS: PLANNED
 
-26. **[QA]** Resource Management Assessment  
-    Act as an Objective QA Rust developer and rate the thread resource management on production scalability (1-10), ensuring no resource leaks under load. - STATUS: PLANNED
+### COMPILATION WARNINGS (TO BE ELIMINATED)
 
-27. **[CRITICAL]** UNIFIED ERROR HANDLING - Consolidate Op and TryOp traits
-    **File:** `/packages/candle/src/workflow/ops.rs:37` (Op trait definition)
-    **File:** `/packages/candle/src/workflow/parallel.rs:149` (TryOp trait definition)  
-    **Scope:** Create unified error handling pattern across all operations
-    **Architecture:** Extend Op trait with optional error handling rather than separate TryOp trait
-    **Implementation:** Add `Result<Out, E>` variant support to Op trait while maintaining backward compatibility
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+33. **[WARNING]** Unused import `fluent_ai_http3::Http3` in `packages/model-info/buildlib/providers/mod.rs:178` - STATUS: PLANNED
+34. **[QA]** Rate fix for unused Http3 import (1-10) - STATUS: PLANNED
 
-28. **[QA]** Error Architecture Consistency
-    Act as an Objective QA Rust developer and rate the unified error handling on architectural consistency (1-10), ensuring single coherent error propagation model. - STATUS: PLANNED
+35. **[WARNING]** Unused import `Path` in `packages/model-info/buildlib/cache.rs:12` - STATUS: PLANNED
+36. **[QA]** Rate fix for unused Path import (1-10) - STATUS: PLANNED
 
-29. **[CRITICAL]** OBSERVABLE ERROR HANDLING - Add structured error context
-    **File:** `/packages/candle/src/workflow/parallel.rs:130-140` (error swallowing in send operations)
-    **File:** `/packages/candle/src/workflow/core.rs:232-234` (silent error returns)
-    **Scope:** Replace silent error swallowing with structured error context
-    **Architecture:** Add error context without breaking streams-only architecture  
-    **Implementation:** Use tracing/logging for error visibility while maintaining performance
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+37. **[WARNING]** Methods `get_url`, `response_to_models`, `process_batch` never used in `packages/model-info/buildlib/providers/mod.rs:119` - STATUS: PLANNED  
+38. **[QA]** Rate fix for unused methods (1-10) - STATUS: PLANNED
 
-30. **[QA]** Error Observability Assessment
-    Act as an Objective QA Rust developer and rate the error observability on production debugging capability (1-10), ensuring errors are traceable in production. - STATUS: PLANNED
+39. **[WARNING]** Function `process_all_providers_batch` never used in `packages/model-info/buildlib/providers/mod.rs:361` - STATUS: PLANNED
+40. **[QA]** Rate fix for unused function (1-10) - STATUS: PLANNED
 
-31. **[CRITICAL]** RELAX TYPE CONSTRAINTS - Remove unnecessary Clone bounds
-    **File:** `/packages/candle/src/workflow/ops.rs:131-137` (Then impl bounds)
-    **File:** `/packages/candle/src/workflow/ops.rs:183-189` (Map impl bounds)  
-    **File:** `/packages/candle/src/workflow/parallel.rs:69-74` (Parallel impl bounds)
-    **Scope:** Remove Clone requirement where not actually needed for execution
-    **Architecture:** Maintain zero-allocation design while supporting non-cloneable types
-    **Implementation:** Analyze each Clone usage and remove where Arc/reference patterns suffice
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+41. **[WARNING]** Field `max_entries_per_provider` never read in `packages/model-info/buildlib/cache.rs:30` - STATUS: PLANNED
+42. **[QA]** Rate fix for unread field (1-10) - STATUS: PLANNED
 
-32. **[QA]** Type Constraint Flexibility
-    Act as an Objective QA Rust developer and rate the type constraint relaxation on API usability (1-10), ensuring broader type compatibility without performance loss. - STATUS: PLANNED
+43. **[WARNING]** Methods `cleanup_expired`, `get_stats` never used in `packages/model-info/buildlib/cache.rs:327` - STATUS: PLANNED
+44. **[QA]** Rate fix for unused cache methods (1-10) - STATUS: PLANNED
 
-33. **[CRITICAL]** CLEAN API SURFACE - Fix macro namespace pollution  
-    **File:** `/packages/candle/src/workflow/macros.rs:32,65,97,135` (macro_export declarations)
-    **Scope:** Change internal macros from #[macro_export] to pub(crate) visibility
-    **Architecture:** Maintain clean public API while preserving internal macro functionality
-    **Implementation:** Replace global macro exports with crate-local visibility for internal helper macros
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+45. **[WARNING]** Struct `CacheStats` never constructed in `packages/model-info/buildlib/cache.rs:383` - STATUS: PLANNED
+46. **[QA]** Rate fix for unconstructed struct (1-10) - STATUS: PLANNED
 
-34. **[QA]** API Surface Cleanliness
-    Act as an Objective QA Rust developer and rate the API surface cleanup on namespace hygiene (1-10), ensuring no internal implementation details leak to public API. - STATUS: PLANNED
+47. **[WARNING]** Method `is_empty` never used in `packages/model-info/buildlib/cache.rs:389` - STATUS: PLANNED
+48. **[QA]** Rate fix for unused is_empty method (1-10) - STATUS: PLANNED
 
-35. **[CRITICAL]** PRODUCTION INTEGRATION VERIFICATION - Final compilation and runtime validation
-    **File:** Entire `/packages/candle/src/workflow/` module
-    **Scope:** Verify all production fixes integrate properly without breaking existing functionality  
-    **Architecture:** Confirm streams-only architecture maintained with production quality implementation
-    **Implementation:** Run cargo check, ensure zero warnings, validate all public APIs work as expected
-    DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope. - STATUS: PLANNED
+## SUCCESS CRITERIA 🏆
 
-36. **[QA]** Production Integration Assessment
-    Act as an Objective QA Rust developer and rate the final integration on overall production readiness (1-10), ensuring system meets enterprise deployment standards. - STATUS: PLANNED
+- ✅ 0 (Zero) compilation errors  
+- ✅ 0 (Zero) compilation warnings
+- ✅ `cargo check` passes completely clean
+- ✅ All QA items score 9+ or higher (rework required for < 9)
 
-## SUCCESS CRITERIA
-- 0 (Zero) errors 
-- 0 (Zero) warnings
-- All `cargo check`, `cargo check --all-targets`, `cargo check --all-features` commands pass
-- End-user binary functionality works correctly
-- Production workflow system with zero crash risks
-- Proper resource management under all load scenarios  
-- Consistent error propagation and observability
-- Clean API surface with no namespace pollution
+## CONSTRAINTS & QUALITY STANDARDS
+
+- ❌ NO MOCKING, FAKING, FABRICATING, or SIMPLIFYING
+- ✅ Production-ready code only  
+- ✅ Research all call sites before modifying
+- ✅ ASK DAVID for clarification on complex issues
+- ✅ Use latest dependency versions
+- ✅ Test functionality works for end users
+- ✅ Zero tolerance for warnings - fix or properly annotate ALL of them
