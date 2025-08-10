@@ -240,8 +240,11 @@ pub trait CandleAgentBuilder: Sized + Send + Sync {
     where
         F: FnOnce(&CandleAgentConversation) -> CandleChatLoop + Send + 'static;
 
-    /// Chat with direct input - EXACT syntax: .chat(ChatLoop)
+    /// Chat with direct input - EXACT syntax: .chat_direct(ChatLoop)
     fn chat_direct(self, input: CandleChatLoop) -> AsyncStream<CandleMessageChunk>;
+
+    /// Chat with message - EXACT syntax: .chat_with_message("message")
+    fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk>;
 }
 
 /// MCP server builder implementation
@@ -459,6 +462,13 @@ impl CandleAgentBuilder for NoProviderAgent {
     fn chat_direct(self, _input: CandleChatLoop) -> AsyncStream<CandleMessageChunk> {
         AsyncStream::with_channel(move |sender| {
             let error_chunk = CandleMessageChunk::Error("No completion provider configured. Use .completion_provider() before .into_agent()".to_string());
+            let _ = sender.send(error_chunk);
+        })
+    }
+
+    fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk> {
+        AsyncStream::with_channel(move |sender| {
+            let error_chunk = CandleMessageChunk::Error(format!("No completion provider configured for message: {}. Use .completion_provider() before .into_agent()", message.into()));
             let _ = sender.send(error_chunk);
         })
     }
@@ -713,6 +723,66 @@ where
             CandleChatLoop::UserPrompt(message) | CandleChatLoop::Reprompt(message) => {
                 let _ = sender.send(CandleMessageChunk::Text(message));
             }
+        })
+    }
+
+    fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk> {
+        let provider = self.provider;
+        let temperature = self.temperature.unwrap_or(0.7);
+        let max_tokens = self.max_tokens.unwrap_or(1000);
+        let system_prompt = self.system_prompt.clone();
+        let user_message = message.into();
+
+        AsyncStream::with_channel(move |sender| {
+            let full_prompt = if let Some(sys_prompt) = system_prompt {
+                format!("{}\n\nUser: {}", sys_prompt, user_message)
+            } else {
+                format!("User: {}", user_message)
+            };
+
+            let prompt = CandlePrompt::new(full_prompt);
+            let params = CandleCompletionParams {
+                temperature,
+                max_tokens: NonZeroU64::new(max_tokens),
+                ..Default::default()
+            };
+
+            let completion_stream = provider.prompt(prompt, &params);
+
+            completion_stream.for_each(|completion_chunk| {
+                let message_chunk = match completion_chunk {
+                    CandleCompletionChunk::Text(text) => CandleMessageChunk::Text(text),
+                    CandleCompletionChunk::Complete {
+                        text,
+                        finish_reason,
+                        usage,
+                    } => CandleMessageChunk::Complete(
+                        text,
+                        finish_reason.map(|f| format!("{:?}", f)),
+                        usage.map(|u| format!("{:?}", u)),
+                    ),
+                    CandleCompletionChunk::ToolCallStart { id, name } => {
+                        CandleMessageChunk::ToolCallStart(id, name)
+                    }
+                    CandleCompletionChunk::ToolCall {
+                        id,
+                        name,
+                        partial_input,
+                    } => CandleMessageChunk::ToolCall(
+                        id,
+                        name,
+                        partial_input,
+                    ),
+                    CandleCompletionChunk::ToolCallComplete { id, name, input } => {
+                        CandleMessageChunk::ToolCallComplete(id, name, input)
+                    }
+                    CandleCompletionChunk::Error(error) => CandleMessageChunk::Error(error),
+                };
+
+                if sender.send(message_chunk).is_err() {
+                    return;
+                }
+            });
         })
     }
 }
