@@ -245,9 +245,6 @@ pub trait CandleAgentBuilder: Sized + Send + Sync {
 
     /// Chat with message - EXACT syntax: .chat_with_message("message")
     fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk>;
-
-    /// Chat with message - EXACT syntax: .chat_with_message("message")
-    fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk>;
 }
 
 /// MCP server builder implementation
