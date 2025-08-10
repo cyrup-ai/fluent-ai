@@ -84,6 +84,7 @@ pub trait ProviderBuilder: Send + Sync {
 
         // Removed unused import: fluent_ai_http3::Http3 to fix warning
         // This import was causing a warning and has been commented out.
+        #[allow(unused_imports)]
         use super::cache::ModelCache;
 
         // Initialize cache system - NEVER REGENERATE GUARANTEE
