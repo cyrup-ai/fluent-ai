@@ -245,6 +245,9 @@ pub trait CandleAgentBuilder: Sized + Send + Sync {
 
     /// Chat with message - EXACT syntax: .chat_with_message("message")
     fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk>;
+
+    /// Chat with message - EXACT syntax: .chat_with_message("message")
+    fn chat_with_message(self, message: impl Into<String>) -> AsyncStream<CandleMessageChunk>;
 }
 
 /// MCP server builder implementation
@@ -639,11 +642,11 @@ where
             match chat_loop_result {
                 CandleChatLoop::Break => {
                     // User wants to exit - send final chunk
-                    let final_chunk = CandleMessageChunk::Complete {
-                        text: String::new(),
-                        finish_reason: Some("break".to_string()),
-                        usage: None,
-                    };
+                    let final_chunk = CandleMessageChunk::Complete(
+                        String::new(),
+                        Some("break".to_string()),
+                        None,
+                    );
                     let _ = sender.send(final_chunk);
                 }
                 CandleChatLoop::UserPrompt(user_message)
