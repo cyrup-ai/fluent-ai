@@ -9,11 +9,12 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde::{Deserialize, Serialize};
+
 use anyhow::{Context, Result};
-use sha2::{Sha256, Digest};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::buildlib::providers::ModelData;
 
@@ -46,7 +47,7 @@ impl Default for CacheConfig {
 pub struct CacheEntry {
     /// Provider name (e.g., "anthropic")
     pub provider: String,
-    /// Model identifier (e.g., "claude-4-sonnet") 
+    /// Model identifier (e.g., "claude-4-sonnet")
     pub model_id: String,
     /// Cache key in format "{provider}/{model_id}"
     pub cache_key: String,
@@ -122,16 +123,23 @@ impl ModelCache {
 
     /// Ensure cache directory structure exists
     fn ensure_cache_directories(&self) -> Result<()> {
-        fs::create_dir_all(&self.config.cache_dir)
-            .context("Failed to create cache directory")?;
-        
+        fs::create_dir_all(&self.config.cache_dir).context("Failed to create cache directory")?;
+
         // Create provider directories
-        for provider in &["anthropic", "openai", "mistral", "xai", "together", "huggingface"] {
+        for provider in &[
+            "anthropic",
+            "openai",
+            "mistral",
+            "xai",
+            "together",
+            "huggingface",
+        ] {
             let provider_dir = self.config.cache_dir.join(provider);
-            fs::create_dir_all(&provider_dir)
-                .with_context(|| format!("Failed to create provider cache directory: {}", provider))?;
+            fs::create_dir_all(&provider_dir).with_context(|| {
+                format!("Failed to create provider cache directory: {}", provider)
+            })?;
         }
-        
+
         Ok(())
     }
 
@@ -143,7 +151,8 @@ impl ModelCache {
 
     /// Generate cache file path for provider/model
     fn cache_file_path(&self, provider: &str, model_id: &str) -> PathBuf {
-        self.config.cache_dir
+        self.config
+            .cache_dir
             .join(provider.to_lowercase())
             .join(format!("{}.json", model_id))
     }
@@ -165,11 +174,11 @@ impl ModelCache {
     /// Check if cached entry exists and is valid
     pub fn is_cached(&self, provider: &str, model_id: &str) -> bool {
         let cache_file = self.cache_file_path(provider, model_id);
-        
+
         if !cache_file.exists() {
             return false;
         }
-        
+
         match self.load_cache_entry(provider, model_id) {
             Ok(entry) => self.is_entry_valid(&entry),
             Err(_) => false,
@@ -182,9 +191,9 @@ impl ModelCache {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let expiry = entry.generated_at + (entry.ttl_hours * 3600);
-        
+
         now < expiry
     }
 
@@ -196,13 +205,13 @@ impl ModelCache {
         }
 
         let entry = self.load_cache_entry(provider, model_id)?;
-        
+
         // CRITICAL: Never regenerate existing cached models (David's requirement)
         if self.config.enable_fingerprint_validation {
             let current_fingerprint = Self::calculate_fingerprint(&entry.model_data);
             if current_fingerprint != entry.fingerprint {
                 eprintln!(
-                    "Warning: Fingerprint mismatch for {}/{} but returning cached data anyway (never regenerate guarantee)", 
+                    "Warning: Fingerprint mismatch for {}/{} but returning cached data anyway (never regenerate guarantee)",
                     provider, model_id
                 );
             }
@@ -214,9 +223,9 @@ impl ModelCache {
     /// Cache model data with metadata
     /// Only caches if model doesn't already exist (never regenerate guarantee)
     pub fn cache_model(
-        &self, 
-        provider: &str, 
-        model_id: &str, 
+        &self,
+        provider: &str,
+        model_id: &str,
         model_data: &ModelData,
         source: &str,
     ) -> Result<bool> {
@@ -228,7 +237,7 @@ impl ModelCache {
         let cache_key = Self::cache_key(provider, model_id);
         let cached_data = CachedModelData::from(model_data);
         let fingerprint = Self::calculate_fingerprint(&cached_data);
-        
+
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -255,44 +264,48 @@ impl ModelCache {
         let cache_file = self.cache_file_path(provider, model_id);
         let contents = fs::read_to_string(&cache_file)
             .with_context(|| format!("Failed to read cache file: {:?}", cache_file))?;
-        
-        serde_json::from_str(&contents)
-            .with_context(|| format!("Failed to deserialize cache entry for {}/{}", provider, model_id))
+
+        serde_json::from_str(&contents).with_context(|| {
+            format!(
+                "Failed to deserialize cache entry for {}/{}",
+                provider, model_id
+            )
+        })
     }
 
     /// Save cache entry to file atomically
     fn save_cache_entry(&self, entry: &CacheEntry) -> Result<()> {
         let cache_file = self.cache_file_path(&entry.provider, &entry.model_id);
         let temp_file = cache_file.with_extension("tmp");
-        
+
         // Write to temporary file first for atomic operation
-        let contents = serde_json::to_string_pretty(entry)
-            .context("Failed to serialize cache entry")?;
-        
+        let contents =
+            serde_json::to_string_pretty(entry).context("Failed to serialize cache entry")?;
+
         fs::write(&temp_file, contents)
             .with_context(|| format!("Failed to write temp cache file: {:?}", temp_file))?;
-        
+
         // Atomically move temp file to final location
         fs::rename(&temp_file, &cache_file)
             .with_context(|| format!("Failed to move cache file: {:?}", cache_file))?;
-        
+
         Ok(())
     }
 
     /// Get all cached models for a provider
     pub fn get_provider_models(&self, provider: &str) -> Result<Vec<(String, ModelData)>> {
         let provider_dir = self.config.cache_dir.join(provider.to_lowercase());
-        
+
         if !provider_dir.exists() {
             return Ok(Vec::new());
         }
 
         let mut models = Vec::new();
-        
+
         for entry in fs::read_dir(&provider_dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 if let Some(model_id) = path.file_stem().and_then(|s| s.to_str()) {
                     if let Ok(Some(model_data)) = self.get_cached_model(provider, model_id) {
@@ -301,33 +314,52 @@ impl ModelCache {
                 }
             }
         }
-        
+
         Ok(models)
     }
 
-    /// Cache multiple models efficiently
+    /// Cache multiple models efficiently with max entries limit
     pub fn cache_models_batch(
         &self,
-        provider: &str, 
+        provider: &str,
         models: &[ModelData],
         source: &str,
     ) -> Result<usize> {
         let mut cached_count = 0;
-        
+        let mut current_entries = self.get_provider_models(provider)?.len();
+
         for model_data in models {
+            // Check max entries limit
+            if current_entries >= self.config.max_entries_per_provider {
+                eprintln!(
+                    "Warning: Max entries limit ({}) reached for provider {}. Skipping remaining models.",
+                    self.config.max_entries_per_provider, provider
+                );
+                break;
+            }
+
             if self.cache_model(provider, &model_data.0, model_data, source)? {
                 cached_count += 1;
+                current_entries += 1;
             }
         }
-        
+
         Ok(cached_count)
     }
 
-    /// Clear expired cache entries
+    /// Clear expired cache entries - Library API
+    #[allow(dead_code)] // Public API - used by downstream consumers
     pub fn cleanup_expired(&self) -> Result<usize> {
         let mut cleaned_count = 0;
-        
-        for provider in &["anthropic", "openai", "mistral", "xai", "together", "huggingface"] {
+
+        for provider in &[
+            "anthropic",
+            "openai",
+            "mistral",
+            "xai",
+            "together",
+            "huggingface",
+        ] {
             let provider_dir = self.config.cache_dir.join(provider);
             if !provider_dir.exists() {
                 continue;
@@ -336,7 +368,7 @@ impl ModelCache {
             for entry in fs::read_dir(&provider_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                
+
                 if path.extension().and_then(|s| s.to_str()) == Some("json") {
                     if let Some(model_id) = path.file_stem().and_then(|s| s.to_str()) {
                         if let Ok(cache_entry) = self.load_cache_entry(provider, model_id) {
@@ -349,15 +381,23 @@ impl ModelCache {
                 }
             }
         }
-        
+
         Ok(cleaned_count)
     }
 
-    /// Get cache statistics
+    /// Get cache statistics - Library API
+    #[allow(dead_code)] // Public API - used by downstream consumers  
     pub fn get_stats(&self) -> Result<CacheStats> {
         let mut stats = CacheStats::default();
-        
-        for provider in &["anthropic", "openai", "mistral", "xai", "together", "huggingface"] {
+
+        for provider in &[
+            "anthropic",
+            "openai",
+            "mistral",
+            "xai",
+            "together",
+            "huggingface",
+        ] {
             let provider_dir = self.config.cache_dir.join(provider);
             if !provider_dir.exists() {
                 continue;
@@ -371,14 +411,17 @@ impl ModelCache {
                     stats.total_entries += 1;
                 }
             }
-            stats.provider_counts.insert(provider.to_string(), provider_count);
+            stats
+                .provider_counts
+                .insert(provider.to_string(), provider_count);
         }
-        
+
         Ok(stats)
     }
 }
 
-/// Cache statistics for monitoring
+/// Cache statistics for monitoring - Library API
+#[allow(dead_code)] // Public API - used by downstream consumers
 #[derive(Debug, Default)]
 pub struct CacheStats {
     pub total_entries: usize,
@@ -386,6 +429,7 @@ pub struct CacheStats {
 }
 
 impl CacheStats {
+    #[allow(dead_code)] // Public API - used by downstream consumers
     pub fn is_empty(&self) -> bool {
         self.total_entries == 0
     }
