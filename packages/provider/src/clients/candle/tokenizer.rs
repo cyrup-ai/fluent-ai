@@ -3,9 +3,9 @@
 //! This module provides high-performance tokenization with streaming support,
 //! lock-free design, and comprehensive special token handling.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::collections::HashMap;
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayString;
@@ -32,14 +32,16 @@ pub struct TextBuffer {
     /// Internal buffer for accumulating decoded text
     buffer: SmallVec<u8, 1024>,
     /// Current write position
-    write_pos: usize}
+    write_pos: usize,
+}
 
 impl TextBuffer {
     /// Create a new text buffer
     pub fn new() -> Self {
         Self {
             buffer: SmallVec::new(),
-            write_pos: 0}
+            write_pos: 0,
+        }
     }
 
     /// Add bytes to the buffer
@@ -98,7 +100,8 @@ pub struct SpecialTokens {
     /// Mask token for special tasks
     pub mask_token_id: Option<u32>,
     /// Additional special tokens by name
-    pub additional_special_tokens: HashMap<TokenString, u32>}
+    pub additional_special_tokens: HashMap<TokenString, u32>,
+}
 
 impl Default for SpecialTokens {
     fn default() -> Self {
@@ -108,7 +111,8 @@ impl Default for SpecialTokens {
             unk_token_id: None,
             pad_token_id: None,
             mask_token_id: None,
-            additional_special_tokens: HashMap::new()}
+            additional_special_tokens: HashMap::new(),
+        }
     }
 }
 
@@ -213,7 +217,8 @@ pub struct TokenizationResult {
     /// Whether this result contains special tokens
     has_special_tokens: bool,
     /// Original text length for metrics
-    original_length: u32}
+    original_length: u32,
+}
 
 impl TokenizationResult {
     /// Create a new tokenization result
@@ -224,7 +229,8 @@ impl TokenizationResult {
             tokens,
             attention_mask,
             has_special_tokens: false,
-            original_length: original_length as u32}
+            original_length: original_length as u32,
+        }
     }
 
     /// Create result with attention mask
@@ -237,7 +243,8 @@ impl TokenizationResult {
             tokens,
             attention_mask,
             has_special_tokens: false,
-            original_length: original_length as u32}
+            original_length: original_length as u32,
+        }
     }
 
     /// Get token IDs
@@ -290,7 +297,8 @@ pub struct TokenizerConfig {
     /// Maximum sequence length
     pub max_sequence_length: u32,
     /// Whether to enable streaming decode mode
-    pub streaming_decode: bool}
+    pub streaming_decode: bool,
+}
 
 impl TokenizerConfig {
     /// Create configuration for a specific model
@@ -300,7 +308,8 @@ impl TokenizerConfig {
             CandleModel::Mistral7B => (32000, 8192),
             CandleModel::CodeLlama7B => (32016, 16384),
             CandleModel::Phi3Mini => (32064, 4096),
-            CandleModel::Gemma2B | CandleModel::Gemma7B => (256000, 8192)};
+            CandleModel::Gemma2B | CandleModel::Gemma7B => (256000, 8192),
+        };
 
         Self {
             model,
@@ -308,7 +317,8 @@ impl TokenizerConfig {
             add_special_tokens: true,
             truncate_sequences: true,
             max_sequence_length: max_seq_len,
-            streaming_decode: true}
+            streaming_decode: true,
+        }
     }
 
     /// Validate configuration parameters
@@ -355,7 +365,8 @@ pub struct CandleTokenizer {
     /// Tokenizer state for streaming operations
     streaming_state: ArcSwap<StreamingState>,
     /// Tokenizer statistics
-    stats: TokenizerStats}
+    stats: TokenizerStats,
+}
 
 /// Streaming tokenizer state for incremental processing
 #[derive(Debug, Clone)]
@@ -365,14 +376,16 @@ struct StreamingState {
     /// Current decoding position
     decode_position: u32,
     /// Whether streaming is active
-    is_streaming: bool}
+    is_streaming: bool,
+}
 
 impl Default for StreamingState {
     fn default() -> Self {
         Self {
             partial_utf8: SmallVec::new(),
             decode_position: 0,
-            is_streaming: false}
+            is_streaming: false,
+        }
     }
 }
 
@@ -386,7 +399,8 @@ struct TokenizerStats {
     /// Total decode operations
     total_decode_ops: AtomicCell<u64>,
     /// Average tokens per character
-    avg_tokens_per_char: AtomicCell<f32>}
+    avg_tokens_per_char: AtomicCell<f32>,
+}
 
 impl Default for TokenizerStats {
     fn default() -> Self {
@@ -394,7 +408,8 @@ impl Default for TokenizerStats {
             total_chars_processed: AtomicCell::new(0),
             total_tokens_generated: AtomicCell::new(0),
             total_decode_ops: AtomicCell::new(0),
-            avg_tokens_per_char: AtomicCell::new(0.0)}
+            avg_tokens_per_char: AtomicCell::new(0.0),
+        }
     }
 }
 
@@ -414,7 +429,8 @@ impl CandleTokenizer {
             vocab: ArcSwap::from_pointee(vocab),
             reverse_vocab: ArcSwap::from_pointee(reverse_vocab),
             streaming_state: ArcSwap::from_pointee(StreamingState::default()),
-            stats: TokenizerStats::default()}
+            stats: TokenizerStats::default(),
+        }
     }
 
     /// Create tokenizer with custom configuration
@@ -431,7 +447,8 @@ impl CandleTokenizer {
             vocab: ArcSwap::from_pointee(vocab),
             reverse_vocab: ArcSwap::from_pointee(reverse_vocab),
             streaming_state: ArcSwap::from_pointee(StreamingState::default()),
-            stats: TokenizerStats::default()})
+            stats: TokenizerStats::default(),
+        })
     }
 
     /// Load tokenizer from HuggingFace tokenizer.json file
@@ -659,7 +676,8 @@ impl CandleTokenizer {
             total_decode_ops: self.stats.total_decode_ops.load(),
             avg_tokens_per_char: self.stats.avg_tokens_per_char.load(),
             vocab_size: self.config.vocab_size,
-            is_ready: self.is_ready()}
+            is_ready: self.is_ready(),
+        }
     }
 
     /// Reset tokenizer statistics
@@ -708,7 +726,8 @@ pub struct TokenizerStatistics {
     /// Vocabulary size
     pub vocab_size: u32,
     /// Whether tokenizer is ready
-    pub is_ready: bool}
+    pub is_ready: bool,
+}
 
 impl TokenizerStatistics {
     /// Calculate compression ratio (lower is better compression)

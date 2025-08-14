@@ -4,9 +4,10 @@
 //! of plugin creation with zero allocation patterns, blazing-fast performance, and
 //! comprehensive error handling for production environments.
 
+use ratatui::style::Stylize;
+
 use crate::ui::plugin::init::core::*;
 use crate::ui::plugin::init::templates::*;
-use ratatui::style::Stylize;
 
 /// Main plugin initialization engine
 pub struct PluginInitEngine {

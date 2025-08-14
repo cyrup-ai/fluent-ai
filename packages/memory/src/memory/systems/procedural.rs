@@ -25,7 +25,8 @@ pub enum StepStatus {
     /// Step has failed
     Failed,
     /// Step has been skipped
-    Skipped}
+    Skipped,
+}
 
 impl StepStatus {
     /// Convert to string
@@ -35,7 +36,8 @@ impl StepStatus {
             StepStatus::Executing => "executing",
             StepStatus::Completed => "completed",
             StepStatus::Failed => "failed",
-            StepStatus::Skipped => "skipped"}
+            StepStatus::Skipped => "skipped",
+        }
     }
 
     /// Parse from string
@@ -48,7 +50,8 @@ impl StepStatus {
             "skipped" => Ok(StepStatus::Skipped),
             _ => Err(GraphError::ValidationError(format!(
                 "Invalid step status: {s}"
-            )))}
+            ))),
+        }
     }
 }
 
@@ -60,7 +63,8 @@ pub enum ConditionType {
     /// Condition is a postcondition
     Postcondition,
     /// Condition is an invariant
-    Invariant}
+    Invariant,
+}
 
 impl ConditionType {
     /// Convert to string
@@ -68,7 +72,8 @@ impl ConditionType {
         match self {
             ConditionType::Prerequisite => "prerequisite",
             ConditionType::Postcondition => "postcondition",
-            ConditionType::Invariant => "invariant"}
+            ConditionType::Invariant => "invariant",
+        }
     }
 
     /// Parse from string
@@ -79,7 +84,8 @@ impl ConditionType {
             "invariant" => Ok(ConditionType::Invariant),
             _ => Err(GraphError::ValidationError(format!(
                 "Invalid condition type: {s}"
-            )))}
+            ))),
+        }
     }
 }
 
@@ -99,7 +105,8 @@ pub struct Condition {
     pub expression: Value,
 
     /// Is the condition required
-    pub required: bool}
+    pub required: bool,
+}
 
 impl Condition {
     /// Create a new condition
@@ -115,7 +122,8 @@ impl Condition {
             condition_type,
             description: description.to_string(),
             expression,
-            required}
+            required,
+        }
     }
 
     /// Create a new prerequisite
@@ -214,7 +222,8 @@ impl Condition {
                 condition_type,
                 description,
                 expression,
-                required})
+                required,
+            })
         } else {
             Err(GraphError::ConversionError(
                 "Value is not an object".to_string(),
@@ -257,7 +266,8 @@ pub struct Step {
     pub error: Option<String>,
 
     /// Step metadata
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+}
 
 impl Step {
     /// Create a new step
@@ -273,7 +283,8 @@ impl Step {
             dependencies: Vec::new(),
             result: None,
             error: None,
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Add a condition
@@ -447,7 +458,8 @@ impl Step {
                 dependencies,
                 result,
                 error,
-                metadata})
+                metadata,
+            })
         } else {
             Err(GraphError::ConversionError(
                 "Value is not an object".to_string(),
@@ -484,7 +496,8 @@ pub struct ProceduralMemory {
     pub result: Option<Value>,
 
     /// Execution error
-    pub error: Option<String>}
+    pub error: Option<String>,
+}
 
 impl ProceduralMemory {
     /// Create a new procedural memory
@@ -507,7 +520,8 @@ impl ProceduralMemory {
             current_step: None,
             status: StepStatus::Pending,
             result: None,
-            error: None}
+            error: None,
+        }
     }
 
     /// Add a step
@@ -552,6 +566,7 @@ impl ProceduralMemory {
         match self.current_step {
             Some(i) if i + 1 < self.steps.len() => self.steps.get(i + 1),
             None if !self.steps.is_empty() => self.steps.first(),
-            _ => None}
+            _ => None,
+        }
     }
 }

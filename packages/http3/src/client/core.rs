@@ -10,7 +10,7 @@ use crate::HttpConfig;
 #[derive(Debug, Clone)]
 pub struct HttpClient {
     /// Underlying HTTP client (delegated to operation modules)
-    pub(crate) inner: reqwest::Client,
+    pub(crate) inner: crate::hyper::Client,
     /// Client configuration
     pub(crate) config: HttpConfig,
     /// Atomic metrics for lock-free statistics
@@ -23,7 +23,7 @@ impl HttpClient {
     /// This is an internal constructor used by the configuration module.
     /// External users should use `HttpClient::with_config()` or `HttpClient::default()`.
     #[inline]
-    pub(crate) fn new(inner: reqwest::Client, config: HttpConfig, stats: ClientStats) -> Self {
+    pub(crate) fn new(inner: crate::hyper::Client, config: HttpConfig, stats: ClientStats) -> Self {
         Self {
             inner,
             config,
@@ -31,12 +31,12 @@ impl HttpClient {
         }
     }
 
-    /// Returns a reference to the inner `reqwest::Client`.
+    /// Returns a reference to the inner `crate::hyper::Client`.
     ///
     /// Provides access to the underlying HTTP client for advanced operations
-    /// that require direct reqwest functionality.
+    /// that require direct http3 functionality.
     #[inline]
-    pub fn inner(&self) -> &reqwest::Client {
+    pub fn inner(&self) -> &crate::hyper::Client {
         &self.inner
     }
 
@@ -77,7 +77,7 @@ impl HttpClient {
     /// # Examples
     /// ```no_run
     /// use fluent_ai_http3::HttpClient;
-    /// 
+    ///
     /// let client = HttpClient::new();
     /// let stats = client.stats();
     /// println!("Success rate: {:.2}%", stats.success_rate() * 100.0);
@@ -106,10 +106,10 @@ impl HttpClient {
     pub fn reset_stats(&mut self) {
         use std::sync::atomic::Ordering;
         let stats = self.stats_mut();
-        
+
         // Reset all atomic counters to zero
         stats.request_count.store(0, Ordering::Relaxed);
-        stats.connection_count.store(0, Ordering::Relaxed);  
+        stats.connection_count.store(0, Ordering::Relaxed);
         stats.total_bytes_sent.store(0, Ordering::Relaxed);
         stats.total_bytes_received.store(0, Ordering::Relaxed);
         stats.total_response_time_nanos.store(0, Ordering::Relaxed);

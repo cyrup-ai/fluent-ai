@@ -1,29 +1,31 @@
-use fluent_ai_async::AsyncStream;
-use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroU32;
 
+use fluent_ai_async::AsyncStream;
+use serde::{Deserialize, Serialize};
 
-pub trait Model: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq + std::hash::Hash + 'static {
+pub trait Model:
+    Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq + std::hash::Hash + 'static
+{
     // Basic model information
     fn name(&self) -> &'static str;
     fn provider_name(&self) -> &'static str;
-    
+
     // Token limits (split max_context_length into input/output)
     fn max_input_tokens(&self) -> Option<u32>;
     fn max_output_tokens(&self) -> Option<u32>;
-    
+
     // Convenience method: total token capacity (input + output)
     fn max_context_length(&self) -> u64 {
         let input = self.max_input_tokens().unwrap_or(4096) as u64;
         let output = self.max_output_tokens().unwrap_or(2048) as u64;
         input + output
     }
-    
+
     // Pricing (made optional to handle unknown pricing)
     fn pricing_input(&self) -> Option<f64>;
     fn pricing_output(&self) -> Option<f64>;
-    
+
     // Capability methods
     fn supports_vision(&self) -> bool;
     fn supports_function_calling(&self) -> bool;
@@ -31,24 +33,24 @@ pub trait Model: Send + Sync + std::fmt::Debug + Clone + Copy + PartialEq + Eq +
     fn requires_max_tokens(&self) -> bool;
     fn supports_thinking(&self) -> bool;
     fn required_temperature(&self) -> Option<f64>;
-    
+
     // Advanced features
     fn optimal_thinking_budget(&self) -> Option<u32> {
         None
     }
-    
+
     fn system_prompt_prefix(&self) -> Option<&'static str> {
         None
     }
-    
+
     fn real_name(&self) -> Option<&'static str> {
         None
     }
-    
+
     fn model_type(&self) -> Option<&'static str> {
         None
     }
-    
+
     // Helper method to convert to ModelInfo
     fn to_model_info(&self) -> ModelInfo {
         ModelInfo {
@@ -79,15 +81,15 @@ pub struct ModelInfo {
     // Core identification
     pub provider_name: &'static str,
     pub name: &'static str,
-    
+
     // Token limits
     pub max_input_tokens: Option<NonZeroU32>,
     pub max_output_tokens: Option<NonZeroU32>,
-    
+
     // Pricing (optional to handle unknown pricing)
     pub input_price: Option<f64>,
     pub output_price: Option<f64>,
-    
+
     // Capability flags
     #[serde(default)]
     pub supports_vision: bool,
@@ -99,7 +101,7 @@ pub struct ModelInfo {
     pub requires_max_tokens: bool,
     #[serde(default)]
     pub supports_thinking: bool,
-    
+
     // Advanced features
     pub optimal_thinking_budget: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -118,16 +120,16 @@ pub struct ModelInfo {
 pub enum ModelError {
     #[error("Model not found: {provider}:{name}")]
     ModelNotFound { provider: String, name: String },
-    
+
     #[error("Model already exists: {provider}:{name}")]
     ModelAlreadyExists { provider: String, name: String },
-    
+
     #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
-    
+
     #[error("Provider not found: {0}")]
     ProviderNotFound(String),
-    
+
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
 }
@@ -270,18 +272,20 @@ impl ModelInfo {
         }
 
         if let Some(max_input) = self.max_input_tokens
-            && max_input.get() == 0 {
-                return Err(ModelError::InvalidConfiguration(
-                    "max_input_tokens cannot be zero".into(),
-                ));
-            }
+            && max_input.get() == 0
+        {
+            return Err(ModelError::InvalidConfiguration(
+                "max_input_tokens cannot be zero".into(),
+            ));
+        }
 
         if let Some(max_output) = self.max_output_tokens
-            && max_output.get() == 0 {
-                return Err(ModelError::InvalidConfiguration(
-                    "max_output_tokens cannot be zero".into(),
-                ));
-            }
+            && max_output.get() == 0
+        {
+            return Err(ModelError::InvalidConfiguration(
+                "max_output_tokens cannot be zero".into(),
+            ));
+        }
 
         if self.supports_thinking && self.optimal_thinking_budget.is_none() {
             return Err(ModelError::InvalidConfiguration(
@@ -330,9 +334,7 @@ pub struct ModelInfoBuilder {
 impl ModelInfoBuilder {
     /// Create a new ModelInfoBuilder
     pub fn new() -> Self {
-        Self {
-            ..Self::default()
-        }
+        Self { ..Self::default() }
     }
 
     /// Set the provider name
@@ -377,7 +379,6 @@ impl ModelInfoBuilder {
         self.supports_function_calling = enabled;
         self
     }
-
 
     /// Enable embeddings support
     pub fn with_embeddings(mut self, enabled: bool) -> Self {
@@ -430,13 +431,13 @@ impl ModelInfoBuilder {
 
     /// Build the ModelInfo instance
     pub fn build(self) -> Result<ModelInfo> {
-        let provider_name = self.provider_name.ok_or_else(|| {
-            ModelError::InvalidConfiguration("provider_name is required".into())
-        })?;
+        let provider_name = self
+            .provider_name
+            .ok_or_else(|| ModelError::InvalidConfiguration("provider_name is required".into()))?;
 
-        let name = self.name.ok_or_else(|| {
-            ModelError::InvalidConfiguration("name is required".into())
-        })?;
+        let name = self
+            .name
+            .ok_or_else(|| ModelError::InvalidConfiguration("name is required".into()))?;
 
         if self.supports_thinking && self.optimal_thinking_budget.is_none() {
             return Err(ModelError::InvalidConfiguration(

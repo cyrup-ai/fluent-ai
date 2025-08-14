@@ -19,12 +19,11 @@ pub type Result<T> = std::result::Result<T, ExtractionError>;
 mod tests {
     use serde::Deserialize;
 
-
-
     #[derive(Debug, Deserialize, PartialEq)]
     struct TestData {
         name: String,
-        age: u32}
+        age: u32,
+    }
 
     // Note: Actual tests would require proper mocking of the Agent and CompletionModel
     // These are placeholders to demonstrate the test structure

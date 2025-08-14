@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
+
 use fluent_ai_simd::cosine_similarity;
 use surrealdb::sql::Value;
 
@@ -21,7 +22,8 @@ use crate::utils::error::{Error, Result};
 /// wrap in Arc<RwLock<>> or use external synchronization.
 pub struct InMemoryVectorStore {
     vectors: HashMap<String, Vec<f32>>,
-    metadata: HashMap<String, VectorMetadata>}
+    metadata: HashMap<String, VectorMetadata>,
+}
 
 impl Default for InMemoryVectorStore {
     fn default() -> Self {
@@ -37,7 +39,8 @@ impl InMemoryVectorStore {
     pub fn new() -> Self {
         Self {
             vectors: HashMap::new(),
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Create a new vector store with specified capacity
@@ -50,7 +53,8 @@ impl InMemoryVectorStore {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             vectors: HashMap::with_capacity(capacity),
-            metadata: HashMap::with_capacity(capacity)}
+            metadata: HashMap::with_capacity(capacity),
+        }
     }
 
     /// Get the current capacity of the vector store

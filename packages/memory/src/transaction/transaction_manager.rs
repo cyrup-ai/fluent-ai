@@ -8,7 +8,8 @@ use tokio::sync::{Mutex, RwLock};
 
 use crate::transaction::{
     IsolationLevel, PendingCommit, PendingRollback, Result, Transaction, TransactionContext,
-    TransactionError, TransactionState};
+    TransactionError, TransactionState,
+};
 
 /// Transaction manager for coordinating transactions
 pub struct TransactionManager {
@@ -19,7 +20,8 @@ pub struct TransactionManager {
     transaction_log: Arc<Mutex<Vec<TransactionLogEntry>>>,
 
     /// Lock manager
-    lock_manager: Arc<LockManager>}
+    lock_manager: Arc<LockManager>,
+}
 
 /// Transaction implementation
 pub struct TransactionImpl {
@@ -33,7 +35,8 @@ pub struct TransactionImpl {
     pub operations: Vec<Operation>,
 
     /// Locks held by this transaction
-    pub locks: Vec<Lock>}
+    pub locks: Vec<Lock>,
+}
 
 /// Operation performed in a transaction
 #[derive(Debug, Clone)]
@@ -42,16 +45,19 @@ pub enum Operation {
     Insert {
         table: String,
         id: String,
-        data: serde_json::Value},
+        data: serde_json::Value,
+    },
 
     /// Update operation
     Update {
         table: String,
         id: String,
-        data: serde_json::Value},
+        data: serde_json::Value,
+    },
 
     /// Delete operation
-    Delete { table: String, id: String }}
+    Delete { table: String, id: String },
+}
 
 /// Lock types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,7 +66,8 @@ pub enum LockType {
     Shared,
 
     /// Exclusive lock (for writes)
-    Exclusive}
+    Exclusive,
+}
 
 /// Lock held by a transaction
 #[derive(Debug, Clone)]
@@ -72,12 +79,14 @@ pub struct Lock {
     pub lock_type: LockType,
 
     /// Transaction holding the lock
-    pub transaction_id: String}
+    pub transaction_id: String,
+}
 
 /// Lock manager for handling concurrent access
 struct LockManager {
     /// Locks by resource
-    locks: RwLock<HashMap<String, Vec<Lock>>>}
+    locks: RwLock<HashMap<String, Vec<Lock>>>,
+}
 
 /// Transaction log entry
 #[derive(Debug, Clone)]
@@ -89,7 +98,8 @@ struct TransactionLogEntry {
     timestamp: chrono::DateTime<chrono::Utc>,
 
     /// Action
-    action: TransactionAction}
+    action: TransactionAction,
+}
 
 /// Transaction actions for logging
 #[derive(Debug, Clone)]
@@ -98,7 +108,8 @@ enum TransactionAction {
     Commit,
     Rollback,
     #[allow(dead_code)]
-    Abort(String)}
+    Abort(String),
+}
 
 impl TransactionManager {
     /// Create a new transaction manager
@@ -106,7 +117,8 @@ impl TransactionManager {
         Self {
             active_transactions: Arc::new(RwLock::new(HashMap::new())),
             transaction_log: Arc::new(Mutex::new(Vec::new())),
-            lock_manager: Arc::new(LockManager::new())}
+            lock_manager: Arc::new(LockManager::new()),
+        }
     }
 
     /// Begin a new transaction
@@ -119,13 +131,15 @@ impl TransactionManager {
             id: uuid::Uuid::new_v4().to_string(),
             isolation_level,
             started_at: std::time::Instant::now(),
-            timeout};
+            timeout,
+        };
 
         let transaction = Arc::new(Mutex::new(TransactionImpl {
             context: context.clone(),
             state: TransactionState::Active,
             operations: Vec::new(),
-            locks: Vec::new()}));
+            locks: Vec::new(),
+        }));
 
         // Add to active transactions
         let transaction_id = context.id.clone();
@@ -285,7 +299,8 @@ impl TransactionManager {
             tx.locks.push(Lock {
                 resource,
                 lock_type,
-                transaction_id});
+                transaction_id,
+            });
         }
 
         Ok(())
@@ -326,7 +341,8 @@ impl TransactionManager {
         let entry = TransactionLogEntry {
             transaction_id,
             timestamp: chrono::Utc::now(),
-            action};
+            action,
+        };
 
         self.transaction_log.lock().await.push(entry);
     }
@@ -342,7 +358,8 @@ impl LockManager {
     /// Create a new lock manager
     fn new() -> Self {
         Self {
-            locks: RwLock::new(HashMap::new())}
+            locks: RwLock::new(HashMap::new()),
+        }
     }
 
     /// Acquire a lock
@@ -374,7 +391,8 @@ impl LockManager {
         resource_locks.push(Lock {
             resource,
             lock_type,
-            transaction_id});
+            transaction_id,
+        });
 
         Ok(())
     }

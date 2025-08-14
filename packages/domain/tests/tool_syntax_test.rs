@@ -3,8 +3,8 @@
 //! This module verifies that the Tool syntax from ARCHITECTURE.md works exactly as documented:
 //! Tool<Perplexity>::new([("citations", "true")])
 
-use fluent_ai_domain::tool::{Perplexity, Tool};
 use cyrup_sugars::macros::hash_map_fn;
+use fluent_ai_domain::tool::{Perplexity, Tool};
 
 #[cfg(test)]
 mod tests {
@@ -22,10 +22,7 @@ mod tests {
     #[test]
     fn test_tool_multiple_params() {
         // Test multiple parameters
-        let _tool = Tool::<Perplexity>::new([
-            ("citations", "true"),
-            ("mode", "research")
-        ]);
+        let _tool = Tool::<Perplexity>::new([("citations", "true"), ("mode", "research")]);
 
         assert!(true); // Basic compilation test
     }

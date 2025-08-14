@@ -6,10 +6,10 @@ use std::sync::atomic::AtomicUsize;
 // Ultra-high-performance zero-allocation imports
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
+use hashbrown::HashMap;
 use once_cell::sync::Lazy;
 use serde_json::Value;
 
-use hashbrown::HashMap;
 use crate::MessageRole;
 use crate::ZeroOneOrMany;
 // Unused imports cleaned up
@@ -36,7 +36,8 @@ struct McpServerConfig {
     #[allow(dead_code)] // TODO: Use for MCP server binary executable path
     bin_path: Option<String>,
     #[allow(dead_code)] // TODO: Use for MCP server initialization command
-    init_command: Option<String>}
+    init_command: Option<String>,
+}
 
 /// Core agent role trait defining all operations and properties
 pub trait AgentRole: Send + Sync + fmt::Debug + Clone {
@@ -83,7 +84,8 @@ pub struct AgentRoleImpl {
     on_tool_result_handler: Option<Box<dyn Fn(ZeroOneOrMany<Value>) + Send + Sync>>,
     #[allow(dead_code)] // TODO: Use for conversation turn event handling and logging
     on_conversation_turn_handler:
-        Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>}
+        Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>,
+}
 
 impl std::fmt::Debug for AgentRoleImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -150,7 +152,8 @@ impl AgentRole for AgentRoleImpl {
             memory: None,
             metadata: None,
             on_tool_result_handler: None,
-            on_conversation_turn_handler: None}
+            on_conversation_turn_handler: None,
+        }
     }
 }
 
@@ -217,7 +220,8 @@ pub struct AgentRoleAgent;
 
 /// Agent conversation type
 pub struct AgentConversation {
-    messages: Option<ZeroOneOrMany<(MessageRole, String)>>}
+    messages: Option<ZeroOneOrMany<(MessageRole, String)>>,
+}
 
 impl AgentConversation {
     /// Get the last message from the conversation
@@ -231,13 +235,15 @@ impl AgentConversation {
                     let all: Vec<_> = msgs.clone().into_iter().collect();
                     all.last().map(|(_, m)| m.clone())
                 })
-                .unwrap_or_default()}
+                .unwrap_or_default(),
+        }
     }
 }
 
 /// A single message in an agent conversation
 pub struct AgentConversationMessage {
-    content: String}
+    content: String,
+}
 
 impl AgentConversationMessage {
     /// Get the message content as a string slice
@@ -245,7 +251,6 @@ impl AgentConversationMessage {
         &self.content
     }
 }
-
 
 /// Trait for context arguments - moved to fluent-ai/src/builders/
 pub trait ContextArgs {

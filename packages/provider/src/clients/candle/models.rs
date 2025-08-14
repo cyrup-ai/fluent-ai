@@ -28,7 +28,8 @@ pub enum CandleModel {
     /// Kimi-K2 FP16 parameter model
     KimiK2Fp16,
     /// Kimi-K2 FP8 parameter model
-    KimiK2Fp8}
+    KimiK2Fp8,
+}
 
 const DEVSTRAL_22B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -47,7 +48,8 @@ const DEVSTRAL_22B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const LLAMA2_7B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -66,7 +68,8 @@ const LLAMA2_7B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const LLAMA2_13B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -85,7 +88,8 @@ const LLAMA2_13B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const MISTRAL_7B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -104,7 +108,8 @@ const MISTRAL_7B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const CODELLAMA_7B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -123,7 +128,8 @@ const CODELLAMA_7B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const PHI3_MINI_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -142,7 +148,8 @@ const PHI3_MINI_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const GEMMA_2B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -161,7 +168,8 @@ const GEMMA_2B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const GEMMA_7B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -180,7 +188,8 @@ const GEMMA_7B_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const KIMI_K2_FP16_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -199,7 +208,8 @@ const KIMI_K2_FP16_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 const KIMI_K2_FP8_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
@@ -218,7 +228,8 @@ const KIMI_K2_FP8_INFO: ModelInfo = ModelInfo {
     system_prompt_prefix: None,
     real_name: None,
     model_type: None,
-    patch: None};
+    patch: None,
+};
 
 impl Model for CandleModel {
     fn info(&self) -> &'static ModelInfo {
@@ -232,7 +243,8 @@ impl Model for CandleModel {
             CandleModel::Gemma2B => &GEMMA_2B_INFO,
             CandleModel::Gemma7B => &GEMMA_7B_INFO,
             CandleModel::KimiK2Fp16 => &KIMI_K2_FP16_INFO,
-            CandleModel::KimiK2Fp8 => &KIMI_K2_FP8_INFO}
+            CandleModel::KimiK2Fp8 => &KIMI_K2_FP8_INFO,
+        }
     }
 }
 
@@ -248,7 +260,8 @@ impl std::fmt::Display for CandleModel {
             CandleModel::Gemma2B => "Gemma 2B",
             CandleModel::Gemma7B => "Gemma 7B",
             CandleModel::KimiK2Fp16 => "Kimi-K2 FP16",
-            CandleModel::KimiK2Fp8 => "Kimi-K2 FP8"};
+            CandleModel::KimiK2Fp8 => "Kimi-K2 FP8",
+        };
         write!(f, "{}", name)
     }
 }
@@ -337,13 +350,13 @@ impl CandleModelInfo {
             tokenizer_path: None,
         }
     }
-    
+
     /// Set model file path
     pub fn with_model_path(mut self, path: String) -> Self {
         self.model_path = Some(path);
         self
     }
-    
+
     /// Set tokenizer file path
     pub fn with_tokenizer_path(mut self, path: String) -> Self {
         self.tokenizer_path = Some(path);

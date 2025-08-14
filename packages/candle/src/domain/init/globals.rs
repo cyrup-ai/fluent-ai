@@ -3,7 +3,7 @@
 //! This module contains all global static variables, initialization counters,
 //! and shared state that needs to be accessed across the domain.
 
-use std::sync::{Arc, atomic::AtomicUsize};
+use std::sync::{atomic::AtomicUsize, Arc};
 
 use arc_swap::ArcSwap;
 use atomic_counter::RelaxedCounter;

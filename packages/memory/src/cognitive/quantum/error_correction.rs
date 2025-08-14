@@ -6,14 +6,16 @@ use std::time::Duration;
 use crate::cognitive::quantum::{
     Complex64,
     ml_decoder::{MLDecoder, MLModelType},
-    types::CognitiveResult};
+    types::CognitiveResult,
+};
 
 /// Quantum error correction system
 pub struct QuantumErrorCorrection {
     pub syndrome_detection: SyndromeDetector,
     pub error_correction_codes: Vec<ErrorCorrectionCode>,
     pub logical_qubit_mapping: HashMap<String, LogicalQubit>,
-    pub error_rate_threshold: f64}
+    pub error_rate_threshold: f64,
+}
 
 /// Error correction code definition
 #[derive(Debug, Clone)]
@@ -23,13 +25,15 @@ pub struct ErrorCorrectionCode {
     pub logical_qubits: usize,
     pub physical_qubits: usize,
     pub threshold_error_rate: f64,
-    pub stabilizer_generators: Vec<PauliOperator>}
+    pub stabilizer_generators: Vec<PauliOperator>,
+}
 
 /// Pauli operator for stabilizer codes
 #[derive(Debug, Clone)]
 pub struct PauliOperator {
     pub pauli_string: String, // e.g., "XYZII"
-    pub coefficient: Complex64}
+    pub coefficient: Complex64,
+}
 
 /// Logical qubit encoded in physical qubits
 #[derive(Debug, Clone)]
@@ -37,51 +41,64 @@ pub struct LogicalQubit {
     pub physical_qubit_indices: Vec<usize>,
     pub encoding_circuit: QuantumCircuit,
     pub decoding_circuit: QuantumCircuit,
-    pub error_syndromes: Vec<ErrorSyndrome>}
+    pub error_syndromes: Vec<ErrorSyndrome>,
+}
 
 /// Quantum circuit representation
 #[derive(Debug, Clone)]
 pub struct QuantumCircuit {
     pub gates: Vec<QuantumGate>,
     pub qubit_count: usize,
-    pub depth: usize}
+    pub depth: usize,
+}
 
 /// Quantum gate types
 #[derive(Debug, Clone)]
 pub enum QuantumGate {
     Hadamard {
-        target: usize},
+        target: usize,
+    },
     PauliX {
-        target: usize},
+        target: usize,
+    },
     PauliY {
-        target: usize},
+        target: usize,
+    },
     PauliZ {
-        target: usize},
+        target: usize,
+    },
     CNOT {
         control: usize,
-        target: usize},
+        target: usize,
+    },
     Toffoli {
         control1: usize,
         control2: usize,
-        target: usize},
+        target: usize,
+    },
     Phase {
         target: usize,
-        angle: f64},
+        angle: f64,
+    },
     Rotation {
         target: usize,
         axis: RotationAxis,
-        angle: f64},
+        angle: f64,
+    },
     Custom {
         name: String,
         matrix: Vec<Vec<Complex64>>,
-        targets: Vec<usize>}}
+        targets: Vec<usize>,
+    },
+}
 
 /// Rotation axis for rotation gates
 #[derive(Debug, Clone)]
 pub enum RotationAxis {
     X,
     Y,
-    Z}
+    Z,
+}
 
 /// Error syndrome information
 #[derive(Debug, Clone)]
@@ -89,7 +106,8 @@ pub struct ErrorSyndrome {
     pub syndrome_bits: Vec<bool>,
     pub error_location: Vec<usize>,
     pub error_type: ErrorType,
-    pub correction_operation: Vec<QuantumGate>}
+    pub correction_operation: Vec<QuantumGate>,
+}
 
 /// Types of quantum errors
 #[derive(Debug, Clone)]
@@ -98,38 +116,44 @@ pub enum ErrorType {
     PhaseFlip,
     Depolarizing,
     AmplitudeDamping,
-    PhaseDamping}
+    PhaseDamping,
+}
 
 /// Syndrome detection system
 pub struct SyndromeDetector {
     pub measurement_circuits: Vec<SyndromeMeasurement>,
     pub classical_processing: ClassicalProcessor,
-    pub real_time_correction: bool}
+    pub real_time_correction: bool,
+}
 
 /// Syndrome measurement configuration
 #[derive(Debug, Clone)]
 pub struct SyndromeMeasurement {
     pub measurement_qubits: Vec<usize>,
     pub measurement_basis: MeasurementBasis,
-    pub post_processing: PostProcessingStep}
+    pub post_processing: PostProcessingStep,
+}
 
 /// Measurement basis placeholder
 #[derive(Debug, Clone)]
 pub struct MeasurementBasis {
-    pub name: String}
+    pub name: String,
+}
 
 /// Post-processing steps for syndrome extraction
 #[derive(Debug, Clone)]
 pub enum PostProcessingStep {
     ParityCheck { qubits: Vec<usize> },
     Majority { qubits: Vec<usize> },
-    Custom { function: String }}
+    Custom { function: String },
+}
 
 /// Classical processing for error correction
 pub struct ClassicalProcessor {
     pub lookup_table: HashMap<Vec<bool>, Vec<QuantumGate>>,
     pub machine_learning_decoder: Option<MLDecoder>,
-    pub decoding_latency: Duration}
+    pub decoding_latency: Duration,
+}
 
 /// Quantum measurement result for error correction
 #[derive(Debug, Clone)]
@@ -139,7 +163,8 @@ pub struct QuantumMeasurementResult {
     pub fidelity: f64,
     pub post_measurement_state: std::collections::BTreeMap<String, Complex64>,
     pub measurement_basis: crate::cognitive::quantum::measurement::MeasurementBasis,
-    pub measurement_metadata: crate::cognitive::quantum::measurement::MeasurementMetadata}
+    pub measurement_metadata: crate::cognitive::quantum::measurement::MeasurementMetadata,
+}
 
 impl QuantumErrorCorrection {
     /// Create a new error correction system
@@ -148,7 +173,8 @@ impl QuantumErrorCorrection {
             syndrome_detection: SyndromeDetector::new(),
             error_correction_codes: Self::initialize_standard_codes(),
             logical_qubit_mapping: HashMap::new(),
-            error_rate_threshold}
+            error_rate_threshold,
+        }
     }
 
     /// Initialize standard error correction codes
@@ -164,11 +190,14 @@ impl QuantumErrorCorrection {
                 stabilizer_generators: vec![
                     PauliOperator {
                         pauli_string: "ZZI".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "IZZ".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
-                ]},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
+                ],
+            },
             // 3-qubit phase flip code
             ErrorCorrectionCode {
                 name: "3-qubit-phase-flip".to_string(),
@@ -179,11 +208,14 @@ impl QuantumErrorCorrection {
                 stabilizer_generators: vec![
                     PauliOperator {
                         pauli_string: "XXI".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "IXX".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
-                ]},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
+                ],
+            },
             // 5-qubit perfect code
             ErrorCorrectionCode {
                 name: "5-qubit-perfect".to_string(),
@@ -194,17 +226,22 @@ impl QuantumErrorCorrection {
                 stabilizer_generators: vec![
                     PauliOperator {
                         pauli_string: "XZZXI".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "IXZZX".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "XIXZZ".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "ZXIXZ".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
-                ]},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
+                ],
+            },
             // Steane [7,1,3] code
             ErrorCorrectionCode {
                 name: "steane-7-1-3".to_string(),
@@ -215,23 +252,30 @@ impl QuantumErrorCorrection {
                 stabilizer_generators: vec![
                     PauliOperator {
                         pauli_string: "IIIXXXX".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "IXXIIXX".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "XIXIXIX".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "IIIZZZZ".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "IZZIIZZ".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
                     PauliOperator {
                         pauli_string: "ZIZIZIZ".to_string(),
-                        coefficient: Complex64::new(1.0, 0.0)},
-                ]},
+                        coefficient: Complex64::new(1.0, 0.0),
+                    },
+                ],
+            },
         ]
     }
 
@@ -307,7 +351,8 @@ impl QuantumErrorCorrection {
                 syndrome_bits: syndrome.to_vec(),
                 error_location: error_locations.clone(),
                 error_type: ErrorType::BitFlip, // Simplified
-                correction_operation: self.generate_correction_gates(&error_locations)})
+                correction_operation: self.generate_correction_gates(&error_locations),
+            })
         } else {
             // Use lookup table
             if let Some(correction) = self
@@ -320,14 +365,16 @@ impl QuantumErrorCorrection {
                     syndrome_bits: syndrome.to_vec(),
                     error_location: vec![0], // Simplified
                     error_type: ErrorType::BitFlip,
-                    correction_operation: correction.clone()})
+                    correction_operation: correction.clone(),
+                })
             } else {
                 // No known syndrome
                 Ok(ErrorSyndrome {
                     syndrome_bits: syndrome.to_vec(),
                     error_location: Vec::new(),
                     error_type: ErrorType::BitFlip,
-                    correction_operation: Vec::new()})
+                    correction_operation: Vec::new(),
+                })
             }
         }
     }
@@ -414,7 +461,8 @@ impl QuantumErrorCorrection {
             physical_qubit_indices: physical_indices,
             encoding_circuit,
             decoding_circuit,
-            error_syndromes: Vec::new()})
+            error_syndromes: Vec::new(),
+        })
     }
 
     /// Generate encoding circuit for error correction code
@@ -429,19 +477,23 @@ impl QuantumErrorCorrection {
                 // Encoding: |ψ⟩ -> |ψψψ⟩
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 1});
+                    target: 1,
+                });
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 2});
+                    target: 2,
+                });
             }
             "3-qubit-phase-flip" => {
                 // Encoding with Hadamard basis
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 1});
+                    target: 1,
+                });
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 2});
+                    target: 2,
+                });
                 gates.push(QuantumGate::Hadamard { target: 0 });
                 gates.push(QuantumGate::Hadamard { target: 1 });
                 gates.push(QuantumGate::Hadamard { target: 2 });
@@ -451,23 +503,28 @@ impl QuantumErrorCorrection {
                 gates.push(QuantumGate::Hadamard { target: 0 });
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 1});
+                    target: 1,
+                });
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 2});
+                    target: 2,
+                });
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 3});
+                    target: 3,
+                });
                 gates.push(QuantumGate::CNOT {
                     control: 0,
-                    target: 4});
+                    target: 4,
+                });
             }
             _ => {
                 // Generic encoding
                 for i in 1..code.physical_qubits {
                     gates.push(QuantumGate::CNOT {
                         control: 0,
-                        target: i});
+                        target: i,
+                    });
                 }
             }
         }
@@ -476,7 +533,8 @@ impl QuantumErrorCorrection {
         Ok(QuantumCircuit {
             gates,
             qubit_count: code.physical_qubits,
-            depth})
+            depth,
+        })
     }
 
     /// Generate decoding circuit for error correction code
@@ -506,7 +564,8 @@ impl QuantumErrorCorrection {
         Ok(QuantumCircuit {
             gates,
             qubit_count: code.physical_qubits,
-            depth})
+            depth,
+        })
     }
 
     /// Calculate circuit depth
@@ -523,7 +582,8 @@ impl SyndromeDetector {
         Self {
             measurement_circuits: Self::initialize_measurement_circuits(),
             classical_processing: ClassicalProcessor::new(),
-            real_time_correction: true}
+            real_time_correction: true,
+        }
     }
 
     /// Initialize standard measurement circuits
@@ -532,13 +592,17 @@ impl SyndromeDetector {
             SyndromeMeasurement {
                 measurement_qubits: vec![0, 1],
                 measurement_basis: MeasurementBasis {
-                    name: "Z-basis".to_string()},
-                post_processing: PostProcessingStep::ParityCheck { qubits: vec![0, 1] }},
+                    name: "Z-basis".to_string(),
+                },
+                post_processing: PostProcessingStep::ParityCheck { qubits: vec![0, 1] },
+            },
             SyndromeMeasurement {
                 measurement_qubits: vec![1, 2],
                 measurement_basis: MeasurementBasis {
-                    name: "Z-basis".to_string()},
-                post_processing: PostProcessingStep::ParityCheck { qubits: vec![1, 2] }},
+                    name: "Z-basis".to_string(),
+                },
+                post_processing: PostProcessingStep::ParityCheck { qubits: vec![1, 2] },
+            },
         ]
     }
 }
@@ -565,7 +629,8 @@ impl ClassicalProcessor {
         Self {
             lookup_table,
             machine_learning_decoder: Some(ml_decoder),
-            decoding_latency: Duration::from_micros(100)}
+            decoding_latency: Duration::from_micros(100),
+        }
     }
 }
 
@@ -626,7 +691,8 @@ mod tests {
             measurement_basis:
                 crate::cognitive::quantum::measurement::MeasurementBasis::computational(),
             measurement_metadata:
-                crate::cognitive::quantum::measurement::MeasurementMetadata::default()};
+                crate::cognitive::quantum::measurement::MeasurementMetadata::default(),
+        };
 
         let syndrome = qec
             .extract_syndrome(&measurement_result)

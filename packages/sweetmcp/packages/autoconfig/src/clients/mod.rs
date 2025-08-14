@@ -4,8 +4,9 @@ pub mod roo_code;
 pub mod windsurf;
 pub mod zed;
 
-use crate::ClientConfigPlugin;
 use std::sync::Arc;
+
+use crate::ClientConfigPlugin;
 
 /// Get all available client plugins
 pub fn all_clients() -> Vec<Arc<dyn ClientConfigPlugin>> {

@@ -8,10 +8,11 @@
 //! - Zero allocation constructors where possible
 //! - Elegant ergonomic field access
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 /// Pure YAML provider data - mirrors YAML sequence structure exactly
-/// 
+///
 /// Each provider contains a name and list of models.
 /// This struct deserializes directly from yyaml with zero transformations.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -19,7 +20,8 @@ pub struct YamlProvider {
     /// Provider name identifier (e.g., "openai", "anthropic", "gemini")
     pub provider: String,
     /// List of models available from this provider
-    pub models: Vec<YamlModel>}
+    pub models: Vec<YamlModel>,
+}
 
 impl YamlProvider {
     /// Get provider identifier - zero allocation when possible
@@ -27,7 +29,7 @@ impl YamlProvider {
     pub fn identifier(&self) -> &str {
         &self.provider
     }
-    
+
     /// Get model count for this provider
     #[inline(always)]
     pub const fn model_count(&self) -> usize {
@@ -36,7 +38,7 @@ impl YamlProvider {
 }
 
 /// Pure YAML model structure - mirrors YAML model structure exactly
-/// 
+///
 /// All fields match the YAML structure with proper Option types for optional fields.
 /// Optimized for blazing-fast deserialization and zero allocation access.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -93,7 +95,8 @@ pub struct YamlModel {
     pub patch: Option<serde_json::Value>,
     /// Additional fields not explicitly defined in the schema
     #[serde(flatten)]
-    pub extra_fields: HashMap<String, serde_json::Value>}
+    pub extra_fields: HashMap<String, serde_json::Value>,
+}
 
 impl YamlModel {
     /// Create full identifier for this model - zero allocation when possible
@@ -101,7 +104,7 @@ impl YamlModel {
     pub fn identifier(&self, provider: &str) -> String {
         format!("{}:{}", provider, self.name)
     }
-    
+
     /// Check if model supports specific capability - zero allocation
     #[inline(always)]
     pub fn supports_capability(&self, capability: &str) -> bool {
@@ -115,13 +118,13 @@ impl YamlModel {
             }
         }
     }
-    
+
     /// Get input cost per token - const fn for compile-time optimization
     #[inline(always)]
     pub const fn input_cost(&self) -> Option<f64> {
         self.input_price
     }
-    
+
     /// Get output cost per token - const fn for compile-time optimization
     #[inline(always)]
     pub const fn output_cost(&self) -> Option<f64> {

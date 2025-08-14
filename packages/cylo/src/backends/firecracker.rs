@@ -31,7 +31,8 @@ use crate::async_task::AsyncTaskBuilder;
 use crate::backends::AsyncTask;
 use crate::backends::{
     BackendConfig, BackendError, BackendResult, ExecutionBackend, ExecutionRequest,
-    ExecutionResult, HealthStatus, ResourceUsage};
+    ExecutionResult, HealthStatus, ResourceUsage,
+};
 
 /// FireCracker backend for secure code execution
 ///
@@ -46,7 +47,8 @@ pub struct FireCrackerBackend {
     config: BackendConfig,
 
     /// FireCracker runtime configuration
-    firecracker_config: FireCrackerConfig}
+    firecracker_config: FireCrackerConfig,
+}
 
 /// FireCracker-specific configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,7 +72,8 @@ struct FireCrackerConfig {
     network_enabled: bool,
 
     /// Metadata configuration
-    metadata_enabled: bool}
+    metadata_enabled: bool,
+}
 
 impl Default for FireCrackerConfig {
     fn default() -> Self {
@@ -81,7 +84,8 @@ impl Default for FireCrackerConfig {
             memory_size_mb: 512,
             vcpu_count: 1,
             network_enabled: false,
-            metadata_enabled: true}
+            metadata_enabled: true,
+        }
     }
 }
 
@@ -98,7 +102,8 @@ pub struct FireCrackerApiClient {
     resource_stats: Arc<ResourceStats>,
 
     /// Security policy configuration
-    security_policy: Arc<SecurityPolicy>}
+    security_policy: Arc<SecurityPolicy>,
+}
 
 /// Resource monitoring statistics
 #[derive(Debug, Default)]
@@ -122,7 +127,8 @@ struct ResourceStats {
     network_bytes_sent: AtomicU64,
 
     /// Network bytes received
-    network_bytes_received: AtomicU64}
+    network_bytes_received: AtomicU64,
+}
 
 /// Security policy configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,7 +149,8 @@ struct SecurityPolicy {
     allowed_network_destinations: Vec<String>,
 
     /// Filesystem restrictions
-    filesystem_restrictions: FilesystemRestrictions}
+    filesystem_restrictions: FilesystemRestrictions,
+}
 
 /// Filesystem access restrictions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,7 +162,8 @@ struct FilesystemRestrictions {
     writable_paths: Vec<PathBuf>,
 
     /// Completely blocked paths
-    blocked_paths: Vec<PathBuf>}
+    blocked_paths: Vec<PathBuf>,
+}
 
 impl Default for SecurityPolicy {
     fn default() -> Self {
@@ -165,7 +173,8 @@ impl Default for SecurityPolicy {
             max_network_bandwidth_bps: 10 * 1024 * 1024, // 10MB/s
             max_execution_time_seconds: 300,             // 5 minutes
             allowed_network_destinations: vec!["127.0.0.1".to_string()],
-            filesystem_restrictions: FilesystemRestrictions::default()}
+            filesystem_restrictions: FilesystemRestrictions::default(),
+        }
     }
 }
 
@@ -174,7 +183,8 @@ impl Default for FilesystemRestrictions {
         Self {
             readonly_paths: vec![PathBuf::from("/usr"), PathBuf::from("/lib")],
             writable_paths: vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")],
-            blocked_paths: vec![PathBuf::from("/proc"), PathBuf::from("/sys")]}
+            blocked_paths: vec![PathBuf::from("/proc"), PathBuf::from("/sys")],
+        }
     }
 }
 
@@ -183,14 +193,16 @@ impl FireCrackerApiClient {
     pub fn new(socket_path: PathBuf) -> Result<Self, BackendError> {
         let http_client = HttpClient::with_config(HttpConfig::ai_optimized()).map_err(|e| {
             BackendError::InitializationFailed {
-                details: format!("Failed to create HTTP3 client: {}", e)}
+                details: format!("Failed to create HTTP3 client: {}", e),
+            }
         })?;
 
         Ok(Self {
             http_client,
             socket_path,
             resource_stats: Arc::new(ResourceStats::default()),
-            security_policy: Arc::new(SecurityPolicy::default())})
+            security_policy: Arc::new(SecurityPolicy::default()),
+        })
     }
 
     /// Configure VM with security policy
@@ -200,23 +212,27 @@ impl FireCrackerApiClient {
         // Create HTTP request for VM configuration
         let request_body =
             serde_json::to_vec(vm_config).map_err(|e| BackendError::ConfigurationFailed {
-                details: format!("Failed to serialize VM config: {}", e)})?;
+                details: format!("Failed to serialize VM config: {}", e),
+            })?;
 
         let request = HttpRequest::put(
             &format!("http://unix:{}/machine-config", self.socket_path.display()),
             request_body,
         )
         .map_err(|e| BackendError::ConfigurationFailed {
-            details: format!("Failed to create HTTP request: {}", e)})?
+            details: format!("Failed to create HTTP request: {}", e),
+        })?
         .header("Content-Type", "application/json");
 
         // Send configuration request with timeout
         let response = timeout(Duration::from_secs(30), self.http_client.send(request))
             .await
             .map_err(|_| BackendError::ConfigurationFailed {
-                details: "VM configuration timeout".to_string()})?
+                details: "VM configuration timeout".to_string(),
+            })?
             .map_err(|e| BackendError::ConfigurationFailed {
-                details: format!("VM configuration failed: {}", e)})?;
+                details: format!("VM configuration failed: {}", e),
+            })?;
 
         // Update statistics
         self.resource_stats
@@ -234,7 +250,8 @@ impl FireCrackerApiClient {
                 .failed_calls
                 .fetch_add(1, Ordering::Relaxed);
             Err(BackendError::ConfigurationFailed {
-                details: format!("VM configuration failed with status: {}", response.status())})
+                details: format!("VM configuration failed with status: {}", response.status()),
+            })
         }
     }
 
@@ -248,18 +265,22 @@ impl FireCrackerApiClient {
                 "action_type": "InstanceStart"
             }))
             .map_err(|e| BackendError::StartupFailed {
-                details: format!("Failed to serialize start request: {}", e)})?,
+                details: format!("Failed to serialize start request: {}", e),
+            })?,
         )
         .map_err(|e| BackendError::StartupFailed {
-            details: format!("Failed to create start request: {}", e)})?
+            details: format!("Failed to create start request: {}", e),
+        })?
         .header("Content-Type", "application/json");
 
         let response = timeout(Duration::from_secs(60), self.http_client.send(request))
             .await
             .map_err(|_| BackendError::StartupFailed {
-                details: "VM start timeout".to_string()})?
+                details: "VM start timeout".to_string(),
+            })?
             .map_err(|e| BackendError::StartupFailed {
-                details: format!("VM start failed: {}", e)})?;
+                details: format!("VM start failed: {}", e),
+            })?;
 
         // Update statistics
         self.resource_stats
@@ -277,7 +298,8 @@ impl FireCrackerApiClient {
                 .failed_calls
                 .fetch_add(1, Ordering::Relaxed);
             Err(BackendError::StartupFailed {
-                details: format!("VM start failed with status: {}", response.status())})
+                details: format!("VM start failed with status: {}", response.status()),
+            })
         }
     }
 
@@ -291,18 +313,22 @@ impl FireCrackerApiClient {
                 "action_type": "SendCtrlAltDel"
             }))
             .map_err(|e| BackendError::ShutdownFailed {
-                details: format!("Failed to serialize stop request: {}", e)})?,
+                details: format!("Failed to serialize stop request: {}", e),
+            })?,
         )
         .map_err(|e| BackendError::ShutdownFailed {
-            details: format!("Failed to create stop request: {}", e)})?
+            details: format!("Failed to create stop request: {}", e),
+        })?
         .header("Content-Type", "application/json");
 
         let response = timeout(Duration::from_secs(30), self.http_client.send(request))
             .await
             .map_err(|_| BackendError::ShutdownFailed {
-                details: "VM stop timeout".to_string()})?
+                details: "VM stop timeout".to_string(),
+            })?
             .map_err(|e| BackendError::ShutdownFailed {
-                details: format!("VM stop failed: {}", e)})?;
+                details: format!("VM stop failed: {}", e),
+            })?;
 
         // Update statistics
         self.resource_stats
@@ -320,7 +346,8 @@ impl FireCrackerApiClient {
                 .failed_calls
                 .fetch_add(1, Ordering::Relaxed);
             Err(BackendError::ShutdownFailed {
-                details: format!("VM stop failed with status: {}", response.status())})
+                details: format!("VM stop failed with status: {}", response.status()),
+            })
         }
     }
 
@@ -333,14 +360,17 @@ impl FireCrackerApiClient {
             self.socket_path.display()
         ))
         .map_err(|e| BackendError::MonitoringFailed {
-            details: format!("Failed to create metrics request: {}", e)})?;
+            details: format!("Failed to create metrics request: {}", e),
+        })?;
 
         let response = timeout(Duration::from_secs(10), self.http_client.send(request))
             .await
             .map_err(|_| BackendError::MonitoringFailed {
-                details: "Metrics request timeout".to_string()})?
+                details: "Metrics request timeout".to_string(),
+            })?
             .map_err(|e| BackendError::MonitoringFailed {
-                details: format!("Metrics request failed: {}", e)})?;
+                details: format!("Metrics request failed: {}", e),
+            })?;
 
         // Update statistics
         self.resource_stats
@@ -357,7 +387,8 @@ impl FireCrackerApiClient {
                     .json()
                     .await
                     .map_err(|e| BackendError::MonitoringFailed {
-                        details: format!("Failed to parse metrics response: {}", e)})?;
+                        details: format!("Failed to parse metrics response: {}", e),
+                    })?;
 
             // Enforce resource limits
             self.enforce_resource_limits(&metrics).await?;
@@ -368,7 +399,8 @@ impl FireCrackerApiClient {
                 .failed_calls
                 .fetch_add(1, Ordering::Relaxed);
             Err(BackendError::MonitoringFailed {
-                details: format!("Metrics request failed with status: {}", response.status())})
+                details: format!("Metrics request failed with status: {}", response.status()),
+            })
         }
     }
 
@@ -380,7 +412,8 @@ impl FireCrackerApiClient {
                     details: format!(
                         "Memory usage {} exceeds limit {}",
                         memory_usage, self.security_policy.max_memory_bytes
-                    )});
+                    ),
+                });
             }
             self.resource_stats
                 .memory_usage_bytes
@@ -393,7 +426,8 @@ impl FireCrackerApiClient {
                     details: format!(
                         "CPU usage {}% exceeds limit {}%",
                         cpu_usage, self.security_policy.max_cpu_percent
-                    )});
+                    ),
+                });
             }
             self.resource_stats
                 .cpu_usage_percent
@@ -432,7 +466,8 @@ impl FireCrackerApiClient {
                 self.resource_stats
                     .network_bytes_received
                     .load(Ordering::Relaxed),
-            )}
+            ),
+        }
     }
 }
 
@@ -456,7 +491,8 @@ struct VMInstance {
     api_client: Option<FireCrackerApiClient>,
 
     /// Creation timestamp
-    created_at: SystemTime}
+    created_at: SystemTime,
+}
 
 impl FireCrackerBackend {
     /// Create a new FireCracker backend instance
@@ -472,7 +508,8 @@ impl FireCrackerBackend {
         if !Self::is_platform_supported() {
             return Err(BackendError::NotAvailable {
                 backend: "FireCracker",
-                reason: "FireCracker is only available on Linux".to_string()});
+                reason: "FireCracker is only available on Linux".to_string(),
+            });
         }
 
         // Validate image format
@@ -482,7 +519,8 @@ impl FireCrackerBackend {
                 details: format!(
                     "Invalid image format: {}. Expected format: 'name:tag'",
                     image
-                )});
+                ),
+            });
         }
 
         // Initialize FireCracker configuration
@@ -494,7 +532,8 @@ impl FireCrackerBackend {
         Ok(Self {
             image,
             config,
-            firecracker_config})
+            firecracker_config,
+        })
     }
 
     /// Check if platform supports FireCracker
@@ -600,14 +639,16 @@ impl FireCrackerBackend {
                 reason: format!(
                     "FireCracker binary not found at {}",
                     config.firecracker_binary.display()
-                )});
+                ),
+            });
         }
 
         // Check kernel image
         if !config.kernel_path.exists() {
             return Err(BackendError::NotAvailable {
                 backend: "FireCracker",
-                reason: format!("Kernel image not found at {}", config.kernel_path.display())});
+                reason: format!("Kernel image not found at {}", config.kernel_path.display()),
+            });
         }
 
         // Check root filesystem
@@ -617,14 +658,16 @@ impl FireCrackerBackend {
                 reason: format!(
                     "Root filesystem not found at {}",
                     config.rootfs_path.display()
-                )});
+                ),
+            });
         }
 
         // Check KVM access
         if !Path::new("/dev/kvm").exists() {
             return Err(BackendError::NotAvailable {
                 backend: "FireCracker",
-                reason: "KVM device not available (/dev/kvm)".to_string()});
+                reason: "KVM device not available (/dev/kvm)".to_string(),
+            });
         }
 
         Ok(())
@@ -652,7 +695,8 @@ impl FireCrackerBackend {
             socket_path,
             config_path,
             pid: None,
-            created_at: SystemTime::now()})
+            created_at: SystemTime::now(),
+        })
     }
 
     /// Generate VM configuration file
@@ -695,10 +739,12 @@ impl FireCrackerBackend {
 
         let config_content =
             serde_json::to_string_pretty(&vm_config).map_err(|e| BackendError::Internal {
-                message: format!("Failed to serialize VM config: {}", e)})?;
+                message: format!("Failed to serialize VM config: {}", e),
+            })?;
 
         fs::write(&vm.config_path, config_content).map_err(|e| BackendError::FileSystemFailed {
-            details: format!("Failed to write VM config: {}", e)})?;
+            details: format!("Failed to write VM config: {}", e),
+        })?;
 
         Ok(())
     }
@@ -729,7 +775,8 @@ impl FireCrackerBackend {
             cmd.stderr(Stdio::piped());
 
             let child = cmd.spawn().map_err(|e| BackendError::ProcessFailed {
-                details: format!("Failed to start FireCracker: {}", e)})?;
+                details: format!("Failed to start FireCracker: {}", e),
+            })?;
 
             let mut vm_with_pid = vm;
             vm_with_pid.pid = Some(child.id());
@@ -738,7 +785,8 @@ impl FireCrackerBackend {
             let api_client =
                 FireCrackerApiClient::new(vm_with_pid.socket_path.clone()).map_err(|e| {
                     BackendError::InitializationFailed {
-                        details: format!("Failed to create API client: {}", e)}
+                        details: format!("Failed to create API client: {}", e),
+                    }
                 })?;
 
             // Configure VM with machine configuration
@@ -764,11 +812,13 @@ impl FireCrackerBackend {
                 ),
                 serde_json::to_vec(&boot_source).map_err(|e| {
                     BackendError::ConfigurationFailed {
-                        details: format!("Failed to serialize boot config: {}", e)}
+                        details: format!("Failed to serialize boot config: {}", e),
+                    }
                 })?,
             )
             .map_err(|e| BackendError::ConfigurationFailed {
-                details: format!("Failed to create boot request: {}", e)})?
+                details: format!("Failed to create boot request: {}", e),
+            })?
             .header("Content-Type", "application/json");
 
             api_client
@@ -776,7 +826,8 @@ impl FireCrackerBackend {
                 .send(boot_request)
                 .await
                 .map_err(|e| BackendError::ConfigurationFailed {
-                    details: format!("Boot configuration failed: {}", e)})?;
+                    details: format!("Boot configuration failed: {}", e),
+                })?;
 
             // Configure root filesystem
             let rootfs_config = serde_json::json!({
@@ -793,11 +844,13 @@ impl FireCrackerBackend {
                 ),
                 serde_json::to_vec(&rootfs_config).map_err(|e| {
                     BackendError::ConfigurationFailed {
-                        details: format!("Failed to serialize rootfs config: {}", e)}
+                        details: format!("Failed to serialize rootfs config: {}", e),
+                    }
                 })?,
             )
             .map_err(|e| BackendError::ConfigurationFailed {
-                details: format!("Failed to create rootfs request: {}", e)})?
+                details: format!("Failed to create rootfs request: {}", e),
+            })?
             .header("Content-Type", "application/json");
 
             api_client
@@ -805,7 +858,8 @@ impl FireCrackerBackend {
                 .send(rootfs_request)
                 .await
                 .map_err(|e| BackendError::ConfigurationFailed {
-                    details: format!("Rootfs configuration failed: {}", e)})?;
+                    details: format!("Rootfs configuration failed: {}", e),
+                })?;
 
             // Start VM instance
             api_client.start_vm().await?;
@@ -827,7 +881,8 @@ impl FireCrackerBackend {
 
                 if attempt == 29 {
                     return Err(BackendError::StartupFailed {
-                        details: "VM failed to reach running state within timeout".to_string()});
+                        details: "VM failed to reach running state within timeout".to_string(),
+                    });
                 }
 
                 tokio::time::sleep(Duration::from_millis(1000)).await;
@@ -879,7 +934,8 @@ impl FireCrackerBackend {
                 disk_bytes_written: 1024,
                 disk_bytes_read: 2048,
                 network_bytes_sent: 0,
-                network_bytes_received: 0};
+                network_bytes_received: 0,
+            };
 
             Ok(ExecutionResult {
                 exit_code: 0,
@@ -893,7 +949,8 @@ impl FireCrackerBackend {
                     meta.insert("vm_id".to_string(), vm.vm_id.clone());
                     meta.insert("image".to_string(), "simulated".to_string());
                     meta
-                }})
+                },
+            })
         })
     }
 
@@ -936,7 +993,8 @@ impl FireCrackerBackend {
             _ => {
                 return Err(BackendError::UnsupportedLanguage {
                     backend: "FireCracker",
-                    language: request.language.clone()});
+                    language: request.language.clone(),
+                });
             }
         };
 
@@ -1030,7 +1088,8 @@ impl ExecutionBackend for FireCrackerBackend {
                 Err(e) => ExecutionResult::failure(
                     -1,
                     format!("{} execution failed: {}", backend_name, e),
-                )};
+                ),
+            };
 
             // Cleanup VM
             let _ = Self::cleanup_vm(started_vm).await;

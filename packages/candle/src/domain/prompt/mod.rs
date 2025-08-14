@@ -6,7 +6,8 @@ use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
 pub struct CandlePrompt {
     pub content: String,
     #[serde(default = "default_role")]
-    pub role: MessageRole}
+    pub role: MessageRole,
+}
 
 fn default_role() -> MessageRole {
     MessageRole::User
@@ -16,7 +17,8 @@ impl CandlePrompt {
     pub fn new(content: impl Into<String>) -> Self {
         CandlePrompt {
             content: content.into(),
-            role: MessageRole::User}
+            role: MessageRole::User,
+        }
     }
 
     pub fn content(&self) -> &str {

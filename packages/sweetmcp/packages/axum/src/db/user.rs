@@ -1,5 +1,6 @@
-use crate::db::dao::Entity;
 use serde::{Deserialize, Serialize};
+
+use crate::db::dao::Entity;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {

@@ -61,20 +61,23 @@ impl CandleDocument {
     /// Full builder functionality is in fluent-ai/src/builders/document.rs
     pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> DocumentLoader {
         DocumentLoader {
-            path: path.as_ref().display().to_string()}
+            path: path.as_ref().display().to_string(),
+        }
     }
 
     /// Extract the text content from the document
     pub fn content(&self) -> String {
         match self.format {
             Some(CandleContentFormat::Base64) => "[Base64 Document]".to_string(),
-            _ => self.data.clone()}
+            _ => self.data.clone(),
+        }
     }
 }
 
 /// Simple document loader for domain use
 pub struct DocumentLoader {
-    path: String}
+    path: String,
+}
 
 impl DocumentLoader {
     /// Load the document (simplified version)
@@ -85,7 +88,8 @@ impl DocumentLoader {
             data: format!("Document from: {}", self.path),
             format: Some(CandleContentFormat::Text),
             media_type: Some(CandleDocumentMediaType::TXT),
-            additional_props: HashMap::new()}
+            additional_props: HashMap::new(),
+        }
     }
 }
 

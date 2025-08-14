@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use dashmap::DashMap;
 use extism::convert::Json; // Ensure import exists
@@ -6,7 +7,6 @@ use extism::*;
 use rpc_router::RpcResource;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::oneshot;
 
 use crate::{

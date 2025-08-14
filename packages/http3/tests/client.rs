@@ -2,7 +2,7 @@
 //!
 //! Tests for HTTP3 client functionality, mirroring src/client.rs
 
-use fluent_ai_http3::{global_client, builder::Http3Builder};
+use fluent_ai_http3::{builder::Http3Builder, global_client};
 
 #[cfg(test)]
 mod client_tests {
@@ -16,7 +16,7 @@ mod client_tests {
         // Placeholder test to ensure module compiles
         let client = global_client();
         let _stream = Http3Builder::new(&client).get("https://api.example.com/test");
-        
+
         // Basic assertion that always passes for now
         assert!(true);
     }

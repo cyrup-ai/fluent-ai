@@ -19,15 +19,11 @@ pub use core::{
     TemplateError, TemplateExample, TemplateInfo, TemplateMetadata, TemplateResult, TemplateTag,
     TemplateValue,
 };
-
 // Candle-prefixed aliases for compatibility
 pub use core::{
-    ChatTemplate as CandleChatTemplate,
-    CompiledTemplate as CandleCompiledTemplate,
-    TemplateAst as CandleTemplateAst,
-    TemplateCategory as CandleTemplateCategory,
-    TemplateError as CandleTemplateError,
-    TemplateResult as CandleTemplateResult,
+    ChatTemplate as CandleChatTemplate, CompiledTemplate as CandleCompiledTemplate,
+    TemplateAst as CandleTemplateAst, TemplateCategory as CandleTemplateCategory,
+    TemplateError as CandleTemplateError, TemplateResult as CandleTemplateResult,
 };
 // Global template functions for convenience
 // Duplicate HashMap import removed
@@ -36,10 +32,9 @@ use std::sync::Arc;
 pub use compiler::TemplateCompiler;
 // Re-export other important types
 pub use manager::TemplateManager;
-pub use parser::TemplateParser;
-
 // Candle-prefixed aliases for managers and other components
 pub use manager::TemplateManager as CandleTemplateManager;
+pub use parser::TemplateParser;
 
 /// Create a simple template
 pub fn template(name: impl Into<String>, content: impl Into<String>) -> ChatTemplate {
@@ -105,8 +100,6 @@ pub fn render_simple(name: &str, variables: HashMap<&str, &str>) -> TemplateResu
         .collect();
     render_template(name, arc_variables)
 }
-
-
 
 /// Create a simple render function
 pub fn render(

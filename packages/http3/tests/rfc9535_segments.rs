@@ -210,11 +210,7 @@ mod descendant_segment_tests {
         let childresults: Vec<_> = child_stream.process_chunk(chunk.clone()).collect();
         let descendantresults: Vec<_> = descendant_stream.process_chunk(chunk).collect();
 
-        assert_eq!(
-            childresults.len(),
-            1,
-            "Child should find only direct child"
-        );
+        assert_eq!(childresults.len(), 1, "Child should find only direct child");
         assert_eq!(
             descendantresults.len(),
             2,

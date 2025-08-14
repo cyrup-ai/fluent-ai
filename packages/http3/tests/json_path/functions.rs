@@ -651,7 +651,7 @@ mod match_function_tests {
         // RFC 9535: match() should be case-sensitive by default
         let json_data = r#"{"items": [
             {"text": "Hello"},
-            {"text": "hello"}, 
+            {"text": "hello"},
             {"text": "HELLO"}
         ]}"#;
 
@@ -1491,7 +1491,7 @@ mod well_typedness_tests {
             "@.active",                        // Boolean property access
             "@.name == 'test'",                // String equality
             "length(@.items) > 0",             // Function call returning number
-            
+
             // Invalid test expressions (if caught at compile time)
             // "@.items[*]",                   // NodesType in test context (invalid)
             // "length(@.items, extra)",       // Wrong argument count
@@ -1551,7 +1551,7 @@ mod well_typedness_tests {
             ("length(@.array_value)", "ValueType"),          // Array to length()
             ("count(@.items[*])", "NodesType"),              // NodeList to count()
             (r#"match(@.text, "pattern")"#, "ValueType, String"), // String, Pattern to match()
-            
+
             // Invalid function argument types (if caught)
             // ("length(@.items[*])", "NodesType"),          // NodeList to length() (invalid)
             // ("count(@.single_value)", "ValueType"),       // Single value to count() (invalid)

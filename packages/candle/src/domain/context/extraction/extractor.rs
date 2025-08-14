@@ -1,5 +1,6 @@
 use std::fmt;
 use std::marker::PhantomData;
+
 use fluent_ai_async::AsyncStream;
 // Removed unused import: futures_util::StreamExt
 use serde::de::DeserializeOwned;
@@ -8,16 +9,12 @@ use super::error::{ExtractionError, _ExtractionResult as ExtractionResult};
 use crate::domain::{
     agent::types::CandleAgent as Agent,
     chat::message::types::CandleMessageRole as MessageRole,
-    context::chunk::{
-        CandleCompletionChunk,
-        FinishReason,
-    },
-    prompt::CandlePrompt as Prompt,
     completion::{
-        CandleCompletionRequest as CompletionRequest,
-        CandleCompletionModel as CompletionModel,
         types::CandleCompletionParams as CompletionParams,
+        CandleCompletionModel as CompletionModel, CandleCompletionRequest as CompletionRequest,
     },
+    context::chunk::{CandleCompletionChunk, FinishReason},
+    prompt::CandlePrompt as Prompt,
 };
 
 /// Trait defining the core extraction interface
@@ -99,7 +96,9 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
         };
         let params = CompletionParams {
             temperature: completion_request.temperature,
-            max_tokens: completion_request.max_tokens.and_then(|t| std::num::NonZeroU64::new(t.get())),
+            max_tokens: completion_request
+                .max_tokens
+                .and_then(|t| std::num::NonZeroU64::new(t.get())),
             n: std::num::NonZeroU8::new(1).expect("1 is a valid NonZeroU8 constant"),
             stream: true,
             additional_params: None,
@@ -119,7 +118,11 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
                     // Append text content to full response
                     full_response.push_str(&text);
                 }
-                CandleCompletionChunk::Complete { text, finish_reason: reason, .. } => {
+                CandleCompletionChunk::Complete {
+                    text,
+                    finish_reason: reason,
+                    ..
+                } => {
                     // This is the final chunk
                     if !text.is_empty() {
                         full_response.push_str(&text);
@@ -210,5 +213,3 @@ impl CompletionModel for AgentCompletionModel {
         })
     }
 }
-
-

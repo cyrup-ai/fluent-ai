@@ -73,12 +73,30 @@ pub struct CompletionChunk {
 }
 
 impl CompletionChunk {
-    pub fn new(id: String, index: u32, text: String, finish_reason: Option<FinishReason>, usage: Option<Usage>) -> Self {
-        Self { id, index, text, finish_reason, usage }
+    pub fn new(
+        id: String,
+        index: u32,
+        text: String,
+        finish_reason: Option<FinishReason>,
+        usage: Option<Usage>,
+    ) -> Self {
+        Self {
+            id,
+            index,
+            text,
+            finish_reason,
+            usage,
+        }
     }
 
     pub fn error(message: String) -> Self {
-        Self { id: "error".to_string(), index: 0, text: message, finish_reason: None, usage: None }
+        Self {
+            id: "error".to_string(),
+            index: 0,
+            text: message,
+            finish_reason: None,
+            usage: None,
+        }
     }
 }
 
@@ -99,24 +117,26 @@ pub struct Usage {
 
 impl Usage {
     pub fn new(prompt: u32, completion: u32, total: u32) -> Self {
-        Self { prompt_tokens: prompt, completion_tokens: completion, total_tokens: total }
+        Self {
+            prompt_tokens: prompt,
+            completion_tokens: completion,
+            total_tokens: total,
+        }
     }
 }
 // Use model-info package as single source of truth for model information
-use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
-// Use local OpenAI request/response types
-use super::types::{
-    OpenAIMessage, OpenAIMessageContent, OpenAIStreamChunk, OpenAIChoice, 
-    OpenAIDelta, OpenAIUsage
-};
-use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
-use serde_json::Value;
 use arrayvec::ArrayVec;
-use crate::completion_provider::{
-    ChunkHandler, CompletionError, CompletionProvider, ModelConfig};
-
 // AsyncStream imports - using fluent-ai async architecture
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
+use model_info::{ModelInfo as ModelInfoFromPackage, discovery::Provider};
+use serde_json::Value;
+
+// Use local OpenAI request/response types
+use super::types::{
+    OpenAIChoice, OpenAIDelta, OpenAIMessage, OpenAIMessageContent, OpenAIStreamChunk, OpenAIUsage,
+};
+use crate::completion_provider::{ChunkHandler, CompletionError, CompletionProvider, ModelConfig};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -144,7 +164,8 @@ pub struct OpenAICompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>}
+    chunk_handler: Option<ChunkHandler>,
+}
 
 impl CompletionProvider for OpenAICompletionBuilder {
     /// Create new OpenAI completion builder with ModelInfo defaults
@@ -189,7 +210,8 @@ impl CompletionProvider for OpenAICompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None})
+            chunk_handler: None,
+        })
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -346,17 +368,20 @@ impl CompletionProvider for OpenAICompletionBuilder {
     #[inline(always)]
     fn prompt(self, prompt: impl Into<String>) -> AsyncStream<CompletionChunk> {
         let prompt_string = prompt.into();
-        
+
         AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
             // Create tokio runtime for async operations (NO FUTURES architecture)
             let rt = match tokio::runtime::Runtime::new() {
                 Ok(rt) => rt,
                 Err(e) => {
-                    let _ = sender.send(CompletionChunk::error(format!("Runtime creation failed: {}", e)));
+                    let _ = sender.send(CompletionChunk::error(format!(
+                        "Runtime creation failed: {}",
+                        e
+                    )));
                     return;
                 }
             };
-            
+
             rt.block_on(async move {
                 match self.execute_streaming_completion(prompt_string).await {
                     Ok(mut stream) => {
@@ -367,7 +392,8 @@ impl CompletionProvider for OpenAICompletionBuilder {
                                         match handler(Ok(chunk.clone())) {
                                             Ok(_) => {}
                                             Err(e) => {
-                                                let _ = sender.send(CompletionChunk::error(e.to_string()));
+                                                let _ = sender
+                                                    .send(CompletionChunk::error(e.to_string()));
                                                 break;
                                             }
                                         }
@@ -429,84 +455,103 @@ impl OpenAICompletionBuilder {
         // Get SSE stream from response for streaming completions
         let sse_stream = response.sse();
 
-        let stream = AsyncStream::with_channel(move |chunk_sender: AsyncStreamSender<Result<CompletionChunk, CompletionError>>| {
-            // Use runtime for async operations inside AsyncStream closure
-            let rt = match tokio::runtime::Runtime::new() {
-                Ok(rt) => rt,
-                Err(_) => {
-                    let _ = chunk_sender.send(Err(CompletionError::NetworkError("Runtime creation failed".to_string())));
-                    return;
-                }
-            };
-            
-            rt.block_on(async move {
-                let mut sse_stream = sse_stream;
+        let stream = AsyncStream::with_channel(
+            move |chunk_sender: AsyncStreamSender<Result<CompletionChunk, CompletionError>>| {
+                // Use runtime for async operations inside AsyncStream closure
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(_) => {
+                        let _ = chunk_sender.send(Err(CompletionError::NetworkError(
+                            "Runtime creation failed".to_string(),
+                        )));
+                        return;
+                    }
+                };
 
-                while let Some(event) = sse_stream.next().await {
-                    match event {
-                        Ok(sse_event) => {
-                            if let Some(data) = sse_event.data {
-                                if data.trim() == "[DONE]" {
-                                    return;
-                                }
+                rt.block_on(async move {
+                    let mut sse_stream = sse_stream;
 
-                                match Self::parse_sse_chunk(data.as_bytes()) {
-                                    Ok(chunk) => {
-                                        if chunk_sender.send(Ok(chunk)).is_err() {
-                                            return;
-                                        }
+                    while let Some(event) = sse_stream.next().await {
+                        match event {
+                            Ok(sse_event) => {
+                                if let Some(data) = sse_event.data {
+                                    if data.trim() == "[DONE]" {
+                                        return;
                                     }
-                                    Err(e) => {
-                                        if chunk_sender.send(Err(e)).is_err() {
-                                            return;
+
+                                    match Self::parse_sse_chunk(data.as_bytes()) {
+                                        Ok(chunk) => {
+                                            if chunk_sender.send(Ok(chunk)).is_err() {
+                                                return;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            if chunk_sender.send(Err(e)).is_err() {
+                                                return;
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        Err(_) => {
-                            let _ = chunk_sender.send(Err(CompletionError::NetworkError("Stream error".to_string())));
-                            return;
+                            Err(_) => {
+                                let _ = chunk_sender.send(Err(CompletionError::NetworkError(
+                                    "Stream error".to_string(),
+                                )));
+                                return;
+                            }
                         }
                     }
-                }
-            });
-        });
+                });
+            },
+        );
 
         Ok(stream)
     }
 
     /// Build OpenAI request with direct construction (zero allocation where possible)
     #[inline(always)]
-    fn build_request(&self, prompt: &str) -> Result<super::types::OpenAICompletionRequest, CompletionError> {
+    fn build_request(
+        &self,
+        prompt: &str,
+    ) -> Result<super::types::OpenAICompletionRequest, CompletionError> {
         use super::types::{OpenAIMessage, OpenAIMessageContent};
-        
+
         let mut messages = ArrayVec::new();
 
         // Add system prompt if present
         if !self.system_prompt.is_empty() {
-            if messages.try_push(OpenAIMessage {
-                role: "system".to_string(),
-                content: Some(OpenAIMessageContent::Text(self.system_prompt.clone())),
-                tool_calls: None,
-                tool_call_id: None,
-                name: None,
-            }).is_err() {
-                return Err(CompletionError::InvalidRequest("Too many messages".to_string()));
+            if messages
+                .try_push(OpenAIMessage {
+                    role: "system".to_string(),
+                    content: Some(OpenAIMessageContent::Text(self.system_prompt.clone())),
+                    tool_calls: None,
+                    tool_call_id: None,
+                    name: None,
+                })
+                .is_err()
+            {
+                return Err(CompletionError::InvalidRequest(
+                    "Too many messages".to_string(),
+                ));
             }
         }
 
         // Add documents as context
         for doc in &self.documents {
             let content = format!("Document: {}", doc.content());
-            if messages.try_push(OpenAIMessage {
-                role: "user".to_string(),
-                content: Some(OpenAIMessageContent::Text(content)),
-                tool_calls: None,
-                tool_call_id: None,
-                name: None,
-            }).is_err() {
-                return Err(CompletionError::InvalidRequest("Too many messages".to_string()));
+            if messages
+                .try_push(OpenAIMessage {
+                    role: "user".to_string(),
+                    content: Some(OpenAIMessageContent::Text(content)),
+                    tool_calls: None,
+                    tool_call_id: None,
+                    name: None,
+                })
+                .is_err()
+            {
+                return Err(CompletionError::InvalidRequest(
+                    "Too many messages".to_string(),
+                ));
             }
         }
 
@@ -527,26 +572,36 @@ impl OpenAICompletionBuilder {
                 }
             };
 
-            if messages.try_push(OpenAIMessage {
-                role: role.to_string(),
-                content: Some(OpenAIMessageContent::Text(content_text)),
-                tool_calls: None,
-                tool_call_id: None,
-                name: None,
-            }).is_err() {
-                return Err(CompletionError::InvalidRequest("Too many messages".to_string()));
+            if messages
+                .try_push(OpenAIMessage {
+                    role: role.to_string(),
+                    content: Some(OpenAIMessageContent::Text(content_text)),
+                    tool_calls: None,
+                    tool_call_id: None,
+                    name: None,
+                })
+                .is_err()
+            {
+                return Err(CompletionError::InvalidRequest(
+                    "Too many messages".to_string(),
+                ));
             }
         }
 
         // Add user prompt
-        if messages.try_push(OpenAIMessage {
-            role: "user".to_string(),
-            content: Some(OpenAIMessageContent::Text(prompt.to_string())),
-            tool_calls: None,
-            tool_call_id: None,
-            name: None,
-        }).is_err() {
-            return Err(CompletionError::InvalidRequest("Too many messages".to_string()));
+        if messages
+            .try_push(OpenAIMessage {
+                role: "user".to_string(),
+                content: Some(OpenAIMessageContent::Text(prompt.to_string())),
+                tool_calls: None,
+                tool_call_id: None,
+                name: None,
+            })
+            .is_err()
+        {
+            return Err(CompletionError::InvalidRequest(
+                "Too many messages".to_string(),
+            ));
         }
 
         // Direct parameter validation with clamping (blazing-fast, zero allocation)
@@ -593,7 +648,13 @@ impl OpenAICompletionBuilder {
         // Use centralized deserialization
         let openai_chunk: OpenAIStreamChunk = match serde_json::from_slice(data) {
             Ok(chunk) => chunk,
-            Err(e) => return Err(CompletionError::ParseError(format!("Failed to parse SSE chunk: {}", e)))};
+            Err(e) => {
+                return Err(CompletionError::ParseError(format!(
+                    "Failed to parse SSE chunk: {}",
+                    e
+                )));
+            }
+        };
 
         // Convert to domain CompletionChunk
         if let Some(choice) = openai_chunk.choices.get(0) {
@@ -603,7 +664,8 @@ impl OpenAICompletionBuilder {
                 "length" => FinishReason::Length,
                 "function_call" => FinishReason::ToolCalls,
                 "tool_calls" => FinishReason::ToolCalls,
-                _ => FinishReason::Other});
+                _ => FinishReason::Other,
+            });
 
             let usage = openai_chunk
                 .usage
@@ -617,7 +679,9 @@ impl OpenAICompletionBuilder {
                 usage,
             ))
         } else {
-            Err(CompletionError::ParseError("No choices in OpenAI response".to_string()))
+            Err(CompletionError::ParseError(
+                "No choices in OpenAI response".to_string(),
+            ))
         }
     }
 }

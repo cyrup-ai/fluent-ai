@@ -14,51 +14,51 @@ use thiserror::Error;
 pub enum TemplateError {
     /// Template was not found
     #[error("Template not found: {name}")]
-    NotFound { 
+    NotFound {
         /// Name of the template that was not found
-        name: Arc<str> 
+        name: Arc<str>,
     },
 
     /// Error occurred during template parsing
     #[error("Parse error: {message}")]
-    ParseError { 
+    ParseError {
         /// Details about the parsing error
-        message: Arc<str> 
+        message: Arc<str>,
     },
 
     /// Error occurred during template compilation
     #[error("Compile error: {message}")]
-    CompileError { 
+    CompileError {
         /// Details about the compilation error
-        message: Arc<str> 
+        message: Arc<str>,
     },
 
     /// Error occurred during template rendering
     #[error("Render error: {message}")]
-    RenderError { 
+    RenderError {
         /// Details about the rendering error
-        message: Arc<str> 
+        message: Arc<str>,
     },
 
     /// Error related to template variables
     #[error("Variable error: {message}")]
-    VariableError { 
+    VariableError {
         /// Details about the variable error
-        message: Arc<str> 
+        message: Arc<str>,
     },
 
     /// Operation was denied due to insufficient permissions
     #[error("Permission denied: {message}")]
-    PermissionDenied { 
+    PermissionDenied {
         /// Details about the permission denial
-        message: Arc<str> 
+        message: Arc<str>,
     },
 
     /// Error occurred during storage operations
     #[error("Storage error: {message}")]
-    StorageError { 
+    StorageError {
         /// Details about the storage error
-        message: Arc<str> 
+        message: Arc<str>,
     },
 }
 
@@ -558,13 +558,13 @@ pub struct TemplateConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityMode {
     /// No external access, limited functions
-    Strict,   
+    Strict,
     /// Standard functions allowed
-    Normal,   
+    Normal,
     /// Most functions allowed
-    Relaxed,  
+    Relaxed,
     /// All functions allowed
-    Disabled, 
+    Disabled,
 }
 
 impl Default for TemplateConfig {

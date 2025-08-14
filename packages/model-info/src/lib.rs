@@ -1,27 +1,30 @@
 // Model information and registry for fluent-ai
-// This package consolidates all model-related functionality 
+// This package consolidates all model-related functionality
 
 pub mod common;
-pub mod registry;
 pub mod discovery;
-pub mod providers;
 pub mod generated_models;
+pub mod providers;
+pub mod registry;
 
 // Re-export core types for external use
 pub use common::{
-    // Core types
-    ModelInfo, ModelInfoBuilder, ProviderTrait, Model,
-    // Error handling
-    ModelError, Result,
+    Model,
     // Capabilities and collections
-    ModelCapabilities, ProviderModels,
+    ModelCapabilities,
+    // Error handling
+    ModelError,
+    // Core types
+    ModelInfo,
+    ModelInfoBuilder,
+    ProviderModels,
+    ProviderTrait,
+    Result,
 };
-
+// Re-export discovery functionality
+pub use discovery::{
+    ModelDiscoveryRegistry, ModelFilter, ModelQueryResult, Provider as DiscoveryProvider,
+    RegistryStats,
+};
 // Re-export registry functionality
 pub use registry::{ModelRegistry, RegisteredModel};
-
-// Re-export discovery functionality  
-pub use discovery::{
-    ModelDiscoveryRegistry, ModelFilter, ModelQueryResult, 
-    RegistryStats, Provider as DiscoveryProvider,
-};

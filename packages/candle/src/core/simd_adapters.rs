@@ -3,10 +3,11 @@
 //! Bridge functions between fluent_ai_simd API and generation.rs data structures.
 //! Uses the existing fluent_ai_simd operations directly without duplication.
 
+use arrayvec::ArrayVec;
+use fluent_ai_simd::{argmax, scale_temperature, softmax, SimdError};
+
 use crate::core::generation::{CandleResult, LogitsBuffer, TokenProb};
 use crate::domain::model::error::CandleModelError as CandleError;
-use arrayvec::ArrayVec;
-use fluent_ai_simd::{SimdError, scale_temperature, softmax, argmax};
 
 // Use the constant from generation.rs - define locally to avoid privacy issues
 const SAMPLING_CACHE_SIZE: usize = 1024;
@@ -24,7 +25,9 @@ pub fn simd_temperature_scale(logits: &mut LogitsBuffer, temperature: f32) -> Ca
         Ok(()) => Ok(()),
         Err(simd_err) => {
             // Convert SIMD error to Candle error with context
-            Err(CandleError::Internal(format!("SIMD temperature scaling failed: {}", simd_err).into()))
+            Err(CandleError::Internal(
+                format!("SIMD temperature scaling failed: {}", simd_err).into(),
+            ))
         }
     }
 }
@@ -38,26 +41,26 @@ pub fn simd_temperature_scale(logits: &mut LogitsBuffer, temperature: f32) -> Ca
 /// # Returns
 /// * `CandleResult<Vec<f32>>` - Computed probabilities or error
 pub fn simd_softmax_with_cache(
-    logits: &LogitsBuffer, 
-    prob_cache: &mut ArrayVec<TokenProb, SAMPLING_CACHE_SIZE>
+    logits: &LogitsBuffer,
+    prob_cache: &mut ArrayVec<TokenProb, SAMPLING_CACHE_SIZE>,
 ) -> CandleResult<Vec<f32>> {
-
-
     // Compute SIMD softmax using existing fluent_ai_simd function
     let probabilities = match softmax(logits.as_slice()) {
         Ok(probs) => probs,
         Err(simd_err) => {
-            return Err(CandleError::Internal(format!("SIMD softmax failed: {}", simd_err).into()));
+            return Err(CandleError::Internal(
+                format!("SIMD softmax failed: {}", simd_err).into(),
+            ));
         }
     };
 
     // Populate prob_cache with results
     prob_cache.clear();
     for (token_id, &prob) in probabilities.iter().enumerate() {
-        if prob_cache.try_push(TokenProb::new(
-            token_id as u32,
-            prob,
-        )).is_err() {
+        if prob_cache
+            .try_push(TokenProb::new(token_id as u32, prob))
+            .is_err()
+        {
             // Cache full, use what we have
             break;
         }
@@ -75,36 +78,40 @@ pub fn simd_softmax_with_cache(
 /// # Returns
 /// * `CandleResult<u32>` - Token ID of maximum probability or error
 pub fn simd_argmax_with_bounds(
-    probabilities: &[f32], 
-    prob_cache: &ArrayVec<TokenProb, SAMPLING_CACHE_SIZE>
+    probabilities: &[f32],
+    prob_cache: &ArrayVec<TokenProb, SAMPLING_CACHE_SIZE>,
 ) -> CandleResult<u32> {
-
-
-
-
     // Compute SIMD argmax using existing fluent_ai_simd function
     let max_idx = match argmax(probabilities) {
         Ok(idx) => idx,
         Err(simd_err) => {
-            return Err(CandleError::Internal(format!("SIMD argmax failed: {}", simd_err).into()));
+            return Err(CandleError::Internal(
+                format!("SIMD argmax failed: {}", simd_err).into(),
+            ));
         }
     };
 
     // Bounds checking
     if max_idx >= prob_cache.len() {
-        return Err(CandleError::InvalidInput(format!(
-            "Argmax index {} out of bounds for cache size {}", 
-            max_idx, 
-            prob_cache.len()
-        ).into()));
+        return Err(CandleError::InvalidInput(
+            format!(
+                "Argmax index {} out of bounds for cache size {}",
+                max_idx,
+                prob_cache.len()
+            )
+            .into(),
+        ));
     }
 
     if max_idx >= probabilities.len() {
-        return Err(CandleError::InvalidInput(format!(
-            "Argmax index {} out of bounds for probability array size {}", 
-            max_idx, 
-            probabilities.len()
-        ).into()));
+        return Err(CandleError::InvalidInput(
+            format!(
+                "Argmax index {} out of bounds for probability array size {}",
+                max_idx,
+                probabilities.len()
+            )
+            .into(),
+        ));
     }
 
     // Return token_id from cache
@@ -133,11 +140,18 @@ pub fn should_use_simd(array_size: usize, simd_threshold: usize, simd_enabled: b
 /// * `String` - Human-readable fallback recommendation
 pub fn simd_error_to_fallback_strategy(simd_error: &SimdError) -> String {
     match simd_error {
-        SimdError::UnsupportedOperation(msg) => format!("Use scalar fallback - SIMD not supported: {}", msg),
+        SimdError::UnsupportedOperation(msg) => {
+            format!("Use scalar fallback - SIMD not supported: {}", msg)
+        }
         SimdError::InvalidInput(msg) => format!("Use scalar fallback - Invalid input: {}", msg),
-        SimdError::InvalidInputLength { expected, actual } => format!("Use scalar fallback - Invalid length: expected {}, got {}", expected, actual),
+        SimdError::InvalidInputLength { expected, actual } => format!(
+            "Use scalar fallback - Invalid length: expected {}, got {}",
+            expected, actual
+        ),
         SimdError::MemoryError(msg) => format!("Use scalar fallback - Memory error: {}", msg),
-        SimdError::ProcessingError(msg) => format!("Use scalar fallback - Processing error: {}", msg),
+        SimdError::ProcessingError(msg) => {
+            format!("Use scalar fallback - Processing error: {}", msg)
+        }
         SimdError::NumericalError(msg) => format!("Use scalar fallback - Numerical error: {}", msg),
         _ => "Use scalar fallback - SIMD operation failed".to_string(),
     }
@@ -145,8 +159,9 @@ pub fn simd_error_to_fallback_strategy(simd_error: &SimdError) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use smallvec::smallvec;
+
+    use super::*;
 
     #[test]
     fn test_temperature_scale_empty_logits() {

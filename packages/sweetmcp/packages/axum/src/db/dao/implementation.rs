@@ -3,9 +3,10 @@
 //! This module provides the concrete implementation of the DAO struct
 //! with zero allocation patterns and blazing-fast performance.
 
+use std::marker::PhantomData;
+
 use super::super::client::DatabaseClient;
 use super::core::{BaseDao, Entity, validate_entity_id};
-use std::marker::PhantomData;
 
 /// Base Data Access Object for SurrealDB
 #[derive(Debug, Clone)]

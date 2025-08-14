@@ -3,8 +3,9 @@
 //! Implements Server-Sent Events encoding according to RFC 6455 specification.
 //! Handles proper field formatting, multiline data, and Unicode encoding.
 
-use super::events::SseEvent;
 use std::fmt::Write;
+
+use super::events::SseEvent;
 
 /// SSE encoder for converting events to wire format
 ///

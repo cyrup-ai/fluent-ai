@@ -4,7 +4,8 @@
 
 use termcolor::{
     ColoredMessage, CyrupTheme, ThemeConfig, colored_println, error_x, info_i,
-    set_global_theme, success_check, warning_triangle};
+    set_global_theme, success_check, warning_triangle,
+};
 
 fn main() {
     // Set Cyrup.ai default theme

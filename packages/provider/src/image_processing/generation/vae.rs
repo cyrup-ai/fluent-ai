@@ -8,7 +8,8 @@ use std::path::PathBuf;
 use candle_core::{DType, Device, Result as CandleResult, Tensor};
 use candle_nn::{Module, VarBuilder, VarMap};
 use candle_transformers::models::stable_diffusion::vae::{
-    AttentionBlock, AutoEncoderKL, AutoEncoderKLConfig, Decoder, ResnetBlock2D, UpSample};
+    AttentionBlock, AutoEncoderKL, AutoEncoderKLConfig, Decoder, ResnetBlock2D, UpSample,
+};
 use hf_hub::api::sync::Api;
 use thiserror::Error;
 
@@ -31,7 +32,8 @@ pub enum VAEError {
     HubError(#[from] hf_hub::api::sync::ApiError),
 
     #[error("Invalid latent dimensions: {0}")]
-    InvalidLatentDimensions(String)}
+    InvalidLatentDimensions(String),
+}
 
 /// Result type for VAE operations
 pub type VAEResult<T> = Result<T, VAEError>;
@@ -50,7 +52,8 @@ pub fn build_sd3_vae_autoencoder(
         norm_num_groups: 32,
         sample_size: 512,
         scaling_factor: 1.5305,
-        shift_factor: Some(0.0609)};
+        shift_factor: Some(0.0609),
+    };
 
     // Load VAE weights from HuggingFace Hub
     let api = Api::new().map_err(|e| VAEError::HubError(e))?;
@@ -118,7 +121,8 @@ fn sd3_vae_vb_rename(name: &str) -> String {
 pub struct SD3VAEDecoder {
     vae: AutoEncoderKL,
     scale_factor: f64,
-    shift_factor: f64}
+    shift_factor: f64,
+}
 
 impl SD3VAEDecoder {
     /// Create new VAE decoder
@@ -135,7 +139,8 @@ impl SD3VAEDecoder {
         Self {
             vae,
             scale_factor,
-            shift_factor}
+            shift_factor,
+        }
     }
 
     /// Decode latents to image tensor

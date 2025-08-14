@@ -14,10 +14,9 @@ pub mod function_calling;
 
 // Re-export core types for API compatibility
 pub use core::{
-    ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError, ToolExecutor};
-pub use super::error::{AnthropicError, AnthropicResult};
-pub use super::types::AnthropicMessage;
+    ChainControl, Emitter, ErrorHandler, InvocationHandler, ResultHandler, SchemaType,
+    ToolExecutionError, ToolExecutor, ToolRegistrationError,
+};
 
 // Note: ToolError not available - using anyhow::Error instead
 
@@ -26,6 +25,9 @@ pub use calculator::{CalculatorTool, ExpressionError, ExpressionEvaluator};
 pub use file_operations::FileOperationsTool;
 // Re-export Tool from fluent_ai_domain
 pub use fluent_ai_domain::tool::Tool;
+
+pub use super::error::{AnthropicError, AnthropicResult};
+pub use super::types::AnthropicMessage;
 // Note: tool_builder may not exist in function_calling - removing for now
 // pub use function_calling::tool_builder;
 // Re-export function calling system - TEMPORARILY COMMENTED OUT UNTIL TYPES ARE IMPLEMENTED
@@ -58,51 +60,58 @@ pub fn with_builtins() -> ToolRegistry {
     // TODO: Register built-in tools with production-ready error handling
     // This is temporarily simplified until ToolRegistry is properly implemented
     registry.insert("calculator".to_string(), Box::new("Calculator Tool"));
-    registry.insert("file_operations".to_string(), Box::new("File Operations Tool"));
-    
+    registry.insert(
+        "file_operations".to_string(),
+        Box::new("File Operations Tool"),
+    );
+
     registry
 }
 
 // TODO: Implement proper tool registry system
-// The following functions are temporarily commented out until 
+// The following functions are temporarily commented out until
 // the function_calling types are properly implemented
 
-/*
-/// Register all built-in tools with comprehensive error handling
-fn register_builtin_tools(registry: &mut ToolRegistry) -> AnthropicResult<()> {
-    // TODO: Implement when ToolRegistry has proper methods
-    Ok(())
-}
-
-/// Production-ready tool registry builder with fluent API
-pub struct ToolRegistryBuilder {
-    registry: ToolRegistry
-}
-
-impl ToolRegistryBuilder {
-    /// Create new builder  
-    pub fn new() -> Self {
-        Self {
-            registry: ToolRegistry::new()
-        }
-    }
-
-        // TODO: Implement methods when types are available
-        Ok(self)
-    }
-}
-*/
+// Register all built-in tools with comprehensive error handling
+// fn register_builtin_tools(registry: &mut ToolRegistry) -> AnthropicResult<()> {
+// TODO: Implement when ToolRegistry has proper methods
+// Ok(())
+// }
+//
+// Production-ready tool registry builder with fluent API
+// pub struct ToolRegistryBuilder {
+// registry: ToolRegistry
+// }
+//
+// impl ToolRegistryBuilder {
+// Create new builder
+// pub fn new() -> Self {
+// Self {
+// registry: ToolRegistry::new()
+// }
+// }
+//
+// TODO: Implement methods when types are available
+// Ok(self)
+// }
+// }
 
 // Simplified temporary implementation
 pub struct ToolRegistryBuilder;
 
 impl ToolRegistryBuilder {
-    pub fn new() -> Self { Self }
-    pub fn build(self) -> ToolRegistry { ToolRegistry::new() }
+    pub fn new() -> Self {
+        Self
+    }
+    pub fn build(self) -> ToolRegistry {
+        ToolRegistry::new()
+    }
 }
 
 impl Default for ToolRegistryBuilder {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Convenience function to create tool registry builder

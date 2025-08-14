@@ -4,13 +4,11 @@
 //! for high-performance text search and matching.
 
 use std::sync::Arc;
+
 use fluent_ai_async::AsyncStream;
 
-use super::types::{SearchResult, SearchResultMetadata, MatchPosition};
 use super::index::ChatSearchIndex;
-
-
-
+use super::types::{MatchPosition, SearchResult, SearchResultMetadata};
 
 impl ChatSearchIndex {
     /// Search with AND operator (all terms must match)
@@ -53,12 +51,16 @@ impl ChatSearchIndex {
                     if let Some(message) = self_clone.document_store().get(&doc_id) {
                         let result = SearchResult {
                             message: message.value().clone(),
-                            relevance_score: self_clone.calculate_relevance_score(&terms_clone, &doc_id),
+                            relevance_score: self_clone
+                                .calculate_relevance_score(&terms_clone, &doc_id),
                             matching_terms: terms_clone.clone(),
                             highlighted_content: None,
                             tags: Vec::new(),
                             context: Vec::new(),
-                            match_positions: self_clone.find_match_positions(&terms_clone, &message.value().message.content),
+                            match_positions: self_clone.find_match_positions(
+                                &terms_clone,
+                                &message.value().message.content,
+                            ),
                             metadata: Some(SearchResultMetadata {
                                 query_time_ms: 0.0,
                                 index_version: 1,
@@ -97,7 +99,8 @@ impl ChatSearchIndex {
                     let matching_terms: Vec<Arc<str>> = terms_clone
                         .iter()
                         .filter(|term| {
-                            self_clone.inverted_index()
+                            self_clone
+                                .inverted_index()
                                 .get(&**term)
                                 .map(|entries| entries.value().iter().any(|e| e.doc_id == doc_id))
                                 .unwrap_or(false)
@@ -107,12 +110,14 @@ impl ChatSearchIndex {
 
                     let result = SearchResult {
                         message: message.value().clone(),
-                        relevance_score: self_clone.calculate_relevance_score(&matching_terms, &doc_id),
+                        relevance_score: self_clone
+                            .calculate_relevance_score(&matching_terms, &doc_id),
                         matching_terms,
                         highlighted_content: None,
                         tags: Vec::new(),
                         context: Vec::new(),
-                        match_positions: self_clone.find_match_positions(&terms_clone, &message.value().message.content),
+                        match_positions: self_clone
+                            .find_match_positions(&terms_clone, &message.value().message.content),
                         metadata: Some(SearchResultMetadata {
                             query_time_ms: 0.0,
                             index_version: 1,
@@ -229,13 +234,17 @@ impl ChatSearchIndex {
             }
 
             // Build the phrase to search for
-            let phrase: String = terms_clone.iter().map(|t| t.as_ref()).collect::<Vec<_>>().join(" ");
+            let phrase: String = terms_clone
+                .iter()
+                .map(|t| t.as_ref())
+                .collect::<Vec<_>>()
+                .join(" ");
 
             // Search through all documents for exact phrase match
             for entry in self_clone.document_store.iter() {
                 let message = entry.value();
                 let content = &message.message.content;
-                
+
                 if content.to_lowercase().contains(&phrase.to_lowercase()) {
                     let result = SearchResult {
                         message: message.clone(),
@@ -277,12 +286,16 @@ impl ChatSearchIndex {
                 let message = entry.value();
                 let content = &message.message.content;
                 let tokens = self_clone.tokenize_with_simd(content);
-                
+
                 // Check if terms appear within the specified distance
                 if self_clone.check_proximity(&terms_clone, &tokens, distance) {
                     let result = SearchResult {
                         message: message.clone(),
-                        relevance_score: self_clone.calculate_proximity_score(&terms_clone, &tokens, distance),
+                        relevance_score: self_clone.calculate_proximity_score(
+                            &terms_clone,
+                            &tokens,
+                            distance,
+                        ),
                         matching_terms: terms_clone.clone(),
                         highlighted_content: None,
                         tags: Vec::new(),
@@ -322,13 +335,17 @@ impl ChatSearchIndex {
 
     /// Check if terms appear within proximity distance
     fn check_proximity(&self, terms: &[Arc<str>], tokens: &[Arc<str>], distance: u32) -> bool {
-        let mut term_positions: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+        let mut term_positions: std::collections::HashMap<String, Vec<usize>> =
+            std::collections::HashMap::new();
 
         // Find positions of each term
         for (i, token) in tokens.iter().enumerate() {
             for term in terms {
                 if token.to_lowercase() == term.to_lowercase() {
-                    term_positions.entry(term.to_string()).or_insert_with(Vec::new).push(i);
+                    term_positions
+                        .entry(term.to_string())
+                        .or_insert_with(Vec::new)
+                        .push(i);
                 }
             }
         }
@@ -341,10 +358,10 @@ impl ChatSearchIndex {
         // Check proximity for each combination
         let term_keys: Vec<String> = term_positions.keys().cloned().collect();
         for i in 0..term_keys.len() {
-            for j in i+1..term_keys.len() {
+            for j in i + 1..term_keys.len() {
                 let positions1 = &term_positions[&term_keys[i]];
                 let positions2 = &term_positions[&term_keys[j]];
-                
+
                 let mut found_within_distance = false;
                 for &pos1 in positions1 {
                     for &pos2 in positions2 {
@@ -353,9 +370,11 @@ impl ChatSearchIndex {
                             break;
                         }
                     }
-                    if found_within_distance { break; }
+                    if found_within_distance {
+                        break;
+                    }
                 }
-                
+
                 if !found_within_distance {
                     return false;
                 }
@@ -366,15 +385,24 @@ impl ChatSearchIndex {
     }
 
     /// Calculate proximity-based relevance score
-    fn calculate_proximity_score(&self, terms: &[Arc<str>], tokens: &[Arc<str>], distance: u32) -> f32 {
+    fn calculate_proximity_score(
+        &self,
+        terms: &[Arc<str>],
+        tokens: &[Arc<str>],
+        distance: u32,
+    ) -> f32 {
         let mut min_distance = distance;
-        let mut term_positions: std::collections::HashMap<String, Vec<usize>> = std::collections::HashMap::new();
+        let mut term_positions: std::collections::HashMap<String, Vec<usize>> =
+            std::collections::HashMap::new();
 
         // Find positions of each term
         for (i, token) in tokens.iter().enumerate() {
             for term in terms {
                 if token.to_lowercase() == term.to_lowercase() {
-                    term_positions.entry(term.to_string()).or_insert_with(Vec::new).push(i);
+                    term_positions
+                        .entry(term.to_string())
+                        .or_insert_with(Vec::new)
+                        .push(i);
                 }
             }
         }
@@ -382,10 +410,10 @@ impl ChatSearchIndex {
         // Find minimum distance between terms
         let term_keys: Vec<String> = term_positions.keys().cloned().collect();
         for i in 0..term_keys.len() {
-            for j in i+1..term_keys.len() {
+            for j in i + 1..term_keys.len() {
                 let positions1 = &term_positions[&term_keys[i]];
                 let positions2 = &term_positions[&term_keys[j]];
-                
+
                 for &pos1 in positions1 {
                     for &pos2 in positions2 {
                         let dist = (pos1 as i32 - pos2 as i32).abs() as u32;

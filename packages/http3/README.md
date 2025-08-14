@@ -394,10 +394,10 @@ let response = client
 
 ## 🔄 Migration Guide
 
-### From reqwest
+### From http3
 ```rust
-// reqwest
-let response = reqwest::get("https://api.example.com").await?;
+// http3
+let response = http3::get("https://api.example.com").await?;
 let text = response.text().await?;
 
 // fluent_ai_http3 (traditional)
@@ -441,7 +441,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built on top of [reqwest](https://github.com/seanmonstar/reqwest)
+- Built on top of [http3](https://github.com/seanmonstar/http3)
 - HTTP/3 support powered by [quinn](https://github.com/quinn-rs/quinn)
 - TLS provided by [rustls](https://github.com/rustls/rustls)
 - Inspired by modern streaming architectures

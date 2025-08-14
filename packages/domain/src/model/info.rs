@@ -4,12 +4,6 @@
 //! the core types for backward compatibility.
 
 pub use model_info::{
-    ModelInfo, 
-    ModelInfoBuilder, 
-    ModelError, 
-    Result,
-    Model,
-    ModelCapabilities,
-    ProviderModels,
-    ProviderTrait,
+    Model, ModelCapabilities, ModelError, ModelInfo, ModelInfoBuilder, ProviderModels,
+    ProviderTrait, Result,
 };

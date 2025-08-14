@@ -15,7 +15,8 @@ pub struct ParserConfig {
     pub max_tokens: usize,
     pub allow_expressions: bool,
     pub allow_functions: bool,
-    pub strict_variables: bool}
+    pub strict_variables: bool,
+}
 
 impl Default for ParserConfig {
     fn default() -> Self {
@@ -24,19 +25,22 @@ impl Default for ParserConfig {
             max_tokens: 10000,
             allow_expressions: true,
             allow_functions: true,
-            strict_variables: false}
+            strict_variables: false,
+        }
     }
 }
 
 /// Template parser implementation
 #[derive(Debug)]
 pub struct TemplateParser {
-    config: ParserConfig}
+    config: ParserConfig,
+}
 
 impl TemplateParser {
     pub fn new() -> Self {
         Self {
-            config: ParserConfig::default()}
+            config: ParserConfig::default(),
+        }
     }
 
     pub fn with_config(config: ParserConfig) -> Self {
@@ -51,7 +55,8 @@ impl TemplateParser {
     fn parse_with_depth(&self, content: &str, depth: usize) -> TemplateResult<TemplateAst> {
         if depth > self.config.max_depth {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Maximum parsing depth exceeded")});
+                message: Arc::from("Maximum parsing depth exceeded"),
+            });
         }
 
         let mut nodes = Vec::new();
@@ -86,7 +91,8 @@ impl TemplateParser {
         match nodes.len() {
             0 => Ok(TemplateAst::Text(Arc::from(""))),
             1 => Ok(nodes.into_iter().next().unwrap()),
-            _ => Ok(TemplateAst::Block(nodes.into()))}
+            _ => Ok(TemplateAst::Block(nodes.into())),
+        }
     }
 
     fn parse_until_closing(
@@ -158,7 +164,8 @@ impl TemplateParser {
         Ok(TemplateAst::Conditional {
             condition: Arc::new(TemplateAst::Variable(Arc::from(condition_var))),
             if_true: Arc::new(TemplateAst::Text(Arc::from("true"))),
-            if_false: Some(Arc::new(TemplateAst::Text(Arc::from("false"))))})
+            if_false: Some(Arc::new(TemplateAst::Text(Arc::from("false")))),
+        })
     }
 
     fn parse_loop(&self, content: &str, _depth: usize) -> TemplateResult<TemplateAst> {
@@ -168,19 +175,22 @@ impl TemplateParser {
 
         if parts.len() != 2 {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Invalid loop syntax")});
+                message: Arc::from("Invalid loop syntax"),
+            });
         }
 
         Ok(TemplateAst::Loop {
             variable: Arc::from(parts[0].trim()),
             iterable: Arc::new(TemplateAst::Variable(Arc::from(parts[1].trim()))),
-            body: Arc::new(TemplateAst::Variable(Arc::from(parts[0].trim())))})
+            body: Arc::new(TemplateAst::Variable(Arc::from(parts[0].trim()))),
+        })
     }
 
     fn parse_function_call(&self, content: &str, _depth: usize) -> TemplateResult<TemplateAst> {
         if !self.config.allow_functions {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Function calls not allowed")});
+                message: Arc::from("Function calls not allowed"),
+            });
         }
 
         let paren_pos = content.find('(').unwrap_or(0);
@@ -196,7 +206,8 @@ impl TemplateParser {
         // Simple expression parsing - return as variable for now
         Ok(TemplateAst::Expression {
             operator: Arc::from("+"),
-            operands: Arc::new([TemplateAst::Variable(Arc::from(content))])})
+            operands: Arc::new([TemplateAst::Variable(Arc::from(content))]),
+        })
     }
 
     /// Extract variables from template content
@@ -246,7 +257,8 @@ impl TemplateParser {
                             validation_pattern: None,
                             valid_values: None,
                             min_value: None,
-                            max_value: None},
+                            max_value: None,
+                        },
                     );
                 }
             }
@@ -268,7 +280,8 @@ pub struct ParserStats {
     pub parsed_count: usize,
     pub total_parse_time_us: usize,
     pub error_count: usize,
-    pub peak_memory_bytes: usize}
+    pub peak_memory_bytes: usize,
+}
 
 /// Parse error type alias for convenience
 pub type ParseError = TemplateError;
@@ -308,7 +321,8 @@ mod tests {
             TemplateAst::Block(nodes) => {
                 assert_eq!(nodes.len(), 3);
             }
-            _ => panic!("Expected block AST")}
+            _ => panic!("Expected block AST"),
+        }
     }
 
     #[test]

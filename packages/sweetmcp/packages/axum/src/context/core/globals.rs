@@ -3,8 +3,9 @@
 //! This module provides global context initialization and management
 //! functionality with zero allocation patterns and blazing-fast performance.
 
-use once_cell::sync::OnceCell;
 use std::sync::Arc;
+
+use once_cell::sync::OnceCell;
 
 use super::types::{ApplicationContext, SamplingContext};
 

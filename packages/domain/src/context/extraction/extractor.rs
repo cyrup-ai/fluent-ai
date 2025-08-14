@@ -1,15 +1,16 @@
 use std::fmt;
 use std::marker::PhantomData;
+
 use fluent_ai_async::AsyncStream;
 use serde::de::DeserializeOwned;
-// Removed unused import: use tokio_stream::StreamExt;
 
-use super::error::{ExtractionError, _ExtractionResult as ExtractionResult};
+// Removed unused import: use tokio_stream::StreamExt;
+use super::error::{_ExtractionResult as ExtractionResult, ExtractionError};
 use crate::agent::Agent;
 use crate::chat::message::MessageRole;
-use crate::http::requests::completion::CompletionRequest;
 use crate::completion::{CompletionModel, CompletionParams};
 use crate::context::chunk::{CompletionChunk, FinishReason};
+use crate::http::requests::completion::CompletionRequest;
 use crate::prompt::Prompt;
 
 /// Trait defining the core extraction interface
@@ -38,7 +39,8 @@ where
 pub struct ExtractorImpl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> {
     agent: Agent,
     system_prompt: Option<String>,
-    _marker: PhantomData<T>}
+    _marker: PhantomData<T>,
+}
 
 impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static> Extractor<T>
     for ExtractorImpl<T>
@@ -55,7 +57,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
         Self {
             agent,
             system_prompt: None,
-            _marker: PhantomData}
+            _marker: PhantomData,
+        }
     }
 
     fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
@@ -84,13 +87,21 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
     ) -> ExtractionResult<T> {
         let model = AgentCompletionModel::new(agent);
         let prompt = Prompt {
-            content: completion_request.system.as_deref().unwrap_or("").to_string(),
-            role: MessageRole::System};
+            content: completion_request
+                .system
+                .as_deref()
+                .unwrap_or("")
+                .to_string(),
+            role: MessageRole::System,
+        };
         let params = CompletionParams {
             temperature: completion_request.temperature.unwrap_or(0.2),
-            max_tokens: completion_request.max_tokens.and_then(|t| std::num::NonZeroU64::new(t as u64)),
+            max_tokens: completion_request
+                .max_tokens
+                .and_then(|t| std::num::NonZeroU64::new(t as u64)),
             n: std::num::NonZeroU8::new(1).unwrap(),
-            stream: true};
+            stream: true,
+        };
         let mut stream = model.prompt(prompt, &params);
 
         let mut full_response = String::new();
@@ -125,7 +136,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
         if finish_reason == Some(FinishReason::Stop) || !full_response.is_empty() {
             match Self::parse_json_response(&full_response) {
                 Ok(result) => Ok(result),
-                Err(e) => Err(e)}
+                Err(e) => Err(e),
+            }
         } else {
             Err(ExtractionError::CompletionError(
                 "No valid response from model".to_string(),
@@ -152,7 +164,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
             serde_json::from_str(json_str).map_err(ExtractionError::from)
         } else {
             Err(ExtractionError::InvalidFormat {
-                actual: response.to_string()})
+                actual: response.to_string(),
+            })
         }
     }
 }
@@ -160,7 +173,8 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
 /// Zero-allocation completion model wrapper for agents
 #[derive(Debug, Clone)]
 pub struct AgentCompletionModel {
-    agent: Agent}
+    agent: Agent,
+}
 
 impl AgentCompletionModel {
     /// Create new completion model from agent
@@ -184,10 +198,9 @@ impl CompletionModel for AgentCompletionModel {
             let default_chunk = CompletionChunk::Complete {
                 text: format!("{:?}", prompt),
                 finish_reason: Some(FinishReason::Stop),
-                usage: None};
+                usage: None,
+            };
             let _ = sender.try_send(default_chunk);
         })
     }
 }
-
-

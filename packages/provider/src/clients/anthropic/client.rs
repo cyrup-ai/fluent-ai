@@ -18,7 +18,8 @@ use crate::completion_provider::{CompletionError, CompletionProvider};
 /// Anthropic client providing clean completion builder factory methods
 #[derive(Clone)]
 pub struct AnthropicClient {
-    api_key: String}
+    api_key: String,
+}
 
 impl AnthropicClient {
     /// Create new Anthropic client with API key

@@ -18,7 +18,8 @@ pub struct CommandRegistry {
     /// Command aliases (lock-free concurrent map)
     aliases: Arc<SkipMap<Arc<str>, Arc<str>>>,
     /// Command categories
-    categories: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>}
+    categories: Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>,
+}
 
 impl Default for CommandRegistry {
     fn default() -> Self {
@@ -32,7 +33,8 @@ impl CommandRegistry {
         Self {
             commands: Arc::new(SkipMap::new()),
             aliases: Arc::new(SkipMap::new()),
-            categories: Arc::new(SkipMap::new())}
+            categories: Arc::new(SkipMap::new()),
+        }
     }
 
     /// Register a command with compile-time validation
@@ -40,19 +42,22 @@ impl CommandRegistry {
         // Validate command info
         if info.name.is_empty() {
             return Err(CandleCommandError::ConfigurationError {
-                detail: "Command name cannot be empty".to_string()});
+                detail: "Command name cannot be empty".to_string(),
+            });
         }
 
         if info.description.is_empty() {
             return Err(CandleCommandError::ConfigurationError {
-                detail: "Command description cannot be empty".to_string()});
+                detail: "Command description cannot be empty".to_string(),
+            });
         }
 
         // Check for duplicate command names
         let command_name = Arc::from(info.name.as_str());
         if self.commands.contains_key(&command_name) {
             return Err(CandleCommandError::ConfigurationError {
-                detail: format!("Command '{}' already registered", info.name)});
+                detail: format!("Command '{}' already registered", info.name),
+            });
         }
 
         // Check for duplicate aliases
@@ -60,7 +65,8 @@ impl CommandRegistry {
             let alias_key = Arc::from(alias.as_str());
             if self.aliases.contains_key(&alias_key) {
                 return Err(CandleCommandError::ConfigurationError {
-                    detail: format!("Alias '{}' already registered", alias)});
+                    detail: format!("Alias '{}' already registered", alias),
+                });
             }
         }
 
@@ -96,7 +102,8 @@ impl CommandRegistry {
             .commands
             .get(&command_name)
             .ok_or_else(|| CandleCommandError::UnknownCommand {
-                command: command_name.to_string()})?
+                command: command_name.to_string(),
+            })?
             .value()
             .clone();
 
@@ -236,7 +243,8 @@ impl CommandRegistry {
             total_commands,
             total_aliases,
             total_categories,
-            category_counts}
+            category_counts,
+        }
     }
 
     /// Validate registry consistency
@@ -252,7 +260,8 @@ impl CommandRegistry {
                         "Orphaned alias '{}' points to non-existent command '{}'",
                         alias_entry.key(),
                         command_name
-                    )});
+                    ),
+                });
             }
         }
 
@@ -260,7 +269,8 @@ impl CommandRegistry {
         for category_entry in self.categories.iter() {
             if category_entry.value().is_empty() {
                 errors.push(CandleCommandError::ConfigurationError {
-                    detail: format!("Empty category '{}'", category_entry.key())});
+                    detail: format!("Empty category '{}'", category_entry.key()),
+                });
             }
         }
 
@@ -270,7 +280,8 @@ impl CommandRegistry {
             for param in &info.parameters {
                 if param.name.is_empty() {
                     errors.push(CandleCommandError::ConfigurationError {
-                        detail: format!("Command '{}' has parameter with empty name", info.name)});
+                        detail: format!("Command '{}' has parameter with empty name", info.name),
+                    });
                 }
             }
         }
@@ -302,15 +313,19 @@ impl CommandRegistry {
     /// Export registry to JSON
     pub fn export_to_json(&self) -> Result<String, CandleCommandError> {
         let commands: Vec<CommandInfo> = self.list_commands();
-        serde_json::to_string_pretty(&commands).map_err(|e| CandleCommandError::ConfigurationError {
-            detail: format!("Failed to export registry: {}", e)})
+        serde_json::to_string_pretty(&commands).map_err(|e| {
+            CandleCommandError::ConfigurationError {
+                detail: format!("Failed to export registry: {}", e),
+            }
+        })
     }
 
     /// Import registry from JSON
     pub fn import_from_json(&self, json: &str) -> Result<(), CandleCommandError> {
         let commands: Vec<CommandInfo> =
             serde_json::from_str(json).map_err(|e| CandleCommandError::ConfigurationError {
-                detail: format!("Failed to import registry: {}", e)})?;
+                detail: format!("Failed to import registry: {}", e),
+            })?;
 
         // Clear existing registry
         self.clear();
@@ -334,7 +349,8 @@ pub struct CommandRegistryStats {
     /// Total number of categories
     pub total_categories: usize,
     /// Commands per category
-    pub category_counts: HashMap<Arc<str>, usize>}
+    pub category_counts: HashMap<Arc<str>, usize>,
+}
 
 /// Global command registry instance
 static GLOBAL_REGISTRY: once_cell::sync::Lazy<CommandRegistry> =

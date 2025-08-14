@@ -10,14 +10,12 @@
 //!
 //! Architecture: Zero-allocation performance validation with measurable benchmarks
 
+use std::hint::black_box;
 use std::thread;
 use std::time::Duration;
 
 use bytes::Bytes;
-use criterion::{
-    BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main,
-};
-use std::hint::black_box;
+use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use fluent_ai_http3::json_path::{JsonArrayStream, JsonPathParser};
 use serde_json::Value;
 use tokio::runtime::Runtime;
@@ -154,7 +152,7 @@ fn large_dataset_benchmarks(c: &mut Criterion) {
                         50 => "$.data[*].metadata.nested.level1.level2.value",
                         _ => "$.data[*].metadata.nested.level1.level2.value.extended.path.for.large.inputs"
                     };
-                    
+
                     match JsonPathParser::compile(complexity_expr) {
                         Ok(expression) => {
                             black_box(expression);

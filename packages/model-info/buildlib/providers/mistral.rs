@@ -1,12 +1,13 @@
-use super::{ModelData, ProviderBuilder, StandardModelsResponse, StandardModel};
+use super::response_types::{OpenAiModel, OpenAiModelsListResponse};
+use super::{ModelData, ProviderBuilder};
 
 /// Mistral provider implementation with dynamic API fetching
 /// API must be available - no static data
 pub struct MistralProvider;
 
 impl ProviderBuilder for MistralProvider {
-    type ListResponse = StandardModelsResponse; // Uses OpenAI-compatible format
-    type GetResponse = StandardModel;
+    type ListResponse = OpenAiModelsListResponse; // Uses OpenAI-compatible format
+    type GetResponse = OpenAiModel;
 
     fn provider_name(&self) -> &'static str {
         "mistral"
@@ -16,12 +17,14 @@ impl ProviderBuilder for MistralProvider {
         "https://api.mistral.ai"
     }
 
-    fn api_key_env_var(&self) -> Option<&'static str> {
-        Some("MISTRAL_API_KEY")
+    fn api_key_env_vars(&self) -> cyrup_sugars::ZeroOneOrMany<&'static str> {
+        cyrup_sugars::ZeroOneOrMany::One("MISTRAL_API_KEY")
     }
 
     fn response_to_models(&self, response: Self::ListResponse) -> Vec<ModelData> {
-        response.data.into_iter()
+        response
+            .data
+            .into_iter()
             .map(|model| mistral_model_to_data(&model.id))
             .collect()
     }
@@ -43,7 +46,7 @@ fn mistral_model_to_data(model_id: &str) -> ModelData {
         "mistral-tiny" => (model_id.to_string(), 32000, 0.14, 0.42, false, None),
         "codestral-latest" => (model_id.to_string(), 32000, 0.2, 0.6, false, None),
         "codestral-2405" => (model_id.to_string(), 32000, 0.2, 0.6, false, None),
-        
+
         // Default for unknown models
         _ => (model_id.to_string(), 32000, 1.0, 3.0, false, None),
     }

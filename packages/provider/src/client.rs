@@ -4,11 +4,11 @@
 //! for completion, embedding, transcription, and other AI services.
 
 use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
+use fluent_ai_async::{AsyncStream, AsyncTask};
 use fluent_ai_domain::context::chunk::CompletionChunk;
 // Note: EmbeddingChunk and VoiceChunk may be in context::chunk or may need to be created
 use fluent_ai_domain::context::chunk::CompletionChunk as EmbeddingChunk;
 use fluent_ai_domain::context::chunk::CompletionChunk as VoiceChunk;
-use fluent_ai_async::{AsyncStream, AsyncTask};
 
 /// Core completion client trait using async task patterns
 pub trait CompletionClient: Send + Sync + Clone {
@@ -59,10 +59,7 @@ pub trait CompletionModel: Send + Sync + Clone {
     type Error: Send + Sync + 'static;
 
     /// Generate completion from prompt using the domain pattern
-    fn prompt(
-        &self,
-        prompt: crate::domain::prompt::Prompt,
-    ) -> Box<dyn AsyncStream<CompletionChunk>>;
+    fn prompt(&self, prompt: crate::domain::prompt::Prompt) -> AsyncStream<CompletionChunk>;
 
     /// Perform completion
     fn completion(
@@ -74,7 +71,7 @@ pub trait CompletionModel: Send + Sync + Clone {
     fn stream(
         &self,
         request: crate::domain::completion::CompletionRequest,
-    ) -> Box<dyn AsyncStream<Self::StreamingResponse>>;
+    ) -> AsyncStream<Self::StreamingResponse>;
 }
 
 /// Embedding model trait for model-specific implementations  
@@ -95,5 +92,5 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     fn embed(&self, text: &str) -> Box<dyn AsyncTask<ZeroOneOrMany<f32>>>;
 
     /// Create embeddings for multiple texts with streaming
-    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> Box<dyn AsyncStream<EmbeddingChunk>>;
+    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> AsyncStream<EmbeddingChunk>;
 }

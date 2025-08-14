@@ -12,24 +12,24 @@
 //!     .prompt("Hello world")
 //! ```
 
+use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chat::config::ModelConfig;
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::context::{CompletionChunk, FinishReason};
+use fluent_ai_domain::model::Usage;
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message};
 use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
+// CRITICAL: Import model information from model-info package (single source of truth)
+use model_info::{ModelInfo as ModelInfoFromPackage, discovery::Provider};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use arrayvec::ArrayVec;
-
-// CRITICAL: Import model information from model-info package (single source of truth)
-use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 
 use crate::{
     AsyncStream,
-    completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider}};
+    completion_provider::{ChunkHandler, CompletionError, CompletionProvider},
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -60,7 +60,8 @@ pub struct HuggingFaceCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>}
+    chunk_handler: Option<ChunkHandler>,
+}
 
 /// HuggingFace API message (zero-allocation serialization)
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,7 +69,8 @@ pub struct HuggingFaceMessage<'a> {
     pub role: &'a str,
     pub content: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<HuggingFaceToolCall<'a>, MAX_TOOLS>>}
+    pub tool_calls: Option<ArrayVec<HuggingFaceToolCall<'a>, MAX_TOOLS>>,
+}
 
 /// HuggingFace tool call (zero-allocation)
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,13 +78,15 @@ pub struct HuggingFaceToolCall<'a> {
     pub id: &'a str,
     #[serde(rename = "type")]
     pub tool_type: &'a str,
-    pub function: HuggingFaceFunction<'a>}
+    pub function: HuggingFaceFunction<'a>,
+}
 
 /// HuggingFace function definition (zero-allocation)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HuggingFaceFunction<'a> {
     pub name: &'a str,
-    pub arguments: &'a str}
+    pub arguments: &'a str,
+}
 
 /// HuggingFace completion request (zero-allocation where possible)
 #[derive(Debug, Serialize)]
@@ -101,7 +105,8 @@ pub struct HuggingFaceCompletionRequest<'a> {
     pub presence_penalty: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ArrayVec<Value, MAX_TOOLS>>,
-    pub stream: bool}
+    pub stream: bool,
+}
 
 /// HuggingFace streaming response chunk (optimized deserialization)
 #[derive(Debug, Deserialize)]
@@ -109,41 +114,47 @@ pub struct HuggingFaceStreamChunk {
     pub id: String,
     pub choices: ZeroOneOrMany<HuggingFaceChoice>,
     #[serde(default)]
-    pub usage: Option<HuggingFaceUsage>}
+    pub usage: Option<HuggingFaceUsage>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct HuggingFaceChoice {
     pub index: u32,
     pub delta: HuggingFaceDelta,
     #[serde(default)]
-    pub finish_reason: Option<String>}
+    pub finish_reason: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct HuggingFaceDelta {
     #[serde(default)]
     pub content: Option<String>,
     #[serde(default)]
-    pub tool_calls: Option<ZeroOneOrMany<HuggingFaceToolCallDelta>>}
+    pub tool_calls: Option<ZeroOneOrMany<HuggingFaceToolCallDelta>>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct HuggingFaceToolCallDelta {
     #[serde(default)]
     pub id: Option<String>,
     #[serde(default)]
-    pub function: Option<HuggingFaceFunctionDelta>}
+    pub function: Option<HuggingFaceFunctionDelta>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct HuggingFaceFunctionDelta {
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
-    pub arguments: Option<String>}
+    pub arguments: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct HuggingFaceUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32}
+    pub total_tokens: u32,
+}
 
 impl CompletionProvider for HuggingFaceCompletionBuilder {
     /// Create new HuggingFace completion builder with ModelInfo defaults
@@ -185,7 +196,8 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None})
+            chunk_handler: None,
+        })
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -347,7 +359,8 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
                             // Default env_logger behavior (zero allocation)
                             match &chunk_result {
                                 Ok(chunk) => log::debug!("Chunk: {:?}", chunk),
-                                Err(e) => log::error!("Chunk error: {}", e)}
+                                Err(e) => log::error!("Chunk error: {}", e),
+                            }
                         }
 
                         match chunk_result {
@@ -390,10 +403,14 @@ impl HuggingFaceCompletionBuilder {
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
 
         // Use Http3::json() directly instead of HttpClient abstraction
-        let mut response_stream = Http3::json()
-            .api_key(auth_key)
-            .body(&request_body)
-            .post(&format!("{}/{}/v1/chat/completions", self.base_url, self.model_name));
+        let mut response_stream =
+            Http3::json()
+                .api_key(auth_key)
+                .body(&request_body)
+                .post(&format!(
+                    "{}/{}/v1/chat/completions",
+                    self.base_url, self.model_name
+                ));
 
         if !response_stream.is_success() {
             return Err(match response_stream.status_code() {
@@ -407,13 +424,13 @@ impl HuggingFaceCompletionBuilder {
 
         spawn_async(async move {
             use fluent_ai_http3::HttpStreamExt;
-            
+
             while let Some(chunk) = response_stream.next().await {
                 match chunk {
                     Ok(http_chunk) => {
                         if let fluent_ai_http3::HttpChunk::Body(data) = http_chunk {
                             let data_str = String::from_utf8_lossy(&data);
-                            
+
                             // Process SSE events
                             for line in data_str.lines() {
                                 if line.starts_with("data: ") {
@@ -421,7 +438,7 @@ impl HuggingFaceCompletionBuilder {
                                     if data.trim() == "[DONE]" {
                                         return;
                                     }
-                                    
+
                                     match Self::parse_sse_chunk(data.as_bytes()) {
                                         Ok(chunk) => {
                                             if chunk_sender.send(Ok(chunk)).is_err() {
@@ -463,7 +480,8 @@ impl HuggingFaceCompletionBuilder {
                 .try_push(HuggingFaceMessage {
                     role: "system",
                     content: Some(&self.system_prompt),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -474,7 +492,8 @@ impl HuggingFaceCompletionBuilder {
                 .try_push(HuggingFaceMessage {
                     role: "user",
                     content: Some(Box::leak(content.into_boxed_str())),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -491,7 +510,8 @@ impl HuggingFaceCompletionBuilder {
             .try_push(HuggingFaceMessage {
                 role: "user",
                 content: Some(prompt),
-                tool_calls: None})
+                tool_calls: None,
+            })
             .map_err(|_| CompletionError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
@@ -509,7 +529,8 @@ impl HuggingFaceCompletionBuilder {
             frequency_penalty: Some(self.frequency_penalty),
             presence_penalty: Some(self.presence_penalty),
             tools,
-            stream: true})
+            stream: true,
+        })
     }
 
     /// Convert domain Message to HuggingFace format (zero allocation)
@@ -525,7 +546,8 @@ impl HuggingFaceCompletionBuilder {
                 Ok(HuggingFaceMessage {
                     role: "user",
                     content: Some(content),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
             }
             fluent_ai_domain::message::MessageRole::Assistant => {
                 let content = msg.content().text();
@@ -537,14 +559,16 @@ impl HuggingFaceCompletionBuilder {
                 Ok(HuggingFaceMessage {
                     role: "assistant",
                     content,
-                    tool_calls})
+                    tool_calls,
+                })
             }
             fluent_ai_domain::message::MessageRole::System => {
                 let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(HuggingFaceMessage {
                     role: "system",
                     content: Some(content),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
             }
         }
     }
@@ -565,7 +589,9 @@ impl HuggingFaceCompletionBuilder {
                     function: HuggingFaceFunction {
                         name: tool_call.function().name(),
                         arguments: &serde_json::to_string(&tool_call.function().arguments())
-                            .map_err(|_| CompletionError::ParseError)?}})
+                            .map_err(|_| CompletionError::ParseError)?,
+                    },
+                })
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -627,17 +653,20 @@ impl HuggingFaceCompletionBuilder {
                 "length" => FinishReason::Length,
                 "content_filter" => FinishReason::ContentFilter,
                 "tool_calls" => FinishReason::ToolCalls,
-                _ => FinishReason::Stop};
+                _ => FinishReason::Stop,
+            };
 
             let usage_info = usage.map(|u| Usage {
                 prompt_tokens: u.prompt_tokens,
                 completion_tokens: u.completion_tokens,
-                total_tokens: u.total_tokens});
+                total_tokens: u.total_tokens,
+            });
 
             return Ok(CompletionChunk::Complete {
                 text: choice.delta.content.clone().unwrap_or_default(),
                 finish_reason: Some(reason),
-                usage: usage_info});
+                usage: usage_info,
+            });
         }
 
         // Handle tool calls

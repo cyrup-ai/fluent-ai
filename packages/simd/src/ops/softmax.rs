@@ -280,14 +280,15 @@ fn create_softmax_dispatch() -> SoftmaxDispatch {
         #[cfg(not(target_arch = "aarch64"))]
         neon: None,
 
-        scalar: scalar_softmax}
+        scalar: scalar_softmax,
+    }
 }
 
 /// Compute softmax over logits using the best available SIMD implementation
 ///
 /// This function automatically selects the optimal SIMD implementation based on runtime
 /// CPU feature detection, providing maximum performance across different hardware.
-/// 
+///
 /// # Arguments
 /// * `logits` - Input logits slice
 ///

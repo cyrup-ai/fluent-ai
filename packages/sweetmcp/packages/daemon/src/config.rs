@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// Top‑level daemon configuration (mirrors original defaults).
 #[derive(Debug, Clone, Serialize, Deserialize)]

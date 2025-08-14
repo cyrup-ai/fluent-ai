@@ -10,13 +10,14 @@ mod service;
 mod signing;
 mod state_machine;
 
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use anyhow::Result;
 use clap::Parser;
 use env_logger::Env;
 use log::{error, info};
 use manager::ServiceManager;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();

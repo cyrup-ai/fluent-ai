@@ -151,7 +151,8 @@ pub fn ansi_color_only(fg: Option<Color>, bg: Option<Color>) -> AnsiColor {
 /// This is created by the `ansi_color_only` function.
 pub struct AnsiColor {
     fg: Option<Color>,
-    bg: Option<Color>}
+    bg: Option<Color>,
+}
 
 impl fmt::Display for AnsiColor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -37,7 +37,8 @@ pub struct Monitor {
     // Histograms
     pub operation_duration: HistogramVec,
     pub query_latency: Histogram,
-    pub api_latency: HistogramVec}
+    pub api_latency: HistogramVec,
+}
 
 impl Monitor {
     /// Create a new monitor instance
@@ -105,7 +106,8 @@ impl Monitor {
             cache_size,
             operation_duration,
             query_latency,
-            api_latency})
+            api_latency,
+        })
     }
 
     /// Get the prometheus registry
@@ -199,7 +201,8 @@ impl Monitor {
             cache_size,
             operation_duration,
             query_latency,
-            api_latency}
+            api_latency,
+        }
     }
 
     /// Comprehensive fallback names guaranteed to work with Prometheus validation
@@ -509,7 +512,8 @@ impl Monitor {
                     name: emergency_name.to_string(),
                     help: String::new(),
                     const_labels: std::collections::HashMap::new(),
-                    variable_labels: Vec::new()},
+                    variable_labels: Vec::new(),
+                },
                 &[],
             ) {
                 return counter;
@@ -544,7 +548,8 @@ impl Monitor {
                     name: "fallback_emergency".to_string(),
                     help: String::new(),
                     const_labels: std::collections::HashMap::new(),
-                    variable_labels: Vec::new()},
+                    variable_labels: Vec::new(),
+                },
                 &[],
             )
             .unwrap_or_else(|_| {

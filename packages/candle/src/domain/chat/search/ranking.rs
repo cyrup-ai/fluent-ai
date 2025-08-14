@@ -2,8 +2,7 @@
 
 use std::collections::HashMap;
 
-
-use super::types::{SearchResult, ProcessedQuery, RankingAlgorithm};
+use super::types::{ProcessedQuery, RankingAlgorithm, SearchResult};
 
 /// Result ranker for scoring and sorting search results
 pub struct ResultRanker {
@@ -29,7 +28,11 @@ impl ResultRanker {
         _query: &ProcessedQuery,
     ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error + Send + Sync>> {
         // Sort by relevance score (descending)
-        results.sort_by(|a, b| b.relevance_score.partial_cmp(&a.relevance_score).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.relevance_score
+                .partial_cmp(&a.relevance_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(results)
     }
 }

@@ -10,7 +10,8 @@ use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics
 
 /// NEON-optimized similarity implementation for ARM64
 pub struct NeonSimilarity {
-    metrics: Arc<SimilarityMetrics>}
+    metrics: Arc<SimilarityMetrics>,
+}
 
 impl Default for NeonSimilarity {
     fn default() -> Self {
@@ -23,7 +24,8 @@ impl NeonSimilarity {
     #[inline]
     pub fn new() -> Self {
         Self {
-            metrics: Arc::new(SimilarityMetrics::default())}
+            metrics: Arc::new(SimilarityMetrics::default()),
+        }
     }
 
     /// Process vectors using real ARM NEON SIMD instructions

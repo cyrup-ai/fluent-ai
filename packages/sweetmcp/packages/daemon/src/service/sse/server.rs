@@ -3,13 +3,8 @@
 //! Implements the dual-endpoint SSE server with /sse and /messages endpoints
 //! as specified in the MCP SSE transport protocol.
 
-use crate::service::sse::{
-    bridge::{create_invalid_request_response, validate_json_rpc_request, McpBridge},
-    encoder::SseEncoder,
-    events::SseEvent,
-    session::{ClientInfo, SessionManager},
-    SseConfig,
-};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
+
 use anyhow::{Context, Result};
 use axum::{
     extract::{Query, State},
@@ -20,7 +15,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{convert::Infallible, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::oneshot;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -28,6 +22,14 @@ use tower_http::{
     trace::TraceLayer,
 };
 use tracing::{debug, info, warn};
+
+use crate::service::sse::{
+    bridge::{create_invalid_request_response, validate_json_rpc_request, McpBridge},
+    encoder::SseEncoder,
+    events::SseEvent,
+    session::{ClientInfo, SessionManager},
+    SseConfig,
+};
 
 /// SSE server state shared across handlers
 #[derive(Debug, Clone)]

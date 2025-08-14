@@ -3,9 +3,10 @@
 //! This module provides the foundational traits and types for database
 //! access objects with zero allocation patterns and blazing-fast performance.
 
+use std::fmt::Debug;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use std::fmt::Debug;
 use uuid::Uuid;
 
 /// Generic entity trait for database objects

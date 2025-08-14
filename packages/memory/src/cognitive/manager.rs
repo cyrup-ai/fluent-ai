@@ -12,21 +12,22 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
-use tokio;
 
 use anyhow::Result;
 use arrayvec::ArrayVec;
 use crossbeam::channel::{Receiver, Sender, bounded, unbounded};
+use fluent_ai_async::{AsyncStream, AsyncTask};
 // Use domain types for traits and models
 use fluent_ai_domain::{
-    chat::Message, 
-    completion::{CompletionBackend, CompletionRequest, CompletionResponse, CompletionCoreError}};
+    chat::Message,
+    completion::{CompletionBackend, CompletionCoreError, CompletionRequest, CompletionResponse},
+};
 // Use HTTP3 + model-info architecture instead of provider clients
 use fluent_ai_http3::{Http3, HttpClient, HttpConfig};
-use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
-use fluent_ai_async::{AsyncStream, AsyncTask};
 use fluent_ai_simd::smart_cosine_similarity;
+use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
 use serde_json::json;
+use tokio;
 
 use crate::cognitive::quantum::types::EnhancedQuery;
 use crate::cognitive::quantum::types::QueryIntent;
@@ -36,12 +37,15 @@ use crate::cognitive::{
     attention::AttentionMechanism,
     evolution::{EvolutionEngine, EvolutionMetadata},
     quantum::{QuantumConfig, QuantumRouter},
-    state::CognitiveStateManager};
+    state::CognitiveStateManager,
+};
 use crate::memory::{
     manager::{
         MemoryManager, MemoryQuery, MemoryStream, PendingDeletion, PendingMemory,
-        PendingRelationship, RelationshipStream},
-    primitives::{MemoryNode, MemoryRelationship, types::MemoryTypeEnum}};
+        PendingRelationship, RelationshipStream,
+    },
+    primitives::{MemoryNode, MemoryRelationship, types::MemoryTypeEnum},
+};
 use crate::{Error, memory::manager::SurrealDBMemoryManager};
 
 /// Production-quality cognitive memory manager with thread-safe operations
@@ -65,7 +69,8 @@ pub struct CognitiveMemoryManager {
     /// Configuration settings
     settings: CognitiveSettings,
     /// Worker thread pool for cognitive processing
-    worker_pool: Arc<WorkerPool>}
+    worker_pool: Arc<WorkerPool>,
+}
 
 /// High-performance cognitive mesh for advanced processing
 pub struct CognitiveMesh {
@@ -76,27 +81,33 @@ pub struct CognitiveMesh {
     /// Production completion provider integration
     completion_provider: Arc<dyn CompletionBackend>,
     /// Memory embedding cache for performance
-    embedding_cache: Arc<RwLock<HashMap<String, Vec<f32>>>>}
+    embedding_cache: Arc<RwLock<HashMap<String, Vec<f32>>>>,
+}
 
 /// Thread pool for cognitive processing operations
 pub struct WorkerPool {
     /// Request sender channel
     request_sender: Sender<WorkRequest>,
     /// Worker thread handles
-    _worker_handles: Vec<thread::JoinHandle<()>>}
+    _worker_handles: Vec<thread::JoinHandle<()>>,
+}
 
 /// Work request for cognitive processing
 pub enum WorkRequest {
     EnhanceMemory {
         memory: MemoryNode,
-        response_sender: Sender<Result<CognitiveMemoryNode>>},
+        response_sender: Sender<Result<CognitiveMemoryNode>>,
+    },
     CognitiveSearch {
         query: EnhancedQuery,
         limit: usize,
-        response_sender: Sender<Result<Vec<MemoryNode>>>},
+        response_sender: Sender<Result<Vec<MemoryNode>>>,
+    },
     GenerateEmbedding {
         text: String,
-        response_sender: Sender<Result<Vec<f32>>>}}
+        response_sender: Sender<Result<Vec<f32>>>,
+    },
+}
 
 /// HTTP3-based completion backend for cognitive memory manager
 #[derive(Debug, Clone)]
@@ -112,7 +123,7 @@ impl CognitiveHttp3Backend {
     fn new(api_key: String, model_name: &str) -> Result<Self> {
         // Default to OpenAI GPT-4 for cognitive processing
         let provider = Provider::OpenAI;
-        
+
         // Create HTTP3 client optimized for AI operations
         let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
             .map_err(|e| anyhow::anyhow!("Failed to create HTTP3 client: {}", e))?;
@@ -170,7 +181,9 @@ impl CompletionBackend for CognitiveHttp3Backend {
                 .post(&url)
                 .collect::<serde_json::Value>()
                 .await
-                .map_err(|e| CompletionCoreError::RequestFailed(format!("HTTP3 request failed: {}", e)))?;
+                .map_err(|e| {
+                    CompletionCoreError::RequestFailed(format!("HTTP3 request failed: {}", e))
+                })?;
 
             // Parse OpenAI response
             let content = response["choices"][0]["message"]["content"]
@@ -231,14 +244,17 @@ impl CognitiveMemoryManager {
                     semantic_weight: 0.4,
                     lexical_weight: 0.3,
                     structural_weight: 0.2,
-                    contextual_weight: 0.1}},
+                    contextual_weight: 0.1,
+                },
+            },
         )));
 
         let cognitive_mesh = Arc::new(CognitiveMesh {
             state_manager: state_manager.clone(),
             attention_mechanism,
             completion_provider,
-            embedding_cache: Arc::new(RwLock::new(HashMap::new()))});
+            embedding_cache: Arc::new(RwLock::new(HashMap::new())),
+        });
 
         let quantum_config = QuantumConfig {
             default_coherence_time: Duration::from_secs_f64(settings.quantum_coherence_time),
@@ -247,10 +263,8 @@ impl CognitiveMemoryManager {
 
         // Create quantum router asynchronously
         let quantum_router = Arc::new(tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(QuantumRouter::new(
-                state_manager,
-                quantum_config,
-            ))
+            tokio::runtime::Handle::current()
+                .block_on(QuantumRouter::new(state_manager, quantum_config))
         })?);
 
         let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::new(
@@ -266,7 +280,8 @@ impl CognitiveMemoryManager {
             quantum_router,
             evolution_engine,
             settings,
-            worker_pool})
+            worker_pool,
+        })
     }
 
     /// Create completion provider using HTTP3 + model-info architecture
@@ -363,12 +378,15 @@ impl CognitiveMemoryManager {
             temporal_context: None,
             cognitive_hints: Vec::new(),
             expected_complexity: 0.5,
-            priority: 1};
+            priority: 1,
+        };
 
         // Generate quantum signature using async router
         let quantum_result = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(self.quantum_router.route_query(&enhanced_query))
-        }).map_err(|e| Error::Config(format!("Quantum routing failed: {}", e)))?;
+            tokio::runtime::Handle::current()
+                .block_on(self.quantum_router.route_query(&enhanced_query))
+        })
+        .map_err(|e| Error::Config(format!("Quantum routing failed: {}", e)))?;
 
         Ok(QuantumSignature {
             coherence_fingerprint: embedding,
@@ -377,7 +395,8 @@ impl CognitiveMemoryManager {
             collapse_probability: quantum_result.confidence as f32,
             entanglement_links: Vec::new(),
             quantum_entropy: (1.0 - quantum_result.confidence),
-            creation_time: chrono::Utc::now()})
+            creation_time: chrono::Utc::now(),
+        })
     }
 
     /// Store cognitive metadata with production-grade thread-safe persistence
@@ -393,7 +412,7 @@ impl CognitiveMemoryManager {
         memory_id: &str,
         cognitive_memory: &CognitiveMemoryNode,
     ) -> Result<(), Error> {
-                use crossbeam::atomic::AtomicCell;
+        use crossbeam::atomic::AtomicCell;
         use surrealdb::sql::{Thing, Value};
 
         // Pre-allocate structures for zero-allocation operation
@@ -464,11 +483,11 @@ impl CognitiveMemoryManager {
             query = query.bind((key, value));
         }
 
-        let mut response = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(query)
-        }).map_err(|e| {
-            Error::DatabaseError(format!("Failed to store cognitive metadata: {}", e))
-        })?;
+        let mut response =
+            tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(query))
+                .map_err(|e| {
+                    Error::DatabaseError(format!("Failed to store cognitive metadata: {}", e))
+                })?;
 
         let result: Option<Thing> = response
             .take(0)
@@ -555,7 +574,8 @@ impl CognitiveMemoryManager {
             crate::cognitive::quantum::types::RoutingStrategy::Attention => confidence,
             crate::cognitive::quantum::types::RoutingStrategy::Causal => 1.2 * confidence,
             crate::cognitive::quantum::types::RoutingStrategy::Emergent => 1.0,
-            crate::cognitive::quantum::types::RoutingStrategy::Hybrid(_) => 1.1 * confidence};
+            crate::cognitive::quantum::types::RoutingStrategy::Hybrid(_) => 1.1 * confidence,
+        };
 
         ((base_limit as f64) * multiplier)
             .max(1.0)
@@ -592,9 +612,8 @@ impl CognitiveMemoryManager {
 
         // Score memories using attention mechanism
         let scored = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(
-                attention.score_memories(query_embedding, &memory_embeddings)
-            )
+            tokio::runtime::Handle::current()
+                .block_on(attention.score_memories(query_embedding, &memory_embeddings))
         });
 
         // Sort memories by relevance score using SIMD-optimized similarity
@@ -637,15 +656,15 @@ impl CognitiveMemoryManager {
             retrieval_accuracy: Self::estimate_accuracy(results),
             response_latency: 100.0,
             memory_efficiency: 0.8,
-            adaptation_rate: 0.7};
+            adaptation_rate: 0.7,
+        };
 
         evolution.record_fitness(metrics);
 
         // Trigger evolution if needed using async operations
         if let Some(evolution_result) = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(evolution.evolve_if_needed())
-        })
-        {
+        }) {
             tracing::info!(
                 "System evolution triggered: generation={}, predicted_improvement={}",
                 evolution_result.generation,
@@ -735,9 +754,9 @@ impl CognitiveMemoryManager {
         let mut related_memories = Vec::new();
         for related_id in related_ids {
             if let Ok(Some(memory)) = tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(self.legacy_manager.get_memory(&related_id))
-            })
-            {
+                tokio::runtime::Handle::current()
+                    .block_on(self.legacy_manager.get_memory(&related_id))
+            }) {
                 related_memories.push(memory);
                 if related_memories.len() >= limit {
                     break;
@@ -764,14 +783,16 @@ impl CognitiveMesh {
             temporal_context: crate::cognitive::types::TemporalContext::default(),
             uncertainty: 0.3,
             confidence: 0.8,
-            meta_awareness: 0.6};
+            meta_awareness: 0.6,
+        };
 
         // Create state for tracking
         let semantic_context = crate::cognitive::state::SemanticContext {
             primary_concepts: vec![format!("{:?}", memory.memory_type)],
             secondary_concepts: vec![],
             domain_tags: vec![format!("{:?}", memory.memory_type)],
-            abstraction_level: crate::cognitive::state::AbstractionLevel::Intermediate};
+            abstraction_level: crate::cognitive::state::AbstractionLevel::Intermediate,
+        };
 
         let tracking_state = crate::cognitive::state::CognitiveState::new(semantic_context);
         let state_id = tokio::task::block_in_place(|| {
@@ -795,7 +816,7 @@ impl CognitiveMesh {
         let related_states = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(
                 self.state_manager
-                    .find_by_concept(&format!("{:?}", memory.memory_type))
+                    .find_by_concept(&format!("{:?}", memory.memory_type)),
             )
         });
 
@@ -816,9 +837,8 @@ impl CognitiveMesh {
             .map_err(|e| anyhow::anyhow!("Failed to acquire attention lock: {}", e))?;
 
         let scored_weights = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(
-                attention.score_memories(&memory_embedding, &memory_embeddings)
-            )
+            tokio::runtime::Handle::current()
+                .block_on(attention.score_memories(&memory_embedding, &memory_embeddings))
         });
 
         // Extract and normalize weights
@@ -889,7 +909,7 @@ impl CognitiveMesh {
     /// # Returns
     /// Optimized embedding vector using SIMD operations where possible
     fn generate_content_based_embedding(&self, content: &str) -> Vec<f32> {
-                let mut embedding = vec![0.0f32; 512];
+        let mut embedding = vec![0.0f32; 512];
 
         if content.is_empty() {
             return embedding;
@@ -1099,7 +1119,8 @@ impl WorkerPool {
 
         Ok(Self {
             request_sender,
-            _worker_handles: worker_handles})
+            _worker_handles: worker_handles,
+        })
     }
 
     /// Worker thread main loop for processing cognitive requests
@@ -1114,7 +1135,8 @@ impl WorkerPool {
             match request {
                 WorkRequest::EnhanceMemory {
                     memory,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     // Process memory enhancement request
                     let result = Self::process_memory_enhancement(memory);
                     let _ = response_sender.send(result);
@@ -1122,14 +1144,16 @@ impl WorkerPool {
                 WorkRequest::CognitiveSearch {
                     query,
                     limit,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     // Process cognitive search request
                     let result = Self::process_cognitive_search(query, limit);
                     let _ = response_sender.send(result);
                 }
                 WorkRequest::GenerateEmbedding {
                     text,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     // Process embedding generation request
                     let result = Self::process_embedding_generation(text);
                     let _ = response_sender.send(result);
@@ -1158,7 +1182,8 @@ impl WorkerPool {
             temporal_context: crate::cognitive::types::TemporalContext::default(),
             uncertainty: 0.3,
             confidence: 0.8,
-            meta_awareness: 0.6};
+            meta_awareness: 0.6,
+        };
 
         Ok(cognitive_memory)
     }
@@ -1235,7 +1260,7 @@ impl MemoryManager for CognitiveMemoryManager {
                     tokio::runtime::Handle::current().block_on(
                         manager
                             .legacy_manager
-                            .create_memory(cognitive_memory.base_memory.clone())
+                            .create_memory(cognitive_memory.base_memory.clone()),
                     )
                 })?;
 
@@ -1258,7 +1283,8 @@ impl MemoryManager for CognitiveMemoryManager {
         thread::spawn(move || {
             let result = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(legacy_result)
-            }).map_err(|e| Error::Config(format!("Memory retrieval failed: {}", e)));
+            })
+            .map_err(|e| Error::Config(format!("Memory retrieval failed: {}", e)));
             let _ = sender.send(result);
         });
 
@@ -1273,9 +1299,8 @@ impl MemoryManager for CognitiveMemoryManager {
             let result = (|| -> Result<MemoryNode, Error> {
                 // Update base memory
                 let updated = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(
-                        manager.legacy_manager.update_memory(memory.clone())
-                    )
+                    tokio::runtime::Handle::current()
+                        .block_on(manager.legacy_manager.update_memory(memory.clone()))
                 })?;
 
                 // Re-enhance if cognitive features are enabled
@@ -1329,7 +1354,8 @@ impl MemoryManager for CognitiveMemoryManager {
 /// Production-quality cognitive query enhancer with synchronous operations
 pub struct CognitiveQueryEnhancer {
     /// Completion provider integration
-    completion_provider: Arc<dyn CompletionBackend>}
+    completion_provider: Arc<dyn CompletionBackend>,
+}
 
 impl CognitiveQueryEnhancer {
     /// Create new cognitive query enhancer
@@ -1341,7 +1367,8 @@ impl CognitiveQueryEnhancer {
     /// Configured query enhancer instance
     pub fn new(completion_provider: Arc<dyn CompletionBackend>) -> Self {
         Self {
-            completion_provider}
+            completion_provider,
+        }
     }
 
     /// Enhance query with cognitive context using synchronous operations
@@ -1366,6 +1393,7 @@ impl CognitiveQueryEnhancer {
             context_embedding,
             temporal_context: None,
             cognitive_hints,
-            expected_complexity: 0.5})
+            expected_complexity: 0.5,
+        })
     }
 }

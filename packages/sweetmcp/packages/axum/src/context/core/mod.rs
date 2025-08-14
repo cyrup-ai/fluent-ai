@@ -9,16 +9,14 @@ pub mod subscriptions;
 pub mod types;
 
 // Re-export core types and functions for ergonomic usage
-pub use types::{ApplicationContext, ContextStats, SamplingContext, SamplingStats};
-
-pub use subscriptions::{
-    CONTEXT_SUBSCRIPTIONS, ContextSubscription, ContextSubscriptionManager, SubscriptionStats,
-};
-
 pub use globals::{
     APPLICATION_CONTEXT, GlobalContextManager, GlobalContextStats, SAMPLING_CONTEXT,
     context_access, initialize_global_context,
 };
+pub use subscriptions::{
+    CONTEXT_SUBSCRIPTIONS, ContextSubscription, ContextSubscriptionManager, SubscriptionStats,
+};
+pub use types::{ApplicationContext, ContextStats, SamplingContext, SamplingStats};
 
 /// Create a new context subscription
 pub fn subscription(id: String, scopes: Vec<String>) -> ContextSubscription {

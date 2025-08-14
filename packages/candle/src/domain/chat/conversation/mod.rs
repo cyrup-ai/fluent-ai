@@ -7,11 +7,11 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use thiserror::Error;
 
+use crate::domain::chat::message::types::CandleMessageRole;
 // REMOVED: use fluent_ai_async::AsyncStream::with_channel;
 use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
-use crate::domain::chat::message::types::CandleMessageRole;
-use thiserror::Error;
 
 /// Error types for conversation operations
 #[derive(Error, Debug)]
@@ -32,9 +32,8 @@ pub struct CandleImmutableMessage {
     /// Message timestamp (nanoseconds since epoch)
     pub timestamp_nanos: u64,
     /// Message sequence number
-    pub sequence: u64}
-
-
+    pub sequence: u64,
+}
 
 impl CandleImmutableMessage {
     /// Create a new Candle immutable message
@@ -44,7 +43,8 @@ impl CandleImmutableMessage {
             content: content.into(),
             role,
             timestamp_nanos: Self::current_timestamp_nanos(),
-            sequence}
+            sequence,
+        }
     }
 
     /// Create Candle user message
@@ -115,7 +115,9 @@ pub enum CandleConversationEvent {
         /// Number of assistant messages
         assistant_messages: u64,
         /// Number of system messages
-        system_messages: u64}}
+        system_messages: u64,
+    },
+}
 
 /// Candle immutable conversation with streaming updates
 pub struct CandleStreamingConversation {
@@ -132,7 +134,8 @@ pub struct CandleStreamingConversation {
     /// System message count (atomic)
     system_messages: AtomicUsize,
     /// Event stream sender
-    event_sender: Option<AsyncStreamSender<CandleConversationEvent>>}
+    event_sender: Option<AsyncStreamSender<CandleConversationEvent>>,
+}
 
 impl std::fmt::Debug for CandleStreamingConversation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -184,7 +187,8 @@ impl CandleStreamingConversation {
             user_messages: AtomicUsize::new(0),
             assistant_messages: AtomicUsize::new(0),
             system_messages: AtomicUsize::new(0),
-            event_sender: None}
+            event_sender: None,
+        }
     }
 
     /// Create Candle conversation with event streaming
@@ -201,7 +205,10 @@ impl CandleStreamingConversation {
 
     /// Add Candle user message (creates new immutable message)
     #[inline]
-    pub fn add_user_message(&mut self, content: impl Into<String>) -> Result<&CandleImmutableMessage, CandleConversationError> {
+    pub fn add_user_message(
+        &mut self,
+        content: impl Into<String>,
+    ) -> Result<&CandleImmutableMessage, CandleConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = CandleImmutableMessage::user(content, sequence);
 
@@ -218,14 +225,17 @@ impl CandleStreamingConversation {
         match self.messages.last() {
             Some(msg) => Ok(msg),
             None => Err(CandleConversationError::MessageVectorCorruption {
-                message: "Message vector empty after push - possible memory corruption".to_string()
-            })
+                message: "Message vector empty after push - possible memory corruption".to_string(),
+            }),
         }
     }
 
     /// Add Candle assistant message (creates new immutable message)
     #[inline]
-    pub fn add_assistant_message(&mut self, content: impl Into<String>) -> Result<&CandleImmutableMessage, CandleConversationError> {
+    pub fn add_assistant_message(
+        &mut self,
+        content: impl Into<String>,
+    ) -> Result<&CandleImmutableMessage, CandleConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = CandleImmutableMessage::assistant(content, sequence);
 
@@ -242,14 +252,17 @@ impl CandleStreamingConversation {
         match self.messages.last() {
             Some(msg) => Ok(msg),
             None => Err(CandleConversationError::MessageVectorCorruption {
-                message: "Message vector empty after push - possible memory corruption".to_string()
-            })
+                message: "Message vector empty after push - possible memory corruption".to_string(),
+            }),
         }
     }
 
     /// Add Candle system message (creates new immutable message)
     #[inline]
-    pub fn add_system_message(&mut self, content: impl Into<String>) -> Result<&CandleImmutableMessage, CandleConversationError> {
+    pub fn add_system_message(
+        &mut self,
+        content: impl Into<String>,
+    ) -> Result<&CandleImmutableMessage, CandleConversationError> {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = CandleImmutableMessage::system(content, sequence);
 
@@ -266,8 +279,8 @@ impl CandleStreamingConversation {
         match self.messages.last() {
             Some(msg) => Ok(msg),
             None => Err(CandleConversationError::MessageVectorCorruption {
-                message: "Message vector empty after push - possible memory corruption".to_string()
-            })
+                message: "Message vector empty after push - possible memory corruption".to_string(),
+            }),
         }
     }
 
@@ -279,7 +292,10 @@ impl CandleStreamingConversation {
 
     /// Get Candle messages by role (zero allocation iterator)
     #[inline]
-    pub fn messages_by_role(&self, role: CandleMessageRole) -> impl Iterator<Item = &CandleImmutableMessage> {
+    pub fn messages_by_role(
+        &self,
+        role: CandleMessageRole,
+    ) -> impl Iterator<Item = &CandleImmutableMessage> {
         self.messages.iter().filter(move |msg| msg.role == role)
     }
 
@@ -372,7 +388,8 @@ impl CandleStreamingConversation {
             total_messages: self.total_messages.load(Ordering::Relaxed) as u64,
             user_messages: self.user_messages.load(Ordering::Relaxed) as u64,
             assistant_messages: self.assistant_messages.load(Ordering::Relaxed) as u64,
-            system_messages: self.system_messages.load(Ordering::Relaxed) as u64}
+            system_messages: self.system_messages.load(Ordering::Relaxed) as u64,
+        }
     }
 
     /// Stream Candle conversation statistics updates
@@ -384,7 +401,8 @@ impl CandleStreamingConversation {
                 total_messages: stats.total_messages,
                 user_messages: stats.user_messages,
                 assistant_messages: stats.assistant_messages,
-                system_messages: stats.system_messages});
+                system_messages: stats.system_messages,
+            });
         }
     }
 }
@@ -406,7 +424,8 @@ pub struct CandleConversationStats {
     /// Number of messages from assistants
     pub assistant_messages: u64,
     /// Number of system messages
-    pub system_messages: u64}
+    pub system_messages: u64,
+}
 
 impl CandleConversationStats {
     /// Calculate user message percentage
@@ -465,7 +484,8 @@ pub trait Conversation: Send + Sync + std::fmt::Debug + Clone {
 #[derive(Debug, Clone)]
 pub struct ConversationImpl {
     messages: Vec<String>,
-    latest_user_message: String}
+    latest_user_message: String,
+}
 
 impl Conversation for ConversationImpl {
     #[inline]
@@ -490,7 +510,8 @@ impl Conversation for ConversationImpl {
         match self.messages.len() {
             0 => ZeroOneOrMany::None,
             1 => ZeroOneOrMany::One(self.messages[0].clone()),
-            _ => ZeroOneOrMany::Many(self.messages.clone())}
+            _ => ZeroOneOrMany::Many(self.messages.clone()),
+        }
     }
 
     #[inline]
@@ -503,8 +524,7 @@ impl Conversation for ConversationImpl {
         let message = user_message.into();
         Self {
             latest_user_message: message.clone(),
-            messages: vec![message]}
+            messages: vec![message],
+        }
     }
 }
-
-

@@ -4,37 +4,39 @@
 //! Anthropic tool execution with lock-free streaming and compile-time safety.
 
 use std::{any::TypeId, collections::HashMap, marker::PhantomData};
-use arrayvec::ArrayVec;
 
+use arrayvec::ArrayVec;
 use fluent_ai_async::AsyncStream;
 use fluent_ai_async::channel;
 use fluent_ai_domain::tool::Tool;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::core::{
-    ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    ResultHandler, SchemaType};
 use super::super::error::{AnthropicError, AnthropicResult};
 use super::super::types::AnthropicMessage;
+use super::core::{
+    ChainControl, Emitter, ErrorHandler, InvocationHandler, ResultHandler, SchemaType,
+};
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 
 /// Tool execution context with metadata and message history
 #[derive(Debug, Clone)]
-pub struct ToolExecutionContext {
+pub struct ToolExecutionContext<'a> {
     pub conversation_id: Option<String>,
     pub user_id: Option<String>,
     pub metadata: HashMap<String, Value>,
     pub timeout_ms: Option<u64>,
     pub max_retries: u32,
-    pub message_history: Vec<AnthropicMessage>}
+    pub message_history: Vec<AnthropicMessage<'a>>,
+}
 
 /// Conversation context for tool execution
 pub struct Conversation<'a> {
-    pub messages: &'a [AnthropicMessage],
-    pub context: &'a ToolExecutionContext,
-    pub last_message: &'a AnthropicMessage}
+    pub messages: &'a [AnthropicMessage<'a>],
+    pub context: &'a ToolExecutionContext<'a>,
+    pub last_message: &'a AnthropicMessage<'a>,
+}
 
 /// Tool execution result with timing and status information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +45,8 @@ pub struct ToolResult {
     pub name: String,
     pub result: ToolOutput,
     pub execution_time_ms: Option<u64>,
-    pub success: bool}
+    pub success: bool,
+}
 
 /// Tool output data with zero-allocation streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,7 +56,9 @@ pub enum ToolOutput {
     Json(Value),
     Error {
         message: String,
-        code: Option<String>}}
+        code: Option<String>,
+    },
+}
 
 impl From<String> for ToolOutput {
     #[inline(always)]
@@ -143,13 +148,15 @@ pub struct ToolBuilder<State, D, Req, Res> {
     request_schema_type: SchemaType,
     result_schema_type: SchemaType,
     handlers: Handlers<D, Req, Res>,
-    _state: PhantomData<State>}
+    _state: PhantomData<State>,
+}
 
 /// Handlers for tool execution
 struct Handlers<D, Req, Res> {
     invocation: InvocationHandler<D, Req, Res>,
     error: Option<ErrorHandler<D>>,
-    result: Option<ResultHandler<D, Res>>}
+    result: Option<ResultHandler<D, Res>>,
+}
 
 impl<D, Req, Res> Clone for Handlers<D, Req, Res>
 where
@@ -161,7 +168,8 @@ where
         Self {
             invocation: self.invocation.clone(),
             error: self.error.clone(),
-            result: self.result.clone()}
+            result: self.result.clone(),
+        }
     }
 }
 
@@ -177,8 +185,10 @@ impl<D, Req, Res> ToolBuilder<(), D, Req, Res> {
             handlers: Handlers {
                 invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
                 error: None,
-                result: None},
-            _state: PhantomData}
+                result: None,
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -197,7 +207,8 @@ impl NamedTool for ToolBuilder<Named, (), (), ()> {
             request_schema_type: self.request_schema_type,
             result_schema_type: self.result_schema_type,
             handlers: self.handlers,
-            _state: PhantomData}
+            _state: PhantomData,
+        }
     }
 }
 
@@ -221,8 +232,10 @@ impl<D, Req, Res> DescribedTool for ToolBuilder<Described, D, Req, Res> {
             handlers: Handlers {
                 invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
                 error: None,
-                result: None},
-            _state: PhantomData}
+                result: None,
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -246,8 +259,10 @@ impl<D, Req, Res> WithDependency for ToolBuilder<WithDependencyState, D, Req, Re
             handlers: Handlers {
                 invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
                 error: None,
-                result: None},
-            _state: PhantomData}
+                result: None,
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -271,8 +286,10 @@ impl<D, Req, Res> WithRequestSchema for ToolBuilder<WithRequestSchemaState, D, R
             handlers: Handlers {
                 invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
                 error: None,
-                result: None},
-            _state: PhantomData}
+                result: None,
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -285,10 +302,7 @@ impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchemaState, D, Req
     #[inline(always)]
     fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
     where
-        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<()>
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<()> + Send + Sync + 'static,
     {
         let boxed_handler: InvocationHandler<D, Req, Res> =
             Box::new(move |conv, emitter, req, dep| {
@@ -313,8 +327,10 @@ impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchemaState, D, Req
             handlers: Handlers {
                 invocation: boxed_handler,
                 error: None,
-                result: None},
-            _state: PhantomData}
+                result: None,
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -338,8 +354,10 @@ impl<D, Req, Res> WithInvocation for ToolBuilder<WithInvocationState, D, Req, Re
             handlers: Handlers {
                 invocation: self.handlers.invocation,
                 error: Some(Box::new(handler)),
-                result: self.handlers.result},
-            _state: PhantomData}
+                result: self.handlers.result,
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -363,8 +381,10 @@ impl<D, Req, Res> WithError for ToolBuilder<WithErrorState, D, Req, Res> {
             handlers: Handlers {
                 invocation: self.handlers.invocation,
                 error: self.handlers.error,
-                result: Some(Box::new(handler))},
-            _state: PhantomData}
+                result: Some(Box::new(handler)),
+            },
+            _state: PhantomData,
+        }
     }
 }
 
@@ -382,7 +402,8 @@ impl<D, Req, Res> WithResult for ToolBuilder<WithResultState, D, Req, Res> {
             dependency: self.dependency,
             handlers: self.handlers,
             _req: PhantomData,
-            _res: PhantomData}
+            _res: PhantomData,
+        }
     }
 }
 
@@ -393,7 +414,8 @@ pub struct BuiltTool<D, Req, Res> {
     dependency: D,
     handlers: Handlers<D, Req, Res>,
     _req: PhantomData<Req>,
-    _res: PhantomData<Res>}
+    _res: PhantomData<Res>,
+}
 
 impl<D, Req, Res> FinalTool for BuiltTool<D, Req, Res>
 where
@@ -439,14 +461,16 @@ where
 /// Storage for tools with zero-allocation retrieval
 pub struct ToolStorage<const N: usize> {
     tools: ArrayVec<Box<dyn FinalTool + Send + Sync>, N>,
-    by_name: HashMap<&'static str, usize>}
+    by_name: HashMap<&'static str, usize>,
+}
 
 impl<const N: usize> ToolStorage<N> {
     /// Create new tool storage
     pub fn new() -> Self {
         Self {
             tools: ArrayVec::new(),
-            by_name: HashMap::new()}
+            by_name: HashMap::new(),
+        }
     }
 
     /// Add a tool to storage
@@ -467,14 +491,16 @@ impl<const N: usize> ToolStorage<N> {
 pub struct ToolExecutor<const N: usize> {
     tools: ToolStorage<N>,
     #[cfg(feature = "cylo")]
-    cylo: Option<CyloInstance>}
+    cylo: Option<CyloInstance>,
+}
 
 impl<const N: usize> ToolExecutor<N> {
     /// Create a new tool executor
     pub fn new() -> Self {
         Self {
             tools: ToolStorage::new(),
-            cylo: None}
+            cylo: None,
+        }
     }
 
     /// Add a tool to the executor
@@ -491,17 +517,14 @@ impl<const N: usize> ToolExecutor<N> {
     }
 
     /// Execute a tool by name
-    pub fn execute_tool(
-        &self,
-        name: String,
-        input: Value,
-    ) -> AsyncStream<ToolOutput> {
+    pub fn execute_tool(&self, name: String, input: Value) -> AsyncStream<ToolOutput> {
         let (tx, stream) = channel();
         if let Some(tool) = self.tools.get(&name) {
             let conversation = Conversation {
                 messages: &[],
                 context: &ToolExecutionContext::default(),
-                last_message: &AnthropicMessage::default()};
+                last_message: &AnthropicMessage::default(),
+            };
             let emitter = Emitter::new(tx.clone());
             let mut stream = tool.execute(&conversation, &emitter, input);
             tokio::spawn(async move {
@@ -515,7 +538,8 @@ impl<const N: usize> ToolExecutor<N> {
                 let request = ExecutionRequest {
                     tool_name: name,
                     input,
-                    context: None};
+                    context: None,
+                };
                 let mut stream = cylo.execute(request);
                 tokio::spawn(async move {
                     while let Some(result) = stream.next().await {
@@ -524,7 +548,8 @@ impl<const N: usize> ToolExecutor<N> {
                         } else {
                             Err(AnthropicError::ToolExecutionError {
                                 tool_name: name,
-                                error: "No result from executor".to_string()})
+                                error: "No result from executor".to_string(),
+                            })
                         };
                         let _ = tx.send(result);
                     }
@@ -532,7 +557,8 @@ impl<const N: usize> ToolExecutor<N> {
             } else {
                 let _ = tx.send(Err(AnthropicError::ToolExecutionError {
                     tool_name: name,
-                    error: "Cylo executor not available".to_string()}));
+                    error: "Cylo executor not available".to_string(),
+                }));
             }
         }
 

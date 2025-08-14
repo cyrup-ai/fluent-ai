@@ -49,7 +49,6 @@ use arc_swap::ArcSwap;
 use arrayvec::ArrayString;
 use arrayvec::ArrayVec;
 
-
 /// Maximum length for authentication tokens and keys
 pub const MAX_TOKEN_LEN: usize = 2048;
 

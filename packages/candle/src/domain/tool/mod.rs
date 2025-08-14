@@ -15,16 +15,13 @@ pub mod traits;
 pub mod types;
 
 // Re-export core Candle tool functionality (avoid conflicts with trait)
-pub use core::{
-    CandleExecToText, CandleNamedTool, CandlePerplexity};
+pub use core::{CandleExecToText, CandleNamedTool, CandlePerplexity};
 
 // Re-export Candle MCP functionality
-pub use mcp::{CandleClient as CandleMcpClient, CandleMcpError, CandleStdioTransport, CandleTransport};
-
-// Re-export trait-backed architecture types (NEW PREFERRED APPROACH)
-pub use traits::{
-    CandleTool, CandleMcpTool
+pub use mcp::{
+    CandleClient as CandleMcpClient, CandleMcpError, CandleStdioTransport, CandleTransport,
 };
-
+// Re-export trait-backed architecture types (NEW PREFERRED APPROACH)
+pub use traits::{CandleMcpTool, CandleTool};
 // Re-export legacy MCP types for backward compatibility
-pub use types::{CandleMcpToolData};
+pub use types::CandleMcpToolData;

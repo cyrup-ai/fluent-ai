@@ -23,7 +23,7 @@
 //!     TextGenerator, SamplingConfig, SpecialTokens,
 //!     CandleLlamaModel, ModelFactory
 //! };
-//! 
+//!
 //! // Create configuration
 //! let config = SamplingConfig::new(0.8)
 //!     .with_top_k(40)
@@ -38,7 +38,7 @@
 //! // Generate text with AsyncStream
 //! let tokens = SpecialTokens::with_eos(2);
 //! let stream = generator.generate("Hello world".to_string(), 100, tokens);
-//! 
+//!
 //! // Process stream
 //! stream.for_each(|token| {
 //!     print!("{}", token);
@@ -46,19 +46,21 @@
 //! ```
 
 // Public module declarations
-pub mod types;
-pub mod tokens; 
 pub mod config;
-pub mod stats;
+pub mod generator;
 pub mod metrics;
 pub mod models;
-pub mod generator;
+pub mod stats;
+pub mod tokens;
+pub mod types;
 
 // Re-export core types for ergonomic usage
-pub use types::{CandleResult, LogitsBuffer, SAMPLING_CACHE_SIZE, SIMD_THRESHOLD};
-pub use tokens::{SpecialTokens, TokenProb, TokenHistory};
-pub use config::{SamplingConfig, deterministic_config, balanced_config, creative_config, focused_config};
-pub use stats::GenerationStatistics;
-pub use metrics::SimdMetrics;
-pub use models::{CandleModel, CandleLlamaModel, ModelFactory};
+pub use config::{
+    balanced_config, creative_config, deterministic_config, focused_config, SamplingConfig,
+};
 pub use generator::TextGenerator;
+pub use metrics::SimdMetrics;
+pub use models::{CandleLlamaModel, CandleModel, ModelFactory};
+pub use stats::GenerationStatistics;
+pub use tokens::{SpecialTokens, TokenHistory, TokenProb};
+pub use types::{CandleResult, LogitsBuffer, SAMPLING_CACHE_SIZE, SIMD_THRESHOLD};

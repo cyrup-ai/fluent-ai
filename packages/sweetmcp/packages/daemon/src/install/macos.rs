@@ -1,11 +1,13 @@
 //! macOS platform implementation using osascript and launchd.
 
-use crate::install::builder::CommandBuilder;
-use crate::install::{InstallerBuilder, InstallerError};
+use std::{collections::HashMap, path::PathBuf, process::Command};
+
 use anyhow::{Context, Result};
 use once_cell::sync::OnceCell;
 use plist::Value;
-use std::{collections::HashMap, path::PathBuf, process::Command};
+
+use crate::install::builder::CommandBuilder;
+use crate::install::{InstallerBuilder, InstallerError};
 
 pub(crate) struct PlatformExecutor;
 
@@ -176,9 +178,10 @@ impl PlatformExecutor {
 
     /// Extract helper from embedded APP_ZIP_DATA with zero-allocation validation
     fn extract_from_embedded_data(helper_path: &PathBuf) -> Result<bool, InstallerError> {
+        use std::sync::atomic::{AtomicU8, Ordering};
+
         use arrayvec::ArrayVec;
         use atomic_counter::{AtomicCounter, RelaxedCounter};
-        use std::sync::atomic::{AtomicU8, Ordering};
 
         // Atomic validation state tracking (0=pending, 1=size_valid, 2=header_valid, 3=extraction_complete)
         static VALIDATION_STATE: AtomicU8 = AtomicU8::new(0);
@@ -375,6 +378,7 @@ impl PlatformExecutor {
     /// Extract ZIP data to the specified path
     fn extract_zip_data(zip_data: &[u8], target_path: &PathBuf) -> Result<(), InstallerError> {
         use std::io::{Cursor, Read};
+
         use zip::ZipArchive;
 
         // Create a cursor for the ZIP data

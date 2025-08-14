@@ -5,16 +5,16 @@
 //! - MCP client for tool execution
 //! - Error handling and response management
 
-use hashbrown::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::{Duration, Instant};
 
+use crossbeam_channel;
+use fluent_ai_async::AsyncStream;
+use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::RwLock;
-use fluent_ai_async::AsyncStream;
-use crossbeam_channel;
 
 use crate::domain::tool::CandleMcpToolData;
 
@@ -23,20 +23,23 @@ struct JsonRpcRequest {
     jsonrpc: &'static str,
     method: String,
     params: Value,
-    id: u64}
+    id: u64,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct JsonRpcResponse {
     jsonrpc: String,
     result: Option<Value>,
     error: Option<JsonRpcError>,
-    id: u64}
+    id: u64,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct JsonRpcError {
     code: i32,
     message: String,
-    data: Option<Value>}
+    data: Option<Value>,
+}
 
 /// Error types for MCP (Model Context Protocol) operations.
 ///
@@ -55,7 +58,8 @@ pub enum CandleMcpError {
     /// Operation timed out waiting for response.
     Timeout,
     /// Received an invalid or malformed response from the MCP server.
-    InvalidResponse}
+    InvalidResponse,
+}
 
 // Type alias for ergonomics within the domain module
 type McpError = CandleMcpError;
@@ -145,13 +149,15 @@ impl CandleStdioTransport {
                             }
                         }
                     }
-                    Err(_) => break}
+                    Err(_) => break,
+                }
             }
         });
 
         Self {
             stdin_tx,
-            stdout_rx: Arc::new(RwLock::new(stdout_rx))}
+            stdout_rx: Arc::new(RwLock::new(stdout_rx)),
+        }
     }
 }
 
@@ -197,7 +203,8 @@ pub struct CandleClient<T: CandleTransport> {
     transport: Arc<T>,
     request_id: AtomicU64,
     response_cache: Arc<RwLock<HashMap<u64, Value>>>,
-    request_timeout: Duration}
+    request_timeout: Duration,
+}
 
 impl<T: CandleTransport> Clone for CandleClient<T> {
     fn clone(&self) -> Self {
@@ -226,7 +233,8 @@ impl<T: CandleTransport> CandleClient<T> {
             transport: Arc::new(transport),
             request_id: AtomicU64::new(1),
             response_cache: Arc::new(RwLock::new(HashMap::with_capacity(256))),
-            request_timeout: Duration::from_secs(30)}
+            request_timeout: Duration::from_secs(30),
+        }
     }
 
     /// Call a tool on the MCP server with the specified arguments.
@@ -255,7 +263,7 @@ impl<T: CandleTransport> CandleClient<T> {
         let response_cache = self.response_cache.clone();
         let request_timeout = self.request_timeout;
         let name = name.to_string();
-        
+
         AsyncStream::with_channel(move |stream_sender| {
             std::thread::spawn(move || {
                 let start_time = Instant::now();
@@ -267,7 +275,8 @@ impl<T: CandleTransport> CandleClient<T> {
                         "name": name,
                         "arguments": args
                     }),
-                    id: request_id};
+                    id: request_id,
+                };
 
                 let mut buffer = Vec::with_capacity(1024);
                 if let Err(_) = serde_json::to_writer(&mut buffer, &request) {
@@ -293,17 +302,20 @@ impl<T: CandleTransport> CandleClient<T> {
                     if let Some(response_result) = receive_stream.try_next() {
                         match response_result {
                             Ok(response_data) => {
-                                let response: JsonRpcResponse = match serde_json::from_slice(&response_data) {
-                                    Ok(r) => r,
-                                    Err(_) => {
-                                        let _ = stream_sender.send(Err(McpError::SerializationFailed));
-                                        return;
-                                    }
-                                };
+                                let response: JsonRpcResponse =
+                                    match serde_json::from_slice(&response_data) {
+                                        Ok(r) => r,
+                                        Err(_) => {
+                                            let _ = stream_sender
+                                                .send(Err(McpError::SerializationFailed));
+                                            return;
+                                        }
+                                    };
 
                                 if response.id == request_id {
                                     if let Some(error) = response.error {
-                                        let _ = stream_sender.send(Err(McpError::ExecutionFailed(error.message)));
+                                        let _ = stream_sender
+                                            .send(Err(McpError::ExecutionFailed(error.message)));
                                         return;
                                     }
 
@@ -325,7 +337,7 @@ impl<T: CandleTransport> CandleClient<T> {
                             }
                         }
                     }
-                    
+
                     // Small delay to prevent busy waiting
                     std::thread::sleep(std::time::Duration::from_millis(10));
                 }
@@ -361,7 +373,11 @@ impl<T: CandleTransport> CandleClient<T> {
                                 if let Some(Value::Array(tools)) = obj.get("tools") {
                                     let mut parsed_tools = Vec::with_capacity(tools.len());
                                     for tool in tools {
-                                        if let Ok(parsed) = serde_json::from_value::<CandleMcpToolData>(tool.clone()) {
+                                        if let Ok(parsed) =
+                                            serde_json::from_value::<CandleMcpToolData>(
+                                                tool.clone(),
+                                            )
+                                        {
                                             parsed_tools.push(parsed);
                                         }
                                     }
@@ -381,12 +397,16 @@ impl<T: CandleTransport> CandleClient<T> {
     }
 
     #[inline]
-    fn call_tool_internal(&self, method: &str, params: Value) -> AsyncStream<Result<Value, CandleMcpError>> {
+    fn call_tool_internal(
+        &self,
+        method: &str,
+        params: Value,
+    ) -> AsyncStream<Result<Value, CandleMcpError>> {
         let transport = self.transport.clone();
         let request_id = self.request_id.fetch_add(1, Ordering::Relaxed);
         let request_timeout = self.request_timeout;
         let method = method.to_string();
-        
+
         AsyncStream::with_channel(move |stream_sender| {
             std::thread::spawn(move || {
                 let start_time = Instant::now();
@@ -395,7 +415,8 @@ impl<T: CandleTransport> CandleClient<T> {
                     jsonrpc: "2.0",
                     method,
                     params,
-                    id: request_id};
+                    id: request_id,
+                };
 
                 let mut buffer = Vec::with_capacity(512);
                 if let Err(_) = serde_json::to_writer(&mut buffer, &request) {
@@ -421,21 +442,26 @@ impl<T: CandleTransport> CandleClient<T> {
                     if let Some(response_result) = receive_stream.try_next() {
                         match response_result {
                             Ok(response_data) => {
-                                let response: JsonRpcResponse = match serde_json::from_slice(&response_data) {
-                                    Ok(r) => r,
-                                    Err(_) => {
-                                        let _ = stream_sender.send(Err(CandleMcpError::SerializationFailed));
-                                        return;
-                                    }
-                                };
+                                let response: JsonRpcResponse =
+                                    match serde_json::from_slice(&response_data) {
+                                        Ok(r) => r,
+                                        Err(_) => {
+                                            let _ = stream_sender
+                                                .send(Err(CandleMcpError::SerializationFailed));
+                                            return;
+                                        }
+                                    };
 
                                 if response.id == request_id {
                                     if let Some(error) = response.error {
-                                        let _ = stream_sender.send(Err(CandleMcpError::ExecutionFailed(error.message)));
+                                        let _ = stream_sender.send(Err(
+                                            CandleMcpError::ExecutionFailed(error.message),
+                                        ));
                                         return;
                                     }
 
-                                    let result = response.result.ok_or(CandleMcpError::InvalidResponse);
+                                    let result =
+                                        response.result.ok_or(CandleMcpError::InvalidResponse);
                                     let _ = stream_sender.send(result);
                                     return;
                                 }
@@ -446,7 +472,7 @@ impl<T: CandleTransport> CandleClient<T> {
                             }
                         }
                     }
-                    
+
                     // Small delay to prevent busy waiting
                     std::thread::sleep(std::time::Duration::from_millis(10));
                 }

@@ -10,9 +10,10 @@
 //! All structures are optimized for performance with ArrayVec for bounded collections,
 //! proper lifetime annotations, and efficient serialization patterns.
 
-use serde::{Deserialize, Serialize};
-use arrayvec::ArrayVec;
 use std::collections::HashMap;
+
+use arrayvec::ArrayVec;
+use serde::{Deserialize, Serialize};
 
 use crate::{MAX_MESSAGES, MAX_TOOLS};
 
@@ -26,7 +27,8 @@ pub struct AnthropicEmbeddingRequest<'a> {
     /// The model to use for embedding.
     pub model: &'a str,
     /// The input text to embed.
-    pub input: &'a str}
+    pub input: &'a str,
+}
 
 // =============================================================================
 // Messages API (Chat Completions)
@@ -63,7 +65,8 @@ pub struct AnthropicCompletionRequest<'a> {
     pub stop_sequences: Option<ArrayVec<&'a str, 4>>,
     /// Metadata for the request
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<AnthropicMetadata<'a>>}
+    pub metadata: Option<AnthropicMetadata<'a>>,
+}
 
 /// System message with optional cache control
 #[derive(Debug, Serialize)]
@@ -80,7 +83,9 @@ pub enum AnthropicSystemMessage<'a> {
         text: &'a str,
         /// Cache control configuration
         #[serde(skip_serializing_if = "Option::is_none")]
-        cache_control: Option<AnthropicCacheControl>}}
+        cache_control: Option<AnthropicCacheControl>,
+    },
+}
 
 /// Message in a conversation
 #[derive(Debug, Serialize)]
@@ -88,7 +93,8 @@ pub struct AnthropicMessage<'a> {
     /// Role of the message sender ("user" or "assistant")
     pub role: &'a str,
     /// Content of the message
-    pub content: AnthropicContent<'a>}
+    pub content: AnthropicContent<'a>,
+}
 
 /// Message content (text or structured blocks)
 #[derive(Debug, Serialize)]
@@ -97,7 +103,8 @@ pub enum AnthropicContent<'a> {
     /// Simple text content
     Text(&'a str),
     /// Structured content blocks
-    Blocks(ArrayVec<AnthropicContentBlock<'a>, 16>)}
+    Blocks(ArrayVec<AnthropicContentBlock<'a>, 16>),
+}
 
 /// Content block for multimodal and tool messages
 #[derive(Debug, Serialize)]
@@ -110,7 +117,8 @@ pub enum AnthropicContentBlock<'a> {
         text: &'a str,
         /// Cache control configuration
         #[serde(skip_serializing_if = "Option::is_none")]
-        cache_control: Option<AnthropicCacheControl>},
+        cache_control: Option<AnthropicCacheControl>,
+    },
     /// Image content block
     #[serde(rename = "image")]
     Image {
@@ -118,7 +126,8 @@ pub enum AnthropicContentBlock<'a> {
         source: AnthropicImageSource<'a>,
         /// Cache control configuration
         #[serde(skip_serializing_if = "Option::is_none")]
-        cache_control: Option<AnthropicCacheControl>},
+        cache_control: Option<AnthropicCacheControl>,
+    },
     /// Tool use block (function call)
     #[serde(rename = "tool_use")]
     ToolUse {
@@ -130,7 +139,8 @@ pub enum AnthropicContentBlock<'a> {
         input: serde_json::Value,
         /// Cache control configuration
         #[serde(skip_serializing_if = "Option::is_none")]
-        cache_control: Option<AnthropicCacheControl>},
+        cache_control: Option<AnthropicCacheControl>,
+    },
     /// Tool result block (function response)
     #[serde(rename = "tool_result")]
     ToolResult {
@@ -143,7 +153,9 @@ pub enum AnthropicContentBlock<'a> {
         is_error: Option<bool>,
         /// Cache control configuration
         #[serde(skip_serializing_if = "Option::is_none")]
-        cache_control: Option<AnthropicCacheControl>}}
+        cache_control: Option<AnthropicCacheControl>,
+    },
+}
 
 /// Tool result content (can be text or structured)
 #[derive(Debug, Serialize)]
@@ -152,7 +164,8 @@ pub enum AnthropicToolResultContent<'a> {
     /// Simple text result
     Text(&'a str),
     /// Structured result blocks
-    Blocks(ArrayVec<AnthropicContentBlock<'a>, 8>)}
+    Blocks(ArrayVec<AnthropicContentBlock<'a>, 8>),
+}
 
 /// Image source configuration
 #[derive(Debug, Serialize)]
@@ -163,14 +176,16 @@ pub struct AnthropicImageSource<'a> {
     /// Media type (e.g., "image/jpeg", "image/png")
     pub media_type: &'a str,
     /// Base64 encoded image data
-    pub data: &'a str}
+    pub data: &'a str,
+}
 
 /// Cache control configuration for prompt caching
 #[derive(Debug, Serialize)]
 pub struct AnthropicCacheControl {
     /// Cache type (always "ephemeral")
     #[serde(rename = "type")]
-    pub cache_type: &'static str}
+    pub cache_type: &'static str,
+}
 
 /// Request metadata
 #[derive(Debug, Serialize)]
@@ -180,7 +195,8 @@ pub struct AnthropicMetadata<'a> {
     pub user_id: Option<&'a str>,
     /// Additional metadata fields
     #[serde(flatten)]
-    pub extra: HashMap<&'a str, serde_json::Value>}
+    pub extra: HashMap<&'a str, serde_json::Value>,
+}
 
 // =============================================================================
 // Streaming Response Types
@@ -209,7 +225,8 @@ pub struct AnthropicStreamChunk {
     pub usage: Option<AnthropicUsage>,
     /// Error information (for error chunks)
     #[serde(default)]
-    pub error: Option<AnthropicStreamError>}
+    pub error: Option<AnthropicStreamError>,
+}
 
 /// Message data in streaming response
 #[derive(Debug, Deserialize)]
@@ -232,7 +249,8 @@ pub struct AnthropicStreamMessage {
     #[serde(default)]
     pub stop_sequence: Option<String>,
     /// Token usage statistics
-    pub usage: AnthropicUsage}
+    pub usage: AnthropicUsage,
+}
 
 /// Content block delta for streaming
 #[derive(Debug, Deserialize)]
@@ -251,7 +269,8 @@ pub struct AnthropicContentBlockDelta {
     pub name: Option<String>,
     /// Tool input (for tool_use blocks)
     #[serde(default)]
-    pub input: Option<serde_json::Value>}
+    pub input: Option<serde_json::Value>,
+}
 
 /// Delta content in streaming chunks
 #[derive(Debug, Deserialize)]
@@ -273,7 +292,8 @@ pub struct AnthropicDelta {
     pub stop_sequence: Option<String>,
     /// Usage information (for message deltas)
     #[serde(default)]
-    pub usage: Option<AnthropicUsage>}
+    pub usage: Option<AnthropicUsage>,
+}
 
 /// Token usage statistics
 #[derive(Debug, Deserialize)]
@@ -287,7 +307,8 @@ pub struct AnthropicUsage {
     pub cache_creation_input_tokens: Option<u32>,
     /// Number of cache read tokens
     #[serde(default)]
-    pub cache_read_input_tokens: Option<u32>}
+    pub cache_read_input_tokens: Option<u32>,
+}
 
 /// Error information in streaming response
 #[derive(Debug, Deserialize)]
@@ -296,7 +317,8 @@ pub struct AnthropicStreamError {
     #[serde(rename = "type")]
     pub error_type: String,
     /// Error message
-    pub message: String}
+    pub message: String,
+}
 
 // =============================================================================
 // Non-streaming Response Types
@@ -323,7 +345,8 @@ pub struct AnthropicResponse {
     #[serde(default)]
     pub stop_sequence: Option<String>,
     /// Token usage statistics
-    pub usage: AnthropicUsage}
+    pub usage: AnthropicUsage,
+}
 
 /// Content block in complete response
 #[derive(Debug, Deserialize)]
@@ -333,7 +356,8 @@ pub enum AnthropicResponseContent {
     #[serde(rename = "text")]
     Text {
         /// Text content
-        text: String},
+        text: String,
+    },
     /// Tool use block
     #[serde(rename = "tool_use")]
     ToolUse {
@@ -342,7 +366,9 @@ pub enum AnthropicResponseContent {
         /// Tool name
         name: String,
         /// Tool input parameters
-        input: serde_json::Value}}
+        input: serde_json::Value,
+    },
+}
 
 // =============================================================================
 // Utility Types and Implementations
@@ -361,7 +387,8 @@ impl<'a> Default for AnthropicCompletionRequest<'a> {
             tools: None,
             stream: false,
             stop_sequences: None,
-            metadata: None}
+            metadata: None,
+        }
     }
 }
 
@@ -380,7 +407,8 @@ impl<'a> AnthropicCompletionRequest<'a> {
     pub fn add_user_message(&mut self, content: &'a str) -> Result<(), &'static str> {
         let message = AnthropicMessage {
             role: "user",
-            content: AnthropicContent::Text(content)};
+            content: AnthropicContent::Text(content),
+        };
 
         self.messages
             .try_push(message)
@@ -391,7 +419,8 @@ impl<'a> AnthropicCompletionRequest<'a> {
     pub fn add_assistant_message(&mut self, content: &'a str) -> Result<(), &'static str> {
         let message = AnthropicMessage {
             role: "assistant",
-            content: AnthropicContent::Text(content)};
+            content: AnthropicContent::Text(content),
+        };
 
         self.messages
             .try_push(message)
@@ -461,15 +490,18 @@ impl<'a> AnthropicContent<'a> {
         // Add text block
         let _ = blocks.try_push(AnthropicContentBlock::Text {
             text,
-            cache_control: None});
+            cache_control: None,
+        });
 
         // Add image block
         let _ = blocks.try_push(AnthropicContentBlock::Image {
             source: AnthropicImageSource {
                 source_type: "base64",
                 media_type,
-                data: image_data},
-            cache_control: None});
+                data: image_data,
+            },
+            cache_control: None,
+        });
 
         Self::Blocks(blocks)
     }
@@ -480,7 +512,8 @@ impl AnthropicCacheControl {
     #[inline]
     pub fn ephemeral() -> Self {
         Self {
-            cache_type: "ephemeral"}
+            cache_type: "ephemeral",
+        }
     }
 }
 
@@ -576,7 +609,8 @@ impl<'a> AnthropicContentBlock<'a> {
     pub fn text(text: &'a str) -> Self {
         Self::Text {
             text,
-            cache_control: None}
+            cache_control: None,
+        }
     }
 
     /// Create a cached text block
@@ -584,7 +618,8 @@ impl<'a> AnthropicContentBlock<'a> {
     pub fn cached_text(text: &'a str) -> Self {
         Self::Text {
             text,
-            cache_control: Some(AnthropicCacheControl::ephemeral())}
+            cache_control: Some(AnthropicCacheControl::ephemeral()),
+        }
     }
 
     /// Create an image block
@@ -594,8 +629,10 @@ impl<'a> AnthropicContentBlock<'a> {
             source: AnthropicImageSource {
                 source_type: "base64",
                 media_type,
-                data},
-            cache_control: None}
+                data,
+            },
+            cache_control: None,
+        }
     }
 
     /// Create a tool use block
@@ -605,7 +642,8 @@ impl<'a> AnthropicContentBlock<'a> {
             id,
             name,
             input,
-            cache_control: None}
+            cache_control: None,
+        }
     }
 
     /// Create a tool result block
@@ -615,7 +653,8 @@ impl<'a> AnthropicContentBlock<'a> {
             tool_use_id,
             content: Box::new(AnthropicToolResultContent::Text(content)),
             is_error: None,
-            cache_control: None}
+            cache_control: None,
+        }
     }
 
     /// Create a tool error result block
@@ -625,7 +664,8 @@ impl<'a> AnthropicContentBlock<'a> {
             tool_use_id,
             content: Box::new(AnthropicToolResultContent::Text(error_message)),
             is_error: Some(true),
-            cache_control: None}
+            cache_control: None,
+        }
     }
 }
 

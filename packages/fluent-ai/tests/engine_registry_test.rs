@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use fluent_ai::engine::{
-    NoOpEngine, get_default_engine, get_engine, register_engine, set_default_engine};
+    NoOpEngine, get_default_engine, get_engine, register_engine, set_default_engine,
+};
 
 #[tokio::test]
 async fn test_engine_registry_basic_operations() {

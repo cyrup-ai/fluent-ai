@@ -7,8 +7,7 @@ use std::env;
 use std::time::Duration;
 
 use fluent_ai_domain::model::{
-    UnifiedModelRegistry, ModelCache, ModelValidator, ModelFilter,
-    RealModelInfo, ModelInfoProvider,
+    ModelCache, ModelFilter, ModelInfoProvider, ModelValidator, RealModelInfo, UnifiedModelRegistry,
 };
 
 /// Test that the unified model registry can be created
@@ -16,7 +15,7 @@ use fluent_ai_domain::model::{
 async fn test_registry_creation() {
     let registry = UnifiedModelRegistry::new();
     let stats = registry.stats();
-    
+
     // Registry should be created successfully
     assert_eq!(stats.total_models, 0); // Initially empty until refreshed
     assert!(stats.models_by_provider.len() > 0); // Should have provider entries
@@ -26,16 +25,16 @@ async fn test_registry_creation() {
 #[tokio::test]
 async fn test_cache_operations() {
     let cache = ModelCache::new();
-    
+
     // Test cache miss
     let result = cache.get("openai", "gpt-4");
     assert!(result.is_none());
-    
+
     // Test cache stats
     let stats = cache.stats();
     assert_eq!(stats.hits, 0);
     assert!(stats.misses > 0);
-    
+
     // Test cache clear
     cache.clear();
     let stats_after_clear = cache.stats();
@@ -46,11 +45,11 @@ async fn test_cache_operations() {
 #[tokio::test]
 async fn test_validator_creation() {
     let validator = ModelValidator::new();
-    
+
     // Test circuit breaker status (should be empty initially)
     let status = validator.circuit_breaker_status();
     assert!(status.is_empty());
-    
+
     // Clear cache should not panic
     validator.clear_cache();
 }
@@ -59,13 +58,13 @@ async fn test_validator_creation() {
 #[tokio::test]
 async fn test_provider_health_status() {
     let validator = ModelValidator::new();
-    
+
     // This will attempt to check all providers
     let health_status = validator.provider_health_status().await;
-    
+
     // Should have entries for all providers
     assert!(health_status.len() > 0);
-    
+
     // All entries should have provider names
     for (provider_name, result) in health_status {
         assert!(!provider_name.is_empty());
@@ -79,12 +78,12 @@ async fn test_provider_health_status() {
 async fn test_registry_stats() {
     let registry = UnifiedModelRegistry::new();
     let stats = registry.stats();
-    
+
     // Stats should have reasonable structure
     assert!(stats.models_by_provider.contains_key("openai"));
     assert!(stats.models_by_provider.contains_key("anthropic"));
     assert!(stats.models_by_provider.contains_key("xai"));
-    
+
     // Counts should be non-negative
     assert!(stats.thinking_models == 0 || stats.thinking_models > 0);
     assert!(stats.high_context_models == 0 || stats.high_context_models > 0);
@@ -95,11 +94,11 @@ async fn test_registry_stats() {
 #[tokio::test]
 async fn test_cache_hit_ratio() {
     let cache = ModelCache::new();
-    
+
     // Initially should be 0% (no hits or misses yet)
     let initial_ratio = cache.hit_ratio();
     assert_eq!(initial_ratio, 0.0);
-    
+
     // After a miss, should still be 0%
     let _ = cache.get("test", "model");
     let ratio_after_miss = cache.hit_ratio();
@@ -110,7 +109,7 @@ async fn test_cache_hit_ratio() {
 #[tokio::test]
 async fn test_cache_memory_usage() {
     let cache = ModelCache::new();
-    
+
     let memory_usage = cache.memory_usage();
     // Should be reasonable (not negative or extremely large)
     assert!(memory_usage == 0 || memory_usage > 0);
@@ -129,9 +128,12 @@ async fn test_model_filter() {
         requires_thinking: Some(false),
         required_temperature: None,
     };
-    
+
     // Filter should be created successfully
-    assert_eq!(filter.provider.as_ref().expect("Provider should be set"), "openai");
+    assert_eq!(
+        filter.provider.as_ref().expect("Provider should be set"),
+        "openai"
+    );
     assert_eq!(filter.min_context.expect("Min context should be set"), 8000);
 }
 
@@ -140,7 +142,7 @@ async fn test_model_filter() {
 async fn test_registry_providers() {
     let registry = UnifiedModelRegistry::new();
     let providers = registry.providers();
-    
+
     // Should have expected providers
     assert!(providers.contains(&"openai"));
     assert!(providers.contains(&"anthropic"));
@@ -155,10 +157,10 @@ async fn test_registry_providers() {
 #[tokio::test]
 async fn test_batch_validation_empty() {
     let validator = ModelValidator::new();
-    
+
     let models = vec![];
     let result = validator.batch_validate_models(&models).await;
-    
+
     assert!(result.is_ok());
     let batch_result = result.expect("Batch validation should succeed");
     assert_eq!(batch_result.results.len(), 0);
@@ -170,9 +172,10 @@ async fn test_batch_validation_empty() {
 /// Test validation result status description
 #[tokio::test]
 async fn test_validation_result_status() {
-    use fluent_ai_domain::model::ValidationResult;
     use std::time::Instant;
-    
+
+    use fluent_ai_domain::model::ValidationResult;
+
     // Test successful result
     let success_result = ValidationResult {
         provider: "test".to_string(),
@@ -184,10 +187,10 @@ async fn test_validation_result_status() {
         error: None,
         validated_at: Instant::now(),
     };
-    
+
     assert!(success_result.is_valid());
     assert_eq!(success_result.status_description(), "Available");
-    
+
     // Test failed result
     let failed_result = ValidationResult {
         provider: "test".to_string(),
@@ -199,7 +202,7 @@ async fn test_validation_result_status() {
         error: Some("Model not found".to_string()),
         validated_at: Instant::now(),
     };
-    
+
     assert!(!failed_result.is_valid());
     assert_eq!(failed_result.status_description(), "Model Unavailable");
 }
@@ -208,13 +211,13 @@ async fn test_validation_result_status() {
 #[tokio::test]
 async fn test_cache_configuration() {
     use fluent_ai_domain::model::CacheConfig;
-    
+
     let config = CacheConfig::default();
     assert!(config.default_ttl > Duration::from_secs(0));
     assert!(config.max_size > 0);
     assert!(config.enable_cleanup);
     assert!(config.enable_warming);
-    
+
     let cache = ModelCache::with_config(config);
     // Should create cache without error
     let _ = cache.stats();
@@ -224,20 +227,20 @@ async fn test_cache_configuration() {
 #[tokio::test]
 async fn test_real_model_validation() {
     let validator = ModelValidator::new();
-    
+
     // Only run if we have at least one API key
     let has_openai = env::var("OPENAI_API_KEY").is_ok();
     let has_anthropic = env::var("ANTHROPIC_API_KEY").is_ok();
     let has_xai = env::var("XAI_API_KEY").is_ok();
-    
+
     if !has_openai && !has_anthropic && !has_xai {
         println!("Skipping real API test - no API keys available");
         return;
     }
-    
+
     // Test with available providers
     let mut test_models = vec![];
-    
+
     if has_openai {
         test_models.push(("openai", "gpt-3.5-turbo"));
     }
@@ -247,17 +250,20 @@ async fn test_real_model_validation() {
     if has_xai {
         test_models.push(("xai", "grok-beta"));
     }
-    
+
     if !test_models.is_empty() {
         let result = validator.batch_validate_models(&test_models).await;
         assert!(result.is_ok());
-        
+
         let batch_result = result.expect("Batch validation should succeed");
         assert_eq!(batch_result.results.len(), test_models.len());
-        
+
         // At least some models should validate successfully with real API keys
         if batch_result.successful_count > 0 {
-            println!("Successfully validated {} models", batch_result.successful_count);
+            println!(
+                "Successfully validated {} models",
+                batch_result.successful_count
+            );
         } else {
             println!("No models validated successfully - check API keys");
         }
@@ -268,17 +274,17 @@ async fn test_real_model_validation() {
 #[tokio::test]
 async fn test_registry_queries() {
     let registry = UnifiedModelRegistry::new();
-    
+
     // Test models by provider (should not panic even if empty)
     let openai_models = registry.models_by_provider("openai");
     let anthropic_models = registry.models_by_provider("anthropic");
     let unknown_models = registry.models_by_provider("unknown-provider");
-    
+
     // Should return collections (empty is fine)
     assert!(openai_models.len() == 0 || openai_models.len() > 0);
     assert!(anthropic_models.len() == 0 || anthropic_models.len() > 0);
     assert_eq!(unknown_models.len(), 0);
-    
+
     // Test capabilities query
     let filter = ModelFilter {
         requires_thinking: Some(true),
@@ -286,7 +292,7 @@ async fn test_registry_queries() {
     };
     let thinking_models = registry.models_by_capabilities(&filter);
     assert!(thinking_models.len() == 0 || thinking_models.len() > 0);
-    
+
     // Test price range query
     let cheap_models = registry.models_by_price_range(5.0, 15.0);
     assert!(cheap_models.len() == 0 || cheap_models.len() > 0);
@@ -297,13 +303,13 @@ async fn test_registry_queries() {
 async fn test_background_tasks() {
     let cache = ModelCache::new();
     let validator = ModelValidator::new();
-    
+
     // Starting background tasks should not panic
     cache.start_background_tasks();
     validator.start_background_tasks();
-    
+
     // Give tasks a moment to start
     tokio::time::sleep(Duration::from_millis(10)).await;
-    
+
     // Tasks should be running (no direct way to verify, but no panic is good)
 }

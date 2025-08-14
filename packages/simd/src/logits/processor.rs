@@ -7,12 +7,14 @@ use crate::logits::{LogitsError, LogitsResult};
 /// Default implementation of the logits processor
 #[derive(Debug, Clone)]
 pub struct DefaultLogitsProcessor {
-    config: ProcessorConfig}
+    config: ProcessorConfig,
+}
 
 impl Default for DefaultLogitsProcessor {
     fn default() -> Self {
         Self {
-            config: ProcessorConfig::default()}
+            config: ProcessorConfig::default(),
+        }
     }
 }
 

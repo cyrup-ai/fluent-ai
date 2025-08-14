@@ -19,29 +19,37 @@ pub struct StreamingChunk {
     #[serde(rename = "type")]
     pub chunk_type: String,
     #[serde(flatten)]
-    pub data: StreamingData}
+    pub data: StreamingData,
+}
 
 /// Data content of streaming chunk
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum StreamingData {
     MessageStart {
-        message: StreamingMessage},
+        message: StreamingMessage,
+    },
     ContentBlockStart {
         index: usize,
-        content_block: ContentBlock},
+        content_block: ContentBlock,
+    },
     ContentBlockDelta {
         index: usize,
-        delta: ContentDelta},
+        delta: ContentDelta,
+    },
     ContentBlockStop {
-        index: usize},
+        index: usize,
+    },
     MessageDelta {
         delta: MessageDelta,
-        usage: Option<StreamingUsage>},
+        usage: Option<StreamingUsage>,
+    },
     MessageStop,
     Ping,
     Error {
-        error: ErrorDetails}}
+        error: ErrorDetails,
+    },
+}
 
 /// Streaming message metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,20 +62,23 @@ pub struct StreamingMessage {
     pub model: String,
     pub stop_reason: Option<String>,
     pub stop_sequence: Option<String>,
-    pub usage: StreamingUsage}
+    pub usage: StreamingUsage,
+}
 
 /// Content delta for text updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentDelta {
     TextDelta { text: String },
-    InputJsonDelta { partial_json: String }}
+    InputJsonDelta { partial_json: String },
+}
 
 /// Message delta for completion updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageDelta {
     pub stop_reason: Option<String>,
-    pub stop_sequence: Option<String>}
+    pub stop_sequence: Option<String>,
+}
 
 /// Usage statistics for streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,14 +88,16 @@ pub struct StreamingUsage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_creation_input_tokens: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cache_read_input_tokens: Option<u64>}
+    pub cache_read_input_tokens: Option<u64>,
+}
 
 /// Error details for streaming errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorDetails {
     #[serde(rename = "type")]
     pub error_type: String,
-    pub message: String}
+    pub message: String,
+}
 
 /// Anthropic streaming chunk wrapper for easier processing
 #[derive(Debug, Clone)]
@@ -93,7 +106,8 @@ pub struct AnthropicStreamChunk {
     pub content: String,
     pub is_final: bool,
     pub usage: Option<StreamingUsage>,
-    pub error: Option<String>}
+    pub error: Option<String>,
+}
 
 /// High-performance zero-allocation streaming implementation for Anthropic
 ///
@@ -102,7 +116,8 @@ pub struct AnthropicStreamChunk {
 pub struct AnthropicStreamingProcessor {
     client: HttpClient,
     accumulator: String,
-    current_usage: Option<StreamingUsage>}
+    current_usage: Option<StreamingUsage>,
+}
 
 impl AnthropicStreamingProcessor {
     /// Create a new streaming processor with HTTP3 client
@@ -118,7 +133,8 @@ impl AnthropicStreamingProcessor {
         Ok(Self {
             client,
             accumulator: String::with_capacity(4096), // Pre-allocate for efficiency
-            current_usage: None})
+            current_usage: None,
+        })
     }
 
     /// Process a streaming request and return an AsyncStream - PURE STREAMING (no futures)
@@ -127,9 +143,7 @@ impl AnthropicStreamingProcessor {
     pub fn process_streaming_request(
         &self,
         http3_request: Http3Request,
-    ) -> AnthropicResult<
-        AsyncStream<AnthropicStreamChunk>,
-    > {
+    ) -> AnthropicResult<AsyncStream<AnthropicStreamChunk>> {
         let client = self.client.clone();
 
         // Create high-throughput channel for chunks
@@ -142,19 +156,18 @@ impl AnthropicStreamingProcessor {
                 let rt = match tokio::runtime::Handle::try_current() {
                     Ok(handle) => handle,
                     Err(_) => {
-                        let _ = tx.try_send(Err(
-                            super::error::AnthropicError::RequestError(
-                                "No tokio runtime available".to_string(),
-                            ),
-                        ));
+                        let _ = tx.try_send(Err(super::error::AnthropicError::RequestError(
+                            "No tokio runtime available".to_string(),
+                        )));
                         return;
                     }
                 };
 
                 rt.block_on(async {
-                    client.send(http3_request).await.map_err(|e| {
-                        super::error::AnthropicError::RequestError(e.to_string())
-                    })
+                    client
+                        .send(http3_request)
+                        .await
+                        .map_err(|e| super::error::AnthropicError::RequestError(e.to_string()))
                 })
             };
 
@@ -184,9 +197,10 @@ impl AnthropicStreamingProcessor {
                         Ok(chunk) => chunk,
                         Err(e) => {
                             let _ = tx.try_send(Err(
-                                super::error::AnthropicError::DeserializationError(
-                                    format!("Failed to parse Anthropic SSE chunk: {}", e),
-                                ),
+                                super::error::AnthropicError::DeserializationError(format!(
+                                    "Failed to parse Anthropic SSE chunk: {}",
+                                    e
+                                )),
                             ));
                             continue;
                         }
@@ -229,7 +243,8 @@ impl Default for AnthropicStreamingProcessor {
             Self {
                 client,
                 accumulator: String::with_capacity(4096),
-                current_usage: None}
+                current_usage: None,
+            }
         })
     }
 }
@@ -265,7 +280,8 @@ fn process_anthropic_chunk(
                         content: text.clone(),
                         is_final: false,
                         usage: current_usage.clone(),
-                        error: None}))
+                        error: None,
+                    }))
                 }
                 ContentDelta::InputJsonDelta { partial_json } => {
                     content_accumulator.push_str(partial_json);
@@ -274,7 +290,8 @@ fn process_anthropic_chunk(
                         content: partial_json.clone(),
                         is_final: false,
                         usage: current_usage.clone(),
-                        error: None}))
+                        error: None,
+                    }))
                 }
             }
         }
@@ -287,7 +304,8 @@ fn process_anthropic_chunk(
                 content: final_content,
                 is_final: false,
                 usage: current_usage.clone(),
-                error: None}))
+                error: None,
+            }))
         }
         StreamingData::MessageDelta { delta, usage } => {
             // Update usage if provided
@@ -302,7 +320,8 @@ fn process_anthropic_chunk(
                     content: format!("Stop reason: {}", stop_reason),
                     is_final: false,
                     usage: current_usage.clone(),
-                    error: None}))
+                    error: None,
+                }))
             } else {
                 Ok(None)
             }
@@ -314,7 +333,8 @@ fn process_anthropic_chunk(
                 content: String::new(),
                 is_final: true,
                 usage: current_usage.clone(),
-                error: None}))
+                error: None,
+            }))
         }
         StreamingData::Ping => {
             // Ping events are used for connection keep-alive
@@ -327,7 +347,8 @@ fn process_anthropic_chunk(
                 content: String::new(),
                 is_final: true,
                 usage: current_usage.clone(),
-                error: Some(format!("{}: {}", error.error_type, error.message))}))
+                error: Some(format!("{}: {}", error.error_type, error.message)),
+            }))
         }
     }
 }

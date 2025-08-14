@@ -128,10 +128,21 @@ mod json_pointer_compatibility_tests {
             // JSON Pointer -> JSONPath equivalents
             ("/store", "$.store", "Root object property"),
             ("/store/config", "$.store.config", "Nested object property"),
-            ("/store/config/name", "$.store.config.name", "Deep object property"),
-            ("/metadata/created", "$.metadata.created", "Simple property access"),
-            ("/metadata/authors", "$.metadata.authors", "Array property access"),
-            
+            (
+                "/store/config/name",
+                "$.store.config.name",
+                "Deep object property",
+            ),
+            (
+                "/metadata/created",
+                "$.metadata.created",
+                "Simple property access",
+            ),
+            (
+                "/metadata/authors",
+                "$.metadata.authors",
+                "Array property access",
+            ),
             // These should return equivalent results
         ];
 
@@ -146,26 +157,49 @@ mod json_pointer_compatibility_tests {
             assert!(
                 compileresult.is_ok(),
                 "RFC 9535: JSONPath equivalent should compile: {} -> {} ({})",
-                json_pointer_like, jsonpath_expr, _description
+                json_pointer_like,
+                jsonpath_expr,
+                _description
             );
 
-            println!("✓ Compatibility: '{}' ≈ '{}' -> {} results ({})",
-                json_pointer_like, jsonpath_expr, jsonpathresults.len(), _description);
+            println!(
+                "✓ Compatibility: '{}' ≈ '{}' -> {} results ({})",
+                json_pointer_like,
+                jsonpath_expr,
+                jsonpathresults.len(),
+                _description
+            );
         }
     }
 
     #[test]
     fn test_array_index_access_equivalence() {
-        // RFC 9535 Appendix C: Array index access equivalence  
+        // RFC 9535 Appendix C: Array index access equivalence
         let array_equivalence_tests = vec![
             // JSON Pointer style -> JSONPath equivalent
             ("/store/books/0", "$.store.books[0]", "First array element"),
             ("/store/books/1", "$.store.books[1]", "Second array element"),
             ("/store/books/2", "$.store.books[2]", "Third array element"),
-            ("/users/0/id", "$.users[0].id", "Nested array element property"),
-            ("/users/1/preferences/theme", "$.users[1].preferences.theme", "Deep array property"),
-            ("/metadata/authors/0", "$.metadata.authors[0]", "Array element access"),
-            ("/metadata/authors/2", "$.metadata.authors[2]", "Last array element"),
+            (
+                "/users/0/id",
+                "$.users[0].id",
+                "Nested array element property",
+            ),
+            (
+                "/users/1/preferences/theme",
+                "$.users[1].preferences.theme",
+                "Deep array property",
+            ),
+            (
+                "/metadata/authors/0",
+                "$.metadata.authors[0]",
+                "Array element access",
+            ),
+            (
+                "/metadata/authors/2",
+                "$.metadata.authors[2]",
+                "Last array element",
+            ),
         ];
 
         for (json_pointer_like, jsonpath_expr, _description) in array_equivalence_tests {
@@ -173,7 +207,9 @@ mod json_pointer_compatibility_tests {
             assert!(
                 compileresult.is_ok(),
                 "RFC 9535: Array access should compile: {} -> {} ({})",
-                json_pointer_like, jsonpath_expr, _description
+                json_pointer_like,
+                jsonpath_expr,
+                _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
@@ -184,11 +220,17 @@ mod json_pointer_compatibility_tests {
             assert!(
                 results.len() <= 1,
                 "RFC 9535: Specific array index should return 0 or 1 result: {} ({})",
-                jsonpath_expr, _description
+                jsonpath_expr,
+                _description
             );
 
-            println!("✓ Array compatibility: '{}' ≈ '{}' -> {} results ({})",
-                json_pointer_like, jsonpath_expr, results.len(), _description);
+            println!(
+                "✓ Array compatibility: '{}' ≈ '{}' -> {} results ({})",
+                json_pointer_like,
+                jsonpath_expr,
+                results.len(),
+                _description
+            );
         }
     }
 
@@ -200,22 +242,21 @@ mod json_pointer_compatibility_tests {
             ("$.store.books[*].title", "Wildcard array access"),
             ("$.users[*].name", "All array element properties"),
             ("$.*.config", "Wildcard object property"),
-            
             // Recursive descent - JSON Pointer has no equivalent
             ("$..title", "Recursive descent for property"),
             ("$..authors", "Recursive descent for arrays"),
             ("$..*", "Recursive descent for all values"),
-            
             // Array slicing - JSON Pointer has no equivalent
             ("$.store.books[0:2]", "Array slice access"),
             ("$.metadata.authors[1:]", "Array slice from index"),
             ("$.store.books[:2]", "Array slice to index"),
-            
             // Filters - JSON Pointer has no equivalent
             ("$.store.books[?@.price > 13]", "Filtered array access"),
             ("$.users[?@.id == 1]", "Conditional element access"),
-            ("$.store.books[?@.author == 'George Orwell']", "String filter"),
-            
+            (
+                "$.store.books[?@.author == 'George Orwell']",
+                "String filter",
+            ),
             // Multiple selectors - JSON Pointer has no equivalent
             ("$.store.books[0,2]", "Multiple array indices"),
             ("$['store','users']", "Multiple object properties"),
@@ -226,15 +267,20 @@ mod json_pointer_compatibility_tests {
             assert!(
                 compileresult.is_ok(),
                 "RFC 9535: JSONPath-only feature should compile: {} ({})",
-                jsonpath_expr, _description
+                jsonpath_expr,
+                _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            println!("✓ JSONPath-only: '{}' -> {} results ({}) - No JSON Pointer equivalent",
-                jsonpath_expr, results.len(), _description);
+            println!(
+                "✓ JSONPath-only: '{}' -> {} results ({}) - No JSON Pointer equivalent",
+                jsonpath_expr,
+                results.len(),
+                _description
+            );
         }
     }
 
@@ -246,10 +292,15 @@ mod json_pointer_compatibility_tests {
             ("$['key with spaces']", "Property with spaces"),
             ("$['key-with-hyphens']", "Property with hyphens"),
             ("$['key.with.dots']", "Property with dots"),
-            ("$['key/with/slashes']", "Property with slashes (JSON Pointer escape)"),
-            ("$['key~with~tildes']", "Property with tildes (JSON Pointer escape)"),
+            (
+                "$['key/with/slashes']",
+                "Property with slashes (JSON Pointer escape)",
+            ),
+            (
+                "$['key~with~tildes']",
+                "Property with tildes (JSON Pointer escape)",
+            ),
             ("$['key\"with\"quotes']", "Property with quotes"),
-            
             // Array access with string indices
             ("$['0']", "String that looks like array index"),
             ("$['-1']", "String that looks like negative index"),
@@ -260,10 +311,16 @@ mod json_pointer_compatibility_tests {
             // Some may be valid, some may not - test compilation
             match compileresult {
                 Ok(_) => {
-                    println!("✓ Escaping test: '{}' compiled successfully ({})", jsonpath_expr, _description);
+                    println!(
+                        "✓ Escaping test: '{}' compiled successfully ({})",
+                        jsonpath_expr, _description
+                    );
                 }
                 Err(_) => {
-                    println!("✗ Escaping test: '{}' failed compilation ({})", jsonpath_expr, _description);
+                    println!(
+                        "✗ Escaping test: '{}' failed compilation ({})",
+                        jsonpath_expr, _description
+                    );
                 }
             }
         }
@@ -275,19 +332,42 @@ mod json_pointer_compatibility_tests {
         let round_trip_tests = vec![
             // JSONPath -> JSON Pointer -> JSONPath (for simple cases)
             ("$.store", "/store", "$.store", "Simple property"),
-            ("$.store.config", "/store/config", "$.store.config", "Nested property"),
-            ("$.store.books[0]", "/store/books/0", "$.store.books[0]", "Array index"),
-            ("$.users[1].name", "/users/1/name", "$.users[1].name", "Nested array property"),
-            ("$.metadata.authors[2]", "/metadata/authors/2", "$.metadata.authors[2]", "Array element"),
+            (
+                "$.store.config",
+                "/store/config",
+                "$.store.config",
+                "Nested property",
+            ),
+            (
+                "$.store.books[0]",
+                "/store/books/0",
+                "$.store.books[0]",
+                "Array index",
+            ),
+            (
+                "$.users[1].name",
+                "/users/1/name",
+                "$.users[1].name",
+                "Nested array property",
+            ),
+            (
+                "$.metadata.authors[2]",
+                "/metadata/authors/2",
+                "$.metadata.authors[2]",
+                "Array element",
+            ),
         ];
 
-        for (original_jsonpath, json_pointer_like, converted_jsonpath, _description) in round_trip_tests {
+        for (original_jsonpath, json_pointer_like, converted_jsonpath, _description) in
+            round_trip_tests
+        {
             // Test original JSONPath
             let originalresult = JsonPathParser::compile(original_jsonpath);
             assert!(
                 originalresult.is_ok(),
                 "Original JSONPath should compile: {} ({})",
-                original_jsonpath, _description
+                original_jsonpath,
+                _description
             );
 
             // Test converted JSONPath (should be equivalent)
@@ -295,13 +375,15 @@ mod json_pointer_compatibility_tests {
             assert!(
                 convertedresult.is_ok(),
                 "Converted JSONPath should compile: {} ({})",
-                converted_jsonpath, _description
+                converted_jsonpath,
+                _description
             );
 
             // Both should produce same results
             let mut original_stream = JsonArrayStream::<serde_json::Value>::new(original_jsonpath);
-            let mut converted_stream = JsonArrayStream::<serde_json::Value>::new(converted_jsonpath);
-            
+            let mut converted_stream =
+                JsonArrayStream::<serde_json::Value>::new(converted_jsonpath);
+
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
             let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
             let convertedresults: Vec<_> = converted_stream.process_chunk(chunk).collect();
@@ -310,12 +392,20 @@ mod json_pointer_compatibility_tests {
                 originalresults.len(),
                 convertedresults.len(),
                 "RFC 9535: Round-trip conversion should preserve results: {} -> {} -> {} ({})",
-                original_jsonpath, json_pointer_like, converted_jsonpath, _description
+                original_jsonpath,
+                json_pointer_like,
+                converted_jsonpath,
+                _description
             );
 
-            println!("✓ Round-trip: '{}' -> '{}' -> '{}' ({} results) ({})",
-                original_jsonpath, json_pointer_like, converted_jsonpath, 
-                originalresults.len(), _description);
+            println!(
+                "✓ Round-trip: '{}' -> '{}' -> '{}' ({} results) ({})",
+                original_jsonpath,
+                json_pointer_like,
+                converted_jsonpath,
+                originalresults.len(),
+                _description
+            );
         }
     }
 }
@@ -332,11 +422,9 @@ mod feature_matrix_tests {
             // Basic object traversal
             ("$.store.config.name", "Object property chain"),
             ("$.metadata.created", "Simple property access"),
-            
             // Array element access
             ("$.store.books[0].title", "Specific array element property"),
             ("$.users[1].preferences.theme", "Deep array element access"),
-            
             // Root access
             ("$", "Root object access"),
             ("$.store", "Top-level property"),
@@ -347,15 +435,20 @@ mod feature_matrix_tests {
             assert!(
                 compileresult.is_ok(),
                 "RFC 9535: JSON Pointer expressible pattern should work: {} ({})",
-                jsonpath_expr, _description
+                jsonpath_expr,
+                _description
             );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
 
-            println!("✓ JSON Pointer expressible: '{}' -> {} results ({})",
-                jsonpath_expr, results.len(), _description);
+            println!(
+                "✓ JSON Pointer expressible: '{}' -> {} results ({})",
+                jsonpath_expr,
+                results.len(),
+                _description
+            );
         }
     }
 
@@ -366,26 +459,24 @@ mod feature_matrix_tests {
             // Dynamic/conditional access
             ("$.store.books[?@.price < 14]", "Conditional filtering"),
             ("$.users[?@.id > 1]", "Numeric filtering"),
-            
             // Wildcard access
             ("$.store.books[*].author", "All array elements"),
             ("$.users[*].preferences", "Wildcard array access"),
-            
             // Recursive patterns
             ("$..price", "Recursive descent"),
             ("$..preferences.theme", "Deep recursive access"),
-            
             // Multi-selection
             ("$.store.books[0,2].title", "Multiple array indices"),
             ("$['store','metadata']", "Multiple properties"),
-            
             // Array operations
             ("$.store.books[-1]", "Negative array index"),
             ("$.store.books[1:3]", "Array slicing"),
             ("$.metadata.authors[::2]", "Array stepping"),
-            
             // Functions (if supported)
-            ("$.store.books[?length(@.tags) > 2]", "Function-based filtering"),
+            (
+                "$.store.books[?length(@.tags) > 2]",
+                "Function-based filtering",
+            ),
         ];
 
         for (jsonpath_expr, _description) in inexpressible_patterns {
@@ -396,12 +487,19 @@ mod feature_matrix_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath_expr);
                     let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    println!("✓ JSON Pointer inexpressible: '{}' -> {} results ({}) - JSONPath advantage",
-                        jsonpath_expr, results.len(), _description);
+
+                    println!(
+                        "✓ JSON Pointer inexpressible: '{}' -> {} results ({}) - JSONPath advantage",
+                        jsonpath_expr,
+                        results.len(),
+                        _description
+                    );
                 }
                 Err(_) => {
-                    println!("✗ JSONPath compilation failed: '{}' ({})", jsonpath_expr, _description);
+                    println!(
+                        "✗ JSONPath compilation failed: '{}' ({})",
+                        jsonpath_expr, _description
+                    );
                 }
             }
         }
@@ -414,25 +512,25 @@ mod feature_matrix_tests {
             // These pairs should produce identical results
             (
                 "$.store.books[0]",
-                "$.store['books'][0]", 
-                "Bracket vs dot notation"
+                "$.store['books'][0]",
+                "Bracket vs dot notation",
             ),
             (
                 "$.metadata.authors[2]",
                 "$.metadata['authors'][2]",
-                "Array access consistency"
+                "Array access consistency",
             ),
             (
                 "$.users[1].preferences.theme",
                 "$.users[1]['preferences']['theme']",
-                "Mixed notation equivalence"
+                "Mixed notation equivalence",
             ),
         ];
 
         for (expr1, expr2, _description) in semantic_tests {
             let mut stream1 = JsonArrayStream::<serde_json::Value>::new(expr1);
             let mut stream2 = JsonArrayStream::<serde_json::Value>::new(expr2);
-            
+
             let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
             let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
             let results2: Vec<_> = stream2.process_chunk(chunk).collect();
@@ -441,11 +539,18 @@ mod feature_matrix_tests {
                 results1.len(),
                 results2.len(),
                 "RFC 9535: Semantically equivalent expressions should produce same results: '{}' vs '{}' ({})",
-                expr1, expr2, _description
+                expr1,
+                expr2,
+                _description
             );
 
-            println!("✓ Semantic equivalence: '{}' ≡ '{}' ({} results) ({})",
-                expr1, expr2, results1.len(), _description);
+            println!(
+                "✓ Semantic equivalence: '{}' ≡ '{}' ({} results) ({})",
+                expr1,
+                expr2,
+                results1.len(),
+                _description
+            );
         }
     }
 }
@@ -458,10 +563,7 @@ mod interoperability_edge_cases {
     #[test]
     fn test_empty_path_handling() {
         // RFC 9535 Appendix C: Empty path and root handling
-        let empty_path_tests = vec![
-            ("$", "Root path"),
-            ("$.", "Root with trailing dot"),
-        ];
+        let empty_path_tests = vec![("$", "Root path"), ("$.", "Root with trailing dot")];
 
         for (expr, _description) in empty_path_tests {
             let compileresult = JsonPathParser::compile(expr);
@@ -470,12 +572,19 @@ mod interoperability_edge_cases {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(COMPATIBILITY_TEST_JSON);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    println!("✓ Empty path test: '{}' -> {} results ({})",
-                        expr, results.len(), _description);
+
+                    println!(
+                        "✓ Empty path test: '{}' -> {} results ({})",
+                        expr,
+                        results.len(),
+                        _description
+                    );
                 }
                 Err(e) => {
-                    println!("✗ Empty path test failed: '{}' - {:?} ({})", expr, e, _description);
+                    println!(
+                        "✗ Empty path test failed: '{}' - {:?} ({})",
+                        expr, e, _description
+                    );
                 }
             }
         }
@@ -514,12 +623,19 @@ mod interoperability_edge_cases {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(special_char_data);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    println!("✓ Special char: '{}' -> {} results ({})",
-                        expr, results.len(), _description);
+
+                    println!(
+                        "✓ Special char: '{}' -> {} results ({})",
+                        expr,
+                        results.len(),
+                        _description
+                    );
                 }
                 Err(_) => {
-                    println!("✗ Special char compilation failed: '{}' ({})", expr, _description);
+                    println!(
+                        "✗ Special char compilation failed: '{}' ({})",
+                        expr, _description
+                    );
                 }
             }
         }
@@ -553,12 +669,19 @@ mod interoperability_edge_cases {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(unicode_data);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    println!("✓ Unicode: '{}' -> {} results ({})",
-                        expr, results.len(), _description);
+
+                    println!(
+                        "✓ Unicode: '{}' -> {} results ({})",
+                        expr,
+                        results.len(),
+                        _description
+                    );
                 }
                 Err(_) => {
-                    println!("✗ Unicode compilation failed: '{}' ({})", expr, _description);
+                    println!(
+                        "✗ Unicode compilation failed: '{}' ({})",
+                        expr, _description
+                    );
                 }
             }
         }

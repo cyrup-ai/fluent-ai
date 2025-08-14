@@ -18,7 +18,8 @@ pub enum ValidationError {
     InvalidRange {
         field: String,
         value: String,
-        expected: String},
+        expected: String,
+    },
 
     /// Inconsistent data between fields
     InconsistentData { description: String },
@@ -36,7 +37,8 @@ pub enum ValidationError {
     InvalidCapability { description: String },
 
     /// Configuration safety error
-    UnsafeConfiguration { description: String }}
+    UnsafeConfiguration { description: String },
+}
 
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -51,7 +53,8 @@ impl std::fmt::Display for ValidationError {
             ValidationError::InvalidRange {
                 field,
                 value,
-                expected} => {
+                expected,
+            } => {
                 write!(
                     f,
                     "Invalid value '{}' for field '{}', expected {}",
@@ -95,7 +98,8 @@ pub enum ValidationSeverity {
     Error,
 
     /// Critical error - must be fixed
-    Critical}
+    Critical,
+}
 
 /// Validation result with severity
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,7 +114,8 @@ pub struct ValidationIssue {
     pub field: Option<String>,
 
     /// Suggested fix (if any)
-    pub suggestion: Option<String>}
+    pub suggestion: Option<String>,
+}
 
 /// Comprehensive validation report
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -122,7 +127,8 @@ pub struct ValidationReport {
     readiness_score: f32,
 
     /// Whether the model is production-ready
-    is_production_ready: bool}
+    is_production_ready: bool,
+}
 
 impl ValidationReport {
     /// Create a new empty validation report
@@ -130,7 +136,8 @@ impl ValidationReport {
         Self {
             issues: Vec::new(),
             readiness_score: 1.0,
-            is_production_ready: true}
+            is_production_ready: true,
+        }
     }
 
     /// Add a validation issue to the report

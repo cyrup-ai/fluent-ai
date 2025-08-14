@@ -18,7 +18,8 @@ pub enum IntegrationType {
     /// Plugin integration
     Plugin,
     /// External service integration
-    ExternalService}
+    ExternalService,
+}
 
 /// Integration configuration with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +39,8 @@ pub struct IntegrationConfig {
     /// Retry attempts
     pub retry_attempts: u32,
     /// Enable integration
-    pub enabled: bool}
+    pub enabled: bool,
+}
 
 impl Default for IntegrationConfig {
     fn default() -> Self {
@@ -50,7 +52,8 @@ impl Default for IntegrationConfig {
             headers: Vec::new(),
             timeout_seconds: 30,
             retry_attempts: 3,
-            enabled: true}
+            enabled: true,
+        }
     }
 }
 
@@ -59,37 +62,37 @@ impl Default for IntegrationConfig {
 pub enum IntegrationError {
     /// Connection to external service failed
     #[error("Connection error: {detail}")]
-    ConnectionError { 
+    ConnectionError {
         /// Details about the connection failure
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
 
     /// Authentication with external service failed
     #[error("Authentication error: {detail}")]
-    AuthenticationError { 
+    AuthenticationError {
         /// Details about the authentication failure
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
 
     /// Operation timed out
     #[error("Timeout error: {detail}")]
-    TimeoutError { 
+    TimeoutError {
         /// Details about the timeout
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
 
     /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { 
+    ConfigurationError {
         /// Details about the configuration issue
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
 
     /// Plugin-specific error occurred
     #[error("Plugin error: {detail}")]
-    PluginError { 
+    PluginError {
         /// Details about the plugin error
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
 }
 
@@ -102,13 +105,15 @@ pub struct IntegrationManager {
     /// Active integrations
     pub integrations: Vec<IntegrationConfig>,
     /// Default timeout
-    pub default_timeout: u32}
+    pub default_timeout: u32,
+}
 
 impl Default for IntegrationManager {
     fn default() -> Self {
         Self {
             integrations: Vec::new(),
-            default_timeout: 30}
+            default_timeout: 30,
+        }
     }
 }
 
@@ -122,12 +127,14 @@ impl IntegrationManager {
     pub fn add_integration(&mut self, config: IntegrationConfig) -> IntegrationResult<()> {
         if config.name.is_empty() {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration name cannot be empty")});
+                detail: Arc::from("Integration name cannot be empty"),
+            });
         }
 
         if config.endpoint.is_empty() {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration endpoint cannot be empty")});
+                detail: Arc::from("Integration endpoint cannot be empty"),
+            });
         }
 
         self.integrations.push(config);
@@ -142,7 +149,8 @@ impl IntegrationManager {
 
         if self.integrations.len() == initial_len {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration not found")});
+                detail: Arc::from("Integration not found"),
+            });
         }
 
         Ok(())
@@ -171,12 +179,14 @@ impl IntegrationManager {
     ) -> IntegrationResult<String> {
         let integration = self.get_integration(integration_name).ok_or_else(|| {
             IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration not found")}
+                detail: Arc::from("Integration not found"),
+            }
         })?;
 
         if !integration.enabled {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration is disabled")});
+                detail: Arc::from("Integration is disabled"),
+            });
         }
 
         match integration.integration_type {
@@ -301,7 +311,8 @@ pub struct ExternalIntegration {
     /// HTTP client for API calls
     client: Option<Arc<reqwest::Client>>,
     /// Plugin manager for plugin integrations
-    plugin_manager: Option<Arc<PluginManager>>}
+    plugin_manager: Option<Arc<PluginManager>>,
+}
 
 /// Integration statistics for monitoring and optimization
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -321,7 +332,8 @@ pub struct IntegrationStats {
     /// Last successful request timestamp
     pub last_success_timestamp: Option<std::time::SystemTime>,
     /// Last error timestamp
-    pub last_error_timestamp: Option<std::time::SystemTime>}
+    pub last_error_timestamp: Option<std::time::SystemTime>,
+}
 
 /// Plugin manager for handling plugin-based integrations
 #[derive(Debug)]
@@ -329,7 +341,8 @@ pub struct PluginManager {
     /// Loaded plugins
     plugins: std::collections::HashMap<Arc<str>, Arc<dyn Plugin>>,
     /// Plugin configurations
-    configs: std::collections::HashMap<Arc<str>, PluginConfig>}
+    configs: std::collections::HashMap<Arc<str>, PluginConfig>,
+}
 
 /// Plugin trait for external plugins
 pub trait Plugin: Send + Sync + std::fmt::Debug {
@@ -365,7 +378,8 @@ pub struct PluginConfig {
     /// Plugin settings
     pub settings: std::collections::HashMap<Arc<str>, serde_json::Value>,
     /// Enable plugin
-    pub enabled: bool}
+    pub enabled: bool,
+}
 
 /// Integration request data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -379,7 +393,8 @@ pub struct IntegrationRequest {
     /// Request body
     pub body: Option<serde_json::Value>,
     /// Request timeout override
-    pub timeout_ms: Option<u64>}
+    pub timeout_ms: Option<u64>,
+}
 
 /// Integration response data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -393,7 +408,8 @@ pub struct IntegrationResponse {
     /// Response time in milliseconds
     pub response_time_ms: u64,
     /// Success indicator
-    pub success: bool}
+    pub success: bool,
+}
 
 impl ExternalIntegration {
     /// Create a new external integration
@@ -417,7 +433,8 @@ impl ExternalIntegration {
             config,
             stats: IntegrationStats::default(),
             client,
-            plugin_manager}
+            plugin_manager,
+        }
     }
 
     /// Execute an integration request
@@ -427,7 +444,8 @@ impl ExternalIntegration {
     ) -> IntegrationResult<IntegrationResponse> {
         if !self.config.enabled {
             return Err(IntegrationError::ConfigurationError {
-                detail: Arc::from("Integration is disabled")});
+                detail: Arc::from("Integration is disabled"),
+            });
         }
 
         let start_time = std::time::Instant::now();
@@ -438,7 +456,8 @@ impl ExternalIntegration {
                 self.execute_http_request(request).await
             }
             IntegrationType::Plugin => self.execute_plugin_request(request).await,
-            IntegrationType::ExternalService => self.execute_service_request(request).await};
+            IntegrationType::ExternalService => self.execute_service_request(request).await,
+        };
 
         let response_time = start_time.elapsed().as_millis() as u64;
 
@@ -470,7 +489,8 @@ impl ExternalIntegration {
             .client
             .as_ref()
             .ok_or_else(|| IntegrationError::ConfigurationError {
-                detail: Arc::from("HTTP client not initialized")})?;
+                detail: Arc::from("HTTP client not initialized"),
+            })?;
 
         let url = format!("{}{}", self.config.endpoint, request.path);
         let mut req_builder = match request.method.as_ref() {
@@ -481,7 +501,8 @@ impl ExternalIntegration {
             "PATCH" => client.patch(&url),
             _ => {
                 return Err(IntegrationError::ConfigurationError {
-                    detail: Arc::from("Unsupported HTTP method")});
+                    detail: Arc::from("Unsupported HTTP method"),
+                });
             }
         };
 
@@ -510,7 +531,8 @@ impl ExternalIntegration {
             .send()
             .await
             .map_err(|e| IntegrationError::ConnectionError {
-                detail: Arc::from(e.to_string())})?;
+                detail: Arc::from(e.to_string()),
+            })?;
 
         let status_code = response.status().as_u16();
         let headers = response
@@ -530,7 +552,8 @@ impl ExternalIntegration {
             headers,
             body,
             response_time_ms: 0, // Will be set by caller
-            success: status_code >= 200 && status_code < 300})
+            success: status_code >= 200 && status_code < 300,
+        })
     }
 
     /// Execute plugin request
@@ -542,24 +565,28 @@ impl ExternalIntegration {
             self.plugin_manager
                 .as_ref()
                 .ok_or_else(|| IntegrationError::ConfigurationError {
-                    detail: Arc::from("Plugin manager not initialized")})?;
+                    detail: Arc::from("Plugin manager not initialized"),
+                })?;
 
         let plugin = plugin_manager
             .get_plugin(&self.config.endpoint)
             .ok_or_else(|| IntegrationError::PluginError {
-                detail: Arc::from("Plugin not found")})?;
+                detail: Arc::from("Plugin not found"),
+            })?;
 
         let result = plugin
             .execute(&request.path, &request.body.unwrap_or_default())
             .map_err(|e| IntegrationError::PluginError {
-                detail: Arc::from(format!("Plugin execution failed: {}", e))})?;
+                detail: Arc::from(format!("Plugin execution failed: {}", e)),
+            })?;
 
         Ok(IntegrationResponse {
             status_code: 200,
             headers: std::collections::HashMap::new(),
             body: Some(result),
             response_time_ms: 0,
-            success: true})
+            success: true,
+        })
     }
 
     /// Execute external service request
@@ -569,7 +596,8 @@ impl ExternalIntegration {
     ) -> IntegrationResult<IntegrationResponse> {
         // Placeholder for external service integration
         Err(IntegrationError::ConfigurationError {
-            detail: Arc::from("External service integration not implemented")})
+            detail: Arc::from("External service integration not implemented"),
+        })
     }
 
     /// Get integration statistics
@@ -599,7 +627,8 @@ impl ExternalIntegration {
 
         match self.execute_request(test_request).await {
             Ok(response) => Ok(response.success),
-            Err(_) => Ok(false)}
+            Err(_) => Ok(false),
+        }
     }
 }
 
@@ -608,7 +637,8 @@ impl PluginManager {
     pub fn new() -> Self {
         Self {
             plugins: std::collections::HashMap::new(),
-            configs: std::collections::HashMap::new()}
+            configs: std::collections::HashMap::new(),
+        }
     }
 
     /// Load a plugin

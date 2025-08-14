@@ -3,11 +3,8 @@
 //! This module provides zero-allocation, lock-free interface to the cognitive memory system
 //! with blazing-fast performance and comprehensive error handling.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-
-
-use crate::domain::memory::primitives::node::MemoryNode;
+use std::sync::Arc;
 
 // Removed unused import: std::time::Duration
 
@@ -15,6 +12,8 @@ use crate::domain::memory::primitives::node::MemoryNode;
 // Removed unused import: arrayvec::ArrayVec
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
+
+use crate::domain::memory::primitives::node::MemoryNode;
 // Conditional re-exports for cognitive features
 // Removed unexpected cfg condition "cognitive" - feature does not exist
 // Temporarily disabled to break circular dependency
@@ -30,13 +29,15 @@ use crossbeam_utils::CachePadded;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemoryConfig {
     pub database_url: String,
-    pub embedding_dimension: usize}
+    pub embedding_dimension: usize,
+}
 
 impl Default for MemoryConfig {
     fn default() -> Self {
         Self {
             database_url: "memory://localhost:8000".to_string(),
-            embedding_dimension: 768}
+            embedding_dimension: 768,
+        }
     }
 }
 
@@ -45,7 +46,8 @@ pub trait MemoryManagerTrait: Send + Sync {
 }
 
 pub struct SurrealDBMemoryManager {
-    _stub: ()}
+    _stub: (),
+}
 
 impl SurrealDBMemoryManager {
     /// Create a new SurrealDB memory manager (stub implementation)
@@ -83,7 +85,8 @@ pub struct MemoryStub {
     /// Creation timestamp
     pub timestamp: std::time::SystemTime,
     /// Configuration
-    pub config: MemoryConfig}
+    pub config: MemoryConfig,
+}
 
 impl MemoryStub {
     /// Create new memory stub with minimal configuration
@@ -109,7 +112,8 @@ impl MemoryStub {
             embedding: None,
             metadata: std::collections::HashMap::new(),
             timestamp: now,
-            config}
+            config,
+        }
     }
 
     /// Convert to Memory instance asynchronously
@@ -331,7 +335,8 @@ pub struct Memory {
     /// Access count tracker
     pub access_count: AtomicU64,
     /// Last accessed timestamp
-    pub last_accessed: std::time::SystemTime}
+    pub last_accessed: std::time::SystemTime,
+}
 
 impl Clone for Memory {
     fn clone(&self) -> Self {
@@ -345,7 +350,8 @@ impl Clone for Memory {
             tags: self.tags.clone(),
             importance: self.importance,
             access_count: AtomicU64::new(self.access_count.load(Ordering::Relaxed)),
-            last_accessed: self.last_accessed}
+            last_accessed: self.last_accessed,
+        }
     }
 }
 
@@ -405,7 +411,8 @@ impl Memory {
                 tags: Vec::new(),
                 importance: 0.5,
                 access_count: AtomicU64::new(0),
-                last_accessed: current_time};
+                last_accessed: current_time,
+            };
             let _ = sender.send(memory_instance);
         })
     }

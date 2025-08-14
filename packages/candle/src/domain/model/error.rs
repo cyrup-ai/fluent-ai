@@ -10,7 +10,8 @@ pub enum CandleModelError {
     /// Model not found in registry
     ModelNotFound {
         provider: Cow<'static, str>,
-        name: Cow<'static, str>},
+        name: Cow<'static, str>,
+    },
 
     /// Provider not found in registry
     ProviderNotFound(Cow<'static, str>),
@@ -18,7 +19,8 @@ pub enum CandleModelError {
     /// Model already exists in registry
     ModelAlreadyExists {
         provider: Cow<'static, str>,
-        name: Cow<'static, str>},
+        name: Cow<'static, str>,
+    },
 
     /// Invalid model configuration
     InvalidConfiguration(Cow<'static, str>),
@@ -30,7 +32,8 @@ pub enum CandleModelError {
     InvalidInput(Cow<'static, str>),
 
     /// Internal error (should be used sparingly)
-    Internal(Cow<'static, str>)}
+    Internal(Cow<'static, str>),
+}
 
 impl fmt::Display for CandleModelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,7 +50,8 @@ impl fmt::Display for CandleModelError {
                 write!(f, "Operation not supported by model: {}", msg)
             }
             Self::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
-            Self::Internal(msg) => write!(f, "Internal error: {}", msg)}
+            Self::Internal(msg) => write!(f, "Internal error: {}", msg),
+        }
     }
 }
 
@@ -79,7 +83,8 @@ impl<T> OptionExt<T> for Option<T> {
     {
         self.ok_or_else(|| CandleModelError::ModelNotFound {
             provider: provider.into(),
-            name: name.into()})
+            name: name.into(),
+        })
     }
 }
 
@@ -118,7 +123,8 @@ macro_rules! model_err {
     (not_found: $provider:expr, $name:expr) => {
         $crate::domain::model::error::CandleModelError::ModelNotFound {
             provider: $provider.into(),
-            name: $name.into()}
+            name: $name.into(),
+        }
     };
     (provider_not_found: $provider:expr) => {
         $crate::domain::model::error::CandleModelError::ProviderNotFound($provider.into())
@@ -126,7 +132,8 @@ macro_rules! model_err {
     (already_exists: $provider:expr, $name:expr) => {
         $crate::domain::model::error::CandleModelError::ModelAlreadyExists {
             provider: $provider.into(),
-            name: $name.into()}
+            name: $name.into(),
+        }
     };
     (invalid_config: $msg:expr) => {
         $crate::domain::model::error::CandleModelError::InvalidConfiguration($msg.into())
@@ -213,15 +220,15 @@ mod tests {
     fn test_result_ext() {
         #[derive(Debug, Clone)]
         struct TestError(String);
-        
+
         impl fmt::Display for TestError {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(f, "{}", self.0)
             }
         }
-        
+
         impl std::error::Error for TestError {}
-        
+
         let ok: std::result::Result<u32, TestError> = Ok(42);
         assert_eq!(ok.clone().invalid_config("test").unwrap(), 42);
         assert_eq!(ok.not_supported("test").unwrap(), 42);

@@ -1,4 +1,5 @@
-use super::{ModelData, ProviderBuilder, TogetherModel};
+use super::response_types::TogetherModel;
+use super::{ModelData, ProviderBuilder};
 
 /// Together provider implementation with dynamic API fetching
 /// API must be available - no static data
@@ -16,8 +17,8 @@ impl ProviderBuilder for TogetherProvider {
         "https://api.together.xyz"
     }
 
-    fn api_key_env_var(&self) -> Option<&'static str> {
-        Some("TOGETHER_API_KEY")
+    fn api_key_env_vars(&self) -> cyrup_sugars::ZeroOneOrMany<&'static str> {
+        cyrup_sugars::ZeroOneOrMany::One("TOGETHER_API_KEY")
     }
 
     fn jsonpath_selector(&self) -> &'static str {
@@ -36,16 +37,27 @@ impl ProviderBuilder for TogetherProvider {
 /// Convert Together model to ModelData with appropriate pricing and capabilities
 /// Uses pricing from API response when available
 fn together_model_to_data(model: &TogetherModel) -> ModelData {
-    let context_length = model.context_length.unwrap_or(8192);
+    let context_length = if model.context_length == 0 {
+        8192
+    } else {
+        model.context_length
+    };
     let (input_price, output_price) = if let Some(ref pricing) = model.pricing {
-        (pricing.input.unwrap_or(0.0), pricing.output.unwrap_or(0.0))
+        (pricing.input, pricing.output)
     } else {
         (0.001, 0.002) // Default pricing
     };
-    
+
     // Together.ai doesn't currently have thinking models
     let is_thinking = false;
     let thinking_price = None;
-    
-    (model.id.clone(), context_length, input_price, output_price, is_thinking, thinking_price)
+
+    (
+        model.id.clone(),
+        context_length,
+        input_price,
+        output_price,
+        is_thinking,
+        thinking_price,
+    )
 }

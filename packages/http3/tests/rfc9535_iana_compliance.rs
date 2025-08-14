@@ -13,11 +13,11 @@ mod media_type_tests {
     #[test]
     fn test_jsonpath_media_type_specification() {
         // RFC 9535 Section 3.1: Media type application/jsonpath
-        // 
+        //
         // Required parameters: None
         // Optional parameters: None
         // Encoding considerations: JSONPath expressions are UTF-8 encoded Unicode text
-        
+
         let valid_jsonpath_expressions = vec![
             "$",
             "$.store.book[*].author",
@@ -28,7 +28,7 @@ mod media_type_tests {
         for expr in valid_jsonpath_expressions {
             // Test that expressions are valid UTF-8 encoded Unicode text
             assert!(expr.is_ascii() || expr.chars().all(|c| c.is_ascii() || c as u32 <= 0x10FFFF));
-            
+
             // Test that expressions conform to JSONPath syntax
             let result = JsonPathParser::compile(expr);
             assert!(
@@ -43,7 +43,7 @@ mod media_type_tests {
     fn test_utf8_encoding_requirements() {
         // RFC 9535 Section 3.1: Encoding considerations
         // JSONPath expressions MUST be UTF-8 encoded Unicode text
-        
+
         let utf8_test_cases = vec![
             ("$['café']", true),        // UTF-8 encoded French
             ("$['北京']", true),        // UTF-8 encoded Chinese
@@ -54,8 +54,12 @@ mod media_type_tests {
 
         for (expr, _should_be_valid) in utf8_test_cases {
             let is_valid_utf8 = std::str::from_utf8(expr.as_bytes()).is_ok();
-            assert_eq!(is_valid_utf8, _should_be_valid, "UTF-8 validation failed for: {}", expr);
-            
+            assert_eq!(
+                is_valid_utf8, _should_be_valid,
+                "UTF-8 validation failed for: {}",
+                expr
+            );
+
             if _should_be_valid {
                 let result = JsonPathParser::compile(expr);
                 assert!(
@@ -71,11 +75,11 @@ mod media_type_tests {
     fn test_no_required_parameters() {
         // RFC 9535 Section 3.1: Required parameters: None
         // JSONPath expressions should be self-contained without external parameters
-        
+
         let self_contained_expressions = vec![
             "$",                           // Root only
             "$.store",                     // Simple path
-            "$.store.book[0]",            // Array access
+            "$.store.book[0]",             // Array access
             "$.store.book[?@.price < 10]", // Filter with embedded logic
         ];
 
@@ -93,13 +97,9 @@ mod media_type_tests {
     fn test_no_optional_parameters() {
         // RFC 9535 Section 3.1: Optional parameters: None
         // JSONPath expressions should not support optional media type parameters
-        
+
         // This is validated by ensuring expressions are parsed without configuration
-        let expressions = vec![
-            "$.store.book[*]",
-            "$..author",
-            "$.store.book[?@.isbn]",
-        ];
+        let expressions = vec!["$.store.book[*]", "$..author", "$.store.book[?@.isbn]"];
 
         for expr in expressions {
             // Parse with default configuration only
@@ -116,7 +116,7 @@ mod media_type_tests {
     fn test_interoperability_considerations() {
         // RFC 9535 Section 3.1: Interoperability considerations: None
         // JSONPath expressions should be portable across implementations
-        
+
         let portable_expressions = vec![
             "$",
             "$.store.book[0].title",
@@ -140,7 +140,7 @@ mod media_type_tests {
     fn test_fragment_identifier_considerations() {
         // RFC 9535 Section 3.1: Fragment identifier considerations: None
         // JSONPath expressions should not use URI fragment identifiers
-        
+
         let expressions_without_fragments = vec![
             "$.store.book[0]",
             "$..author",
@@ -154,7 +154,7 @@ mod media_type_tests {
                 "JSONPath expression '{}' should not contain fragment identifiers",
                 expr
             );
-            
+
             let result = JsonPathParser::compile(expr);
             assert!(
                 result.is_ok(),
@@ -168,7 +168,7 @@ mod media_type_tests {
     fn test_common_usage_patterns() {
         // RFC 9535 Section 3.1: Intended usage: COMMON
         // Test common JSONPath usage patterns for media type validation
-        
+
         let common_usage_patterns = vec![
             ("$.users[*].email", "Extract all user emails"),
             ("$.products[?@.price < 100]", "Filter products by price"),
@@ -197,7 +197,7 @@ mod function_extension_registry_tests {
     #[test]
     fn test_standard_function_extensions() {
         // RFC 9535 Section 3.2: Standard function extensions defined in the specification
-        
+
         let standard_functions = vec![
             ("length", "$[?length(@.name) > 5]"),
             ("count", "$[?count(@.items) > 0]"),
@@ -220,19 +220,19 @@ mod function_extension_registry_tests {
     #[test]
     fn test_function_extension_syntax_requirements() {
         // RFC 9535 Section 3.2: Function extension syntax requirements
-        
+
         let valid_function_calls = vec![
-            "length(@.array)",           // Single argument
-            "match(@.text, 'pattern')",  // Two arguments
-            "count($..items[*])",        // Node list argument
-            "value(@.single)",           // Single node argument
+            "length(@.array)",          // Single argument
+            "match(@.text, 'pattern')", // Two arguments
+            "count($..items[*])",       // Node list argument
+            "value(@.single)",          // Single node argument
         ];
 
         let invalid_function_calls = vec![
-            "unknown_function(@.test)",  // Unregistered function
-            "length()",                  // Missing required argument
-            "match(@.text)",             // Missing required second argument
-            "length(@.test, extra)",     // Too many arguments
+            "unknown_function(@.test)", // Unregistered function
+            "length()",                 // Missing required argument
+            "match(@.text)",            // Missing required second argument
+            "length(@.test, extra)",    // Too many arguments
         ];
 
         for valid_call in valid_function_calls {
@@ -259,13 +259,28 @@ mod function_extension_registry_tests {
     #[test]
     fn test_function_extension_type_system() {
         // RFC 9535 Section 3.2: Function extensions must conform to type system
-        
+
         let type_correct_expressions = vec![
-            ("$[?length(@.name) > 5]", "length() returns number for comparison"),
-            ("$[?count(@.items) == 0]", "count() returns number for comparison"),
-            ("$[?match(@.email, 'pattern')]", "match() returns boolean for test"),
-            ("$[?search(@.text, 'word')]", "search() returns boolean for test"),
-            ("$[?value(@.flag) == true]", "value() returns value for comparison"),
+            (
+                "$[?length(@.name) > 5]",
+                "length() returns number for comparison",
+            ),
+            (
+                "$[?count(@.items) == 0]",
+                "count() returns number for comparison",
+            ),
+            (
+                "$[?match(@.email, 'pattern')]",
+                "match() returns boolean for test",
+            ),
+            (
+                "$[?search(@.text, 'word')]",
+                "search() returns boolean for test",
+            ),
+            (
+                "$[?value(@.flag) == true]",
+                "value() returns value for comparison",
+            ),
         ];
 
         for (expr, _description) in type_correct_expressions {
@@ -282,20 +297,20 @@ mod function_extension_registry_tests {
     #[test]
     fn test_function_well_typedness_validation() {
         // RFC 9535 Section 2.4.3: Function expressions must be well-typed
-        
+
         let well_typed_examples = vec![
-            "length(@.array)",      // ValueType -> number
-            "count(@.items[*])",    // NodesType -> number  
-            "match(@.str, 'pat')",  // ValueType, ValueType -> LogicalType
-            "value(@.single)",      // NodesType -> ValueType
+            "length(@.array)",     // ValueType -> number
+            "count(@.items[*])",   // NodesType -> number
+            "match(@.str, 'pat')", // ValueType, ValueType -> LogicalType
+            "value(@.single)",     // NodesType -> ValueType
         ];
 
         let ill_typed_examples = vec![
             // These should be rejected by a complete implementation
-            "length()",             // Missing required argument
-            "count(@.single)",      // Wrong argument type (should be NodesType)
-            "match(@.str)",         // Missing required second argument
-            "value(@.multi[*])",    // Multiple nodes (should be single)
+            "length()",          // Missing required argument
+            "count(@.single)",   // Wrong argument type (should be NodesType)
+            "match(@.str)",      // Missing required second argument
+            "value(@.multi[*])", // Multiple nodes (should be single)
         ];
 
         for example in well_typed_examples {
@@ -322,13 +337,13 @@ mod function_extension_registry_tests {
     #[test]
     fn test_function_extension_registry_completeness() {
         // RFC 9535 Section 3.2: All functions mentioned in spec should be registered
-        
+
         let all_spec_functions = vec![
-            "length",  // Section 2.4.4
-            "count",   // Section 2.4.5
-            "match",   // Section 2.4.6
-            "search",  // Section 2.4.7
-            "value",   // Section 2.4.8
+            "length", // Section 2.4.4
+            "count",  // Section 2.4.5
+            "match",  // Section 2.4.6
+            "search", // Section 2.4.7
+            "value",  // Section 2.4.8
         ];
 
         for function_name in all_spec_functions {
@@ -354,20 +369,23 @@ mod function_extension_registry_tests {
     #[test]
     fn test_iana_subregistry_requirements() {
         // RFC 9535 Section 3.2: IANA Function Extensions Subregistry requirements
-        
+
         // Test that the implementation follows IANA registry structure
         // This validates that future extensions would follow proper registration
-        
+
         let registry_compliant_behavior = vec![
             ("Defined functions are available", "$[?length(@.test)]"),
-            ("Undefined functions are rejected", "$[?undefined_func(@.test)]"),
+            (
+                "Undefined functions are rejected",
+                "$[?undefined_func(@.test)]",
+            ),
             ("Function syntax is enforced", "$[?length()]"), // Should fail - missing args
             ("Type checking is enforced", "$[?length(@.test, extra)]"), // Should fail - extra args
         ];
 
         for (test_description, expr) in registry_compliant_behavior {
             let result = JsonPathParser::compile(expr);
-            
+
             if test_description.contains("rejected") || test_description.contains("fail") {
                 assert!(
                     result.is_err(),
@@ -395,17 +413,26 @@ mod iana_integration_tests {
     #[test]
     fn test_iana_media_type_and_function_registry_integration() {
         // Test that media type and function registry work together
-        
+
         let integrated_examples = vec![
-            ("$.users[?length(@.name) > 0]", "Media type with length function"),
-            ("$.products[?match(@.sku, '^[A-Z]{3}[0-9]{3}$')]", "Media type with match function"),
-            ("$.items[?count(@.tags[*]) > 2]", "Media type with count function"),
+            (
+                "$.users[?length(@.name) > 0]",
+                "Media type with length function",
+            ),
+            (
+                "$.products[?match(@.sku, '^[A-Z]{3}[0-9]{3}$')]",
+                "Media type with match function",
+            ),
+            (
+                "$.items[?count(@.tags[*]) > 2]",
+                "Media type with count function",
+            ),
         ];
 
         for (expr, _description) in integrated_examples {
             // Validate UTF-8 encoding (media type requirement)
             assert!(expr.is_ascii() || expr.chars().all(|c| (c as u32) <= 0x10FFFF));
-            
+
             // Validate function registry compliance
             let result = JsonPathParser::compile(expr);
             assert!(
@@ -420,13 +447,12 @@ mod iana_integration_tests {
     #[test]
     fn test_complete_iana_section_3_compliance() {
         // Comprehensive test covering all of RFC 9535 Section 3
-        
+
         let section_3_requirements = vec![
             // Section 3.1 - Media Type
             ("Media type self-contained", "$..book[*].author"),
             ("UTF-8 encoding", "$['тест']"), // Cyrillic
             ("No parameters required", "$.store.book[0]"),
-            
             // Section 3.2 - Function Registry
             ("Standard functions available", "$[?length(@.name)]"),
             ("Function type checking", "$[?count(@.items[*]) > 0]"),

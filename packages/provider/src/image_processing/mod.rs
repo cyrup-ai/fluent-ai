@@ -50,7 +50,8 @@ pub enum ImageProcessingError {
     ResourceAllocationError(String),
 
     #[error("Backend not available: {0}")]
-    BackendNotAvailable(String)}
+    BackendNotAvailable(String),
+}
 
 /// Result type for image processing operations
 pub type ImageProcessingResult<T> = Result<T, ImageProcessingError>;
@@ -69,7 +70,8 @@ pub enum ImageFormat {
     /// BMP format
     Bmp,
     /// TIFF format
-    Tiff}
+    Tiff,
+}
 
 /// Image data container with metadata
 #[derive(Debug, Clone)]
@@ -81,7 +83,8 @@ pub struct ImageData {
     /// Image dimensions (width, height)
     pub dimensions: Option<(u32, u32)>,
     /// Additional metadata
-    pub metadata: HashMap<String, String>}
+    pub metadata: HashMap<String, String>,
+}
 
 /// Image preprocessing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +98,8 @@ pub struct ImagePreprocessingConfig {
     /// Whether to convert to grayscale
     pub convert_to_grayscale: bool,
     /// JPEG quality for compression (1-100)
-    pub jpeg_quality: u8}
+    pub jpeg_quality: u8,
+}
 
 /// Pixel normalization methods
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -107,7 +111,8 @@ pub enum PixelNormalization {
     /// Standard ImageNet normalization
     ImageNet,
     /// No normalization
-    None}
+    None,
+}
 
 impl Default for ImagePreprocessingConfig {
     fn default() -> Self {
@@ -116,7 +121,8 @@ impl Default for ImagePreprocessingConfig {
             maintain_aspect_ratio: true,
             pixel_normalization: PixelNormalization::ImageNet,
             convert_to_grayscale: false,
-            jpeg_quality: 85}
+            jpeg_quality: 85,
+        }
     }
 }
 
@@ -128,14 +134,16 @@ pub struct ImageEmbeddingConfig {
     /// Batch size for processing multiple images
     pub batch_size: usize,
     /// Model-specific parameters
-    pub model_params: HashMap<String, serde_json::Value>}
+    pub model_params: HashMap<String, serde_json::Value>,
+}
 
 impl Default for ImageEmbeddingConfig {
     fn default() -> Self {
         Self {
             preprocessing: ImagePreprocessingConfig::default(),
             batch_size: 32,
-            model_params: HashMap::new()}
+            model_params: HashMap::new(),
+        }
     }
 }
 
@@ -153,7 +161,8 @@ pub struct ImageGenerationConfig {
     /// Batch size for generation
     pub batch_size: usize,
     /// Model-specific parameters
-    pub model_params: HashMap<String, serde_json::Value>}
+    pub model_params: HashMap<String, serde_json::Value>,
+}
 
 impl Default for ImageGenerationConfig {
     fn default() -> Self {
@@ -163,7 +172,8 @@ impl Default for ImageGenerationConfig {
             guidance_scale: 7.5,
             seed: None,
             batch_size: 1,
-            model_params: HashMap::new()}
+            model_params: HashMap::new(),
+        }
     }
 }
 
@@ -173,7 +183,8 @@ pub struct ImageEmbeddingResult {
     /// Generated embedding vector
     pub embedding: Vec<f32>,
     /// Processing metadata
-    pub metadata: ImageEmbeddingMetadata}
+    pub metadata: ImageEmbeddingMetadata,
+}
 
 /// Metadata for image embedding operations
 #[derive(Debug, Clone)]
@@ -191,7 +202,8 @@ pub struct ImageEmbeddingMetadata {
     /// Model used for embedding
     pub model: String,
     /// Additional backend-specific metadata
-    pub backend_metadata: HashMap<String, serde_json::Value>}
+    pub backend_metadata: HashMap<String, serde_json::Value>,
+}
 
 /// Result of image generation operation
 #[derive(Debug, Clone)]
@@ -199,7 +211,8 @@ pub struct ImageGenerationResult {
     /// Generated image data
     pub image: ImageData,
     /// Generation metadata
-    pub metadata: ImageGenerationMetadata}
+    pub metadata: ImageGenerationMetadata,
+}
 
 /// Metadata for image generation operations
 #[derive(Debug, Clone)]
@@ -215,7 +228,8 @@ pub struct ImageGenerationMetadata {
     /// Configuration used
     pub config: ImageGenerationConfig,
     /// Additional backend-specific metadata
-    pub backend_metadata: HashMap<String, serde_json::Value>}
+    pub backend_metadata: HashMap<String, serde_json::Value>,
+}
 
 /// Trait for image processing backends (strategy pattern)
 pub trait ImageProcessingBackend: Send + Sync {
@@ -253,7 +267,8 @@ pub struct BackendCapabilities {
     /// Supports GPU acceleration
     pub gpu_acceleration: bool,
     /// Supported acceleration types
-    pub acceleration_types: Vec<AccelerationType>}
+    pub acceleration_types: Vec<AccelerationType>,
+}
 
 /// Acceleration types supported by backends
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -267,7 +282,8 @@ pub enum AccelerationType {
     /// Apple Accelerate framework
     Accelerate,
     /// CPU-only processing
-    Cpu}
+    Cpu,
+}
 
 /// Trait for image embedding providers
 pub trait ImageEmbeddingProvider: ImageProcessingBackend {
@@ -330,7 +346,8 @@ pub struct ImageModelInfo {
     /// Model memory requirements in MB
     pub memory_mb: Option<u64>,
     /// Additional model metadata
-    pub metadata: HashMap<String, serde_json::Value>}
+    pub metadata: HashMap<String, serde_json::Value>,
+}
 
 /// Device configuration for backends
 #[derive(Debug, Clone)]
@@ -342,7 +359,8 @@ pub struct DeviceConfig {
     /// Memory limit in MB
     pub memory_limit_mb: Option<u64>,
     /// Enable mixed precision
-    pub mixed_precision: bool}
+    pub mixed_precision: bool,
+}
 
 /// Device types for computation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -354,7 +372,8 @@ pub enum DeviceType {
     /// Metal GPU (macOS)
     Metal,
     /// Automatic selection
-    Auto}
+    Auto,
+}
 
 impl Default for DeviceConfig {
     fn default() -> Self {
@@ -362,7 +381,8 @@ impl Default for DeviceConfig {
             device_type: DeviceType::Auto,
             device_index: None,
             memory_limit_mb: None,
-            mixed_precision: false}
+            mixed_precision: false,
+        }
     }
 }
 
@@ -407,7 +427,8 @@ pub mod utils {
             // Extract actual image dimensions using the image crate
             let dimensions = match image::load_from_memory(&data) {
                 Ok(img) => Some((img.width(), img.height())),
-                Err(_) => None};
+                Err(_) => None,
+            };
 
             // Generate metadata
             let mut metadata = HashMap::new();
@@ -427,7 +448,8 @@ pub mod utils {
                 data,
                 format,
                 dimensions,
-                metadata})
+                metadata,
+            })
         }
 
         #[cfg(not(feature = "image"))]
@@ -441,7 +463,8 @@ pub mod utils {
                 data,
                 format,
                 dimensions: None,
-                metadata})
+                metadata,
+            })
         }
     }
 

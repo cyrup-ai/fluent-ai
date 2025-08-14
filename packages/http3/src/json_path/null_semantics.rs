@@ -8,6 +8,7 @@
 //! throughout JSONPath evaluation.
 
 use serde_json::Value as JsonValue;
+
 use crate::json_path::error::{JsonPathResult, invalid_expression_error};
 
 /// Represents the result of a property access that distinguishes between
@@ -35,13 +36,11 @@ impl NullSemantics {
     #[inline]
     pub fn access_property(object: &JsonValue, property_name: &str) -> PropertyAccessResult {
         match object {
-            JsonValue::Object(obj) => {
-                match obj.get(property_name) {
-                    Some(JsonValue::Null) => PropertyAccessResult::NullValue,
-                    Some(value) => PropertyAccessResult::Value(value.clone()),
-                    None => PropertyAccessResult::Missing,
-                }
-            }
+            JsonValue::Object(obj) => match obj.get(property_name) {
+                Some(JsonValue::Null) => PropertyAccessResult::NullValue,
+                Some(value) => PropertyAccessResult::Value(value.clone()),
+                None => PropertyAccessResult::Missing,
+            },
             _ => PropertyAccessResult::Missing, // Non-objects don't have properties
         }
     }
@@ -51,12 +50,9 @@ impl NullSemantics {
     /// Follows a property path through nested objects, maintaining proper
     /// distinction between null values and missing properties at each level.
     #[inline]
-    pub fn access_property_path(
-        root: &JsonValue,
-        path: &[String],
-    ) -> PropertyAccessResult {
+    pub fn access_property_path(root: &JsonValue, path: &[String]) -> PropertyAccessResult {
         let mut current = root;
-        
+
         for (index, property) in path.iter().enumerate() {
             match current {
                 JsonValue::Object(obj) => {
@@ -85,7 +81,7 @@ impl NullSemantics {
                 }
             }
         }
-        
+
         // If we've traversed the entire path, return the final value
         match current {
             JsonValue::Null => PropertyAccessResult::NullValue,
@@ -100,9 +96,9 @@ impl NullSemantics {
     #[inline]
     pub fn is_present(result: &PropertyAccessResult) -> bool {
         match result {
-            PropertyAccessResult::NullValue => true,  // null is present
-            PropertyAccessResult::Value(_) => true,   // non-null values are present
-            PropertyAccessResult::Missing => false,   // missing is not present
+            PropertyAccessResult::NullValue => true, // null is present
+            PropertyAccessResult::Value(_) => true,  // non-null values are present
+            PropertyAccessResult::Missing => false,  // missing is not present
         }
     }
 
@@ -141,7 +137,7 @@ impl NullSemantics {
     pub fn is_missing_marker(value: &JsonValue) -> bool {
         matches!(
             value,
-            JsonValue::Object(obj) if obj.len() == 1 && 
+            JsonValue::Object(obj) if obj.len() == 1 &&
                 obj.get("__jsonpath_missing__") == Some(&JsonValue::Bool(true))
         )
     }
@@ -182,10 +178,7 @@ impl NullSemantics {
     /// Evaluates filter expressions while correctly handling the distinction
     /// between null values and missing properties.
     #[inline]
-    pub fn evaluate_existence_filter(
-        context: &JsonValue,
-        property_path: &[String],
-    ) -> bool {
+    pub fn evaluate_existence_filter(context: &JsonValue, property_path: &[String]) -> bool {
         let result = Self::access_property_path(context, property_path);
         Self::is_present(&result)
     }
@@ -202,19 +195,17 @@ impl NullSemantics {
         match (left, right) {
             // Both null values
             (PropertyAccessResult::NullValue, PropertyAccessResult::NullValue) => Ok(true),
-            
+
             // Both missing
             (PropertyAccessResult::Missing, PropertyAccessResult::Missing) => Ok(true),
-            
+
             // Null vs missing (different)
             (PropertyAccessResult::NullValue, PropertyAccessResult::Missing) => Ok(false),
             (PropertyAccessResult::Missing, PropertyAccessResult::NullValue) => Ok(false),
-            
+
             // Value comparisons
-            (PropertyAccessResult::Value(a), PropertyAccessResult::Value(b)) => {
-                Ok(a == b)
-            }
-            
+            (PropertyAccessResult::Value(a), PropertyAccessResult::Value(b)) => Ok(a == b),
+
             // Value vs null (different unless value is explicitly null)
             (PropertyAccessResult::Value(JsonValue::Null), PropertyAccessResult::NullValue) => {
                 Ok(true)
@@ -224,7 +215,7 @@ impl NullSemantics {
             }
             (PropertyAccessResult::Value(_), PropertyAccessResult::NullValue) => Ok(false),
             (PropertyAccessResult::NullValue, PropertyAccessResult::Value(_)) => Ok(false),
-            
+
             // Value vs missing (different)
             (PropertyAccessResult::Value(_), PropertyAccessResult::Missing) => Ok(false),
             (PropertyAccessResult::Missing, PropertyAccessResult::Value(_)) => Ok(false),
@@ -244,11 +235,7 @@ impl NullSemantics {
                 PropertyAccessResult::NullValue,
             ),
             // Property missing
-            (
-                serde_json::json!({}),
-                "a",
-                PropertyAccessResult::Missing,
-            ),
+            (serde_json::json!({}), "a", PropertyAccessResult::Missing),
             // Non-null value present
             (
                 serde_json::json!({"a": "value"}),
@@ -277,7 +264,7 @@ impl NullSemantics {
     #[inline]
     pub fn validate_implementation() -> JsonPathResult<()> {
         let test_cases = Self::generate_test_scenarios();
-        
+
         for (json, property, expected) in test_cases {
             let result = Self::access_property(&json, property);
             if result != expected {
@@ -291,7 +278,7 @@ impl NullSemantics {
                 ));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -379,23 +366,25 @@ mod tests {
         });
 
         // Access null value through path
-        let null_path_result = NullSemantics::access_property_path(
-            &json, 
-            &["store".to_string(), "book".to_string()]
-        );
+        let null_path_result =
+            NullSemantics::access_property_path(&json, &["store".to_string(), "book".to_string()]);
         assert!(matches!(null_path_result, PropertyAccessResult::NullValue));
 
         // Access missing property through path
         let missing_path_result = NullSemantics::access_property_path(
-            &json, 
-            &["store".to_string(), "missing".to_string()]
+            &json,
+            &["store".to_string(), "missing".to_string()],
         );
         assert!(matches!(missing_path_result, PropertyAccessResult::Missing));
 
         // Access existing value through path
         let value_path_result = NullSemantics::access_property_path(
-            &json, 
-            &["store".to_string(), "bicycle".to_string(), "color".to_string()]
+            &json,
+            &[
+                "store".to_string(),
+                "bicycle".to_string(),
+                "color".to_string(),
+            ],
         );
         assert!(matches!(value_path_result, PropertyAccessResult::Value(_)));
     }
@@ -408,7 +397,7 @@ mod tests {
         let null_element = NullSemantics::access_array_index(&json, 0);
         assert!(matches!(null_element, PropertyAccessResult::NullValue));
 
-        // Access regular element  
+        // Access regular element
         let value_element = NullSemantics::access_array_index(&json, 1);
         assert!(matches!(value_element, PropertyAccessResult::Value(_)));
 
@@ -428,20 +417,28 @@ mod tests {
         let value_result = PropertyAccessResult::Value(serde_json::json!("test"));
 
         // Null vs null
-        assert!(NullSemantics::compare_with_null_semantics(&null_result, &null_result)
-            .expect("Failed to compare null vs null"));
+        assert!(
+            NullSemantics::compare_with_null_semantics(&null_result, &null_result)
+                .expect("Failed to compare null vs null")
+        );
 
         // Missing vs missing
-        assert!(NullSemantics::compare_with_null_semantics(&missing_result, &missing_result)
-            .expect("Failed to compare missing vs missing"));
+        assert!(
+            NullSemantics::compare_with_null_semantics(&missing_result, &missing_result)
+                .expect("Failed to compare missing vs missing")
+        );
 
         // Null vs missing (different)
-        assert!(!NullSemantics::compare_with_null_semantics(&null_result, &missing_result)
-            .expect("Failed to compare null vs missing"));
+        assert!(
+            !NullSemantics::compare_with_null_semantics(&null_result, &missing_result)
+                .expect("Failed to compare null vs missing")
+        );
 
         // Value vs missing (different)
-        assert!(!NullSemantics::compare_with_null_semantics(&value_result, &missing_result)
-            .expect("Failed to compare value vs missing"));
+        assert!(
+            !NullSemantics::compare_with_null_semantics(&value_result, &missing_result)
+                .expect("Failed to compare value vs missing")
+        );
     }
 
     #[test]

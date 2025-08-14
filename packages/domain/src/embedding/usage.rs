@@ -11,7 +11,8 @@ pub struct EmbeddingUsage {
     pub prompt_tokens: u32,
 
     /// Total tokens used (including prompt and any overhead)
-    pub total_tokens: u32}
+    pub total_tokens: u32,
+}
 
 impl EmbeddingUsage {
     /// Create a new EmbeddingUsage with the given token counts
@@ -19,7 +20,8 @@ impl EmbeddingUsage {
     pub const fn new(prompt_tokens: u32, total_tokens: u32) -> Self {
         Self {
             prompt_tokens,
-            total_tokens}
+            total_tokens,
+        }
     }
 
     /// Create a new EmbeddingUsage with the same value for both prompt and total tokens
@@ -27,7 +29,8 @@ impl EmbeddingUsage {
     pub const fn from_prompt_tokens(prompt_tokens: u32) -> Self {
         Self {
             prompt_tokens,
-            total_tokens: prompt_tokens}
+            total_tokens: prompt_tokens,
+        }
     }
 
     /// Add another EmbeddingUsage to this one
@@ -36,7 +39,8 @@ impl EmbeddingUsage {
     pub const fn add(&self, other: &Self) -> Self {
         Self {
             prompt_tokens: self.prompt_tokens + other.prompt_tokens,
-            total_tokens: self.total_tokens + other.total_tokens}
+            total_tokens: self.total_tokens + other.total_tokens,
+        }
     }
 
     /// Calculate the overhead tokens (total_tokens - prompt_tokens)

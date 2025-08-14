@@ -1,10 +1,10 @@
+use fluent_ai_domain::context::provider::EmbeddingModel;
 use fluent_ai_domain::model::AnyEmbeddingCapable;
 use serde::Deserialize;
 use serde_json::json;
 
 use super::client::{ApiResponse, Client, Usage};
 use crate::embeddings::{self, EmbeddingError};
-use fluent_ai_domain::context::provider::EmbeddingModel;
 
 // ================================================================
 // Mistral Embedding API
@@ -25,7 +25,8 @@ impl MistralEmbeddingModel {
         Self {
             client,
             model: model.to_string(),
-            ndims}
+            ndims,
+        }
     }
 }
 
@@ -83,10 +84,12 @@ impl embeddings::EmbeddingModel for MistralEmbeddingModel {
                         .zip(documents.into_iter())
                         .map(|(embedding, document)| embeddings::Embedding {
                             document,
-                            vec: embedding.embedding})
+                            vec: embedding.embedding,
+                        })
                         .collect())
                 }
-                ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message))}
+                ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
+            }
         } else {
             let error_body = String::from_utf8_lossy(response.body());
             Err(EmbeddingError::ProviderError(error_body.to_string()))
@@ -100,10 +103,12 @@ pub struct EmbeddingResponse {
     pub object: String,
     pub model: String,
     pub usage: Usage,
-    pub data: Vec<EmbeddingData>}
+    pub data: Vec<EmbeddingData>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct EmbeddingData {
     pub object: String,
     pub embedding: Vec<f64>,
-    pub index: usize}
+    pub index: usize,
+}

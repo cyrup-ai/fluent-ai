@@ -30,12 +30,13 @@
 //! }
 //! ```
 
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::Arc;
+
 use arrayvec::{ArrayString, ArrayVec};
 use dashmap::DashMap;
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::sync::Arc;
 use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 

@@ -1,15 +1,16 @@
-use crate::config::ServiceConfig;
-use crate::ipc::{Cmd, Evt};
-use crate::lifecycle::Lifecycle;
-use crate::state_machine::{Action, Event};
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 use crossbeam_channel::{bounded, select, tick, Receiver, Sender};
 use log::{error, info};
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-
 use tokio::sync::oneshot;
+
+use crate::config::ServiceConfig;
+use crate::ipc::{Cmd, Evt};
+use crate::lifecycle::Lifecycle;
+use crate::state_machine::{Action, Event};
 
 /// Global event bus size – small fixed size → zero heap growth.
 const BUS_BOUND: usize = 128;
@@ -360,8 +361,9 @@ pub fn install_signal_handlers() {
 
 /// Non‑blocking check – returns Some(signal) once.
 fn check_signals() -> Option<nix::sys::signal::Signal> {
-    use nix::sys::signal::Signal;
     use std::sync::atomic::Ordering::*;
+
+    use nix::sys::signal::Signal;
     let val = RECEIVED_SIGNAL.swap(0, AcqRel);
     if val == 0 {
         None

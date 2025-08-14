@@ -31,7 +31,8 @@ pub enum ChangeType {
     /// Split of a memory into multiple parts
     Split,
     /// Custom change type
-    Custom(u8)}
+    Custom(u8),
+}
 
 impl ChangeType {
     /// Convert to string
@@ -43,7 +44,8 @@ impl ChangeType {
             ChangeType::Restoration => "restoration",
             ChangeType::Merge => "merge",
             ChangeType::Split => "split",
-            ChangeType::Custom(_) => "custom"}
+            ChangeType::Custom(_) => "custom",
+        }
     }
 
     /// Parse from string
@@ -66,7 +68,8 @@ impl ChangeType {
                     Ok(ChangeType::Custom(0))
                 }
             }
-            _ => Err(Error::ValidationError(format!("Invalid change type: {s}")))}
+            _ => Err(Error::ValidationError(format!("Invalid change type: {s}"))),
+        }
     }
 
     /// Convert to value
@@ -78,7 +81,8 @@ impl ChangeType {
             ChangeType::Restoration => Value::Strand("restoration".into()),
             ChangeType::Merge => Value::Strand("merge".into()),
             ChangeType::Split => Value::Strand("split".into()),
-            ChangeType::Custom(code) => Value::Strand(format!("custom{code}").into())}
+            ChangeType::Custom(code) => Value::Strand(format!("custom{code}").into()),
+        }
     }
 
     /// Create from value
@@ -119,7 +123,8 @@ pub struct MemoryVersion {
     /// Change summary
     pub change_summary: Option<String>,
     /// Diff from previous version
-    pub diff: Option<String>}
+    pub diff: Option<String>,
+}
 
 impl MemoryVersion {
     /// Create a new memory version
@@ -145,7 +150,8 @@ impl MemoryVersion {
             previous_version_id: previous_version_id.map(|s| s.to_string()),
             related_version_ids: Vec::new(),
             change_summary: None,
-            diff: None}
+            diff: None,
+        }
     }
 
     /// Create a new creation version
@@ -390,7 +396,8 @@ impl MemoryVersion {
             previous_version_id,
             related_version_ids,
             change_summary,
-            diff})
+            diff,
+        })
     }
 }
 
@@ -402,7 +409,8 @@ pub struct MemoryHistory {
     /// Current version
     pub current_version: u32,
     /// Versions
-    pub versions: Vec<MemoryVersion>}
+    pub versions: Vec<MemoryVersion>,
+}
 
 impl MemoryHistory {
     /// Create a new memory history
@@ -410,7 +418,8 @@ impl MemoryHistory {
         Self {
             memory_id: memory_id.to_string(),
             current_version: 0,
-            versions: Vec::new()}
+            versions: Vec::new(),
+        }
     }
 
     /// Add version

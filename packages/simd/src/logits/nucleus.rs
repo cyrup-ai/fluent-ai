@@ -47,8 +47,7 @@ pub fn prepare_nucleus_sampling_simd(logits: &mut [f32], top_p: f64) -> LogitsRe
     }
 
     // Collect indices to keep (using SmallVec to avoid alloc if small)
-    let keep_indices: SmallVec<usize, 512> =
-        sorted[..cutoff].iter().map(|&(idx, _)| idx).collect();
+    let keep_indices: SmallVec<usize, 512> = sorted[..cutoff].iter().map(|&(idx, _)| idx).collect();
 
     // Sort keep_indices for potential binary search if needed, but here we use loop
     // Mask logits not in keep (in-place, zero alloc)

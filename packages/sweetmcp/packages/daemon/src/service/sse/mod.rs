@@ -26,11 +26,11 @@ pub mod session;
 // Removed unused import: pub use bridge::McpBridge;
 // Removed unused import: pub use encoder::SseEncoder;
 // Removed unused imports: pub use events::{EventType, SseEvent};
-pub use server::SseServer;
-// Removed unused imports: pub use session::{SessionManager, SseSession};
-
-use anyhow::Result;
 use std::net::SocketAddr;
+
+// Removed unused imports: pub use session::{SessionManager, SseSession};
+use anyhow::Result;
+pub use server::SseServer;
 use tokio::sync::oneshot;
 
 /// SSE server configuration

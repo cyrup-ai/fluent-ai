@@ -3,15 +3,17 @@
 //! This implementation provides sophisticated service management with zero allocation,
 //! blazing-fast performance, and comprehensive error handling to match the macOS implementation.
 
-use crate::install::{InstallerBuilder, InstallerError};
-use anyhow::{Context, Result};
-use once_cell::sync::OnceCell;
 use std::borrow::Cow;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
+
+use anyhow::{Context, Result};
+use once_cell::sync::OnceCell;
+
+use crate::install::{InstallerBuilder, InstallerError};
 
 pub(crate) struct PlatformExecutor;
 

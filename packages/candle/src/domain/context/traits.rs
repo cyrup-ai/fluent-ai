@@ -3,13 +3,14 @@
 //! This trait provides the core context interface for Candle-backed context implementations,
 //! enabling trait composition, testability, and 'room to move' architecture benefits.
 
-use fluent_ai_async::AsyncStream;
-use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use fluent_ai_async::AsyncStream;
+use serde::{Deserialize, Serialize};
+
 /// CandleContext trait - mirrors fluent-ai-domain::Context exactly with Candle prefix
-/// 
+///
 /// This trait enables:
 /// - Trait composition for flexible context architectures  
 /// - Testability with mock implementations
@@ -21,19 +22,19 @@ pub trait CandleContext: Send + Sync + 'static {
     /// # Returns
     /// AsyncStream containing context content chunks
     fn load_content(&self) -> AsyncStream<CandleContextChunk>;
-    
+
     /// Get context metadata and information
     ///
     /// # Returns
     /// Context metadata for introspection
     fn get_metadata(&self) -> CandleContextMetadata;
-    
+
     /// Refresh context content if it has changed
     ///
     /// # Returns
     /// AsyncStream indicating whether refresh was successful
     fn refresh(&self) -> AsyncStream<bool>;
-    
+
     /// Get context capabilities and supported operations
     ///
     /// # Returns
@@ -67,19 +68,19 @@ impl CandleContextChunk {
             sequence: 0,
         }
     }
-    
+
     /// Mark chunk as final
     pub fn with_final(mut self) -> Self {
         self.is_final = true;
         self
     }
-    
+
     /// Set chunk sequence number
     pub fn with_sequence(mut self, sequence: u64) -> Self {
         self.sequence = sequence;
         self
     }
-    
+
     /// Add metadata to chunk
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         if self.metadata.is_none() {
@@ -144,7 +145,11 @@ pub struct CandleContextMetadata {
 
 impl CandleContextMetadata {
     /// Create new context metadata
-    pub fn new(name: impl Into<String>, source_type: CandleContextSource, location: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        source_type: CandleContextSource,
+        location: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             description: String::new(),
@@ -156,25 +161,25 @@ impl CandleContextMetadata {
             metadata: HashMap::new(),
         }
     }
-    
+
     /// Set description
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
         self.description = description.into();
         self
     }
-    
+
     /// Set content size
     pub fn with_size(mut self, size: u64) -> Self {
         self.content_size = Some(size);
         self
     }
-    
+
     /// Set last modified timestamp
     pub fn with_last_modified(mut self, timestamp: u64) -> Self {
         self.last_modified = Some(timestamp);
         self
     }
-    
+
     /// Add metadata field
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
@@ -256,13 +261,13 @@ impl CandleFileContext {
             CandleContextSource::File,
             path_buf.to_string_lossy(),
         );
-        
+
         Self {
             path: path_buf,
             metadata,
         }
     }
-    
+
     /// Create file context with description
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
         self.metadata = self.metadata.with_description(description);
@@ -273,50 +278,49 @@ impl CandleFileContext {
 impl CandleContext for CandleFileContext {
     fn load_content(&self) -> AsyncStream<CandleContextChunk> {
         let path = self.path.clone();
-        
-        AsyncStream::with_channel(move |sender| {
-            match std::fs::read_to_string(&path) {
-                Ok(content) => {
-                    let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                    let content_type = match extension {
-                        "rs" | "py" | "js" | "ts" | "go" | "java" | "cpp" | "c" | "h" => {
-                            CandleContextType::Code(extension.to_string())
-                        }
-                        "md" => CandleContextType::Markdown,
-                        "json" => CandleContextType::Json,
-                        "xml" | "html" => CandleContextType::Xml,
-                        _ => CandleContextType::Text,
-                    };
-                    
-                    let chunk = CandleContextChunk::new(content, content_type)
-                        .with_final()
-                        .with_sequence(0)
-                        .with_metadata("file_path", path.to_string_lossy());
-                        
-                    let _ = sender.send(chunk);
-                }
-                Err(_) => {
-                    let error_chunk = CandleContextChunk::new(
-                        format!("Error reading file: {}", path.display()),
-                        CandleContextType::Text,
-                    ).with_final();
-                    let _ = sender.send(error_chunk);
-                }
+
+        AsyncStream::with_channel(move |sender| match std::fs::read_to_string(&path) {
+            Ok(content) => {
+                let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                let content_type = match extension {
+                    "rs" | "py" | "js" | "ts" | "go" | "java" | "cpp" | "c" | "h" => {
+                        CandleContextType::Code(extension.to_string())
+                    }
+                    "md" => CandleContextType::Markdown,
+                    "json" => CandleContextType::Json,
+                    "xml" | "html" => CandleContextType::Xml,
+                    _ => CandleContextType::Text,
+                };
+
+                let chunk = CandleContextChunk::new(content, content_type)
+                    .with_final()
+                    .with_sequence(0)
+                    .with_metadata("file_path", path.to_string_lossy());
+
+                let _ = sender.send(chunk);
+            }
+            Err(_) => {
+                let error_chunk = CandleContextChunk::new(
+                    format!("Error reading file: {}", path.display()),
+                    CandleContextType::Text,
+                )
+                .with_final();
+                let _ = sender.send(error_chunk);
             }
         })
     }
-    
+
     fn get_metadata(&self) -> CandleContextMetadata {
         self.metadata.clone()
     }
-    
+
     fn refresh(&self) -> AsyncStream<bool> {
         AsyncStream::with_channel(move |sender| {
             // For files, always return true since file system access is always "fresh"
             let _ = sender.send(true);
         })
     }
-    
+
     fn get_capabilities(&self) -> AsyncStream<CandleContextCapabilities> {
         AsyncStream::with_channel(move |sender| {
             let capabilities = CandleContextCapabilities {
@@ -338,4 +342,3 @@ impl CandleContext for CandleFileContext {
         })
     }
 }
-

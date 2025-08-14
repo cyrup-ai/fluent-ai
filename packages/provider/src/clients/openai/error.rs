@@ -19,9 +19,9 @@
 //! for context preservation and #[repr(u8)] for minimal memory footprint.
 
 use std::fmt;
-use fluent_ai_http3::HttpError;
 
 use arrayvec::ArrayString;
+use fluent_ai_http3::HttpError;
 use thiserror::Error;
 
 /// Result type alias for OpenAI operations
@@ -49,7 +49,8 @@ pub enum OpenAIError {
         /// Whether retry is possible
         retry_possible: bool,
         /// HTTP status code
-        status_code: u16},
+        status_code: u16,
+    },
 
     /// Rate limiting exceeded
     #[error("Rate limit exceeded: {message}")]
@@ -65,7 +66,8 @@ pub enum OpenAIError {
         /// Reset time (Unix timestamp)
         reset_time: u64,
         /// Affected endpoint
-        endpoint: EndpointType},
+        endpoint: EndpointType,
+    },
 
     /// Model not supported or unavailable
     #[error("Model not supported: {model}")]
@@ -79,7 +81,8 @@ pub enum OpenAIError {
         /// Suggested alternative model
         suggested_model: ArrayString<64>,
         /// Whether model exists but is unavailable
-        model_exists: bool},
+        model_exists: bool,
+    },
 
     /// Request validation failed
     #[error("Request validation failed: {field} - {reason}")]
@@ -95,7 +98,8 @@ pub enum OpenAIError {
         /// Endpoint context
         endpoint: EndpointType,
         /// Whether value can be auto-corrected
-        auto_correctable: bool},
+        auto_correctable: bool,
+    },
 
     /// Quota exceeded for OpenAI API
     #[error("Quota exceeded: {quota_type}")]
@@ -111,7 +115,8 @@ pub enum OpenAIError {
         /// Billing information
         billing_info: ArrayString<256>,
         /// Affected endpoint
-        endpoint: EndpointType},
+        endpoint: EndpointType,
+    },
 
     /// Model capacity exceeded
     #[error("Model capacity exceeded: {model}")]
@@ -127,7 +132,8 @@ pub enum OpenAIError {
         /// Alternative models available
         alternatives: ArrayString<256>,
         /// Affected endpoint
-        endpoint: EndpointType},
+        endpoint: EndpointType,
+    },
 
     /// Function calling error
     #[error("Function calling failed: {function_name} - {reason}")]
@@ -141,7 +147,8 @@ pub enum OpenAIError {
         /// Validation error details
         validation_error: Option<ArrayString<256>>,
         /// Whether retry is possible
-        retry_possible: bool},
+        retry_possible: bool,
+    },
 
     /// Audio processing error
     #[error("Audio processing failed: {operation} - {reason}")]
@@ -155,7 +162,8 @@ pub enum OpenAIError {
         /// File size if relevant
         file_size_bytes: Option<u64>,
         /// Whether retry is possible
-        retry_possible: bool},
+        retry_possible: bool,
+    },
 
     /// Vision processing error
     #[error("Vision processing failed: {operation} - {reason}")]
@@ -169,7 +177,8 @@ pub enum OpenAIError {
         /// Image size if relevant
         image_size_bytes: Option<u64>,
         /// Whether retry is possible
-        retry_possible: bool},
+        retry_possible: bool,
+    },
 
     /// JSON processing error
     #[error("JSON processing failed: {operation} - {message}")]
@@ -185,7 +194,8 @@ pub enum OpenAIError {
         /// Endpoint context
         endpoint: EndpointType,
         /// Whether recovery is possible
-        recovery_possible: bool},
+        recovery_possible: bool,
+    },
 
     /// Request timeout
     #[error("Request timeout: {duration_ms}ms")]
@@ -199,7 +209,8 @@ pub enum OpenAIError {
         /// Whether retry is recommended
         retry_recommended: bool,
         /// Suggested timeout for retry
-        suggested_timeout_ms: u64},
+        suggested_timeout_ms: u64,
+    },
 
     /// Configuration error
     #[error("Configuration error: {setting} - {reason}")]
@@ -213,7 +224,8 @@ pub enum OpenAIError {
         /// Expected value or range
         expected_value: ArrayString<128>,
         /// Endpoint context
-        endpoint: EndpointType},
+        endpoint: EndpointType,
+    },
 
     /// Streaming error
     #[error("Streaming error: {reason}")]
@@ -227,7 +239,8 @@ pub enum OpenAIError {
         /// Partial content received
         partial_content: ArrayString<512>,
         /// Endpoint context
-        endpoint: EndpointType},
+        endpoint: EndpointType,
+    },
 
     /// Invalid API key format
     #[error("Invalid API key: {reason}")]
@@ -239,7 +252,8 @@ pub enum OpenAIError {
         /// Whether format is valid
         format_valid: bool,
         /// Organization ID if present
-        organization_id: Option<ArrayString<64>>},
+        organization_id: Option<ArrayString<64>>,
+    },
 
     /// Token limit exceeded
     #[error("Token limit exceeded: {model} - {tokens} tokens")]
@@ -253,7 +267,8 @@ pub enum OpenAIError {
         /// Endpoint context
         endpoint: EndpointType,
         /// Whether request can be split
-        can_split: bool},
+        can_split: bool,
+    },
 
     /// Content policy violation
     #[error("Content policy violation: {reason}")]
@@ -265,7 +280,8 @@ pub enum OpenAIError {
         /// Confidence score (0-100)
         confidence: u8,
         /// Whether content can be modified
-        modifiable: bool},
+        modifiable: bool,
+    },
 
     /// Usage tracking error
     #[error("Usage tracking failed: {reason}")]
@@ -277,7 +293,8 @@ pub enum OpenAIError {
         /// Endpoint context
         endpoint: EndpointType,
         /// Whether tracking is required
-        required: bool},
+        required: bool,
+    },
 
     /// Embedding processing error
     #[error("Embedding processing failed: {reason}")]
@@ -289,7 +306,8 @@ pub enum OpenAIError {
         /// Dimension mismatch if relevant
         dimension_mismatch: Option<(u32, u32)>,
         /// Whether retry is possible
-        retry_possible: bool},
+        retry_possible: bool,
+    },
 
     /// Organization access error
     #[error("Organization access denied: {reason}")]
@@ -301,7 +319,9 @@ pub enum OpenAIError {
         /// Required permissions
         required_permissions: ArrayString<256>,
         /// Whether access can be requested
-        can_request_access: bool}}
+        can_request_access: bool,
+    },
+}
 
 /// Endpoint type enumeration for multi-endpoint error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -326,7 +346,8 @@ pub enum EndpointType {
     /// Fine-tuning endpoint
     FineTuning,
     /// Moderations endpoint
-    Moderations}
+    Moderations,
+}
 
 /// Quota type enumeration for detailed quota management
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -343,7 +364,8 @@ pub enum QuotaType {
     /// Billing quota
     BillingQuota,
     /// Organization quota
-    OrganizationQuota}
+    OrganizationQuota,
+}
 
 /// Audio operation types for error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -358,7 +380,8 @@ pub enum AudioOperation {
     /// Audio format validation
     FormatValidation,
     /// Audio file upload
-    FileUpload}
+    FileUpload,
+}
 
 /// Vision operation types for error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -373,7 +396,8 @@ pub enum VisionOperation {
     /// Image upload
     ImageUpload,
     /// Image resizing
-    ImageResize}
+    ImageResize,
+}
 
 /// JSON operation types for error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -390,7 +414,8 @@ pub enum JsonOperation {
     /// Usage statistics parse
     UsageStatsParse,
     /// Tool definition parse
-    ToolDefinitionParse}
+    ToolDefinitionParse,
+}
 
 /// Request type enumeration for timeout context
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -413,7 +438,8 @@ pub enum RequestType {
     /// Model information request
     ModelInfo,
     /// Health check request
-    HealthCheck}
+    HealthCheck,
+}
 
 /// Streaming error reasons
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -430,7 +456,8 @@ pub enum StreamingErrorReason {
     /// Stream ended unexpectedly
     StreamEndedUnexpectedly,
     /// Function call streaming failed
-    FunctionCallStreamingFailed}
+    FunctionCallStreamingFailed,
+}
 
 /// Error code enumeration for programmatic error handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -473,7 +500,8 @@ pub enum ErrorCode {
     /// Embedding processing failed
     EmbeddingProcessingFailed = 18,
     /// Organization access denied
-    OrganizationAccessDenied = 19}
+    OrganizationAccessDenied = 19,
+}
 
 impl OpenAIError {
     /// Create authentication error with context
@@ -492,7 +520,8 @@ impl OpenAIError {
             organization_id: organization_id.map(|id| ArrayString::from(id).unwrap_or_default()),
             format_valid,
             retry_possible,
-            status_code}
+            status_code,
+        }
     }
 
     /// Create rate limit error with retry information
@@ -511,7 +540,8 @@ impl OpenAIError {
             current_requests,
             max_requests,
             reset_time,
-            endpoint}
+            endpoint,
+        }
     }
 
     /// Create model not supported error
@@ -529,7 +559,8 @@ impl OpenAIError {
             endpoint,
             available_models: ArrayString::from(&available_str).unwrap_or_default(),
             suggested_model: ArrayString::from(suggested_model).unwrap_or_default(),
-            model_exists}
+            model_exists,
+        }
     }
 
     /// Create request validation error
@@ -548,7 +579,8 @@ impl OpenAIError {
             current_value: ArrayString::from(current_value).unwrap_or_default(),
             valid_range: ArrayString::from(valid_range).unwrap_or_default(),
             endpoint,
-            auto_correctable}
+            auto_correctable,
+        }
     }
 
     /// Create quota exceeded error
@@ -567,7 +599,8 @@ impl OpenAIError {
             max_usage,
             reset_time,
             billing_info: ArrayString::from(billing_info).unwrap_or_default(),
-            endpoint}
+            endpoint,
+        }
     }
 
     /// Create model capacity error
@@ -587,7 +620,8 @@ impl OpenAIError {
             estimated_wait_seconds,
             retry_recommended,
             alternatives: ArrayString::from(&alternatives_str).unwrap_or_default(),
-            endpoint}
+            endpoint,
+        }
     }
 
     /// Create function call error
@@ -604,7 +638,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             arguments: ArrayString::from(arguments).unwrap_or_default(),
             validation_error: validation_error.map(|e| ArrayString::from(e).unwrap_or_default()),
-            retry_possible}
+            retry_possible,
+        }
     }
 
     /// Create audio processing error
@@ -621,7 +656,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             audio_format: audio_format.map(|f| ArrayString::from(f).unwrap_or_default()),
             file_size_bytes,
-            retry_possible}
+            retry_possible,
+        }
     }
 
     /// Create vision processing error
@@ -638,7 +674,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             image_format: image_format.map(|f| ArrayString::from(f).unwrap_or_default()),
             image_size_bytes,
-            retry_possible}
+            retry_possible,
+        }
     }
 
     /// Create JSON processing error
@@ -657,7 +694,8 @@ impl OpenAIError {
             line_number,
             column_number,
             endpoint,
-            recovery_possible}
+            recovery_possible,
+        }
     }
 
     /// Create timeout error
@@ -674,7 +712,8 @@ impl OpenAIError {
             request_type,
             endpoint,
             retry_recommended,
-            suggested_timeout_ms}
+            suggested_timeout_ms,
+        }
     }
 
     /// Create configuration error
@@ -691,7 +730,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             current_value: ArrayString::from(current_value).unwrap_or_default(),
             expected_value: ArrayString::from(expected_value).unwrap_or_default(),
-            endpoint}
+            endpoint,
+        }
     }
 
     /// Create streaming error
@@ -708,7 +748,8 @@ impl OpenAIError {
             event_number,
             resumable,
             partial_content: ArrayString::from(partial_content).unwrap_or_default(),
-            endpoint}
+            endpoint,
+        }
     }
 
     /// Create invalid API key error
@@ -723,7 +764,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             key_length,
             format_valid,
-            organization_id: organization_id.map(|id| ArrayString::from(id).unwrap_or_default())}
+            organization_id: organization_id.map(|id| ArrayString::from(id).unwrap_or_default()),
+        }
     }
 
     /// Create token limit error
@@ -740,7 +782,8 @@ impl OpenAIError {
             tokens,
             max_tokens,
             endpoint,
-            can_split}
+            can_split,
+        }
     }
 
     /// Create content policy error
@@ -755,7 +798,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             category: ArrayString::from(category).unwrap_or_default(),
             confidence,
-            modifiable}
+            modifiable,
+        }
     }
 
     /// Create usage tracking error
@@ -770,7 +814,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             expected_format: ArrayString::from(expected_format).unwrap_or_default(),
             endpoint,
-            required}
+            required,
+        }
     }
 
     /// Create embedding processing error
@@ -785,7 +830,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             batch_size,
             dimension_mismatch,
-            retry_possible}
+            retry_possible,
+        }
     }
 
     /// Create organization access error
@@ -800,7 +846,8 @@ impl OpenAIError {
             reason: ArrayString::from(reason).unwrap_or_default(),
             organization_id: ArrayString::from(organization_id).unwrap_or_default(),
             required_permissions: ArrayString::from(required_permissions).unwrap_or_default(),
-            can_request_access}
+            can_request_access,
+        }
     }
 
     /// Get error code for programmatic handling
@@ -882,7 +929,8 @@ impl OpenAIError {
             Self::Timeout { .. } => Some(5), // Default 5 second delay for timeouts
             Self::AudioProcessing { .. } => Some(10), // Audio processing retry delay
             Self::VisionProcessing { .. } => Some(10), // Vision processing retry delay
-            _ => None}
+            _ => None,
+        }
     }
 
     /// Get suggested action for error recovery
@@ -910,7 +958,8 @@ impl OpenAIError {
             Self::UsageTracking { .. } => "Check usage tracking configuration",
             Self::EmbeddingProcessing { .. } => "Validate embedding parameters and batch size",
             Self::OrganizationAccess { .. } => "Request access or check organization settings",
-            Self::Http(_) => "Check network connection and retry"}
+            Self::Http(_) => "Check network connection and retry",
+        }
     }
 }
 
@@ -960,7 +1009,8 @@ impl From<u16> for OpenAIError {
                 &["gpt-4o-mini"],
                 EndpointType::ChatCompletions,
             ),
-            _ => Self::Http(fluent_ai_http3::HttpError::Status(status_code))}
+            _ => Self::Http(fluent_ai_http3::HttpError::Status(status_code)),
+        }
     }
 }
 
@@ -992,7 +1042,8 @@ impl fmt::Display for EndpointType {
             Self::Models => write!(f, "Models"),
             Self::Files => write!(f, "Files"),
             Self::FineTuning => write!(f, "Fine-tuning"),
-            Self::Moderations => write!(f, "Moderations")}
+            Self::Moderations => write!(f, "Moderations"),
+        }
     }
 }
 
@@ -1004,7 +1055,8 @@ impl fmt::Display for QuotaType {
             Self::ConcurrentRequests => write!(f, "Concurrent requests"),
             Self::ModelSpecific => write!(f, "Model-specific quota"),
             Self::BillingQuota => write!(f, "Billing quota"),
-            Self::OrganizationQuota => write!(f, "Organization quota")}
+            Self::OrganizationQuota => write!(f, "Organization quota"),
+        }
     }
 }
 
@@ -1015,7 +1067,8 @@ impl fmt::Display for AudioOperation {
             Self::Translation => write!(f, "Translation"),
             Self::TextToSpeech => write!(f, "Text-to-speech"),
             Self::FormatValidation => write!(f, "Format validation"),
-            Self::FileUpload => write!(f, "File upload")}
+            Self::FileUpload => write!(f, "File upload"),
+        }
     }
 }
 
@@ -1026,7 +1079,8 @@ impl fmt::Display for VisionOperation {
             Self::FormatValidation => write!(f, "Format validation"),
             Self::ImageEncoding => write!(f, "Image encoding"),
             Self::ImageUpload => write!(f, "Image upload"),
-            Self::ImageResize => write!(f, "Image resize")}
+            Self::ImageResize => write!(f, "Image resize"),
+        }
     }
 }
 
@@ -1038,7 +1092,8 @@ impl fmt::Display for JsonOperation {
             Self::StreamingParse => write!(f, "Streaming parse"),
             Self::FunctionCallParse => write!(f, "Function call parse"),
             Self::UsageStatsParse => write!(f, "Usage statistics parse"),
-            Self::ToolDefinitionParse => write!(f, "Tool definition parse")}
+            Self::ToolDefinitionParse => write!(f, "Tool definition parse"),
+        }
     }
 }
 
@@ -1053,7 +1108,8 @@ impl fmt::Display for RequestType {
             Self::TextToSpeech => write!(f, "Text-to-speech"),
             Self::VisionAnalysis => write!(f, "Vision analysis"),
             Self::ModelInfo => write!(f, "Model information"),
-            Self::HealthCheck => write!(f, "Health check")}
+            Self::HealthCheck => write!(f, "Health check"),
+        }
     }
 }
 
@@ -1065,7 +1121,8 @@ impl fmt::Display for StreamingErrorReason {
             Self::JsonParsingFailed => write!(f, "JSON parsing failed"),
             Self::UnexpectedEventType => write!(f, "Unexpected event type"),
             Self::StreamEndedUnexpectedly => write!(f, "Stream ended unexpectedly"),
-            Self::FunctionCallStreamingFailed => write!(f, "Function call streaming failed")}
+            Self::FunctionCallStreamingFailed => write!(f, "Function call streaming failed"),
+        }
     }
 }
 

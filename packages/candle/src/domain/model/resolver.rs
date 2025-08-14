@@ -9,7 +9,6 @@ use std::hash::Hash;
 use ahash::RandomState;
 use dashmap::DashMap;
 use fluent_ai_async::AsyncStream;
-
 // Removed unused import: once_cell::sync::Lazy
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -33,7 +32,8 @@ pub enum ModelPattern {
     Pattern(String),
 
     /// Match model name with a regular expression
-    Regex(String)}
+    Regex(String),
+}
 
 impl ModelPattern {
     /// Check if the pattern matches the given model name
@@ -57,7 +57,8 @@ impl ModelPattern {
                             regex.push('\\');
                             regex.push(c);
                         }
-                        _ => regex.push(c)}
+                        _ => regex.push(c),
+                    }
                 }
 
                 regex.push('$');
@@ -69,7 +70,8 @@ impl ModelPattern {
             }
             ModelPattern::Regex(pattern) => Regex::new(pattern)
                 .map(|re| re.is_match(model_name))
-                .unwrap_or(false)}
+                .unwrap_or(false),
+        }
     }
 
     /// Get the pattern as a string
@@ -77,7 +79,8 @@ impl ModelPattern {
         match self {
             ModelPattern::Exact(s) => s,
             ModelPattern::Pattern(s) => s,
-            ModelPattern::Regex(s) => s}
+            ModelPattern::Regex(s) => s,
+        }
     }
 }
 
@@ -86,7 +89,8 @@ impl fmt::Display for ModelPattern {
         match self {
             ModelPattern::Exact(s) => write!(f, "{}", s),
             ModelPattern::Pattern(s) => write!(f, "pattern:{}", s),
-            ModelPattern::Regex(s) => write!(f, "regex:{}", s)}
+            ModelPattern::Regex(s) => write!(f, "regex:{}", s),
+        }
     }
 }
 
@@ -107,7 +111,8 @@ pub struct ModelResolutionRule {
 
     /// Optional condition for when this rule applies
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub condition: Option<RuleCondition>}
+    pub condition: Option<RuleCondition>,
+}
 
 /// A condition for when a rule should apply
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,7 +128,8 @@ pub enum RuleCondition {
     EnvVarSet { name: String },
 
     /// The rule only applies if the specified feature flag is enabled
-    FeatureEnabled { name: String }}
+    FeatureEnabled { name: String },
+}
 
 /// A model resolution result
 #[derive(Debug, Clone)]
@@ -141,7 +147,8 @@ pub struct ModelResolution {
     pub rule: Option<ModelResolutionRule>,
 
     /// The score of the match (higher is better)
-    pub score: f64}
+    pub score: f64,
+}
 
 impl ModelResolution {
     /// Create a new resolution result
@@ -157,7 +164,8 @@ impl ModelResolution {
             model: model.into(),
             info,
             rule,
-            score}
+            score,
+        }
     }
 
     /// Check if the resolution is valid
@@ -176,7 +184,8 @@ pub struct ModelResolver {
     // Cache for compiled regex patterns
     #[allow(clippy::type_complexity)]
     #[allow(dead_code)]
-    pattern_cache: DashMap<String, (String, Regex), RandomState>}
+    pattern_cache: DashMap<String, (String, Regex), RandomState>,
+}
 
 impl Default for ModelResolver {
     fn default() -> Self {
@@ -191,7 +200,8 @@ impl ModelResolver {
             registry: ModelRegistry::new(),
             rules: Vec::new(),
             aliases: HashMap::with_hasher(RandomState::new()),
-            pattern_cache: DashMap::with_hasher(RandomState::new())}
+            pattern_cache: DashMap::with_hasher(RandomState::new()),
+        }
     }
 
     /// Add a resolution rule
@@ -410,7 +420,8 @@ impl ModelResolver {
         } else {
             Err(ModelError::ModelNotFound {
                 provider: provider.unwrap_or("any").to_string().into(),
-                name: model_name.to_string().into()})
+                name: model_name.to_string().into(),
+            })
         }
     }
 }
@@ -418,8 +429,6 @@ impl ModelResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-
 
     #[test]
     fn test_pattern_matching() {

@@ -12,7 +12,8 @@ pub struct BenchmarkResult {
     /// Total duration of the benchmark
     pub duration: Duration,
     /// Operations per second
-    pub ops_per_sec: f64}
+    pub ops_per_sec: f64,
+}
 
 /// Run a benchmark with the given operation
 ///
@@ -48,7 +49,8 @@ where
         name: name.to_string(),
         operations: iterations,
         duration,
-        ops_per_sec}
+        ops_per_sec,
+    }
 }
 
 /// Benchmark logits processing functions

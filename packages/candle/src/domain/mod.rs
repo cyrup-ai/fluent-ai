@@ -36,22 +36,18 @@ pub mod prompt;
 pub mod tool;
 pub mod util;
 pub mod voice;
-/// Agent workflow and execution patterns - removed fake implementation
-
-// Re-export HashMap from hashbrown for domain consistency
-pub use hashbrown::HashMap;
-
-// Alias for backward compatibility - people expect async_task module
-pub use fluent_ai_async as async_task;
-// Re-export from cyrup_sugars for convenience with Candle prefixes
-pub use cyrup_sugars::{ByteSize, OneOrMany};
-pub use fluent_ai_async::spawn_task as spawn_async; // Alias for backward compatibility
-
-// Streaming primitives from fluent-ai-async (kept as-is per requirements)
-pub use fluent_ai_async::{AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task};
-
 // Use ZeroOneOrMany from cyrup_sugars directly
 pub use cyrup_sugars::ZeroOneOrMany as CandleZeroOneOrMany;
+// Re-export from cyrup_sugars for convenience with Candle prefixes
+pub use cyrup_sugars::{ByteSize, OneOrMany};
+// Alias for backward compatibility - people expect async_task module
+pub use fluent_ai_async as async_task;
+pub use fluent_ai_async::spawn_task as spawn_async; // Alias for backward compatibility
+// Streaming primitives from fluent-ai-async (kept as-is per requirements)
+pub use fluent_ai_async::{spawn_task, AsyncStream, AsyncStreamSender, AsyncTask, NotResult};
+/// Agent workflow and execution patterns - removed fake implementation
+// Re-export HashMap from hashbrown for domain consistency
+pub use hashbrown::HashMap;
 
 // Re-export only from minimal working modules
 // Most re-exports temporarily disabled until import issues resolved

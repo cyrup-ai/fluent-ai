@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use fluent_ai_memory::cognitive::state::{
     AbstractionLevel, AssociationType, CognitiveState, CognitiveStateManager, EmotionalValence,
-    SemanticContext};
+    SemanticContext,
+};
 use uuid::Uuid;
 
 #[test]
@@ -15,7 +16,8 @@ fn test_cognitive_state_creation() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec!["testing".to_string()],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let state = CognitiveState::new(context);
 
@@ -55,7 +57,8 @@ fn test_cognitive_state_associations() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec![],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let mut state = CognitiveState::new(context);
     let target_id = Uuid::new_v4();
@@ -77,7 +80,8 @@ fn test_cognitive_state_association_strength_clamping() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec![],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let mut state = CognitiveState::new(context);
     let target_id = Uuid::new_v4();
@@ -97,7 +101,8 @@ fn test_cognitive_state_activation() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec![],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let mut state = CognitiveState::new(context);
     let initial_activation = state.activation_level;
@@ -122,7 +127,8 @@ async fn test_state_manager() {
         primary_concepts: vec!["rust".to_string(), "memory".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec!["programming".to_string()],
-        abstraction_level: AbstractionLevel::Abstract};
+        abstraction_level: AbstractionLevel::Abstract,
+    };
 
     let state = CognitiveState::new(context);
     let id = manager.add_state(state).await;
@@ -149,7 +155,8 @@ async fn test_state_manager_multiple_states() {
         primary_concepts: vec!["rust".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec!["programming".to_string()],
-        abstraction_level: AbstractionLevel::Abstract};
+        abstraction_level: AbstractionLevel::Abstract,
+    };
     let state1 = CognitiveState::new(context1);
     manager.add_state(state1).await;
 
@@ -158,7 +165,8 @@ async fn test_state_manager_multiple_states() {
         primary_concepts: vec!["rust".to_string(), "web".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec!["programming".to_string(), "web".to_string()],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
     let state2 = CognitiveState::new(context2);
     manager.add_state(state2).await;
 
@@ -209,7 +217,8 @@ fn test_abstraction_levels() {
             primary_concepts: vec!["test".to_string()],
             secondary_concepts: vec![],
             domain_tags: vec![],
-            abstraction_level: level};
+            abstraction_level: level,
+        };
 
         let state = CognitiveState::new(context);
         // Should create successfully without panicking
@@ -232,7 +241,8 @@ fn test_association_types() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec![],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let mut state = CognitiveState::new(context);
     let target_id = Uuid::new_v4();
@@ -249,7 +259,8 @@ fn test_cognitive_state_activity_decay() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec![],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let state = CognitiveState::new(context);
 
@@ -268,7 +279,8 @@ async fn test_cleanup_inactive_states() {
         primary_concepts: vec!["test".to_string()],
         secondary_concepts: vec![],
         domain_tags: vec!["testing".to_string()],
-        abstraction_level: AbstractionLevel::Concrete};
+        abstraction_level: AbstractionLevel::Concrete,
+    };
 
     let mut state = CognitiveState::new(context);
 

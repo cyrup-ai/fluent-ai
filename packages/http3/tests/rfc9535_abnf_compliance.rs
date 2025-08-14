@@ -476,9 +476,17 @@ mod function_syntax_tests {
         for (query, should_pass) in function_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid function syntax '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid function syntax '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid function syntax '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid function syntax '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -490,22 +498,30 @@ mod function_syntax_tests {
             ("$[?length(@.authors)]", true),
             ("$[?length(@)]", true),
             ("$[?length(@.items) > 0]", true),
-            ("$[? length(@.tags) == 3]", true),    // Whitespace after ?
-            ("$[?length( @.data )]", true),        // Whitespace around argument
-            ("$[?length()]", false),               // Missing argument
-            ("$[?length(@.a, @.b)]", false),       // Too many arguments
-            ("$[?LENGTH(@.items)]", false),        // Wrong case
-            ("$[?length @.items]", false),         // Missing parentheses
-            ("$[?length(@.items]", false),         // Missing closing paren
-            ("$[?length@.items)]", false),         // Missing opening paren
+            ("$[? length(@.tags) == 3]", true), // Whitespace after ?
+            ("$[?length( @.data )]", true),     // Whitespace around argument
+            ("$[?length()]", false),            // Missing argument
+            ("$[?length(@.a, @.b)]", false),    // Too many arguments
+            ("$[?LENGTH(@.items)]", false),     // Wrong case
+            ("$[?length @.items]", false),      // Missing parentheses
+            ("$[?length(@.items]", false),      // Missing closing paren
+            ("$[?length@.items)]", false),      // Missing opening paren
         ];
 
         for (query, should_pass) in length_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid length function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid length function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid length function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid length function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -517,22 +533,30 @@ mod function_syntax_tests {
             ("$[?count($..book)]", true),
             ("$[?count(@..*)]", true),
             ("$[?count(@.items) < 5]", true),
-            ("$[? count($..book) > 10]", true),    // Whitespace after ?
-            ("$[?count( @..* )]", true),          // Whitespace around argument
-            ("$[?count()]", false),               // Missing argument
-            ("$[?count(@.a, @.b)]", false),       // Too many arguments
-            ("$[?COUNT(@.items)]", false),        // Wrong case
-            ("$[?count @.items]", false),         // Missing parentheses
-            ("$[?count(@.items]", false),         // Missing closing paren
-            ("$[?count@.items)]", false),         // Missing opening paren
+            ("$[? count($..book) > 10]", true), // Whitespace after ?
+            ("$[?count( @..* )]", true),        // Whitespace around argument
+            ("$[?count()]", false),             // Missing argument
+            ("$[?count(@.a, @.b)]", false),     // Too many arguments
+            ("$[?COUNT(@.items)]", false),      // Wrong case
+            ("$[?count @.items]", false),       // Missing parentheses
+            ("$[?count(@.items]", false),       // Missing closing paren
+            ("$[?count@.items)]", false),       // Missing opening paren
         ];
 
         for (query, should_pass) in count_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid count function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid count function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid count function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid count function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -543,27 +567,35 @@ mod function_syntax_tests {
         let match_tests = vec![
             ("$[?match(@.author, \"Tolkien\")]", true),
             ("$[?match(@.title, \".*Ring.*\")]", true),
-            ("$[?match(@.isbn, '[0-9]{13}')]", true),    // Single quotes
-            ("$[? match(@.name, \"pattern\")]", true),   // Whitespace after ?
-            ("$[?match( @.field , \"value\" )]", true),  // Whitespace around args
+            ("$[?match(@.isbn, '[0-9]{13}')]", true), // Single quotes
+            ("$[? match(@.name, \"pattern\")]", true), // Whitespace after ?
+            ("$[?match( @.field , \"value\" )]", true), // Whitespace around args
             ("$[?match(@.text, \"multi word pattern\")]", true),
             ("$[?match(@.code, \"^[A-Z]{3}$\")]", true),
-            ("$[?match()]", false),                      // Missing arguments
-            ("$[?match(@.field)]", false),               // Missing pattern argument
-            ("$[?match(\"pattern\")]", false),           // Missing expr argument
+            ("$[?match()]", false),            // Missing arguments
+            ("$[?match(@.field)]", false),     // Missing pattern argument
+            ("$[?match(\"pattern\")]", false), // Missing expr argument
             ("$[?match(@.field, \"pattern\", \"extra\")]", false), // Too many arguments
-            ("$[?MATCH(@.field, \"pattern\")]", false),  // Wrong case
-            ("$[?match @.field, \"pattern\"]", false),   // Missing parentheses
-            ("$[?match(@.field \"pattern\")]", false),   // Missing comma
-            ("$[?match(@.field, pattern)]", false),      // Unquoted pattern
+            ("$[?MATCH(@.field, \"pattern\")]", false), // Wrong case
+            ("$[?match @.field, \"pattern\"]", false), // Missing parentheses
+            ("$[?match(@.field \"pattern\")]", false), // Missing comma
+            ("$[?match(@.field, pattern)]", false), // Unquoted pattern
         ];
 
         for (query, should_pass) in match_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid match function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid match function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid match function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid match function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -574,27 +606,35 @@ mod function_syntax_tests {
         let search_tests = vec![
             ("$[?search(@._description, \"fantasy\")]", true),
             ("$[?search(@.content, \"magic\")]", true),
-            ("$[?search(@.title, 'adventure')]", true),     // Single quotes
-            ("$[? search(@.text, \"keyword\")]", true),     // Whitespace after ?
-            ("$[?search( @.field , \"value\" )]", true),    // Whitespace around args
+            ("$[?search(@.title, 'adventure')]", true), // Single quotes
+            ("$[? search(@.text, \"keyword\")]", true), // Whitespace after ?
+            ("$[?search( @.field , \"value\" )]", true), // Whitespace around args
             ("$[?search(@.text, \"case sensitive\")]", true),
             ("$[?search(@.data, \"unicode café\")]", true),
-            ("$[?search()]", false),                        // Missing arguments
-            ("$[?search(@.field)]", false),                 // Missing search term
-            ("$[?search(\"term\")]", false),                // Missing expr argument
+            ("$[?search()]", false),         // Missing arguments
+            ("$[?search(@.field)]", false),  // Missing search term
+            ("$[?search(\"term\")]", false), // Missing expr argument
             ("$[?search(@.field, \"term\", \"extra\")]", false), // Too many arguments
-            ("$[?SEARCH(@.field, \"term\")]", false),       // Wrong case
-            ("$[?search @.field, \"term\"]", false),        // Missing parentheses
-            ("$[?search(@.field \"term\")]", false),        // Missing comma
-            ("$[?search(@.field, term)]", false),           // Unquoted search term
+            ("$[?SEARCH(@.field, \"term\")]", false), // Wrong case
+            ("$[?search @.field, \"term\"]", false), // Missing parentheses
+            ("$[?search(@.field \"term\")]", false), // Missing comma
+            ("$[?search(@.field, term)]", false), // Unquoted search term
         ];
 
         for (query, should_pass) in search_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid search function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid search function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid search function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid search function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -606,25 +646,33 @@ mod function_syntax_tests {
             ("$[?value(@.price)]", true),
             ("$[?value(@)]", true),
             ("$[?value(@.data.field)]", true),
-            ("$[? value(@.amount)]", true),           // Whitespace after ?
-            ("$[?value( @.field )]", true),           // Whitespace around argument
-            ("$[?value(length(@.items))]", true),     // Nested function
-            ("$[?value(count($..book))]", true),      // Nested function
+            ("$[? value(@.amount)]", true),       // Whitespace after ?
+            ("$[?value( @.field )]", true),       // Whitespace around argument
+            ("$[?value(length(@.items))]", true), // Nested function
+            ("$[?value(count($..book))]", true),  // Nested function
             ("$[?value(@.nested.property)]", true),
-            ("$[?value()]", false),                   // Missing argument
-            ("$[?value(@.a, @.b)]", false),           // Too many arguments
-            ("$[?VALUE(@.field)]", false),            // Wrong case
-            ("$[?value @.field]", false),             // Missing parentheses
-            ("$[?value(@.field]", false),             // Missing closing paren
-            ("$[?value@.field)]", false),             // Missing opening paren
+            ("$[?value()]", false),         // Missing argument
+            ("$[?value(@.a, @.b)]", false), // Too many arguments
+            ("$[?VALUE(@.field)]", false),  // Wrong case
+            ("$[?value @.field]", false),   // Missing parentheses
+            ("$[?value(@.field]", false),   // Missing closing paren
+            ("$[?value@.field)]", false),   // Missing opening paren
         ];
 
         for (query, should_pass) in value_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid value function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid value function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid value function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid value function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -643,17 +691,25 @@ mod function_syntax_tests {
             ("$[?value(count($..book[?@.price])) > 3]", true),
             ("$[?length(value(@.authors)) >= 2]", true),
             // Invalid nesting (type mismatches would be caught at runtime, syntax should still be valid)
-            ("$[?value(value(@.field))]", true),          // Syntax valid, semantics may fail
-            ("$[?length(length(@.items))]", true),        // Syntax valid, semantics may fail
+            ("$[?value(value(@.field))]", true), // Syntax valid, semantics may fail
+            ("$[?length(length(@.items))]", true), // Syntax valid, semantics may fail
             ("$[?count(match(@.field, \"pattern\"))]", true), // Syntax valid, semantics may fail
         ];
 
         for (query, should_pass) in nesting_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid nested function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid nested function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid nested function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid nested function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -664,30 +720,38 @@ mod function_syntax_tests {
         let whitespace_tests = vec![
             // Space variations
             ("$[?length(@.items)]", true),
-            ("$[? length(@.items)]", true),           // Space after ?
-            ("$[?length (@.items)]", true),           // Space before (
-            ("$[?length( @.items)]", true),           // Space after (
-            ("$[?length(@.items )]", true),           // Space before )
-            ("$[?length( @.items )]", true),          // Spaces around argument
+            ("$[? length(@.items)]", true),  // Space after ?
+            ("$[?length (@.items)]", true),  // Space before (
+            ("$[?length( @.items)]", true),  // Space after (
+            ("$[?length(@.items )]", true),  // Space before )
+            ("$[?length( @.items )]", true), // Spaces around argument
             // Tab, newline, carriage return (in practice, these may not be common but should be valid)
-            ("$[?\tlength(@.items)]", true),          // Tab after ?
-            ("$[?length\t(@.items)]", true),          // Tab before (
-            ("$[?length(\t@.items)]", true),          // Tab after (
-            ("$[?length(@.items\t)]", true),          // Tab before )
+            ("$[?\tlength(@.items)]", true), // Tab after ?
+            ("$[?length\t(@.items)]", true), // Tab before (
+            ("$[?length(\t@.items)]", true), // Tab after (
+            ("$[?length(@.items\t)]", true), // Tab before )
             // Multiple arguments with whitespace
-            ("$[?match(@.field,\"pattern\")]", true),     // No spaces around comma
-            ("$[?match(@.field, \"pattern\")]", true),    // Space after comma
-            ("$[?match(@.field ,\"pattern\")]", true),    // Space before comma
-            ("$[?match(@.field , \"pattern\")]", true),   // Spaces around comma
+            ("$[?match(@.field,\"pattern\")]", true), // No spaces around comma
+            ("$[?match(@.field, \"pattern\")]", true), // Space after comma
+            ("$[?match(@.field ,\"pattern\")]", true), // Space before comma
+            ("$[?match(@.field , \"pattern\")]", true), // Spaces around comma
             ("$[?match( @.field , \"pattern\" )]", true), // Spaces everywhere
         ];
 
         for (query, should_pass) in whitespace_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid whitespace in function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid whitespace in function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid whitespace in function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid whitespace in function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -720,9 +784,17 @@ mod function_syntax_tests {
         for (query, should_pass) in case_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid case function '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid case function '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid case function '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid case function '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -732,30 +804,38 @@ mod function_syntax_tests {
         // RFC 9535: Function argument syntax validation
         let argument_tests = vec![
             // Valid argument types
-            ("$[?length(@)]", true),                    // Current node
-            ("$[?length(@.field)]", true),              // Property access
-            ("$[?length(@.nested.field)]", true),       // Nested property
-            ("$[?length(@['field'])]", true),           // Bracket notation
-            ("$[?length(@[0])]", true),                 // Array index
-            ("$[?length(@[*])]", true),                 // Wildcard
-            ("$[?count($..book)]", true),               // Root descendant
-            ("$[?count($.store.book)]", true),          // Absolute path
-            ("$[?match(@.title, \"pattern\")]", true),  // String literal
-            ("$[?match(@.title, 'pattern')]", true),    // Single quoted string
+            ("$[?length(@)]", true),                   // Current node
+            ("$[?length(@.field)]", true),             // Property access
+            ("$[?length(@.nested.field)]", true),      // Nested property
+            ("$[?length(@['field'])]", true),          // Bracket notation
+            ("$[?length(@[0])]", true),                // Array index
+            ("$[?length(@[*])]", true),                // Wildcard
+            ("$[?count($..book)]", true),              // Root descendant
+            ("$[?count($.store.book)]", true),         // Absolute path
+            ("$[?match(@.title, \"pattern\")]", true), // String literal
+            ("$[?match(@.title, 'pattern')]", true),   // Single quoted string
             // Invalid argument syntax
-            ("$[?length(field)]", false),               // Missing @
-            ("$[?length(.field)]", false),              // Missing @
-            ("$[?count(..book)]", false),               // Missing $
-            ("$[?match(@.field, pattern)]", false),    // Unquoted string
-            ("$[?match(@.field, @.other)]", false),    // Wrong argument type for pattern
+            ("$[?length(field)]", false),           // Missing @
+            ("$[?length(.field)]", false),          // Missing @
+            ("$[?count(..book)]", false),           // Missing $
+            ("$[?match(@.field, pattern)]", false), // Unquoted string
+            ("$[?match(@.field, @.other)]", false), // Wrong argument type for pattern
         ];
 
         for (query, should_pass) in argument_tests {
             let result = JsonPathParser::compile(query);
             if should_pass {
-                assert!(result.is_ok(), "Valid function argument '{}' should compile", query);
+                assert!(
+                    result.is_ok(),
+                    "Valid function argument '{}' should compile",
+                    query
+                );
             } else {
-                assert!(result.is_err(), "Invalid function argument '{}' should fail", query);
+                assert!(
+                    result.is_err(),
+                    "Invalid function argument '{}' should fail",
+                    query
+                );
             }
         }
     }
@@ -1034,37 +1114,45 @@ mod wellformedness_tests {
 
         for expr in valid_dot_notation {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Valid dot notation '{}' should compile", expr);
+            assert!(
+                result.is_ok(),
+                "Valid dot notation '{}' should compile",
+                expr
+            );
         }
 
         let invalid_dot_notation = vec![
             // Invalid identifier start
-            "$.123invalid",      // Starts with digit
-            "$.-invalid",        // Starts with hyphen
-            "$.@invalid",        // Starts with @
-            "$..invalid",        // Incomplete descendant followed by dot
+            "$.123invalid", // Starts with digit
+            "$.-invalid",   // Starts with hyphen
+            "$.@invalid",   // Starts with @
+            "$..invalid",   // Incomplete descendant followed by dot
             // Invalid syntax
-            "$.",               // Trailing dot
-            "$.store.",         // Trailing dot after property
-            "$.store..book.",   // Trailing dot after descendant
-            "$.store..",        // Incomplete descendant at end
-            "$.store...book",   // Triple dots
+            "$.",             // Trailing dot
+            "$.store.",       // Trailing dot after property
+            "$.store..book.", // Trailing dot after descendant
+            "$.store..",      // Incomplete descendant at end
+            "$.store...book", // Triple dots
             // Reserved character usage
-            "$.[",              // Bracket after dot
-            "$.store.[book]",   // Bracket notation after dot
-            "$.store.book*",    // Wildcard in property name
-            "$.store.book?",    // Question mark in property name
+            "$.[",            // Bracket after dot
+            "$.store.[book]", // Bracket notation after dot
+            "$.store.book*",  // Wildcard in property name
+            "$.store.book?",  // Question mark in property name
             // Whitespace issues
-            "$ .store",         // Space after root (may be valid)
-            "$.store .book",    // Space before dot
-            "$.store. book",    // Space after dot
+            "$ .store",      // Space after root (may be valid)
+            "$.store .book", // Space before dot
+            "$.store. book", // Space after dot
         ];
 
         for expr in invalid_dot_notation {
             let result = JsonPathParser::compile(expr);
             // Note: Some of these may be valid depending on implementation
             // The key is that they're tested for consistent behavior
-            println!("Testing invalid dot notation: '{}' -> {:?}", expr, result.is_ok());
+            println!(
+                "Testing invalid dot notation: '{}' -> {:?}",
+                expr,
+                result.is_ok()
+            );
         }
     }
 
@@ -1096,7 +1184,11 @@ mod wellformedness_tests {
 
         for expr in valid_shorthand {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Valid member-name-shorthand '{}' should compile", expr);
+            assert!(
+                result.is_ok(),
+                "Valid member-name-shorthand '{}' should compile",
+                expr
+            );
         }
 
         let invalid_shorthand = vec![
@@ -1105,20 +1197,24 @@ mod wellformedness_tests {
             "$.2nd",
             "$.3rdLevel",
             // Special characters
-            "$.name-with-hyphens",  // Hyphens not allowed in unquoted names
-            "$.name@domain",        // @ not allowed in unquoted names
-            "$.name.space",         // Interpreted as chained access, not single name
-            "$.name[bracket]",      // Brackets not allowed in unquoted names
+            "$.name-with-hyphens", // Hyphens not allowed in unquoted names
+            "$.name@domain",       // @ not allowed in unquoted names
+            "$.name.space",        // Interpreted as chained access, not single name
+            "$.name[bracket]",     // Brackets not allowed in unquoted names
             // Reserved words (depending on implementation)
-            "$.null",              // May be reserved
-            "$.true",              // May be reserved  
-            "$.false",             // May be reserved
+            "$.null",  // May be reserved
+            "$.true",  // May be reserved
+            "$.false", // May be reserved
         ];
 
         for expr in invalid_shorthand {
             let result = JsonPathParser::compile(expr);
             // Document behavior - some may be valid depending on implementation
-            println!("Testing member-name-shorthand: '{}' -> {:?}", expr, result.is_ok());
+            println!(
+                "Testing member-name-shorthand: '{}' -> {:?}",
+                expr,
+                result.is_ok()
+            );
         }
     }
 
@@ -1164,7 +1260,7 @@ mod wellformedness_tests {
             // Equality operators
             ("$.items[?@.price == 10]", "Equal operator"),
             ("$.items[?@.price != 20]", "Not equal operator"),
-            // Relational operators  
+            // Relational operators
             ("$.items[?@.price > 10]", "Greater than operator"),
             ("$.items[?@.price >= 15]", "Greater than or equal operator"),
             ("$.items[?@.price < 20]", "Less than operator"),
@@ -1183,14 +1279,24 @@ mod wellformedness_tests {
 
         for (expr, _description) in comparison_operators {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Comparison operator '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Comparison operator '{}' should compile: {}",
+                expr,
+                _description
+            );
 
             // Verify the expression can execute
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            println!("Comparison test '{}' returned {} results ({})", expr, results.len(), _description);
+
+            println!(
+                "Comparison test '{}' returned {} results ({})",
+                expr,
+                results.len(),
+                _description
+            );
         }
     }
 
@@ -1208,31 +1314,56 @@ mod wellformedness_tests {
         let logical_operators = vec![
             // AND operator
             ("$.items[?@.price > 10 && @.active == true]", "Logical AND"),
-            ("$.items[?@.category == 'A' && @.price < 20]", "String AND number"),
+            (
+                "$.items[?@.category == 'A' && @.price < 20]",
+                "String AND number",
+            ),
             // OR operator
             ("$.items[?@.price == 10 || @.price == 20]", "Logical OR"),
-            ("$.items[?@.active == false || @.category == 'A']", "Boolean OR string"),
+            (
+                "$.items[?@.active == false || @.category == 'A']",
+                "Boolean OR string",
+            ),
             // NOT operator (unary)
             ("$.items[?!@.active]", "Logical NOT unary"),
             ("$.items[?!(@.price > 15)]", "Logical NOT with parentheses"),
             // Complex combinations
-            ("$.items[?(@.price > 10 && @.active) || @.category == 'B']", "Complex logical expression"),
-            ("$.items[?@.price > 5 && (@.active == true || @.category == 'B')]", "Nested logical groups"),
+            (
+                "$.items[?(@.price > 10 && @.active) || @.category == 'B']",
+                "Complex logical expression",
+            ),
+            (
+                "$.items[?@.price > 5 && (@.active == true || @.category == 'B')]",
+                "Nested logical groups",
+            ),
             // Operator precedence tests
-            ("$.items[?@.price > 10 && @.active || @.category == 'B']", "AND/OR precedence"),
+            (
+                "$.items[?@.price > 10 && @.active || @.category == 'B']",
+                "AND/OR precedence",
+            ),
             ("$.items[?!@.active && @.price > 15]", "NOT/AND precedence"),
         ];
 
         for (expr, _description) in logical_operators {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Logical operator '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Logical operator '{}' should compile: {}",
+                expr,
+                _description
+            );
 
             // Verify the expression can execute
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            println!("Logical test '{}' returned {} results ({})", expr, results.len(), _description);
+
+            println!(
+                "Logical test '{}' returned {} results ({})",
+                expr,
+                results.len(),
+                _description
+            );
         }
     }
 
@@ -1241,18 +1372,18 @@ mod wellformedness_tests {
         // RFC 9535 Appendix A: Test complete filter expression syntax
         let valid_filter_expressions = vec![
             // Basic filter syntax
-            "$[?@.price]",                    // Existence test
-            "$[?@.price > 10]",              // Comparison
-            "$[?@.name == 'test']",          // String comparison
+            "$[?@.price]",          // Existence test
+            "$[?@.price > 10]",     // Comparison
+            "$[?@.name == 'test']", // String comparison
             // Parenthesized expressions
-            "$[?(@.price > 10)]",            // Simple parentheses
-            "$[?((@.price > 10))]",          // Nested parentheses
+            "$[?(@.price > 10)]",             // Simple parentheses
+            "$[?((@.price > 10))]",           // Nested parentheses
             "$[?(@.price > 10 && @.active)]", // Parenthesized logical
             // Current node references
-            "$[?@]",                         // Current node existence
-            "$[?@.price]",                   // Property existence
-            "$[?@['price']]",                // Bracket property access
-            "$[?@.nested.property]",         // Nested property access
+            "$[?@]",                 // Current node existence
+            "$[?@.price]",           // Property existence
+            "$[?@['price']]",        // Bracket property access
+            "$[?@.nested.property]", // Nested property access
             // Function calls in filters
             "$[?length(@.name) > 5]",        // Function call
             "$[?count(@.items) == 0]",       // Function with comparison
@@ -1264,29 +1395,33 @@ mod wellformedness_tests {
 
         for expr in valid_filter_expressions {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Valid filter expression '{}' should compile", expr);
+            assert!(
+                result.is_ok(),
+                "Valid filter expression '{}' should compile",
+                expr
+            );
         }
 
         let invalid_filter_expressions = vec![
             // Missing components
-            "$[?]",                          // Empty filter
-            "$[? ]",                         // Whitespace only filter
-            "$[?@]",                         // Incomplete (may be valid for existence)
+            "$[?]",  // Empty filter
+            "$[? ]", // Whitespace only filter
+            "$[?@]", // Incomplete (may be valid for existence)
             // Invalid operators
-            "$[?@.price === 10]",            // Triple equals (invalid)
-            "$[?@.price <> 10]",             // Invalid not-equal operator
-            "$[?@.price =< 10]",             // Invalid less-equal operator
-            "$[?@.price => 10]",             // Invalid greater-equal operator
+            "$[?@.price === 10]", // Triple equals (invalid)
+            "$[?@.price <> 10]",  // Invalid not-equal operator
+            "$[?@.price =< 10]",  // Invalid less-equal operator
+            "$[?@.price => 10]",  // Invalid greater-equal operator
             // Invalid syntax
-            "$[?@.price > ]",                // Missing right operand
-            "$[?> 10]",                      // Missing left operand
-            "$[?@.price 10]",                // Missing operator
-            "$[?@.price > 10 &&]",           // Incomplete logical expression
-            "$[?&& @.price > 10]",           // Leading logical operator
+            "$[?@.price > ]",      // Missing right operand
+            "$[?> 10]",            // Missing left operand
+            "$[?@.price 10]",      // Missing operator
+            "$[?@.price > 10 &&]", // Incomplete logical expression
+            "$[?&& @.price > 10]", // Leading logical operator
             // Invalid parentheses
-            "$[?(@.price > 10]",             // Unmatched opening parenthesis
-            "$[?@.price > 10)]",             // Unmatched closing parenthesis
-            "$[?((@.price > 10)]",           // Unmatched nested parenthesis
+            "$[?(@.price > 10]",   // Unmatched opening parenthesis
+            "$[?@.price > 10)]",   // Unmatched closing parenthesis
+            "$[?((@.price > 10)]", // Unmatched nested parenthesis
         ];
 
         for expr in invalid_filter_expressions {

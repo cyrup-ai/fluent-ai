@@ -10,18 +10,19 @@ pub mod xai;
 
 // Re-export core provider types for convenience
 pub use anthropic::{
-    AnthropicClient, AnthropicCompletionRequest, AnthropicError, AnthropicProvider, AnthropicResult};
+    AnthropicClient, AnthropicCompletionRequest, AnthropicError, AnthropicProvider, AnthropicResult,
+};
 // Huggingface client
-pub use huggingface::{
-    Client as HuggingfaceClient, HuggingfaceCompletionBuilder, SubProvider};
+pub use huggingface::{Client as HuggingfaceClient, HuggingfaceCompletionBuilder, SubProvider};
 // Mistral client
 pub use mistral::{
-    Client as MistralClient, MistralCompletionBuilder,
-    NewMistralCompletionBuilder, mistral_completion_builder};
-
+    Client as MistralClient, MistralCompletionBuilder, NewMistralCompletionBuilder,
+    mistral_completion_builder,
+};
 pub use openai::{
     OpenAIClient, OpenAICompletionRequest, OpenAICompletionResponse, OpenAIError, OpenAIProvider,
-    OpenAIResult};
+    OpenAIResult,
+};
 // OpenRouter client removed - not supported by model-info
 
 // Together client

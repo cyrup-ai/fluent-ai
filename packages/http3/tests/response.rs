@@ -12,18 +12,21 @@ mod response_tests {
     fn test_basic_response_functionality() {
         // Test HTTP3 builder response handling configuration
         let builder = Http3::json();
-        
+
         // Test response-specific configuration methods
-        let configured_builder = builder
-            .headers([("accept", "application/json")])
-            .debug(); // Enable debug output for response processing
-        
+        let configured_builder = builder.headers([("accept", "application/json")]).debug(); // Enable debug output for response processing
+
         // Test additional response handling options
-        let _final_builder = configured_builder
-            .headers([("user-agent", "HTTP3-Response-Test"), ("cache-control", "no-cache")]);
-        
+        let _final_builder = configured_builder.headers([
+            ("user-agent", "HTTP3-Response-Test"),
+            ("cache-control", "no-cache"),
+        ]);
+
         // Test passes if response-oriented configuration can be chained
-        assert!(true, "HTTP3 builder should support response handling configuration");
+        assert!(
+            true,
+            "HTTP3 builder should support response handling configuration"
+        );
     }
 }
 

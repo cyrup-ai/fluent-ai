@@ -10,9 +10,9 @@
 // - Automatic cleanup and resource management
 // ============================================================================
 
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
-use std::collections::HashMap;
 
 use crate::async_task::{AsyncTask, AsyncTaskBuilder};
 use crate::backends::{BackendConfig, ExecutionBackend, HealthStatus, create_backend};
@@ -35,7 +35,8 @@ pub struct InstanceManager {
     health_check_interval: Duration,
 
     /// Maximum idle time before cleanup
-    max_idle_time: Duration}
+    max_idle_time: Duration,
+}
 
 /// Managed instance wrapper with metadata
 #[derive(Debug)]
@@ -53,7 +54,8 @@ struct ManagedInstance {
     last_health_check: Option<SystemTime>,
 
     /// Reference count for active operations
-    ref_count: u32}
+    ref_count: u32,
+}
 
 impl InstanceManager {
     /// Create a new instance manager
@@ -87,7 +89,8 @@ impl InstanceManager {
             instances: Arc::new(RwLock::new(HashMap::new())),
             default_config: config,
             health_check_interval,
-            max_idle_time}
+            max_idle_time,
+        }
     }
 
     /// Register a new named instance
@@ -116,7 +119,8 @@ impl InstanceManager {
 
                 if instances.contains_key(&instance.id()) {
                     return Err(CyloError::InstanceConflict {
-                        name: instance.id()});
+                        name: instance.id(),
+                    });
                 }
             }
 
@@ -131,7 +135,8 @@ impl InstanceManager {
                 last_accessed: SystemTime::now(),
                 last_health: health_result,
                 last_health_check: Some(SystemTime::now()),
-                ref_count: 0};
+                ref_count: 0,
+            };
 
             // Register the instance
             {

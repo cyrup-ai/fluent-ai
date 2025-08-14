@@ -35,7 +35,8 @@ pub enum SimdError {
         /// Expected length
         expected: usize,
         /// Actual length
-        actual: usize},
+        actual: usize,
+    },
 
     /// Invalid probability distribution
     #[error("Invalid probability distribution: {0}")]
@@ -47,7 +48,8 @@ pub enum SimdError {
 
     /// Memory allocation error
     #[error("Memory allocation error: {0}")]
-    MemoryError(String)}
+    MemoryError(String),
+}
 
 /// Result type for SIMD operations
 pub type SimdResult<T> = Result<T, SimdError>;
@@ -81,7 +83,8 @@ mod tests {
 
         let error = SimdError::InvalidInputLength {
             expected: 10,
-            actual: 5};
+            actual: 5,
+        };
         assert_eq!(
             error.to_string(),
             "Invalid input length: expected 10, got 5"

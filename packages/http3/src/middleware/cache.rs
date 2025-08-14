@@ -1,5 +1,5 @@
 //! Cache middleware for ETag processing and expires computation
-//! Aligned with Reqwest patterns - simplified direct result processing
+//! Streaming-first, zero-allocation friendly middleware for http3 client
 
 use std::time::SystemTime;
 

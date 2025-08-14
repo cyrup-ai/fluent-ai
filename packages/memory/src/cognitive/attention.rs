@@ -14,7 +14,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crossbeam::channel::{Receiver, Sender, bounded, unbounded};
-use fluent_ai_simd::{softmax, smart_cosine_similarity};
+use fluent_ai_simd::{smart_cosine_similarity, softmax};
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
 
@@ -42,7 +42,8 @@ pub struct AttentionMechanism {
     /// Configuration parameters
     config: AttentionConfig,
     /// Worker thread pool for parallel processing
-    worker_pool: Arc<AttentionWorkerPool>}
+    worker_pool: Arc<AttentionWorkerPool>,
+}
 
 /// Comprehensive multi-head attention configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +57,8 @@ pub struct AttentionConfig {
     /// Whether to use causal attention masking
     pub use_causal_mask: bool,
     /// Weighted importance of different similarity measures
-    pub attention_weights: CognitiveAttentionWeights}
+    pub attention_weights: CognitiveAttentionWeights,
+}
 
 /// Cognitive attention weights for multi-dimensional similarity measures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,7 +70,8 @@ pub struct CognitiveAttentionWeights {
     /// Weight for structural similarity (format and organization)
     pub structural_weight: f32,
     /// Weight for contextual similarity (domain and topic)
-    pub contextual_weight: f32}
+    pub contextual_weight: f32,
+}
 
 /// Attention weights matrices for transformer-style processing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +83,8 @@ pub struct AttentionWeights {
     /// Value projection weights
     pub value_weights: Vec<f32>,
     /// Output projection weights
-    pub output_weights: Vec<f32>}
+    pub output_weights: Vec<f32>,
+}
 
 /// Comprehensive attention processing output
 #[derive(Debug, Clone)]
@@ -90,7 +94,8 @@ pub struct AttentionOutput {
     /// Raw attention score matrices
     pub attention_scores: Vec<Vec<f32>>,
     /// Final context vector representation
-    pub context_vector: Vec<f32>}
+    pub context_vector: Vec<f32>,
+}
 
 /// High-performance attention router with caching and metrics
 pub struct AttentionRouter {
@@ -101,7 +106,8 @@ pub struct AttentionRouter {
     /// LRU cache for attention results
     attention_cache: Arc<RwLock<HashMap<String, AttentionOutput>>>,
     /// Performance metrics tracking
-    metrics: Arc<RwLock<AttentionMetrics>>}
+    metrics: Arc<RwLock<AttentionMetrics>>,
+}
 
 /// Comprehensive attention performance metrics
 #[derive(Debug, Clone, Default)]
@@ -123,14 +129,16 @@ pub struct AttentionMetrics {
     /// Peak memory usage for caching
     pub peak_cache_size: usize,
     /// Number of parallel operations processed
-    pub parallel_operations: u64}
+    pub parallel_operations: u64,
+}
 
 /// Worker thread pool for parallel attention processing
 pub struct AttentionWorkerPool {
     /// Request sender for work distribution
     request_sender: Sender<AttentionWorkRequest>,
     /// Worker thread handles
-    _worker_handles: Vec<thread::JoinHandle<()>>}
+    _worker_handles: Vec<thread::JoinHandle<()>>,
+}
 
 /// Work request types for attention processing
 pub enum AttentionWorkRequest {
@@ -138,15 +146,19 @@ pub enum AttentionWorkRequest {
     ScoreMemories {
         query_embedding: Vec<f32>,
         memory_embeddings: Vec<(String, Vec<f32>)>,
-        response_sender: Sender<Vec<(String, f32)>>},
+        response_sender: Sender<Vec<(String, f32)>>,
+    },
     /// Generate embeddings for text content
     GenerateEmbedding {
         text: String,
-        response_sender: Sender<Vec<f32>>},
+        response_sender: Sender<Vec<f32>>,
+    },
     /// Batch process multiple attention computations
     BatchProcess {
         requests: Vec<(String, String)>, // (query, key) pairs
-        response_sender: Sender<Vec<f32>>}}
+        response_sender: Sender<Vec<f32>>,
+    },
+}
 
 impl Default for CognitiveAttentionWeights {
     fn default() -> Self {
@@ -154,7 +166,8 @@ impl Default for CognitiveAttentionWeights {
             semantic_weight: 0.4,
             lexical_weight: 0.3,
             structural_weight: 0.2,
-            contextual_weight: 0.1}
+            contextual_weight: 0.1,
+        }
     }
 }
 
@@ -182,7 +195,8 @@ impl AttentionMechanism {
             dropout_rate: config.dropout_rate,
             attention_scores: Arc::new(RwLock::new(HashMap::new())),
             config,
-            worker_pool}
+            worker_pool,
+        }
     }
 
     /// Calculate multi-head attention weights for query-key-value processing
@@ -208,7 +222,8 @@ impl AttentionMechanism {
             return Ok(AttentionOutput {
                 weighted_values: Vec::new(),
                 attention_scores: Vec::new(),
-                context_vector: Vec::new()});
+                context_vector: Vec::new(),
+            });
         }
 
         let seq_len = keys.len();
@@ -280,7 +295,8 @@ impl AttentionMechanism {
         Ok(AttentionOutput {
             weighted_values: all_weighted_values,
             attention_scores: all_attention_scores,
-            context_vector})
+            context_vector,
+        })
     }
 
     /// Score memories using optimized attention mechanism with SIMD
@@ -305,7 +321,8 @@ impl AttentionMechanism {
         let request = AttentionWorkRequest::ScoreMemories {
             query_embedding: query_embedding.to_vec(),
             memory_embeddings: memory_embeddings.to_vec(),
-            response_sender: sender};
+            response_sender: sender,
+        };
 
         // Send to worker pool or process directly
         if self.worker_pool.request_sender.send(request).is_ok() {
@@ -431,7 +448,8 @@ impl AttentionMechanism {
                 4 => base_value * features.syntactic_complexity.tanh() as f64,
                 5 => base_value * features.lexical_diversity.tanh() as f64,
                 6 => base_value * features.information_density.tanh() as f64,
-                _ => base_value};
+                _ => base_value,
+            };
 
             embedding[i] = transformed_value as f32;
         }
@@ -495,7 +513,8 @@ impl AttentionMechanism {
             structural_complexity,
             information_density,
             semantic_richness,
-            syntactic_complexity}
+            syntactic_complexity,
+        }
     }
 
     /// Calculate text entropy for information density measurement
@@ -599,7 +618,8 @@ struct TextFeatures {
     structural_complexity: f32,
     information_density: f32,
     semantic_richness: f32,
-    syntactic_complexity: f32}
+    syntactic_complexity: f32,
+}
 
 impl AttentionRouter {
     /// Create a new attention router with comprehensive configuration
@@ -616,7 +636,8 @@ impl AttentionRouter {
             attention_mechanism,
             config,
             attention_cache: Arc::new(RwLock::new(HashMap::new())),
-            metrics: Arc::new(RwLock::new(AttentionMetrics::default()))}
+            metrics: Arc::new(RwLock::new(AttentionMetrics::default())),
+        }
     }
 
     /// Compute attention score between two text inputs with comprehensive caching
@@ -749,7 +770,8 @@ impl AttentionRouter {
         let attention_output = AttentionOutput {
             weighted_values: vec![score],
             attention_scores: vec![vec![score]],
-            context_vector: vec![score]};
+            context_vector: vec![score],
+        };
 
         cache.insert(cache_key.to_string(), attention_output);
 
@@ -1071,7 +1093,8 @@ impl AttentionWorkerPool {
 
         Ok(Self {
             request_sender,
-            _worker_handles: worker_handles})
+            _worker_handles: worker_handles,
+        })
     }
 
     /// Create basic worker pool for fallback scenarios
@@ -1082,7 +1105,8 @@ impl AttentionWorkerPool {
         let (request_sender, _) = unbounded();
         Self {
             request_sender,
-            _worker_handles: Vec::new()}
+            _worker_handles: Vec::new(),
+        }
     }
 
     /// Main worker thread loop for processing attention requests
@@ -1098,19 +1122,22 @@ impl AttentionWorkerPool {
                 AttentionWorkRequest::ScoreMemories {
                     query_embedding,
                     memory_embeddings,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     let result = Self::process_score_memories(query_embedding, memory_embeddings);
                     let _ = response_sender.send(result);
                 }
                 AttentionWorkRequest::GenerateEmbedding {
                     text,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     let result = Self::process_generate_embedding(text);
                     let _ = response_sender.send(result);
                 }
                 AttentionWorkRequest::BatchProcess {
                     requests,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     let result = Self::process_batch_attention(requests);
                     let _ = response_sender.send(result);
                 }

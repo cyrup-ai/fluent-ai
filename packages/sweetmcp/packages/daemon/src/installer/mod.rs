@@ -3,14 +3,12 @@
 //! This module provides the decomposed installer functionality split into
 //! logical modules for better maintainability and adherence to the 300-line limit.
 
-pub mod core;
 pub mod config;
+pub mod core;
 pub mod uninstall;
 
 // Re-export key types and functions for backward compatibility
-pub use core::{
-    AsyncTask
-};
+pub use core::AsyncTask;
 
 // All config and uninstall functions removed as unused
 
@@ -34,15 +32,16 @@ pub fn install(dry: bool, sign: bool, _identity: Option<String>) -> AsyncTask<Re
                 config::validate_configuration(&config_path)
             } else {
                 // Get executable path and config path for installation
-                let exe_path = std::env::current_exe()
-                    .context("Failed to get current executable path")?;
+                let exe_path =
+                    std::env::current_exe().context("Failed to get current executable path")?;
                 let config_path = dirs::config_dir()
                     .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?
                     .join("sweetmcp")
                     .join("config.toml");
                 config::install_sweetmcp_daemon(exe_path, config_path, sign).await
             }
-        }).await;
+        })
+        .await;
         let _ = tx.send(result).await;
     });
 

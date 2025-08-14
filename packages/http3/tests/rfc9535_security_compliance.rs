@@ -130,8 +130,8 @@ mod injection_attack_tests {
         ];
 
         // Parse JSON data for testing
-        let _json_value: serde_json::Value = serde_json::from_str(json_data)
-            .expect("Test JSON should be valid");
+        let _json_value: serde_json::Value =
+            serde_json::from_str(json_data).expect("Test JSON should be valid");
 
         for path in escape_injection_tests {
             let result = JsonPathParser::compile(path);
@@ -141,16 +141,19 @@ mod injection_attack_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
                     let chunk = Bytes::from(json_data);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    println!("✓ Escape injection '{}' processed safely: {} results", 
-                        path, results.len());
-                    
+
+                    println!(
+                        "✓ Escape injection '{}' processed safely: {} results",
+                        path,
+                        results.len()
+                    );
+
                     // Verify no injection occurred by checking result validity
                     for value in results {
                         // Values from JsonArrayStream should be valid JSON values
                         println!("  Result value: {:?}", value);
                     }
-                },
+                }
                 Err(err) => {
                     println!("Escape injection '{}' rejected: {}", path, err);
                     // Rejection is also acceptable for security
@@ -178,8 +181,8 @@ mod injection_attack_tests {
         ];
 
         // Parse JSON data for Unicode testing
-        let _json_value: serde_json::Value = serde_json::from_str(json_data)
-            .expect("Unicode test JSON should be valid");
+        let _json_value: serde_json::Value =
+            serde_json::from_str(json_data).expect("Unicode test JSON should be valid");
 
         for path in unicode_injection_tests {
             let result = JsonPathParser::compile(path);
@@ -188,17 +191,20 @@ mod injection_attack_tests {
                     // Test that Unicode paths can safely process the JSON data
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(path);
                     let chunk = Bytes::from(json_data);
-                    let results: Vec<_> = stream.process_chunk(chunk).collect(); 
-                    
-                    println!("✓ Unicode injection '{}' processed safely: {} results", 
-                        path, results.len());
-                    
+                    let results: Vec<_> = stream.process_chunk(chunk).collect();
+
+                    println!(
+                        "✓ Unicode injection '{}' processed safely: {} results",
+                        path,
+                        results.len()
+                    );
+
                     // Verify Unicode handling doesn't cause issues
                     for value in results {
                         // Values from JsonArrayStream should be valid JSON values
                         println!("  Unicode result value: {:?}", value);
                     }
-                },
+                }
                 Err(err) => {
                     println!("Unicode injection '{}' rejected: {}", path, err);
                     // Rejection may be acceptable for certain Unicode sequences
@@ -882,9 +888,14 @@ mod regex_dos_prevention_tests {
                         "Regex with {} input should complete in <1000ms (ReDoS protection active)",
                         size_desc
                     );
-                    
+
                     // Should find the matching object (1 result expected)
-                    assert_eq!(results.len(), 1, "Should find exactly one matching object for pattern: {}", pattern);
+                    assert_eq!(
+                        results.len(),
+                        1,
+                        "Should find exactly one matching object for pattern: {}",
+                        pattern
+                    );
                 }
                 Err(_) => println!("Regex pattern not supported for size test"),
             }
@@ -904,72 +915,111 @@ mod parser_vulnerability_tests {
         let _oversized_json = format!(r#"{{"{}": "value"}}"#, extremely_long_property);
 
         let buffer_overflow_tests = vec![
-            (format!("$.{}", extremely_long_property), "Extremely long property name"),
-            (format!("$['{}']", extremely_long_property), "Extremely long bracket property"),
+            (
+                format!("$.{}", extremely_long_property),
+                "Extremely long property name",
+            ),
+            (
+                format!("$['{}']", extremely_long_property),
+                "Extremely long bracket property",
+            ),
             ("$..a".repeat(1000), "Repeated descendant operators"),
-            (format!("$[?@.field == '{}']", "x".repeat(50000)), "Extremely long filter value"),
+            (
+                format!("$[?@.field == '{}']", "x".repeat(50000)),
+                "Extremely long filter value",
+            ),
         ];
 
         for (path, _description) in buffer_overflow_tests {
             let start_time = std::time::Instant::now();
-            
-            let result = std::panic::catch_unwind(|| {
-                JsonPathParser::compile(&path)
-            });
+
+            let result = std::panic::catch_unwind(|| JsonPathParser::compile(&path));
 
             let duration = start_time.elapsed();
 
             match result {
-                Ok(parseresult) => {
-                    match parseresult {
-                        Ok(_) => println!("Buffer overflow test '{}' compiled unexpectedly", _description),
-                        Err(_) => println!("Buffer overflow test '{}' correctly rejected", _description),
+                Ok(parseresult) => match parseresult {
+                    Ok(_) => println!(
+                        "Buffer overflow test '{}' compiled unexpectedly",
+                        _description
+                    ),
+                    Err(_) => {
+                        println!("Buffer overflow test '{}' correctly rejected", _description)
                     }
-                }
-                Err(_) => println!("Buffer overflow test '{}' caused panic (potential vulnerability)", _description),
+                },
+                Err(_) => println!(
+                    "Buffer overflow test '{}' caused panic (potential vulnerability)",
+                    _description
+                ),
             }
 
             // Compilation should not take excessive time even for malicious inputs
-            assert!(duration.as_millis() < 5000, 
-                "Buffer overflow protection test '{}' should reject quickly", _description);
+            assert!(
+                duration.as_millis() < 5000,
+                "Buffer overflow protection test '{}' should reject quickly",
+                _description
+            );
         }
     }
 
     #[test]
     fn test_stack_overflow_protection() {
         // Test protection against stack overflow through deeply nested expressions
-        let deep_property_chain = (0..1000).map(|i| format!("prop{}", i)).collect::<Vec<_>>().join(".");
-        let deep_bracket_chain = (0..1000).map(|i| format!("['prop{}']", i)).collect::<Vec<_>>().join("");
-        
+        let deep_property_chain = (0..1000)
+            .map(|i| format!("prop{}", i))
+            .collect::<Vec<_>>()
+            .join(".");
+        let deep_bracket_chain = (0..1000)
+            .map(|i| format!("['prop{}']", i))
+            .collect::<Vec<_>>()
+            .join("");
+
         let stack_overflow_tests = vec![
-            (format!("$.{}", deep_property_chain), "1000-level property chain"),
-            (format!("${}", deep_bracket_chain), "1000-level bracket chain"),
-            (format!("${}", "[*]".repeat(500)), "500 nested wildcard selectors"),
-            (format!("${}", "..value".repeat(200)), "200 nested descendant operators"),
+            (
+                format!("$.{}", deep_property_chain),
+                "1000-level property chain",
+            ),
+            (
+                format!("${}", deep_bracket_chain),
+                "1000-level bracket chain",
+            ),
+            (
+                format!("${}", "[*]".repeat(500)),
+                "500 nested wildcard selectors",
+            ),
+            (
+                format!("${}", "..value".repeat(200)),
+                "200 nested descendant operators",
+            ),
         ];
 
         for (path, _description) in stack_overflow_tests {
             let start_time = std::time::Instant::now();
-            
-            let result = std::panic::catch_unwind(|| {
-                JsonPathParser::compile(&path)
-            });
+
+            let result = std::panic::catch_unwind(|| JsonPathParser::compile(&path));
 
             let duration = start_time.elapsed();
 
             match result {
-                Ok(parseresult) => {
-                    match parseresult {
-                        Ok(_) => println!("Stack overflow test '{}' compiled (potential issue)", _description),
-                        Err(_) => println!("Stack overflow test '{}' correctly rejected", _description),
-                    }
-                }
-                Err(_) => println!("Stack overflow test '{}' hit protection limits", _description),
+                Ok(parseresult) => match parseresult {
+                    Ok(_) => println!(
+                        "Stack overflow test '{}' compiled (potential issue)",
+                        _description
+                    ),
+                    Err(_) => println!("Stack overflow test '{}' correctly rejected", _description),
+                },
+                Err(_) => println!(
+                    "Stack overflow test '{}' hit protection limits",
+                    _description
+                ),
             }
 
             // Should complete quickly even for pathological inputs
-            assert!(duration.as_millis() < 3000,
-                "Stack overflow protection test '{}' should complete quickly", _description);
+            assert!(
+                duration.as_millis() < 3000,
+                "Stack overflow protection test '{}' should complete quickly",
+                _description
+            );
         }
     }
 
@@ -977,26 +1027,47 @@ mod parser_vulnerability_tests {
     fn test_memory_exhaustion_protection() {
         // Test protection against memory exhaustion attacks
         let huge_array_json = format!(r#"{{"array": [{}]}}"#, "1,".repeat(1000000) + "1");
-        let huge_object_json = format!(r#"{{{}}}"#, 
-            (0..100000).map(|i| format!(r#""key{}": "value{}""#, i, i)).collect::<Vec<_>>().join(","));
+        let huge_object_json = format!(
+            r#"{{{}}}"#,
+            (0..100000)
+                .map(|i| format!(r#""key{}": "value{}""#, i, i))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
 
         let memory_exhaustion_tests = vec![
-            (huge_array_json.clone(), "$.array[*]", "Million element array wildcard"),
-            (huge_object_json.clone(), "$.*", "100k property object wildcard"),
-            (huge_array_json.clone(), "$.array[::1]", "Million element array slice"),
-            (huge_object_json.clone(), "$..value0", "Descendant search in huge object"),
+            (
+                huge_array_json.clone(),
+                "$.array[*]",
+                "Million element array wildcard",
+            ),
+            (
+                huge_object_json.clone(),
+                "$.*",
+                "100k property object wildcard",
+            ),
+            (
+                huge_array_json.clone(),
+                "$.array[::1]",
+                "Million element array slice",
+            ),
+            (
+                huge_object_json.clone(),
+                "$..value0",
+                "Descendant search in huge object",
+            ),
         ];
 
         for (_json_data, path, _description) in memory_exhaustion_tests {
             let start_time = std::time::Instant::now();
-            
+
             let json_data_clone = _json_data.clone();
             let path_clone = path.to_string();
             let result = std::panic::catch_unwind(move || {
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(&path_clone);
                 // Limit JSON data to 1MB to prevent memory exhaustion
-                let limited_data = if json_data_clone.len() > 1024*1024 {
-                    json_data_clone[..1024*1024].to_string()
+                let limited_data = if json_data_clone.len() > 1024 * 1024 {
+                    json_data_clone[..1024 * 1024].to_string()
                 } else {
                     json_data_clone
                 };
@@ -1009,13 +1080,22 @@ mod parser_vulnerability_tests {
             let duration = start_time.elapsed();
 
             match result {
-                Ok(count) => println!("Memory exhaustion test '{}' -> {} results in {:?}", _description, count, duration),
-                Err(_) => println!("Memory exhaustion test '{}' hit protection limits", _description),
+                Ok(count) => println!(
+                    "Memory exhaustion test '{}' -> {} results in {:?}",
+                    _description, count, duration
+                ),
+                Err(_) => println!(
+                    "Memory exhaustion test '{}' hit protection limits",
+                    _description
+                ),
             }
 
             // Should complete within reasonable memory/time bounds
-            assert!(duration.as_millis() < 10000,
-                "Memory exhaustion test '{}' should complete within bounds", _description);
+            assert!(
+                duration.as_millis() < 10000,
+                "Memory exhaustion test '{}' should complete within bounds",
+                _description
+            );
         }
     }
 
@@ -1023,13 +1103,13 @@ mod parser_vulnerability_tests {
     fn test_parser_state_corruption() {
         // Test that parser state cannot be corrupted by malicious inputs
         let corruption_attempts = vec![
-            "$[?@.field == '\0']",           // Null byte injection
-            "$[?@.field == '\x01\x02']",     // Control character injection
-            "$[?@.field == '\u{FEFF}']",     // BOM injection
-            "$[?@.field == '\u{200B}']",     // Zero-width space
-            "$[?@.field == '\u{FFFF}']",     // Invalid Unicode
+            "$[?@.field == '\0']",              // Null byte injection
+            "$[?@.field == '\x01\x02']",        // Control character injection
+            "$[?@.field == '\u{FEFF}']",        // BOM injection
+            "$[?@.field == '\u{200B}']",        // Zero-width space
+            "$[?@.field == '\u{FFFF}']",        // Invalid Unicode
             r#"$[?@.field == "line1\nline2"]"#, // Newline injection
-            r#"$[?@.field == "tab\ttab"]"#,   // Tab injection
+            r#"$[?@.field == "tab\ttab"]"#,     // Tab injection
         ];
 
         for malicious_input in corruption_attempts {
@@ -1037,16 +1117,31 @@ mod parser_vulnerability_tests {
             let result2 = JsonPathParser::compile("$.normal.path"); // Normal path after malicious
 
             match (result1, result2) {
-                (Ok(_), Ok(_)) => println!("Parser state corruption test '{}' - both compiled", malicious_input),
-                (Err(_), Ok(_)) => println!("Parser state corruption test '{}' - first rejected, second ok", malicious_input),
-                (Ok(_), Err(_)) => println!("Parser state corruption test '{}' - potential state corruption", malicious_input),
-                (Err(_), Err(_)) => println!("Parser state corruption test '{}' - both rejected", malicious_input),
+                (Ok(_), Ok(_)) => println!(
+                    "Parser state corruption test '{}' - both compiled",
+                    malicious_input
+                ),
+                (Err(_), Ok(_)) => println!(
+                    "Parser state corruption test '{}' - first rejected, second ok",
+                    malicious_input
+                ),
+                (Ok(_), Err(_)) => println!(
+                    "Parser state corruption test '{}' - potential state corruption",
+                    malicious_input
+                ),
+                (Err(_), Err(_)) => println!(
+                    "Parser state corruption test '{}' - both rejected",
+                    malicious_input
+                ),
             }
 
             // Parser should consistently handle normal paths after any input
             let normalresult = JsonPathParser::compile("$.test");
-            assert!(normalresult.is_ok(), 
-                "Parser state should not be corrupted after malicious input: {}", malicious_input);
+            assert!(
+                normalresult.is_ok(),
+                "Parser state should not be corrupted after malicious input: {}",
+                malicious_input
+            );
         }
     }
 
@@ -1067,14 +1162,23 @@ mod parser_vulnerability_tests {
         for (attack_path, _description) in unicode_attacks {
             let result = JsonPathParser::compile(attack_path);
             match result {
-                Ok(_) => println!("Unicode attack '{}' compiled ({})", attack_path, _description),
-                Err(_) => println!("Unicode attack '{}' rejected ({})", attack_path, _description),
+                Ok(_) => println!(
+                    "Unicode attack '{}' compiled ({})",
+                    attack_path, _description
+                ),
+                Err(_) => println!(
+                    "Unicode attack '{}' rejected ({})",
+                    attack_path, _description
+                ),
             }
 
             // Test that Unicode attacks don't affect subsequent parsing
             let normalresult = JsonPathParser::compile("$.normal");
-            assert!(normalresult.is_ok(), 
-                "Unicode attack should not affect subsequent parsing: {}", _description);
+            assert!(
+                normalresult.is_ok(),
+                "Unicode attack should not affect subsequent parsing: {}",
+                _description
+            );
         }
     }
 }
@@ -1098,20 +1202,30 @@ mod error_recovery_tests {
         for (malicious_path, _description) in error_inducing_inputs {
             // Attempt to compile malicious path
             let errorresult = JsonPathParser::compile(malicious_path);
-            assert!(errorresult.is_err(), 
-                "Error-inducing path '{}' should be rejected", malicious_path);
+            assert!(
+                errorresult.is_err(),
+                "Error-inducing path '{}' should be rejected",
+                malicious_path
+            );
 
             // Verify normal paths still work after error
             let normalresult = JsonPathParser::compile("$.valid.path");
-            assert!(normalresult.is_ok(), 
-                "Normal path should work after error from '{}' ({})", malicious_path, _description);
+            assert!(
+                normalresult.is_ok(),
+                "Normal path should work after error from '{}' ({})",
+                malicious_path,
+                _description
+            );
 
             // Verify stream creation still works
-            let streamresult = std::panic::catch_unwind(|| {
-                JsonArrayStream::<serde_json::Value>::new("$.test")
-            });
-            assert!(streamresult.is_ok(), 
-                "Stream creation should work after error from '{}' ({})", malicious_path, _description);
+            let streamresult =
+                std::panic::catch_unwind(|| JsonArrayStream::<serde_json::Value>::new("$.test"));
+            assert!(
+                streamresult.is_ok(),
+                "Stream creation should work after error from '{}' ({})",
+                malicious_path,
+                _description
+            );
         }
     }
 
@@ -1119,7 +1233,7 @@ mod error_recovery_tests {
     fn test_error_propagation_consistency() {
         // Test that errors propagate consistently through the system
         let json_data = r#"{"valid": "data"}"#;
-        
+
         let error_scenarios = vec![
             ("$[?@.field ==]", "Incomplete comparison"),
             ("$[?@.field &&]", "Incomplete logical"),
@@ -1131,8 +1245,12 @@ mod error_recovery_tests {
         for (invalid_path, _description) in error_scenarios {
             // Parser should reject invalid paths
             let parseresult = JsonPathParser::compile(invalid_path);
-            assert!(parseresult.is_err(), 
-                "Invalid path '{}' should be rejected during parsing ({})", invalid_path, _description);
+            assert!(
+                parseresult.is_err(),
+                "Invalid path '{}' should be rejected during parsing ({})",
+                invalid_path,
+                _description
+            );
 
             // Stream creation with invalid path should also fail consistently
             let streamresult = std::panic::catch_unwind(|| {
@@ -1143,8 +1261,14 @@ mod error_recovery_tests {
 
             // Either the stream creation should panic or handle gracefully
             match streamresult {
-                Ok(_) => println!("Invalid path '{}' handled gracefully in stream", invalid_path),
-                Err(_) => println!("Invalid path '{}' properly rejected in stream", invalid_path),
+                Ok(_) => println!(
+                    "Invalid path '{}' handled gracefully in stream",
+                    invalid_path
+                ),
+                Err(_) => println!(
+                    "Invalid path '{}' properly rejected in stream",
+                    invalid_path
+                ),
             }
         }
     }
@@ -1157,29 +1281,32 @@ mod error_recovery_tests {
         let json_data = r#"{"shared": {"value": 42, "array": [1, 2, 3, 4, 5]}}"#;
         let test_paths = vec![
             "$.shared.value",
-            "$.shared.array[*]", 
+            "$.shared.array[*]",
             "$.shared.array[0]",
             "$..value",
             "$.shared.*",
         ];
 
-        let handles: Vec<_> = test_paths.into_iter().map(|path| {
-            let json_data = json_data.to_string();
-            let path = path.to_string();
-            
-            thread::spawn(move || {
-                for i in 0..100 {
-                    let mut stream = JsonArrayStream::<serde_json::Value>::new(&path);
-                    let chunk = Bytes::from(json_data.clone());
-                    let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    if i == 0 {
-                        println!("Concurrent test '{}' -> {} results", path, results.len());
+        let handles: Vec<_> = test_paths
+            .into_iter()
+            .map(|path| {
+                let json_data = json_data.to_string();
+                let path = path.to_string();
+
+                thread::spawn(move || {
+                    for i in 0..100 {
+                        let mut stream = JsonArrayStream::<serde_json::Value>::new(&path);
+                        let chunk = Bytes::from(json_data.clone());
+                        let results: Vec<_> = stream.process_chunk(chunk).collect();
+
+                        if i == 0 {
+                            println!("Concurrent test '{}' -> {} results", path, results.len());
+                        }
                     }
-                }
-                path
+                    path
+                })
             })
-        }).collect();
+            .collect();
 
         // Wait for all threads to complete
         for handle in handles {
@@ -1213,12 +1340,18 @@ mod error_recovery_tests {
                 match result {
                     Ok(_) => {
                         if iteration == 0 {
-                            println!("Resource cleanup test '{}' handled gracefully", _description);
+                            println!(
+                                "Resource cleanup test '{}' handled gracefully",
+                                _description
+                            );
                         }
                     }
                     Err(_) => {
                         if iteration == 0 {
-                            println!("Resource cleanup test '{}' caused expected error", _description);
+                            println!(
+                                "Resource cleanup test '{}' caused expected error",
+                                _description
+                            );
                         }
                     }
                 }
@@ -1226,8 +1359,11 @@ mod error_recovery_tests {
 
             // Verify system is still functional after cleanup tests
             let verificationresult = JsonPathParser::compile("$.test");
-            assert!(verificationresult.is_ok(), 
-                "System should be functional after resource cleanup test: {}", _description);
+            assert!(
+                verificationresult.is_ok(),
+                "System should be functional after resource cleanup test: {}",
+                _description
+            );
         }
     }
 
@@ -1250,13 +1386,20 @@ mod error_recovery_tests {
 
         for (input, _description) in edge_case_inputs {
             let result = JsonPathParser::compile(input);
-            println!("Input validation edge case '{}' ({}): {:?}", 
-                input.escape_debug(), _description, result.is_ok());
+            println!(
+                "Input validation edge case '{}' ({}): {:?}",
+                input.escape_debug(),
+                _description,
+                result.is_ok()
+            );
 
             // System should handle edge cases without crashing
             let post_testresult = JsonPathParser::compile("$.normal");
-            assert!(post_testresult.is_ok(), 
-                "System should remain stable after edge case: {}", _description);
+            assert!(
+                post_testresult.is_ok(),
+                "System should remain stable after edge case: {}",
+                _description
+            );
         }
     }
 }

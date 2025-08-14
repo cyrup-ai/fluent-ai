@@ -48,7 +48,8 @@ pub struct SearchResult {
     /// Search ranking information (optional)
     pub rank: Option<usize>,
     /// Combined score from multiple search strategies (for hybrid search)
-    pub combined_score: Option<f32>}
+    pub combined_score: Option<f32>,
+}
 
 impl SearchResult {
     /// Create a new search result
@@ -59,7 +60,8 @@ impl SearchResult {
             similarity,
             metadata: None,
             rank: None,
-            combined_score: None}
+            combined_score: None,
+        }
     }
 
     /// Create with metadata
@@ -75,7 +77,8 @@ impl SearchResult {
             similarity,
             metadata: Some(metadata),
             rank: None,
-            combined_score: None}
+            combined_score: None,
+        }
     }
 
     /// Set the ranking position
@@ -122,7 +125,8 @@ pub struct SearchOptions {
     /// Maximum number of results to consider before filtering (for performance)
     pub candidate_limit: Option<usize>,
     /// Whether to enable SIMD optimization (default: true)
-    pub enable_simd: Option<bool>}
+    pub enable_simd: Option<bool>,
+}
 
 impl Default for SearchOptions {
     fn default() -> Self {
@@ -134,7 +138,8 @@ impl Default for SearchOptions {
             include_metadata: Some(true),
             include_rank: Some(false),
             candidate_limit: Some(1000),
-            enable_simd: Some(true)}
+            enable_simd: Some(true),
+        }
     }
 }
 
@@ -149,7 +154,8 @@ impl SearchOptions {
             include_metadata: Some(false),
             include_rank: Some(false),
             candidate_limit: Some(100),
-            enable_simd: Some(true)}
+            enable_simd: Some(true),
+        }
     }
 
     /// Create options optimized for comprehensive results
@@ -162,7 +168,8 @@ impl SearchOptions {
             include_metadata: Some(true),
             include_rank: Some(true),
             candidate_limit: Some(10000),
-            enable_simd: Some(true)}
+            enable_simd: Some(true),
+        }
     }
 
     /// Validate the options and return normalized values
@@ -208,7 +215,8 @@ pub struct VectorSearch {
     /// Embedding model for text-to-vector conversion
     embedding_model: Arc<dyn EmbeddingModel>,
     /// Default search options
-    default_options: SearchOptions}
+    default_options: SearchOptions,
+}
 
 impl VectorSearch {
     /// Create a new VectorSearch with default options
@@ -223,7 +231,8 @@ impl VectorSearch {
         Self {
             store,
             embedding_model,
-            default_options: SearchOptions::default()}
+            default_options: SearchOptions::default(),
+        }
     }
 
     /// Create with custom default options
@@ -235,7 +244,8 @@ impl VectorSearch {
         Self {
             store,
             embedding_model,
-            default_options}
+            default_options,
+        }
     }
 
     /// Search by text query (synchronous)
@@ -332,7 +342,8 @@ impl VectorSearch {
                     similarity,
                     metadata,
                     rank: None,
-                    combined_score: None};
+                    combined_score: None,
+                };
 
                 if options.include_rank.unwrap_or(false) {
                     result.rank = Some(index + 1);
@@ -387,7 +398,8 @@ impl VectorSearch {
                 let search = VectorSearch {
                     store,
                     embedding_model: Arc::new(DummyEmbedding), // Not used in embedding search
-                    default_options: SearchOptions::default()};
+                    default_options: SearchOptions::default(),
+                };
 
                 let result = search.search_by_embedding(&embedding, options);
                 let _ = sender.send((index, result));
@@ -413,7 +425,8 @@ impl VectorSearch {
         while let Ok((index, result)) = receiver.try_recv() {
             match result {
                 Ok(search_results) => results[index] = search_results,
-                Err(e) => return Err(e)}
+                Err(e) => return Err(e),
+            }
         }
 
         Ok(results)
@@ -481,7 +494,8 @@ pub struct HybridSearch {
     /// Weight for vector search results (0.0 to 1.0)
     vector_weight: f32,
     /// Weight for keyword search results (computed as 1.0 - vector_weight)
-    keyword_weight: f32}
+    keyword_weight: f32,
+}
 
 impl HybridSearch {
     /// Create a new HybridSearch with custom keyword search function
@@ -505,7 +519,8 @@ impl HybridSearch {
             vector_search,
             keyword_search,
             vector_weight,
-            keyword_weight}
+            keyword_weight,
+        }
     }
 
     /// Search using both vector and keyword strategies (synchronous)
@@ -555,7 +570,8 @@ impl HybridSearch {
                 match search_type {
                     "vector" => vector_results = result?,
                     "keyword" => keyword_results = result?,
-                    _ => unreachable!()}
+                    _ => unreachable!(),
+                }
             }
         }
 
@@ -596,7 +612,8 @@ impl HybridSearch {
                     similarity: result.similarity,
                     metadata: result.metadata,
                     rank: result.rank,
-                    combined_score: Some(weighted_similarity)},
+                    combined_score: Some(weighted_similarity),
+                },
             );
         }
 
@@ -617,7 +634,8 @@ impl HybridSearch {
                         similarity: existing.similarity,
                         metadata: existing.metadata.or(result.metadata), // Merge metadata
                         rank: None,                                      // Will be recomputed
-                        combined_score: Some(new_combined_score)},
+                        combined_score: Some(new_combined_score),
+                    },
                 );
             } else {
                 // New keyword-only result
@@ -629,7 +647,8 @@ impl HybridSearch {
                         similarity: result.similarity,
                         metadata: result.metadata,
                         rank: result.rank,
-                        combined_score: Some(weighted_similarity)},
+                        combined_score: Some(weighted_similarity),
+                    },
                 );
             }
         }
@@ -646,7 +665,8 @@ impl HybridSearch {
                 (true, true) => Ordering::Equal,
                 (true, false) => Ordering::Greater, // NaN goes to end
                 (false, true) => Ordering::Less,    // NaN goes to end
-                (false, false) => score_b.partial_cmp(&score_a).unwrap_or(Ordering::Equal)}
+                (false, false) => score_b.partial_cmp(&score_a).unwrap_or(Ordering::Equal),
+            }
         });
 
         // Apply final limit and assign ranks
@@ -699,6 +719,7 @@ impl VectorSearch {
         Self {
             store: Arc::clone(&self.store),
             embedding_model: Arc::clone(&self.embedding_model),
-            default_options: self.default_options.clone()}
+            default_options: self.default_options.clone(),
+        }
     }
 }

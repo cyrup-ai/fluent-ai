@@ -3,21 +3,17 @@
 //! Provides ultra-performant command type system with focused, single-responsibility
 //! submodules using owned strings allocated once for maximum performance.
 
-use crate::AsyncStream;
-use std::sync::Arc;
-use crossbeam_skiplist::SkipMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
+use crossbeam_skiplist::SkipMap;
 
 // Re-export all submodule types for convenient access - zero allocation re-exports
 pub use self::{
-    actions::*,
-    commands::*,
-    errors::*,
-    events::*,
-    metadata::ResourceUsage,
-    metadata::*,
+    actions::*, commands::*, errors::*, events::*, metadata::ResourceUsage, metadata::*,
     parameters::*,
 };
+use crate::AsyncStream;
 
 // Type aliases for backwards compatibility and consistent naming
 pub type CommandContext = CommandExecutionContext;
@@ -88,38 +84,38 @@ pub enum CommandExecutionResult {
 }
 
 // Submodules with clear separation of concerns and single responsibilities
-pub mod actions;      // Action type definitions for command variants
-pub mod commands;     // Main ImmutableChatCommand enum and variants  
-pub mod errors;       // Command errors and result types
-pub mod events;       // Command execution events and context tracking
-pub mod metadata;     // Command metadata and resource tracking
-pub mod parameters;   // Parameter definitions and validation
+pub mod actions; // Action type definitions for command variants
+pub mod commands; // Main ImmutableChatCommand enum and variants
+pub mod errors; // Command errors and result types
+pub mod events; // Command execution events and context tracking
+pub mod metadata; // Command metadata and resource tracking
+pub mod parameters; // Parameter definitions and validation
 
 /// Domain command executor trait for consistent execution interface
 /// Uses zero-allocation patterns and lock-free data structures
 pub trait DomainCommandExecutor: Send + Sync + 'static {
     /// Execute command and return stream of results - zero allocation where possible
     fn execute(&self, context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult>;
-    
+
     /// Get command metadata - returns borrowed data to avoid allocation
     fn get_info(&self) -> &CommandInfo;
-    
+
     /// Validate command parameters - zero allocation validation
     fn validate_parameters(&self, command: &ImmutableChatCommand) -> ValidationResult;
-    
+
     /// Get command name as static string slice for zero allocation
     fn name(&self) -> &'static str;
-    
+
     /// Get estimated execution time in milliseconds for scheduling
     fn estimated_duration_ms(&self) -> u64 {
         1000 // Default 1 second
     }
-    
+
     /// Get memory requirements in bytes for resource planning
     fn memory_requirement_bytes(&self) -> u64 {
         1024 * 1024 // Default 1MB
     }
-    
+
     /// Check if command can be parallelized with other commands
     fn is_parallelizable(&self) -> bool {
         true // Default to parallelizable
@@ -158,7 +154,10 @@ pub enum DomainCommandExecutorEnum {
 impl DomainCommandExecutorEnum {
     /// Execute command using enum dispatch for zero allocation and maximum performance
     #[inline(always)]
-    pub fn execute(&self, context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
+    pub fn execute(
+        &self,
+        context: &CommandExecutionContext,
+    ) -> AsyncStream<CommandExecutionResult> {
         match self {
             Self::Help(executor) => executor.execute(context),
             Self::Clear(executor) => executor.execute(context),
@@ -185,7 +184,7 @@ impl DomainCommandExecutorEnum {
             Self::Chat(executor) => executor.execute(context),
         }
     }
-    
+
     /// Get command info using enum dispatch - zero allocation
     #[inline(always)]
     pub fn get_info(&self) -> &CommandInfo {
@@ -215,7 +214,7 @@ impl DomainCommandExecutorEnum {
             Self::Chat(executor) => executor.get_info(),
         }
     }
-    
+
     /// Get command name using enum dispatch - zero allocation
     #[inline(always)]
     pub fn name(&self) -> &'static str {
@@ -272,73 +271,81 @@ impl DomainCommandRegistry {
             registry_stats: Arc::new(RegistryStatistics::new()),
         }
     }
-    
+
     /// Register a command with the registry - zero allocation after initial setup
     #[inline]
-    pub fn register(&self, name: &'static str, executor: DomainCommandExecutorEnum) -> CommandResult<()> {
+    pub fn register(
+        &self,
+        name: &'static str,
+        executor: DomainCommandExecutorEnum,
+    ) -> CommandResult<()> {
         if self.commands.contains_key(&name) {
             return Err(CandleCommandError::command_already_exists(name));
         }
-        
+
         self.commands.insert(name, executor);
         self.registry_stats.increment_commands();
         Ok(())
     }
-    
+
     /// Register an alias for an existing command - zero allocation lookup and insertion
     #[inline]
-    pub fn register_alias(&self, alias: &'static str, command_name: &'static str) -> CommandResult<()> {
+    pub fn register_alias(
+        &self,
+        alias: &'static str,
+        command_name: &'static str,
+    ) -> CommandResult<()> {
         if !self.commands.contains_key(&command_name) {
             return Err(CandleCommandError::unknown_command(command_name));
         }
-        
+
         if self.aliases.contains_key(&alias) {
             return Err(CandleCommandError::alias_already_exists(alias));
         }
-        
+
         self.aliases.insert(alias, command_name);
         self.registry_stats.increment_aliases();
         Ok(())
     }
-    
+
     /// Get a command executor by name or alias - cloned for safe ownership
     #[inline]
     pub fn get_executor(&self, name: &str) -> Option<DomainCommandExecutorEnum> {
-        // Try direct command lookup first - most common case  
+        // Try direct command lookup first - most common case
         if let Some(entry) = self.commands.get(name) {
             self.registry_stats.increment_lookups();
             return Some(entry.value().clone());
         }
-        
+
         // Try alias lookup - less common case
         if let Some(entry) = self.aliases.get(name) {
             let command_name = entry.value();
             self.registry_stats.increment_lookups();
             return self.commands.get(command_name).map(|e| e.value().clone());
         }
-        
+
         self.registry_stats.increment_lookup_misses();
         None
     }
-    
+
     /// Check if command exists - zero allocation lookup
     #[inline]
     pub fn contains_command(&self, name: &str) -> bool {
         self.commands.contains_key(name) || self.aliases.contains_key(name)
     }
-    
+
     /// Get command count - zero allocation
     #[inline]
     pub fn command_count(&self) -> usize {
         self.commands.len()
     }
-    
+
     /// Get alias count - zero allocation  
     #[inline]
     pub fn alias_count(&self) -> usize {
         self.aliases.len()
     }
-    
+
     /// Increment execution counter atomically
     #[inline]
     pub fn increment_executions(&self) -> u64 {
@@ -346,27 +353,33 @@ impl DomainCommandRegistry {
         self.registry_stats.increment_executions();
         count
     }
-    
+
     /// Get total execution count
     #[inline]
     pub fn total_executions(&self) -> u64 {
         self.execution_counter.load(Ordering::Relaxed)
     }
-    
+
     /// Get registry statistics
     #[inline]
     pub fn stats(&self) -> Arc<RegistryStatistics> {
         Arc::clone(&self.registry_stats)
     }
-    
+
     /// List all available commands - returns Vec to avoid lifetime issues
     pub fn list_commands(&self) -> Vec<(&'static str, DomainCommandExecutorEnum)> {
-        self.commands.iter().map(|entry| (*entry.key(), (*entry.value()).clone())).collect()
+        self.commands
+            .iter()
+            .map(|entry| (*entry.key(), (*entry.value()).clone()))
+            .collect()
     }
-    
+
     /// List all available aliases - returns Vec to avoid lifetime issues
     pub fn list_aliases(&self) -> Vec<(&'static str, &'static str)> {
-        self.aliases.iter().map(|entry| (*entry.key(), *entry.value())).collect()
+        self.aliases
+            .iter()
+            .map(|entry| (*entry.key(), *entry.value()))
+            .collect()
     }
 }
 
@@ -399,67 +412,67 @@ impl RegistryStatistics {
             lookup_miss_count: AtomicU64::new(0),
         }
     }
-    
+
     /// Increment command count
     #[inline]
     pub fn increment_commands(&self) {
         self.command_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Increment alias count
     #[inline]
     pub fn increment_aliases(&self) {
         self.alias_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Increment execution count
     #[inline]
     pub fn increment_executions(&self) {
         self.execution_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Increment lookup count
     #[inline]
     pub fn increment_lookups(&self) {
         self.lookup_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Increment lookup miss count
     #[inline]
     pub fn increment_lookup_misses(&self) {
         self.lookup_miss_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Get command count
     #[inline]
     pub fn commands(&self) -> u64 {
         self.command_count.load(Ordering::Relaxed)
     }
-    
+
     /// Get alias count
     #[inline]
     pub fn aliases(&self) -> u64 {
         self.alias_count.load(Ordering::Relaxed)
     }
-    
+
     /// Get execution count
     #[inline]
     pub fn executions(&self) -> u64 {
         self.execution_count.load(Ordering::Relaxed)
     }
-    
+
     /// Get lookup count
     #[inline]
     pub fn lookups(&self) -> u64 {
         self.lookup_count.load(Ordering::Relaxed)
     }
-    
+
     /// Get lookup miss count
     #[inline]
     pub fn lookup_misses(&self) -> u64 {
         self.lookup_miss_count.load(Ordering::Relaxed)
     }
-    
+
     /// Calculate lookup hit rate as percentage
     #[inline]
     pub fn hit_rate(&self) -> f64 {
@@ -605,23 +618,25 @@ impl DomainCommandExecutor for DomainHelpExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain help command executed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain help command executed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "help"
@@ -632,28 +647,30 @@ impl DomainCommandExecutor for DomainClearExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain clear command executed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain clear command executed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "clear"
     }
-    
+
     #[inline]
     fn is_parallelizable(&self) -> bool {
         false // Clear operations should not be parallelized
@@ -678,17 +695,17 @@ impl DomainCommandExecutor for DomainExportExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "export"
@@ -699,23 +716,25 @@ impl DomainCommandExecutor for DomainConfigExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain configuration updated successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain configuration updated successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "config"
@@ -726,23 +745,25 @@ impl DomainCommandExecutor for DomainTemplateExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain template processed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain template processed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "template"
@@ -753,23 +774,24 @@ impl DomainCommandExecutor for DomainMacroExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain macro executed successfully".to_string());
+            let result =
+                CommandExecutionResult::Success("Domain macro executed successfully".to_string());
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "macro"
@@ -791,17 +813,17 @@ impl DomainCommandExecutor for DomainSearchExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "search"
@@ -812,23 +834,25 @@ impl DomainCommandExecutor for DomainBranchExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain branch operation completed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain branch operation completed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "branch"
@@ -849,17 +873,17 @@ impl DomainCommandExecutor for DomainSessionExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "session"
@@ -870,23 +894,24 @@ impl DomainCommandExecutor for DomainToolExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain tool executed successfully".to_string());
+            let result =
+                CommandExecutionResult::Success("Domain tool executed successfully".to_string());
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "tool"
@@ -911,17 +936,17 @@ impl DomainCommandExecutor for DomainStatsExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "stats"
@@ -932,23 +957,24 @@ impl DomainCommandExecutor for DomainThemeExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain theme updated successfully".to_string());
+            let result =
+                CommandExecutionResult::Success("Domain theme updated successfully".to_string());
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "theme"
@@ -975,17 +1001,17 @@ impl DomainCommandExecutor for DomainDebugExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "debug"
@@ -1006,17 +1032,17 @@ impl DomainCommandExecutor for DomainHistoryExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "history"
@@ -1027,23 +1053,24 @@ impl DomainCommandExecutor for DomainSaveExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain data saved successfully".to_string());
+            let result =
+                CommandExecutionResult::Success("Domain data saved successfully".to_string());
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "save"
@@ -1054,23 +1081,24 @@ impl DomainCommandExecutor for DomainLoadExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain data loaded successfully".to_string());
+            let result =
+                CommandExecutionResult::Success("Domain data loaded successfully".to_string());
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "load"
@@ -1081,23 +1109,24 @@ impl DomainCommandExecutor for DomainImportExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain data imported successfully".to_string());
+            let result =
+                CommandExecutionResult::Success("Domain data imported successfully".to_string());
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "import"
@@ -1118,17 +1147,17 @@ impl DomainCommandExecutor for DomainSettingsExecutor {
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "settings"
@@ -1139,23 +1168,25 @@ impl DomainCommandExecutor for DomainCustomExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain custom command executed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain custom command executed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "custom"
@@ -1166,23 +1197,25 @@ impl DomainCommandExecutor for DomainCopyExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain copy operation completed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain copy operation completed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "copy"
@@ -1193,23 +1226,25 @@ impl DomainCommandExecutor for DomainRetryExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain retry operation completed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain retry operation completed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "retry"
@@ -1220,23 +1255,25 @@ impl DomainCommandExecutor for DomainUndoExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain undo operation completed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain undo operation completed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "undo"
@@ -1247,23 +1284,25 @@ impl DomainCommandExecutor for DomainChatExecutor {
     #[inline]
     fn execute(&self, _context: &CommandExecutionContext) -> AsyncStream<CommandExecutionResult> {
         AsyncStream::with_channel(|sender| {
-            let result = CommandExecutionResult::Success("Domain chat command executed successfully".to_string());
+            let result = CommandExecutionResult::Success(
+                "Domain chat command executed successfully".to_string(),
+            );
             if sender.send(result).is_err() {
                 return;
             }
         })
     }
-    
+
     #[inline]
     fn get_info(&self) -> &CommandInfo {
         &self.info
     }
-    
+
     #[inline]
     fn validate_parameters(&self, _command: &ImmutableChatCommand) -> ValidationResult {
         Ok(())
     }
-    
+
     #[inline]
     fn name(&self) -> &'static str {
         "chat"

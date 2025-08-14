@@ -2,10 +2,11 @@
 //!
 //! No `new()`, no boilerplate, just pure fluent chaining with closures
 
+use std::marker::PhantomData;
+
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::marker::PhantomData;
 
 pub mod prelude {
     pub use super::{

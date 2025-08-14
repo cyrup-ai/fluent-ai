@@ -1,4 +1,3 @@
-
 //! Authentication Types for AI Provider Integration
 //!
 //! This module provides secure authentication mechanisms for all AI providers.
@@ -42,15 +41,14 @@
 #![allow(clippy::module_name_repetitions)]
 
 use std::fmt;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayString;
 use arrayvec::ArrayVec;
 use fluent_ai_async::AsyncStream;
-
 
 /// Maximum length for authentication tokens and keys
 pub const MAX_TOKEN_LEN: usize = 2048;
@@ -571,7 +569,7 @@ impl OAuth2Auth {
         let current_token = self.current_token.clone();
         let service_account = self.service_account.clone();
         let refresh_margin = self.refresh_margin_seconds;
-        
+
         AsyncStream::with_channel(move |stream_sender| {
             let current = current_token.load();
 
@@ -618,10 +616,11 @@ impl OAuth2Auth {
             let value = ArrayString::from(&header_value)
                 .map_err(|_| AuthError::HeaderValueTooLong(header_value.len()))?;
 
-            let auth_header = ArrayString::from("Authorization")
-                .map_err(|_| AuthError::InternalError)?;
+            let auth_header =
+                ArrayString::from("Authorization").map_err(|_| AuthError::InternalError)?;
 
-            headers.try_push((auth_header, value))
+            headers
+                .try_push((auth_header, value))
                 .map_err(|_| AuthError::TooManyHeaders)?;
 
             // If token is not expired or about to expire, return it

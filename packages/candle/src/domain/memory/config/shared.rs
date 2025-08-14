@@ -27,7 +27,8 @@ pub struct RetryConfig {
     /// Enable jitter to prevent thundering herd
     pub enable_jitter: bool,
     /// Retryable HTTP status codes (from LLM config)
-    pub retryable_status_codes: Vec<u16>}
+    pub retryable_status_codes: Vec<u16>,
+}
 
 impl RetryConfig {
     /// Create default retry configuration with exponential backoff
@@ -40,7 +41,8 @@ impl RetryConfig {
             max_delay: Duration::from_secs(10),
             backoff_multiplier: 2.0,
             enable_jitter: true,
-            retryable_status_codes: vec![429, 500, 502, 503, 504]}
+            retryable_status_codes: vec![429, 500, 502, 503, 504],
+        }
     }
 
     /// Create optimized retry configuration for high-performance scenarios
@@ -53,7 +55,8 @@ impl RetryConfig {
             max_delay: Duration::from_secs(5),
             backoff_multiplier: 1.5,
             enable_jitter: true,
-            retryable_status_codes: vec![429, 500, 502, 503, 504, 408, 409, 423, 424]}
+            retryable_status_codes: vec![429, 500, 502, 503, 504, 408, 409, 423, 424],
+        }
     }
 
     /// Create aggressive retry configuration for critical operations
@@ -68,7 +71,8 @@ impl RetryConfig {
             enable_jitter: true,
             retryable_status_codes: vec![
                 429, 500, 502, 503, 504, 408, 409, 423, 424, 425, 510, 511,
-            ]}
+            ],
+        }
     }
 
     /// Create minimal retry configuration for testing
@@ -81,7 +85,8 @@ impl RetryConfig {
             max_delay: Duration::from_millis(100),
             backoff_multiplier: 1.0,
             enable_jitter: false,
-            retryable_status_codes: vec![429, 500, 502, 503]}
+            retryable_status_codes: vec![429, 500, 502, 503],
+        }
     }
 
     /// Create disabled retry configuration
@@ -94,7 +99,8 @@ impl RetryConfig {
             max_delay: Duration::from_millis(0),
             backoff_multiplier: 1.0,
             enable_jitter: false,
-            retryable_status_codes: vec![]}
+            retryable_status_codes: vec![],
+        }
     }
 
     /// Check if a status code is retryable
@@ -187,7 +193,8 @@ pub struct EmbeddingConfig {
     /// Cache time-to-live
     pub cache_ttl: Duration,
     /// Enable compression of cached embeddings
-    pub enable_compression: bool}
+    pub enable_compression: bool,
+}
 
 /// Embedding model types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -200,7 +207,8 @@ pub enum EmbeddingModelType {
     /// Cohere embeddings
     Cohere = 2,
     /// Custom model
-    Custom = 3}
+    Custom = 3,
+}
 
 /// Normalization strategies for embeddings
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -213,7 +221,8 @@ pub enum NormalizationStrategy {
     /// L1 normalization
     L1 = 2,
     /// Min-max normalization
-    MinMax = 3}
+    MinMax = 3,
+}
 
 impl EmbeddingConfig {
     /// Create default embedding configuration
@@ -227,7 +236,8 @@ impl EmbeddingConfig {
             enable_caching: true,
             cache_size: 10_000,
             cache_ttl: Duration::from_secs(3600),
-            enable_compression: false}
+            enable_compression: false,
+        }
     }
 
     /// Create high-performance embedding configuration
@@ -241,7 +251,8 @@ impl EmbeddingConfig {
             enable_caching: true,
             cache_size: 50_000,
             cache_ttl: Duration::from_secs(7200),
-            enable_compression: true}
+            enable_compression: true,
+        }
     }
 
     /// Create compact embedding configuration for memory-constrained environments
@@ -255,7 +266,8 @@ impl EmbeddingConfig {
             enable_caching: true,
             cache_size: 1_000,
             cache_ttl: Duration::from_secs(1800),
-            enable_compression: true}
+            enable_compression: true,
+        }
     }
 
     /// Validate the embedding configuration

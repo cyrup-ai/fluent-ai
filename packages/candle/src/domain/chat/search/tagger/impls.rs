@@ -1,6 +1,6 @@
 use std::collections::HashSet;
-use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossbeam_skiplist::SkipMap;
@@ -71,7 +71,7 @@ impl CandleConversationTagger {
 
         self.tags.insert(id.clone(), tag);
         self.stats.total_tags += 1;
-        
+
         AsyncStream::with_channel(move |sender| {
             let _ = sender.try_send(id);
         })

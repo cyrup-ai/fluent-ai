@@ -5,7 +5,6 @@
 
 // Re-export the Provider enum from model-info discovery module
 pub use model_info::DiscoveryProvider as Provider;
-
 // Re-export the common Model trait
 pub use model_info::Model;
 

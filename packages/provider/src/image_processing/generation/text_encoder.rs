@@ -29,7 +29,8 @@ pub enum TextEncodingError {
     TensorError(#[from] candle_core::Error),
 
     #[error("HuggingFace Hub error: {0}")]
-    HubError(#[from] hf_hub::api::sync::ApiError)}
+    HubError(#[from] hf_hub::api::sync::ApiError),
+}
 
 /// Result type for text encoding operations
 pub type TextEncodingResult<T> = Result<T, TextEncodingError>;
@@ -39,7 +40,8 @@ pub struct ClipWithTokenizer {
     clip: stable_diffusion::clip::ClipTextTransformer,
     config: stable_diffusion::clip::Config,
     tokenizer: Tokenizer,
-    max_position_embeddings: usize}
+    max_position_embeddings: usize,
+}
 
 impl ClipWithTokenizer {
     /// Create new CLIP encoder with tokenizer
@@ -72,7 +74,8 @@ impl ClipWithTokenizer {
             clip,
             config,
             tokenizer,
-            max_position_embeddings})
+            max_position_embeddings,
+        })
     }
 
     /// Encode text to embedding tensors
@@ -95,7 +98,8 @@ impl ClipWithTokenizer {
                 .get("<|endoftext|>")
                 .ok_or_else(|| {
                     TextEncodingError::EncodingError("Failed to tokenize end-of-text".to_string())
-                })?};
+                })?,
+        };
 
         let mut tokens = self
             .tokenizer
@@ -135,7 +139,8 @@ impl ClipWithTokenizer {
 pub struct T5WithTokenizer {
     t5: t5::T5EncoderModel,
     tokenizer: Tokenizer,
-    max_position_embeddings: usize}
+    max_position_embeddings: usize,
+}
 
 impl T5WithTokenizer {
     /// Create new T5 encoder with tokenizer
@@ -167,7 +172,8 @@ impl T5WithTokenizer {
         Ok(Self {
             t5,
             tokenizer,
-            max_position_embeddings})
+            max_position_embeddings,
+        })
     }
 
     /// Encode text to embedding tensor
@@ -211,7 +217,8 @@ impl T5WithTokenizer {
 pub struct StableDiffusion3TripleClipWithTokenizer {
     clip_l: ClipWithTokenizer,
     clip_g: ClipWithTokenizer,
-    t5: T5WithTokenizer}
+    t5: T5WithTokenizer,
+}
 
 impl StableDiffusion3TripleClipWithTokenizer {
     /// Create new triple CLIP encoder
@@ -225,7 +232,8 @@ impl StableDiffusion3TripleClipWithTokenizer {
             num_hidden_layers: 12,
             num_attention_heads: 12,
             max_sequence_length: 77,
-            pad_with: None};
+            pad_with: None,
+        };
 
         // CLIP-G configuration
         let clip_g_config = stable_diffusion::clip::Config {
@@ -236,7 +244,8 @@ impl StableDiffusion3TripleClipWithTokenizer {
             num_hidden_layers: 32,
             num_attention_heads: 20,
             max_sequence_length: 77,
-            pad_with: None};
+            pad_with: None,
+        };
 
         // T5-XXL configuration
         let t5_config = t5::Config {
@@ -252,7 +261,8 @@ impl StableDiffusion3TripleClipWithTokenizer {
             layer_norm_epsilon: 1e-6,
             initializer_factor: 1.0,
             feed_forward_proj: t5::FeedForwardProj::Gated,
-            use_cache: false};
+            use_cache: false,
+        };
 
         let clip_l = ClipWithTokenizer::new(
             vb.pp("clip_l"),

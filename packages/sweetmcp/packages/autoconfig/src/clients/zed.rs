@@ -1,7 +1,9 @@
+use std::path::{Path, PathBuf};
+
+use anyhow::Result;
+
 use crate::config::ConfigMerger;
 use crate::{ClientConfigPlugin, ConfigFormat, ConfigPath, Platform};
-use anyhow::Result;
-use std::path::{Path, PathBuf};
 
 pub struct ZedPlugin;
 

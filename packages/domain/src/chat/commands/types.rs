@@ -7,29 +7,29 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
+use fluent_ai_async::emit;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{AsyncStream, AsyncStreamSender};
-use fluent_ai_async::emit;
 
 /// Command execution errors with minimal allocations
 #[derive(Error, Debug, Clone)]
 pub enum CommandError {
     /// Command name not recognized
     #[error("Unknown command: {command}")]
-    UnknownCommand { 
+    UnknownCommand {
         /// The unrecognized command name
-        command: String 
+        command: String,
     },
     /// Invalid or malformed arguments provided
     #[error("Invalid arguments: {0}")]
     InvalidArguments(String),
     /// Syntax error in command structure
     #[error("Invalid syntax: {detail}")]
-    InvalidSyntax { 
+    InvalidSyntax {
         /// Details about the syntax error
-        detail: String 
+        detail: String,
     },
     /// Command execution failed
     #[error("Execution failed: {0}")]
@@ -42,9 +42,9 @@ pub enum CommandError {
     ParseError(String),
     /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { 
+    ConfigurationError {
         /// Details about the configuration error
-        detail: String 
+        detail: String,
     },
     /// Input/output operation failed
     #[error("IO error: {0}")]
@@ -60,7 +60,8 @@ pub enum CommandError {
     NotFound,
     /// Internal system error
     #[error("Internal error: {0}")]
-    InternalError(String)}
+    InternalError(String),
+}
 
 /// Result type for command operations
 pub type CommandResult<T> = Result<T, CommandError>;
@@ -87,7 +88,8 @@ pub enum ParameterType {
     /// Enumeration parameter with possible values
     Enum,
     /// Path parameter for file/directory paths
-    Path}
+    Path,
+}
 
 /// Parameter information for command definitions with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +103,8 @@ pub struct ParameterInfo {
     /// Whether the parameter is required
     pub required: bool,
     /// Default value if not required
-    pub default_value: Option<String>}
+    pub default_value: Option<String>,
+}
 
 /// Command information for command registry with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,7 +122,8 @@ pub struct CommandInfo {
     /// Command category
     pub category: String,
     /// Usage examples
-    pub examples: Vec<String>}
+    pub examples: Vec<String>,
+}
 
 /// Resource usage tracking for command execution
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -131,7 +135,8 @@ pub struct ResourceUsage {
     /// Number of network requests made
     pub network_requests: u32,
     /// Number of disk operations performed
-    pub disk_operations: u32}
+    pub disk_operations: u32,
+}
 
 /// Immutable chat command with owned strings (allocated once)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -141,13 +146,15 @@ pub enum ImmutableChatCommand {
         /// Optional command to get help for
         command: Option<String>,
         /// Show extended help
-        extended: bool},
+        extended: bool,
+    },
     /// Clear chat history
     Clear {
         /// Confirm the action
         confirm: bool,
         /// Keep last N messages
-        keep_last: Option<usize>},
+        keep_last: Option<usize>,
+    },
     /// Export conversation
     Export {
         /// Export format (json, markdown, pdf, html)
@@ -155,7 +162,8 @@ pub enum ImmutableChatCommand {
         /// Output file path
         output: Option<String>,
         /// Include metadata
-        include_metadata: bool},
+        include_metadata: bool,
+    },
     /// Modify configuration
     Config {
         /// Configuration key
@@ -165,7 +173,8 @@ pub enum ImmutableChatCommand {
         /// Show current configuration
         show: bool,
         /// Reset to defaults
-        reset: bool},
+        reset: bool,
+    },
     /// Template operations
     Template {
         /// Template action
@@ -175,7 +184,8 @@ pub enum ImmutableChatCommand {
         /// Template content
         content: Option<String>,
         /// Template variables
-        variables: HashMap<String, String>},
+        variables: HashMap<String, String>,
+    },
     /// Macro operations
     Macro {
         /// Macro action
@@ -185,7 +195,8 @@ pub enum ImmutableChatCommand {
         /// Auto-execute macro
         auto_execute: bool,
         /// Commands to execute in macro
-        commands: Vec<String>},
+        commands: Vec<String>,
+    },
     /// Search chat history
     Search {
         /// Search query
@@ -195,7 +206,8 @@ pub enum ImmutableChatCommand {
         /// Maximum results
         limit: Option<usize>,
         /// Include context
-        include_context: bool},
+        include_context: bool,
+    },
     /// Branch conversation
     Branch {
         /// Branch action
@@ -203,7 +215,8 @@ pub enum ImmutableChatCommand {
         /// Branch name
         name: Option<String>,
         /// Source branch for merging
-        source: Option<String>},
+        source: Option<String>,
+    },
     /// Session management
     Session {
         /// Session action
@@ -211,7 +224,8 @@ pub enum ImmutableChatCommand {
         /// Session name
         name: Option<String>,
         /// Include configuration
-        include_config: bool},
+        include_config: bool,
+    },
     /// Tool integration
     Tool {
         /// Tool action
@@ -219,7 +233,8 @@ pub enum ImmutableChatCommand {
         /// Tool name
         name: Option<String>,
         /// Tool arguments
-        args: HashMap<String, String>},
+        args: HashMap<String, String>,
+    },
     /// Statistics and analytics
     Stats {
         /// Statistics type
@@ -227,7 +242,8 @@ pub enum ImmutableChatCommand {
         /// Time period
         period: Option<String>,
         /// Show detailed breakdown
-        detailed: bool},
+        detailed: bool,
+    },
     /// Theme and appearance
     Theme {
         /// Theme action
@@ -235,7 +251,8 @@ pub enum ImmutableChatCommand {
         /// Theme name
         name: Option<String>,
         /// Theme properties
-        properties: HashMap<String, String>},
+        properties: HashMap<String, String>,
+    },
     /// Debugging and diagnostics
     Debug {
         /// Debug action
@@ -243,7 +260,8 @@ pub enum ImmutableChatCommand {
         /// Debug level
         level: Option<String>,
         /// Show system information
-        system_info: bool},
+        system_info: bool,
+    },
     /// Chat history operations
     History {
         /// History action
@@ -251,7 +269,8 @@ pub enum ImmutableChatCommand {
         /// Number of messages to show
         limit: Option<usize>,
         /// Filter criteria
-        filter: Option<String>},
+        filter: Option<String>,
+    },
     /// Save conversation state
     Save {
         /// Save name
@@ -259,7 +278,8 @@ pub enum ImmutableChatCommand {
         /// Include configuration
         include_config: bool,
         /// Save location
-        location: Option<String>},
+        location: Option<String>,
+    },
     /// Load conversation state
     Load {
         /// Load name
@@ -267,7 +287,8 @@ pub enum ImmutableChatCommand {
         /// Merge with current session
         merge: bool,
         /// Load location
-        location: Option<String>},
+        location: Option<String>,
+    },
     /// Import data or configuration
     Import {
         /// Import type
@@ -275,7 +296,8 @@ pub enum ImmutableChatCommand {
         /// Source file or URL
         source: String,
         /// Import options
-        options: HashMap<String, String>},
+        options: HashMap<String, String>,
+    },
     /// Application settings
     Settings {
         /// Setting category
@@ -287,7 +309,8 @@ pub enum ImmutableChatCommand {
         /// Show current settings
         show: bool,
         /// Reset to defaults
-        reset: bool},
+        reset: bool,
+    },
     /// Custom command
     Custom {
         /// Command name
@@ -295,7 +318,9 @@ pub enum ImmutableChatCommand {
         /// Command arguments
         args: HashMap<String, String>,
         /// Command metadata
-        metadata: Option<serde_json::Value>}}
+        metadata: Option<serde_json::Value>,
+    },
+}
 impl ImmutableChatCommand {
     /// Get command name as borrowed string (zero allocation)
     #[inline]
@@ -319,7 +344,8 @@ impl ImmutableChatCommand {
             Self::Load { .. } => "load",
             Self::Import { .. } => "import",
             Self::Settings { .. } => "settings",
-            Self::Custom { .. } => "custom"}
+            Self::Custom { .. } => "custom",
+        }
     }
 
     /// Check if command requires confirmation
@@ -404,7 +430,8 @@ pub enum CommandEvent {
         /// Unique identifier for this execution
         execution_id: u64,
         /// Start time in nanoseconds since epoch
-        timestamp_nanos: u64},
+        timestamp_nanos: u64,
+    },
     /// Command execution progress
     Progress {
         /// Unique identifier for this execution
@@ -412,7 +439,8 @@ pub enum CommandEvent {
         /// Progress as percentage (0.0 to 100.0)
         progress_percent: f32,
         /// Optional progress message
-        message: Option<String>},
+        message: Option<String>,
+    },
     /// Command produced output
     Output {
         /// Unique identifier for this execution
@@ -420,7 +448,8 @@ pub enum CommandEvent {
         /// The output content produced
         output: String,
         /// Type/format of the output
-        output_type: OutputType},
+        output_type: OutputType,
+    },
     /// Command completed successfully
     Completed {
         /// Unique identifier for this execution
@@ -428,7 +457,8 @@ pub enum CommandEvent {
         /// Final result of the execution
         result: CommandExecutionResult,
         /// Total execution time in nanoseconds
-        duration_nanos: u64},
+        duration_nanos: u64,
+    },
     /// Command failed
     Failed {
         /// Unique identifier for this execution
@@ -436,14 +466,15 @@ pub enum CommandEvent {
         /// The error that caused the failure
         error: CommandError,
         /// Time until failure in nanoseconds
-        duration_nanos: u64},
+        duration_nanos: u64,
+    },
     /// Command was cancelled
-    Cancelled { 
+    Cancelled {
         /// Unique identifier for this execution
-        execution_id: u64, 
+        execution_id: u64,
         /// Reason for cancellation
-        reason: String 
-    }
+        reason: String,
+    },
 }
 
 /// Command output type
@@ -458,7 +489,8 @@ pub enum OutputType {
     /// Markdown formatted output
     Markdown,
     /// Binary data output
-    Binary}
+    Binary,
+}
 
 /// Streaming parse token for command tokenization
 #[derive(Debug, Clone)]
@@ -474,7 +506,8 @@ pub enum ParseToken {
     /// Parsing completed successfully
     ParseComplete(ImmutableChatCommand),
     /// Parsing failed with error
-    ParseError(String)}
+    ParseError(String),
+}
 
 /// Search-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -486,7 +519,8 @@ pub enum SearchScope {
     /// Search recent conversations
     Recent,
     /// Search bookmarked items only
-    Bookmarked}
+    Bookmarked,
+}
 
 /// Template-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -681,7 +715,8 @@ pub struct StreamingCommandExecutor {
     /// Failed executions (atomic)
     failed_executions: AtomicU64,
     /// Event stream sender
-    event_sender: Option<AsyncStreamSender<CommandEvent>>}
+    event_sender: Option<AsyncStreamSender<CommandEvent>>,
+}
 
 impl StreamingCommandExecutor {
     /// Create new streaming command executor
@@ -693,7 +728,8 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender: None}
+            event_sender: None,
+        }
     }
 
     /// Create executor with event streaming
@@ -719,7 +755,8 @@ impl StreamingCommandExecutor {
             total_executions: AtomicU64::new(0),
             successful_executions: AtomicU64::new(0),
             failed_executions: AtomicU64::new(0),
-            event_sender};
+            event_sender,
+        };
 
         (executor, stream)
     }
@@ -742,7 +779,8 @@ impl StreamingCommandExecutor {
             let _ = sender.send(CommandEvent::Started {
                 command: command.clone(),
                 execution_id,
-                timestamp_nanos: Self::current_timestamp_nanos()});
+                timestamp_nanos: Self::current_timestamp_nanos(),
+            });
         }
 
         // TODO: Implement actual command execution logic here
@@ -767,7 +805,8 @@ impl StreamingCommandExecutor {
             active_executions: self.active_executions.load(Ordering::Relaxed) as u64,
             total_executions: self.total_executions.load(Ordering::Relaxed),
             successful_executions: self.successful_executions.load(Ordering::Relaxed),
-            failed_executions: self.failed_executions.load(Ordering::Relaxed)}
+            failed_executions: self.failed_executions.load(Ordering::Relaxed),
+        }
     }
 
     /// Cancel command execution
@@ -776,7 +815,8 @@ impl StreamingCommandExecutor {
         if let Some(ref sender) = self.event_sender {
             let _ = sender.send(CommandEvent::Cancelled {
                 execution_id,
-                reason: reason.into()});
+                reason: reason.into(),
+            });
         }
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
     }
@@ -880,7 +920,8 @@ impl CommandParser {
             "load" => Self::parse_load_command(args),
             "import" => Self::parse_import_command(args),
             "settings" | "set" => Self::parse_settings_command(args),
-            _ => Self::parse_custom_command(&command_name, args)}
+            _ => Self::parse_custom_command(&command_name, args),
+        }
     }
 
     /// Parse help command
@@ -931,7 +972,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Export {
             format,
             output,
-            include_metadata})
+            include_metadata,
+        })
     }
 
     /// Parse settings command
@@ -953,7 +995,8 @@ impl CommandParser {
             key,
             value,
             show,
-            reset})
+            reset,
+        })
     }
 
     /// Parse config command with streaming tokenization (zero-allocation)
@@ -972,11 +1015,11 @@ impl CommandParser {
                 let mut i = 0;
                 while i < args.len() {
                     let arg = &args[i];
-                    
+
                     if arg.starts_with("--") || arg.starts_with("-") {
                         // Emit flag token
                         emit!(sender, ParseToken::Flag(arg.clone()));
-                        
+
                         match arg.as_str() {
                             "--show" | "-s" => {
                                 show = true;
@@ -985,14 +1028,17 @@ impl CommandParser {
                                 reset = true;
                             }
                             _ => {
-                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                emit!(
+                                    sender,
+                                    ParseToken::ParseError(format!("Unknown flag: {}", arg))
+                                );
                                 return;
                             }
                         }
                     } else {
                         // Emit argument token
                         emit!(sender, ParseToken::Argument(arg.clone()));
-                        
+
                         if key.is_none() {
                             key = Some(arg.clone());
                         } else if value.is_none() {
@@ -1004,11 +1050,15 @@ impl CommandParser {
                 }
 
                 // Emit completion token with parsed command
-                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Config {
-                    key,
-                    value,
-                    show,
-                    reset}));
+                emit!(
+                    sender,
+                    ParseToken::ParseComplete(ImmutableChatCommand::Config {
+                        key,
+                        value,
+                        show,
+                        reset
+                    })
+                );
             });
         })
     }
@@ -1031,7 +1081,8 @@ impl CommandParser {
             key,
             value,
             show,
-            reset})
+            reset,
+        })
     }
 
     /// Parse search command with streaming tokenization (zero-allocation)
@@ -1050,11 +1101,11 @@ impl CommandParser {
                 let mut i = 0;
                 while i < args.len() {
                     let arg = &args[i];
-                    
+
                     if arg.starts_with("--") {
                         // Emit flag token
                         emit!(sender, ParseToken::Flag(arg.clone()));
-                        
+
                         match arg.as_str() {
                             "--current" => {
                                 scope = SearchScope::Current;
@@ -1075,13 +1126,22 @@ impl CommandParser {
                                         limit = Some(parsed_limit);
                                         i += 1; // Skip the value in next iteration
                                     } else {
-                                        emit!(sender, ParseToken::ParseError(format!("Invalid limit value: {}", limit_str)));
+                                        emit!(
+                                            sender,
+                                            ParseToken::ParseError(format!(
+                                                "Invalid limit value: {}",
+                                                limit_str
+                                            ))
+                                        );
                                         return;
                                     }
                                 }
                             }
                             _ => {
-                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                emit!(
+                                    sender,
+                                    ParseToken::ParseError(format!("Unknown flag: {}", arg))
+                                );
                                 return;
                             }
                         }
@@ -1096,11 +1156,15 @@ impl CommandParser {
                 }
 
                 // Emit completion token with parsed command
-                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Search {
-                    query,
-                    scope,
-                    limit,
-                    include_context}));
+                emit!(
+                    sender,
+                    ParseToken::ParseComplete(ImmutableChatCommand::Search {
+                        query,
+                        scope,
+                        limit,
+                        include_context
+                    })
+                );
             });
         })
     }
@@ -1121,11 +1185,11 @@ impl CommandParser {
                 let mut i = 0;
                 while i < args.len() {
                     let arg = &args[i];
-                    
+
                     if arg.starts_with("--") {
                         // Emit flag token
                         emit!(sender, ParseToken::Flag(arg.clone()));
-                        
+
                         match arg.as_str() {
                             "--list" => {
                                 action = TemplateAction::List;
@@ -1149,20 +1213,29 @@ impl CommandParser {
                                         variables.insert(key, value);
                                         i += 1; // Skip the value in next iteration
                                     } else {
-                                        emit!(sender, ParseToken::ParseError(format!("Invalid variable assignment: {}", var_assignment)));
+                                        emit!(
+                                            sender,
+                                            ParseToken::ParseError(format!(
+                                                "Invalid variable assignment: {}",
+                                                var_assignment
+                                            ))
+                                        );
                                         return;
                                     }
                                 }
                             }
                             _ => {
-                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                emit!(
+                                    sender,
+                                    ParseToken::ParseError(format!("Unknown flag: {}", arg))
+                                );
                                 return;
                             }
                         }
                     } else {
                         // Emit argument token
                         emit!(sender, ParseToken::Argument(arg.clone()));
-                        
+
                         if name.is_none() {
                             name = Some(arg.clone());
                         } else if content.is_none() {
@@ -1173,11 +1246,15 @@ impl CommandParser {
                 }
 
                 // Emit completion token with parsed command
-                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Template {
-                    action,
-                    name,
-                    content,
-                    variables}));
+                emit!(
+                    sender,
+                    ParseToken::ParseComplete(ImmutableChatCommand::Template {
+                        action,
+                        name,
+                        content,
+                        variables
+                    })
+                );
             });
         })
     }
@@ -1212,7 +1289,8 @@ impl CommandParser {
             action,
             name,
             content,
-            variables: HashMap::new()})
+            variables: HashMap::new(),
+        })
     }
 
     /// Parse macro command with streaming tokenization (zero-allocation)
@@ -1232,11 +1310,11 @@ impl CommandParser {
                 let mut found_name = false;
                 while i < args.len() {
                     let arg = &args[i];
-                    
+
                     if arg.starts_with("--") {
                         // Emit flag token
                         emit!(sender, ParseToken::Flag(arg.clone()));
-                        
+
                         match arg.as_str() {
                             "--list" => {
                                 action = MacroAction::List;
@@ -1251,14 +1329,17 @@ impl CommandParser {
                                 action = MacroAction::Edit;
                             }
                             _ => {
-                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                emit!(
+                                    sender,
+                                    ParseToken::ParseError(format!("Unknown flag: {}", arg))
+                                );
                                 return;
                             }
                         }
                     } else {
                         // Emit argument token
                         emit!(sender, ParseToken::Argument(arg.clone()));
-                        
+
                         if !found_name && name.is_none() {
                             name = Some(arg.clone());
                             found_name = true;
@@ -1271,11 +1352,15 @@ impl CommandParser {
                 }
 
                 // Emit completion token with parsed command
-                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Macro {
-                    action,
-                    name,
-                    auto_execute,
-                    commands}));
+                emit!(
+                    sender,
+                    ParseToken::ParseComplete(ImmutableChatCommand::Macro {
+                        action,
+                        name,
+                        auto_execute,
+                        commands
+                    })
+                );
             });
         })
     }
@@ -1311,7 +1396,8 @@ impl CommandParser {
             action,
             name,
             auto_execute: false,
-            commands})
+            commands,
+        })
     }
 
     /// Parse branch command (legacy compatibility) - planned feature
@@ -1343,7 +1429,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Branch {
             action,
             name,
-            source})
+            source,
+        })
     }
 
     /// Parse session command with streaming tokenization (zero-allocation)
@@ -1361,11 +1448,11 @@ impl CommandParser {
                 let mut i = 0;
                 while i < args.len() {
                     let arg = &args[i];
-                    
+
                     if arg.starts_with("--") {
                         // Emit flag token
                         emit!(sender, ParseToken::Flag(arg.clone()));
-                        
+
                         if arg.contains('=') {
                             // Handle --key=value format for config
                             let parts: Vec<&str> = arg.splitn(2, '=').collect();
@@ -1393,7 +1480,10 @@ impl CommandParser {
                                     action = SessionAction::Import;
                                 }
                                 _ => {
-                                    emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                    emit!(
+                                        sender,
+                                        ParseToken::ParseError(format!("Unknown flag: {}", arg))
+                                    );
                                     return;
                                 }
                             }
@@ -1409,10 +1499,14 @@ impl CommandParser {
                 }
 
                 // Emit completion token with parsed command
-                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Session {
-                    action,
-                    name,
-                    include_config}));
+                emit!(
+                    sender,
+                    ParseToken::ParseComplete(ImmutableChatCommand::Session {
+                        action,
+                        name,
+                        include_config
+                    })
+                );
             });
         })
     }
@@ -1481,7 +1575,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Tool {
             action,
             name,
-            args: args_map})
+            args: args_map,
+        })
     }
 
     /// Parse stats command
@@ -1515,7 +1610,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Stats {
             stat_type,
             period,
-            detailed})
+            detailed,
+        })
     }
 
     /// Parse theme command
@@ -1548,7 +1644,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Theme {
             action,
             name,
-            properties})
+            properties,
+        })
     }
 
     /// Parse debug command
@@ -1582,7 +1679,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Debug {
             action,
             level,
-            system_info})
+            system_info,
+        })
     }
 
     /// Parse history command
@@ -1615,7 +1713,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::History {
             action,
             limit,
-            filter})
+            filter,
+        })
     }
 
     /// Parse save command
@@ -1637,7 +1736,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Save {
             name,
             include_config,
-            location})
+            location,
+        })
     }
 
     /// Parse load command
@@ -1660,7 +1760,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Load {
             name,
             merge,
-            location})
+            location,
+        })
     }
 
     /// Parse import command
@@ -1689,7 +1790,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Import {
             import_type,
             source,
-            options})
+            options,
+        })
     }
 
     /// Parse custom command
@@ -1704,7 +1806,8 @@ impl CommandParser {
         Ok(ImmutableChatCommand::Custom {
             name: name.to_string(),
             args: args_map,
-            metadata: None})
+            metadata: None,
+        })
     }
 }
 
@@ -1724,7 +1827,8 @@ pub struct CommandContext {
     /// Execution timestamp in nanoseconds
     pub timestamp_nanos: u64,
     /// Environment variables
-    pub environment: HashMap<String, String>}
+    pub environment: HashMap<String, String>,
+}
 
 impl CommandContext {
     /// Create new command context
@@ -1738,7 +1842,8 @@ impl CommandContext {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_nanos() as u64)
                 .unwrap_or(0),
-            environment: HashMap::new()}
+            environment: HashMap::new(),
+        }
     }
 
     /// Add environment variable
@@ -1771,7 +1876,8 @@ pub struct CommandOutput {
     /// Command execution data payload
     pub data: Option<String>,
     /// Resource usage statistics
-    pub resource_usage: Option<ResourceUsage>}
+    pub resource_usage: Option<ResourceUsage>,
+}
 
 impl CommandOutput {
     /// Create new command output
@@ -1790,7 +1896,8 @@ impl CommandOutput {
             success: true,
             message: String::new(),
             data: None,
-            resource_usage: None}
+            resource_usage: None,
+        }
     }
 
     /// Create successful command output
@@ -1875,7 +1982,8 @@ pub struct ExecutionMetrics {
     /// Error counts by type
     pub error_counts: HashMap<String, u64>,
     /// Average execution time in nanoseconds
-    pub average_execution_time: u64}
+    pub average_execution_time: u64,
+}
 
 impl ExecutionMetrics {
     /// Create new execution metrics
@@ -1893,7 +2001,8 @@ impl ExecutionMetrics {
             successful_commands: 0,
             failed_commands: 0,
             error_counts: HashMap::new(),
-            average_execution_time: 0}
+            average_execution_time: 0,
+        }
     }
 
     /// Calculate duration in milliseconds
@@ -1947,7 +2056,8 @@ pub struct CommandHandlerMetadata {
     /// Handler version
     pub version: String,
     /// Whether handler is enabled
-    pub enabled: bool}
+    pub enabled: bool,
+}
 
 impl CommandHandlerMetadata {
     /// Create new command handler metadata
@@ -1962,7 +2072,8 @@ impl CommandHandlerMetadata {
             description: description.into(),
             supported_commands,
             version: "1.0.0".to_string(),
-            enabled: true}
+            enabled: true,
+        }
     }
 
     /// Set handler version
@@ -1983,7 +2094,8 @@ impl CommandHandlerMetadata {
 /// Default command handler implementation
 #[derive(Debug)]
 pub struct DefaultCommandHandler {
-    metadata: CommandHandlerMetadata}
+    metadata: CommandHandlerMetadata,
+}
 
 impl DefaultCommandHandler {
     /// Create new default command handler
@@ -2026,7 +2138,8 @@ impl CommandHandler for DefaultCommandHandler {
             let output = match &command {
                 ImmutableChatCommand::Help {
                     command: cmd,
-                    extended} => {
+                    extended,
+                } => {
                     let content = if let Some(cmd) = cmd {
                         if *extended {
                             format!("Extended help for command: {}", cmd)
@@ -2066,13 +2179,15 @@ impl CommandHandler for DefaultCommandHandler {
                         HistoryAction::Clear => "Chat history cleared".to_string(),
                         HistoryAction::Export => "Chat history exported".to_string(),
                         HistoryAction::Import => "Chat history imported".to_string(),
-                        HistoryAction::Backup => "Chat history backed up".to_string()};
+                        HistoryAction::Backup => "Chat history backed up".to_string(),
+                    };
                     CommandOutput::text(context.execution_id, content)
                 }
                 _ => CommandOutput::text(
                     context.execution_id,
                     format!("Command {} executed successfully", command.command_name()),
-                )};
+                ),
+            };
 
             // Send output through stream
             let _ = sender.try_send(output.final_output());
@@ -2116,14 +2231,16 @@ mod tests {
             query: "test".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false};
+            include_context: false,
+        };
         assert!(cmd.validate().is_ok());
 
         let cmd = ImmutableChatCommand::Search {
             query: "".to_string(),
             scope: SearchScope::All,
             limit: None,
-            include_context: false};
+            include_context: false,
+        };
         assert!(cmd.validate().is_err());
     }
 

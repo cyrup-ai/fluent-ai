@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use fluent_ai_memory::cognitive::quantum::{
-    EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent};
+    EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent,
+};
 use fluent_ai_memory::cognitive::state::CognitiveStateManager;
 
 #[tokio::test]
@@ -31,7 +32,8 @@ async fn test_quantum_router_basic() {
         temporal_context: None,
         cognitive_hints: vec!["programming".to_string(), "systems".to_string()],
         expected_complexity: 0.3,
-        priority: 1};
+        priority: 1,
+    };
 
     // Route the query
     let decision = router
@@ -82,7 +84,8 @@ fn test_complex_number_operations() {
 #[tokio::test]
 async fn test_cognitive_state_manager() {
     use fluent_ai_memory::cognitive::state::{
-        AbstractionLevel, CognitiveState, CognitiveStateManager, SemanticContext};
+        AbstractionLevel, CognitiveState, CognitiveStateManager, SemanticContext,
+    };
 
     let manager = CognitiveStateManager::new();
 
@@ -91,7 +94,8 @@ async fn test_cognitive_state_manager() {
         primary_concepts: vec!["rust".to_string(), "memory".to_string()],
         secondary_concepts: vec!["systems".to_string()],
         domain_tags: vec!["programming".to_string()],
-        abstraction_level: AbstractionLevel::Intermediate};
+        abstraction_level: AbstractionLevel::Intermediate,
+    };
 
     let state = CognitiveState::new(context);
     let state_id = manager.add_state(state).await;
@@ -125,7 +129,8 @@ fn test_evolution_metadata() {
 #[tokio::test]
 async fn test_attention_mechanism() {
     use fluent_ai_memory::cognitive::attention::{
-        AttentionConfig, AttentionMechanism, CognitiveAttentionWeights};
+        AttentionConfig, AttentionMechanism, CognitiveAttentionWeights,
+    };
 
     let config = AttentionConfig {
         num_heads: 2,
@@ -136,7 +141,9 @@ async fn test_attention_mechanism() {
             semantic_weight: 0.5,
             lexical_weight: 0.3,
             structural_weight: 0.2,
-            contextual_weight: 0.2}};
+            contextual_weight: 0.2,
+        },
+    };
 
     let mut attention = AttentionMechanism::new(config);
 

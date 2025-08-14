@@ -44,11 +44,11 @@ pub mod utils;
 pub use constants::{SIMD_WIDTH_8, VERSION};
 pub use error::{SimdError, SimdResult};
 // Re-export logits operations
-pub use logits::{topk_filtering_simd, prepare_nucleus_sampling_simd, apply_penalties_simd};
+pub use logits::{apply_penalties_simd, prepare_nucleus_sampling_simd, topk_filtering_simd};
 // Re-export ops (temperature and softmax operations)
 pub use ops::{argmax, scale_temperature, softmax};
 // Re-export runtime CPU detection
-pub use runtime::{get_cpu_features, get_cpu_info, should_use_simd, CpuFeatures, CpuInfo};
+pub use runtime::{CpuFeatures, CpuInfo, get_cpu_features, get_cpu_info, should_use_simd};
 pub use similarity::{cosine_similarity, simd_cosine_similarity, smart_cosine_similarity};
 pub use utils::simd_available;
 

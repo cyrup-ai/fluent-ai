@@ -309,7 +309,8 @@ impl<W: io::Write> Ansi<W> {
                 Color::Yellow => write_intense!("11"),
                 Color::White => write_intense!("15"),
                 Color::Ansi256(c) => write_custom!(c),
-                Color::Rgb(r, g, b) => write_custom!(r, g, b)}
+                Color::Rgb(r, g, b) => write_custom!(r, g, b),
+            }
         } else {
             match *c {
                 Color::Black => write_normal!("0"),
@@ -321,7 +322,8 @@ impl<W: io::Write> Ansi<W> {
                 Color::Yellow => write_normal!("3"),
                 Color::White => write_normal!("7"),
                 Color::Ansi256(c) => write_custom!(c),
-                Color::Rgb(r, g, b) => write_custom!(r, g, b)}
+                Color::Rgb(r, g, b) => write_custom!(r, g, b),
+            }
         }
     }
 }

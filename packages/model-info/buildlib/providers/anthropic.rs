@@ -1,5 +1,6 @@
-use super::{ModelData, ProviderBuilder, ProcessProviderResult};
 use serde::{Deserialize, Serialize};
+
+use super::{ModelData, ProcessProviderResult, ProviderBuilder};
 
 /// Anthropic provider implementation with legitimate hardcoded data
 /// This is the ONLY provider that legitimately uses static data because
@@ -17,14 +18,14 @@ impl ProviderBuilder for AnthropicProvider {
     fn provider_name(&self) -> &'static str {
         "anthropic"
     }
-    
+
     fn base_url(&self) -> &'static str {
         "https://api.anthropic.com" // Not used since no public models API
     }
-    
-    fn api_key_env_var(&self) -> Option<&'static str> {
+
+    fn api_key_env_vars(&self) -> cyrup_sugars::ZeroOneOrMany<&'static str> {
         // No API key needed since there's no API endpoint
-        None
+        cyrup_sugars::ZeroOneOrMany::None
     }
 
     fn response_to_models(&self, _response: Self::ListResponse) -> Vec<ModelData> {
@@ -63,7 +64,11 @@ impl ProviderBuilder for AnthropicProvider {
         match self.generate_code(&models) {
             Ok((enum_code, impl_code)) => ProcessProviderResult {
                 success: true,
-                status: format!("Successfully processed {} static models for {}", models.len(), self.provider_name()),
+                status: format!(
+                    "Successfully processed {} static models for {}",
+                    models.len(),
+                    self.provider_name()
+                ),
                 generated_code: Some((enum_code, impl_code)),
             },
             Err(e) => ProcessProviderResult {
@@ -94,14 +99,7 @@ impl ProviderBuilder for AnthropicProvider {
                 true,
                 Some(1.0),
             ),
-            (
-                "claude-4-opus".to_string(),
-                200000,
-                15.0,
-                75.0,
-                false,
-                None,
-            ),
+            ("claude-4-opus".to_string(), 200000, 15.0, 75.0, false, None),
             (
                 "claude-4-opus-thinking".to_string(),
                 200000,

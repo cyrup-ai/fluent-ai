@@ -249,7 +249,8 @@ impl ResponseFormatter {
 
         let json_value = Value::Object(json_output);
         serde_json::to_string(&json_value).map_err(|e| ResponseError::SerializationError {
-            detail: Arc::from(e.to_string())})
+            detail: Arc::from(e.to_string()),
+        })
     }
 
     /// Format error response

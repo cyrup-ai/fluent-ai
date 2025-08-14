@@ -12,13 +12,15 @@ pub enum RelationshipDirection {
     /// One-way relationship from source to target
     OneWay,
     /// Two-way relationship between source and target
-    TwoWay}
+    TwoWay,
+}
 
 impl fmt::Display for RelationshipDirection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RelationshipDirection::OneWay => write!(f, "one_way"),
-            RelationshipDirection::TwoWay => write!(f, "two_way")}
+            RelationshipDirection::TwoWay => write!(f, "two_way"),
+        }
     }
 }
 
@@ -34,7 +36,8 @@ pub struct MemoryRelationship {
     /// Type of relationship
     pub relationship_type: String,
     /// Additional metadata
-    pub metadata: Option<Value>}
+    pub metadata: Option<Value>,
+}
 
 impl MemoryRelationship {
     /// Create a new memory relationship
@@ -44,7 +47,8 @@ impl MemoryRelationship {
             source_id,
             target_id,
             relationship_type,
-            metadata: None}
+            metadata: None,
+        }
     }
 
     /// Create a new relationship with a specific ID
@@ -59,7 +63,8 @@ impl MemoryRelationship {
             source_id,
             target_id,
             relationship_type,
-            metadata: None}
+            metadata: None,
+        }
     }
 
     /// Add metadata to the relationship

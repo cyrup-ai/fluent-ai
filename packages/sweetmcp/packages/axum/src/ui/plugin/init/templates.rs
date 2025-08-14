@@ -4,8 +4,9 @@
 //! with zero allocation patterns, blazing-fast performance, and production-ready
 //! scaffolding for all plugin files and configurations.
 
-use crate::ui::plugin::init::core::*;
 use std::fs;
+
+use crate::ui::plugin::init::core::*;
 
 /// Template generator for plugin files
 pub struct TemplateGenerator {

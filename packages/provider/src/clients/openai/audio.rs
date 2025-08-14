@@ -21,7 +21,8 @@ pub enum AudioFormat {
     WAV,
     WEBM,
     FLAC,
-    OGG}
+    OGG,
+}
 
 /// Voice options for text-to-speech
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -32,7 +33,8 @@ pub enum Voice {
     Fable,
     Onyx,
     Nova,
-    Shimmer}
+    Shimmer,
+}
 
 /// Audio quality settings for TTS
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -41,7 +43,8 @@ pub enum AudioQuality {
     /// Standard quality (faster, smaller files)
     Standard,
     /// High definition quality (slower, larger files)
-    HD}
+    HD,
+}
 
 /// Response format for TTS output
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -52,7 +55,8 @@ pub enum ResponseFormat {
     AAC,
     FLAC,
     WAV,
-    PCM}
+    PCM,
+}
 
 /// Transcription language codes (ISO 639-1)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,7 +70,8 @@ pub struct AudioData {
     pub duration: Option<Duration>,
     pub sample_rate: Option<u32>,
     pub channels: Option<u16>,
-    pub bit_rate: Option<u32>}
+    pub bit_rate: Option<u32>,
+}
 
 /// Transcription request configuration
 #[derive(Debug, Clone)]
@@ -77,7 +82,8 @@ pub struct TranscriptionRequest {
     pub prompt: Option<String>,
     pub response_format: Option<String>,
     pub temperature: Option<f32>,
-    pub timestamp_granularities: Vec<String>}
+    pub timestamp_granularities: Vec<String>,
+}
 
 /// Transcription response from Whisper
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,7 +96,8 @@ pub struct TranscriptionResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub words: Option<Vec<WordTimestamp>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub segments: Option<Vec<SegmentTimestamp>>}
+    pub segments: Option<Vec<SegmentTimestamp>>,
+}
 
 /// Word-level timestamp information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,7 +106,8 @@ pub struct WordTimestamp {
     pub start: f32,
     pub end: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<f32>}
+    pub confidence: Option<f32>,
+}
 
 /// Segment-level timestamp information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,7 +121,8 @@ pub struct SegmentTimestamp {
     pub temperature: f32,
     pub avg_logprob: f32,
     pub compression_ratio: f32,
-    pub no_speech_prob: f32}
+    pub no_speech_prob: f32,
+}
 
 /// Text-to-speech request configuration
 #[derive(Debug, Clone)]
@@ -122,7 +131,8 @@ pub struct TTSRequest {
     pub input: String,
     pub voice: Voice,
     pub response_format: ResponseFormat,
-    pub speed: Option<f32>}
+    pub speed: Option<f32>,
+}
 
 /// Translation request (audio to English text)
 #[derive(Debug, Clone)]
@@ -131,7 +141,8 @@ pub struct TranslationRequest {
     pub model: String,
     pub prompt: Option<String>,
     pub response_format: Option<String>,
-    pub temperature: Option<f32>}
+    pub temperature: Option<f32>,
+}
 
 /// Audio processing capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,7 +152,8 @@ pub struct AudioCapabilities {
     pub text_to_speech: bool,
     pub real_time_transcription: bool,
     pub speaker_identification: bool,
-    pub noise_reduction: bool}
+    pub noise_reduction: bool,
+}
 
 impl AudioFormat {
     /// Detect format from file extension
@@ -160,7 +172,8 @@ impl AudioFormat {
             _ => Err(OpenAIError::AudioError(format!(
                 "Unsupported audio format: {}",
                 ext
-            )))}
+            ))),
+        }
     }
 
     /// Get MIME type for format
@@ -175,7 +188,8 @@ impl AudioFormat {
             Self::WAV => "audio/wav",
             Self::WEBM => "audio/webm",
             Self::FLAC => "audio/flac",
-            Self::OGG => "audio/ogg"}
+            Self::OGG => "audio/ogg",
+        }
     }
 
     /// Check if format supports metadata
@@ -202,7 +216,8 @@ impl AudioFormat {
             Self::WAV => "wav",
             Self::WEBM => "webm",
             Self::FLAC => "flac",
-            Self::OGG => "ogg"}
+            Self::OGG => "ogg",
+        }
     }
 }
 
@@ -229,7 +244,8 @@ impl Voice {
             Self::Fable => "Warm, friendly voice perfect for storytelling",
             Self::Onyx => "Deep, resonant voice great for serious content",
             Self::Nova => "Bright, energetic voice ideal for upbeat content",
-            Self::Shimmer => "Smooth, sophisticated voice perfect for elegant content"}
+            Self::Shimmer => "Smooth, sophisticated voice perfect for elegant content",
+        }
     }
 
     /// Check if voice supports specific language well
@@ -254,7 +270,8 @@ impl ResponseFormat {
             Self::AAC => "audio/aac",
             Self::FLAC => "audio/flac",
             Self::WAV => "audio/wav",
-            Self::PCM => "audio/pcm"}
+            Self::PCM => "audio/pcm",
+        }
     }
 
     /// Check if format is compressed
@@ -272,7 +289,8 @@ impl ResponseFormat {
             Self::AAC => "aac",
             Self::FLAC => "flac",
             Self::WAV => "wav",
-            Self::PCM => "pcm"}
+            Self::PCM => "pcm",
+        }
     }
 }
 
@@ -356,7 +374,8 @@ impl AudioData {
             duration: None,
             sample_rate: None,
             channels: None,
-            bit_rate: None}
+            bit_rate: None,
+        }
     }
 
     /// Create from file path
@@ -456,7 +475,8 @@ impl TranscriptionRequest {
             prompt: None,
             response_format: None,
             temperature: None,
-            timestamp_granularities: Vec::new()}
+            timestamp_granularities: Vec::new(),
+        }
     }
 
     /// Set model for transcription
@@ -545,7 +565,8 @@ impl TTSRequest {
             input: input.into(),
             voice,
             response_format: ResponseFormat::MP3,
-            speed: None}
+            speed: None,
+        }
     }
 
     /// Create high-quality TTS request
@@ -556,7 +577,8 @@ impl TTSRequest {
             input: input.into(),
             voice,
             response_format: ResponseFormat::MP3,
-            speed: None}
+            speed: None,
+        }
     }
 
     /// Set model
@@ -617,7 +639,8 @@ impl TranslationRequest {
             model: "whisper-1".to_string(),
             prompt: None,
             response_format: None,
-            temperature: None}
+            temperature: None,
+        }
     }
 
     /// Set model
@@ -675,21 +698,25 @@ pub fn get_model_capabilities(model: &str) -> AudioCapabilities {
             text_to_speech: false,
             real_time_transcription: false,
             speaker_identification: false,
-            noise_reduction: true},
+            noise_reduction: true,
+        },
         "tts-1" | "tts-1-hd" => AudioCapabilities {
             transcription: false,
             translation: false,
             text_to_speech: true,
             real_time_transcription: false,
             speaker_identification: false,
-            noise_reduction: false},
+            noise_reduction: false,
+        },
         _ => AudioCapabilities {
             transcription: false,
             translation: false,
             text_to_speech: false,
             real_time_transcription: false,
             speaker_identification: false,
-            noise_reduction: false}}
+            noise_reduction: false,
+        },
+    }
 }
 
 /// Check if model supports transcription

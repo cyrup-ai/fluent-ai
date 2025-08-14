@@ -2,11 +2,10 @@
 //!
 //! Tests for the streaming buffer functionality, moved from src/json_path/buffer.rs
 
-
+use std::io::Read;
 
 use bytes::Bytes;
 use fluent_ai_http3::json_path::buffer::StreamBuffer;
-use std::io::Read;
 
 #[cfg(test)]
 mod buffer_tests {

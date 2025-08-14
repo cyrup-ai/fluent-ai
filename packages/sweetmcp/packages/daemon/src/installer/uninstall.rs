@@ -3,15 +3,17 @@
 //! This module provides uninstallation logic, certificate cleanup, and host file
 //! restoration with zero allocation fast paths and blazing-fast performance.
 
-use crate::install::uninstall_daemon_async;
-use crate::install::fluent_voice;
-use anyhow::{Context, Result};
-use log::{info, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use anyhow::{Context, Result};
+use log::{info, warn};
+
 // Removed unused import: use super::core::InstallProgress;
 use super::config::remove_sweetmcp_host_entries;
+use crate::install::fluent_voice;
+use crate::install::uninstall_daemon_async;
 
 /// Uninstall SweetMCP daemon with comprehensive cleanup
 pub async fn uninstall_sweetmcp_daemon() -> Result<()> {
@@ -84,8 +86,6 @@ pub fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<()> {
     Ok(())
 }
 
-
-
 /// Import wildcard certificate on Linux
 #[cfg(target_os = "linux")]
 fn import_wildcard_certificate_linux(cert_path: &str) -> Result<()> {
@@ -104,7 +104,7 @@ fn import_wildcard_certificate_linux(cert_path: &str) -> Result<()> {
 
     // Copy certificate to system trust store
     let system_cert_path = "/usr/local/share/ca-certificates/sweetmcp-wildcard.crt";
-    
+
     // Ensure directory exists
     if let Some(parent) = std::path::Path::new(system_cert_path).parent() {
         std::fs::create_dir_all(parent).context("Failed to create ca-certificates directory")?;
@@ -120,10 +120,7 @@ fn import_wildcard_certificate_linux(cert_path: &str) -> Result<()> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        warn!(
-            "Failed to update certificate trust store: {}",
-            stderr
-        );
+        warn!("Failed to update certificate trust store: {}", stderr);
         // Don't fail the installation if this step fails
     } else {
         info!("Successfully imported SweetMCP wildcard certificate to Linux system trust store");
@@ -182,7 +179,7 @@ async fn remove_wildcard_certificate_linux() -> Result<()> {
     info!("Removing SweetMCP wildcard certificate from Linux system trust store");
 
     let system_cert_path = "/usr/local/share/ca-certificates/sweetmcp-wildcard.crt";
-    
+
     // Remove certificate file
     if std::path::Path::new(system_cert_path).exists() {
         std::fs::remove_file(system_cert_path)
@@ -195,12 +192,11 @@ async fn remove_wildcard_certificate_linux() -> Result<()> {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            warn!(
-                "Failed to update certificate trust store: {}",
-                stderr
-            );
+            warn!("Failed to update certificate trust store: {}", stderr);
         } else {
-            info!("Successfully removed SweetMCP wildcard certificate from Linux system trust store");
+            info!(
+                "Successfully removed SweetMCP wildcard certificate from Linux system trust store"
+            );
         }
     } else {
         info!("SweetMCP wildcard certificate not found in system trust store");
@@ -336,10 +332,9 @@ fn get_installed_daemon_path() -> PathBuf {
 pub fn backup_configuration() -> Result<PathBuf> {
     let config_dir = get_config_directory();
     let backup_dir = get_backup_directory();
-    
+
     // Create backup directory
-    std::fs::create_dir_all(&backup_dir)
-        .context("Failed to create backup directory")?;
+    std::fs::create_dir_all(&backup_dir).context("Failed to create backup directory")?;
 
     // Generate backup filename with timestamp
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
@@ -413,14 +408,12 @@ fn get_backup_directory() -> PathBuf {
 #[allow(dead_code)]
 pub fn restore_configuration(backup_path: &Path) -> Result<()> {
     if !backup_path.exists() {
-        return Err(anyhow::anyhow!(
-            "Backup file not found: {:?}",
-            backup_path
-        ));
+        return Err(anyhow::anyhow!("Backup file not found: {:?}", backup_path));
     }
 
     let config_dir = get_config_directory();
-    let parent_dir = config_dir.parent()
+    let parent_dir = config_dir
+        .parent()
         .ok_or_else(|| anyhow::anyhow!("Invalid configuration directory"))?;
 
     // Extract backup

@@ -2,14 +2,15 @@
 
 use std::sync::{
     Arc,
-    atomic::{AtomicUsize, Ordering}};
+    atomic::{AtomicUsize, Ordering},
+};
 
 use arrayvec::ArrayVec;
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
-// Removed unused import: use tokio_stream::StreamExt;
 
+// Removed unused import: use tokio_stream::StreamExt;
 use crate::agent::role::AgentRoleImpl;
 use crate::memory::primitives::{MemoryContent, MemoryTypeEnum};
 use crate::memory::{Memory, MemoryError, MemoryNode};
@@ -41,7 +42,8 @@ pub enum ChatError {
     Message(String),
     /// System error
     #[error("System error: {0}")]
-    System(String)}
+    System(String),
+}
 
 /// Context injection result with relevance scoring
 #[derive(Debug, Clone)]
@@ -51,7 +53,8 @@ pub struct ContextInjectionResult {
     /// Score indicating how relevant the injected context is (0.0 to 1.0)
     pub relevance_score: f64,
     /// Number of memory nodes that were used in the injection
-    pub memory_nodes_used: usize}
+    pub memory_nodes_used: usize,
+}
 
 /// Memory-enhanced chat response with zero-allocation collections
 #[derive(Debug, Clone)]
@@ -61,7 +64,8 @@ pub struct MemoryEnhancedChatResponse {
     /// Details about the context that was injected
     pub context_injection: ContextInjectionResult,
     /// Memory nodes that were considered and stored, using fixed-size allocation
-    pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>}
+    pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>,
+}
 
 impl AgentRoleImpl {
     /// Context-aware chat with automatic memory injection and memorization
@@ -100,7 +104,8 @@ impl AgentRoleImpl {
         Ok(MemoryEnhancedChatResponse {
             response,
             context_injection,
-            memorized_nodes})
+            memorized_nodes,
+        })
     }
 
     /// Inject memory context with zero-allocation processing
@@ -131,7 +136,8 @@ impl AgentRoleImpl {
         Ok(ContextInjectionResult {
             injected_context,
             relevance_score,
-            memory_nodes_used})
+            memory_nodes_used,
+        })
     }
 
     /// Calculate relevance score using attention mechanism
@@ -205,7 +211,8 @@ impl AgentRoleImpl {
         let mut memorized_nodes = ArrayVec::new();
 
         // Create memory node for user message using direct constructor
-        let user_memory = MemoryNode::new(MemoryTypeEnum::Episodic, MemoryContent::text(user_message));
+        let user_memory =
+            MemoryNode::new(MemoryTypeEnum::Episodic, MemoryContent::text(user_message));
 
         // Store user memory with zero-allocation error handling - PURE STREAMING
         let store_stream = memory_tool.memory().store_memory(&user_memory);

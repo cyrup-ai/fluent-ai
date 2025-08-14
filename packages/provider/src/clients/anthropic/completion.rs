@@ -14,30 +14,30 @@
 
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
-use fluent_ai_domain::context::chunk::{CompletionChunk, FinishReason};
+use fluent_ai_domain::chat::{Message, config::ModelConfig};
 use fluent_ai_domain::completion::types::ToolDefinition;
 use fluent_ai_domain::context::Document;
-use fluent_ai_domain::chat::{Message, config::ModelConfig};
-use crate::completion_provider::Usage;
-use crate::spawn_async;
-// Use model-info package as single source of truth for model information
-use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
-// Use local Anthropic request/response types
-use super::types::{
-    AnthropicCacheControl, AnthropicChatRequest, AnthropicContent, AnthropicContentBlock,
-    AnthropicMessage, AnthropicStreamingChoice, AnthropicStreamingChunk,
-    AnthropicStreamingDelta, AnthropicSystemMessage, AnthropicThinkingConfig, AnthropicTool,
-    AnthropicToolResult, AnthropicToolUse, AnthropicUsage
-};
+use fluent_ai_domain::context::chunk::{CompletionChunk, FinishReason};
 use fluent_ai_http3::{Http3, HttpError};
 use log;
+// Use model-info package as single source of truth for model information
+use model_info::{ModelInfo as ModelInfoFromPackage, discovery::Provider};
 use serde_json::Value;
 
 use super::messages::ContentBlock;
+// Use local Anthropic request/response types
+use super::types::{
+    AnthropicCacheControl, AnthropicChatRequest, AnthropicContent, AnthropicContentBlock,
+    AnthropicMessage, AnthropicStreamingChoice, AnthropicStreamingChunk, AnthropicStreamingDelta,
+    AnthropicSystemMessage, AnthropicThinkingConfig, AnthropicTool, AnthropicToolResult,
+    AnthropicToolUse, AnthropicUsage,
+};
+use crate::completion_provider::Usage;
+use crate::spawn_async;
 use crate::{
     AsyncStream,
-    completion_provider::{
-        ChunkHandler, CompletionError, CompletionProvider, ModelConfigInfo}};
+    completion_provider::{ChunkHandler, CompletionError, CompletionProvider, ModelConfigInfo},
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -48,14 +48,13 @@ const MAX_DOCUMENTS: usize = 64;
 /// Maximum search results per request (compile-time bounded)
 const MAX_SEARCH_RESULTS: usize = 16;
 
-
-
 /// Search result data for citation support (using centralized types)
 #[derive(Debug, Clone)]
 pub struct SearchResultData {
     pub source: String,
     pub title: String,
-    pub content: Vec<ContentBlock>}
+    pub content: Vec<ContentBlock>,
+}
 
 /// Zero-allocation Anthropic completion builder with perfect ergonomics
 #[derive(Clone)]
@@ -83,7 +82,8 @@ pub struct AnthropicCompletionBuilder {
     thinking_enabled: bool,
     thinking_config: Option<AnthropicThinkingConfig>,
     // Search results for citation support
-    search_results: ArrayVec<SearchResultData, MAX_SEARCH_RESULTS>}
+    search_results: ArrayVec<SearchResultData, MAX_SEARCH_RESULTS>,
+}
 
 /// Anthropic-specific builder extensions available only for Anthropic provider
 pub trait AnthropicExtensions {
@@ -148,7 +148,8 @@ impl CompletionProvider for AnthropicCompletionBuilder {
             auto_cache_large_content: false,
             thinking_enabled: false,
             thinking_config: None,
-            search_results: ArrayVec::new()})
+            search_results: ArrayVec::new(),
+        })
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -367,7 +368,8 @@ impl AnthropicExtensions for AnthropicCompletionBuilder {
         let result = SearchResultData {
             source: source.into(),
             title: title.into(),
-            content};
+            content,
+        };
         let _ = self.search_results.try_push(result);
         self
     }
@@ -434,13 +436,13 @@ impl AnthropicCompletionBuilder {
 
         spawn_async(async move {
             use fluent_ai_http3::HttpStreamExt;
-            
+
             while let Some(chunk) = response_stream.next().await {
                 match chunk {
                     Ok(http_chunk) => {
                         if let fluent_ai_http3::HttpChunk::Body(data) = http_chunk {
                             let data_str = String::from_utf8_lossy(&data);
-                            
+
                             // Process SSE events
                             for line in data_str.lines() {
                                 if line.starts_with("data: ") {
@@ -448,7 +450,7 @@ impl AnthropicCompletionBuilder {
                                     if data.trim() == "[DONE]" {
                                         return;
                                     }
-                                    
+
                                     match Self::parse_sse_chunk(data.as_bytes()) {
                                         Ok(chunk) => {
                                             if chunk_sender.send(Ok(chunk)).is_err() {
@@ -487,7 +489,8 @@ impl AnthropicCompletionBuilder {
             messages
                 .try_push(AnthropicMessage {
                     role: "user",
-                    content: AnthropicContent::Text(Box::leak(content.into_boxed_str()))})
+                    content: AnthropicContent::Text(Box::leak(content.into_boxed_str())),
+                })
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
@@ -499,7 +502,7 @@ impl AnthropicCompletionBuilder {
                         .try_push(AnthropicMessage { role, content })
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
-                Err(e) => return Err(e)
+                Err(e) => return Err(e),
             }
         }
 
@@ -507,7 +510,8 @@ impl AnthropicCompletionBuilder {
         messages
             .try_push(AnthropicMessage {
                 role: "user",
-                content: AnthropicContent::Text(prompt)})
+                content: AnthropicContent::Text(prompt),
+            })
             .map_err(|_| CompletionError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
@@ -523,10 +527,12 @@ impl AnthropicCompletionBuilder {
                 message_type: "text",
                 text: &self.system_prompt,
                 cache_control: if self.prompt_caching_enabled {
-                    Some(AnthropicCacheControl { r#type: "ephemeral" })
+                    Some(AnthropicCacheControl {
+                        r#type: "ephemeral",
+                    })
                 } else {
                     None
-                }
+                },
             })
         };
 
@@ -581,7 +587,8 @@ impl AnthropicCompletionBuilder {
             let anthropic_tool = AnthropicTool {
                 name: tool.name(),
                 description: tool.description(),
-                input_schema: tool.parameters().clone()};
+                input_schema: tool.parameters().clone(),
+            };
 
             if tools.try_push(anthropic_tool).is_err() {
                 return Err(CompletionError::InvalidRequest(
@@ -605,7 +612,8 @@ impl AnthropicCompletionBuilder {
         // Use centralized deserialization
         let anthropic_chunk: AnthropicStreamingChunk = match serde_json::from_slice(data) {
             Ok(chunk) => chunk,
-            Err(_) => return Err(CompletionError::ParseError)};
+            Err(_) => return Err(CompletionError::ParseError),
+        };
 
         // Convert to domain CompletionChunk based on Anthropic's streaming format
         match anthropic_chunk.chunk_type.as_str() {
@@ -617,13 +625,11 @@ impl AnthropicCompletionBuilder {
                     Err(CompletionError::ParseError)
                 }
             }
-            "content_block_stop" => {
-                Ok(CompletionChunk::Complete {
-                    text: String::new(),
-                    finish_reason: Some(FinishReason::Stop),
-                    usage: None,
-                })
-            }
+            "content_block_stop" => Ok(CompletionChunk::Complete {
+                text: String::new(),
+                finish_reason: Some(FinishReason::Stop),
+                usage: None,
+            }),
             "message_delta" => {
                 let usage = anthropic_chunk.usage.map(|u| Usage {
                     prompt_tokens: u.input_tokens,
@@ -638,7 +644,8 @@ impl AnthropicCompletionBuilder {
                             "end_turn" => FinishReason::Stop,
                             "max_tokens" => FinishReason::Length,
                             "tool_use" => FinishReason::ToolCalls,
-                            _ => FinishReason::Stop});
+                            _ => FinishReason::Stop,
+                        });
 
                 Ok(CompletionChunk::Complete {
                     text: String::new(),

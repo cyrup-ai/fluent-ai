@@ -37,7 +37,8 @@ pub trait RuntimeSelectable: CosineSimilarity + WithMetrics + Send + Sync {
 /// A builder for similarity operations
 pub struct SimilarityBuilder {
     prefer_simd: bool,
-    min_simd_elements: usize}
+    min_simd_elements: usize,
+}
 
 impl Default for SimilarityBuilder {
     fn default() -> Self {

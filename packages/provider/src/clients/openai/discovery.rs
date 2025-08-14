@@ -3,6 +3,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use fluent_ai_domain::model::{
+    RegisteredModel, error::ModelError, traits::Model, unified_registry::UnifiedModelRegistry,
+};
+use model_info::{ModelInfo, ModelInfoBuilder, discovery::Provider};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -10,17 +14,13 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 use super::{client::OpenAIClient, error::OpenAIError};
 use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
-use model_info::{discovery::Provider, ModelInfo, ModelInfoBuilder};
-use fluent_ai_domain::model::{
-    error::ModelError,
-    registry::{ModelRegistry, RegisteredModel},
-    traits::Model};
 
 /// OpenAI model discovery implementation
 #[derive(Debug, Clone)]
 pub struct OpenAIDiscovery {
     client: Arc<OpenAIClient>,
-    supported_models: &'static [&'static str]}
+    supported_models: &'static [&'static str],
+}
 
 impl OpenAIDiscovery {
     /// Create a new OpenAI model discovery instance
@@ -36,7 +36,8 @@ impl OpenAIDiscovery {
 
         Self {
             client: Arc::new(client),
-            supported_models: SUPPORTED_MODELS}
+            supported_models: SUPPORTED_MODELS,
+        }
     }
 
     /// Get model information for a specific model using model-info package
@@ -78,7 +79,11 @@ impl OpenAIDiscovery {
 
 impl ProviderModelDiscovery for OpenAIDiscovery {
     fn discover_models(&self) -> DiscoveryResult<Vec<String>> {
-        Ok(self.supported_models.iter().map(|&s| s.to_string()).collect())
+        Ok(self
+            .supported_models
+            .iter()
+            .map(|&s| s.to_string())
+            .collect())
     }
 
     fn get_model_info(&self, model_name: &str) -> DiscoveryResult<ModelInfo> {
@@ -105,14 +110,15 @@ impl OpenAIDiscovery {
 
     pub async fn discover_and_register(&self) -> DiscoveryResult<()> {
         info!("Starting OpenAI model discovery");
-        let registry = ModelRegistry::global();
+        let registry = UnifiedModelRegistry::global();
 
         for &model_name in self.supported_models {
             if let Some(model_info) = self.get_model_info(model_name) {
                 // Create a new model instance for each model
                 let model = OpenAIModel {
                     info: model_info,
-                    client: self.client.clone()};
+                    client: self.client.clone(),
+                };
 
                 // Register the model
                 if let Err(e) = registry.register("openai", model) {
@@ -139,7 +145,8 @@ impl OpenAIDiscovery {
 #[derive(Debug, Clone)]
 struct OpenAIModel {
     info: ModelInfo,
-    client: Arc<OpenAIClient>}
+    client: Arc<OpenAIClient>,
+}
 
 impl Model for OpenAIModel {
     fn info(&self) -> &'static ModelInfo {
@@ -182,7 +189,7 @@ mod tests {
         );
 
         // Verify models were registered
-        let registry = ModelRegistry::global();
+        let registry = UnifiedModelRegistry::global();
         for model_name in supported_models {
             assert!(
                 registry

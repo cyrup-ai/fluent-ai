@@ -29,7 +29,7 @@ impl<'iter, 'data, T> JsonPathIterator<'iter, 'data, T>
 where
     T: DeserializeOwned,
 {
-    // TODO: Many methods in this impl block appear to duplicate functionality from core.rs  
+    // TODO: Many methods in this impl block appear to duplicate functionality from core.rs
     // This suggests different architectural approaches were tried. Investigate which is canonical.
     /// Read next byte from streaming buffer using persistent position tracking
     /// TODO: This appears to duplicate functionality in core.rs - investigate architectural intent
@@ -134,19 +134,19 @@ where
         if !self.deserializer.in_recursive_descent && self.should_enter_recursive_descent() {
             self.enter_recursive_descent_mode();
         }
-        
+
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(JsonProcessResult::Continue), // Skip whitespace
             b'{' => {
                 self.deserializer.object_nesting =
                     self.deserializer.object_nesting.saturating_add(1);
                 self.deserializer.transition_to_processing_object();
-                
+
                 // Update breadcrumbs for recursive descent tracking
                 if self.deserializer.in_recursive_descent {
                     self.update_breadcrumbs(None); // Object entry
                 }
-                
+
                 if self.matches_current_path() && self.deserializer.in_target_array {
                     self.deserializer.object_buffer.clear();
                     self.deserializer.object_buffer.push(byte);
@@ -158,12 +158,12 @@ where
             b'[' => {
                 self.deserializer.current_depth = self.deserializer.current_depth.saturating_add(1);
                 self.deserializer.transition_to_processing_array();
-                
+
                 // Update breadcrumbs for recursive descent tracking
                 if self.deserializer.in_recursive_descent {
                     self.update_breadcrumbs(None); // Array entry
                 }
-                
+
                 // Push current array index to stack for nested arrays
                 self.deserializer
                     .array_index_stack
@@ -232,17 +232,19 @@ where
             }
             b']' => {
                 // Check if we have a remaining object to process before closing array
-                if self.deserializer.in_target_array && !self.deserializer.object_buffer.is_empty() {
+                if self.deserializer.in_target_array && !self.deserializer.object_buffer.is_empty()
+                {
                     // Last object in array - process it before closing
                     let result = JsonProcessResult::ObjectFound;
                     self.deserializer.in_target_array = false;
-                    self.deserializer.current_depth = self.deserializer.current_depth.saturating_sub(1);
+                    self.deserializer.current_depth =
+                        self.deserializer.current_depth.saturating_sub(1);
                     if let Some(prev_index) = self.deserializer.array_index_stack.pop() {
                         self.deserializer.current_array_index = prev_index;
                     }
                     return Ok(result);
                 }
-                
+
                 if self.deserializer.in_target_array {
                     self.deserializer.in_target_array = false;
                 }
@@ -373,8 +375,6 @@ where
         }
     }
 
-
-
     /// Evaluate current selector considering array indices and slice notation
     #[inline]
     pub(super) fn evaluate_selector_match(&self) -> bool {
@@ -491,6 +491,4 @@ where
 
         within_start && within_end && matches_step
     }
-
-
 }

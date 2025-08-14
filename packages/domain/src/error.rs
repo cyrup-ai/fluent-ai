@@ -21,7 +21,8 @@ pub enum CircuitBreakerState {
     /// Circuit is open, rejecting operations
     Open,
     /// Circuit is half-open, testing if service has recovered
-    HalfOpen}
+    HalfOpen,
+}
 
 /// Simple production-quality circuit breaker implementation
 #[derive(Debug)]
@@ -35,7 +36,8 @@ pub struct SimpleCircuitBreaker {
     /// Failure threshold
     failure_threshold: u64,
     /// Recovery timeout in milliseconds
-    recovery_timeout_ms: u64}
+    recovery_timeout_ms: u64,
+}
 
 impl SimpleCircuitBreaker {
     /// Create new circuit breaker
@@ -45,7 +47,8 @@ impl SimpleCircuitBreaker {
             failure_count: AtomicU64::new(0),
             last_failure_time: AtomicU64::new(0),
             failure_threshold,
-            recovery_timeout_ms}
+            recovery_timeout_ms,
+        }
     }
 
     /// Execute operation with circuit breaker protection
@@ -120,7 +123,8 @@ pub enum CircuitBreakerError<E> {
     /// Inner operation error
     Inner(E),
     /// Circuit breaker is open
-    CircuitOpen}
+    CircuitOpen,
+}
 
 /// Error category for structured error handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -144,7 +148,8 @@ pub enum ErrorCategory {
     /// Authentication and authorization errors
     Auth,
     /// Unknown or unclassified errors
-    Unknown}
+    Unknown,
+}
 
 /// Error severity levels for prioritization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -156,7 +161,8 @@ pub enum ErrorSeverity {
     /// High severity - error
     Error,
     /// Critical severity - system failure
-    Critical}
+    Critical,
+}
 
 /// Error recoverability classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -168,13 +174,15 @@ pub enum ErrorRecoverability {
     /// Error is permanent and should not be retried
     Permanent,
     /// Error requires manual intervention
-    Manual}
+    Manual,
+}
 
 /// Zero-allocation error message with const generic length
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ZeroAllocMessage<const N: usize> {
     data: [u8; N],
-    len: usize}
+    len: usize,
+}
 
 impl<const N: usize> ZeroAllocMessage<N> {
     /// Create new zero-allocation message
@@ -246,7 +254,8 @@ pub struct ZeroAllocError {
     /// Error metadata for structured logging
     pub metadata: [(ErrorMessage, ErrorMessage); 4],
     /// Number of metadata entries
-    pub metadata_count: usize}
+    pub metadata_count: usize,
+}
 
 impl ZeroAllocError {
     /// Create new zero-allocation error
@@ -280,7 +289,8 @@ impl ZeroAllocError {
                 (ErrorMessage::new(""), ErrorMessage::new("")),
                 (ErrorMessage::new(""), ErrorMessage::new("")),
             ],
-            metadata_count: 0}
+            metadata_count: 0,
+        }
     }
 
     /// Add location information
@@ -376,7 +386,8 @@ pub struct ErrorCounter {
     /// Count by recoverability
     by_recoverability: [RelaxedCounter; 4],
     /// Last error timestamp
-    last_error: AtomicU64}
+    last_error: AtomicU64,
+}
 
 impl ErrorCounter {
     /// Create new error counter
@@ -408,7 +419,8 @@ impl ErrorCounter {
                 RelaxedCounter::new(0),
                 RelaxedCounter::new(0),
             ],
-            last_error: AtomicU64::new(0)}
+            last_error: AtomicU64::new(0),
+        }
     }
 
     /// Record error occurrence
@@ -495,7 +507,8 @@ pub struct ErrorCircuitBreaker {
     #[allow(dead_code)] // TODO: Implement in circuit breaker system
     recovery_timeout: Duration,
     /// Half-open requests
-    half_open_requests: AtomicU64}
+    half_open_requests: AtomicU64,
+}
 
 impl ErrorCircuitBreaker {
     /// Create new circuit breaker
@@ -511,7 +524,8 @@ impl ErrorCircuitBreaker {
             counter: ErrorCounter::new(),
             failure_threshold,
             recovery_timeout,
-            half_open_requests: AtomicU64::new(0)}
+            half_open_requests: AtomicU64::new(0),
+        }
     }
 
     /// Execute operation with circuit breaker protection
@@ -582,7 +596,8 @@ pub struct ErrorAggregator {
     /// Rate limit window
     rate_window: Duration,
     /// Maximum errors per window
-    max_errors_per_window: usize}
+    max_errors_per_window: usize,
+}
 
 impl ErrorAggregator {
     /// Create new error aggregator
@@ -615,7 +630,8 @@ impl ErrorAggregator {
                     RelaxedCounter::new(0),
                     RelaxedCounter::new(0),
                 ],
-                last_error: AtomicU64::new(0)}
+                last_error: AtomicU64::new(0),
+            }
         }
 
         Self {
@@ -646,7 +662,8 @@ impl ErrorAggregator {
             rate_limiter: AtomicU64::new(0),
             last_reset: AtomicU64::new(0),
             rate_window,
-            max_errors_per_window}
+            max_errors_per_window,
+        }
     }
 
     /// Record error with rate limiting
@@ -918,13 +935,15 @@ where
     {
         match self {
             Ok(value) => Ok(value),
-            Err(_) => Err(f())}
+            Err(_) => Err(f()),
+        }
     }
 
     fn with_error_metadata(self, key: &str, value: &str) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
-            Err(e) => Err(e.into_zero_alloc_error().with_metadata(key, value))}
+            Err(e) => Err(e.into_zero_alloc_error().with_metadata(key, value)),
+        }
     }
 
     fn with_error_code(self, code: u64) -> ZeroAllocResult<T> {
@@ -957,13 +976,15 @@ impl<T> ZeroAllocResultExt<T> for ZeroAllocResult<T> {
     {
         match self {
             Ok(value) => Ok(value),
-            Err(_) => Err(f())}
+            Err(_) => Err(f()),
+        }
     }
 
     fn with_error_metadata(self, key: &str, value: &str) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
-            Err(e) => Err(e.with_metadata(key, value))}
+            Err(e) => Err(e.with_metadata(key, value)),
+        }
     }
 
     fn with_error_code(self, code: u64) -> ZeroAllocResult<T> {

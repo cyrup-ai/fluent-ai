@@ -33,7 +33,8 @@ pub struct VectorStoreConfig {
     /// Performance tuning parameters
     pub performance_config: PerformanceConfig,
     /// Memory usage configuration
-    pub memory_config: MemoryConfig}
+    pub memory_config: MemoryConfig,
+}
 
 /// Vector store types with performance characteristics
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -52,7 +53,8 @@ pub enum VectorStoreType {
     /// Milvus vector store - Purpose-built vector database
     Milvus = 5,
     /// Pinecone vector store - Managed vector database
-    Pinecone = 6}
+    Pinecone = 6,
+}
 
 impl VectorStoreType {
     /// Get recommended index type for vector store
@@ -64,7 +66,8 @@ impl VectorStoreType {
             Self::HNSW => IndexType::HNSW,
             Self::Annoy => IndexType::Annoy,
             Self::Milvus => IndexType::IVFPQ,
-            Self::Pinecone => IndexType::FlatIP}
+            Self::Pinecone => IndexType::FlatIP,
+        }
     }
 
     /// Check if store supports batch operations
@@ -72,7 +75,8 @@ impl VectorStoreType {
     pub const fn supports_batch_operations(&self) -> bool {
         match self {
             Self::SurrealDB | Self::FAISS | Self::HNSW | Self::Milvus | Self::Pinecone => true,
-            Self::Memory | Self::Annoy => false}
+            Self::Memory | Self::Annoy => false,
+        }
     }
 
     /// Get optimal batch size for store type
@@ -85,7 +89,8 @@ impl VectorStoreType {
             Self::HNSW => 1000,
             Self::Annoy => 1,
             Self::Milvus => 2000,
-            Self::Pinecone => 100}
+            Self::Pinecone => 100,
+        }
     }
 
     /// Check if store supports real-time updates
@@ -93,7 +98,8 @@ impl VectorStoreType {
     pub const fn supports_realtime_updates(&self) -> bool {
         match self {
             Self::SurrealDB | Self::Memory | Self::Milvus | Self::Pinecone => true,
-            Self::FAISS | Self::HNSW | Self::Annoy => false}
+            Self::FAISS | Self::HNSW | Self::Annoy => false,
+        }
     }
 }
 
@@ -106,7 +112,8 @@ impl std::fmt::Display for VectorStoreType {
             Self::HNSW => write!(f, "hnsw"),
             Self::Annoy => write!(f, "annoy"),
             Self::Milvus => write!(f, "milvus"),
-            Self::Pinecone => write!(f, "pinecone")}
+            Self::Pinecone => write!(f, "pinecone"),
+        }
     }
 }
 
@@ -125,7 +132,8 @@ pub enum DistanceMetric {
     /// Hamming distance - For binary vectors
     Hamming = 4,
     /// Jaccard similarity - For sparse vectors
-    Jaccard = 5}
+    Jaccard = 5,
+}
 
 impl DistanceMetric {
     /// Check if metric supports SIMD optimization
@@ -133,7 +141,8 @@ impl DistanceMetric {
     pub const fn supports_simd(&self) -> bool {
         match self {
             Self::Cosine | Self::Euclidean | Self::DotProduct => true,
-            Self::Manhattan | Self::Hamming | Self::Jaccard => false}
+            Self::Manhattan | Self::Hamming | Self::Jaccard => false,
+        }
     }
 
     /// Get recommended SIMD instruction set for metric
@@ -142,7 +151,8 @@ impl DistanceMetric {
         match self {
             Self::Cosine | Self::DotProduct => SimdInstructionSet::AVX2,
             Self::Euclidean => SimdInstructionSet::AVX512,
-            _ => SimdInstructionSet::None}
+            _ => SimdInstructionSet::None,
+        }
     }
 
     /// Check if metric is symmetric
@@ -152,7 +162,8 @@ impl DistanceMetric {
             Self::Cosine | Self::Euclidean | Self::Manhattan | Self::Hamming | Self::Jaccard => {
                 true
             }
-            Self::DotProduct => false}
+            Self::DotProduct => false,
+        }
     }
 
     /// Get value range for metric
@@ -163,7 +174,8 @@ impl DistanceMetric {
             Self::Euclidean | Self::Manhattan => (0.0, f32::INFINITY),
             Self::DotProduct => (f32::NEG_INFINITY, f32::INFINITY),
             Self::Hamming => (0.0, f32::INFINITY),
-            Self::Jaccard => (0.0, 1.0)}
+            Self::Jaccard => (0.0, 1.0),
+        }
     }
 }
 
@@ -175,7 +187,8 @@ impl std::fmt::Display for DistanceMetric {
             Self::Manhattan => write!(f, "manhattan"),
             Self::DotProduct => write!(f, "dot_product"),
             Self::Hamming => write!(f, "hamming"),
-            Self::Jaccard => write!(f, "jaccard")}
+            Self::Jaccard => write!(f, "jaccard"),
+        }
     }
 }
 
@@ -194,7 +207,8 @@ pub enum SimdInstructionSet {
     /// AVX-512 (512-bit)
     AVX512 = 4,
     /// ARM NEON (128-bit)
-    NEON = 5}
+    NEON = 5,
+}
 
 impl SimdInstructionSet {
     /// Get vector width in bytes
@@ -231,7 +245,8 @@ impl SimdInstructionSet {
             #[cfg(not(target_arch = "x86_64"))]
             Self::SSE | Self::AVX | Self::AVX2 | Self::AVX512 => false,
             #[cfg(not(target_arch = "aarch64"))]
-            Self::NEON => false}
+            Self::NEON => false,
+        }
     }
 
     /// Detect best available SIMD instruction set
@@ -282,7 +297,8 @@ pub enum IndexType {
     /// Locality sensitive hashing
     LSH = 5,
     /// Scalar quantization
-    SQ = 6}
+    SQ = 6,
+}
 
 impl IndexType {
     /// Check if index type supports exact search
@@ -290,7 +306,8 @@ impl IndexType {
     pub const fn supports_exact_search(&self) -> bool {
         match self {
             Self::FlatIP | Self::FlatL2 => true,
-            Self::IVFPQ | Self::HNSW | Self::Annoy | Self::LSH | Self::SQ => false}
+            Self::IVFPQ | Self::HNSW | Self::Annoy | Self::LSH | Self::SQ => false,
+        }
     }
 
     /// Get memory usage multiplier compared to raw vectors
@@ -302,7 +319,8 @@ impl IndexType {
             Self::HNSW => 1.5,
             Self::Annoy => 2.0,
             Self::LSH => 1.2,
-            Self::SQ => 0.25}
+            Self::SQ => 0.25,
+        }
     }
 
     /// Get build time complexity relative to vector count
@@ -314,7 +332,8 @@ impl IndexType {
             Self::HNSW => "O(n log n)",
             Self::Annoy => "O(n log n)",
             Self::LSH => "O(n)",
-            Self::SQ => "O(n)"}
+            Self::SQ => "O(n)",
+        }
     }
 }
 
@@ -332,7 +351,8 @@ pub struct SimdConfig {
     /// Enable SIMD for vector normalization
     pub enable_normalization_simd: bool,
     /// Minimum vector dimension to use SIMD
-    pub simd_threshold: usize}
+    pub simd_threshold: usize,
+}
 
 impl SimdConfig {
     /// Create optimized SIMD configuration
@@ -362,7 +382,8 @@ impl SimdConfig {
             force_alignment: None,
             enable_distance_simd: false,
             enable_normalization_simd: false,
-            simd_threshold: usize::MAX}
+            simd_threshold: usize::MAX,
+        }
     }
 
     /// Check if SIMD should be used for given dimension
@@ -407,7 +428,8 @@ pub struct IndexConfig {
     /// Search parameter for approximate indices
     pub search_ef: Option<usize>,
     /// Number of trees for Annoy
-    pub annoy_trees: Option<usize>}
+    pub annoy_trees: Option<usize>,
+}
 
 impl IndexConfig {
     /// Create optimized configuration for index type
@@ -421,7 +443,8 @@ impl IndexConfig {
                 hnsw_max_connections: None,
                 hnsw_ef_construction: None,
                 search_ef: None,
-                annoy_trees: None},
+                annoy_trees: None,
+            },
             IndexType::IVFPQ => {
                 let num_clusters = (expected_vectors as f64).sqrt() as usize;
                 let pq_subspaces = (dimension / 4).max(1).min(64);
@@ -433,7 +456,8 @@ impl IndexConfig {
                     hnsw_max_connections: None,
                     hnsw_ef_construction: None,
                     search_ef: Some(num_clusters / 4),
-                    annoy_trees: None}
+                    annoy_trees: None,
+                }
             }
             IndexType::HNSW => Self {
                 index_type,
@@ -443,7 +467,8 @@ impl IndexConfig {
                 hnsw_max_connections: Some(16),
                 hnsw_ef_construction: Some(200),
                 search_ef: Some(50),
-                annoy_trees: None},
+                annoy_trees: None,
+            },
             IndexType::Annoy => Self {
                 index_type,
                 num_clusters: None,
@@ -452,7 +477,8 @@ impl IndexConfig {
                 hnsw_max_connections: None,
                 hnsw_ef_construction: None,
                 search_ef: None,
-                annoy_trees: Some((expected_vectors as f64).log2() as usize * 2)},
+                annoy_trees: Some((expected_vectors as f64).log2() as usize * 2),
+            },
             IndexType::LSH | IndexType::SQ => Self {
                 index_type,
                 num_clusters: None,
@@ -461,7 +487,9 @@ impl IndexConfig {
                 hnsw_max_connections: None,
                 hnsw_ef_construction: None,
                 search_ef: None,
-                annoy_trees: None}}
+                annoy_trees: None,
+            },
+        }
     }
 
     /// Estimate memory usage in bytes
@@ -495,7 +523,8 @@ pub struct VectorConnectionConfig {
     /// Enable TLS/SSL
     pub enable_tls: bool,
     /// Custom headers for requests
-    pub headers: Option<Arc<serde_json::Value>>}
+    pub headers: Option<Arc<serde_json::Value>>,
+}
 
 impl VectorConnectionConfig {
     /// Create new connection configuration
@@ -508,7 +537,8 @@ impl VectorConnectionConfig {
             max_connections: 10,
             idle_timeout: Duration::from_secs(300),
             enable_tls: true,
-            headers: None}
+            headers: None,
+        }
     }
 
     /// Set API key
@@ -540,7 +570,8 @@ pub struct PerformanceConfig {
     /// Enable compression for storage
     pub enable_compression: bool,
     /// Quantization precision for reduced memory usage
-    pub quantization_bits: Option<u8>}
+    pub quantization_bits: Option<u8>,
+}
 
 impl PerformanceConfig {
     /// Create optimized performance configuration
@@ -555,7 +586,8 @@ impl PerformanceConfig {
                 store_type,
                 VectorStoreType::FAISS | VectorStoreType::Milvus
             ),
-            quantization_bits: None}
+            quantization_bits: None,
+        }
     }
 
     /// Create minimal performance configuration for testing
@@ -567,7 +599,8 @@ impl PerformanceConfig {
             enable_prefetch: false,
             cache_size: 100,
             enable_compression: false,
-            quantization_bits: None}
+            quantization_bits: None,
+        }
     }
 }
 
@@ -591,7 +624,8 @@ pub struct MemoryConfig {
     pub track_usage: bool,
     /// Atomic memory usage counter
     #[serde(skip)]
-    pub current_usage: Arc<CachePadded<AtomicUsize>>}
+    pub current_usage: Arc<CachePadded<AtomicUsize>>,
+}
 
 /// Memory allocation strategies
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -604,7 +638,8 @@ pub enum AllocationStrategy {
     /// Arena allocator for batch operations
     Arena = 2,
     /// NUMA-aware allocator
-    NUMA = 3}
+    NUMA = 3,
+}
 
 impl MemoryConfig {
     /// Create new memory configuration
@@ -615,7 +650,8 @@ impl MemoryConfig {
             allocation_strategy: AllocationStrategy::System,
             enable_mmap: max_memory_bytes > 1024 * 1024 * 1024, // Enable for >1GB
             track_usage: true,
-            current_usage: Arc::new(CachePadded::new(AtomicUsize::new(0)))}
+            current_usage: Arc::new(CachePadded::new(AtomicUsize::new(0))),
+        }
     }
 
     /// Record memory allocation
@@ -715,7 +751,8 @@ impl VectorStoreConfig {
             simd_config: SimdConfig::optimized(),
             connection_config: None,
             performance_config: PerformanceConfig::optimized(store_type),
-            memory_config: MemoryConfig::default()})
+            memory_config: MemoryConfig::default(),
+        })
     }
 
     /// Set distance metric

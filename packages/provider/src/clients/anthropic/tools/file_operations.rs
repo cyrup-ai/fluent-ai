@@ -14,10 +14,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::fs;
 
-use super::{
-    core::{ToolExecutor},
-    function_calling::{ToolExecutionContext, ToolOutput}};
 use super::super::error::{AnthropicError, AnthropicResult};
+use super::{
+    core::ToolExecutor,
+    function_calling::{ToolExecutionContext, ToolOutput},
+};
 
 /// Built-in file operations tool for Anthropic Files API
 pub struct FileOperationsTool;
@@ -30,7 +31,8 @@ struct FileUploadResponse {
     file_type: String,
     filename: String,
     size: u64,
-    created_at: String}
+    created_at: String,
+}
 
 /// File list response from Anthropic Files API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +40,8 @@ struct FileListResponse {
     data: Vec<FileMetadata>,
     has_more: bool,
     first_id: Option<String>,
-    last_id: Option<String>}
+    last_id: Option<String>,
+}
 
 /// File metadata from Anthropic Files API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +51,8 @@ struct FileMetadata {
     file_type: String,
     filename: String,
     size: u64,
-    created_at: String}
+    created_at: String,
+}
 
 /// Supported file types for Anthropic Files API
 const SUPPORTED_FILE_TYPES: &[&str] = &[
@@ -81,11 +85,7 @@ impl FileOperationsTool {
 }
 
 impl ToolExecutor for FileOperationsTool {
-    fn execute(
-        &self,
-        input: Value,
-        context: &ToolExecutionContext,
-    ) -> AsyncStream<ToolOutput> {
+    fn execute(&self, input: Value, context: &ToolExecutionContext) -> AsyncStream<ToolOutput> {
         let (tx, stream) = channel();
         let api_key = match Self::get_api_key(context) {
             Ok(key) => key.to_string(),
@@ -210,5 +210,4 @@ impl ToolExecutor for FileOperationsTool {
 
         stream
     }
-
 }

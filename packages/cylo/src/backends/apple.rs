@@ -11,15 +11,16 @@
 // - Apple Silicon optimization
 // ============================================================================
 
+use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
 
 use crate::AsyncTaskBuilder;
 use crate::backends::AsyncTask;
 use crate::backends::{
     BackendConfig, BackendError, BackendResult, ExecutionBackend, ExecutionRequest,
-    ExecutionResult, HealthStatus, ResourceUsage};
+    ExecutionResult, HealthStatus, ResourceUsage,
+};
 
 /// Apple containerization backend
 ///
@@ -32,7 +33,8 @@ pub struct AppleBackend {
     image: String,
 
     /// Backend configuration
-    config: BackendConfig}
+    config: BackendConfig,
+}
 
 impl AppleBackend {
     /// Create a new Apple backend instance
@@ -48,14 +50,16 @@ impl AppleBackend {
         if !Self::is_platform_supported() {
             return Err(BackendError::NotAvailable {
                 backend: "Apple",
-                reason: "Apple containerization requires macOS with Apple Silicon".to_string()});
+                reason: "Apple containerization requires macOS with Apple Silicon".to_string(),
+            });
         }
 
         // Validate image format
         if !Self::is_valid_image_format(&image) {
             return Err(BackendError::InvalidConfig {
                 backend: "Apple",
-                details: format!("Invalid image format: {image}. Expected format: 'name:tag'")});
+                details: format!("Invalid image format: {image}. Expected format: 'name:tag'"),
+            });
         }
 
         Ok(Self { image, config })
@@ -132,7 +136,8 @@ impl AppleBackend {
 
             match result {
                 Ok(status) => status.success(),
-                Err(_) => false}
+                Err(_) => false,
+            }
         })
         .spawn()
     }
@@ -175,10 +180,13 @@ impl AppleBackend {
                 Ok(output) => {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     Err(BackendError::ContainerFailed {
-                        details: format!("Failed to pull image {image}: {stderr}")})
+                        details: format!("Failed to pull image {image}: {stderr}"),
+                    })
                 }
                 Err(e) => Err(BackendError::ContainerFailed {
-                    details: format!("Failed to execute container pull: {e}")})}
+                    details: format!("Failed to execute container pull: {e}"),
+                }),
+            }
         })
         .spawn()
     }
@@ -244,7 +252,8 @@ impl AppleBackend {
 
             // Execute the container
             let mut child = cmd.spawn().map_err(|e| BackendError::ProcessFailed {
-                details: format!("Failed to spawn container: {e}")})?;
+                details: format!("Failed to spawn container: {e}"),
+            })?;
 
             // Write input if provided
             if let Some(input) = &request.input
@@ -255,7 +264,8 @@ impl AppleBackend {
                 stdin
                     .write_all(input.as_bytes())
                     .map_err(|e| BackendError::ProcessFailed {
-                        details: format!("Failed to write to container stdin: {e}")})?;
+                        details: format!("Failed to write to container stdin: {e}"),
+                    })?;
             }
 
             // Wait for completion with timeout
@@ -268,17 +278,20 @@ impl AppleBackend {
                 Ok(Ok(Ok(output))) => output,
                 Ok(Ok(Err(e))) => {
                     return Err(BackendError::ProcessFailed {
-                        details: format!("Container execution failed: {e}")});
+                        details: format!("Container execution failed: {e}"),
+                    });
                 }
                 Ok(Err(_)) => {
                     return Err(BackendError::ProcessFailed {
-                        details: "Container process task failed".to_string()});
+                        details: "Container process task failed".to_string(),
+                    });
                 }
                 Err(_) => {
                     // Timeout occurred - the process is still running but we can't kill it
                     // from here since it's been moved into the task
                     return Err(BackendError::ExecutionTimeout {
-                        seconds: timeout_duration.as_secs()});
+                        seconds: timeout_duration.as_secs(),
+                    });
                 }
             };
 
@@ -301,7 +314,8 @@ impl AppleBackend {
                     meta.insert("image".to_string(), image);
                     meta.insert("container_name".to_string(), container_name);
                     meta
-                }})
+                },
+            })
         })
         .spawn()
     }
@@ -346,7 +360,9 @@ impl AppleBackend {
             ]),
             _ => Err(BackendError::UnsupportedLanguage {
                 backend: "Apple",
-                language: language.to_string()})}
+                language: language.to_string(),
+            }),
+        }
     }
 
     /// Parse resource usage from container stats
@@ -380,12 +396,14 @@ impl AppleBackend {
                             .and_then(|entry| entry["value"].as_u64())
                             .unwrap_or(0),
                         network_bytes_sent: stats["network"]["tx_bytes"].as_u64().unwrap_or(0),
-                        network_bytes_received: stats["network"]["rx_bytes"].as_u64().unwrap_or(0)})
+                        network_bytes_received: stats["network"]["rx_bytes"].as_u64().unwrap_or(0),
+                    })
                 } else {
                     None
                 }
             }
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -418,7 +436,8 @@ impl ExecutionBackend for AppleBackend {
                 Err(e) => ExecutionResult::failure(
                     -1,
                     format!("{backend_name} execution task failed: {e}"),
-                )}
+                ),
+            }
         })
         .spawn()
     }
@@ -460,7 +479,8 @@ impl ExecutionBackend for AppleBackend {
                 Ok(Err(e)) => HealthStatus::unhealthy(format!("Health check execution error: {e}"))
                     .with_metric("test_execution", "error"),
                 Err(e) => HealthStatus::unhealthy(format!("Health check task error: {e}"))
-                    .with_metric("test_execution", "task_error")}
+                    .with_metric("test_execution", "task_error"),
+            }
         })
         .spawn()
     }

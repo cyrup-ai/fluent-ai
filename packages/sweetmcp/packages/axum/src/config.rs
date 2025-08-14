@@ -2,11 +2,12 @@
 
 use std::{collections::HashMap, io::Write, path::Path, str::FromStr};
 
-use crate::db::DatabaseConfig;
 use anyhow::{Context, Result, anyhow};
 use chrono::Local;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
+
+use crate::db::DatabaseConfig;
 
 /// Initialize the logger with the specified path and level
 pub fn init_logger(path: Option<&str>, level: Option<&str>) -> Result<()> {

@@ -2,7 +2,8 @@ use std::{
     fs,
     io::Write,
     path::{Path, PathBuf},
-    process::Command};
+    process::Command,
+};
 
 use tempfile::Builder as TempFileBuilder;
 use tracing::{error, info, warn};
@@ -13,7 +14,8 @@ use crate::metadata::MetadataManager;
 use crate::ramdisk::get_watched_dir;
 use crate::sandbox::{
     create_go_environment, create_node_environment, create_python_venv, create_rust_environment,
-    safe_path_to_string};
+    safe_path_to_string,
+};
 
 /// Helper function to check if any of the commands exist in path
 pub fn find_command<'a>(candidates: &[&'a str]) -> Option<&'a str> {
@@ -66,7 +68,8 @@ pub fn get_safe_watched_dir(config: &RamdiskConfig) -> PathBuf {
     if !local_path.exists() {
         match fs::create_dir_all(&local_path) {
             Ok(_) => info!("Created local watched directory at {:?}", local_path),
-            Err(e) => error!("Failed to create local watched directory: {}", e)}
+            Err(e) => error!("Failed to create local watched directory: {}", e),
+        }
     } else {
         info!("Using local watched directory at {:?}", local_path);
     }

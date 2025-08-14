@@ -334,7 +334,8 @@ where
     let mut iter = values.into_iter();
     let mut result = match iter.next() {
         Some(value) => value,
-        None => serde_json::Value::Object(serde_json::Map::new())};
+        None => serde_json::Value::Object(serde_json::Map::new()),
+    };
 
     for value in iter {
         result = merge(result, value);
@@ -353,7 +354,8 @@ pub fn is_empty_value(value: &serde_json::Value) -> bool {
         serde_json::Value::Object(map) => map.is_empty(),
         serde_json::Value::Array(arr) => arr.is_empty(),
         serde_json::Value::String(s) => s.is_empty(),
-        _ => false}
+        _ => false,
+    }
 }
 
 /// Compact JSON serialization with minimal allocation
@@ -383,7 +385,8 @@ mod tests {
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct Dummy {
         #[serde(with = "stringified_json")]
-        data: serde_json::Value}
+        data: serde_json::Value,
+    }
 
     // ----- merge -----------------------------------------------------------
     #[test]
@@ -404,7 +407,8 @@ mod tests {
     #[test]
     fn stringified_roundtrip() {
         let original = Dummy {
-            data: serde_json::json!({"k":"v"})};
+            data: serde_json::json!({"k":"v"}),
+        };
         let s = serde_json::to_string(&original).expect("Failed to serialize Dummy to JSON string");
         assert_eq!(s, r#"{"data":"{\"k\":\"v\"}"}"#);
         let parsed: Dummy =
@@ -418,7 +422,8 @@ mod tests {
         #[derive(Deserialize, PartialEq, Debug)]
         struct Wrapper {
             #[serde(deserialize_with = "string_or_vec")]
-            v: Vec<u32>}
+            v: Vec<u32>,
+        }
 
         let w1: Wrapper =
             serde_json::from_str(r#"{"v":"3"}"#).expect("Failed to parse string variant");
@@ -439,7 +444,8 @@ mod tests {
         #[derive(Deserialize, PartialEq, Debug)]
         struct Wrapper {
             #[serde(deserialize_with = "null_or_vec")]
-            v: Vec<bool>}
+            v: Vec<bool>,
+        }
 
         let w1: Wrapper = serde_json::from_str(r#"{"v":[true,false]}"#).unwrap();
         assert_eq!(w1.v, vec![true, false]);

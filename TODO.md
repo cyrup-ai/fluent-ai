@@ -1,195 +1,218 @@
-# FLUENT-AI WARNING/ERROR FIXES - FOCUS ZERO TOLERANCE 🎯
-
-## CURRENT STATUS: ERRORS AND WARNINGS FROM CARGO CHECK
-
-### COMPILATION ERRORS (CRITICAL - BLOCKING COMPILATION)
-
-1. **[ERROR]** Method `chat_with_message` not member of trait `CandleAgentBuilder` in `packages/candle/src/builders/agent_role.rs:630` - STATUS: PLANNED
-2. **[QA]** Rate fix for trait method mismatch (1-10) - STATUS: PLANNED
-
-3. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:404` - STATUS: PLANNED  
-4. **[QA]** Rate fix for ambiguous associated type (1-10) - STATUS: PLANNED
-
-5. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:521` - STATUS: PLANNED
-6. **[QA]** Rate fix for missing Text variant (1-10) - STATUS: PLANNED
-
-7. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:561` - STATUS: PLANNED
-8. **[QA]** Rate fix for second ambiguous associated type (1-10) - STATUS: PLANNED  
-
-9. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:594` - STATUS: PLANNED
-10. **[QA]** Rate fix for second missing Text variant (1-10) - STATUS: PLANNED
-
-11. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:597` - STATUS: PLANNED
-12. **[QA]** Rate fix for third ambiguous associated type (1-10) - STATUS: PLANNED
-
-13. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:604` - STATUS: PLANNED
-14. **[QA]** Rate fix for third missing Text variant (1-10) - STATUS: PLANNED
-
-15. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:607` - STATUS: PLANNED
-16. **[QA]** Rate fix for fourth missing Text variant (1-10) - STATUS: PLANNED
-
-17. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:610` - STATUS: PLANNED
-18. **[QA]** Rate fix for fifth missing Text variant (1-10) - STATUS: PLANNED
-
-19. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:613` - STATUS: PLANNED
-20. **[QA]** Rate fix for fourth ambiguous associated type (1-10) - STATUS: PLANNED
-
-21. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:660` - STATUS: PLANNED
-22. **[QA]** Rate fix for sixth missing Text variant (1-10) - STATUS: PLANNED
-
-23. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:663` - STATUS: PLANNED
-24. **[QA]** Rate fix for fifth ambiguous associated type (1-10) - STATUS: PLANNED
-
-25. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:670` - STATUS: PLANNED
-26. **[QA]** Rate fix for seventh missing Text variant (1-10) - STATUS: PLANNED
-
-27. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:673` - STATUS: PLANNED  
-28. **[QA]** Rate fix for eighth missing Text variant (1-10) - STATUS: PLANNED
-
-29. **[ERROR]** No associated item `Text` found for `CandleMessageChunk` in `packages/candle/src/builders/agent_role.rs:676` - STATUS: PLANNED
-30. **[QA]** Rate fix for ninth missing Text variant (1-10) - STATUS: PLANNED
-
-31. **[ERROR]** Ambiguous associated type `CandleMessageChunk::Complete` in `packages/candle/src/builders/agent_role.rs:679` - STATUS: PLANNED
-32. **[QA]** Rate fix for sixth ambiguous associated type (1-10) - STATUS: PLANNED
-
-33. **[ERROR]** The `http3` feature is unstable, requires `RUSTFLAGS='--cfg http3_unstable'` in `packages/http3/src/hyper/mod.rs:251` - STATUS: PLANNED
-34. **[QA]** Rate fix for http3 feature flag requirement (1-10) - STATUS: PLANNED
-
-35. **[ERROR]** Unresolved import `crate::async_impl::h3_client::dns::resolve` in `packages/http3/src/hyper/async_impl/h3_client/connect.rs:1` - STATUS: PLANNED
-36. **[QA]** Rate fix for unresolved dns resolve import (1-10) - STATUS: PLANNED
-
-37. **[ERROR]** Unresolved import `crate::async_impl::body::ResponseBody` in `packages/http3/src/hyper/async_impl/h3_client/pool.rs:12` - STATUS: PLANNED
-38. **[QA]** Rate fix for unresolved ResponseBody import in pool.rs (1-10) - STATUS: PLANNED
-
-39. **[ERROR]** Unresolved import `crate::util::Escape` in `packages/http3/src/hyper/error.rs:6` - STATUS: PLANNED
-40. **[QA]** Rate fix for unresolved Escape import (1-10) - STATUS: PLANNED
-
-41. **[ERROR]** Unresolved import `crate::async_impl::body::ResponseBody` in `packages/http3/src/hyper/async_impl/h3_client/mod.rs:7` - STATUS: PLANNED
-42. **[QA]** Rate fix for unresolved ResponseBody import in mod.rs (1-10) - STATUS: PLANNED
-
-43. **[ERROR]** Unresolved import `crate::async_impl::h3_client::pool::{Key, Pool, PoolClient}` in `packages/http3/src/hyper/async_impl/h3_client/mod.rs:8` - STATUS: PLANNED
-44. **[QA]** Rate fix for unresolved pool imports (1-10) - STATUS: PLANNED
-
-45. **[ERROR]** Unresolved import `crate::error::Kind` in `packages/http3/src/hyper/async_impl/h3_client/pool.rs:13` - STATUS: PLANNED
-46. **[QA]** Rate fix for unresolved Kind import in pool.rs (1-10) - STATUS: PLANNED
-
-47. **[ERROR]** Unresolved import `crate::error::Kind` in `packages/http3/src/hyper/async_impl/h3_client/mod.rs:11` - STATUS: PLANNED
-48. **[QA]** Rate fix for unresolved Kind import in mod.rs (1-10) - STATUS: PLANNED
-
-49. **[ERROR]** Unresolved import `crate::async_impl::body::ResponseBody` in `packages/http3/src/hyper/async_impl/response.rs:19` - STATUS: PLANNED
-50. **[QA]** Rate fix for unresolved ResponseBody import in response.rs (1-10) - STATUS: PLANNED
-
-51. **[ERROR]** Unresolved imports `crate::config::RequestConfig`, `crate::config::RequestTimeout` in `packages/http3/src/hyper/async_impl/request.rs:15` - STATUS: PLANNED
-52. **[QA]** Rate fix for unresolved config imports (1-10) - STATUS: PLANNED
-
-53. **[ERROR]** Unresolved import `crate::response::ResponseUrl` in `packages/http3/src/hyper/async_impl/response.rs:461` - STATUS: PLANNED
-54. **[QA]** Rate fix for unresolved ResponseUrl import (1-10) - STATUS: PLANNED
-
-55. **[ERROR]** Unresolved import `crate::error::cast_to_internal_error` in `packages/http3/src/hyper/connect.rs:31` - STATUS: PLANNED
-56. **[QA]** Rate fix for unresolved cast_to_internal_error import (1-10) - STATUS: PLANNED
-
-57. **[ERROR]** Unresolved import `crate::proxy` in `packages/http3/src/hyper/connect.rs:32` - STATUS: PLANNED
-58. **[QA]** Rate fix for unresolved proxy import (1-10) - STATUS: PLANNED
-
-59. **[ERROR]** Unresolved import `crate::util::Escape` in `packages/http3/src/hyper/connect.rs:1379` - STATUS: PLANNED
-60. **[QA]** Rate fix for unresolved Escape import in connect.rs (1-10) - STATUS: PLANNED
-
-61. **[ERROR]** Unresolved import `crate::into_url` in `packages/http3/src/hyper/proxy.rs:8` - STATUS: PLANNED
-62. **[QA]** Rate fix for unresolved into_url import (1-10) - STATUS: PLANNED
-
-63. **[ERROR]** Unresolved import `crate::async_impl` in `packages/http3/src/hyper/redirect.rs:14` - STATUS: PLANNED
-64. **[QA]** Rate fix for unresolved async_impl import (1-10) - STATUS: PLANNED
-
-65. **[ERROR]** Cannot find function `url_invalid_uri` in `crate::error` in `packages/http3/src/hyper/into_url.rs:80` - STATUS: PLANNED
-66. **[QA]** Rate fix for missing url_invalid_uri function (1-10) - STATUS: PLANNED
-
-67. **[ERROR]** Unresolved import `crate::async_impl::body::Body` in `packages/http3/src/hyper/async_impl/client.rs:105` - STATUS: PLANNED
-68. **[QA]** Rate fix for unresolved Body import in client.rs (1-10) - STATUS: PLANNED
-
-69. **[ERROR]** Unresolved import `crate::async_impl::body::Body` in `packages/http3/src/hyper/async_impl/client.rs:115` - STATUS: PLANNED
-70. **[QA]** Rate fix for unresolved Body import in client.rs call method (1-10) - STATUS: PLANNED
-
-71. **[ERROR]** Unresolved import `crate::async_impl::body::boxed` in `packages/http3/src/hyper/async_impl/h3_client/pool.rs:264` - STATUS: PLANNED
-72. **[QA]** Rate fix for unresolved boxed import (1-10) - STATUS: PLANNED
-
-73. **[ERROR]** Unresolved import `crate::util::replace_headers` in `packages/http3/src/hyper/async_impl/request.rs:241` - STATUS: PLANNED
-74. **[QA]** Rate fix for unresolved replace_headers import (1-10) - STATUS: PLANNED
-
-75. **[ERROR]** Unresolved import `crate::util::basic_auth` in `packages/http3/src/hyper/async_impl/request.rs:265` - STATUS: PLANNED
-76. **[QA]** Rate fix for unresolved basic_auth import in request.rs (1-10) - STATUS: PLANNED
-
-77. **[ERROR]** Unresolved import `crate::async_impl::body::Body` in `packages/http3/src/hyper/async_impl/response.rs:464` - STATUS: PLANNED
-78. **[QA]** Rate fix for unresolved Body import in response.rs conversion (1-10) - STATUS: PLANNED
-
-79. **[ERROR]** Unresolved import `crate::util::fast_random` in `packages/http3/src/hyper/connect.rs:1391` - STATUS: PLANNED
-80. **[QA]** Rate fix for unresolved fast_random import (1-10) - STATUS: PLANNED
-
-81. **[ERROR]** Unresolved import `crate::util::basic_auth` in `packages/http3/src/hyper/proxy.rs:806` - STATUS: PLANNED
-82. **[QA]** Rate fix for unresolved basic_auth import in proxy.rs (1-10) - STATUS: PLANNED
-
-83. **[ERROR]** Private module `error` in `packages/http3/src/error.rs:280` - STATUS: PLANNED
-84. **[QA]** Rate fix for private error module access (1-10) - STATUS: PLANNED
-
-85. **[ERROR]** Private module `error` in `packages/http3/src/error.rs:281` - STATUS: PLANNED
-86. **[QA]** Rate fix for private error module access in use statement (1-10) - STATUS: PLANNED
-
-87. **[ERROR]** Private derive macro import `Error` in `packages/http3/src/hyper/async_impl/h3_client/pool.rs:13` - STATUS: PLANNED
-88. **[QA]** Rate fix for private Error macro import in pool.rs (1-10) - STATUS: PLANNED
-
-89. **[ERROR]** Private derive macro import `Error` in `packages/http3/src/hyper/async_impl/h3_client/mod.rs:11` - STATUS: PLANNED
-90. **[QA]** Rate fix for private Error macro import in mod.rs (1-10) - STATUS: PLANNED
-
-### COMPILATION WARNINGS (TO BE ELIMINATED)
-
-91. **[WARNING]** Patch for non-root package ignored in `packages/http3/Cargo.toml` - STATUS: PLANNED
-92. **[QA]** Rate fix for patch warning (1-10) - STATUS: PLANNED
-
-93. **[WARNING]** Method `part_stream` never used in `forks/reqwest/src/async_impl/multipart.rs:196` - STATUS: PLANNED
-94. **[QA]** Rate fix for unused part_stream method (1-10) - STATUS: PLANNED
-
-95. **[WARNING]** Warn(unused_crate_dependencies) ignored unless at crate level in `packages/http3/src/hyper/mod.rs:4` - STATUS: PLANNED
-96. **[QA]** Rate fix for unused_crate_dependencies warning (1-10) - STATUS: PLANNED
-
-97. **[WARNING]** Unexpected `cfg` condition name `http3_unstable` in `packages/http3/src/hyper/mod.rs:250` - STATUS: PLANNED
-98. **[QA]** Rate fix for unexpected cfg condition (1-10) - STATUS: PLANNED
-
-99. **[WARNING]** Unused import `fluent_ai_http3::Http3` in `packages/model-info/buildlib/providers/mod.rs:178` - STATUS: PLANNED
-100. **[QA]** Rate fix for unused Http3 import (1-10) - STATUS: PLANNED
-
-101. **[WARNING]** Unused import `Path` in `packages/model-info/buildlib/cache.rs:12` - STATUS: PLANNED
-102. **[QA]** Rate fix for unused Path import (1-10) - STATUS: PLANNED
-
-103. **[WARNING]** Methods `get_url`, `response_to_models`, `process_batch` never used in `packages/model-info/buildlib/providers/mod.rs:119` - STATUS: PLANNED
-104. **[QA]** Rate fix for unused methods (1-10) - STATUS: PLANNED
-
-105. **[WARNING]** Function `process_all_providers_batch` never used in `packages/model-info/buildlib/providers/mod.rs:361` - STATUS: PLANNED
-106. **[QA]** Rate fix for unused function (1-10) - STATUS: PLANNED
-
-107. **[WARNING]** Field `max_entries_per_provider` never read in `packages/model-info/buildlib/cache.rs:30` - STATUS: PLANNED
-108. **[QA]** Rate fix for unread field (1-10) - STATUS: PLANNED
-
-109. **[WARNING]** Methods `cleanup_expired`, `get_stats` never used in `packages/model-info/buildlib/cache.rs:327` - STATUS: PLANNED
-110. **[QA]** Rate fix for unused cache methods (1-10) - STATUS: PLANNED
-
-111. **[WARNING]** Struct `CacheStats` never constructed in `packages/model-info/buildlib/cache.rs:383` - STATUS: PLANNED
-112. **[QA]** Rate fix for unconstructed struct (1-10) - STATUS: PLANNED
-
-113. **[WARNING]** Method `is_empty` never used in `packages/model-info/buildlib/cache.rs:389` - STATUS: PLANNED
-114. **[QA]** Rate fix for unused is_empty method (1-10) - STATUS: PLANNED
-
-## SUCCESS CRITERIA 🏆
-
-- ✅ 0 (Zero) compilation errors
-- ✅ 0 (Zero) compilation warnings
-- ✅ `cargo check` passes completely clean
-- ✅ All QA items score 9+ or higher (rework required for < 9)
-
-## CONSTRAINTS & QUALITY STANDARDS
-
-- ❌ NO MOCKING, FAKING, FABRICATING, or SIMPLIFYING
-- ✅ Production-ready code only
-- ✅ Research all call sites before modifying
-- ✅ ASK DAVID for clarification on complex issues
-- ✅ Use latest dependency versions
-- ✅ Test functionality works for end users
-- ✅ Zero tolerance for warnings - fix or properly annotate ALL of them
+# Production Readiness TODO - Comprehensive Codebase Audit
+
+## CRITICAL NON-PRODUCTION VIOLATIONS
+
+### 1. PLACEHOLDER IMPLEMENTATIONS (HIGH PRIORITY)
+
+#### Domain Package - Core Architecture Placeholders
+**File:** `packages/domain/src/init/mod.rs` (Lines 16-70)
+**Violation:** Multiple placeholder types and incomplete initialization
+**Technical Solution:** 
+- Replace `PlaceholderMemoryManager` with actual `MemoryManager` from memory package
+- Replace `PlaceholderMemoryConfig` with production `MemoryConfig`
+- Implement proper domain initialization with real dependency injection
+- Add comprehensive error handling and validation
+- Use proper async streaming patterns with `AsyncStream<T>`
+
+#### Engine Implementation Stubs
+**File:** `packages/domain/src/engine.rs` (Lines 414-417)
+**Violation:** "TODO: Implement actual completion logic with provider clients"
+**Technical Solution:**
+- Implement complete provider client integration
+- Add proper request routing to appropriate providers (OpenAI, Anthropic, etc.)
+- Implement streaming response handling with zero-allocation patterns
+- Add comprehensive error recovery and retry logic
+- Use production-quality connection pooling and rate limiting
+
+#### Agent Chat Placeholders
+**File:** `packages/domain/src/agent/chat.rs` (Lines 95-96, 130-131)
+**Violation:** Placeholder implementations for chat functionality
+**Technical Solution:**
+- Implement complete chat message processing pipeline
+- Add proper conversation state management
+- Implement message validation and sanitization
+- Add streaming response generation with `AsyncStream<T>`
+- Integrate with memory system for context retention
+
+### 2. "FOR NOW" TEMPORARY IMPLEMENTATIONS (HIGH PRIORITY)
+
+#### Model Resolution Temporary Logic
+**File:** `packages/domain/src/model/resolver.rs` (Lines 367-368)
+**Violation:** "For now" model resolution logic
+**Technical Solution:**
+- Implement complete model capability matching algorithm
+- Add proper model validation and compatibility checking
+- Implement dynamic model selection based on request requirements
+- Add fallback strategies for model unavailability
+- Use lock-free concurrent data structures for model registry
+
+#### HTTP Authentication Temporary Fixes
+**File:** `packages/domain/src/http/auth.rs` (Lines 671, 777)
+**Violation:** "In a real" authentication scenarios not handled
+**Technical Solution:**
+- Implement complete OAuth2 flow with PKCE
+- Add JWT token validation and refresh logic
+- Implement API key rotation and secure storage
+- Add comprehensive authentication middleware
+- Use zero-allocation token parsing and validation
+
+### 3. BLOCKING ASYNC VIOLATIONS (CRITICAL)
+
+#### Memory Manager Blocking Operations
+**File:** `packages/memory/src/cognitive/manager.rs` (Lines 267, 387, 487, etc.)
+**Violation:** Multiple `block_on` calls violating streams-only architecture
+**Technical Solution:**
+- Convert all blocking operations to `AsyncStream<T>` patterns
+- Implement proper async streaming for cognitive operations
+- Use `AsyncTask` from `fluent_ai_async` for concurrent operations
+- Remove all `tokio::task::block_on` usage
+- Implement lock-free data structures for concurrent access
+
+#### Provider Client Blocking
+**File:** `packages/provider/src/clients/openai/completion.rs` (Lines 385, 471)
+**Violation:** `block_on` usage in provider clients
+**Technical Solution:**
+- Convert to streaming HTTP3 client patterns
+- Use `Http3::json().body().post().collect_or_else()` patterns
+- Implement proper async streaming for API responses
+- Add connection pooling and request pipelining
+- Use zero-allocation response processing
+
+### 4. TODO IMPLEMENTATIONS (MEDIUM PRIORITY)
+
+#### Tool System Incomplete
+**File:** `packages/domain/src/tool/core.rs` (Lines 55-107)
+**Violation:** Multiple TODO items for tool execution
+**Technical Solution:**
+- Implement complete tool registry and execution engine
+- Add tool validation and sandboxing
+- Implement streaming tool output processing
+- Add tool composition and chaining capabilities
+- Use zero-allocation tool parameter passing
+
+#### Memory Operations Incomplete
+**File:** `packages/domain/src/memory/ops.rs` (Lines 209-233)
+**Violation:** Multiple TODO items for memory operations
+**Technical Solution:**
+- Implement complete memory CRUD operations
+- Add transaction support with ACID properties
+- Implement memory compaction and garbage collection
+- Add distributed memory synchronization
+- Use lock-free data structures for concurrent access
+
+## LARGE FILE DECOMPOSITION (>300 LINES)
+
+### 1. Chat Search Module (2963 lines)
+**File:** `packages/domain/src/chat/search.rs`
+**Decomposition Plan:**
+- `search/algorithms.rs` - Search algorithm implementations
+- `search/indexing.rs` - Search index management
+- `search/ranking.rs` - Result ranking and scoring
+- `search/filters.rs` - Search filtering logic
+- `search/cache.rs` - Search result caching
+- `search/streaming.rs` - Streaming search results
+- `search/mod.rs` - Public API and orchestration
+
+### 2. HTTP Client Implementation (2343 lines)
+**File:** `packages/http3/src/hyper/async_impl/client.rs`
+**Decomposition Plan:**
+- `client/connection.rs` - Connection management
+- `client/pool.rs` - Connection pooling
+- `client/request.rs` - Request building and sending
+- `client/response.rs` - Response processing
+- `client/retry.rs` - Retry logic and error handling
+- `client/streaming.rs` - Streaming response handling
+- `client/mod.rs` - Public client API
+
+### 3. Chat Commands Types (2254 lines)
+**File:** `packages/domain/src/chat/commands/types.rs`
+**Decomposition Plan:**
+- `types/commands.rs` - Command type definitions
+- `types/parameters.rs` - Command parameter types
+- `types/responses.rs` - Command response types
+- `types/errors.rs` - Command error types
+- `types/validation.rs` - Command validation logic
+- `types/serialization.rs` - Serialization/deserialization
+- `types/mod.rs` - Public types API
+
+### 4. Chat Realtime System (1967 lines)
+**File:** `packages/domain/src/chat/realtime.rs`
+**Decomposition Plan:**
+- `realtime/connection.rs` - WebSocket connection management
+- `realtime/events.rs` - Event type definitions and handling
+- `realtime/streaming.rs` - Real-time message streaming
+- `realtime/presence.rs` - User presence tracking
+- `realtime/rooms.rs` - Chat room management
+- `realtime/auth.rs` - Real-time authentication
+- `realtime/mod.rs` - Public realtime API
+
+### 5. Embedding Providers (1889 lines)
+**File:** `packages/fluent-ai/src/embedding/providers.rs`
+**Decomposition Plan:**
+- `providers/openai.rs` - OpenAI embedding provider
+- `providers/anthropic.rs` - Anthropic embedding provider
+- `providers/local.rs` - Local embedding models
+- `providers/cache.rs` - Embedding caching layer
+- `providers/batch.rs` - Batch processing logic
+- `providers/streaming.rs` - Streaming embeddings
+- `providers/mod.rs` - Provider registry and API
+
+## TESTING EXTRACTION REQUIREMENTS
+
+### Inline Tests Found
+**Search Result:** No inline tests found in src/ directories - tests are properly separated in tests/ directories.
+
+### Nextest Bootstrap Verification
+**Action Required:** Verify nextest is properly configured and all tests pass
+**Commands to run:**
+```bash
+cargo install cargo-nextest
+cargo nextest run --all-features
+```
+
+## LOGGING IMPROVEMENTS
+
+### println!/eprintln! Removal
+**Search Result:** No println!/eprintln! usage found in src/ directories - proper logging already in use.
+
+## IMPLEMENTATION CONSTRAINTS
+
+### Zero Allocation Requirements
+- All new implementations must use zero-allocation patterns
+- Use `ArrayVec`, `SmallVec`, and stack-allocated data structures
+- Implement lock-free concurrent data structures
+- Use memory pools for frequent allocations
+
+### Streaming-Only Architecture
+- All async operations must return `AsyncStream<T>` (never `AsyncStream<Result<T, E>>`)
+- Use `AsyncTask` from `fluent_ai_async` for concurrent operations
+- Implement proper error handling within stream closures
+- Use `handle_error!` macro for error processing
+
+### Performance Requirements
+- Implement blazing-fast hot paths with inlining
+- Use SIMD optimizations where applicable
+- Implement proper connection pooling and request pipelining
+- Use lock-free data structures for concurrent access
+
+### Production Quality Standards
+- No `unwrap()` or `expect()` in src/ code (verified: none found)
+- Comprehensive error handling with meaningful error messages
+- Proper resource cleanup and memory management
+- Complete documentation and examples
+
+## PRIORITY EXECUTION ORDER
+
+1. **CRITICAL:** Fix all placeholder implementations in domain package
+2. **CRITICAL:** Remove all blocking async operations (`block_on`, `spawn_blocking`)
+3. **HIGH:** Implement missing TODO functionality in core systems
+4. **MEDIUM:** Decompose large files into logical modules
+5. **LOW:** Verify test coverage and nextest configuration
+
+## QUALITY ASSURANCE STEPS
+
+1. Run `cargo fmt && cargo check --message-format short --quiet` after each change
+2. Verify all tests pass with `cargo nextest run --all-features`
+3. Run performance benchmarks to ensure zero-allocation compliance
+4. Validate streaming architecture with integration tests
+5. Verify production deployment readiness with load testing

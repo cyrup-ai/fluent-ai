@@ -5,7 +5,7 @@
 
 use http::{HeaderName, HeaderValue};
 
-use crate::builder::core::{Http3Builder, ContentType};
+use crate::builder::core::{ContentType, Http3Builder};
 
 /// Helper type for accept method that can handle both strings and ContentType enums
 pub enum AcceptValue {

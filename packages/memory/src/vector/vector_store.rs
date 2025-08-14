@@ -1,6 +1,7 @@
 //! Vector store interface for storing and retrieving vectors - THREAD-BASED ARCHITECTURE
 
 use std::collections::HashMap;
+
 use surrealdb::sql::Value;
 
 use crate::utils::error::Result;

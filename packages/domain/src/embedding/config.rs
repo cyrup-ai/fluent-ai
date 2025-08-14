@@ -36,7 +36,8 @@ pub struct EmbeddingConfig {
     pub user: Option<String>,
 
     /// Encoding format (e.g., "float", "base64")
-    pub encoding_format: Option<String>}
+    pub encoding_format: Option<String>,
+}
 fn default_normalize() -> bool {
     true
 }
@@ -59,7 +60,8 @@ impl Default for EmbeddingConfig {
             truncate: default_truncate(),
             additional_params: HashMap::new(),
             user: None,
-            encoding_format: None}
+            encoding_format: None,
+        }
     }
 }
 

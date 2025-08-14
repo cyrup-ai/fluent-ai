@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use arrayvec::ArrayVec;
-
 use crossbeam_skiplist::SkipMap;
 use crossbeam_utils::CachePadded;
 use num_complex::Complex64;
@@ -44,13 +43,15 @@ impl Atomic<f64> {
 #[derive(Debug)]
 pub struct AtomicComplex64 {
     real: std::sync::atomic::AtomicU64,
-    imag: std::sync::atomic::AtomicU64}
+    imag: std::sync::atomic::AtomicU64,
+}
 
 impl AtomicComplex64 {
     pub fn new(value: Complex64) -> Self {
         Self {
             real: std::sync::atomic::AtomicU64::new(value.re.to_bits()),
-            imag: std::sync::atomic::AtomicU64::new(value.im.to_bits())}
+            imag: std::sync::atomic::AtomicU64::new(value.im.to_bits()),
+        }
     }
 
     pub fn store(&self, value: Complex64, ordering: std::sync::atomic::Ordering) {
@@ -73,7 +74,8 @@ pub struct QuantumNodeState {
     pub superposition_coefficients: Vec<Complex64>,
     pub entangled_nodes: Vec<String>,
     pub decoherence: f64,
-    pub measurement_history: Vec<Complex64>}
+    pub measurement_history: Vec<Complex64>,
+}
 
 /// Atomic quantum metrics for concurrent tracking
 #[derive(Debug)]
@@ -82,7 +84,8 @@ pub struct AtomicQuantumMetrics {
     pub successful_expansions: CachePadded<AtomicU64>,
     pub quantum_measurements: CachePadded<AtomicU64>,
     pub entanglement_operations: CachePadded<AtomicU64>,
-    pub decoherence_events: CachePadded<AtomicU64>}
+    pub decoherence_events: CachePadded<AtomicU64>,
+}
 
 impl AtomicQuantumMetrics {
     pub fn new() -> Self {
@@ -91,7 +94,8 @@ impl AtomicQuantumMetrics {
             successful_expansions: CachePadded::new(AtomicU64::new(0)),
             quantum_measurements: CachePadded::new(AtomicU64::new(0)),
             entanglement_operations: CachePadded::new(AtomicU64::new(0)),
-            decoherence_events: CachePadded::new(AtomicU64::new(0))}
+            decoherence_events: CachePadded::new(AtomicU64::new(0)),
+        }
     }
 
     #[inline]
@@ -125,7 +129,8 @@ impl AtomicQuantumMetrics {
             successful_expansions: self.successful_expansions.load(Ordering::Relaxed),
             quantum_measurements: self.quantum_measurements.load(Ordering::Relaxed),
             entanglement_operations: self.entanglement_operations.load(Ordering::Relaxed),
-            decoherence_events: self.decoherence_events.load(Ordering::Relaxed)}
+            decoherence_events: self.decoherence_events.load(Ordering::Relaxed),
+        }
     }
 }
 
@@ -136,7 +141,8 @@ pub struct QuantumMetricsSnapshot {
     pub successful_expansions: u64,
     pub quantum_measurements: u64,
     pub entanglement_operations: u64,
-    pub decoherence_events: u64}
+    pub decoherence_events: u64,
+}
 
 /// Quantum MCTS node with concurrent data structures
 #[derive(Debug)]
@@ -148,7 +154,8 @@ pub struct QuantumMCTSNode {
     pub amplitude: AtomicComplex64,
     pub children: Arc<SkipMap<ArrayVec<u8, 64>, ArrayVec<u8, 64>>>,
     pub untried_actions: Arc<SkipMap<ArrayVec<u8, 128>, bool>>,
-    pub is_terminal: bool}
+    pub is_terminal: bool,
+}
 
 impl QuantumMCTSNode {
     pub fn new(id: ArrayVec<u8, 64>, state: QuantumNodeState) -> Self {
@@ -160,7 +167,8 @@ impl QuantumMCTSNode {
             amplitude: AtomicComplex64::new(Complex64::new(1.0, 0.0)),
             children: Arc::new(SkipMap::new()),
             untried_actions: Arc::new(SkipMap::new()),
-            is_terminal: false}
+            is_terminal: false,
+        }
     }
 
     #[inline]
@@ -191,7 +199,8 @@ pub struct QuantumMCTS {
     pub metrics: Arc<AtomicQuantumMetrics>,
     pub config: QuantumConfig,
     pub node_counter: CachePadded<AtomicU64>,
-    pub action_buffer: SmallVec<ArrayVec<u8, 128>, 8>}
+    pub action_buffer: SmallVec<ArrayVec<u8, 128>, 8>,
+}
 
 impl QuantumMCTS {
     /// Create new quantum MCTS instance
@@ -208,7 +217,8 @@ impl QuantumMCTS {
             superposition_coefficients: vec![Complex64::new(1.0, 0.0)],
             entangled_nodes: Vec::new(),
             decoherence: 0.0,
-            measurement_history: Vec::new()};
+            measurement_history: Vec::new(),
+        };
 
         let root_node = Arc::new(QuantumMCTSNode::new(root_id.clone(), quantum_state));
         let tree = Arc::new(SkipMap::new());
@@ -222,7 +232,8 @@ impl QuantumMCTS {
             metrics: Arc::new(AtomicQuantumMetrics::new()),
             config,
             node_counter: CachePadded::new(AtomicU64::new(1)),
-            action_buffer: smallvec![]})
+            action_buffer: smallvec![],
+        })
     }
 
     /// Run quantum MCTS for specified iterations
@@ -377,7 +388,8 @@ impl QuantumMCTS {
             superposition_coefficients: vec![Complex64::new(0.8, 0.2)],
             entangled_nodes: Vec::new(),
             decoherence: 0.1,
-            measurement_history: Vec::new()};
+            measurement_history: Vec::new(),
+        };
 
         // Create and insert new node
         let new_node = Arc::new(QuantumMCTSNode::new(new_node_id.clone(), quantum_state));
@@ -688,7 +700,8 @@ impl QuantumMCTS {
             total_entanglements,
             avg_decoherence,
             max_amplitude,
-            quantum_metrics: self.metrics.snapshot()}
+            quantum_metrics: self.metrics.snapshot(),
+        }
     }
 
     /// Recursively improve the quantum state through MCTS iterations
@@ -728,7 +741,8 @@ pub struct QuantumTreeStatistics {
     pub total_entanglements: usize,
     pub avg_decoherence: f64,
     pub max_amplitude: f64,
-    pub quantum_metrics: QuantumMetricsSnapshot}
+    pub quantum_metrics: QuantumMetricsSnapshot,
+}
 
 #[cfg(test)]
 mod tests {
@@ -740,12 +754,14 @@ mod tests {
             code: "test code".to_string(),
             latency: 100.0,
             memory: 500.0,
-            relevance: 0.8};
+            relevance: 0.8,
+        };
 
         let config = QuantumConfig {
             exploration_constant: 1.414,
             decoherence_rate: 0.01,
-            entanglement_probability: 0.1};
+            entanglement_probability: 0.1,
+        };
 
         let mcts = QuantumMCTS::new(initial_state, "test objective".to_string(), config);
         assert!(mcts.is_ok());

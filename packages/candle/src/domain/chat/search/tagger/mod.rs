@@ -1,8 +1,7 @@
-
 // Re-export public types
-pub use types::*;
 pub use impls::CandleConversationTagger;
+pub use types::*;
 
 // Submodules
-mod types;
 mod impls;
+mod types;

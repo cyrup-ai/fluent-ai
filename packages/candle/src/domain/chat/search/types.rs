@@ -5,7 +5,9 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
+
 use crate::domain::chat::message::CandleSearchChatMessage as SearchChatMessage;
 
 /// Search query with advanced filtering options
@@ -47,9 +49,9 @@ pub enum QueryOperator {
     /// Exact phrase match
     Phrase,
     /// Proximity search
-    Proximity { 
+    Proximity {
         /// Distance value for proximity-based ranking
-        distance: u32 
+        distance: u32,
     },
 }
 

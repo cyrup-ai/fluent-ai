@@ -9,29 +9,27 @@ use std::sync::Arc;
 use fluent_ai_async::AsyncStream;
 
 // Submodules
-pub mod types;
-pub mod index;
 pub mod algorithms;
+pub mod export;
+pub mod index;
+pub mod manager;
 pub mod query;
 pub mod ranking;
-pub mod export;
-pub mod manager;
 pub mod tagger;
+pub mod types;
 
 // Re-export public types
-pub use types::*;
+pub use export::HistoryExporter as CandleHistoryExporter;
+pub use export::{HistoryExporter, SearchExporter};
 pub use index::ChatSearchIndex;
-pub use query::QueryProcessor;
-pub use ranking::ResultRanker;
-pub use export::{SearchExporter, HistoryExporter};
-
-// Re-export migrated components with Candle prefixes
-pub use manager::CandleEnhancedHistoryManager;
-pub use tagger::{CandleConversationTagger, CandleConversationTag, CandleTaggingStatistics};
-
 // Additional search capabilities with Candle prefixes
 pub use index::ChatSearchIndex as CandleChatSearchIndex;
-pub use export::HistoryExporter as CandleHistoryExporter;
+// Re-export migrated components with Candle prefixes
+pub use manager::CandleEnhancedHistoryManager;
+pub use query::QueryProcessor;
+pub use ranking::ResultRanker;
+pub use tagger::{CandleConversationTag, CandleConversationTagger, CandleTaggingStatistics};
+pub use types::*;
 
 use crate::domain::chat::message::CandleSearchChatMessage as SearchChatMessage;
 
@@ -67,19 +65,24 @@ impl ChatSearcher {
 
         AsyncStream::with_channel(move |sender| {
             let results = match query_operator {
-                QueryOperator::And => self_clone.index
+                QueryOperator::And => self_clone
+                    .index
                     .search_and_stream(&query_terms, query_fuzzy_matching)
                     .collect(),
-                QueryOperator::Or => self_clone.index
+                QueryOperator::Or => self_clone
+                    .index
                     .search_or_stream(&query_terms, query_fuzzy_matching)
                     .collect(),
-                QueryOperator::Not => self_clone.index
+                QueryOperator::Not => self_clone
+                    .index
                     .search_not_stream(&query_terms, query_fuzzy_matching)
                     .collect(),
-                QueryOperator::Phrase => self_clone.index
+                QueryOperator::Phrase => self_clone
+                    .index
                     .search_phrase_stream(&query_terms, query_fuzzy_matching)
                     .collect(),
-                QueryOperator::Proximity { distance } => self_clone.index
+                QueryOperator::Proximity { distance } => self_clone
+                    .index
                     .search_proximity_stream(&query_terms, distance, query_fuzzy_matching)
                     .collect(),
             };
@@ -87,7 +90,8 @@ impl ChatSearcher {
             // Apply enhanced filtering, sorting and pagination
             let filtered_results = self_clone.apply_filters(results, &query);
             let sorted_results = self_clone.apply_sorting(filtered_results, &query.sort_order);
-            let paginated_results = self_clone.apply_pagination(sorted_results, query.offset, query.max_results);
+            let paginated_results =
+                self_clone.apply_pagination(sorted_results, query.offset, query.max_results);
 
             // Stream results
             for result in paginated_results {
@@ -117,14 +121,23 @@ impl ChatSearcher {
         // Apply user filter
         if let Some(user_filter) = &query.user_filter {
             filtered.retain(|result| {
-                result.message.message.role.to_string().contains(user_filter.as_ref())
+                result
+                    .message
+                    .message
+                    .role
+                    .to_string()
+                    .contains(user_filter.as_ref())
             });
         }
 
         // Apply session filter
         if let Some(session_filter) = &query.session_filter {
             filtered.retain(|result| {
-                result.message.message.id.as_ref()
+                result
+                    .message
+                    .message
+                    .id
+                    .as_ref()
                     .map(|id| id.contains(session_filter.as_ref()))
                     .unwrap_or(false)
             });
@@ -133,7 +146,11 @@ impl ChatSearcher {
         // Apply content type filter
         if let Some(content_type_filter) = &query.content_type_filter {
             filtered.retain(|result| {
-                result.message.message.content.contains(content_type_filter.as_ref())
+                result
+                    .message
+                    .message
+                    .content
+                    .contains(content_type_filter.as_ref())
             });
         }
 
@@ -141,46 +158,72 @@ impl ChatSearcher {
     }
 
     /// Apply multiple sorting options (Relevance, DateDesc/Asc, UserDesc/Asc)
-    fn apply_sorting(&self, mut results: Vec<SearchResult>, sort_order: &SortOrder) -> Vec<SearchResult> {
+    fn apply_sorting(
+        &self,
+        mut results: Vec<SearchResult>,
+        sort_order: &SortOrder,
+    ) -> Vec<SearchResult> {
         match sort_order {
             SortOrder::Relevance => {
                 // Sort by relevance score (highest first)
-                results.sort_by(|a, b| b.relevance_score.partial_cmp(&a.relevance_score).unwrap_or(std::cmp::Ordering::Equal));
-            },
+                results.sort_by(|a, b| {
+                    b.relevance_score
+                        .partial_cmp(&a.relevance_score)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
             SortOrder::DateDescending => {
                 // Sort by date (newest first)
                 results.sort_by(|a, b| {
-                    b.message.message.timestamp.unwrap_or(0).cmp(&a.message.message.timestamp.unwrap_or(0))
+                    b.message
+                        .message
+                        .timestamp
+                        .unwrap_or(0)
+                        .cmp(&a.message.message.timestamp.unwrap_or(0))
                 });
-            },
+            }
             SortOrder::DateAscending => {
                 // Sort by date (oldest first)
                 results.sort_by(|a, b| {
-                    a.message.message.timestamp.unwrap_or(0).cmp(&b.message.message.timestamp.unwrap_or(0))
+                    a.message
+                        .message
+                        .timestamp
+                        .unwrap_or(0)
+                        .cmp(&b.message.message.timestamp.unwrap_or(0))
                 });
-            },
+            }
             SortOrder::UserDescending => {
                 // Sort by user role (descending)
                 results.sort_by(|a, b| {
-                    b.message.message.role.to_string().cmp(&a.message.message.role.to_string())
+                    b.message
+                        .message
+                        .role
+                        .to_string()
+                        .cmp(&a.message.message.role.to_string())
                 });
-            },
+            }
             SortOrder::UserAscending => {
                 // Sort by user role (ascending)
                 results.sort_by(|a, b| {
-                    a.message.message.role.to_string().cmp(&b.message.message.role.to_string())
+                    a.message
+                        .message
+                        .role
+                        .to_string()
+                        .cmp(&b.message.message.role.to_string())
                 });
-            },
+            }
         }
         results
     }
 
     /// Apply pagination support (offset, max_results)
-    fn apply_pagination(&self, results: Vec<SearchResult>, offset: usize, max_results: usize) -> Vec<SearchResult> {
-        results.into_iter()
-            .skip(offset)
-            .take(max_results)
-            .collect()
+    fn apply_pagination(
+        &self,
+        results: Vec<SearchResult>,
+        offset: usize,
+        max_results: usize,
+    ) -> Vec<SearchResult> {
+        results.into_iter().skip(offset).take(max_results).collect()
     }
 
     /// Update query statistics with performance tracking

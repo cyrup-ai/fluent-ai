@@ -36,6 +36,8 @@ pub use config::{
 };
 // Removed obsolete db exports
 pub use container_registry::*;
+// Use more specific imports instead of glob imports to avoid ambiguity
+pub use db::*;
 pub use plugin::PluginManager; // Updated path
 pub use resource::resource_read;
 pub use sampling::{
@@ -52,6 +54,4 @@ pub use security::{
 // Restore glob export for tool
 // Export specific components instead of using glob imports
 pub use tool::model;
-// Use more specific imports instead of glob imports to avoid ambiguity
-pub use db::*;
 pub use types::AsyncTask;

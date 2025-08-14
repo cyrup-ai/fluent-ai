@@ -34,24 +34,46 @@ mod bracket_escape_tests {
         let single_quote_tests = vec![
             // Basic single quote escaping
             ("$['simple']", 1, "Simple single quoted"),
-            ("$['with\\'apostrophe']", 1, "Escaped apostrophe in single quotes"),
-            ("$['with\\\\backslash']", 1, "Escaped backslash in single quotes"),
+            (
+                "$['with\\'apostrophe']",
+                1,
+                "Escaped apostrophe in single quotes",
+            ),
+            (
+                "$['with\\\\backslash']",
+                1,
+                "Escaped backslash in single quotes",
+            ),
             ("$['with\\nNewline']", 1, "Escaped newline in single quotes"),
             ("$['with\\tTab']", 1, "Escaped tab in single quotes"),
-            ("$['with\"DoubleQuote']", 1, "Double quote in single quotes (no escape needed)"),
+            (
+                "$['with\"DoubleQuote']",
+                1,
+                "Double quote in single quotes (no escape needed)",
+            ),
         ];
 
         for (expr, expected_count, _description) in single_quote_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Single quote expression '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Single quote expression '{}' should compile: {}",
+                expr,
+                _description
+            );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Single quote test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Single quote test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -70,24 +92,50 @@ mod bracket_escape_tests {
         let double_quote_tests = vec![
             // Basic double quote escaping
             (r#"$["simple"]"#, 1, "Simple double quoted"),
-            (r#"$["with'apostrophe"]"#, 1, "Apostrophe in double quotes (no escape needed)"),
-            (r#"$["with\\backslash"]"#, 1, "Escaped backslash in double quotes"),
-            (r#"$["with\nNewline"]"#, 1, "Escaped newline in double quotes"),
+            (
+                r#"$["with'apostrophe"]"#,
+                1,
+                "Apostrophe in double quotes (no escape needed)",
+            ),
+            (
+                r#"$["with\\backslash"]"#,
+                1,
+                "Escaped backslash in double quotes",
+            ),
+            (
+                r#"$["with\nNewline"]"#,
+                1,
+                "Escaped newline in double quotes",
+            ),
             (r#"$["with\tTab"]"#, 1, "Escaped tab in double quotes"),
-            (r#"$["with\"DoubleQuote"]"#, 1, "Escaped double quote in double quotes"),
+            (
+                r#"$["with\"DoubleQuote"]"#,
+                1,
+                "Escaped double quote in double quotes",
+            ),
         ];
 
         for (expr, expected_count, _description) in double_quote_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Double quote expression '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Double quote expression '{}' should compile: {}",
+                expr,
+                _description
+            );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Double quote test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Double quote test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -121,14 +169,24 @@ mod bracket_escape_tests {
 
         for (expr, expected_count, _description) in unicode_escape_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Unicode escape expression '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Unicode escape expression '{}' should compile: {}",
+                expr,
+                _description
+            );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            println!("Unicode test '{}' returned {} results (expected {}) - {}", 
-                expr, results.len(), expected_count, _description);
+
+            println!(
+                "Unicode test '{}' returned {} results (expected {}) - {}",
+                expr,
+                results.len(),
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -152,23 +210,53 @@ mod bracket_escape_tests {
             (r#"$["with_linefeed"]"#, 1, "Line feed character"),
             (r#"$["with_tab"]"#, 1, "Tab character"),
             // Unicode control character escapes
-            (r#"$["\u0008"]"#, 0, "Unicode backspace (should not match literal)"),
-            (r#"$["\u0009"]"#, 0, "Unicode tab (should not match literal)"),
-            (r#"$["\u000A"]"#, 0, "Unicode line feed (should not match literal)"),
-            (r#"$["\u000C"]"#, 0, "Unicode form feed (should not match literal)"),
-            (r#"$["\u000D"]"#, 0, "Unicode carriage return (should not match literal)"),
+            (
+                r#"$["\u0008"]"#,
+                0,
+                "Unicode backspace (should not match literal)",
+            ),
+            (
+                r#"$["\u0009"]"#,
+                0,
+                "Unicode tab (should not match literal)",
+            ),
+            (
+                r#"$["\u000A"]"#,
+                0,
+                "Unicode line feed (should not match literal)",
+            ),
+            (
+                r#"$["\u000C"]"#,
+                0,
+                "Unicode form feed (should not match literal)",
+            ),
+            (
+                r#"$["\u000D"]"#,
+                0,
+                "Unicode carriage return (should not match literal)",
+            ),
         ];
 
         for (expr, expected_count, _description) in control_char_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Control char expression '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Control char expression '{}' should compile: {}",
+                expr,
+                _description
+            );
 
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            println!("Control char test '{}' returned {} results (expected {}) - {}", 
-                expr, results.len(), expected_count, _description);
+
+            println!(
+                "Control char test '{}' returned {} results (expected {}) - {}",
+                expr,
+                results.len(),
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -196,7 +284,12 @@ mod bracket_escape_tests {
         for (expr, _description) in invalid_escape_tests {
             let result = JsonPathParser::compile(expr);
             // These should typically fail to compile
-            println!("Invalid escape test '{}' -> {:?} ({})", expr, result.is_ok(), _description);
+            println!(
+                "Invalid escape test '{}' -> {:?} ({})",
+                expr,
+                result.is_ok(),
+                _description
+            );
         }
     }
 
@@ -215,35 +308,85 @@ mod bracket_escape_tests {
 
         let complex_escape_tests = vec![
             // Chained bracket notation with escapes
-            (r#"$["complex"]["key with spaces"]"#, 1, "Spaces in chained brackets"),
-            (r#"$['complex']['key\'with\'quotes']"#, 1, "Escaped quotes in chained"),
-            (r#"$["complex"]["key\"with\"doubles"]"#, 1, "Escaped double quotes in chained"),
-            (r#"$['complex']['key\\with\\backslashes']"#, 1, "Escaped backslashes in chained"),
-            (r#"$["complex"]["key\nwith\nnewlines"]"#, 1, "Escaped newlines in chained"),
+            (
+                r#"$["complex"]["key with spaces"]"#,
+                1,
+                "Spaces in chained brackets",
+            ),
+            (
+                r#"$['complex']['key\'with\'quotes']"#,
+                1,
+                "Escaped quotes in chained",
+            ),
+            (
+                r#"$["complex"]["key\"with\"doubles"]"#,
+                1,
+                "Escaped double quotes in chained",
+            ),
+            (
+                r#"$['complex']['key\\with\\backslashes']"#,
+                1,
+                "Escaped backslashes in chained",
+            ),
+            (
+                r#"$["complex"]["key\nwith\nnewlines"]"#,
+                1,
+                "Escaped newlines in chained",
+            ),
             // Mixed notation with escapes
-            (r#"$.complex["key with spaces"]"#, 1, "Dot then bracket with spaces"),
-            (r#"$['complex'].key\'with\'quotes"#, 0, "Invalid: bracket then dot with quotes"),
+            (
+                r#"$.complex["key with spaces"]"#,
+                1,
+                "Dot then bracket with spaces",
+            ),
+            (
+                r#"$['complex'].key\'with\'quotes"#,
+                0,
+                "Invalid: bracket then dot with quotes",
+            ),
             // Filter expressions with escapes
-            (r#"$.complex[?@["key with spaces"] == "value1"]"#, 1, "Filter with escaped key"),
-            (r#"$[?@.complex["key with spaces"]]"#, 1, "Nested filter with spaces"),
+            (
+                r#"$.complex[?@["key with spaces"] == "value1"]"#,
+                1,
+                "Filter with escaped key",
+            ),
+            (
+                r#"$[?@.complex["key with spaces"]]"#,
+                1,
+                "Nested filter with spaces",
+            ),
         ];
 
         for (expr, expected_count, _description) in complex_escape_tests {
             let result = JsonPathParser::compile(expr);
-            
+
             if expected_count > 0 {
-                assert!(result.is_ok(), "Complex escape expression '{}' should compile: {}", expr, _description);
+                assert!(
+                    result.is_ok(),
+                    "Complex escape expression '{}' should compile: {}",
+                    expr,
+                    _description
+                );
 
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
                 let results: Vec<_> = stream.process_chunk(chunk).collect();
-                
-                println!("Complex escape test '{}' returned {} results (expected {}) - {}", 
-                    expr, results.len(), expected_count, _description);
+
+                println!(
+                    "Complex escape test '{}' returned {} results (expected {}) - {}",
+                    expr,
+                    results.len(),
+                    expected_count,
+                    _description
+                );
             } else {
                 // Expected to fail
-                println!("Complex escape test (should fail) '{}' -> {:?} ({})", 
-                    expr, result.is_ok(), _description);
+                println!(
+                    "Complex escape test (should fail) '{}' -> {:?} ({})",
+                    expr,
+                    result.is_ok(),
+                    _description
+                );
             }
         }
     }
@@ -263,9 +406,15 @@ mod bracket_escape_tests {
             // Multiple escapes
             (r#"$["\n\t\r"]"#, "Multiple control escapes"),
             (r#"$["\\\"\\"]"#, "Multiple quote/backslash escapes"),
-            (r#"$["\u0041\u0042\u0043"]"#, "Multiple Unicode escapes (ABC)"),
+            (
+                r#"$["\u0041\u0042\u0043"]"#,
+                "Multiple Unicode escapes (ABC)",
+            ),
             // Very long escaped strings
-            (r#"$["\u0041\u0042\u0043\u0044\u0045\u0046\u0047\u0048\u0049\u004A"]"#, "Long Unicode sequence"),
+            (
+                r#"$["\u0041\u0042\u0043\u0044\u0045\u0046\u0047\u0048\u0049\u004A"]"#,
+                "Long Unicode sequence",
+            ),
             // Null character (if supported)
             (r#"$["\u0000"]"#, "Unicode null character"),
             // High Unicode values
@@ -278,7 +427,12 @@ mod bracket_escape_tests {
         for (expr, _description) in edge_case_tests {
             let result = JsonPathParser::compile(expr);
             // Document behavior for these edge cases
-            println!("Edge case escape test '{}' -> {:?} ({})", expr, result.is_ok(), _description);
+            println!(
+                "Edge case escape test '{}' -> {:?} ({})",
+                expr,
+                result.is_ok(),
+                _description
+            );
         }
     }
 
@@ -303,9 +457,17 @@ mod bracket_escape_tests {
         for (expr1, expr2, _description) in normalization_tests {
             let result1 = JsonPathParser::compile(expr1);
             let result2 = JsonPathParser::compile(expr2);
-            
-            assert!(result1.is_ok(), "First expression '{}' should compile", expr1);
-            assert!(result2.is_ok(), "Second expression '{}' should compile", expr2);
+
+            assert!(
+                result1.is_ok(),
+                "First expression '{}' should compile",
+                expr1
+            );
+            assert!(
+                result2.is_ok(),
+                "Second expression '{}' should compile",
+                expr2
+            );
 
             let mut stream1 = JsonArrayStream::<serde_json::Value>::new(expr1);
             let mut stream2 = JsonArrayStream::<serde_json::Value>::new(expr2);
@@ -313,9 +475,15 @@ mod bracket_escape_tests {
             let chunk = Bytes::from(json_data);
             let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
             let results2: Vec<_> = stream2.process_chunk(chunk).collect();
-            
-            println!("Normalization test: '{}' vs '{}' -> {} vs {} results ({})",
-                expr1, expr2, results1.len(), results2.len(), _description);
+
+            println!(
+                "Normalization test: '{}' vs '{}' -> {} vs {} results ({})",
+                expr1,
+                expr2,
+                results1.len(),
+                results2.len(),
+                _description
+            );
         }
     }
 }

@@ -5,19 +5,19 @@
 //! lock-free operations for blazing-fast performance.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
 #[cfg(feature = "bincode")]
 use bincode;
 use crossbeam_queue::SegQueue;
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{emit, AsyncStream};
 #[cfg(feature = "rkyv")]
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::sync::RwLock;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
@@ -80,7 +80,8 @@ pub struct CandleModelConfig {
     /// Retry configuration
     pub retry_config: CandleModelRetryConfig,
     /// Performance settings
-    pub performance: CandleModelPerformanceConfig}
+    pub performance: CandleModelPerformanceConfig,
+}
 
 /// Candle model retry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,7 +95,8 @@ pub struct CandleModelRetryConfig {
     /// Exponential backoff multiplier
     pub backoff_multiplier: f32,
     /// Enable jitter to avoid thundering herd
-    pub enable_jitter: bool}
+    pub enable_jitter: bool,
+}
 
 /// Candle model performance configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,7 +116,8 @@ pub struct CandleModelPerformanceConfig {
     /// Connection pool size
     pub connection_pool_size: u32,
     /// Keep-alive timeout in seconds
-    pub keep_alive_timeout_seconds: u64}
+    pub keep_alive_timeout_seconds: u64,
+}
 
 impl Default for CandleModelConfig {
     fn default() -> Self {
@@ -135,7 +138,8 @@ impl Default for CandleModelConfig {
             custom_parameters: HashMap::new(),
             timeout_ms: 30000, // 30 seconds
             retry_config: CandleModelRetryConfig::default(),
-            performance: CandleModelPerformanceConfig::default()}
+            performance: CandleModelPerformanceConfig::default(),
+        }
     }
 }
 
@@ -146,7 +150,8 @@ impl Default for CandleModelRetryConfig {
             base_delay_ms: 1000, // 1 second
             max_delay_ms: 30000, // 30 seconds
             backoff_multiplier: 2.0,
-            enable_jitter: true}
+            enable_jitter: true,
+        }
     }
 }
 
@@ -160,7 +165,8 @@ impl Default for CandleModelPerformanceConfig {
             batch_timeout_ms: 100,
             enable_streaming: true,
             connection_pool_size: 10,
-            keep_alive_timeout_seconds: 60}
+            keep_alive_timeout_seconds: 60,
+        }
     }
 }
 
@@ -231,14 +237,8 @@ impl CandleModelConfig {
 
 /// Core Candle chat configuration
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "bincode",
-    derive(bincode::Encode, bincode::Decode)
-)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(Archive, RkyvDeserialize, RkyvSerialize)
-)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct CandleChatConfig {
     /// Maximum message length
     pub max_message_length: usize,
@@ -256,18 +256,13 @@ pub struct CandleChatConfig {
     /// Candle UI configuration
     pub ui: CandleUIConfig,
     /// Candle integration configuration
-    pub integration: CandleIntegrationConfig}
+    pub integration: CandleIntegrationConfig,
+}
 
 /// Candle personality configuration for AI behavior
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "bincode",
-    derive(bincode::Encode, bincode::Decode)
-)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(Archive, RkyvDeserialize, RkyvSerialize)
-)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct CandlePersonalityConfig {
     /// Personality type identifier
     pub personality_type: Arc<str>,
@@ -290,18 +285,13 @@ pub struct CandlePersonalityConfig {
     /// Verbosity level
     pub verbosity: Arc<str>,
     /// Personality traits
-    pub traits: Vec<Arc<str>>}
+    pub traits: Vec<Arc<str>>,
+}
 
 /// Candle behavior configuration for chat system
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "bincode",
-    derive(bincode::Encode, bincode::Decode)
-)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(Archive, RkyvDeserialize, RkyvSerialize)
-)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct CandleBehaviorConfig {
     /// Enable auto-responses
     pub auto_response: bool,
@@ -320,18 +310,13 @@ pub struct CandleBehaviorConfig {
     /// Follow-up behavior style
     pub follow_up_behavior: Arc<str>,
     /// Error handling approach
-    pub error_handling: Arc<str>}
+    pub error_handling: Arc<str>,
+}
 
 /// Candle user interface configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "bincode",
-    derive(bincode::Encode, bincode::Decode)
-)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(Archive, RkyvDeserialize, RkyvSerialize)
-)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct CandleUIConfig {
     /// Theme settings
     pub theme: Arc<str>,
@@ -348,18 +333,13 @@ pub struct CandleUIConfig {
     /// Display density
     pub display_density: Arc<str>,
     /// Animation settings
-    pub animations: Arc<str>}
+    pub animations: Arc<str>,
+}
 
 /// Candle integration configuration for external services
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "bincode",
-    derive(bincode::Encode, bincode::Decode)
-)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(Archive, RkyvDeserialize, RkyvSerialize)
-)]
+#[cfg_attr(feature = "bincode", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct CandleIntegrationConfig {
     /// Enabled integrations
     pub enabled_integrations: Vec<Arc<str>>,
@@ -372,7 +352,8 @@ pub struct CandleIntegrationConfig {
     /// API configurations
     pub api_configurations: Vec<Arc<str>>,
     /// Authentication methods
-    pub authentication: Vec<Arc<str>>}
+    pub authentication: Vec<Arc<str>>,
+}
 
 impl Default for CandlePersonalityConfig {
     fn default() -> Self {
@@ -387,7 +368,8 @@ impl Default for CandlePersonalityConfig {
             empathy: 0.7,
             expertise_level: Arc::from("intermediate"),
             verbosity: Arc::from("balanced"),
-            traits: Vec::new()}
+            traits: Vec::new(),
+        }
     }
 }
 
@@ -402,7 +384,8 @@ impl Default for CandleBehaviorConfig {
             question_frequency: 0.3,
             conversation_flow: Arc::from("natural"),
             follow_up_behavior: Arc::from("contextual"),
-            error_handling: Arc::from("graceful")}
+            error_handling: Arc::from("graceful"),
+        }
     }
 }
 
@@ -416,7 +399,8 @@ impl Default for CandleUIConfig {
             layout: Arc::from("standard"),
             color_scheme: Arc::from("adaptive"),
             display_density: Arc::from("comfortable"),
-            animations: Arc::from("smooth")}
+            animations: Arc::from("smooth"),
+        }
     }
 }
 
@@ -428,7 +412,8 @@ impl Default for CandleIntegrationConfig {
             webhooks: Vec::new(),
             external_services: Vec::new(),
             api_configurations: Vec::new(),
-            authentication: Vec::new()}
+            authentication: Vec::new(),
+        }
     }
 }
 
@@ -450,7 +435,8 @@ pub struct CandleConfigurationChangeEvent {
     /// User who made the change
     pub user: Option<Arc<str>>,
     /// Change description
-    pub description: Arc<str>}
+    pub description: Arc<str>,
+}
 
 /// Candle configuration change type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -466,62 +452,63 @@ pub enum CandleConfigurationChangeType {
     /// Import from file
     Import,
     /// Export to file
-    Export}
+    Export,
+}
 
 /// Candle configuration validation error
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum CandleConfigurationValidationError {
     /// Invalid personality configuration detected
     #[error("Invalid personality configuration: {detail}")]
-    InvalidPersonality { 
+    InvalidPersonality {
         /// Details of the invalid personality configuration
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Invalid behavior configuration detected
     #[error("Invalid behavior configuration: {detail}")]
-    InvalidBehavior { 
+    InvalidBehavior {
         /// Details of the invalid behavior configuration
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Invalid UI configuration detected
     #[error("Invalid UI configuration: {detail}")]
-    InvalidUI { 
+    InvalidUI {
         /// Details of the invalid UI configuration
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Invalid integration configuration detected
     #[error("Invalid integration configuration: {detail}")]
-    InvalidIntegration { 
+    InvalidIntegration {
         /// Details of the invalid integration configuration
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Configuration conflict between settings
     #[error("Configuration conflict: {detail}")]
-    Conflict { 
+    Conflict {
         /// Details of the configuration conflict
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Schema validation failed for configuration
     #[error("Schema validation failed: {detail}")]
-    SchemaValidation { 
+    SchemaValidation {
         /// Details of the schema validation failure
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Range validation failed for a field
     #[error("Range validation failed: {field} must be between {min} and {max}")]
-    RangeValidation { 
+    RangeValidation {
         /// Field name that failed range validation
-        field: Arc<str>, 
+        field: Arc<str>,
         /// Minimum allowed value
-        min: f32, 
+        min: f32,
         /// Maximum allowed value
-        max: f32 
+        max: f32,
     },
     /// Required field is missing from configuration
     #[error("Required field missing: {field}")]
-    RequiredField { 
+    RequiredField {
         /// Name of the missing required field
-        field: Arc<str> 
+        field: Arc<str>,
     },
 }
 
@@ -538,7 +525,8 @@ pub struct CandlePersistenceEvent {
     /// Type of persistence operation
     pub persistence_type: CandlePersistenceType,
     /// Whether persistence operation was successful
-    pub success: bool}
+    pub success: bool,
+}
 
 /// Candle type of persistence operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -550,7 +538,8 @@ pub enum CandlePersistenceType {
     /// Configuration change triggered persistence
     Change,
     /// System shutdown persistence
-    Shutdown}
+    Shutdown,
+}
 
 /// Candle configuration update event for streaming operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -564,7 +553,8 @@ pub struct CandleConfigUpdate {
     /// Success status of the update
     pub success: bool,
     /// Optional description of the update
-    pub description: Option<Arc<str>>}
+    pub description: Option<Arc<str>>,
+}
 
 /// Candle type of configuration update operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -586,7 +576,8 @@ pub enum CandleConfigUpdateType {
     /// Configuration section updated
     SectionUpdated,
     /// Persistence event triggered
-    PersistenceTriggered}
+    PersistenceTriggered,
+}
 
 /// Candle configuration persistence settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -604,7 +595,8 @@ pub struct CandleConfigurationPersistence {
     /// Encryption enabled
     pub encryption: bool,
     /// File format (json, yaml, toml, binary)
-    pub format: Arc<str>}
+    pub format: Arc<str>,
+}
 
 impl Default for CandleConfigurationPersistence {
     fn default() -> Self {
@@ -615,7 +607,8 @@ impl Default for CandleConfigurationPersistence {
             backup_retention: 5,
             compression: true,
             encryption: false,
-            format: Arc::from("json")}
+            format: Arc::from("json"),
+        }
     }
 }
 
@@ -628,7 +621,8 @@ pub struct CandleConfigurationManager {
     /// Change notification broadcaster
     change_notifier: broadcast::Sender<CandleConfigurationChangeEvent>,
     /// Configuration validation rules
-    validation_rules: Arc<RwLock<HashMap<Arc<str>, Arc<dyn CandleConfigurationValidator + Send + Sync>>>>,
+    validation_rules:
+        Arc<RwLock<HashMap<Arc<str>, Arc<dyn CandleConfigurationValidator + Send + Sync>>>>,
     /// Persistence settings
     persistence: Arc<RwLock<CandleConfigurationPersistence>>,
     /// Configuration change counter
@@ -638,7 +632,8 @@ pub struct CandleConfigurationManager {
     /// Configuration version counter
     version_counter: Arc<AtomicUsize>,
     /// Configuration locks for atomic operations
-    configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>}
+    configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>,
+}
 
 impl Clone for CandleConfigurationManager {
     fn clone(&self) -> Self {
@@ -657,10 +652,11 @@ impl Clone for CandleConfigurationManager {
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_nanos() as u64
+                    .as_nanos() as u64,
             )),
             version_counter: Arc::new(AtomicUsize::new(1)), // Fresh version counter
-            configuration_locks: Arc::clone(&self.configuration_locks)}
+            configuration_locks: Arc::clone(&self.configuration_locks),
+        }
     }
 }
 
@@ -686,7 +682,8 @@ impl CandleConfigurationValidator for CandlePersonalityValidator {
             return Err(CandleConfigurationValidationError::RangeValidation {
                 field: Arc::from("creativity"),
                 min: 0.0,
-                max: 1.0});
+                max: 1.0,
+            });
         }
 
         // Validate formality range
@@ -694,7 +691,8 @@ impl CandleConfigurationValidator for CandlePersonalityValidator {
             return Err(CandleConfigurationValidationError::RangeValidation {
                 field: Arc::from("formality"),
                 min: 0.0,
-                max: 1.0});
+                max: 1.0,
+            });
         }
 
         // Validate humor range
@@ -702,7 +700,8 @@ impl CandleConfigurationValidator for CandlePersonalityValidator {
             return Err(CandleConfigurationValidationError::RangeValidation {
                 field: Arc::from("humor"),
                 min: 0.0,
-                max: 1.0});
+                max: 1.0,
+            });
         }
 
         // Validate empathy range
@@ -710,28 +709,32 @@ impl CandleConfigurationValidator for CandlePersonalityValidator {
             return Err(CandleConfigurationValidationError::RangeValidation {
                 field: Arc::from("empathy"),
                 min: 0.0,
-                max: 1.0});
+                max: 1.0,
+            });
         }
 
         // Validate expertise level
         let valid_expertise = ["beginner", "intermediate", "advanced", "expert"];
         if !valid_expertise.contains(&personality.expertise_level.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid expertise level")});
+                detail: Arc::from("Invalid expertise level"),
+            });
         }
 
         // Validate tone
         let valid_tones = ["formal", "casual", "friendly", "professional", "neutral"];
         if !valid_tones.contains(&personality.tone.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid tone")});
+                detail: Arc::from("Invalid tone"),
+            });
         }
 
         // Validate verbosity
         let valid_verbosity = ["concise", "balanced", "detailed"];
         if !valid_verbosity.contains(&personality.verbosity.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidPersonality {
-                detail: Arc::from("Invalid verbosity level")});
+                detail: Arc::from("Invalid verbosity level"),
+            });
         }
 
         Ok(())
@@ -758,7 +761,8 @@ impl CandleConfigurationValidator for CandleBehaviorValidator {
             return Err(CandleConfigurationValidationError::RangeValidation {
                 field: Arc::from("proactivity"),
                 min: 0.0,
-                max: 1.0});
+                max: 1.0,
+            });
         }
 
         // Validate question frequency range
@@ -766,28 +770,32 @@ impl CandleConfigurationValidator for CandleBehaviorValidator {
             return Err(CandleConfigurationValidationError::RangeValidation {
                 field: Arc::from("question_frequency"),
                 min: 0.0,
-                max: 1.0});
+                max: 1.0,
+            });
         }
 
         // Validate conversation flow
         let valid_flows = ["natural", "structured", "adaptive", "guided"];
         if !valid_flows.contains(&behavior.conversation_flow.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid conversation flow")});
+                detail: Arc::from("Invalid conversation flow"),
+            });
         }
 
         // Validate follow-up behavior
         let valid_followups = ["contextual", "consistent", "adaptive", "minimal"];
         if !valid_followups.contains(&behavior.follow_up_behavior.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid follow-up behavior")});
+                detail: Arc::from("Invalid follow-up behavior"),
+            });
         }
 
         // Validate error handling
         let valid_error_handling = ["graceful", "verbose", "silent", "strict"];
         if !valid_error_handling.contains(&behavior.error_handling.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidBehavior {
-                detail: Arc::from("Invalid error handling approach")});
+                detail: Arc::from("Invalid error handling approach"),
+            });
         }
 
         Ok(())
@@ -813,35 +821,40 @@ impl CandleConfigurationValidator for CandleUIValidator {
         let valid_themes = ["light", "dark", "auto", "system", "custom"];
         if !valid_themes.contains(&ui.theme.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid theme")});
+                detail: Arc::from("Invalid theme"),
+            });
         }
 
         // Validate layout
         let valid_layouts = ["standard", "compact", "wide", "mobile", "adaptive"];
         if !valid_layouts.contains(&ui.layout.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid layout")});
+                detail: Arc::from("Invalid layout"),
+            });
         }
 
         // Validate color scheme
         let valid_color_schemes = ["adaptive", "high_contrast", "colorblind", "custom"];
         if !valid_color_schemes.contains(&ui.color_scheme.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid color scheme")});
+                detail: Arc::from("Invalid color scheme"),
+            });
         }
 
         // Validate display density
         let valid_densities = ["compact", "comfortable", "spacious"];
         if !valid_densities.contains(&ui.display_density.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid display density")});
+                detail: Arc::from("Invalid display density"),
+            });
         }
 
         // Validate animations
         let valid_animations = ["none", "minimal", "smooth", "rich"];
         if !valid_animations.contains(&ui.animations.as_ref()) {
             return Err(CandleConfigurationValidationError::InvalidUI {
-                detail: Arc::from("Invalid animation setting")});
+                detail: Arc::from("Invalid animation setting"),
+            });
         }
 
         Ok(())
@@ -868,7 +881,8 @@ impl CandleConfigurationValidator for CandleIntegrationValidator {
         for service in &integration.external_services {
             if !valid_services.contains(&service.as_ref()) {
                 return Err(CandleConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid external service: {}", service))});
+                    detail: Arc::from(format!("Invalid external service: {}", service)),
+                });
             }
         }
 
@@ -877,7 +891,8 @@ impl CandleConfigurationValidator for CandleIntegrationValidator {
         for api in &integration.api_configurations {
             if !valid_apis.contains(&api.as_ref()) {
                 return Err(CandleConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid API configuration: {}", api))});
+                    detail: Arc::from(format!("Invalid API configuration: {}", api)),
+                });
             }
         }
 
@@ -886,7 +901,8 @@ impl CandleConfigurationValidator for CandleIntegrationValidator {
         for auth in &integration.authentication {
             if !valid_auth.contains(&auth.as_ref()) {
                 return Err(CandleConfigurationValidationError::InvalidIntegration {
-                    detail: Arc::from(format!("Invalid authentication method: {}", auth))});
+                    detail: Arc::from(format!("Invalid authentication method: {}", auth)),
+                });
             }
         }
 
@@ -918,21 +934,22 @@ impl CandleConfigurationManager {
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_nanos() as u64
+                    .as_nanos() as u64,
             )),
             version_counter: Arc::new(AtomicUsize::new(1)),
-            configuration_locks: Arc::new(RwLock::new(HashMap::new()))};
+            configuration_locks: Arc::new(RwLock::new(HashMap::new())),
+        };
 
         // Initialize default validators using shared references
         let validation_rules = manager.validation_rules.clone();
         std::thread::spawn(move || {
-            {
-                let mut rules = validation_rules.write().unwrap_or_else(|poisoned| poisoned.into_inner());
-                rules.insert("personality".into(), Arc::new(CandlePersonalityValidator));
-                rules.insert("behavior".into(), Arc::new(CandleBehaviorValidator));
-                rules.insert("ui".into(), Arc::new(CandleUIValidator));
-                rules.insert("integration".into(), Arc::new(CandleIntegrationValidator));
-            }
+            let mut rules = validation_rules
+                .write()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            rules.insert("personality".into(), Arc::new(CandlePersonalityValidator));
+            rules.insert("behavior".into(), Arc::new(CandleBehaviorValidator));
+            rules.insert("ui".into(), Arc::new(CandleUIValidator));
+            rules.insert("integration".into(), Arc::new(CandleIntegrationValidator));
         });
 
         manager
@@ -971,13 +988,14 @@ impl CandleConfigurationManager {
                 old_value: Some(Arc::from(format!("{:?}", old_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
-                description: Arc::from("Configuration updated")};
+                description: Arc::from("Configuration updated"),
+            };
 
             // Queue change event
             manager.change_events.push(change_event.clone());
             manager.change_counter.fetch_add(1, Ordering::Relaxed);
             manager.version_counter.fetch_add(1, Ordering::Relaxed);
-            
+
             // Update persistence timestamp atomically on config change
             let now_nanos = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1027,13 +1045,14 @@ impl CandleConfigurationManager {
                 old_value: Some(Arc::from(format!("{:?}", current_config))),
                 new_value: Some(Arc::from(format!("{:?}", config_arc))),
                 user: None,
-                description: Arc::from("Configuration section updated")};
+                description: Arc::from("Configuration section updated"),
+            };
 
             // Queue change event
             manager.change_events.push(change_event.clone());
             manager.change_counter.fetch_add(1, Ordering::Relaxed);
             manager.version_counter.fetch_add(1, Ordering::Relaxed);
-            
+
             // Update persistence timestamp atomically on config change
             let now_nanos = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1055,7 +1074,10 @@ impl CandleConfigurationManager {
     }
 
     /// Validate configuration using streaming pattern
-    pub fn validate_config_stream(&self, _config: CandleChatConfig) -> AsyncStream<CandleConfigUpdate> {
+    pub fn validate_config_stream(
+        &self,
+        _config: CandleChatConfig,
+    ) -> AsyncStream<CandleConfigUpdate> {
         let _manager = self.clone();
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
@@ -1064,24 +1086,26 @@ impl CandleConfigurationManager {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos() as u64;
-                
+
                 let validation_start = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::ValidationStarted,
                     section: None,
                     success: true,
-                    description: Some(Arc::from("Configuration validation initiated"))};
-                
+                    description: Some(Arc::from("Configuration validation initiated")),
+                };
+
                 emit!(sender, validation_start);
-                
+
                 // Emit completion update
                 let completion_update = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::ValidationCompleted,
                     section: None,
                     success: true,
-                    description: Some(Arc::from("Configuration validation completed"))};
-                
+                    description: Some(Arc::from("Configuration validation completed")),
+                };
+
                 emit!(sender, completion_update);
             });
         })
@@ -1094,22 +1118,23 @@ impl CandleConfigurationManager {
     ) -> AsyncStream<CandleConfigUpdate> {
         let _manager = self.clone();
         let validator_name = Arc::from(validator.name());
-        
+
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
                 let now_nanos = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos() as u64;
-                
+
                 // Create validator registration update
                 let registration_update = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::ValidatorRegistered,
                     section: Some(validator_name),
                     success: true,
-                    description: Some(Arc::from("Configuration validator registered"))};
-                
+                    description: Some(Arc::from("Configuration validator registered")),
+                };
+
                 emit!(sender, registration_update);
             });
         })
@@ -1125,16 +1150,17 @@ impl CandleConfigurationManager {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos() as u64;
-                    
+
                 let previous_nanos = manager.last_persistence.swap(now_nanos, Ordering::AcqRel);
-                
+
                 // Create persistence event
                 let event = CandlePersistenceEvent {
                     timestamp_nanos: now_nanos,
                     previous_timestamp_nanos: previous_nanos,
                     persistence_type: CandlePersistenceType::Manual,
-                    success: true};
-                
+                    success: true,
+                };
+
                 emit!(sender, event);
             });
         })
@@ -1149,35 +1175,37 @@ impl CandleConfigurationManager {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos() as u64;
-                
+
                 // Emit check initiated update
                 let check_update = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::AutoSaveChecked,
                     section: None,
                     success: true,
-                    description: Some(Arc::from("Auto-save check initiated"))};
-                
+                    description: Some(Arc::from("Auto-save check initiated")),
+                };
+
                 emit!(sender, check_update);
-                
+
                 let last_save_nanos = manager.last_persistence.load(Ordering::Acquire);
                 let elapsed_secs = (now_nanos - last_save_nanos) / 1_000_000_000;
-                
+
                 // Default auto-save interval for streaming operation
                 let auto_save_interval = 300; // 5 minutes default
-                
+
                 if elapsed_secs >= auto_save_interval {
                     // Update timestamp atomically before saving
                     manager.last_persistence.store(now_nanos, Ordering::Release);
-                    
+
                     // Emit auto-save executed update
                     let autosave_update = CandleConfigUpdate {
                         timestamp_nanos: now_nanos,
                         update_type: CandleConfigUpdateType::AutoSaveExecuted,
                         section: None,
                         success: true,
-                        description: Some(Arc::from("Auto-save executed"))};
-                    
+                        description: Some(Arc::from("Auto-save executed")),
+                    };
+
                     emit!(sender, autosave_update);
                 }
             });
@@ -1193,38 +1221,38 @@ impl CandleConfigurationManager {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos() as u64;
-                
+
                 // Emit save initiated update
                 let save_start = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::SavedToFile,
                     section: None,
                     success: false,
-                    description: Some(Arc::from("File save initiated"))};
-                
+                    description: Some(Arc::from("File save initiated")),
+                };
+
                 emit!(sender, save_start);
-                
+
                 // Perform file save using sync implementation
                 let success = manager.save_to_file_sync().is_ok();
-                
+
                 // Emit save completion update
                 let save_complete = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::SavedToFile,
                     section: None,
                     success,
-                    description: Some(Arc::from(if success { 
-                        "File save completed successfully" 
-                    } else { 
-                        "File save failed" 
-                    }))};
-                
+                    description: Some(Arc::from(if success {
+                        "File save completed successfully"
+                    } else {
+                        "File save failed"
+                    })),
+                };
+
                 emit!(sender, save_complete);
             });
         })
     }
-
-
 
     /// Synchronous implementation of save_to_file for streams-only architecture
     fn save_to_file_sync(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -1239,7 +1267,8 @@ impl CandleConfigurationManager {
             "json" => serde_json::to_string_pretty(&*config)?,
             "yaml" => yyaml::to_string(&*config)?,
             "toml" => toml::to_string(&*config)?,
-            _ => return Err("Unsupported format".into())};
+            _ => return Err("Unsupported format".into()),
+        };
 
         let data = if compression {
             let compressed = lz4::block::compress(&serialized.as_bytes(), None, true)?;
@@ -1265,38 +1294,38 @@ impl CandleConfigurationManager {
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos() as u64;
-                
+
                 // Emit load initiated update
                 let load_start = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::LoadedFromFile,
                     section: None,
                     success: false,
-                    description: Some(Arc::from("File load initiated"))};
-                
+                    description: Some(Arc::from("File load initiated")),
+                };
+
                 emit!(sender, load_start);
-                
+
                 // Perform file load using sync implementation
                 let success = manager.load_from_file_sync().is_ok();
-                
+
                 // Emit load completion update
                 let load_complete = CandleConfigUpdate {
                     timestamp_nanos: now_nanos,
                     update_type: CandleConfigUpdateType::LoadedFromFile,
                     section: None,
                     success,
-                    description: Some(Arc::from(if success { 
-                        "File load completed successfully" 
-                    } else { 
-                        "File load failed" 
-                    }))};
-                
+                    description: Some(Arc::from(if success {
+                        "File load completed successfully"
+                    } else {
+                        "File load failed"
+                    })),
+                };
+
                 emit!(sender, load_complete);
             });
         })
     }
-
-
 
     /// Synchronous implementation of load_from_file for streams-only architecture
     fn load_from_file_sync(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -1322,7 +1351,8 @@ impl CandleConfigurationManager {
             "json" => serde_json::from_str(&content)?,
             "yaml" => yyaml::from_str(&content)?,
             "toml" => toml::from_str(&content)?,
-            _ => return Err("Unsupported format".into())};
+            _ => return Err("Unsupported format".into()),
+        };
 
         // Update config atomically
         let config_arc = Arc::new(config);
@@ -1372,4 +1402,3 @@ pub struct CandleConfigurationStatistics {
     /// Whether auto-save is currently enabled
     pub auto_save_enabled: bool,
 }
-

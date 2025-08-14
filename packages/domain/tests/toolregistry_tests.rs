@@ -18,13 +18,15 @@ type AnthropicResult<T> = std::result::Result<T, Box<dyn StdError + Send + Sync>
 #[derive(Debug, Clone)]
 struct TestDependency {
     name: String,
-    counter: std::sync::Arc<std::sync::atomic::AtomicU32>}
+    counter: std::sync::Arc<std::sync::atomic::AtomicU32>,
+}
 
 impl TestDependency {
     fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            counter: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0))}
+            counter: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0)),
+        }
     }
 
     fn increment(&self) -> u32 {
@@ -38,14 +40,16 @@ impl TestDependency {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CalculatorRequest {
     expression: String,
-    precision: Option<u32>}
+    precision: Option<u32>,
+}
 
 /// Test response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CalculatorResult {
     result: f64,
     expression: String,
-    precision: u32}
+    precision: u32,
+}
 
 /// Test for basic typestate builder chain
 #[test]
@@ -69,7 +73,8 @@ fn test_typestate_builder_chain() {
                         "2+2" => 4.0,
                         "3*3" => 9.0,
                         "10/2" => 5.0,
-                        _ => 0.0};
+                        _ => 0.0,
+                    };
 
                     Ok(())
                 })
@@ -135,7 +140,8 @@ fn test_duplicate_tool_registration() {
             CalculatorResult {
                 result: 42.0,
                 expression,
-                precision: req.precision.unwrap_or(6)}
+                precision: req.precision.unwrap_or(6),
+            }
         })
         .build();
 
@@ -150,7 +156,8 @@ fn test_duplicate_tool_registration() {
             CalculatorResult {
                 result: 84.0,
                 expression,
-                precision: req.precision.unwrap_or(6)}
+                precision: req.precision.unwrap_or(6),
+            }
         })
         .build();
 
@@ -189,7 +196,8 @@ fn test_schema_type_variations() {
             CalculatorResult {
                 result: 42.0,
                 expression,
-                precision: req.precision.unwrap_or(6)}
+                precision: req.precision.unwrap_or(6),
+            }
         })
         .build();
 

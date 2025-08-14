@@ -1,9 +1,10 @@
 // Import Extism PDK for plugin development
-use extism_pdk::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::OnceLock;
+
+use extism_pdk::*;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 // Core types for the MCP reasoner

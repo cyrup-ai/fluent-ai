@@ -9,16 +9,13 @@
 use std::env;
 
 use cyrup_sugars::ZeroOneOrMany;
-use fluent_ai_domain::context::chunk::CompletionChunk;
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use fluent_ai_domain::chat::Message;
 use fluent_ai_domain::completion::CompletionRequestError as CompletionCoreError;
 use fluent_ai_domain::completion::types::ToolDefinition;
 use fluent_ai_domain::context::Document;
-use fluent_ai_domain::chat::Message;
+use fluent_ai_domain::context::chunk::CompletionChunk;
 use serde_json::Value;
-
-use fluent_ai_async::{AsyncStream, AsyncStreamSender};
-
-
 
 /// Provider-specific completion error
 #[derive(Debug, thiserror::Error)]
@@ -51,7 +48,9 @@ impl From<CompletionCoreError> for CompletionError {
 }
 
 /// Chunk handler with cyrup_sugars pattern matching
-pub type ChunkHandler = Box<dyn Fn(Result<CompletionChunk, CompletionError>) -> Result<(), CompletionError> + Send + Sync>;
+pub type ChunkHandler = Box<
+    dyn Fn(Result<CompletionChunk, CompletionError>) -> Result<(), CompletionError> + Send + Sync,
+>;
 
 /// Automatic API key discovery using provider's env_api_keys() method
 #[inline(always)]
@@ -174,9 +173,11 @@ pub trait ModelPrompt: ModelConfigInfo {
             Ok(provider) => provider,
             Err(e) => {
                 // Return error stream using AsyncStream
-                return AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
-                    let _ = sender.send(CompletionChunk::error(&e.to_string()));
-                });
+                return AsyncStream::with_channel(
+                    move |sender: AsyncStreamSender<CompletionChunk>| {
+                        let _ = sender.send(CompletionChunk::error(&e.to_string()));
+                    },
+                );
             }
         };
 
@@ -185,9 +186,11 @@ pub trait ModelPrompt: ModelConfigInfo {
             Some(key) => key,
             None => {
                 // Return error stream - discovery function already logged the error
-                return AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
-                    let _ = sender.send(CompletionChunk::error("Missing API key"));
-                });
+                return AsyncStream::with_channel(
+                    move |sender: AsyncStreamSender<CompletionChunk>| {
+                        let _ = sender.send(CompletionChunk::error("Missing API key"));
+                    },
+                );
             }
         };
 
@@ -221,7 +224,6 @@ pub trait ModelPrompt: ModelConfigInfo {
         Self::Provider::new(api_key, self.name())
     }
 }
-
 
 /// Universal model config trait using model-info package
 ///
@@ -264,15 +266,6 @@ pub trait ModelConfigInfo: model_info::common::Model {
         <Self as model_info::common::Model>::required_temperature(self)
     }
 }
-
-
-
-
-
-
-
-
-
 
 /// Model configuration structure
 pub struct ModelConfig {
@@ -378,12 +371,12 @@ impl CompletionResponse {
             chunks: Vec::new(),
         }
     }
-    
+
     pub fn with_metadata(mut self, metadata: ResponseMetadata) -> Self {
         self.metadata = metadata;
         self
     }
-    
+
     pub fn with_chunks(mut self, chunks: Vec<CompletionChunk>) -> Self {
         self.chunks = chunks;
         self

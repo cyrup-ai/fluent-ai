@@ -19,7 +19,8 @@ pub use manager::coordinator::MemoryCoordinator;
 pub use manager::surreal::MemoryQuery as SurrealMemoryQuery; // Rename conflicting type
 pub use manager::surreal::{
     MemoryManager, MemoryStream, PendingDeletion, PendingMemory, PendingRelationship,
-    RelationshipStream, SurrealDBMemoryManager};
+    RelationshipStream, SurrealDBMemoryManager,
+};
 pub use ops::filter;
 pub use ops::filter::{MemoryFilter, MemoryFilterBuilder, TimeRange}; /* Keep ops versions as primary */
 // Main operations types - explicit to avoid conflicts
@@ -29,12 +30,14 @@ pub use ops::storage;
 pub use primitives::metadata::MemoryMetadata;
 // Alias the conflicting primitives types
 pub use primitives::metadata::{
-    MemoryFilter as PrimitivesMemoryFilter, TimeRange as PrimitivesTimeRange};
+    MemoryFilter as PrimitivesMemoryFilter, TimeRange as PrimitivesTimeRange,
+};
 // Primitives types
 pub use primitives::node::MemoryNode;
 pub use primitives::relationship::MemoryRelationship;
 pub use primitives::types::{
-    BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum, RelationshipType};
+    BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum, RelationshipType,
+};
 // Schema and systems
 pub use schema::*;
 pub use systems::*;

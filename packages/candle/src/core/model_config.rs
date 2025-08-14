@@ -5,8 +5,9 @@
 //! to share the same inference engine with only configuration differences.
 
 use std::path::PathBuf;
+
 use candle_core::DType;
-use candle_transformers::models::llama::{Config as LlamaConfig};
+use candle_transformers::models::llama::Config as LlamaConfig;
 #[cfg(test)]
 use candle_transformers::models::llama::LlamaEosToks;
 use serde::{Deserialize, Serialize};
@@ -44,7 +45,7 @@ impl ModelConfig {
         provider_name: impl Into<String>,
     ) -> Self {
         let arch_defaults = architecture.get_defaults();
-        
+
         Self {
             model_path: model_path.into(),
             tokenizer_path: tokenizer_path.into(),
@@ -57,63 +58,71 @@ impl ModelConfig {
             provider_name: provider_name.into(),
         }
     }
-    
+
     /// Set custom vocabulary size
     pub fn with_vocab_size(mut self, vocab_size: usize) -> Self {
         self.vocab_size = vocab_size;
         self
     }
-    
+
     /// Set custom context length
     pub fn with_context_length(mut self, context_length: usize) -> Self {
         self.context_length = context_length;
         self
     }
-    
+
     /// Set custom special tokens
     pub fn with_special_tokens(mut self, special_tokens: SpecialTokenIds) -> Self {
         self.special_tokens = special_tokens;
         self
     }
-    
+
     /// Set custom data type
     pub fn with_dtype(mut self, dtype: DType) -> Self {
         self.dtype = dtype;
         self
     }
-    
+
     /// Validate the model configuration
     pub fn validate(&self) -> Result<(), ModelConfigError> {
         if self.model_name.is_empty() {
-            return Err(ModelConfigError::InvalidModelName("Model name cannot be empty".into()));
+            return Err(ModelConfigError::InvalidModelName(
+                "Model name cannot be empty".into(),
+            ));
         }
-        
+
         if self.provider_name.is_empty() {
-            return Err(ModelConfigError::InvalidProviderName("Provider name cannot be empty".into()));
+            return Err(ModelConfigError::InvalidProviderName(
+                "Provider name cannot be empty".into(),
+            ));
         }
-        
+
         if self.vocab_size == 0 {
-            return Err(ModelConfigError::InvalidVocabSize("Vocabulary size must be greater than 0".into()));
+            return Err(ModelConfigError::InvalidVocabSize(
+                "Vocabulary size must be greater than 0".into(),
+            ));
         }
-        
+
         if self.context_length == 0 {
-            return Err(ModelConfigError::InvalidContextLength("Context length must be greater than 0".into()));
+            return Err(ModelConfigError::InvalidContextLength(
+                "Context length must be greater than 0".into(),
+            ));
         }
-        
+
         if !self.model_path.exists() {
             return Err(ModelConfigError::ModelFileNotFound(format!(
-                "Model file not found: {}", 
+                "Model file not found: {}",
                 self.model_path.display()
             )));
         }
-        
+
         if !self.tokenizer_path.exists() {
             return Err(ModelConfigError::TokenizerFileNotFound(format!(
-                "Tokenizer file not found: {}", 
+                "Tokenizer file not found: {}",
                 self.tokenizer_path.display()
             )));
         }
-        
+
         Ok(())
     }
 }
@@ -187,7 +196,7 @@ impl ModelArchitecture {
             },
         }
     }
-    
+
     /// Get architecture name as string
     pub fn name(&self) -> &str {
         match self {
@@ -259,17 +268,17 @@ impl Default for SpecialTokenIds {
 impl SpecialTokenIds {
     /// Check if a token ID is a special token
     pub fn is_special_token(&self, token_id: u32) -> bool {
-        token_id == self.bos_token_id.unwrap_or(u32::MAX) ||
-        token_id == self.eos_token_id.unwrap_or(u32::MAX) ||
-        token_id == self.pad_token_id.unwrap_or(u32::MAX) ||
-        token_id == self.unk_token_id.unwrap_or(u32::MAX)
+        token_id == self.bos_token_id.unwrap_or(u32::MAX)
+            || token_id == self.eos_token_id.unwrap_or(u32::MAX)
+            || token_id == self.pad_token_id.unwrap_or(u32::MAX)
+            || token_id == self.unk_token_id.unwrap_or(u32::MAX)
     }
-    
+
     /// Check if a token is an end-of-sequence token
     pub fn is_eos_token(&self, token_id: u32) -> bool {
         Some(token_id) == self.eos_token_id
     }
-    
+
     /// Get the name of a special token
     pub fn token_name(&self, token_id: u32) -> Option<&'static str> {
         if Some(token_id) == self.bos_token_id {
@@ -299,22 +308,22 @@ pub struct ArchitectureDefaults {
 pub enum ModelConfigError {
     #[error("Invalid model name: {0}")]
     InvalidModelName(String),
-    
+
     #[error("Invalid provider name: {0}")]
     InvalidProviderName(String),
-    
+
     #[error("Invalid vocabulary size: {0}")]
     InvalidVocabSize(String),
-    
+
     #[error("Invalid context length: {0}")]
     InvalidContextLength(String),
-    
+
     #[error("Model file not found: {0}")]
     ModelFileNotFound(String),
-    
+
     #[error("Tokenizer file not found: {0}")]
     TokenizerFileNotFound(String),
-    
+
     #[error("Configuration validation failed: {0}")]
     ValidationFailed(String),
 }
@@ -324,20 +333,22 @@ pub type ModelConfigResult<T> = Result<T, ModelConfigError>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use tempfile::tempdir;
     use std::fs::File;
-    
+
+    use tempfile::tempdir;
+
+    use super::*;
+
     #[test]
     fn test_model_config_creation() {
         let temp_dir = tempdir().expect("Failed to create temp dir");
         let model_path = temp_dir.path().join("model.safetensors");
         let tokenizer_path = temp_dir.path().join("tokenizer.json");
-        
+
         // Create dummy files
         File::create(&model_path).expect("Failed to create model file");
         File::create(&tokenizer_path).expect("Failed to create tokenizer file");
-        
+
         let llama_config = LlamaConfig {
             vocab_size: 32000,
             hidden_size: 4096,
@@ -354,40 +365,40 @@ mod tests {
             rope_scaling: None,
             tie_word_embeddings: false,
         };
-        
+
         let config = ModelConfig::new(
             model_path,
             tokenizer_path,
             ModelArchitecture::Llama(llama_config),
             "test-llama",
-            "test-provider"
+            "test-provider",
         );
-        
+
         assert_eq!(config.model_name, "test-llama");
         assert_eq!(config.provider_name, "test-provider");
         assert_eq!(config.vocab_size, 32000);
-        
+
         // Validation should pass with existing files
         config.validate().expect("Configuration should be valid");
     }
-    
+
     #[test]
     fn test_special_token_identification() {
         let tokens = SpecialTokenIds::default();
-        
+
         assert!(tokens.is_special_token(1)); // BOS
         assert!(tokens.is_special_token(2)); // EOS
         assert!(tokens.is_special_token(0)); // PAD
         assert!(!tokens.is_special_token(100)); // Regular token
-        
+
         assert!(tokens.is_eos_token(2));
         assert!(!tokens.is_eos_token(1));
-        
+
         assert_eq!(tokens.token_name(1), Some("<BOS>"));
         assert_eq!(tokens.token_name(2), Some("<EOS>"));
         assert_eq!(tokens.token_name(100), None);
     }
-    
+
     #[test]
     fn test_architecture_defaults() {
         let llama_arch = ModelArchitecture::Llama(LlamaConfig {
@@ -406,12 +417,12 @@ mod tests {
             rope_scaling: None,
             tie_word_embeddings: false,
         });
-        
+
         let defaults = llama_arch.get_defaults();
         assert_eq!(defaults.vocab_size, 32000);
         assert_eq!(defaults.context_length, 2048);
         assert_eq!(defaults.special_tokens.eos_token_id, Some(2));
-        
+
         assert_eq!(llama_arch.name(), "llama");
     }
 }

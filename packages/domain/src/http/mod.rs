@@ -70,10 +70,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 // Note: Provider import removed as it was unused
 
 // Core HTTP modules
-pub mod common;     // Task #7 - Shared HTTP Types - COMPLETED
-pub mod auth;       // Task #8 - Authentication Types - COMPLETED
-pub mod requests;   // Task #9 - Request Models - COMPLETED
-pub mod responses;  // Task #10 - Response Models - COMPLETED
+pub mod auth; // Task #8 - Authentication Types - COMPLETED
+pub mod common; // Task #7 - Shared HTTP Types - COMPLETED
+pub mod requests; // Task #9 - Request Models - COMPLETED
+pub mod responses; // Task #10 - Response Models - COMPLETED
 // pub mod builder;    // HTTP Request Builder Integration
 // pub mod client;     // HTTP Client Trait
 
@@ -83,33 +83,35 @@ pub mod responses;  // Task #10 - Response Models - COMPLETED
 // Re-exports for public API
 pub use {
     auth::{
-        ApiKeyAuth, AwsSignatureAuth, BearerAuth, OAuth2Auth, OAuth2Token, SecureString,
-        ServiceAccountConfig, AuthError},
+        ApiKeyAuth, AuthError, AwsSignatureAuth, BearerAuth, OAuth2Auth, OAuth2Token, SecureString,
+        ServiceAccountConfig,
+    },
     // builder::HttpRequestBuilder,
     // client::HttpClient,
     common::{
-        BaseMessage, CommonUsage, FinishReason, HttpContentType, HttpMethod, ModelParameters,
-        ProviderMetadata, StreamingMode, MessageRole, ToolCall, ToolCallType, FunctionCall,
-        ValidationError},
+        BaseMessage, CommonUsage, FinishReason, FunctionCall, HttpContentType, HttpMethod,
+        MessageRole, ModelParameters, ProviderMetadata, StreamingMode, ToolCall, ToolCallType,
+        ValidationError,
+    },
     requests::{
         completion::{
-            CompletionRequest, CompletionRequestError, ProviderExtensions,
-            ToolDefinition, ToolChoice, FunctionDefinition, ToolType,
-            OpenAIExtensions, AnthropicExtensions, GoogleExtensions,
-            BedrockExtensions, CohereExtensions},
+            AnthropicExtensions, BedrockExtensions, CohereExtensions, CompletionRequest,
+            CompletionRequestError, FunctionDefinition, GoogleExtensions, OpenAIExtensions,
+            ProviderExtensions, ToolChoice, ToolDefinition, ToolType,
+        },
         // embedding::{EmbeddingRequest, EmbeddingRequestError},
         // audio::{AudioRequest, AudioTranscriptionRequest, AudioTTSRequest},
         // specialized::{ImageGenerationRequest, ModerationRequest, RerankRequest}
     },
     responses::{
         completion::{
-            CompletionResponse, CompletionChoice, CompletionChunk, ChunkChoice, ChunkDelta,
-            StreamingResponse, CompletionResponseError, LogProbs, TokenLogProb,
-            OpenAIMetadata, AnthropicMetadata, GoogleMetadata, BedrockMetadata, CohereMetadata,
-            SafetyRating, CitationMetadata, CitationSource, BedrockMetrics}
-        // embedding::EmbeddingResponse,
-        // error::{HttpError, ProviderError}
-    }
+            AnthropicMetadata, BedrockMetadata, BedrockMetrics, ChunkChoice, ChunkDelta,
+            CitationMetadata, CitationSource, CohereMetadata, CompletionChoice, CompletionChunk,
+            CompletionResponse, CompletionResponseError, GoogleMetadata, LogProbs, OpenAIMetadata,
+            SafetyRating, StreamingResponse, TokenLogProb,
+        }, /* embedding::EmbeddingResponse,
+           * error::{HttpError, ProviderError} */
+    },
 };
 
 /// Global statistics for HTTP operations
@@ -127,7 +129,8 @@ pub struct HttpStats {
     /// Total bytes received in responses
     pub bytes_received: AtomicU64,
     /// Total time spent in HTTP operations (microseconds)
-    pub total_duration_micros: AtomicU64}
+    pub total_duration_micros: AtomicU64,
+}
 
 impl HttpStats {
     /// Create new HTTP statistics tracker
@@ -139,7 +142,8 @@ impl HttpStats {
             responses_error: AtomicU64::new(0),
             bytes_sent: AtomicU64::new(0),
             bytes_received: AtomicU64::new(0),
-            total_duration_micros: AtomicU64::new(0)}
+            total_duration_micros: AtomicU64::new(0),
+        }
     }
 
     /// Record a successful HTTP request
@@ -153,7 +157,8 @@ impl HttpStats {
     #[inline]
     pub fn record_success(&self, bytes_received: u64, duration_micros: u64) {
         self.responses_success.fetch_add(1, Ordering::Relaxed);
-        self.bytes_received.fetch_add(bytes_received, Ordering::Relaxed);
+        self.bytes_received
+            .fetch_add(bytes_received, Ordering::Relaxed);
         self.total_duration_micros
             .fetch_add(duration_micros, Ordering::Relaxed);
     }
@@ -198,7 +203,8 @@ impl HttpStats {
             responses_error: self.responses_error.load(Ordering::Relaxed),
             bytes_sent: self.bytes_sent.load(Ordering::Relaxed),
             bytes_received: self.bytes_received.load(Ordering::Relaxed),
-            total_duration_micros: self.total_duration_micros.load(Ordering::Relaxed)}
+            total_duration_micros: self.total_duration_micros.load(Ordering::Relaxed),
+        }
     }
 }
 
@@ -217,7 +223,8 @@ pub struct HttpStatsSnapshot {
     /// Total bytes received in responses
     pub bytes_received: u64,
     /// Total time spent in HTTP operations (microseconds)
-    pub total_duration_micros: u64}
+    pub total_duration_micros: u64,
+}
 
 impl HttpStatsSnapshot {
     /// Calculate success rate from snapshot data
@@ -251,7 +258,6 @@ pub fn global_stats() -> &'static HttpStats {
     &GLOBAL_STATS
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,11 +265,11 @@ mod tests {
     #[test]
     fn test_http_stats_operations() {
         let stats = HttpStats::new();
-        
+
         // Record some operations
         stats.record_request(100);
         stats.record_success(200, 1000);
-        
+
         let snapshot = stats.snapshot();
         assert_eq!(snapshot.requests_total, 1);
         assert_eq!(snapshot.responses_success, 1);

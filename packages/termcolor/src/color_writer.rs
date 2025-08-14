@@ -171,7 +171,8 @@ pub mod color_support {
             ColorChoice::Always => true,
             ColorChoice::Never => false,
             ColorChoice::Auto => detect_color_support(),
-            ColorChoice::AlwaysAnsi => true}
+            ColorChoice::AlwaysAnsi => true,
+        }
     }
 
     /// Fast color support detection for automatic mode

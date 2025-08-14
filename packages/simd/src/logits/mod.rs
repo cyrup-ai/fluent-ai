@@ -44,7 +44,8 @@ pub enum LogitsError {
 
     /// SIMD processing error
     #[error("SIMD error: {0}")]
-    SimdError(#[from] crate::error::SimdError)}
+    SimdError(#[from] crate::error::SimdError),
+}
 
 /// Result type for logits processing operations
 pub type LogitsResult<T> = Result<T, LogitsError>;

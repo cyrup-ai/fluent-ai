@@ -46,61 +46,60 @@ struct ProductModel {
 
 /// Helper function to create test data for filter tests
 fn create_test_data() -> String {
-        let items = vec![
-            TestModel {
-                a: 1,
-                b: 2,
-                c: 3,
-                d: 4,
-                flag1: true,
-                flag2: false,
-                name: "item1".to_string(),
-                category: "A".to_string(),
-            },
-            TestModel {
-                a: 2,
-                b: 3,
-                c: 4,
-                d: 5,
-                flag1: false,
-                flag2: true,
-                name: "item2".to_string(),
-                category: "B".to_string(),
-            },
-            TestModel {
-                a: 3,
-                b: 4,
-                c: 5,
-                d: 6,
-                flag1: true,
-                flag2: true,
-                name: "item3".to_string(),
-                category: "A".to_string(),
-            },
-            TestModel {
-                a: 4,
-                b: 5,
-                c: 6,
-                d: 7,
-                flag1: false,
-                flag2: false,
-                name: "item4".to_string(),
-                category: "C".to_string(),
-            },
-            TestModel {
-                a: 5,
-                b: 6,
-                c: 7,
-                d: 8,
-                flag1: true,
-                flag2: false,
-                name: "item5".to_string(),
-                category: "B".to_string(),
-            },
-        ];
+    let items = vec![
+        TestModel {
+            a: 1,
+            b: 2,
+            c: 3,
+            d: 4,
+            flag1: true,
+            flag2: false,
+            name: "item1".to_string(),
+            category: "A".to_string(),
+        },
+        TestModel {
+            a: 2,
+            b: 3,
+            c: 4,
+            d: 5,
+            flag1: false,
+            flag2: true,
+            name: "item2".to_string(),
+            category: "B".to_string(),
+        },
+        TestModel {
+            a: 3,
+            b: 4,
+            c: 5,
+            d: 6,
+            flag1: true,
+            flag2: true,
+            name: "item3".to_string(),
+            category: "A".to_string(),
+        },
+        TestModel {
+            a: 4,
+            b: 5,
+            c: 6,
+            d: 7,
+            flag1: false,
+            flag2: false,
+            name: "item4".to_string(),
+            category: "C".to_string(),
+        },
+        TestModel {
+            a: 5,
+            b: 6,
+            c: 7,
+            d: 8,
+            flag1: true,
+            flag2: false,
+            name: "item5".to_string(),
+            category: "B".to_string(),
+        },
+    ];
 
-        serde_json::to_string(&serde_json::json!({ "items": items }))
-            .expect("Valid JSON serialization")
+    serde_json::to_string(&serde_json::json!({ "items": items })).expect("Valid JSON serialization")
 }
 
 /// RFC 9535 Table 10 - Operator Precedence Tests
@@ -138,14 +137,10 @@ mod operator_precedence_tests {
             let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results1: Vec<_> = stream1
-                .process_chunk(chunk.clone())
-                .collect();
+            let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
             let chunk = Bytes::from(json_data.clone());
-            let results2: Vec<_> = stream2
-                .process_chunk(chunk)
-                .collect();
+            let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
             assert_eq!(
                 results1.len(),
@@ -262,16 +257,10 @@ mod operator_precedence_tests {
                     let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results1: Vec<_> = stream1
-                        .process_chunk(chunk.clone())
-                        
-                        .collect();
+                    let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results2: Vec<_> = stream2
-                        .process_chunk(chunk)
-                        
-                        .collect();
+                    let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
                     assert_eq!(
                         results1.len(),
@@ -384,10 +373,7 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results.len(),
@@ -445,10 +431,7 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
                 results.len() >= min_expected,
@@ -537,14 +520,10 @@ mod logical_precedence_tests {
             let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results1: Vec<_> = stream1
-                .process_chunk(chunk.clone())
-                .collect();
+            let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
             let chunk = Bytes::from(json_data.clone());
-            let results2: Vec<_> = stream2
-                .process_chunk(chunk)
-                .collect();
+            let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
             assert_eq!(
                 results1.len(),
@@ -594,14 +573,10 @@ mod logical_precedence_tests {
             let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results1: Vec<_> = stream1
-                .process_chunk(chunk.clone())
-                .collect();
+            let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
             let chunk = Bytes::from(json_data.clone());
-            let results2: Vec<_> = stream2
-                .process_chunk(chunk)
-                .collect();
+            let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
             assert_eq!(
                 results1.len(),
@@ -820,10 +795,7 @@ mod complex_evaluation_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!("{}: {} items matched", _description, results.len());
 

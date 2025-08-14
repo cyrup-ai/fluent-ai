@@ -125,17 +125,17 @@ impl<'a> SelectorParser<'a> {
             Some(Token::String(s)) => {
                 let name = s.clone();
                 self.consume_token();
-                
+
                 // Check for comma-separated union selector
                 if matches!(self.peek_token(), Some(Token::Comma)) {
                     let mut selectors = vec![JsonSelector::Child {
                         name,
                         exact_match: true,
                     }];
-                    
+
                     while matches!(self.peek_token(), Some(Token::Comma)) {
                         self.consume_token(); // consume comma
-                        
+
                         match self.peek_token() {
                             Some(Token::String(s)) => {
                                 let name = s.clone();
@@ -157,14 +157,16 @@ impl<'a> SelectorParser<'a> {
                                 self.consume_token();
                                 selectors.push(JsonSelector::Wildcard);
                             }
-                            _ => return Err(invalid_expression_error(
-                                self.input,
-                                "expected string, integer, or '*' after comma in union selector",
-                                Some(self.position),
-                            )),
+                            _ => {
+                                return Err(invalid_expression_error(
+                                    self.input,
+                                    "expected string, integer, or '*' after comma in union selector",
+                                    Some(self.position),
+                                ));
+                            }
                         }
                     }
-                    
+
                     self.expect_token(Token::RightBracket)?;
                     Ok(JsonSelector::Union { selectors })
                 } else {
@@ -211,10 +213,10 @@ impl<'a> SelectorParser<'a> {
                     index: start,
                     from_end: start < 0,
                 }];
-                
+
                 while matches!(self.peek_token(), Some(Token::Comma)) {
                     self.consume_token(); // consume comma
-                    
+
                     match self.peek_token() {
                         Some(Token::Integer(n)) => {
                             let index = *n;
@@ -236,14 +238,16 @@ impl<'a> SelectorParser<'a> {
                             self.consume_token();
                             selectors.push(JsonSelector::Wildcard);
                         }
-                        _ => return Err(invalid_expression_error(
-                            self.input,
-                            "expected integer, string, or '*' after comma in union selector",
-                            Some(self.position),
-                        )),
+                        _ => {
+                            return Err(invalid_expression_error(
+                                self.input,
+                                "expected integer, string, or '*' after comma in union selector",
+                                Some(self.position),
+                            ));
+                        }
                     }
                 }
-                
+
                 self.expect_token(Token::RightBracket)?;
                 Ok(JsonSelector::Union { selectors })
             }

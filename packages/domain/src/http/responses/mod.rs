@@ -48,6 +48,6 @@ pub mod completion;
 
 // Future modules
 // pub mod embedding;    // Embedding vector responses
-// pub mod audio;        // Audio transcription and synthesis responses  
+// pub mod audio;        // Audio transcription and synthesis responses
 // pub mod specialized;  // Image generation, moderation, rerank responses
 // pub mod error;        // HTTP and provider-specific error types

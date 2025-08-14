@@ -16,7 +16,8 @@ pub enum LLMProvider {
     /// Local/self-hosted models
     Local,
     /// Other providers
-    Other}
+    Other,
+}
 
 /// LLM configuration for memory system operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +39,8 @@ pub struct LLMConfig {
     /// Request timeout in milliseconds
     pub timeout_ms: u64,
     /// Maximum retries on failure
-    pub max_retries: u32}
+    pub max_retries: u32,
+}
 
 impl LLMConfig {
     /// Create new LLM configuration
@@ -60,7 +62,8 @@ impl LLMConfig {
             temperature: 0.7,
             streaming: false,
             timeout_ms: 30000,
-            max_retries: 3})
+            max_retries: 3,
+        })
     }
 
     /// Enable streaming responses
@@ -146,7 +149,8 @@ impl Default for LLMConfig {
             temperature: 0.7,
             streaming: false,
             timeout_ms: 30000,
-            max_retries: 3}
+            max_retries: 3,
+        }
     }
 }
 
@@ -162,7 +166,8 @@ pub enum LLMConfigError {
     InvalidParameter(String),
 
     #[error("Configuration validation failed: {0}")]
-    ValidationError(String)}
+    ValidationError(String),
+}
 
 impl LLMProvider {
     /// Get default endpoint for provider
@@ -171,14 +176,16 @@ impl LLMProvider {
             Self::OpenAI => Some("https://api.openai.com/v1"),
             Self::Anthropic => Some("https://api.anthropic.com/v1"),
             Self::Gemini => Some("https://generativelanguage.googleapis.com/v1"),
-            Self::Local | Self::Other => None}
+            Self::Local | Self::Other => None,
+        }
     }
 
     /// Check if provider requires API key
     pub fn requires_api_key(&self) -> bool {
         match self {
             Self::Local => false,
-            _ => true}
+            _ => true,
+        }
     }
 
     /// Get common models for provider
@@ -187,6 +194,7 @@ impl LLMProvider {
             Self::OpenAI => &["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
             Self::Anthropic => &["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
             Self::Gemini => &["gemini-1.5-pro", "gemini-1.5-flash"],
-            Self::Local | Self::Other => &[]}
+            Self::Local | Self::Other => &[],
+        }
     }
 }

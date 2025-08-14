@@ -19,8 +19,12 @@ pub struct HttpResponse {
 impl HttpResponse {
     /// Create a new HTTP response
     #[must_use]
-    pub fn new(status: StatusCode, headers: &reqwest::header::HeaderMap, body: Vec<u8>) -> Self {
-        // Convert reqwest headers to HashMap with zero-allocation filtering
+    pub fn new(
+        status: StatusCode,
+        headers: &crate::hyper::header::HeaderMap,
+        body: Vec<u8>,
+    ) -> Self {
+        // Convert http3 headers to HashMap with zero-allocation filtering
         let headers = headers
             .iter()
             .filter_map(|(k, v)| {

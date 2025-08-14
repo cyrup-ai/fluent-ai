@@ -23,7 +23,8 @@ pub enum ColorChoice {
     /// example, then don't use colors.
     Auto,
     /// Never emit colors.
-    Never}
+    Never,
+}
 
 /// The default is `Auto`.
 impl Default for ColorChoice {
@@ -42,7 +43,9 @@ impl FromStr for ColorChoice {
             "never" => Ok(ColorChoice::Never),
             "auto" => Ok(ColorChoice::Auto),
             unknown => Err(ColorChoiceParseError {
-                unknown_choice: unknown.to_string()})}
+                unknown_choice: unknown.to_string(),
+            }),
+        }
     }
 }
 
@@ -53,7 +56,8 @@ impl ColorChoice {
             ColorChoice::Always => true,
             ColorChoice::AlwaysAnsi => true,
             ColorChoice::Never => false,
-            ColorChoice::Auto => self.env_allows_color()}
+            ColorChoice::Auto => self.env_allows_color(),
+        }
     }
 
     #[cfg(not(windows))]
@@ -118,7 +122,8 @@ impl ColorChoice {
 /// An error that occurs when parsing a `ColorChoice` fails.
 #[derive(Clone, Debug)]
 pub struct ColorChoiceParseError {
-    unknown_choice: String}
+    unknown_choice: String,
+}
 
 impl ColorChoiceParseError {
     /// Return the string that couldn't be parsed as a valid color choice.
@@ -151,7 +156,8 @@ pub struct ColorSpec {
     pub(crate) dimmed: bool,
     pub(crate) italic: bool,
     pub(crate) reset: bool,
-    pub(crate) strikethrough: bool}
+    pub(crate) strikethrough: bool,
+}
 
 impl Default for ColorSpec {
     fn default() -> ColorSpec {
@@ -164,7 +170,8 @@ impl Default for ColorSpec {
             dimmed: false,
             italic: false,
             reset: true,
-            strikethrough: false}
+            strikethrough: false,
+        }
     }
 }
 
@@ -354,7 +361,8 @@ pub enum Color {
     Yellow,
     White,
     Ansi256(u8),
-    Rgb(u8, u8, u8)}
+    Rgb(u8, u8, u8),
+}
 
 impl Color {
     /// Parses a numeric color string, either ANSI or RGB.
@@ -380,18 +388,21 @@ impl Color {
             } else if s.chars().all(|c| c.is_ascii_hexdigit()) {
                 Err(ParseColorError {
                     kind: ParseColorErrorKind::InvalidAnsi256,
-                    given: s.to_string()})
+                    given: s.to_string(),
+                })
             } else {
                 Err(ParseColorError {
                     kind: ParseColorErrorKind::InvalidName,
-                    given: s.to_string()})
+                    given: s.to_string(),
+                })
             }
         } else if codes.len() == 3 {
             let mut v = vec![];
             for code in codes {
                 let n = parse_number(code).ok_or_else(|| ParseColorError {
                     kind: ParseColorErrorKind::InvalidRgb,
-                    given: s.to_string()})?;
+                    given: s.to_string(),
+                })?;
                 v.push(n);
             }
             Ok(Color::Rgb(v[0], v[1], v[2]))
@@ -399,11 +410,13 @@ impl Color {
             Err(if s.contains(",") {
                 ParseColorError {
                     kind: ParseColorErrorKind::InvalidRgb,
-                    given: s.to_string()}
+                    given: s.to_string(),
+                }
             } else {
                 ParseColorError {
                     kind: ParseColorErrorKind::InvalidName,
-                    given: s.to_string()}
+                    given: s.to_string(),
+                }
             })
         }
     }
@@ -413,13 +426,15 @@ impl Color {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParseColorError {
     kind: ParseColorErrorKind,
-    given: String}
+    given: String,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ParseColorErrorKind {
     InvalidName,
     InvalidAnsi256,
-    InvalidRgb}
+    InvalidRgb,
+}
 
 impl ParseColorError {
     /// Return the string that couldn't be parsed as a valid color.
@@ -434,7 +449,8 @@ impl std::error::Error for ParseColorError {
         match self.kind {
             InvalidName => "unrecognized color name",
             InvalidAnsi256 => "invalid ansi256 color number",
-            InvalidRgb => "invalid RGB color triple"}
+            InvalidRgb => "invalid RGB color triple",
+        }
     }
 }
 
@@ -461,7 +477,8 @@ impl fmt::Display for ParseColorError {
                  should be '[0-255],[0-255],[0-255]' (or a hex \
                  triple), but is '{}'",
                 self.given
-            )}
+            ),
+        }
     }
 }
 
@@ -478,7 +495,8 @@ impl FromStr for Color {
             "magenta" => Ok(Color::Magenta),
             "yellow" => Ok(Color::Yellow),
             "white" => Ok(Color::White),
-            _ => Color::from_str_numeric(s)}
+            _ => Color::from_str_numeric(s),
+        }
     }
 }
 
@@ -486,19 +504,22 @@ impl FromStr for Color {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ColorSpecParseError {
     /// An error parsing a color.
-    InvalidColor(ParseColorError)}
+    InvalidColor(ParseColorError),
+}
 
 impl std::error::Error for ColorSpecParseError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ColorSpecParseError::InvalidColor(e) => Some(e)}
+            ColorSpecParseError::InvalidColor(e) => Some(e),
+        }
     }
 }
 
 impl fmt::Display for ColorSpecParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ColorSpecParseError::InvalidColor(e) => write!(f, "{e}")}
+            ColorSpecParseError::InvalidColor(e) => write!(f, "{e}"),
+        }
     }
 }
 
@@ -550,7 +571,8 @@ impl FromStr for ColorSpec {
 /// A hyperlink specification.
 #[derive(Clone, Debug)]
 pub struct HyperlinkSpec<'a> {
-    uri: Option<&'a [u8]>}
+    uri: Option<&'a [u8]>,
+}
 
 impl<'a> HyperlinkSpec<'a> {
     /// Creates a new hyperlink specification.

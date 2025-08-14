@@ -5,11 +5,13 @@ use std::sync::Arc;
 
 use axum::{
     Router,
-    routing::{delete, get, post, put}};
+    routing::{delete, get, post, put},
+};
 
 use super::handlers::{
     create_memory, delete_memory, get_health, get_memory, get_metrics, search_memories,
-    update_memory};
+    update_memory,
+};
 use crate::SurrealMemoryManager;
 
 /// Create the main API router

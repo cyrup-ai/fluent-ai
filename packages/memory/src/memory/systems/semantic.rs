@@ -28,7 +28,8 @@ pub enum ConfidenceLevel {
     /// High confidence
     High,
     /// Very high confidence
-    VeryHigh}
+    VeryHigh,
+}
 
 impl ConfidenceLevel {
     /// Convert confidence level to float
@@ -38,7 +39,8 @@ impl ConfidenceLevel {
             ConfidenceLevel::Low => 0.3,
             ConfidenceLevel::Medium => 0.5,
             ConfidenceLevel::High => 0.7,
-            ConfidenceLevel::VeryHigh => 0.9}
+            ConfidenceLevel::VeryHigh => 0.9,
+        }
     }
 
     /// Convert float to confidence level
@@ -67,7 +69,8 @@ pub enum SemanticItemType {
     /// Rule (logical rule or pattern)
     Rule,
     /// Category (classification or grouping)
-    Category}
+    Category,
+}
 
 impl std::fmt::Display for SemanticItemType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -75,7 +78,8 @@ impl std::fmt::Display for SemanticItemType {
             SemanticItemType::Concept => write!(f, "concept"),
             SemanticItemType::Fact => write!(f, "fact"),
             SemanticItemType::Rule => write!(f, "rule"),
-            SemanticItemType::Category => write!(f, "category")}
+            SemanticItemType::Category => write!(f, "category"),
+        }
     }
 }
 
@@ -89,7 +93,8 @@ impl SemanticItemType {
             "category" => Ok(SemanticItemType::Category),
             _ => Err(Error::ConversionError(format!(
                 "Invalid semantic item type: {s}"
-            )))}
+            ))),
+        }
     }
 }
 
@@ -121,7 +126,8 @@ pub struct SemanticItem {
     pub updated_at: DateTime<Utc>,
 
     /// Additional metadata
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+}
 
 impl SemanticItem {
     /// Create a new semantic item
@@ -137,7 +143,8 @@ impl SemanticItem {
             confidence: ConfidenceLevel::Medium,
             created_at: now,
             updated_at: now,
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Add a tag to the item
@@ -237,7 +244,8 @@ impl SemanticItem {
                     "Medium" => ConfidenceLevel::Medium,
                     "High" => ConfidenceLevel::High,
                     "VeryHigh" => ConfidenceLevel::VeryHigh,
-                    _ => ConfidenceLevel::Medium}
+                    _ => ConfidenceLevel::Medium,
+                }
             } else {
                 ConfidenceLevel::Medium
             };
@@ -274,7 +282,8 @@ impl SemanticItem {
                 confidence,
                 created_at,
                 updated_at,
-                metadata})
+                metadata,
+            })
         } else {
             Err(Error::ConversionError(
                 "Invalid semantic item value".to_string(),
@@ -297,7 +306,8 @@ pub enum SemanticRelationshipType {
     /// Causes relationship
     Causes,
     /// Custom relationship
-    Custom(String)}
+    Custom(String),
+}
 
 impl std::fmt::Display for SemanticRelationshipType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -307,7 +317,8 @@ impl std::fmt::Display for SemanticRelationshipType {
             SemanticRelationshipType::PartOf => write!(f, "part_of"),
             SemanticRelationshipType::RelatedTo => write!(f, "related_to"),
             SemanticRelationshipType::Causes => write!(f, "causes"),
-            SemanticRelationshipType::Custom(s) => write!(f, "{s}")}
+            SemanticRelationshipType::Custom(s) => write!(f, "{s}"),
+        }
     }
 }
 
@@ -320,7 +331,8 @@ impl SemanticRelationshipType {
             "part_of" => SemanticRelationshipType::PartOf,
             "related_to" => SemanticRelationshipType::RelatedTo,
             "causes" => SemanticRelationshipType::Causes,
-            _ => SemanticRelationshipType::Custom(s.to_string())}
+            _ => SemanticRelationshipType::Custom(s.to_string()),
+        }
     }
 }
 
@@ -355,7 +367,8 @@ pub struct SemanticRelationship {
     pub updated_at: DateTime<Utc>,
 
     /// Additional metadata
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+}
 
 impl SemanticRelationship {
     /// Create a new semantic relationship
@@ -376,7 +389,8 @@ impl SemanticRelationship {
             confidence: ConfidenceLevel::Medium,
             created_at: now,
             updated_at: now,
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Set confidence level
@@ -466,7 +480,8 @@ impl SemanticRelationship {
                     "Medium" => ConfidenceLevel::Medium,
                     "High" => ConfidenceLevel::High,
                     "VeryHigh" => ConfidenceLevel::VeryHigh,
-                    _ => ConfidenceLevel::Medium}
+                    _ => ConfidenceLevel::Medium,
+                }
             } else {
                 ConfidenceLevel::Medium
             };
@@ -504,7 +519,8 @@ impl SemanticRelationship {
                 confidence,
                 created_at,
                 updated_at,
-                metadata})
+                metadata,
+            })
         } else {
             Err(Error::ConversionError(
                 "Invalid semantic relationship value".to_string(),
@@ -523,7 +539,8 @@ pub struct SemanticMemory {
     pub items: Vec<SemanticItem>,
 
     /// Relationships between items
-    pub relationships: Vec<SemanticRelationship>}
+    pub relationships: Vec<SemanticRelationship>,
+}
 
 impl SemanticMemory {
     /// Create a new semantic memory
@@ -537,7 +554,8 @@ impl SemanticMemory {
                 MemoryContent::new(""),
             ),
             items: Vec::new(),
-            relationships: Vec::new()}
+            relationships: Vec::new(),
+        }
     }
 
     /// Add an item to the semantic memory

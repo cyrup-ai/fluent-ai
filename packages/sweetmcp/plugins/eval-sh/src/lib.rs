@@ -1,7 +1,7 @@
-use rustpython_vm::{self as vm, Settings, scope::Scope};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use extism_pdk::*;
+use rustpython_vm::{self as vm, Settings, scope::Scope};
 use serde_json::Value;
 use sweetmcp_plugin_builder::prelude::*;
 use sweetmcp_plugin_builder::{CallToolResult, Ready};

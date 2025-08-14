@@ -7,8 +7,9 @@ use fluent_ai_domain::model::{
     capabilities::Capability,
     error::ModelError,
     info::{ModelInfo, ModelInfoBuilder},
-    registry::ModelRegistry,
-    traits::Model};
+    traits::Model,
+    unified_registry::UnifiedModelRegistry,
+};
 use tracing::{debug, error, info, instrument, warn};
 
 use super::client::AnthropicClient;
@@ -18,7 +19,8 @@ use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 #[derive(Debug, Clone)]
 pub struct AnthropicDiscovery {
     client: Arc<AnthropicClient>,
-    supported_models: &'static [&'static str]}
+    supported_models: &'static [&'static str],
+}
 
 impl AnthropicDiscovery {
     /// Create a new Anthropic model discovery instance
@@ -46,7 +48,8 @@ impl AnthropicDiscovery {
 
         Ok(Self {
             client: Arc::new(client),
-            supported_models: SUPPORTED_MODELS})
+            supported_models: SUPPORTED_MODELS,
+        })
     }
 
     /// Get model information for a specific model
@@ -93,7 +96,11 @@ impl AnthropicDiscovery {
 
 impl ProviderModelDiscovery for AnthropicDiscovery {
     fn discover_models(&self) -> DiscoveryResult<Vec<String>> {
-        Ok(self.supported_models.iter().map(|s| s.to_string()).collect())
+        Ok(self
+            .supported_models
+            .iter()
+            .map(|s| s.to_string())
+            .collect())
     }
 
     fn get_model_info(&self, model_name: &str) -> DiscoveryResult<ModelInfo> {
@@ -114,14 +121,15 @@ impl AnthropicDiscovery {
 
     pub async fn discover_and_register(&self) -> DiscoveryResult<()> {
         info!("Starting Anthropic model discovery");
-        let registry = ModelRegistry::global();
+        let registry = UnifiedModelRegistry::global();
 
         for &model_name in self.supported_models {
             if let Some(model_info) = self.get_model_info(model_name) {
                 // Create a new model instance for each model
                 let model = AnthropicModel {
                     info: model_info,
-                    client: self.client.clone()};
+                    client: self.client.clone(),
+                };
 
                 // Register the model
                 if let Err(e) = registry.register("anthropic", model) {
@@ -148,7 +156,8 @@ impl AnthropicDiscovery {
 #[derive(Debug, Clone)]
 struct AnthropicModel {
     info: ModelInfo,
-    client: Arc<AnthropicClient>}
+    client: Arc<AnthropicClient>,
+}
 
 impl Model for AnthropicModel {
     fn info(&self) -> &'static ModelInfo {
@@ -195,7 +204,7 @@ mod tests {
         );
 
         // Verify models were registered
-        let registry = ModelRegistry::global();
+        let registry = UnifiedModelRegistry::global();
         for model_name in supported_models {
             assert!(
                 registry

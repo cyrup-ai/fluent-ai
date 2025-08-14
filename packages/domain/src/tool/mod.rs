@@ -16,7 +16,8 @@ pub mod types;
 
 // Re-export core tool functionality
 pub use core::{
-    ExecToText, NamedTool, Perplexity, Tool, ToolDefinition, ToolEmbeddingDyn, ToolSet};
+    ExecToText, NamedTool, Perplexity, Tool, ToolDefinition, ToolEmbeddingDyn, ToolSet,
+};
 
 // Re-export MCP functionality
 pub use mcp::{Client as McpClient, McpError, StdioTransport, Transport};

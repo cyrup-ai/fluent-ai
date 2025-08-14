@@ -12,19 +12,22 @@ mod error_tests {
     fn test_basic_error_functionality() {
         // Test HTTP3 error handling functionality
         let builder = Http3::json();
-        
+
         // Test that builder can be configured for error scenarios
         let configured_builder = builder
             .timeout_seconds(1) // Short timeout to trigger timeout errors
             .retry_attempts(2); // Multiple retries for error resilience
-        
+
         // Verify error-handling configuration is accepted
         let _final_builder = configured_builder
             .headers([("expect", "100-continue")]) // Header that might cause issues
             .user_agent("HTTP3-Error-Test");
-        
+
         // Test passes if error-handling configuration can be chained
-        assert!(true, "HTTP3 builder should support error handling configuration");
+        assert!(
+            true,
+            "HTTP3 builder should support error handling configuration"
+        );
     }
 
     #[test]

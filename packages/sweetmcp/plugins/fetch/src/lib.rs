@@ -6,8 +6,8 @@ mod firecrawl;
 // use std::collections::BTreeMap;
 use std::str::FromStr;
 
-// use async_trait::async_trait;
-use crate::hyper::HyperFetcher;
+// Sixel encoding is implemented inline below based on sixel6vt renderer
+use base64::Engine;
 use chromiumoxide::ContentFetcher;
 use extism_pdk::*;
 use htmd::HtmlToMarkdown;
@@ -15,9 +15,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sweetmcp_plugin_builder::prelude::*;
 use sweetmcp_plugin_builder::{CallToolResult, Content, ContentType, Ready};
-// Sixel encoding is implemented inline below based on sixel6vt renderer
-use base64::Engine;
 use syntect::{highlighting::ThemeSet, html::highlighted_html_for_string, parsing::SyntaxSet};
+
+// use async_trait::async_trait;
+use crate::hyper::HyperFetcher;
 
 /// Encode an RGB image to Sixel format (based on sixel6vt implementation)
 fn encode_sixel(img: &image::RgbImage) -> String {

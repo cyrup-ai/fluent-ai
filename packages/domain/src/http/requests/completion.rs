@@ -51,11 +51,11 @@
 use std::fmt;
 
 use arrayvec::{ArrayString, ArrayVec};
+use model_info::DiscoveryProvider as Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::HashMap;
-use model_info::DiscoveryProvider as Provider;
 use crate::http::common::{
     BaseMessage, MAX_IDENTIFIER_LEN, MAX_MESSAGES, MAX_STOP_SEQUENCE_LEN, MAX_STOP_SEQUENCES,
     MAX_TOOLS, ModelParameters, ValidationError,
@@ -597,9 +597,9 @@ impl CompletionRequest {
             if let Some(last_message) = self.messages.last() {
                 request["message"] = last_message.content.clone().into();
                 if self.messages.len() > 1 {
-                    request["chat_history"] = serde_json::to_value(
-                        &self.messages[..self.messages.len() - 1]
-                    ).unwrap_or_default();
+                    request["chat_history"] =
+                        serde_json::to_value(&self.messages[..self.messages.len() - 1])
+                            .unwrap_or_default();
                 }
             }
         }
@@ -658,7 +658,6 @@ impl CompletionRequest {
         self.to_openai_format()
     }
 
-
     /// Convert to Mistral format
     #[inline]
     fn to_mistral_format(&self) -> Result<Value, CompletionRequestError> {
@@ -693,14 +692,12 @@ impl CompletionRequest {
         Ok(request)
     }
 
-
     /// Convert to xAI format
     #[inline]
     fn to_xai_format(&self) -> Result<Value, CompletionRequestError> {
         // xAI is OpenAI-compatible
         self.to_openai_format()
     }
-
 }
 
 /// Tool definition for function calling

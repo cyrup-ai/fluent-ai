@@ -1,6 +1,8 @@
-use crate::db::config;
 use std::fmt::{self, Display}; // Use Display trait for formatting
-use thiserror::Error; // Use thiserror crate for error handling
+
+use thiserror::Error;
+
+use crate::db::config; // Use thiserror crate for error handling
 
 /// Specialized error type for SurrealDB operations
 #[derive(Error, Debug)]

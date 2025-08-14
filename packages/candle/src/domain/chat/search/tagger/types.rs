@@ -1,6 +1,7 @@
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
+
 use hashbrown::HashMap;
+use serde::{Deserialize, Serialize};
 
 /// Tag with hierarchical structure (Candle-prefixed for domain system)
 #[derive(Debug, Clone, Serialize, Deserialize)]

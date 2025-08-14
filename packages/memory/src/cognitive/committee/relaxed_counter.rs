@@ -4,28 +4,32 @@ use std::sync::atomic::{AtomicU64, Ordering};
 /// Zero-allocation operations with atomic guarantees
 #[derive(Debug, Default)]
 pub struct RelaxedCounter {
-    value: AtomicU64}
+    value: AtomicU64,
+}
 
 impl RelaxedCounter {
     /// Create a new counter with initial value
     #[inline]
     pub const fn new(initial: u64) -> Self {
         Self {
-            value: AtomicU64::new(initial)}
+            value: AtomicU64::new(initial),
+        }
     }
 
     /// Create a new counter starting at zero
     #[inline]
     pub const fn default() -> Self {
         Self {
-            value: AtomicU64::new(0)}
+            value: AtomicU64::new(0),
+        }
     }
 
     /// Create a new counter with initial value (alias for new)
     #[inline]
     pub const fn with_value(initial: u64) -> Self {
         Self {
-            value: AtomicU64::new(initial)}
+            value: AtomicU64::new(initial),
+        }
     }
 
     /// Get current counter value with zero allocation

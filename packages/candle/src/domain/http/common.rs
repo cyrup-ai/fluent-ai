@@ -42,9 +42,10 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
+use std::fmt;
+
 use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 /// Maximum number of messages in a conversation (compile-time bounded)
 pub const MAX_MESSAGES: usize = 128;
@@ -62,7 +63,7 @@ pub const MAX_IDENTIFIER_LEN: usize = 64;
 pub const MAX_STOP_SEQUENCE_LEN: usize = 32;
 
 /// Universal message structure for chat conversations
-/// 
+///
 /// Designed to work across all AI providers while maintaining type safety
 /// and zero-allocation patterns for small message collections.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,7 +80,8 @@ pub struct BaseMessage {
     pub tool_call_id: Option<ArrayString<MAX_IDENTIFIER_LEN>>,
     /// Tool calls made by the assistant
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
-    pub tool_calls: ArrayVec<ToolCall, MAX_TOOLS>}
+    pub tool_calls: ArrayVec<ToolCall, MAX_TOOLS>,
+}
 
 impl BaseMessage {
     /// Create a user message
@@ -90,7 +92,8 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: None,
-            tool_calls: ArrayVec::new()}
+            tool_calls: ArrayVec::new(),
+        }
     }
 
     /// Create an assistant message
@@ -101,7 +104,8 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: None,
-            tool_calls: ArrayVec::new()}
+            tool_calls: ArrayVec::new(),
+        }
     }
 
     /// Create a system message
@@ -112,27 +116,33 @@ impl BaseMessage {
             content: content.into(),
             name: None,
             tool_call_id: None,
-            tool_calls: ArrayVec::new()}
+            tool_calls: ArrayVec::new(),
+        }
     }
 
     /// Create a tool result message
     #[inline]
-    pub fn tool_result(tool_call_id: &str, content: impl Into<String>) -> Result<Self, ValidationError> {
+    pub fn tool_result(
+        tool_call_id: &str,
+        content: impl Into<String>,
+    ) -> Result<Self, ValidationError> {
         let id = ArrayString::from(tool_call_id)
             .map_err(|_| ValidationError::ToolCallIdTooLong(tool_call_id.len()))?;
-        
+
         Ok(Self {
             role: MessageRole::Tool,
             content: content.into(),
             name: None,
             tool_call_id: Some(id),
-            tool_calls: ArrayVec::new()})
+            tool_calls: ArrayVec::new(),
+        })
     }
 
     /// Add a tool call to this message
     #[inline]
     pub fn with_tool_call(mut self, tool_call: ToolCall) -> Result<Self, ValidationError> {
-        self.tool_calls.try_push(tool_call)
+        self.tool_calls
+            .try_push(tool_call)
             .map_err(|_| ValidationError::TooManyTools)?;
         Ok(self)
     }
@@ -140,8 +150,8 @@ impl BaseMessage {
     /// Set the name/identifier for this message
     #[inline]
     pub fn with_name(mut self, name: &str) -> Result<Self, ValidationError> {
-        self.name = Some(ArrayString::from(name)
-            .map_err(|_| ValidationError::NameTooLong(name.len()))?);
+        self.name =
+            Some(ArrayString::from(name).map_err(|_| ValidationError::NameTooLong(name.len()))?);
         Ok(self)
     }
 
@@ -169,7 +179,8 @@ pub enum MessageRole {
     /// System instruction message
     System,
     /// Tool execution result message
-    Tool}
+    Tool,
+}
 
 impl fmt::Display for MessageRole {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -177,7 +188,8 @@ impl fmt::Display for MessageRole {
             MessageRole::User => "user",
             MessageRole::Assistant => "assistant",
             MessageRole::System => "system",
-            MessageRole::Tool => "tool"};
+            MessageRole::Tool => "tool",
+        };
         write!(f, "{s}")
     }
 }
@@ -203,14 +215,15 @@ pub struct ToolCall {
     #[serde(rename = "type")]
     pub tool_type: ToolCallType,
     /// Function details
-    pub function: FunctionCall}
+    pub function: FunctionCall,
+}
 
 impl ToolCall {
     /// Create a new function tool call
     #[inline]
     pub fn function(id: &str, name: &str, arguments: &str) -> Result<Self, ValidationError> {
-        let call_id = ArrayString::from(id)
-            .map_err(|_| ValidationError::ToolCallIdTooLong(id.len()))?;
+        let call_id =
+            ArrayString::from(id).map_err(|_| ValidationError::ToolCallIdTooLong(id.len()))?;
         let func_name = ArrayString::from(name)
             .map_err(|_| ValidationError::FunctionNameTooLong(name.len()))?;
 
@@ -219,7 +232,9 @@ impl ToolCall {
             tool_type: ToolCallType::Function,
             function: FunctionCall {
                 name: func_name,
-                arguments: arguments.to_string()}})
+                arguments: arguments.to_string(),
+            },
+        })
     }
 }
 
@@ -228,7 +243,8 @@ impl ToolCall {
 #[serde(rename_all = "lowercase")]
 pub enum ToolCallType {
     /// Function call
-    Function}
+    Function,
+}
 
 /// Function call details
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -236,10 +252,11 @@ pub struct FunctionCall {
     /// Function name
     pub name: ArrayString<MAX_IDENTIFIER_LEN>,
     /// Function arguments as JSON string
-    pub arguments: String}
+    pub arguments: String,
+}
 
 /// Standardized token usage tracking across all providers
-/// 
+///
 /// Provides a unified interface for token counting that maps to different
 /// provider-specific field names while maintaining consistency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -249,7 +266,8 @@ pub struct CommonUsage {
     /// Tokens generated in the output/completion
     pub output_tokens: u32,
     /// Total tokens used (input + output)
-    pub total_tokens: u32}
+    pub total_tokens: u32,
+}
 
 impl CommonUsage {
     /// Create new usage tracking
@@ -258,16 +276,22 @@ impl CommonUsage {
         Self {
             input_tokens,
             output_tokens,
-            total_tokens: input_tokens + output_tokens}
+            total_tokens: input_tokens + output_tokens,
+        }
     }
 
     /// Create from OpenAI-style field names
     #[inline]
-    pub const fn from_openai(prompt_tokens: u32, completion_tokens: u32, total_tokens: u32) -> Self {
+    pub const fn from_openai(
+        prompt_tokens: u32,
+        completion_tokens: u32,
+        total_tokens: u32,
+    ) -> Self {
         Self {
             input_tokens: prompt_tokens,
             output_tokens: completion_tokens,
-            total_tokens}
+            total_tokens,
+        }
     }
 
     /// Create from Anthropic-style field names
@@ -286,7 +310,7 @@ impl CommonUsage {
 }
 
 /// Unified completion termination reasons across all providers
-/// 
+///
 /// Maps provider-specific finish reasons to a common set of values
 /// for consistent handling across different AI services.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -305,7 +329,8 @@ pub enum FinishReason {
     /// Provider-specific error or timeout
     Error,
     /// Unknown or unrecognized finish reason
-    Unknown}
+    Unknown,
+}
 
 impl FinishReason {
     /// Create from OpenAI finish reason string
@@ -316,7 +341,8 @@ impl FinishReason {
             "length" => Self::Length,
             "content_filter" => Self::ContentFilter,
             "tool_calls" => Self::ToolCalls,
-            _ => Self::Unknown}
+            _ => Self::Unknown,
+        }
     }
 
     /// Create from Anthropic stop reason string
@@ -326,7 +352,8 @@ impl FinishReason {
             "end_turn" | "stop_sequence" => Self::Stop,
             "max_tokens" => Self::Length,
             "tool_use" => Self::ToolCalls,
-            _ => Self::Unknown}
+            _ => Self::Unknown,
+        }
     }
 
     /// Create from generic string (attempts intelligent mapping)
@@ -338,7 +365,8 @@ impl FinishReason {
             "content_filter" | "safety" | "filtered" => Self::ContentFilter,
             "tool_calls" | "tool_use" | "function_call" => Self::ToolCalls,
             "error" | "timeout" | "failed" => Self::Error,
-            _ => Self::Unknown}
+            _ => Self::Unknown,
+        }
     }
 }
 
@@ -351,7 +379,8 @@ impl fmt::Display for FinishReason {
             FinishReason::ToolCalls => "tool_calls",
             FinishReason::StopSequence => "stop_sequence",
             FinishReason::Error => "error",
-            FinishReason::Unknown => "unknown"};
+            FinishReason::Unknown => "unknown",
+        };
         write!(f, "{s}")
     }
 }
@@ -371,7 +400,7 @@ impl From<&str> for FinishReason {
 }
 
 /// Validated model parameters with range checking
-/// 
+///
 /// Ensures all parameters are within valid ranges for AI model inference.
 /// Provides compile-time and runtime validation to prevent invalid API calls.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -400,15 +429,16 @@ pub struct ModelParameters {
     #[serde(skip_serializing_if = "ArrayVec::is_empty")]
     pub stop_sequences: ArrayVec<ArrayString<MAX_STOP_SEQUENCE_LEN>, MAX_STOP_SEQUENCES>,
     /// Enable streaming response
-    pub stream: bool}
+    pub stream: bool,
+}
 
 impl ModelParameters {
     /// Create new model parameters with defaults
     #[inline]
     pub fn new(model: &str) -> Result<Self, ValidationError> {
-        let model_name = ArrayString::from(model)
-            .map_err(|_| ValidationError::ModelNameTooLong(model.len()))?;
-        
+        let model_name =
+            ArrayString::from(model).map_err(|_| ValidationError::ModelNameTooLong(model.len()))?;
+
         Ok(Self {
             model: model_name,
             temperature: None,
@@ -418,7 +448,8 @@ impl ModelParameters {
             frequency_penalty: None,
             presence_penalty: None,
             stop_sequences: ArrayVec::new(),
-            stream: false})
+            stream: false,
+        })
     }
 
     /// Set temperature with validation (0.0 to 2.0)
@@ -490,13 +521,14 @@ impl ModelParameters {
         if sequence.is_empty() {
             return Err(ValidationError::EmptyStopSequence);
         }
-        
+
         let stop_seq = ArrayString::from(sequence)
             .map_err(|_| ValidationError::StopSequenceTooLong(sequence.len()))?;
-        
-        self.stop_sequences.try_push(stop_seq)
+
+        self.stop_sequences
+            .try_push(stop_seq)
             .map_err(|_| ValidationError::TooManyStopSequences)?;
-        
+
         Ok(self)
     }
 
@@ -519,7 +551,7 @@ impl ModelParameters {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -534,7 +566,8 @@ pub enum HttpContentType {
     /// text/plain
     TextPlain,
     /// application/octet-stream
-    ApplicationOctetStream}
+    ApplicationOctetStream,
+}
 
 impl HttpContentType {
     /// Get the MIME type string
@@ -544,7 +577,8 @@ impl HttpContentType {
             HttpContentType::ApplicationJson => "application/json",
             HttpContentType::MultipartFormData => "multipart/form-data",
             HttpContentType::TextPlain => "text/plain",
-            HttpContentType::ApplicationOctetStream => "application/octet-stream"}
+            HttpContentType::ApplicationOctetStream => "application/octet-stream",
+        }
     }
 }
 
@@ -566,7 +600,8 @@ pub enum HttpMethod {
     /// PATCH method
     Patch,
     /// DELETE method
-    Delete}
+    Delete,
+}
 
 impl HttpMethod {
     /// Get the method string
@@ -577,7 +612,8 @@ impl HttpMethod {
             HttpMethod::Post => "POST",
             HttpMethod::Put => "PUT",
             HttpMethod::Patch => "PATCH",
-            HttpMethod::Delete => "DELETE"}
+            HttpMethod::Delete => "DELETE",
+        }
     }
 }
 
@@ -588,7 +624,7 @@ impl fmt::Display for HttpMethod {
 }
 
 /// Provider identification and capabilities metadata
-/// 
+///
 /// Contains information about AI provider capabilities and configuration
 /// for optimal request routing and feature detection.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -606,7 +642,8 @@ pub struct ProviderMetadata {
     /// Whether vision/image input is supported
     pub supports_vision: bool,
     /// Default timeout for requests (in milliseconds)
-    pub default_timeout_ms: u64}
+    pub default_timeout_ms: u64,
+}
 
 impl ProviderMetadata {
     /// Create new provider metadata
@@ -623,10 +660,13 @@ impl ProviderMetadata {
             },
             supports_streaming: provider.supports_streaming(),
             supports_function_calling: provider.supports_function_calling(),
-            supports_vision: matches!(provider, 
-                super::Provider::OpenAI | super::Provider::Azure | 
-                super::Provider::VertexAI | super::Provider::Gemini |
-                super::Provider::Anthropic
+            supports_vision: matches!(
+                provider,
+                super::Provider::OpenAI
+                    | super::Provider::Azure
+                    | super::Provider::VertexAI
+                    | super::Provider::Gemini
+                    | super::Provider::Anthropic
             ),
             default_timeout_ms: 60_000, // 60 seconds default
         }
@@ -657,7 +697,8 @@ pub enum StreamingMode {
     /// JSON Lines streaming
     JsonLines,
     /// Provider-specific streaming format
-    ProviderSpecific}
+    ProviderSpecific,
+}
 
 impl StreamingMode {
     /// Check if streaming is enabled
@@ -673,7 +714,8 @@ impl StreamingMode {
             StreamingMode::None => HttpContentType::ApplicationJson,
             StreamingMode::ServerSentEvents => HttpContentType::TextPlain,
             StreamingMode::JsonLines => HttpContentType::ApplicationJson,
-            StreamingMode::ProviderSpecific => HttpContentType::ApplicationJson}
+            StreamingMode::ProviderSpecific => HttpContentType::ApplicationJson,
+        }
     }
 }
 
@@ -711,13 +753,17 @@ pub enum ValidationError {
     /// Too many tools in request
     TooManyTools,
     /// Conflicting parameters specified
-    ConflictingParameters}
+    ConflictingParameters,
+}
 
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ValidationError::ModelNameTooLong(len) => {
-                write!(f, "Model name too long: {len} characters (max {MAX_IDENTIFIER_LEN})")
+                write!(
+                    f,
+                    "Model name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+                )
             }
             ValidationError::TemperatureOutOfRange(temp) => {
                 write!(f, "Temperature {temp} out of range (0.0 to 2.0)")
@@ -744,25 +790,40 @@ impl fmt::Display for ValidationError {
                 write!(f, "Stop sequence cannot be empty")
             }
             ValidationError::StopSequenceTooLong(len) => {
-                write!(f, "Stop sequence too long: {len} characters (max {MAX_STOP_SEQUENCE_LEN})")
+                write!(
+                    f,
+                    "Stop sequence too long: {len} characters (max {MAX_STOP_SEQUENCE_LEN})"
+                )
             }
             ValidationError::TooManyStopSequences => {
                 write!(f, "Too many stop sequences (max {MAX_STOP_SEQUENCES})")
             }
             ValidationError::NameTooLong(len) => {
-                write!(f, "Name too long: {len} characters (max {MAX_IDENTIFIER_LEN})")
+                write!(
+                    f,
+                    "Name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+                )
             }
             ValidationError::ToolCallIdTooLong(len) => {
-                write!(f, "Tool call ID too long: {len} characters (max {MAX_IDENTIFIER_LEN})")
+                write!(
+                    f,
+                    "Tool call ID too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+                )
             }
             ValidationError::FunctionNameTooLong(len) => {
-                write!(f, "Function name too long: {len} characters (max {MAX_IDENTIFIER_LEN})")
+                write!(
+                    f,
+                    "Function name too long: {len} characters (max {MAX_IDENTIFIER_LEN})"
+                )
             }
             ValidationError::TooManyTools => {
                 write!(f, "Too many tools (max {MAX_TOOLS})")
             }
             ValidationError::ConflictingParameters => {
-                write!(f, "Conflicting parameters specified (high temperature with low top-p)")
+                write!(
+                    f,
+                    "Conflicting parameters specified (high temperature with low top-p)"
+                )
             }
         }
     }
@@ -804,20 +865,29 @@ mod tests {
     fn test_finish_reason_mapping() {
         assert_eq!(FinishReason::from_openai("stop"), FinishReason::Stop);
         assert_eq!(FinishReason::from_openai("length"), FinishReason::Length);
-        assert_eq!(FinishReason::from_openai("tool_calls"), FinishReason::ToolCalls);
-        
+        assert_eq!(
+            FinishReason::from_openai("tool_calls"),
+            FinishReason::ToolCalls
+        );
+
         assert_eq!(FinishReason::from_anthropic("end_turn"), FinishReason::Stop);
-        assert_eq!(FinishReason::from_anthropic("max_tokens"), FinishReason::Length);
-        assert_eq!(FinishReason::from_anthropic("tool_use"), FinishReason::ToolCalls);
+        assert_eq!(
+            FinishReason::from_anthropic("max_tokens"),
+            FinishReason::Length
+        );
+        assert_eq!(
+            FinishReason::from_anthropic("tool_use"),
+            FinishReason::ToolCalls
+        );
     }
 
     #[test]
     fn test_model_parameters_validation() {
         let params = ModelParameters::new("gpt-4").expect("Valid model name");
-        
+
         let params_with_temp = params.with_temperature(0.7).expect("Valid temperature");
         assert_eq!(params_with_temp.temperature, Some(0.7));
-        
+
         let invalid_temp = ModelParameters::new("gpt-4")
             .expect("Valid model")
             .with_temperature(3.0);
@@ -839,7 +909,7 @@ mod tests {
     fn test_tool_call_creation() {
         let tool_call = ToolCall::function("call_123", "get_weather", r#"{"location": "NYC"}"#)
             .expect("Valid tool call");
-        
+
         assert_eq!(tool_call.id.as_str(), "call_123");
         assert_eq!(tool_call.function.name.as_str(), "get_weather");
         assert_eq!(tool_call.function.arguments, r#"{"location": "NYC"}"#);
@@ -860,8 +930,14 @@ mod tests {
         assert!(!StreamingMode::None.is_streaming());
         assert!(StreamingMode::ServerSentEvents.is_streaming());
         assert!(StreamingMode::JsonLines.is_streaming());
-        
-        assert_eq!(StreamingMode::ServerSentEvents.content_type(), HttpContentType::TextPlain);
-        assert_eq!(StreamingMode::JsonLines.content_type(), HttpContentType::ApplicationJson);
+
+        assert_eq!(
+            StreamingMode::ServerSentEvents.content_type(),
+            HttpContentType::TextPlain
+        );
+        assert_eq!(
+            StreamingMode::JsonLines.content_type(),
+            HttpContentType::ApplicationJson
+        );
     }
 }

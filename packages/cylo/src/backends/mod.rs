@@ -10,8 +10,8 @@
 // - AsyncTask-based async patterns (never async fn)
 // ============================================================================
 
-use std::time::Duration;
 use std::collections::HashMap;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 // Local AsyncTask type alias to avoid circular dependency with fluent_ai_domain
@@ -101,7 +101,8 @@ pub struct ExecutionRequest {
     pub limits: ResourceLimits,
 
     /// Backend-specific configuration
-    pub backend_config: HashMap<String, String>}
+    pub backend_config: HashMap<String, String>,
+}
 
 impl ExecutionRequest {
     /// Create a new execution request
@@ -118,7 +119,8 @@ impl ExecutionRequest {
             working_dir: None,
             timeout: Duration::from_secs(30),
             limits: ResourceLimits::default(),
-            backend_config: HashMap::new()}
+            backend_config: HashMap::new(),
+        }
     }
 
     /// Set input data for the execution
@@ -180,7 +182,8 @@ pub struct ResourceLimits {
     pub max_file_size: Option<u64>,
 
     /// Maximum network bandwidth in bytes/sec
-    pub max_network_bandwidth: Option<u64>}
+    pub max_network_bandwidth: Option<u64>,
+}
 
 impl Default for ResourceLimits {
     fn default() -> Self {
@@ -215,7 +218,8 @@ pub struct ExecutionResult {
     pub resource_usage: ResourceUsage,
 
     /// Any backend-specific metadata
-    pub metadata: HashMap<String, String>}
+    pub metadata: HashMap<String, String>,
+}
 
 impl ExecutionResult {
     /// Create a successful execution result
@@ -226,7 +230,8 @@ impl ExecutionResult {
             stderr: String::new(),
             duration: Duration::from_millis(0),
             resource_usage: ResourceUsage::default(),
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Create a failed execution result
@@ -237,7 +242,8 @@ impl ExecutionResult {
             stderr: stderr.into(),
             duration: Duration::from_millis(0),
             resource_usage: ResourceUsage::default(),
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Check if execution was successful
@@ -281,7 +287,8 @@ pub struct ResourceUsage {
     pub network_bytes_sent: u64,
 
     /// Network bytes received
-    pub network_bytes_received: u64}
+    pub network_bytes_received: u64,
+}
 
 /// Backend health status
 ///
@@ -298,7 +305,8 @@ pub struct HealthStatus {
     pub last_check: std::time::SystemTime,
 
     /// Backend-specific health metrics
-    pub metrics: HashMap<String, String>}
+    pub metrics: HashMap<String, String>,
+}
 
 impl HealthStatus {
     /// Create a healthy status
@@ -307,7 +315,8 @@ impl HealthStatus {
             is_healthy: true,
             message: message.into(),
             last_check: std::time::SystemTime::now(),
-            metrics: HashMap::new()}
+            metrics: HashMap::new(),
+        }
     }
 
     /// Create an unhealthy status
@@ -316,7 +325,8 @@ impl HealthStatus {
             is_healthy: false,
             message: message.into(),
             last_check: std::time::SystemTime::now(),
-            metrics: HashMap::new()}
+            metrics: HashMap::new(),
+        }
     }
 
     /// Add a health metric
@@ -344,7 +354,8 @@ pub struct BackendConfig {
     pub default_limits: ResourceLimits,
 
     /// Backend-specific configuration
-    pub backend_specific: HashMap<String, String>}
+    pub backend_specific: HashMap<String, String>,
+}
 
 impl BackendConfig {
     /// Create a new backend configuration
@@ -354,7 +365,8 @@ impl BackendConfig {
             enabled: true,
             default_timeout: Duration::from_secs(30),
             default_limits: ResourceLimits::default(),
-            backend_specific: HashMap::new()}
+            backend_specific: HashMap::new(),
+        }
     }
 
     /// Set enabled status
@@ -397,19 +409,22 @@ pub enum BackendError {
     #[error("Backend {backend} is not available on this platform: {reason}")]
     NotAvailable {
         backend: &'static str,
-        reason: String},
+        reason: String,
+    },
 
     /// Backend configuration is invalid
     #[error("Invalid configuration for {backend}: {details}")]
     InvalidConfig {
         backend: &'static str,
-        details: String},
+        details: String,
+    },
 
     /// Language is not supported by this backend
     #[error("Language '{language}' is not supported by {backend}")]
     UnsupportedLanguage {
         backend: &'static str,
-        language: String},
+        language: String,
+    },
 
     /// Resource limit exceeded during execution
     #[error("Resource limit exceeded: {resource} exceeded {limit}")]
@@ -437,7 +452,8 @@ pub enum BackendError {
 
     /// Internal backend error
     #[error("Internal backend error: {message}")]
-    Internal { message: String }}
+    Internal { message: String },
+}
 
 impl From<BackendError> for CyloError {
     fn from(err: BackendError) -> Self {
@@ -447,20 +463,24 @@ impl From<BackendError> for CyloError {
             }
             BackendError::InvalidConfig { backend, details } => CyloError::InvalidConfiguration {
                 backend,
-                message: Box::leak(details.into_boxed_str())},
+                message: Box::leak(details.into_boxed_str()),
+            },
             BackendError::UnsupportedLanguage { backend, language } => {
                 CyloError::execution_failed(backend, format!("Unsupported language: {language}"))
             }
             BackendError::ExecutionTimeout { seconds } => CyloError::ExecutionTimeout {
                 backend: "unknown",
-                timeout_secs: seconds},
+                timeout_secs: seconds,
+            },
             BackendError::ResourceLimitExceeded { resource, limit } => {
                 CyloError::ResourceLimitExceeded {
                     backend: "unknown",
                     resource,
-                    limit}
+                    limit,
+                }
             }
-            _ => CyloError::internal(err.to_string())}
+            _ => CyloError::internal(err.to_string()),
+        }
     }
 }
 
@@ -534,7 +554,8 @@ pub fn create_backend(
         crate::execution_env::Cylo::FireCracker(_) => Err(CyloError::platform_unsupported(
             "FireCracker",
             "FireCracker is only available on Linux",
-        ))}
+        )),
+    }
 }
 
 /// Get all available backends for the current platform

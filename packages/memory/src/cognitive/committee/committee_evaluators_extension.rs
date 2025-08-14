@@ -15,7 +15,8 @@ pub struct EvaluationTask {
     /// Evaluation request payload
     pub request: EvaluationRequest,
     /// Result sender for async completion
-    pub result_sender: tokio::sync::oneshot::Sender<CommitteeResult<CommitteeEvaluation>>}
+    pub result_sender: tokio::sync::oneshot::Sender<CommitteeResult<CommitteeEvaluation>>,
+}
 
 /// Evaluation request with zero-allocation data
 #[derive(Debug, Clone)]
@@ -27,7 +28,8 @@ pub struct EvaluationRequest {
     /// Proposed code reference (no allocation)
     pub proposed_code: Arc<str>,
     /// Evaluation timeout
-    pub timeout: Duration}
+    pub timeout: Duration,
+}
 
 /// Lock-free evaluator pool metrics
 #[derive(Debug)]
@@ -41,7 +43,8 @@ pub struct EvaluatorPoolMetrics {
     /// Task completion count
     pub tasks_completed: RelaxedCounter,
     /// Pool creation timestamp
-    pub created_at: Instant}
+    pub created_at: Instant,
+}
 
 impl EvaluatorPoolMetrics {
     /// Create new pool metrics
@@ -52,7 +55,8 @@ impl EvaluatorPoolMetrics {
             evaluators_accessed: RelaxedCounter::new(0),
             tasks_queued: RelaxedCounter::new(0),
             tasks_completed: RelaxedCounter::new(0),
-            created_at: Instant::now()}
+            created_at: Instant::now(),
+        }
     }
 
     /// Get metrics snapshot
@@ -63,7 +67,8 @@ impl EvaluatorPoolMetrics {
             evaluators_accessed: self.evaluators_accessed.get() as usize,
             tasks_queued: self.tasks_queued.get() as usize,
             tasks_completed: self.tasks_completed.get() as usize,
-            uptime_seconds: self.created_at.elapsed().as_secs()}
+            uptime_seconds: self.created_at.elapsed().as_secs(),
+        }
     }
 }
 
@@ -74,7 +79,8 @@ pub struct EvaluatorPoolSnapshot {
     pub evaluators_accessed: usize,
     pub tasks_queued: usize,
     pub tasks_completed: usize,
-    pub uptime_seconds: u64}
+    pub uptime_seconds: u64,
+}
 
 /// Lock-free evaluation session metrics
 #[derive(Debug)]
@@ -84,7 +90,8 @@ pub struct EvaluationSessionMetrics {
     /// Total evaluation failures
     pub evaluation_failures: RelaxedCounter,
     /// Session creation timestamp
-    pub created_at: Instant}
+    pub created_at: Instant,
+}
 
 impl EvaluationSessionMetrics {
     /// Create new session metrics
@@ -93,7 +100,8 @@ impl EvaluationSessionMetrics {
         Self {
             evaluations_completed: RelaxedCounter::new(0),
             evaluation_failures: RelaxedCounter::new(0),
-            created_at: Instant::now()}
+            created_at: Instant::now(),
+        }
     }
 
     /// Record evaluation failure
@@ -118,7 +126,8 @@ impl EvaluationSessionMetrics {
             evaluations_completed: self.evaluations_completed.get() as usize,
             evaluation_failures: self.evaluation_failures.get() as usize,
             success_rate: self.success_rate(),
-            session_duration_seconds: self.created_at.elapsed().as_secs()}
+            session_duration_seconds: self.created_at.elapsed().as_secs(),
+        }
     }
 }
 
@@ -128,4 +137,5 @@ pub struct EvaluationSessionSnapshot {
     pub evaluations_completed: usize,
     pub evaluation_failures: usize,
     pub success_rate: f64,
-    pub session_duration_seconds: u64}
+    pub session_duration_seconds: u64,
+}

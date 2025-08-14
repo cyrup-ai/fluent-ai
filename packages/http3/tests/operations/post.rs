@@ -17,7 +17,7 @@ mod post_operation_tests {
             .url("https://example.com/api")
             .headers([("Content-Type", "application/json")])
             .body(&serde_json::json!({"test": "data"}));
-        
+
         // Verify builder was created successfully
         assert!(format!("{:?}", builder).contains("Http3"));
     }

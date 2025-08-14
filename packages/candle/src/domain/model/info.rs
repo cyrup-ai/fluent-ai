@@ -89,10 +89,10 @@ pub struct CandleModelInfo {
 
     /// Patch configuration for API requests
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub patch: Option<serde_json::Value>}
+    pub patch: Option<serde_json::Value>,
+}
 
 impl CandleModelInfo {
-
     /// Get the full model identifier as "provider:name"
     #[inline]
     pub fn id(&self) -> &'static str {
@@ -267,7 +267,8 @@ impl Hash for CandleModelInfo {
 #[derive(Debug, Clone, Default)]
 pub struct CandleProviderModels {
     provider_name: &'static str,
-    models: Vec<CandleModelInfo>}
+    models: Vec<CandleModelInfo>,
+}
 
 impl CandleProviderModels {
     /// Create a new provider model collection
@@ -275,7 +276,8 @@ impl CandleProviderModels {
     pub fn new(provider_name: &'static str) -> Self {
         Self {
             provider_name,
-            models: Vec::new()}
+            models: Vec::new(),
+        }
     }
 
     /// Add a model to the collection
@@ -289,7 +291,8 @@ impl CandleProviderModels {
         if self.models.iter().any(|m| m.name == model.name) {
             return Err(CandleModelError::ModelAlreadyExists {
                 provider: self.provider_name.into(),
-                name: model.name.into()});
+                name: model.name.into(),
+            });
         }
 
         self.models.push(model);
@@ -314,5 +317,3 @@ impl CandleProviderModels {
         self.provider_name
     }
 }
-
-

@@ -16,7 +16,7 @@ mod get_operation_tests {
         let builder = Http3::json()
             .url("https://example.com/api")
             .headers([("Content-Type", "application/json")]);
-        
+
         // Verify builder was created successfully
         assert!(format!("{:?}", builder).contains("Http3"));
     }

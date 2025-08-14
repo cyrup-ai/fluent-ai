@@ -13,7 +13,7 @@ impl HttpClient {
     /// Provides comprehensive configuration of all HTTP protocol features
     /// including compression, timeouts, and advanced QUIC parameters.
     pub fn with_config(config: HttpConfig) -> Result<Self, HttpError> {
-        let mut builder = reqwest::Client::builder()
+        let mut builder = crate::hyper::Client::builder()
             .pool_max_idle_per_host(config.pool_max_idle_per_host)
             .pool_idle_timeout(config.pool_idle_timeout)
             .timeout(config.timeout)
@@ -48,26 +48,26 @@ impl HttpClient {
     /// Configure HTTP/3 (QUIC) protocol settings
     ///
     /// Applies HTTP/3 specific configuration including advanced QUIC parameters
-    /// when the reqwest_unstable feature is enabled for maximum performance.
+    /// when the http3_unstable feature is enabled for maximum performance.
     #[inline]
-    fn configure_http3(builder: &mut reqwest::ClientBuilder, config: &HttpConfig) {
+    fn configure_http3(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
         // Enable HTTP/3 protocol version preference
         *builder = std::mem::take(builder).http3_prior_knowledge();
 
-        // Note: Advanced QUIC configuration methods require the 'reqwest_unstable' feature
+        // Note: Advanced QUIC configuration methods require the 'http3_unstable' feature
         // which is not enabled by default. For full HTTP/3 optimization, enable this feature.
-        #[cfg(feature = "reqwest_unstable")]
+        #[cfg(feature = "http3_unstable")]
         {
             Self::configure_advanced_quic(builder, config);
         }
 
-        #[cfg(not(feature = "reqwest_unstable"))]
+        #[cfg(not(feature = "http3_unstable"))]
         {
             // Basic HTTP/3 is enabled but advanced QUIC optimizations are not available
-            // without the reqwest_unstable feature. HTTP/3 will still provide significant
+            // without the http3_unstable feature. HTTP/3 will still provide significant
             // performance improvements over HTTP/2 for most use cases.
             log::debug!(
-                "HTTP/3 enabled but advanced QUIC optimizations require 'reqwest_unstable' feature"
+                "HTTP/3 enabled but advanced QUIC optimizations require 'http3_unstable' feature"
             );
         }
     }
@@ -76,9 +76,9 @@ impl HttpClient {
     ///
     /// Applies detailed QUIC configuration for maximum performance including
     /// congestion control, window sizes, and protocol-specific optimizations.
-    #[cfg(feature = "reqwest_unstable")]
+    #[cfg(feature = "http3_unstable")]
     #[inline]
-    fn configure_advanced_quic(builder: &mut reqwest::ClientBuilder, config: &HttpConfig) {
+    fn configure_advanced_quic(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
         // Configure QUIC connection parameters when unstable features are enabled
         if let Some(idle_timeout) = config.quic_max_idle_timeout {
             *builder = std::mem::take(builder).http3_max_idle_timeout(idle_timeout);
@@ -116,7 +116,7 @@ impl HttpClient {
     /// Applies HTTP/2 specific optimizations including adaptive windowing
     /// and frame size configuration for optimal HTTP/2 performance.
     #[inline]
-    fn configure_http2(builder: &mut reqwest::ClientBuilder, config: &HttpConfig) {
+    fn configure_http2(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
         *builder = std::mem::take(builder)
             .http2_prior_knowledge()
             .http2_adaptive_window(config.http2_adaptive_window);
@@ -130,16 +130,16 @@ impl HttpClient {
 impl Default for HttpClient {
     /// Create HttpClient with default configuration
     ///
-    /// Uses the default HttpConfig and falls back to a basic reqwest client
+    /// Uses the default HttpConfig and falls back to a basic http3 client
     /// if configuration fails. This ensures the client can always be constructed
     /// even in constrained environments.
     fn default() -> Self {
         // Use the new with_config constructor with default configuration
-        // If configuration fails, fall back to a basic reqwest client
+        // If configuration fails, fall back to a basic http3 client
         let config = HttpConfig::default();
         Self::with_config(config).unwrap_or_else(|_| {
             Self::new(
-                reqwest::Client::new(),
+                crate::hyper::Client::new(),
                 HttpConfig::default(),
                 ClientStats::default(),
             )

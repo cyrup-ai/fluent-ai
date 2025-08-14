@@ -54,7 +54,8 @@ pub struct EmbeddingResponse {
     /// The model used to generate the embeddings
     pub model: String,
     /// Token usage statistics
-    pub usage: Option<Usage>}
+    pub usage: Option<Usage>,
+}
 /// Individual embedding data structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingData {
@@ -63,7 +64,8 @@ pub struct EmbeddingData {
     /// Index of the embedding in the input batch
     pub index: usize,
     /// Optional object type (e.g., "embedding")
-    pub object: Option<String>}
+    pub object: Option<String>,
+}
 
 impl EmbeddingResponse {
     /// Create a new embedding response
@@ -75,13 +77,15 @@ impl EmbeddingResponse {
             .map(|(idx, embedding)| EmbeddingData {
                 embedding,
                 index: idx,
-                object: Some("embedding".to_string())})
+                object: Some("embedding".to_string()),
+            })
             .collect();
 
         Self {
             data,
             model: model.into(),
-            usage: None}
+            usage: None,
+        }
     }
 
     /// Create a new embedding response with usage statistics

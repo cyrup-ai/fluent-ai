@@ -110,6 +110,7 @@ impl Default for WindowSize {
 
 /// Vision capabilities for analyzing page content
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct VisionAnalysis {
     /// The prompt for vision analysis
     pub prompt: String,
@@ -120,6 +121,7 @@ pub struct VisionAnalysis {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Region {
     pub x: i32,
     pub y: i32,
@@ -142,6 +144,7 @@ pub struct AgentMessage {
 
 /// LLM response for next actions
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AgentResponse {
     /// Updated automation state
     pub state: AutomationState,

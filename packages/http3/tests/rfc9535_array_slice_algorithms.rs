@@ -641,9 +641,7 @@ mod algorithm_compliance_validation {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Algorithm test '{}' -> {:?} ({})",

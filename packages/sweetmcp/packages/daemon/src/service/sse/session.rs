@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
 use tokio::sync::RwLock;
 use tokio::time::interval;
 use tracing::{debug, info, warn};
@@ -245,9 +246,11 @@ impl Default for SessionManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::time::Duration;
+
     use tokio::time::sleep;
+
+    use super::*;
 
     fn create_test_client_info() -> ClientInfo {
         ClientInfo {

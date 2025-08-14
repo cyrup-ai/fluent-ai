@@ -5,15 +5,20 @@
 //!
 //! Supports ARCHITECTURE.md syntax: CandleTool<CandlePerplexity>::new([("citations", "true")])
 
+use std::collections::HashMap;
 use std::fmt;
 use std::marker::PhantomData;
-use std::collections::HashMap;
 
-use serde_json::Value;
 use fluent_ai_async::AsyncStream;
+use serde_json::Value;
 
 /// Candle marker type for Perplexity tool
+#[derive(Debug, Clone)]
 pub struct CandlePerplexity;
+
+/// Marker type for Calculator tool
+#[derive(Debug, Clone)]
+pub struct CalculatorTool;
 
 /// Core tool trait - EXACT REPLICA of domain Tool trait
 pub trait CandleTool: Send + Sync + fmt::Debug {
@@ -63,16 +68,25 @@ impl<T> CandleToolImpl<T> {
     {
         let config_map = config.into();
         let mut params_map = HashMap::with_capacity(config_map.len());
-        
+
         for (k, v) in config_map {
             params_map.insert(k.to_string(), Value::String(v.to_string()));
         }
-        
-        let parameters = Value::Object(params_map.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
-        
+
+        let parameters = Value::Object(
+            params_map
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+        );
+
         Self {
             _phantom: PhantomData,
-            name: std::any::type_name::<T>().split("::").last().unwrap_or("UnknownTool").to_string(),
+            name: std::any::type_name::<T>()
+                .split("::")
+                .last()
+                .unwrap_or("UnknownTool")
+                .to_string(),
             description: format!("Tool for {}", std::any::type_name::<T>()),
             parameters,
             config: params_map,
@@ -101,7 +115,7 @@ where
 
     fn execute(&self, args: Value) -> AsyncStream<Value> {
         let config = self.config.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             // Merge config with execution args
             let mut result_data = config;
@@ -110,7 +124,7 @@ where
                     result_data.insert(key, value);
                 }
             }
-            
+
             let result = Value::Object(result_data.into_iter().collect());
             let _ = sender.send(result);
         })
@@ -179,11 +193,11 @@ impl CandleTool for CandleNamedTool {
     fn execute(&self, args: Value) -> AsyncStream<Value> {
         let name = self.name.clone();
         let bin_path = self.bin_path.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             // Execute named tool using configured path
             let command = bin_path.as_deref().unwrap_or(&name);
-            
+
             // Build command args from JSON value
             let mut cmd_args = Vec::new();
             if let Value::Object(arg_map) = args {
@@ -196,12 +210,9 @@ impl CandleTool for CandleNamedTool {
                     }
                 }
             }
-            
+
             // Execute command and return output as JSON
-            let result = match std::process::Command::new(command)
-                .args(&cmd_args)
-                .output()
-            {
+            let result = match std::process::Command::new(command).args(&cmd_args).output() {
                 Ok(output) => {
                     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
                     if output.status.success() {
@@ -213,7 +224,7 @@ impl CandleTool for CandleNamedTool {
                 }
                 Err(e) => Value::String(format!("Failed to execute {}: {}", command, e)),
             };
-            
+
             let _ = sender.send(result);
         })
     }
@@ -243,7 +254,9 @@ pub type CandleToolType<T> = CandleToolImpl<T>;
 
 /// From implementations for transparent [("key", "value")] syntax in ARCHITECTURE.md
 /// Helper function for transparent [("key", "value")] syntax in ARCHITECTURE.md
-pub fn candle_tool_params_from_array<const N: usize>(arr: [(&'static str, &'static str); N]) -> HashMap<&'static str, &'static str> {
+pub fn candle_tool_params_from_array<const N: usize>(
+    arr: [(&'static str, &'static str); N],
+) -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     for (k, v) in arr {
         map.insert(k, v);

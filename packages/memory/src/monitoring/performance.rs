@@ -13,7 +13,8 @@ pub enum PerformanceError {
     LockPoisoned(String),
     /// Recording error
     #[error("Failed to record performance metric: {0}")]
-    RecordingError(String)}
+    RecordingError(String),
+}
 
 /// Result type for performance operations
 pub type PerformanceResult<T> = Result<T, PerformanceError>;
@@ -37,7 +38,8 @@ pub struct PerformanceMetrics {
     pub error_rate: f64,
 
     /// Active connections
-    pub active_connections: u64}
+    pub active_connections: u64,
+}
 
 /// Performance monitor
 pub struct PerformanceMonitor {
@@ -51,7 +53,8 @@ pub struct PerformanceMonitor {
     total_requests: std::sync::atomic::AtomicU64,
 
     /// Monitor start time
-    start_time: Instant}
+    start_time: Instant,
+}
 
 impl PerformanceMonitor {
     /// Create a new monitor
@@ -60,7 +63,8 @@ impl PerformanceMonitor {
             response_times: std::sync::RwLock::new(Vec::new()),
             error_count: std::sync::atomic::AtomicU64::new(0),
             total_requests: std::sync::atomic::AtomicU64::new(0),
-            start_time: Instant::now()}
+            start_time: Instant::now(),
+        }
     }
 
     /// Record a response time
@@ -167,14 +171,16 @@ pub struct Profiler {
     timers: std::sync::RwLock<HashMap<String, Instant>>,
 
     /// Recorded durations
-    durations: std::sync::RwLock<HashMap<String, Vec<Duration>>>}
+    durations: std::sync::RwLock<HashMap<String, Vec<Duration>>>,
+}
 
 impl Profiler {
     /// Create a new profiler
     pub fn new() -> Self {
         Self {
             timers: std::sync::RwLock::new(HashMap::new()),
-            durations: std::sync::RwLock::new(HashMap::new())}
+            durations: std::sync::RwLock::new(HashMap::new()),
+        }
     }
 
     /// Start a timer
@@ -241,7 +247,8 @@ impl Profiler {
                     ProfileStats {
                         count: durations.len(),
                         total_us: total.as_micros() as u64,
-                        avg_us: avg as u64},
+                        avg_us: avg as u64,
+                    },
                 )
             })
             .collect())
@@ -264,4 +271,5 @@ pub struct ProfileStats {
     pub total_us: u64,
 
     /// Average time in microseconds
-    pub avg_us: u64}
+    pub avg_us: u64,
+}

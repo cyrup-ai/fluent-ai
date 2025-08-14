@@ -1,19 +1,19 @@
 use std::{convert::Infallible, str::FromStr};
-use arrayvec::ArrayVec;
 
+use arrayvec::ArrayVec;
 use async_stream::stream;
 use fluent_ai_domain::chat::config::ModelConfig;
 use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest};
+    self, CompletionCoreError as CompletionError, CompletionRequest,
+};
+// CRITICAL: Import model information from model-info package (single source of truth)
+use model_info::{ModelInfo as ModelInfoFromPackage, discovery::Provider};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::client::{Client, Usage};
 use crate::streaming::{RawStreamingChoice, StreamingCompletionResponse};
 use crate::{OneOrMany, clients::mistral::client::ApiResponse, json_util};
-
-// CRITICAL: Import model information from model-info package (single source of truth)
-use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 
 // Model information is provided by model-info package - no local constants needed
 
@@ -24,25 +24,29 @@ use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub struct AssistantContent {
-    text: String}
+    text: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum UserContent {
-    Text { text: String }}
+    Text { text: String },
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Choice {
     pub index: usize,
     pub message: Message,
     pub logprobs: Option<serde_json::Value>,
-    pub finish_reason: String}
+    pub finish_reason: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum Message {
     User {
-        content: String},
+        content: String,
+    },
     Assistant {
         content: String,
         #[serde(
@@ -52,9 +56,12 @@ pub enum Message {
         )]
         tool_calls: Vec<ToolCall>,
         #[serde(default)]
-        prefix: bool},
+        prefix: bool,
+    },
     System {
-        content: String}}
+        content: String,
+    },
+}
 
 impl Message {
     pub fn user(content: String) -> Self {
@@ -65,7 +72,8 @@ impl Message {
         Message::Assistant {
             content,
             tool_calls,
-            prefix}
+            prefix,
+        }
     }
 
     pub fn system(content: String) -> Self {
@@ -73,55 +81,58 @@ impl Message {
     }
 }
 
-/* TODO: Implement when domain types are available
-impl TryFrom<message::Message> for Vec<Message> {
-    type Error = message::MessageError;
-
-    fn try_from(message: message::Message) -> Result<Self, Self::Error> {
-        // Implementation commented out until domain types are available
-        unimplemented!("Domain message types not yet implemented")
-    }
-}
-*/
+// TODO: Implement when domain types are available
+// impl TryFrom<message::Message> for Vec<Message> {
+// type Error = message::MessageError;
+//
+// fn try_from(message: message::Message) -> Result<Self, Self::Error> {
+// Implementation commented out until domain types are available
+// unimplemented!("Domain message types not yet implemented")
+// }
+// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ToolCall {
     pub id: String,
     #[serde(default)]
     pub r#type: ToolType,
-    pub function: Function}
-
-/* TODO: Implement when domain types are available
-impl From<message::ToolCall> for ToolCall {
-    fn from(tool_call: message::ToolCall) -> Self {
-        // Implementation commented out until domain types are available
-        unimplemented!("Domain tool call types not yet implemented")
-    }
+    pub function: Function,
 }
-*/
+
+// TODO: Implement when domain types are available
+// impl From<message::ToolCall> for ToolCall {
+// fn from(tool_call: message::ToolCall) -> Self {
+// Implementation commented out until domain types are available
+// unimplemented!("Domain tool call types not yet implemented")
+// }
+// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Function {
     pub name: String,
     #[serde(with = "json_util::stringified_json")]
-    pub arguments: serde_json::Value}
+    pub arguments: serde_json::Value,
+}
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolType {
     #[default]
-    Function}
+    Function,
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MistralToolDefinition {
     pub r#type: String,
-    pub function: completion::ToolDefinition}
+    pub function: completion::ToolDefinition,
+}
 
 impl From<completion::ToolDefinition> for MistralToolDefinition {
     fn from(tool: completion::ToolDefinition) -> Self {
         Self {
             r#type: "function".into(),
-            function: tool}
+            function: tool,
+        }
     }
 }
 
@@ -129,19 +140,22 @@ impl From<completion::ToolDefinition> for MistralToolDefinition {
 pub struct ToolResultContent {
     #[serde(default)]
     r#type: ToolResultContentType,
-    text: String}
+    text: String,
+}
 
 #[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolResultContentType {
     #[default]
-    Text}
+    Text,
+}
 
 impl From<String> for ToolResultContent {
     fn from(s: String) -> Self {
         ToolResultContent {
             r#type: ToolResultContentType::default(),
-            text: s}
+            text: s,
+        }
     }
 }
 
@@ -156,7 +170,8 @@ impl FromStr for UserContent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(UserContent::Text {
-            text: s.to_string()})
+            text: s.to_string(),
+        })
     }
 }
 
@@ -171,7 +186,8 @@ impl FromStr for AssistantContent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(AssistantContent {
-            text: s.to_string()})
+            text: s.to_string(),
+        })
     }
 }
 
@@ -179,13 +195,15 @@ impl FromStr for AssistantContent {
 #[derive(Clone)]
 pub struct CompletionModel {
     client: Client,
-    model: String}
+    model: String,
+}
 
 impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string()}
+            model: model.to_string(),
+        }
     }
 
     pub(crate) fn create_completion_request(
@@ -201,7 +219,8 @@ impl CompletionModel {
 
         let mut full_history: Vec<Message> = match &completion_request.preamble {
             Some(preamble) => vec![Message::system(preamble.clone())],
-            None => vec![]};
+            None => vec![],
+        };
 
         // TODO: Fix domain message conversion when types are available
         // full_history.extend(
@@ -254,7 +273,8 @@ pub struct CompletionResponse {
     pub model: String,
     pub system_fingerprint: Option<String>,
     pub choices: Vec<Choice>,
-    pub usage: Option<Usage>}
+    pub usage: Option<Usage>,
+}
 
 impl TryFrom<CompletionResponse> for completion::CompletionResponse<'static> {
     type Error = CompletionError;
@@ -280,7 +300,10 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<'static> {
                     tool_calls
                         .iter()
                         .map(|call| {
-                            format!("tool_call:{}:{}:{}", call.id, call.function.name, call.function.arguments)
+                            format!(
+                                "tool_call:{}:{}:{}",
+                                call.id, call.function.name, call.function.arguments
+                            )
                         })
                         .collect::<Vec<_>>(),
                 );
@@ -288,7 +311,8 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<'static> {
             }
             _ => Err(CompletionError::ResponseError(
                 "Response did not contain a valid message or tool call".into(),
-            ))}?;
+            )),
+        }?;
 
         let choice = OneOrMany::many(content).map_err(|_| {
             CompletionError::ResponseError(
@@ -298,7 +322,8 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse<'static> {
 
         Ok(completion::CompletionResponse {
             choice,
-            raw_response: response})
+            raw_response: response,
+        })
     }
 }
 
@@ -309,13 +334,15 @@ impl completion::CompletionModel for CompletionModel {
         params: &fluent_ai_domain::completion::types::CompletionParams,
     ) -> fluent_ai_async::AsyncStream<fluent_ai_domain::context::CompletionChunk> {
         use fluent_ai_async::AsyncStream;
-        
+
         // Convert domain prompt and params to Mistral request format
         AsyncStream::with_channel(move |sender| {
             Box::pin(async move {
                 // TODO: Implement proper prompt to Mistral format conversion
                 // For now, provide a minimal implementation to fix compilation
-                let _ = sender.send(fluent_ai_domain::context::CompletionChunk::default()).await;
+                let _ = sender
+                    .send(fluent_ai_domain::context::CompletionChunk::default())
+                    .await;
                 Ok(())
             })
         })
@@ -360,7 +387,8 @@ impl CompletionModel {
                     );
                     response.try_into()
                 }
-                ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message))}
+                ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message)),
+            }
         } else {
             let error_body = String::from_utf8_lossy(response.body());
             Err(CompletionError::ProviderError(error_body.to_string()))
@@ -457,7 +485,8 @@ mod tests {
         let Usage {
             completion_tokens,
             prompt_tokens,
-            total_tokens} = usage.expect("Usage should be present in test");
+            total_tokens,
+        } = usage.expect("Usage should be present in test");
 
         assert_eq!(prompt_tokens, 16);
         assert_eq!(completion_tokens, 34);
@@ -473,7 +502,8 @@ mod tests {
 // =================================================================
 
 use cyrup_sugars::ZeroOneOrMany;
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
+use fluent_ai_domain::context::{CompletionChunk, FinishReason};
+use fluent_ai_domain::model::Usage as DomainUsage;
 use fluent_ai_domain::tool::ToolDefinition;
 /// Zero-allocation Mistral completion with CompletionProvider trait and fluent_ai_http3
 ///
@@ -493,10 +523,9 @@ use fluent_ai_domain::{Document, Message as DomainMessage};
 use fluent_ai_http3::{Http3, HttpClient, HttpConfig, HttpError};
 
 use crate::{
-    AsyncStream,
-    completion_provider::{
-        ChunkHandler, CompletionError as ProviderError, CompletionProvider},
-    ModelInfo};
+    AsyncStream, ModelInfo,
+    completion_provider::{ChunkHandler, CompletionError as ProviderError, CompletionProvider},
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -524,7 +553,8 @@ pub struct MistralCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<completion::ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>}
+    chunk_handler: Option<ChunkHandler>,
+}
 
 /// Mistral API message (zero-allocation serialization)
 #[derive(Debug, Serialize, Deserialize)]
@@ -532,7 +562,8 @@ pub struct MistralMessage<'a> {
     pub role: &'a str,
     pub content: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<ArrayVec<MistralToolCall<'a>, MAX_TOOLS>>}
+    pub tool_calls: Option<ArrayVec<MistralToolCall<'a>, MAX_TOOLS>>,
+}
 
 /// Mistral tool call (zero-allocation)
 #[derive(Debug, Serialize, Deserialize)]
@@ -540,13 +571,15 @@ pub struct MistralToolCall<'a> {
     pub id: &'a str,
     #[serde(rename = "type")]
     pub tool_type: &'a str,
-    pub function: MistralFunction<'a>}
+    pub function: MistralFunction<'a>,
+}
 
 /// Mistral function definition (zero-allocation)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MistralFunction<'a> {
     pub name: &'a str,
-    pub arguments: &'a str}
+    pub arguments: &'a str,
+}
 
 /// Mistral completion request (zero-allocation where possible)
 #[derive(Debug, Serialize)]
@@ -565,7 +598,8 @@ pub struct MistralCompletionRequest<'a> {
     pub presence_penalty: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ArrayVec<Value, MAX_TOOLS>>,
-    pub stream: bool}
+    pub stream: bool,
+}
 
 /// Mistral streaming response chunk (optimized deserialization)
 #[derive(Debug, Deserialize)]
@@ -573,41 +607,47 @@ pub struct MistralStreamChunk {
     pub id: String,
     pub choices: ZeroOneOrMany<MistralChoice>,
     #[serde(default)]
-    pub usage: Option<MistralUsage>}
+    pub usage: Option<MistralUsage>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MistralChoice {
     pub index: u32,
     pub delta: MistralDelta,
     #[serde(default)]
-    pub finish_reason: Option<String>}
+    pub finish_reason: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MistralDelta {
     #[serde(default)]
     pub content: Option<String>,
     #[serde(default)]
-    pub tool_calls: Option<ZeroOneOrMany<MistralToolCallDelta>>}
+    pub tool_calls: Option<ZeroOneOrMany<MistralToolCallDelta>>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MistralToolCallDelta {
     #[serde(default)]
     pub id: Option<String>,
     #[serde(default)]
-    pub function: Option<MistralFunctionDelta>}
+    pub function: Option<MistralFunctionDelta>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MistralFunctionDelta {
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
-    pub arguments: Option<String>}
+    pub arguments: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MistralUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
-    pub total_tokens: u32}
+    pub total_tokens: u32,
+}
 
 impl CompletionProvider for MistralCompletionBuilder {
     /// Create new Mistral completion builder with ModelInfo defaults
@@ -628,7 +668,8 @@ impl CompletionProvider for MistralCompletionBuilder {
             supports_thinking: false,
             optimal_thinking_budget: 0,
             provider: "mistral",
-            model_name};
+            model_name,
+        };
 
         Ok(Self {
             client: HttpClient::with_config(HttpConfig::streaming_optimized())
@@ -648,7 +689,8 @@ impl CompletionProvider for MistralCompletionBuilder {
             documents: ArrayVec::new(),
             tools: ArrayVec::new(),
             additional_params: None,
-            chunk_handler: None})
+            chunk_handler: None,
+        })
     }
 
     /// Set explicit API key (takes priority over environment variables)
@@ -814,7 +856,8 @@ impl CompletionProvider for MistralCompletionBuilder {
                             // Default env_logger behavior (zero allocation)
                             match &chunk_result {
                                 Ok(chunk) => log::debug!("Chunk: {:?}", chunk),
-                                Err(e) => log::error!("Chunk error: {}", e)}
+                                Err(e) => log::error!("Chunk error: {}", e),
+                            }
                         }
 
                         match chunk_result {
@@ -874,13 +917,13 @@ impl MistralCompletionBuilder {
 
         spawn_async(async move {
             use fluent_ai_http3::HttpStreamExt;
-            
+
             while let Some(chunk) = response_stream.next().await {
                 match chunk {
                     Ok(http_chunk) => {
                         if let fluent_ai_http3::HttpChunk::Body(data) = http_chunk {
                             let data_str = String::from_utf8_lossy(&data);
-                            
+
                             // Process SSE events
                             for line in data_str.lines() {
                                 if line.starts_with("data: ") {
@@ -888,7 +931,7 @@ impl MistralCompletionBuilder {
                                     if data.trim() == "[DONE]" {
                                         return;
                                     }
-                                    
+
                                     match Self::parse_sse_chunk(data.as_bytes()) {
                                         Ok(chunk) => {
                                             if chunk_sender.send(Ok(chunk)).is_err() {
@@ -927,7 +970,8 @@ impl MistralCompletionBuilder {
                 .try_push(MistralMessage {
                     role: "system",
                     content: Some(&self.system_prompt),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
                 .map_err(|_| ProviderError::RequestTooLarge)?;
         }
 
@@ -938,7 +982,8 @@ impl MistralCompletionBuilder {
                 .try_push(MistralMessage {
                     role: "user",
                     content: Some(Box::leak(content.into_boxed_str())),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
                 .map_err(|_| ProviderError::RequestTooLarge)?;
         }
 
@@ -955,7 +1000,8 @@ impl MistralCompletionBuilder {
             .try_push(MistralMessage {
                 role: "user",
                 content: Some(prompt),
-                tool_calls: None})
+                tool_calls: None,
+            })
             .map_err(|_| ProviderError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
@@ -973,7 +1019,8 @@ impl MistralCompletionBuilder {
             frequency_penalty: Some(self.frequency_penalty),
             presence_penalty: Some(self.presence_penalty),
             tools,
-            stream: true})
+            stream: true,
+        })
     }
 
     /// Convert domain Message to Mistral format (zero allocation)
@@ -989,7 +1036,8 @@ impl MistralCompletionBuilder {
                 Ok(MistralMessage {
                     role: "user",
                     content: Some(content),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
             }
             fluent_ai_domain::message::MessageRole::Assistant => {
                 let content = msg.content().text();
@@ -1001,14 +1049,16 @@ impl MistralCompletionBuilder {
                 Ok(MistralMessage {
                     role: "assistant",
                     content,
-                    tool_calls})
+                    tool_calls,
+                })
             }
             fluent_ai_domain::message::MessageRole::System => {
                 let content = msg.content().text().ok_or(ProviderError::ParseError)?;
                 Ok(MistralMessage {
                     role: "system",
                     content: Some(content),
-                    tool_calls: None})
+                    tool_calls: None,
+                })
             }
         }
     }
@@ -1029,7 +1079,9 @@ impl MistralCompletionBuilder {
                     function: MistralFunction {
                         name: tool_call.function().name(),
                         arguments: &serde_json::to_string(&tool_call.function().arguments())
-                            .map_err(|_| ProviderError::ParseError)?}})
+                            .map_err(|_| ProviderError::ParseError)?,
+                    },
+                })
                 .map_err(|_| ProviderError::RequestTooLarge)?;
         }
 
@@ -1091,17 +1143,20 @@ impl MistralCompletionBuilder {
                 "length" => FinishReason::Length,
                 "content_filter" => FinishReason::ContentFilter,
                 "tool_calls" => FinishReason::ToolCalls,
-                _ => FinishReason::Stop};
+                _ => FinishReason::Stop,
+            };
 
             let usage_info = usage.map(|u| DomainUsage {
                 prompt_tokens: u.prompt_tokens,
                 completion_tokens: u.completion_tokens,
-                total_tokens: u.total_tokens});
+                total_tokens: u.total_tokens,
+            });
 
             return Ok(CompletionChunk::Complete {
                 text: choice.delta.content.clone().unwrap_or_default(),
                 finish_reason: Some(reason),
-                usage: usage_info});
+                usage: usage_info,
+            });
         }
 
         // Handle tool calls
@@ -1170,7 +1225,6 @@ pub fn mistral_completion_builder(
 #[cfg(test)]
 mod new_completion_tests {
 
-
     #[test]
     fn test_new_mistral_completion_builder_creation() {
         let builder = MistralCompletionBuilder::new("test-key".to_string(), "mistral-large-latest");
@@ -1186,13 +1240,15 @@ mod new_completion_tests {
                 assert_eq!(keys[0], "MISTRAL_API_KEY");
                 assert_eq!(keys[1], "MISTRALAI_API_KEY");
             }
-            _ => panic!("Expected Many environment keys")}
+            _ => panic!("Expected Many environment keys"),
+        }
     }
 
     #[test]
     fn test_new_mistral_completion_builder_api_key_override() {
-        let builder = MistralCompletionBuilder::new("original-key".to_string(), "mistral-large-latest")
-            .expect("Failed to create mistral completion builder in test");
+        let builder =
+            MistralCompletionBuilder::new("original-key".to_string(), "mistral-large-latest")
+                .expect("Failed to create mistral completion builder in test");
 
         // Test that explicit_api_key is None initially
         assert!(builder.explicit_api_key.is_none());

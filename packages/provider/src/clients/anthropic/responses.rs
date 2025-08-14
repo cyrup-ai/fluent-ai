@@ -39,7 +39,8 @@ impl AnthropicResponseProcessor {
         // Parse JSON response
         let completion_response: CompletionResponse = serde_json::from_slice(&response.body)
             .map_err(|e| AnthropicError::DeserializationError {
-                message: format!("Failed to parse completion response: {}", e)})?;
+                message: format!("Failed to parse completion response: {}", e),
+            })?;
 
         // Validate response structure
         Self::validate_completion_response(&completion_response)?;
@@ -80,7 +81,8 @@ impl AnthropicResponseProcessor {
         // Try to parse as completion response to ensure it's valid
         let _: CompletionResponse = serde_json::from_slice(&response.body).map_err(|e| {
             AnthropicError::DeserializationError {
-                message: format!("Test response is not a valid completion response: {}", e)}
+                message: format!("Test response is not a valid completion response: {}", e),
+            }
         })?;
 
         Ok(())
@@ -101,14 +103,16 @@ impl AnthropicResponseProcessor {
             {
                 return AnthropicError::ApiError {
                     status,
-                    message: error_message.to_string()};
+                    message: error_message.to_string(),
+                };
             }
         }
 
         // Fallback to raw body
         AnthropicError::HttpStatus {
             status,
-            message: body.to_string()}
+            message: body.to_string(),
+        }
     }
 
     /// Validate JSON content type
@@ -119,11 +123,13 @@ impl AnthropicResponseProcessor {
                 content_type
                     .to_str()
                     .map_err(|_| AnthropicError::ResponseError {
-                        message: "Invalid content-type header".to_string()})?;
+                        message: "Invalid content-type header".to_string(),
+                    })?;
 
             if !content_type_str.starts_with(CONTENT_TYPE_JSON) {
                 return Err(AnthropicError::ResponseError {
-                    message: format!("Expected JSON content type, got: {}", content_type_str)});
+                    message: format!("Expected JSON content type, got: {}", content_type_str),
+                });
             }
         }
 
@@ -138,11 +144,13 @@ impl AnthropicResponseProcessor {
                 content_type
                     .to_str()
                     .map_err(|_| AnthropicError::ResponseError {
-                        message: "Invalid content-type header".to_string()})?;
+                        message: "Invalid content-type header".to_string(),
+                    })?;
 
             if !content_type_str.starts_with(CONTENT_TYPE_STREAM) {
                 return Err(AnthropicError::ResponseError {
-                    message: format!("Expected streaming content type, got: {}", content_type_str)});
+                    message: format!("Expected streaming content type, got: {}", content_type_str),
+                });
             }
         }
 
@@ -154,12 +162,14 @@ impl AnthropicResponseProcessor {
     fn validate_completion_response(response: &CompletionResponse) -> AnthropicResult<()> {
         if response.content.is_empty() {
             return Err(AnthropicError::ResponseError {
-                message: "Completion response has no content".to_string()});
+                message: "Completion response has no content".to_string(),
+            });
         }
 
         if response.model.is_empty() {
             return Err(AnthropicError::ResponseError {
-                message: "Completion response has no model".to_string()});
+                message: "Completion response has no model".to_string(),
+            });
         }
 
         Ok(())
@@ -169,7 +179,8 @@ impl AnthropicResponseProcessor {
     #[inline]
     fn parse_sse_stream(body: &[u8]) -> AnthropicResult<Vec<AnthropicStreamChunk>> {
         let body_str = std::str::from_utf8(body).map_err(|_| AnthropicError::ResponseError {
-            message: "Invalid UTF-8 in streaming response".to_string()})?;
+            message: "Invalid UTF-8 in streaming response".to_string(),
+        })?;
 
         let mut chunks = Vec::new();
 
@@ -190,7 +201,8 @@ impl AnthropicResponseProcessor {
                 // Parse JSON chunk
                 let chunk: AnthropicStreamChunk = serde_json::from_str(json_str).map_err(|e| {
                     AnthropicError::DeserializationError {
-                        message: format!("Failed to parse stream chunk: {}", e)}
+                        message: format!("Failed to parse stream chunk: {}", e),
+                    }
                 })?;
 
                 chunks.push(chunk);
@@ -242,7 +254,8 @@ impl AnthropicResponseProcessor {
                     "Response size {} exceeds maximum {}",
                     response.body.len(),
                     max_size
-                )});
+                ),
+            });
         }
 
         Ok(())
@@ -257,7 +270,8 @@ pub struct RateLimitInfo {
     /// Unix timestamp when the rate limit window resets
     pub reset_time: Option<u64>,
     /// Total number of requests allowed in the window
-    pub requests_limit: Option<u64>}
+    pub requests_limit: Option<u64>,
+}
 
 impl RateLimitInfo {
     /// Check if we're approaching the rate limit
@@ -268,7 +282,8 @@ impl RateLimitInfo {
                 let ratio = remaining as f64 / limit as f64;
                 ratio < threshold
             }
-            _ => false}
+            _ => false,
+        }
     }
 
     /// Get the current rate limit utilization as a percentage
@@ -283,13 +298,16 @@ impl RateLimitInfo {
                     None
                 }
             }
-            _ => None}
+            _ => None,
+        }
     }
 }
 
 /// Standalone function to process a completion response
 #[inline]
-pub fn process_completion_response(response: HttpResponse) -> AnthropicResult<CompletionResponse<'static>> {
+pub fn process_completion_response(
+    response: HttpResponse,
+) -> AnthropicResult<CompletionResponse<'static>> {
     AnthropicResponseProcessor::process_completion_response(response)
 }
 

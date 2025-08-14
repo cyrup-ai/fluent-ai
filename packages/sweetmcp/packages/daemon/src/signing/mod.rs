@@ -3,9 +3,10 @@
 //! Provides cross-platform code signing functionality using Tauri's bundler
 //! infrastructure for production-ready signing on macOS, Windows, and Linux.
 
-use anyhow::Result;
 use std::env;
 use std::path::{Path, PathBuf};
+
+use anyhow::Result;
 
 #[cfg(target_os = "linux")]
 mod linux;

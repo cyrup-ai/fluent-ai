@@ -66,8 +66,11 @@ mod wellformedness_validity_comprehensive {
 
         for expr in wellformed_expressions {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), 
-                "Well-formed expression '{}' should parse successfully", expr);
+            assert!(
+                result.is_ok(),
+                "Well-formed expression '{}' should parse successfully",
+                expr
+            );
         }
     }
 
@@ -76,69 +79,72 @@ mod wellformedness_validity_comprehensive {
         // RFC 9535: These expressions are syntactically malformed and MUST be rejected
         let malformed_expressions = vec![
             // Missing required components
-            "",                          // Empty expression
-            "store",                     // Missing root identifier
-            "$.store.",                  // Trailing dot
-            "$.",                        // Incomplete dot access
-            "$..",                       // Incomplete descendant
-            "$...",                      // Triple dots
+            "",         // Empty expression
+            "store",    // Missing root identifier
+            "$.store.", // Trailing dot
+            "$.",       // Incomplete dot access
+            "$..",      // Incomplete descendant
+            "$...",     // Triple dots
             // Unmatched delimiters
-            "$[",                        // Unclosed bracket
-            "$]",                        // Unmatched closing bracket
-            "$.store[",                  // Unclosed array access
-            "$.store]",                  // Unmatched closing bracket
-            "$[[",                       // Double opening brackets
-            "$]]",                       // Double closing brackets
-            "$()",                       // Invalid parentheses at root
-            "${}",                       // Invalid braces at root
+            "$[",       // Unclosed bracket
+            "$]",       // Unmatched closing bracket
+            "$.store[", // Unclosed array access
+            "$.store]", // Unmatched closing bracket
+            "$[[",      // Double opening brackets
+            "$]]",      // Double closing brackets
+            "$()",      // Invalid parentheses at root
+            "${}",      // Invalid braces at root
             // Invalid root identifiers
-            "@",                         // @ without $
-            "@.store",                   // @ as root (should be in filter only)
-            "$.store$",                  // Multiple root identifiers
-            "$$.store",                  // Double root identifiers
+            "@",        // @ without $
+            "@.store",  // @ as root (should be in filter only)
+            "$.store$", // Multiple root identifiers
+            "$$.store", // Double root identifiers
             // Invalid property access
-            "$.123abc",                  // Property starting with digit
-            "$.-abc",                    // Property starting with hyphen
-            "$.@abc",                    // Property starting with @
-            "$.store..book.",            // Trailing dot after descendant
+            "$.123abc",       // Property starting with digit
+            "$.-abc",         // Property starting with hyphen
+            "$.@abc",         // Property starting with @
+            "$.store..book.", // Trailing dot after descendant
             // Unclosed string literals
-            "$['unclosed",               // Unclosed single quote
-            "$[\"unclosed",              // Unclosed double quote
-            "$['mixed\"]",               // Mixed quote types
-            "$[\"mixed']",               // Mixed quote types reverse
+            "$['unclosed",  // Unclosed single quote
+            "$[\"unclosed", // Unclosed double quote
+            "$['mixed\"]",  // Mixed quote types
+            "$[\"mixed']",  // Mixed quote types reverse
             // Invalid filter expressions
-            "$[?]",                      // Empty filter
-            "$[?@]",                     // Incomplete filter (may be valid for existence)
-            "$[?@.]",                    // Incomplete property access
-            "$[?@.price >]",             // Incomplete comparison
-            "$[?@.price > 10 &&]",       // Incomplete logical expression
-            "$[?&& @.price > 10]",       // Leading logical operator
-            "$[?@.price === 10]",        // Invalid triple equals
-            "$[?@.price <> 10]",         // Invalid not-equal operator
-            "$[?(@.price > 10]",         // Unmatched opening parenthesis
-            "$[?@.price > 10)]",         // Unmatched closing parenthesis
+            "$[?]",                // Empty filter
+            "$[?@]",               // Incomplete filter (may be valid for existence)
+            "$[?@.]",              // Incomplete property access
+            "$[?@.price >]",       // Incomplete comparison
+            "$[?@.price > 10 &&]", // Incomplete logical expression
+            "$[?&& @.price > 10]", // Leading logical operator
+            "$[?@.price === 10]",  // Invalid triple equals
+            "$[?@.price <> 10]",   // Invalid not-equal operator
+            "$[?(@.price > 10]",   // Unmatched opening parenthesis
+            "$[?@.price > 10)]",   // Unmatched closing parenthesis
             // Invalid array slice syntax
-            "$[::]",                     // Invalid slice at root
-            "$.array[::0]",              // Zero step in slice
-            "$.array[1:2:3:4]",          // Too many slice parameters
-            "$.array[abc:def]",          // Non-numeric slice parameters
+            "$[::]",            // Invalid slice at root
+            "$.array[::0]",     // Zero step in slice
+            "$.array[1:2:3:4]", // Too many slice parameters
+            "$.array[abc:def]", // Non-numeric slice parameters
             // Invalid escape sequences
-            "$['\\x41']",                // Invalid hex escape
-            "$['\\q']",                  // Invalid escape character
-            "$['\\u123']",               // Incomplete Unicode escape
-            "$['\\uXXXX']",              // Invalid Unicode hex
+            "$['\\x41']",   // Invalid hex escape
+            "$['\\q']",     // Invalid escape character
+            "$['\\u123']",  // Incomplete Unicode escape
+            "$['\\uXXXX']", // Invalid Unicode hex
             // Invalid function calls
             "$[?unknown_function(@.test)]", // Undefined function
-            "$[?length()]",              // Missing required argument
-            "$[?length(@.test, extra)]", // Too many arguments
-            "$[?length(@.test,)]",       // Trailing comma in function call
-            "$[?(length(@.test)]",       // Unmatched parenthesis in function
+            "$[?length()]",                 // Missing required argument
+            "$[?length(@.test, extra)]",    // Too many arguments
+            "$[?length(@.test,)]",          // Trailing comma in function call
+            "$[?(length(@.test)]",          // Unmatched parenthesis in function
         ];
 
         for expr in malformed_expressions {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_err(), 
-                "Malformed expression '{}' should be rejected during parsing", expr);
+            assert!(
+                result.is_err(),
+                "Malformed expression '{}' should be rejected during parsing",
+                expr
+            );
         }
     }
 
@@ -186,39 +192,63 @@ mod wellformedness_validity_comprehensive {
             ("$.empty_array", 1, "Empty array is valid"),
             ("$.empty_object", 1, "Empty object is valid"),
             ("$.null_value", 1, "Null value is valid"),
-            
             // Invalid semantics - well-formed but no matches
             ("$.nonexistent", 0, "Non-existent root property"),
             ("$.store.nonexistent", 0, "Non-existent nested property"),
             ("$.store.book[999]", 0, "Out-of-bounds array index"),
             ("$.store.book[-999]", 0, "Out-of-bounds negative index"),
-            ("$.store.book.title", 0, "Property access on array (not element)"),
+            (
+                "$.store.book.title",
+                0,
+                "Property access on array (not element)",
+            ),
             ("$.store.bicycle[0]", 0, "Array access on object"),
-            ("$.store.book[*].nonexistent", 0, "Non-existent property via wildcard"),
+            (
+                "$.store.book[*].nonexistent",
+                0,
+                "Non-existent property via wildcard",
+            ),
             ("$..nonexistent", 0, "Descendant search for non-existent"),
             ("$.empty_array[0]", 0, "Index into empty array"),
             ("$.empty_object.anything", 0, "Property of empty object"),
             ("$.null_value.property", 0, "Property access on null"),
-            
             // Type mismatch semantics
-            ("$.store.book[0].price.invalid", 0, "Property access on number"),
+            (
+                "$.store.book[0].price.invalid",
+                0,
+                "Property access on number",
+            ),
             ("$.store.bicycle.color[0]", 0, "Array access on string"),
-            ("$.store.book[0].available.nested", 0, "Property access on boolean"),
+            (
+                "$.store.book[0].available.nested",
+                0,
+                "Property access on boolean",
+            ),
         ];
 
         for (expr, expected_count, _description) in semantic_validity_tests {
             // First verify the expression is well-formed
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), "Expression '{}' should be well-formed: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Expression '{}' should be well-formed: {}",
+                expr,
+                _description
+            );
 
             // Then test semantic validity
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Semantic validity test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Semantic validity test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -239,41 +269,110 @@ mod wellformedness_validity_comprehensive {
             ("$.items[?@.price > 10]", true, 2, "Valid price comparison"),
             ("$.items[?@.name]", true, 3, "Existence test for name"),
             ("$.items[?@.active == true]", true, 3, "Boolean equality"),
-            ("$.items[?@.price && @.active]", true, 3, "Logical AND with existence"),
-            
+            (
+                "$.items[?@.price && @.active]",
+                true,
+                3,
+                "Logical AND with existence",
+            ),
             // Well-formed but semantically limited
-            ("$.items[?@.nonexistent > 10]", true, 0, "Comparison with non-existent property"),
-            ("$.items[?@.price > @.nonexistent]", true, 0, "Comparison between existent and non-existent"),
+            (
+                "$.items[?@.nonexistent > 10]",
+                true,
+                0,
+                "Comparison with non-existent property",
+            ),
+            (
+                "$.items[?@.price > @.nonexistent]",
+                true,
+                0,
+                "Comparison between existent and non-existent",
+            ),
             ("$.items[?@.price == null]", true, 1, "Null comparison"),
-            ("$.items[?@.tags[999]]", true, 0, "Out-of-bounds array access in filter"),
-            ("$.items[?@.name.length]", true, 0, "Property access on string (invalid)"),
-            
+            (
+                "$.items[?@.tags[999]]",
+                true,
+                0,
+                "Out-of-bounds array access in filter",
+            ),
+            (
+                "$.items[?@.name.length]",
+                true,
+                0,
+                "Property access on string (invalid)",
+            ),
             // Well-formed function calls
-            ("$.items[?length(@.name) > 5]", true, 0, "Function on property"),
-            ("$.items[?count(@.tags) > 0]", true, 2, "Function on array property"),
-            ("$.items[?match(@.name, '^item')]", true, 3, "Regex function"),
-            
+            (
+                "$.items[?length(@.name) > 5]",
+                true,
+                0,
+                "Function on property",
+            ),
+            (
+                "$.items[?count(@.tags) > 0]",
+                true,
+                2,
+                "Function on array property",
+            ),
+            (
+                "$.items[?match(@.name, '^item')]",
+                true,
+                3,
+                "Regex function",
+            ),
             // Well-formed but semantically questionable
-            ("$.items[?length(@.nonexistent) > 0]", true, 0, "Function on non-existent property"),
-            ("$.items[?count(@.price) > 0]", true, 0, "Count function on non-array"),
-            ("$.items[?match(@.price, 'pattern')]", true, 0, "Regex function on number"),
+            (
+                "$.items[?length(@.nonexistent) > 0]",
+                true,
+                0,
+                "Function on non-existent property",
+            ),
+            (
+                "$.items[?count(@.price) > 0]",
+                true,
+                0,
+                "Count function on non-array",
+            ),
+            (
+                "$.items[?match(@.price, 'pattern')]",
+                true,
+                0,
+                "Regex function on number",
+            ),
         ];
 
-        for (expr, should_be_wellformed, expected_count, _description) in filter_wellformedness_tests {
+        for (expr, should_be_wellformed, expected_count, _description) in
+            filter_wellformedness_tests
+        {
             let result = JsonPathParser::compile(expr);
-            
+
             if should_be_wellformed {
-                assert!(result.is_ok(), "Filter expression '{}' should be well-formed: {}", expr, _description);
-                
+                assert!(
+                    result.is_ok(),
+                    "Filter expression '{}' should be well-formed: {}",
+                    expr,
+                    _description
+                );
+
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
                 let results: Vec<_> = stream.process_chunk(chunk).collect();
-                
-                assert_eq!(results.len(), expected_count,
-                    "Filter validity test '{}' should return {} results: {}", 
-                    expr, expected_count, _description);
+
+                assert_eq!(
+                    results.len(),
+                    expected_count,
+                    "Filter validity test '{}' should return {} results: {}",
+                    expr,
+                    expected_count,
+                    _description
+                );
             } else {
-                assert!(result.is_err(), "Filter expression '{}' should be malformed: {}", expr, _description);
+                assert!(
+                    result.is_err(),
+                    "Filter expression '{}' should be malformed: {}",
+                    expr,
+                    _description
+                );
             }
         }
     }
@@ -294,46 +393,88 @@ mod wellformedness_validity_comprehensive {
 
         let type_safety_tests = vec![
             // Well-formed, runtime type checks
-            ("$.mixed[0].length", true, 0, "String method access (not property)"),
+            (
+                "$.mixed[0].length",
+                true,
+                0,
+                "String method access (not property)",
+            ),
             ("$.mixed[1].toString", true, 0, "Number method access"),
             ("$.mixed[2].valueOf", true, 0, "Boolean method access"),
             ("$.mixed[3].anything", true, 0, "Property access on null"),
             ("$.mixed[4].nested", true, 1, "Valid object property access"),
             ("$.mixed[5][0]", true, 1, "Valid array index access"),
-            
             // Well-formed but type mismatches
             ("$.mixed[0][0]", true, 0, "Array access on string"),
             ("$.mixed[1].property", true, 0, "Property access on number"),
             ("$.mixed[2].property", true, 0, "Property access on boolean"),
             ("$.mixed[4][0]", true, 0, "Array access on object"),
             ("$.mixed[5].property", true, 0, "Property access on array"),
-            
             // Well-formed complex type scenarios
-            ("$.mixed[*].nested", true, 1, "Property access on mixed types"),
+            (
+                "$.mixed[*].nested",
+                true,
+                1,
+                "Property access on mixed types",
+            ),
             ("$.mixed[*][0]", true, 1, "Array access on mixed types"),
-            ("$..nested", true, 1, "Descendant search through mixed types"),
-            
+            (
+                "$..nested",
+                true,
+                1,
+                "Descendant search through mixed types",
+            ),
             // Function calls with type considerations
-            ("$.mixed[?length(@) > 0]", true, 0, "Length function on mixed types"),
-            ("$.mixed[?@.nested]", true, 1, "Property existence on mixed types"),
-            ("$.mixed[?@ == null]", true, 1, "Null comparison on mixed types"),
+            (
+                "$.mixed[?length(@) > 0]",
+                true,
+                0,
+                "Length function on mixed types",
+            ),
+            (
+                "$.mixed[?@.nested]",
+                true,
+                1,
+                "Property existence on mixed types",
+            ),
+            (
+                "$.mixed[?@ == null]",
+                true,
+                1,
+                "Null comparison on mixed types",
+            ),
         ];
 
         for (expr, should_be_wellformed, expected_count, _description) in type_safety_tests {
             let result = JsonPathParser::compile(expr);
-            
+
             if should_be_wellformed {
-                assert!(result.is_ok(), "Type safety expression '{}' should be well-formed: {}", expr, _description);
-                
+                assert!(
+                    result.is_ok(),
+                    "Type safety expression '{}' should be well-formed: {}",
+                    expr,
+                    _description
+                );
+
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
                 let results: Vec<_> = stream.process_chunk(chunk).collect();
-                
-                assert_eq!(results.len(), expected_count,
-                    "Type safety test '{}' should return {} results: {}", 
-                    expr, expected_count, _description);
+
+                assert_eq!(
+                    results.len(),
+                    expected_count,
+                    "Type safety test '{}' should return {} results: {}",
+                    expr,
+                    expected_count,
+                    _description
+                );
             } else {
-                assert!(result.is_err(), "Type safety expression '{}' should be malformed: {}", expr, _description);
+                assert!(
+                    result.is_err(),
+                    "Type safety expression '{}' should be malformed: {}",
+                    expr,
+                    _description
+                );
             }
         }
     }
@@ -349,8 +490,11 @@ mod wellformedness_validity_comprehensive {
             ("$..nonexistent", true, "Descendant search for non-existent"),
             ("$.a.b.c.d.e.f.g.h.i.j", true, "Deep property chain"),
             ("$[?@.a.b.c.d.e.f]", true, "Deep property in filter"),
-            ("$[?length(@.nonexistent) > 999999]", true, "Function with non-existent property"),
-            
+            (
+                "$[?length(@.nonexistent) > 999999]",
+                true,
+                "Function with non-existent property",
+            ),
             // These should be malformed (fail to parse)
             ("$.store.", false, "Trailing dot"),
             ("$.store..", false, "Incomplete descendant"),
@@ -358,8 +502,11 @@ mod wellformedness_validity_comprehensive {
             ("$[?@.store.]", false, "Trailing dot in filter"),
             ("$[?@.store..]", false, "Incomplete descendant in filter"),
             ("$[?length()]", false, "Function with no arguments"),
-            ("$[?length(@.test, extra, params)]", false, "Function with too many arguments"),
-            
+            (
+                "$[?length(@.test, extra, params)]",
+                false,
+                "Function with too many arguments",
+            ),
             // Edge cases at the boundary
             ("$['']", true, "Empty string property name"),
             ("$[0]", true, "Zero index"),
@@ -373,13 +520,21 @@ mod wellformedness_validity_comprehensive {
 
         for (expr, should_be_wellformed, _description) in wellformedness_boundary_tests {
             let result = JsonPathParser::compile(expr);
-            
+
             if should_be_wellformed {
-                assert!(result.is_ok(), 
-                    "Boundary test: '{}' should be well-formed ({})", expr, _description);
+                assert!(
+                    result.is_ok(),
+                    "Boundary test: '{}' should be well-formed ({})",
+                    expr,
+                    _description
+                );
             } else {
-                assert!(result.is_err(), 
-                    "Boundary test: '{}' should be malformed ({})", expr, _description);
+                assert!(
+                    result.is_err(),
+                    "Boundary test: '{}' should be malformed ({})",
+                    expr,
+                    _description
+                );
             }
         }
     }

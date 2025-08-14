@@ -1,10 +1,12 @@
 //! macOS code signing implementation
 
-use super::{PlatformConfig, SigningConfig};
-use anyhow::{bail, Context, Result};
 use std::env;
 use std::path::Path;
 use std::process::Command;
+
+use anyhow::{bail, Context, Result};
+
+use super::{PlatformConfig, SigningConfig};
 
 /// Sign a binary on macOS using codesign
 pub fn sign(config: &SigningConfig) -> Result<()> {

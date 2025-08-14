@@ -11,17 +11,15 @@ mod builder_tests {
     #[tokio::test]
     async fn debug_test() {
         env_logger::try_init().ok(); // Ignore error if already initialized
-        
+
         println!("🔍 Starting debug test...");
-        
-        let stream = Http3::json()
-            .debug()
-            .get("https://httpbin.org/get");
+
+        let stream = Http3::json().debug().get("https://httpbin.org/get");
 
         let responses: Vec<serde_json::Value> = stream.collect();
-        
+
         println!("🔍 Collected {} responses", responses.len());
-        
+
         if !responses.is_empty() {
             println!("🔍 First response: {:?}", responses[0]);
         } else {
@@ -34,9 +32,7 @@ mod builder_tests {
         // This test uses httpbin.org, a public testing service.
         let url = "https://httpbin.org/get";
 
-        let stream = Http3::json()
-            .debug()
-            .get(url);
+        let stream = Http3::json().debug().get(url);
 
         // The new API uses collect on the stream
         let responses: Vec<serde_json::Value> = stream.collect();

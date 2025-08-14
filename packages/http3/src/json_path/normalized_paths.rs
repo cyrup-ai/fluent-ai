@@ -57,11 +57,9 @@ impl NormalizedPathProcessor {
     /// - Contains union selectors
     /// - Invalid or malformed selectors
     #[inline]
-    pub fn generate_normalized_path(
-        selectors: &[JsonSelector]
-    ) -> JsonPathResult<NormalizedPath> {
+    pub fn generate_normalized_path(selectors: &[JsonSelector]) -> JsonPathResult<NormalizedPath> {
         let mut segments = Vec::new();
-        
+
         // First selector should always be Root for normalized paths
         if selectors.is_empty() {
             return Ok(NormalizedPath::root());
@@ -80,12 +78,12 @@ impl NormalizedPathProcessor {
                     }
                     segments.push(PathSegment::Root);
                 }
-                
+
                 JsonSelector::Child { name, .. } => {
                     Self::validate_member_name(name)?;
                     segments.push(PathSegment::Member(name.clone()));
                 }
-                
+
                 JsonSelector::Index { index, from_end } => {
                     if *from_end {
                         return Err(invalid_expression_error(
@@ -103,7 +101,7 @@ impl NormalizedPathProcessor {
                     }
                     segments.push(PathSegment::Index(*index));
                 }
-                
+
                 // These selectors cannot appear in normalized paths
                 JsonSelector::Wildcard => {
                     return Err(invalid_expression_error(
@@ -145,7 +143,7 @@ impl NormalizedPathProcessor {
 
         // Generate the normalized string representation
         let normalized_string = Self::segments_to_string(&segments);
-        
+
         Ok(NormalizedPath {
             segments,
             normalized_string,
@@ -172,7 +170,7 @@ impl NormalizedPathProcessor {
 
         let mut segments = vec![PathSegment::Root];
         let remaining = &path[1..];
-        
+
         if remaining.is_empty() {
             return Ok(NormalizedPath {
                 segments,
@@ -221,18 +219,18 @@ impl NormalizedPathProcessor {
         full_path: &str,
     ) -> JsonPathResult<PathSegment> {
         let start_pos = *position;
-        
+
         match chars.peek() {
             Some('\'') => {
                 // Single-quoted string (member name)
                 chars.next(); // consume opening quote
                 *position += 1;
-                
+
                 let mut member_name = String::new();
-                
+
                 while let Some(ch) = chars.next() {
                     *position += 1;
-                    
+
                     if ch == '\'' {
                         // End of string
                         Self::validate_member_name(&member_name)?;
@@ -267,18 +265,18 @@ impl NormalizedPathProcessor {
                         member_name.push(ch);
                     }
                 }
-                
+
                 Err(invalid_expression_error(
                     full_path,
                     "unterminated string literal",
                     Some(start_pos),
                 ))
             }
-            
+
             Some(ch) if ch.is_ascii_digit() => {
                 // Array index
                 let mut index_str = String::new();
-                
+
                 while let Some(&ch) = chars.peek() {
                     if ch.is_ascii_digit() {
                         index_str.push(ch);
@@ -288,7 +286,7 @@ impl NormalizedPathProcessor {
                         break;
                     }
                 }
-                
+
                 // Validate no leading zeros (except for "0")
                 if index_str.len() > 1 && index_str.starts_with('0') {
                     return Err(invalid_expression_error(
@@ -297,14 +295,11 @@ impl NormalizedPathProcessor {
                         Some(start_pos),
                     ));
                 }
-                
-                let index = index_str.parse::<i64>()
-                    .map_err(|_| invalid_expression_error(
-                        full_path,
-                        "invalid array index",
-                        Some(start_pos),
-                    ))?;
-                
+
+                let index = index_str.parse::<i64>().map_err(|_| {
+                    invalid_expression_error(full_path, "invalid array index", Some(start_pos))
+                })?;
+
                 if index < 0 {
                     return Err(invalid_expression_error(
                         full_path,
@@ -312,10 +307,10 @@ impl NormalizedPathProcessor {
                         Some(start_pos),
                     ));
                 }
-                
+
                 Ok(PathSegment::Index(index))
             }
-            
+
             _ => Err(invalid_expression_error(
                 full_path,
                 "expected string literal or array index",
@@ -329,7 +324,10 @@ impl NormalizedPathProcessor {
     fn validate_member_name(name: &str) -> JsonPathResult<()> {
         // Member names in normalized paths must be valid UTF-8 strings
         // No additional restrictions beyond basic JSON string requirements
-        if name.chars().any(|c| c.is_control() && c != '\t' && c != '\n' && c != '\r') {
+        if name
+            .chars()
+            .any(|c| c.is_control() && c != '\t' && c != '\n' && c != '\r')
+        {
             return Err(invalid_expression_error(
                 "",
                 "member names cannot contain control characters",
@@ -343,7 +341,7 @@ impl NormalizedPathProcessor {
     #[inline]
     fn segments_to_string(segments: &[PathSegment]) -> String {
         let mut result = String::new();
-        
+
         for segment in segments {
             match segment {
                 PathSegment::Root => result.push('$'),
@@ -367,7 +365,7 @@ impl NormalizedPathProcessor {
                 }
             }
         }
-        
+
         result
     }
 }
@@ -410,12 +408,12 @@ impl NormalizedPath {
     #[inline]
     pub fn child_member(&self, member_name: &str) -> JsonPathResult<Self> {
         NormalizedPathProcessor::validate_member_name(member_name)?;
-        
+
         let mut new_segments = self.segments.clone();
         new_segments.push(PathSegment::Member(member_name.to_string()));
-        
+
         let normalized_string = NormalizedPathProcessor::segments_to_string(&new_segments);
-        
+
         Ok(Self {
             segments: new_segments,
             normalized_string,
@@ -432,12 +430,12 @@ impl NormalizedPath {
                 None,
             ));
         }
-        
+
         let mut new_segments = self.segments.clone();
         new_segments.push(PathSegment::Index(index));
-        
+
         let normalized_string = NormalizedPathProcessor::segments_to_string(&new_segments);
-        
+
         Ok(Self {
             segments: new_segments,
             normalized_string,
@@ -450,10 +448,10 @@ impl NormalizedPath {
         if self.segments.len() <= 1 {
             return None; // Root has no parent
         }
-        
+
         let parent_segments = self.segments[..self.segments.len() - 1].to_vec();
         let normalized_string = NormalizedPathProcessor::segments_to_string(&parent_segments);
-        
+
         Some(Self {
             segments: parent_segments,
             normalized_string,
@@ -466,7 +464,7 @@ impl NormalizedPath {
         if self.segments.len() <= ancestor.segments.len() {
             return false;
         }
-        
+
         self.segments[..ancestor.segments.len()] == ancestor.segments
     }
 
@@ -509,21 +507,29 @@ mod tests {
     #[test]
     fn test_member_path() {
         let root = NormalizedPath::root();
-        let member_path = root.child_member("store")
+        let member_path = root
+            .child_member("store")
             .expect("Failed to create child member path for 'store'");
         assert_eq!(member_path.as_str(), "$['store']");
         assert!(!member_path.is_root());
         assert_eq!(member_path.depth(), 1);
-        assert_eq!(member_path.parent()
-            .expect("Failed to get parent of member path").as_str(), "$");
+        assert_eq!(
+            member_path
+                .parent()
+                .expect("Failed to get parent of member path")
+                .as_str(),
+            "$"
+        );
     }
 
     #[test]
     fn test_index_path() {
         let root = NormalizedPath::root();
-        let member_path = root.child_member("items")
+        let member_path = root
+            .child_member("items")
             .expect("Failed to create child member path for 'items'");
-        let index_path = member_path.child_index(0)
+        let index_path = member_path
+            .child_index(0)
             .expect("Failed to create child index path for index 0");
         assert_eq!(index_path.as_str(), "$['items'][0]");
         assert_eq!(index_path.depth(), 2);
@@ -541,26 +547,29 @@ mod tests {
             .expect("Failed to create child index path for index 0")
             .child_member("title")
             .expect("Failed to create child member path for 'title'");
-        
+
         assert_eq!(complex.as_str(), "$['store']['book'][0]['title']");
         assert_eq!(complex.depth(), 4);
     }
 
     #[test]
     fn test_parse_normalized_path() {
-        let parsed = NormalizedPathProcessor::parse_normalized_path("$['store']['book'][0]['title']")
-            .expect("Failed to parse normalized path expression");
+        let parsed =
+            NormalizedPathProcessor::parse_normalized_path("$['store']['book'][0]['title']")
+                .expect("Failed to parse normalized path expression");
         assert_eq!(parsed.as_str(), "$['store']['book'][0]['title']");
         assert_eq!(parsed.depth(), 4);
     }
 
     #[test]
     fn test_path_relationships() {
-        let parent = NormalizedPath::root().child_member("store")
+        let parent = NormalizedPath::root()
+            .child_member("store")
             .expect("Failed to create child member path for 'store'");
-        let child = parent.child_member("book")
+        let child = parent
+            .child_member("book")
             .expect("Failed to create child member path for 'book'");
-        
+
         assert!(child.is_descendant_of(&parent));
         assert!(parent.is_ancestor_of(&child));
         assert!(!parent.is_descendant_of(&child));
@@ -570,10 +579,10 @@ mod tests {
     fn test_invalid_paths() {
         // Negative index
         assert!(NormalizedPath::root().child_index(-1).is_err());
-        
+
         // Invalid parse - no bracket notation
         assert!(NormalizedPathProcessor::parse_normalized_path("$.store").is_err());
-        
+
         // Leading zeros
         assert!(NormalizedPathProcessor::parse_normalized_path("$[01]").is_err());
     }

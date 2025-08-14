@@ -3,9 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::types::{
-    ProcessedQuery, QueryMetadata, QueryOperator, SearchOptions,
-};
+use super::types::{ProcessedQuery, QueryMetadata, QueryOperator, SearchOptions};
 
 /// Query processor for advanced query handling
 pub struct QueryProcessor {

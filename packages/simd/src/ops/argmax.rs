@@ -201,7 +201,8 @@ fn create_argmax_dispatch() -> ArgmaxDispatch {
         #[cfg(not(target_arch = "aarch64"))]
         neon: None,
 
-        scalar: scalar_argmax}
+        scalar: scalar_argmax,
+    }
 }
 
 /// Global dispatch table for argmax operations with runtime CPU feature detection

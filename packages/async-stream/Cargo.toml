@@ -1,19 +1,25 @@
 [package]
 name = "fluent_ai_async"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Zero-allocation streaming primitives for the fluent-ai ecosystem"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/fluent-ai"
 
 [dependencies]
-thiserror = "2.0.12"
-serde = { version = "1.0", features = ["derive"] }
-crossbeam-channel = "0.5.15"
-crossbeam-queue = "0.3.12"
-futures-util = "0.3.31"
-fluent-ai-workspace-hack = { path = "../../workspace-hack" }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars.git", features = ["all"] }
+thiserror = "2"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+crossbeam-utils = "0.8"
+log = "0.4"
 
-[features]
-default = ["reqwest_unstable"]
-reqwest_unstable = []
+
+[lib]
+path = "src/lib.rs"
+name = "fluent_ai_async"
+
+[dev-dependencies]
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

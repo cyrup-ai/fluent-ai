@@ -2,7 +2,7 @@
 //!
 //! Tests for HTTP3 stream functionality, mirroring src/stream.rs
 
-use fluent_ai_http3::{global_client, builder::Http3Builder};
+use fluent_ai_http3::{builder::Http3Builder, global_client};
 
 #[cfg(test)]
 mod stream_tests {
@@ -13,13 +13,16 @@ mod stream_tests {
         // Test HTTP3 stream creation and configuration
         let client = global_client();
         let configured_builder = Http3Builder::new(&client)
-            .headers([("accept", "application/json"), ("user-agent", "HTTP3-Stream-Test")])
+            .headers([
+                ("accept", "application/json"),
+                ("user-agent", "HTTP3-Stream-Test"),
+            ])
             .timeout_seconds(10)
             .retry_attempts(2);
-        
+
         // Test that the builder can create a stream
         let _stream = configured_builder.get("https://api.example.com/test");
-        
+
         // Test passes if stream configuration methods can be chained
         assert!(true, "HTTP3 stream should accept configuration chaining");
     }

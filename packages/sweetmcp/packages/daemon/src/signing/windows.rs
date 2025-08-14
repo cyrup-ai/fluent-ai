@@ -1,11 +1,13 @@
 //! Windows code signing implementation
 
-use super::{PlatformConfig, SigningConfig};
-use anyhow::{bail, Context, Result};
-use base64::{engine::general_purpose, Engine as _};
 use std::path::Path;
 use std::process::Command;
+
+use anyhow::{bail, Context, Result};
+use base64::{engine::general_purpose, Engine as _};
 use which::which;
+
+use super::{PlatformConfig, SigningConfig};
 
 /// Sign a binary on Windows using signtool
 pub fn sign(config: &SigningConfig) -> Result<()> {

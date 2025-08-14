@@ -18,7 +18,8 @@ pub enum ExportFormat {
     /// Plain text format
     Text,
     /// CSV format for data analysis
-    Csv}
+    Csv,
+}
 
 /// Export configuration with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,7 +33,8 @@ pub struct ExportConfig {
     /// Maximum messages to export (0 = all)
     pub max_messages: usize,
     /// Custom filename prefix
-    pub filename_prefix: Arc<str>}
+    pub filename_prefix: Arc<str>,
+}
 
 impl Default for ExportConfig {
     fn default() -> Self {
@@ -41,7 +43,8 @@ impl Default for ExportConfig {
             include_metadata: true,
             include_timestamps: true,
             max_messages: 0,
-            filename_prefix: Arc::from("chat_export")}
+            filename_prefix: Arc::from("chat_export"),
+        }
     }
 }
 
@@ -54,7 +57,8 @@ pub struct ChatExporter {
     /// Export configuration
     config: ExportConfig,
     /// Export statistics
-    stats: ExportStats}
+    stats: ExportStats,
+}
 
 /// Export statistics for monitoring and optimization
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -68,7 +72,8 @@ pub struct ExportStats {
     /// Average export time in microseconds
     pub avg_export_time_us: u64,
     /// Export success rate (0.0 to 1.0)
-    pub success_rate: f32}
+    pub success_rate: f32,
+}
 
 /// Export result containing the exported data and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +85,8 @@ pub struct ExportData {
     /// File extension recommendation
     pub file_extension: Arc<str>,
     /// Export metadata
-    pub metadata: ExportMetadata}
+    pub metadata: ExportMetadata,
+}
 
 /// Export metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,37 +100,38 @@ pub struct ExportMetadata {
     /// Export configuration
     pub config: ExportConfig,
     /// Export size in bytes
-    pub size_bytes: usize}
+    pub size_bytes: usize,
+}
 
 /// Export errors
 #[derive(Error, Debug, Clone)]
 pub enum ExportError {
     /// Serialization of data failed during export
     #[error("Serialization failed: {detail}")]
-    SerializationError { 
+    SerializationError {
         /// Details about the serialization failure
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
     /// Invalid export format was specified
     #[error("Invalid format: {format}")]
-    InvalidFormat { 
+    InvalidFormat {
         /// The invalid format that was specified
-        format: Arc<str> 
+        format: Arc<str>,
     },
     /// Export data exceeds maximum allowed size
     #[error("Export too large: {size_bytes} bytes")]
-    ExportTooLarge { 
+    ExportTooLarge {
         /// Size of the export data in bytes
-        size_bytes: usize 
+        size_bytes: usize,
     },
     /// No messages available to export
     #[error("No messages to export")]
     NoMessages,
     /// Input/output error occurred during export
     #[error("IO error: {detail}")]
-    IoError { 
+    IoError {
         /// Details about the IO error
-        detail: Arc<str> 
+        detail: Arc<str>,
     },
 }
 
@@ -136,14 +143,16 @@ impl ChatExporter {
     pub fn new() -> Self {
         Self {
             config: ExportConfig::default(),
-            stats: ExportStats::default()}
+            stats: ExportStats::default(),
+        }
     }
 
     /// Create a new chat exporter with custom configuration
     pub fn with_config(config: ExportConfig) -> Self {
         Self {
             config,
-            stats: ExportStats::default()}
+            stats: ExportStats::default(),
+        }
     }
 
     /// Export messages to the configured format
@@ -169,7 +178,8 @@ impl ChatExporter {
             ExportFormat::Json => self.export_as_json(messages_to_export)?,
             ExportFormat::Markdown => self.export_as_markdown(messages_to_export)?,
             ExportFormat::Text => self.export_as_text(messages_to_export)?,
-            ExportFormat::Csv => self.export_as_csv(messages_to_export)?};
+            ExportFormat::Csv => self.export_as_csv(messages_to_export)?,
+        };
 
         let export_time = start_time.elapsed();
 
@@ -186,7 +196,8 @@ impl ChatExporter {
             ExportFormat::Json => ("application/json", "json"),
             ExportFormat::Markdown => ("text/markdown", "md"),
             ExportFormat::Text => ("text/plain", "txt"),
-            ExportFormat::Csv => ("text/csv", "csv")};
+            ExportFormat::Csv => ("text/csv", "csv"),
+        };
 
         let content_size = content.len();
 
@@ -199,7 +210,9 @@ impl ChatExporter {
                 message_count: messages_to_export.len(),
                 format: self.config.format,
                 config: self.config.clone(),
-                size_bytes: content_size}})
+                size_bytes: content_size,
+            },
+        })
     }
 
     /// Export as JSON format
@@ -208,7 +221,8 @@ impl ChatExporter {
         messages: &[crate::chat::message::Message],
     ) -> Result<String, ExportError> {
         serde_json::to_string_pretty(messages).map_err(|e| ExportError::SerializationError {
-            detail: Arc::from(e.to_string())})
+            detail: Arc::from(e.to_string()),
+        })
     }
 
     /// Export as Markdown format
@@ -329,7 +343,8 @@ pub fn export_conversation(
         ExportFormat::Json => export_to_json(messages, config),
         ExportFormat::Markdown => export_to_markdown(messages, config),
         ExportFormat::Text => export_to_text(messages, config),
-        ExportFormat::Csv => export_to_csv(messages, config)}
+        ExportFormat::Csv => export_to_csv(messages, config),
+    }
 }
 
 /// Export to JSON format
@@ -344,7 +359,8 @@ fn export_to_json(
     };
 
     serde_json::to_string_pretty(limited_messages).map_err(|e| ExportError::SerializationError {
-        detail: Arc::from(e.to_string())})
+        detail: Arc::from(e.to_string()),
+    })
 }
 
 /// Export to Markdown format

@@ -1,15 +1,11 @@
-//! Builder patterns for fluent-ai components
+//! Builder patterns for candle components
 //!
-//! This module contains all builder patterns moved from the domain package
-//! to maintain architectural separation: domain contains only value objects,
-//! fluent-ai contains all builders for construction and configuration.
+//! This module contains candle-specific builder patterns following fluent-ai
+//! architecture but with candle prefixes. NO trait objects allowed - only
+//! impl Trait patterns for zero allocation.
 
 pub mod agent_role;
 pub mod completion;
 
-// Real workflow builders
-pub mod workflow;
-pub mod memory_workflow;
-
 // Re-export main builder types for public API
-pub use agent_role::{CandleFluentAi, CandleAgentRoleBuilder, CandleAgentBuilder};
+pub use agent_role::{CandleAgentBuilder, CandleAgentRoleBuilder, CandleFluentAi};

@@ -3,6 +3,8 @@
 //! This module provides channel creation utilities that are fully compliant with
 //! the NO FUTURES/No Result architecture using crossbeam primitives.
 
+use cyrup_sugars::prelude::*;
+
 use crate::stream::{AsyncStream, AsyncStreamSender};
 
 /// Creates a new asynchronous stream channel using the canonical AsyncStream architecture.
@@ -14,35 +16,37 @@ use crate::stream::{AsyncStream, AsyncStreamSender};
 /// # Example
 /// ```rust
 /// use fluent_ai_async::channel::channel;
-/// 
+///
 /// let (sender, stream) = channel::<String>();
-/// 
+///
 /// // Producer thread
 /// std::thread::spawn(move || {
 ///     sender.send("Hello".to_string()).ok();
 ///     sender.send("World".to_string()).ok();
 /// });
-/// 
+///
 /// // Consumer can use stream patterns
 /// let results: Vec<String> = stream.collect();
 /// ```
 #[inline]
 pub fn channel<T>() -> (AsyncStreamSender<T>, AsyncStream<T>)
 where
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
-    AsyncStream::channel_internal()
+    let (sender, stream) = AsyncStream::<T, 1024>::channel();
+    (sender, stream)
 }
 
 /// Creates a new asynchronous stream channel with custom capacity.
 ///
 /// Uses const-generic capacity for zero-allocation patterns.
 #[inline]
-pub fn channel_with_capacity<T, const CAP: usize>() -> (AsyncStreamSender<T, CAP>, AsyncStream<T, CAP>)
+pub fn channel_with_capacity<T, const CAP: usize>()
+-> (AsyncStreamSender<T, CAP>, AsyncStream<T, CAP>)
 where
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
-    AsyncStream::channel_internal()
+    AsyncStream::<T, CAP>::channel()
 }
 
 /// Creates an unbounded channel (alias for channel with default capacity).
@@ -51,7 +55,7 @@ where
 #[inline]
 pub fn unbounded_channel<T>() -> (AsyncStreamSender<T>, AsyncStream<T>)
 where
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
     channel()
 }

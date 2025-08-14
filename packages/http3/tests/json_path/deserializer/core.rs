@@ -28,8 +28,7 @@ mod deserializer_tests {
 
         buffer.append_chunk(Bytes::from(json_data));
 
-        let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let mut deserializer = JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
         let results: Vec<_> = deserializer.process_available().collect();
 
         assert_eq!(results.len(), 2);
@@ -50,8 +49,7 @@ mod deserializer_tests {
 
         buffer.append_chunk(Bytes::from(json_data));
 
-        let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let mut deserializer = JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
         let results: Vec<_> = deserializer.process_available().collect();
 
         assert_eq!(results.len(), 1);
@@ -76,8 +74,7 @@ mod deserializer_tests {
         buffer.append_chunk(Bytes::from(r#"]}"#,
         ));
 
-        let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let mut deserializer = JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
         let results: Vec<_> = deserializer.process_available().collect();
 
         assert_eq!(results.len(), 2);
@@ -93,8 +90,7 @@ mod deserializer_tests {
 
         buffer.append_chunk(Bytes::from(json_data));
 
-        let mut deserializer =
-            JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
+        let mut deserializer = JsonPathDeserializer::<TestModel>::new(&path_expr, &mut buffer);
         let results: Vec<_> = deserializer.process_available().collect();
 
         assert!(!results.is_empty());

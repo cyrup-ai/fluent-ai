@@ -93,8 +93,6 @@ pub fn render_simple(name: &str, variables: HashMap<&str, &str>) -> TemplateResu
     render_template(name, arc_variables)
 }
 
-
-
 /// Create a simple render function
 pub fn render(
     template: &ChatTemplate,

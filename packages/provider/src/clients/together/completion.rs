@@ -22,28 +22,26 @@ pub struct TogetherStreamingCompletionResponse {
     /// Token usage information
     pub usage: Option<crate::clients::together::types::TogetherUsage>,
 }
-use super::types::{
-    TogetherChatRequest, TogetherChatResponse, TogetherChoice, TogetherContent,
-    TogetherFunction, TogetherMessage, TogetherResponseMessage, TogetherStreamingChunk,
-    TogetherTool, TogetherUsage};
-use serde_json::json;
 use arrayvec::ArrayVec;
-use fluent_ai_http3::Http3;
-
-// CRITICAL: Import model information from model-info package (single source of truth)
-use model_info::{discovery::Provider, ModelInfo as ModelInfoFromPackage};
-
-use super::client::{Client, together_ai_api_types::ApiResponse};
-use crate::streaming::DefaultStreamingResponse;
-use crate::clients::openai;
-use fluent_ai_domain::util::json_util;
-
+pub use fluent_ai_domain::completion::types::ToolDefinition;
 // Model constants removed - use model-info package exclusively
 // All Together AI model information is provided by ./packages/model-info
 
 // Type aliases for domain types used in client builders
 pub use fluent_ai_domain::context::document::Document;
-pub use fluent_ai_domain::completion::types::ToolDefinition;
+use fluent_ai_domain::util::json_util;
+use fluent_ai_http3::Http3;
+// CRITICAL: Import model information from model-info package (single source of truth)
+use model_info::{ModelInfo as ModelInfoFromPackage, discovery::Provider};
+use serde_json::json;
+
+use super::client::{Client, together_ai_api_types::ApiResponse};
+use super::types::{
+    TogetherChatRequest, TogetherChatResponse, TogetherChoice, TogetherContent, TogetherFunction,
+    TogetherMessage, TogetherResponseMessage, TogetherStreamingChunk, TogetherTool, TogetherUsage,
+};
+use crate::clients::openai;
+use crate::streaming::DefaultStreamingResponse;
 
 // Response type alias for client compatibility
 pub type CompletionResponse = TogetherChatResponse;
@@ -56,13 +54,15 @@ pub type CompletionResponse = TogetherChatResponse;
 #[derive(Clone)]
 pub struct TogetherCompletionModel {
     client: Client,
-    model: String}
+    model: String,
+}
 
 impl TogetherCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
-            model: model.to_string()}
+            model: model.to_string(),
+        }
     }
 
     /// Load model information from model-info package (single source of truth)
@@ -82,7 +82,8 @@ impl TogetherCompletionModel {
             messages
                 .try_push(TogetherMessage {
                     role: "system",
-                    content: TogetherContent::Text(preamble)})
+                    content: TogetherContent::Text(preamble),
+                })
                 .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
 
@@ -93,8 +94,11 @@ impl TogetherCompletionModel {
                 messages
                     .try_push(TogetherMessage {
                         role: "user",
-                        content: TogetherContent::Text(Box::leak(content.into_boxed_str()))})
-                    .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
+                        content: TogetherContent::Text(Box::leak(content.into_boxed_str())),
+                    })
+                    .map_err(|_| {
+                        CompletionError::InvalidRequest("Request too large".to_string())
+                    })?;
             }
         }
 
@@ -106,8 +110,11 @@ impl TogetherCompletionModel {
                         messages
                             .try_push(TogetherMessage {
                                 role: "user",
-                                content: TogetherContent::Text(text)})
-                            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
+                                content: TogetherContent::Text(text),
+                            })
+                            .map_err(|_| {
+                                CompletionError::InvalidRequest("Request too large".to_string())
+                            })?;
                     }
                 }
                 fluent_ai_domain::message::MessageRole::Assistant => {
@@ -115,8 +122,11 @@ impl TogetherCompletionModel {
                         messages
                             .try_push(TogetherMessage {
                                 role: "assistant",
-                                content: TogetherContent::Text(text)})
-                            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
+                                content: TogetherContent::Text(text),
+                            })
+                            .map_err(|_| {
+                                CompletionError::InvalidRequest("Request too large".to_string())
+                            })?;
                     }
                 }
                 fluent_ai_domain::message::MessageRole::System => {
@@ -124,28 +134,37 @@ impl TogetherCompletionModel {
                         messages
                             .try_push(TogetherMessage {
                                 role: "system",
-                                content: TogetherContent::Text(text)})
-                            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
+                                content: TogetherContent::Text(text),
+                            })
+                            .map_err(|_| {
+                                CompletionError::InvalidRequest("Request too large".to_string())
+                            })?;
                     }
                 }
             }
         }
 
         // Set parameters with direct validation - zero allocation
-        let temperature = completion_request.temperature.map(|temp| temp.clamp(0.0, 2.0));
-        let max_tokens = completion_request.max_tokens.map(|tokens| tokens.clamp(1, 8192));
+        let temperature = completion_request
+            .temperature
+            .map(|temp| temp.clamp(0.0, 2.0));
+        let max_tokens = completion_request
+            .max_tokens
+            .map(|tokens| tokens.clamp(1, 8192));
 
         // Add tools if present
         let tools = if !completion_request.tools.is_empty() {
             let mut together_tools = arrayvec::ArrayVec::new();
             for tool in completion_request.tools.into_iter() {
-                if together_tools.len() < super::types::MAX_TOOLS {
+                if together_tools.len() < crate::MAX_TOOLS {
                     let together_tool = TogetherTool {
                         tool_type: "function",
                         function: TogetherFunction {
                             name: tool.name(),
                             description: tool.description(),
-                            parameters: tool.parameters().clone()}};
+                            parameters: tool.parameters().clone(),
+                        },
+                    };
                     let _ = together_tools.push(together_tool);
                 }
             }
@@ -175,9 +194,11 @@ impl completion::CompletionModel for TogetherCompletionModel {
     fn completion(
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> fluent_ai_async::AsyncStream<fluent_ai_domain::completion::CompletionResponse<TogetherChatResponse>> {
+    ) -> fluent_ai_async::AsyncStream<
+        fluent_ai_domain::completion::CompletionResponse<TogetherChatResponse>,
+    > {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
+
         let api_key = self.client.api_key().clone();
         let base_url = self.client.base_url().clone();
         let request_body = match self.create_completion_request(completion_request) {
@@ -212,7 +233,10 @@ impl completion::CompletionModel for TogetherCompletionModel {
                     handle_error!(CompletionError::ProviderError(err.error), "API error");
                 }
                 Err(e) => {
-                    handle_error!(CompletionError::ProviderError(format!("Request failed: {}", e)), "HTTP request failed");
+                    handle_error!(
+                        CompletionError::ProviderError(format!("Request failed: {}", e)),
+                        "HTTP request failed"
+                    );
                 }
             }
         })
@@ -223,7 +247,7 @@ impl completion::CompletionModel for TogetherCompletionModel {
         request: CompletionRequest,
     ) -> fluent_ai_async::AsyncStream<Self::StreamingResponse> {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
+
         let api_key = self.client.api_key().clone();
         let base_url = self.client.base_url().clone();
         let mut request_body = match self.create_completion_request(request) {
@@ -261,26 +285,32 @@ impl completion::CompletionModel for TogetherCompletionModel {
     }
 
     /// Parse Together AI Server-Sent Events chunk with zero allocation optimization
-    /// 
+    ///
     /// # Performance Optimizations
     /// - Zero-allocation string parsing using byte slices
     /// - Inline JSON parsing for critical paths
     /// - Early exit on empty content
     /// - No heap allocations in hot paths
     #[inline]
-    fn parse_sse_chunk(sse_data: &[u8]) -> Result<TogetherStreamingCompletionResponse, CompletionError> {
+    fn parse_sse_chunk(
+        sse_data: &[u8],
+    ) -> Result<TogetherStreamingCompletionResponse, CompletionError> {
         // Fast UTF-8 validation with zero copy
         let chunk_str = match std::str::from_utf8(sse_data) {
             Ok(s) => s,
-            Err(_) => return Err(CompletionError::ParseError("Invalid UTF-8 in SSE chunk".into())),
+            Err(_) => {
+                return Err(CompletionError::ParseError(
+                    "Invalid UTF-8 in SSE chunk".into(),
+                ));
+            }
         };
-        
+
         // Optimized line-by-line processing with zero allocation
         for line in chunk_str.lines() {
             // Fast prefix check with exact length
             if line.len() > 6 && line.as_bytes().starts_with(b"data: ") {
                 let data = &line[6..]; // Zero-copy slice
-                
+
                 // Early exit for termination marker
                 if data.len() == 6 && data == "[DONE]" {
                     return Ok(TogetherStreamingCompletionResponse {
@@ -289,17 +319,17 @@ impl completion::CompletionModel for TogetherCompletionModel {
                         usage: None,
                     });
                 }
-                
+
                 // Skip empty data lines
                 if data.is_empty() {
                     continue;
                 }
-                
+
                 // Fast JSON parsing with targeted extraction
                 return Self::extract_content_from_json(data);
             }
         }
-        
+
         // No valid data found - return empty response
         Ok(TogetherStreamingCompletionResponse {
             content: None,
@@ -307,21 +337,27 @@ impl completion::CompletionModel for TogetherCompletionModel {
             usage: None,
         })
     }
-    
+
     /// Extract content from Together AI JSON response with minimal allocations
-    /// 
+    ///
     /// # Performance Features
     /// - Direct JSON key lookup without full deserialization
     /// - Early return on first valid content
     /// - Optimized string extraction
     #[inline(always)]
-    fn extract_content_from_json(json_data: &str) -> Result<TogetherStreamingCompletionResponse, CompletionError> {
+    fn extract_content_from_json(
+        json_data: &str,
+    ) -> Result<TogetherStreamingCompletionResponse, CompletionError> {
         // Parse JSON with error handling
         let json_value: serde_json::Value = match serde_json::from_str(json_data) {
             Ok(v) => v,
-            Err(_) => return Err(CompletionError::ParseError("Invalid JSON in SSE chunk".into())),
+            Err(_) => {
+                return Err(CompletionError::ParseError(
+                    "Invalid JSON in SSE chunk".into(),
+                ));
+            }
         };
-        
+
         // Optimized path traversal for Together AI format
         if let Some(choices_array) = json_value.get("choices").and_then(|c| c.as_array()) {
             if let Some(first_choice) = choices_array.first() {
@@ -337,9 +373,11 @@ impl completion::CompletionModel for TogetherCompletionModel {
                         }
                     }
                 }
-                
+
                 // Check for finish reason
-                if let Some(finish_reason_str) = first_choice.get("finish_reason").and_then(|fr| fr.as_str()) {
+                if let Some(finish_reason_str) =
+                    first_choice.get("finish_reason").and_then(|fr| fr.as_str())
+                {
                     return Ok(TogetherStreamingCompletionResponse {
                         content: None,
                         finish_reason: Some(finish_reason_str.to_string()),
@@ -348,14 +386,23 @@ impl completion::CompletionModel for TogetherCompletionModel {
                 }
             }
         }
-        
+
         // Check for usage information
         let usage = json_value.get("usage").map(|u| TogetherUsage {
-            prompt_tokens: u.get("prompt_tokens").and_then(|pt| pt.as_u64()).unwrap_or(0) as u32,
-            completion_tokens: u.get("completion_tokens").and_then(|ct| ct.as_u64()).unwrap_or(0) as u32,
-            total_tokens: u.get("total_tokens").and_then(|tt| tt.as_u64()).unwrap_or(0) as u32,
+            prompt_tokens: u
+                .get("prompt_tokens")
+                .and_then(|pt| pt.as_u64())
+                .unwrap_or(0) as u32,
+            completion_tokens: u
+                .get("completion_tokens")
+                .and_then(|ct| ct.as_u64())
+                .unwrap_or(0) as u32,
+            total_tokens: u
+                .get("total_tokens")
+                .and_then(|tt| tt.as_u64())
+                .unwrap_or(0) as u32,
         });
-        
+
         Ok(TogetherStreamingCompletionResponse {
             content: None,
             finish_reason: None,
@@ -373,4 +420,5 @@ impl completion::CompletionModel for TogetherCompletionModel {
 // =============================================================================
 
 /// Llama 3.2 11B Vision Instruct Turbo model
-pub const LLAMA_3_2_11B_VISION_INSTRUCT_TURBO: &str = "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo";
+pub const LLAMA_3_2_11B_VISION_INSTRUCT_TURBO: &str =
+    "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo";

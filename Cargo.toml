@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "workspace-hack",
-    "forks",
+    "forks/reqwest",
     "packages/async-stream",
     "packages/fluent-ai",
     "packages/candle",
@@ -46,4 +46,5 @@ license = "MIT"
 authors = ["CYRUP AI"]
 repository = "https://github.com/cyrup-ai/fluent-ai"
 
-
+[patch.crates-io]
+reqwest = { path = "forks/reqwest" }

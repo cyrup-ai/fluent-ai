@@ -11,13 +11,15 @@ use crate::chat::templates::core::{ChatTemplate, TemplateError, TemplateInfo, Te
 /// Template manager for storing and managing templates
 #[derive(Debug)]
 pub struct TemplateManager {
-    templates: SkipMap<Arc<str>, ChatTemplate>}
+    templates: SkipMap<Arc<str>, ChatTemplate>,
+}
 
 impl TemplateManager {
     /// Create a new template manager
     pub fn new() -> Self {
         Self {
-            templates: SkipMap::new()}
+            templates: SkipMap::new(),
+        }
     }
 
     /// Store a template
@@ -34,7 +36,8 @@ impl TemplateManager {
             .get(name)
             .map(|entry| entry.value().clone())
             .ok_or_else(|| TemplateError::NotFound {
-                name: Arc::from(name)})
+                name: Arc::from(name),
+            })
     }
 
     /// Delete a template
@@ -43,7 +46,8 @@ impl TemplateManager {
             .remove(name)
             .map(|_| ())
             .ok_or_else(|| TemplateError::NotFound {
-                name: Arc::from(name)})
+                name: Arc::from(name),
+            })
     }
 
     /// List all template names

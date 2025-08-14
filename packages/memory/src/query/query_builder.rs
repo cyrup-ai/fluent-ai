@@ -24,7 +24,8 @@ pub struct QueryBuilder {
     includes: Vec<String>,
 
     /// Exclude fields
-    excludes: Vec<String>}
+    excludes: Vec<String>,
+}
 
 /// Query clause
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,18 +34,21 @@ pub enum QueryClause {
     Text {
         field: String,
         query: String,
-        fuzzy: bool},
+        fuzzy: bool,
+    },
 
     /// Exact match
     Exact {
         field: String,
-        value: serde_json::Value},
+        value: serde_json::Value,
+    },
 
     /// Range query
     Range {
         field: String,
         min: Option<serde_json::Value>,
-        max: Option<serde_json::Value>},
+        max: Option<serde_json::Value>,
+    },
 
     /// Memory type filter
     MemoryType(Vec<MemoryTypeEnum>),
@@ -55,7 +59,9 @@ pub enum QueryClause {
     /// Nested query
     Nested {
         operator: LogicalOperator,
-        clauses: Vec<QueryClause>}}
+        clauses: Vec<QueryClause>,
+    },
+}
 
 /// Logical operators
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -63,7 +69,8 @@ pub enum QueryClause {
 pub enum LogicalOperator {
     And,
     Or,
-    Not}
+    Not,
+}
 
 /// Sort options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,14 +79,16 @@ pub struct SortOptions {
     pub field: String,
 
     /// Sort direction
-    pub direction: SortDirection}
+    pub direction: SortDirection,
+}
 
 /// Sort direction
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SortDirection {
     Asc,
-    Desc}
+    Desc,
+}
 
 impl QueryBuilder {
     /// Create a new query builder
@@ -92,7 +101,8 @@ impl QueryBuilder {
         self.clauses.push(QueryClause::Text {
             field: field.into(),
             query: query.into(),
-            fuzzy: false});
+            fuzzy: false,
+        });
         self
     }
 
@@ -101,7 +111,8 @@ impl QueryBuilder {
         self.clauses.push(QueryClause::Text {
             field: field.into(),
             query: query.into(),
-            fuzzy: true});
+            fuzzy: true,
+        });
         self
     }
 
@@ -109,7 +120,8 @@ impl QueryBuilder {
     pub fn exact(mut self, field: impl Into<String>, value: serde_json::Value) -> Self {
         self.clauses.push(QueryClause::Exact {
             field: field.into(),
-            value});
+            value,
+        });
         self
     }
 
@@ -123,7 +135,8 @@ impl QueryBuilder {
         self.clauses.push(QueryClause::Range {
             field: field.into(),
             min,
-            max});
+            max,
+        });
         self
     }
 
@@ -136,7 +149,8 @@ impl QueryBuilder {
     /// Check if field exists
     pub fn exists(mut self, field: impl Into<String>) -> Self {
         self.clauses.push(QueryClause::Exists {
-            field: field.into()});
+            field: field.into(),
+        });
         self
     }
 
@@ -144,7 +158,8 @@ impl QueryBuilder {
     pub fn and(mut self, builder: QueryBuilder) -> Self {
         self.clauses.push(QueryClause::Nested {
             operator: LogicalOperator::And,
-            clauses: builder.clauses});
+            clauses: builder.clauses,
+        });
         self
     }
 
@@ -152,7 +167,8 @@ impl QueryBuilder {
     pub fn or(mut self, builder: QueryBuilder) -> Self {
         self.clauses.push(QueryClause::Nested {
             operator: LogicalOperator::Or,
-            clauses: builder.clauses});
+            clauses: builder.clauses,
+        });
         self
     }
 
@@ -160,7 +176,8 @@ impl QueryBuilder {
     pub fn not(mut self, builder: QueryBuilder) -> Self {
         self.clauses.push(QueryClause::Nested {
             operator: LogicalOperator::Not,
-            clauses: builder.clauses});
+            clauses: builder.clauses,
+        });
         self
     }
 
@@ -168,7 +185,8 @@ impl QueryBuilder {
     pub fn sort(mut self, field: impl Into<String>, direction: SortDirection) -> Self {
         self.sort = Some(SortOptions {
             field: field.into(),
-            direction});
+            direction,
+        });
         self
     }
 
@@ -204,7 +222,8 @@ impl QueryBuilder {
             limit: self.limit,
             offset: self.offset,
             includes: self.includes,
-            excludes: self.excludes}
+            excludes: self.excludes,
+        }
     }
 }
 
@@ -227,7 +246,8 @@ pub struct BuiltQuery {
     pub includes: Vec<String>,
 
     /// Exclude fields
-    pub excludes: Vec<String>}
+    pub excludes: Vec<String>,
+}
 
 impl BuiltQuery {
     /// Convert to SQL WHERE clause (simplified)
@@ -277,7 +297,8 @@ fn clause_to_sql(clause: &QueryClause) -> Result<String> {
         QueryClause::Text {
             field,
             query,
-            fuzzy} => {
+            fuzzy,
+        } => {
             if *fuzzy {
                 Ok(format!("{} LIKE '%{}%'", field, query))
             } else {
@@ -304,5 +325,6 @@ fn value_to_sql(value: &serde_json::Value) -> String {
         serde_json::Value::String(s) => format!("'{}'", s),
         serde_json::Value::Number(n) => n.to_string(),
         serde_json::Value::Bool(b) => b.to_string(),
-        _ => "NULL".to_string()}
+        _ => "NULL".to_string(),
+    }
 }

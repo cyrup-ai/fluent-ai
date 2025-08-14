@@ -4,9 +4,10 @@
 //! for the MCP bridge with zero allocation patterns and blazing-fast
 //! performance.
 
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 use serde_json::Value;
-use std::time::{Duration, Instant};
 use tracing::{debug, error, warn};
 
 use super::core::McpBridge;

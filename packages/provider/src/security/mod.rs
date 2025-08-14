@@ -15,8 +15,8 @@ pub mod rotation;
 
 pub use audit::{AuditLogger, CredentialEvent, SecurityEvent};
 pub use credentials::{
-    CredentialConfig, CredentialManager, SecureCredential, 
-    CredentialSource, CredentialStatistics, CredentialMetadata
+    CredentialConfig, CredentialManager, CredentialMetadata, CredentialSource,
+    CredentialStatistics, SecureCredential,
 };
 pub use encryption::EncryptionEngine;
 pub use rotation::{KeyRotationScheduler, RotationPolicy};
@@ -44,7 +44,8 @@ pub enum SecurityError {
     ValidationError { message: String },
 
     #[error("Access denied: {reason}")]
-    AccessDenied { reason: String }}
+    AccessDenied { reason: String },
+}
 
 /// Result type for security operations
 pub type SecurityResult<T> = Result<T, SecurityError>;

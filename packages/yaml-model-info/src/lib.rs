@@ -12,7 +12,7 @@
 //! ## Usage
 //! ```rust
 //! use yaml_model_info::{download, models::{YamlProvider, YamlModel}};
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Download YAML data with intelligent caching
@@ -44,22 +44,24 @@ pub mod download;
 pub mod models;
 
 // Re-export main types for convenience
-pub use models::{YamlProvider, YamlModel};
+pub use models::{YamlModel, YamlProvider};
 
 /// Simple utility function to load and parse YAML data
-/// 
+///
 /// This function combines download and parsing in a single operation.
 /// Uses yyaml exclusively with zero fallback logic.
-/// 
+///
 /// # Performance
 /// - First call: Downloads and caches YAML data, then parses
 /// - Subsequent calls: Uses cached data with ETag validation
 /// - Zero allocation patterns where possible
-/// 
+///
 /// # Safety
 /// All operations use proper error handling with no unwrap/expect calls.
 #[inline(always)]
-pub async fn load_yaml_data<P: AsRef<std::path::Path>>(cache_dir: P) -> Result<Vec<YamlProvider>, Box<dyn std::error::Error>> {
+pub async fn load_yaml_data<P: AsRef<std::path::Path>>(
+    cache_dir: P,
+) -> Result<Vec<YamlProvider>, Box<dyn std::error::Error>> {
     let yaml_content = download::download_yaml_with_cache(cache_dir).await?;
     let providers: Vec<YamlProvider> = yyaml::from_str(&yaml_content)?;
     Ok(providers)

@@ -8,11 +8,13 @@ use crossbeam_utils::CachePadded;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{MapAccess, Visitor},
-    ser::SerializeStruct};
+    ser::SerializeStruct,
+};
 use uuid::Uuid;
 
 use super::types::{
-    BaseMemory, MemoryContent, MemoryError, MemoryResult, MemoryTypeEnum, RelationshipType};
+    BaseMemory, MemoryContent, MemoryError, MemoryResult, MemoryTypeEnum, RelationshipType,
+};
 
 /// High-performance memory node with concurrent design
 ///
@@ -37,7 +39,8 @@ pub struct MemoryNode {
     pub relationships: Arc<SkipMap<Uuid, MemoryRelationshipEntry>>,
 
     /// Atomic access statistics for concurrent monitoring
-    pub stats: Arc<CachePadded<MemoryNodeStats>>}
+    pub stats: Arc<CachePadded<MemoryNodeStats>>,
+}
 
 /// SIMD-aligned embedding vector for optimal performance
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,7 +49,8 @@ pub struct AlignedEmbedding {
     /// Embedding vector data aligned for SIMD operations
     pub data: Vec<f32>,
     /// Vector dimension for validation
-    pub dimension: usize}
+    pub dimension: usize,
+}
 
 impl AlignedEmbedding {
     /// Create new aligned embedding with SIMD optimization
@@ -116,7 +120,8 @@ pub struct MemoryNodeMetadata {
     /// Custom metadata with zero-copy keys
     pub custom: HashMap<Arc<str>, Arc<serde_json::Value>>,
     /// Version for optimistic concurrency control
-    pub version: u64}
+    pub version: u64,
+}
 
 impl MemoryNodeMetadata {
     /// Create new metadata with default values
@@ -127,7 +132,8 @@ impl MemoryNodeMetadata {
             keywords: Vec::new(),
             tags: Vec::new(),
             custom: HashMap::new(),
-            version: 1}
+            version: 1,
+        }
     }
 
     /// Add keyword with zero-copy sharing
@@ -171,7 +177,8 @@ pub struct MemoryNodeStats {
     /// Relationship access count
     pub relationship_count: AtomicUsize,
     /// Last access timestamp (as nanos since UNIX_EPOCH)
-    pub last_access_nanos: AtomicU64}
+    pub last_access_nanos: AtomicU64,
+}
 
 impl MemoryNodeStats {
     /// Create new stats with zero counters
@@ -182,7 +189,8 @@ impl MemoryNodeStats {
             read_count: AtomicU64::new(0),
             write_count: AtomicU64::new(0),
             relationship_count: AtomicUsize::new(0),
-            last_access_nanos: AtomicU64::new(0)}
+            last_access_nanos: AtomicU64::new(0),
+        }
     }
 
     /// Record read access atomically
@@ -257,7 +265,8 @@ pub struct MemoryRelationshipEntry {
     /// Relationship strength (0.0 to 1.0)
     pub strength: f32,
     /// Creation timestamp
-    pub created_at: SystemTime}
+    pub created_at: SystemTime,
+}
 
 impl MemoryRelationshipEntry {
     /// Create new relationship entry
@@ -267,7 +276,8 @@ impl MemoryRelationshipEntry {
             target_id,
             relationship_type,
             strength: strength.clamp(0.0, 1.0),
-            created_at: SystemTime::now()}
+            created_at: SystemTime::now(),
+        }
     }
 }
 
@@ -283,7 +293,8 @@ impl MemoryNode {
             embedding: None,
             metadata: Arc::new(CachePadded::new(MemoryNodeMetadata::new())),
             relationships: Arc::new(SkipMap::new()),
-            stats: Arc::new(CachePadded::new(MemoryNodeStats::new()))}
+            stats: Arc::new(CachePadded::new(MemoryNodeStats::new())),
+        }
     }
 
     /// Create memory node with specific UUID
@@ -296,7 +307,8 @@ impl MemoryNode {
             embedding: None,
             metadata: Arc::new(CachePadded::new(MemoryNodeMetadata::new())),
             relationships: Arc::new(SkipMap::new()),
-            stats: Arc::new(CachePadded::new(MemoryNodeStats::new()))}
+            stats: Arc::new(CachePadded::new(MemoryNodeStats::new())),
+        }
     }
 
     /// Get node ID
@@ -479,9 +491,9 @@ impl MemoryNode {
 
         match (&self.embedding, &other.embedding) {
             (Some(embedding1), Some(embedding2)) => embedding1.cosine_similarity(embedding2),
-            _ => None}
+            _ => None,
+        }
     }
-
 }
 
 impl Serialize for MemoryNode {
@@ -505,7 +517,8 @@ impl<'de> Deserialize<'de> for MemoryNode {
         #[serde(field_identifier, rename_all = "snake_case")]
         enum Field {
             BaseMemory,
-            Embedding}
+            Embedding,
+        }
 
         struct MemoryNodeVisitor;
 
@@ -549,7 +562,8 @@ impl<'de> Deserialize<'de> for MemoryNode {
                     embedding,
                     metadata: Arc::new(CachePadded::new(MemoryNodeMetadata::new())),
                     relationships: Arc::new(SkipMap::new()),
-                    stats: Arc::new(CachePadded::new(MemoryNodeStats::new()))})
+                    stats: Arc::new(CachePadded::new(MemoryNodeStats::new())),
+                })
             }
         }
 
@@ -573,4 +587,3 @@ impl std::hash::Hash for MemoryNode {
         self.base_memory.id.hash(state);
     }
 }
-

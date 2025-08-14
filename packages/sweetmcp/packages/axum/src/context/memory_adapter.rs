@@ -1,13 +1,13 @@
 //! Memory system adapter for context API
 //! This module provides integration between MCP context API and the sophisticated memory system
 
+use std::sync::Arc;
+
 use anyhow::{Result, anyhow};
 use futures::StreamExt;
 use serde_json::Value;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
 use sweetmcp_memory::{MemoryConfig, MemoryManager, MemoryNode, MemoryType};
+use tokio::sync::RwLock;
 
 /// Adapter that bridges MCP context API with the memory system
 pub struct MemoryContextAdapter {

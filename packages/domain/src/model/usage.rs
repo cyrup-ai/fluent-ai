@@ -15,7 +15,8 @@ pub struct Usage {
     /// Number of tokens in the completion
     pub completion_tokens: u32,
     /// Total tokens used (prompt + completion)
-    pub total_tokens: u32}
+    pub total_tokens: u32,
+}
 
 impl Usage {
     /// Creates a new `Usage` instance with the given token counts
@@ -24,7 +25,8 @@ impl Usage {
         Self {
             prompt_tokens,
             completion_tokens,
-            total_tokens: prompt_tokens + completion_tokens}
+            total_tokens: prompt_tokens + completion_tokens,
+        }
     }
 
     /// Creates a new `Usage` instance with zero tokens

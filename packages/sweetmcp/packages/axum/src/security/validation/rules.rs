@@ -4,9 +4,10 @@
 //! with zero allocation patterns, blazing-fast SIMD acceleration, and production-ready
 //! security validation for all external inputs.
 
-use crate::security::validation::core::*;
 use memchr::memmem;
 use url::Url;
+
+use crate::security::validation::core::*;
 
 /// Validation rule trait for implementing custom validation logic
 pub trait ValidationRule: Send + Sync {

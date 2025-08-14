@@ -1,23 +1,25 @@
 //! Concurrency primitives and utilities
 
 use std::sync::Arc;
-
-use fluent_ai_async::{AsyncTask, AsyncStream};
 use std::sync::Mutex;
+
 use crossbeam_channel::{bounded, unbounded};
+use fluent_ai_async::{AsyncStream, AsyncTask};
 
 use crate::domain::core::ChannelError;
 
 /// A multi-producer, single-consumer channel for sending values between tasks
 pub struct Channel<T> {
     sender: crossbeam_channel::Sender<T>,
-    receiver: Arc<Mutex<crossbeam_channel::Receiver<T>>>}
+    receiver: Arc<Mutex<crossbeam_channel::Receiver<T>>>,
+}
 
 impl<T> Clone for Channel<T> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
-            receiver: self.receiver.clone()}
+            receiver: self.receiver.clone(),
+        }
     }
 }
 
@@ -31,7 +33,8 @@ impl<T: Send + 'static> Channel<T> {
         };
         Self {
             sender,
-            receiver: Arc::new(Mutex::new(receiver))}
+            receiver: Arc::new(Mutex::new(receiver)),
+        }
     }
 
     /// Send a value into the channel
@@ -39,9 +42,7 @@ impl<T: Send + 'static> Channel<T> {
         let sender = self.sender.clone();
         AsyncStream::with_channel(|stream_sender| {
             std::thread::spawn(move || {
-                let result = sender
-                    .send(value)
-                    .map_err(|_| ChannelError::SendError);
+                let result = sender.send(value).map_err(|_| ChannelError::SendError);
                 let _ = stream_sender.send(result);
             });
         })
@@ -85,21 +86,21 @@ impl<T: Send + 'static> Channel<T> {
 /// A oneshot channel for sending a single value between tasks
 pub struct OneshotChannel<T> {
     sender: Option<crossbeam_channel::Sender<T>>,
-    receiver: crossbeam_channel::Receiver<T>}
+    receiver: crossbeam_channel::Receiver<T>,
+}
 
 impl<T> OneshotChannel<T> {
     /// Create a new oneshot channel
     pub fn new() -> Self {
         let (sender, receiver) = bounded(1);
-        Self { 
-            sender: Some(sender), 
-            receiver 
+        Self {
+            sender: Some(sender),
+            receiver,
         }
     }
 }
 
 impl<T: Send + 'static> OneshotChannel<T> {
-
     /// Send a value through the channel
     pub fn send(mut self, value: T) -> Result<(), T> {
         if let Some(sender) = self.sender.take() {

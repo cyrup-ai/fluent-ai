@@ -160,5 +160,6 @@ fn create_temperature_dispatch() -> TemperatureDispatch {
         #[cfg(not(target_arch = "aarch64"))]
         neon: None,
 
-        scalar: scalar_temperature_scale}
+        scalar: scalar_temperature_scale,
+    }
 }

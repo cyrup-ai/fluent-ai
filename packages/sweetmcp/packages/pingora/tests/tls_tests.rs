@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod certificate_parsing_tests {
-    use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
     use std::time::SystemTime;
+
+    use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
     use sweetmcp::tls::{CertificateUsage, TlsManager};
 
     // Generate a valid test certificate that mimics Let's Encrypt structure

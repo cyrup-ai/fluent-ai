@@ -33,43 +33,44 @@ pub mod templates;
 
 // Re-export types with corrected names to avoid ambiguous glob re-exports
 pub use commands::{
-    CommandExecutor as CandleCommandExecutor, 
-    CommandRegistry as CandleCommandRegistry, 
-    ImmutableChatCommand as CandleImmutableChatCommand
+    CommandExecutor as CandleCommandExecutor, CommandRegistry as CandleCommandRegistry,
+    ImmutableChatCommand as CandleImmutableChatCommand,
 };
 pub use config::{CandleChatConfig, CandlePersonalityConfig};
-pub use conversation::{CandleConversationEvent as CandleConversation, ConversationImpl as CandleConversationImpl};
+pub use conversation::{
+    CandleConversationEvent as CandleConversation, ConversationImpl as CandleConversationImpl,
+};
 pub use export::{ExportData as CandleExportData, ExportFormat as CandleExportFormat};
-pub use formatting::{FormatStyle as CandleFormatStyle, StreamingMessageFormatter as CandleStreamingMessageFormatter};
-pub use integrations::{IntegrationConfig as CandleIntegrationConfig, IntegrationManager as CandleIntegrationManager};
-pub use r#loop::{CandleChatLoop};
+pub use formatting::{
+    FormatStyle as CandleFormatStyle, StreamingMessageFormatter as CandleStreamingMessageFormatter,
+};
+pub use integrations::{
+    IntegrationConfig as CandleIntegrationConfig, IntegrationManager as CandleIntegrationManager,
+};
 pub use macros::{
-    MacroAction as CandleMacroAction, 
-    MacroSystem as CandleMacroSystem,
-    ChatMacro as CandleChatMacro,
-    MacroExecutionConfig as CandleMacroExecutionConfig,
-    MacroMetadata as CandleMacroMetadata,
-    MacroSystemError as CandleMacroSystemError
+    ChatMacro as CandleChatMacro, MacroAction as CandleMacroAction,
+    MacroExecutionConfig as CandleMacroExecutionConfig, MacroMetadata as CandleMacroMetadata,
+    MacroSystem as CandleMacroSystem, MacroSystemError as CandleMacroSystemError,
 };
 pub use message::message_processing::{
-    process_message as candle_process_message, sanitize_content as candle_sanitize_content, 
-    validate_message as candle_validate_message, validate_message_sync as candle_validate_message_sync};
-pub use message::types::{CandleMessage, CandleMessageChunk, CandleMessageRole};
-pub use realtime::{RealTimeSystem as CandleRealTimeSystem};
-pub use search::{
-    ChatSearchIndex as CandleChatSearchIndex, 
-    SearchQuery as CandleSearchQuery,
-    SearchStatistics as CandleSearchStatistics,
-    CandleConversationTagger,
-    CandleConversationTag,
-    CandleTaggingStatistics,
-    HistoryExporter as CandleHistoryExporter,
-    CandleEnhancedHistoryManager,
-    SearchExporter as CandleSearchExporter,
-    QueryProcessor as CandleQueryProcessor,
-    ResultRanker as CandleResultRanker
+    process_message as candle_process_message, sanitize_content as candle_sanitize_content,
+    validate_message as candle_validate_message,
+    validate_message_sync as candle_validate_message_sync,
 };
-pub use templates::{ChatTemplate as CandleChatTemplate, TemplateManager as CandleTemplateManager, TemplateCategory as CandleTemplateCategory};
+pub use message::types::{CandleMessage, CandleMessageChunk, CandleMessageRole};
+pub use r#loop::CandleChatLoop;
+pub use realtime::RealTimeSystem as CandleRealTimeSystem;
+pub use search::{
+    CandleConversationTag, CandleConversationTagger, CandleEnhancedHistoryManager,
+    CandleTaggingStatistics, ChatSearchIndex as CandleChatSearchIndex,
+    HistoryExporter as CandleHistoryExporter, QueryProcessor as CandleQueryProcessor,
+    ResultRanker as CandleResultRanker, SearchExporter as CandleSearchExporter,
+    SearchQuery as CandleSearchQuery, SearchStatistics as CandleSearchStatistics,
+};
+pub use templates::{
+    ChatTemplate as CandleChatTemplate, TemplateCategory as CandleTemplateCategory,
+    TemplateManager as CandleTemplateManager,
+};
 
 // ============================================================================
 // TYPE MIGRATION MAPPING
@@ -82,7 +83,7 @@ pub use templates::{ChatTemplate as CandleChatTemplate, TemplateManager as Candl
 //
 // Core Message Types:
 // - Message → CandleMessage
-// - MessageChunk → CandleMessageChunk  
+// - MessageChunk → CandleMessageChunk
 // - MessageRole → CandleMessageRole
 //
 // Command System Types:

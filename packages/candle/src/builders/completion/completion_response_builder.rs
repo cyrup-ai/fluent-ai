@@ -1,9 +1,14 @@
 use std::borrow::Cow;
 use std::sync::Arc;
+
 use fluent_ai_async::AsyncStream;
+
 use crate::domain::{
-    completion::{CandleCompletionResponse as CompletionResponse, CandleCompactCompletionResponse as CompactCompletionResponse},
-    model::{CandleUsage as Usage},
+    completion::{
+        CandleCompactCompletionResponse as CompactCompletionResponse,
+        CandleCompletionResponse as CompletionResponse,
+    },
+    model::CandleUsage as Usage,
 };
 
 /// Builder for completion responses
@@ -146,18 +151,16 @@ impl CompactCompletionResponseBuilder {
     /// Build the compact response
     pub fn build(self) -> AsyncStream<CompactCompletionResponse> {
         AsyncStream::with_channel(move |sender| {
-            {
-                let response = CompactCompletionResponse {
-                    content: self.content.unwrap_or_else(|| Arc::from("")),
-                    model: self.model.unwrap_or_else(|| Arc::from("unknown")),
-                    provider: self.provider.unwrap_or_else(|| Arc::from("unknown")),
-                    tokens_used: self.tokens_used,
-                    finish_reason: self.finish_reason.unwrap_or_else(|| Arc::from("stop")),
-                    response_time_ms: self.response_time_ms,
-                };
+            let response = CompactCompletionResponse {
+                content: self.content.unwrap_or_else(|| Arc::from("")),
+                model: self.model.unwrap_or_else(|| Arc::from("unknown")),
+                provider: self.provider.unwrap_or_else(|| Arc::from("unknown")),
+                tokens_used: self.tokens_used,
+                finish_reason: self.finish_reason.unwrap_or_else(|| Arc::from("stop")),
+                response_time_ms: self.response_time_ms,
+            };
 
-                let _ = sender.send(response);
-            }
+            let _ = sender.send(response);
         })
     }
 }

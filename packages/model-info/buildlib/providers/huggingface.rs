@@ -1,4 +1,5 @@
-use super::{ModelData, ProviderBuilder, HuggingFaceModel};
+use super::response_types::HuggingFaceModel;
+use super::{ModelData, ProviderBuilder};
 
 /// HuggingFace provider implementation with dynamic API fetching
 /// API must be available - no static data
@@ -20,9 +21,9 @@ impl ProviderBuilder for HuggingFaceProvider {
         "/api/models?filter=text-generation&sort=downloads&direction=-1&limit=50"
     }
 
-    fn api_key_env_var(&self) -> Option<&'static str> {
+    fn api_key_env_vars(&self) -> cyrup_sugars::ZeroOneOrMany<&'static str> {
         // HuggingFace API is public for model listing
-        None
+        cyrup_sugars::ZeroOneOrMany::None
     }
 
     fn jsonpath_selector(&self) -> &'static str {
@@ -52,7 +53,7 @@ fn huggingface_model_to_data(model: &HuggingFaceModel) -> ModelData {
         id if id.contains("qwen") => 32768,
         _ => 4096, // Default context length
     };
-    
+
     // HuggingFace models are typically free/open-source (pricing 0.0)
     // No thinking models on HuggingFace currently
     (model.id.clone(), context_length, 0.0, 0.0, false, None)

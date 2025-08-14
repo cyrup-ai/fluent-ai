@@ -1,18 +1,18 @@
 //! Core agent data structures with automatic memory tool injection
 
-use std::sync::{Arc, atomic::AtomicUsize};
+use std::sync::{atomic::AtomicUsize, Arc};
 
 use crossbeam_utils::CachePadded;
-use serde_json::Value;
 use fluent_ai_async::AsyncStream;
+use serde_json::Value;
 
-use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
 use crate::domain::context::CandleDocument as Document;
 use crate::domain::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
 use crate::domain::memory::manager::MemoryConfig;
-use crate::domain::memory::{Memory, Error as MemoryError, MemoryTool, MemoryToolError};
+use crate::domain::memory::{Error as MemoryError, Memory, MemoryTool, MemoryToolError};
 use crate::domain::model::CandleModel as Model;
 use crate::domain::tool::CandleMcpToolData as McpToolData;
+use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
 
 /// Maximum number of tools per agent (const generic default)
 pub const MAX_AGENT_TOOLS: usize = 32;
@@ -38,7 +38,8 @@ pub enum AgentError {
     Config(String),
     /// Agent initialization error
     #[error("Agent initialization failed: {0}")]
-    InitializationError(String)}
+    InitializationError(String),
+}
 
 /// Agent data structure with automatic memory tool injection
 #[derive(Debug, Clone)]
@@ -60,7 +61,8 @@ pub struct Agent {
     /// Maximum number of tokens to generate in responses
     pub max_tokens: Option<u64>,
     /// Additional model-specific parameters as flexible JSON
-    pub additional_params: Option<Value>}
+    pub additional_params: Option<Value>,
+}
 
 impl Agent {
     /// Create a new agent with zero-allocation memory tool injection
@@ -87,7 +89,8 @@ impl Agent {
                 // Convert comprehensive config to Memory::new() format
                 let memory_config = MemoryConfig {
                     database_url: comprehensive_config.database.connection_string.to_string(),
-                    embedding_dimension: comprehensive_config.vector_store.dimension};
+                    embedding_dimension: comprehensive_config.vector_store.dimension,
+                };
                 let mut memory_stream = Memory::new(memory_config);
                 // Use streaming-only pattern to get the Memory instance
                 let memory = match memory_stream.try_next() {
@@ -113,7 +116,8 @@ impl Agent {
                     memory_tool: Some(memory_tool),
                     temperature: None,
                     max_tokens: None,
-                    additional_params: None};
+                    additional_params: None,
+                };
 
                 let _ = sender.send(Ok(agent));
             });
@@ -145,7 +149,8 @@ impl Agent {
                 // Convert comprehensive config to Memory::new() format
                 let memory_cfg = MemoryConfig {
                     database_url: memory_config.database.connection_string.to_string(),
-                    embedding_dimension: memory_config.vector_store.dimension};
+                    embedding_dimension: memory_config.vector_store.dimension,
+                };
                 let mut memory_stream = Memory::new(memory_cfg);
                 // Use streaming-only pattern to get the Memory instance
                 let memory = match memory_stream.try_next() {
@@ -171,7 +176,8 @@ impl Agent {
                     memory_tool: Some(memory_tool),
                     temperature: None,
                     max_tokens: None,
-                    additional_params: None};
+                    additional_params: None,
+                };
 
                 let _ = sender.send(Ok(agent));
             });
@@ -212,7 +218,8 @@ impl Agent {
                     memory_tool: Some(memory_tool),
                     temperature: None,
                     max_tokens: None,
-                    additional_params: None};
+                    additional_params: None,
+                };
 
                 let _ = sender.send(Ok(agent));
             });

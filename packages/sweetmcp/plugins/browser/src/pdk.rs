@@ -88,6 +88,7 @@ pub mod types {
         extism_pdk::ToBytes,
     )]
     #[encoding(Json)]
+    #[allow(dead_code)]
     pub struct BlobResourceContents {
         /// A base64-encoded string representing the binary data of the item.
         #[serde(rename = "blob")]
@@ -295,6 +296,7 @@ pub mod types {
         extism_pdk::ToBytes,
     )]
     #[encoding(Json)]
+    #[allow(dead_code)]
     pub struct TextResourceContents {
         /// The MIME type of this resource, if known.
         #[serde(rename = "mimeType")]

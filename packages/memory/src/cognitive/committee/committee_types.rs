@@ -8,9 +8,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use arrayvec::ArrayVec;
-
 use arc_swap::ArcSwap;
+use arrayvec::ArrayVec;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use smallvec::SmallVec;
@@ -179,7 +178,8 @@ pub enum ModelType {
     /// Llama 3 - Meta's next generation model
     Llama3 = 8,
     /// GPT-4 Turbo - enhanced reasoning with faster performance
-    Gpt4Turbo = 9}
+    Gpt4Turbo = 9,
+}
 
 /// Model quality tier for evaluation weighting (user-configurable thresholds)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -198,7 +198,8 @@ pub enum QualityTier {
     /// Standard quality: similar to High
     Standard = 5,
     /// Experimental quality: draft level
-    Experimental = 6}
+    Experimental = 6,
+}
 
 impl QualityTier {
     /// Get quality threshold (hardcoded algorithm, user-configurable via config)
@@ -224,7 +225,8 @@ pub struct HealthStatus {
     pub total_requests: u64,
     pub failed_requests: u64,
     pub error_rate: f64,
-    pub avg_response_time: Duration}
+    pub avg_response_time: Duration,
+}
 
 impl Default for HealthStatus {
     fn default() -> Self {
@@ -234,7 +236,8 @@ impl Default for HealthStatus {
             total_requests: 0,
             failed_requests: 0,
             error_rate: 0.0,
-            avg_response_time: Duration::from_millis(0)}
+            avg_response_time: Duration::from_millis(0),
+        }
     }
 }
 
@@ -245,7 +248,8 @@ pub struct ModelMetrics {
     pub total_evaluation_time: Duration,
     pub average_score: f64,
     pub success_rate: f64,
-    pub last_update: Instant}
+    pub last_update: Instant,
+}
 
 impl Default for ModelMetrics {
     fn default() -> Self {
@@ -254,7 +258,8 @@ impl Default for ModelMetrics {
             total_evaluation_time: Duration::from_millis(0),
             average_score: 0.0,
             success_rate: 1.0,
-            last_update: Instant::now()}
+            last_update: Instant::now(),
+        }
     }
 }
 
@@ -272,7 +277,8 @@ pub struct EvaluationMetrics {
     /// Quality of reasoning provided by evaluators
     pub reasoning_quality: f64,
     /// Whether evaluation completed within timeout
-    pub completed_on_time: bool}
+    pub completed_on_time: bool,
+}
 
 impl Default for EvaluationMetrics {
     fn default() -> Self {
@@ -282,7 +288,8 @@ impl Default for EvaluationMetrics {
             average_response_time: Duration::from_millis(0),
             score_variance: 0.0,
             reasoning_quality: 0.0,
-            completed_on_time: true}
+            completed_on_time: true,
+        }
     }
 }
 
@@ -297,7 +304,8 @@ impl ModelType {
             | Self::Gpt35Turbo
             | Self::Mixtral8x7B
             | Self::Llama270B
-            | Self::Llama3 => QualityTier::Good}
+            | Self::Llama3 => QualityTier::Good,
+        }
     }
 
     /// Get zero-allocation model identifier for API calls
@@ -313,7 +321,8 @@ impl ModelType {
             Self::GeminiPro => "gemini-pro",
             Self::Mixtral8x7B => "mixtral-8x7b-instruct",
             Self::Llama270B => "llama-2-70b-chat",
-            Self::Llama3 => "llama-3"}
+            Self::Llama3 => "llama-3",
+        }
     }
 
     /// Get provider routing information
@@ -324,7 +333,8 @@ impl ModelType {
             Self::Claude3Sonnet | Self::Claude3Haiku | Self::Claude3Opus => "anthropic",
             Self::GeminiPro => "google",
             Self::Mixtral8x7B => "mistral",
-            Self::Llama270B | Self::Llama3 => "meta"}
+            Self::Llama270B | Self::Llama3 => "meta",
+        }
     }
 
     /// Get relative model strength for consensus weighting
@@ -340,7 +350,8 @@ impl ModelType {
             Self::Llama270B => 0.75,
             Self::Llama3 => 0.72,
             Self::Claude3Haiku => 0.65,
-            Self::Gpt35Turbo => 0.55}
+            Self::Gpt35Turbo => 0.55,
+        }
     }
 
     /// Get expected latency for timeout calculations
@@ -356,7 +367,8 @@ impl ModelType {
             Self::Mixtral8x7B => 12000,
             Self::Llama270B => 15000,
             Self::Llama3 => 14000,
-            Self::Claude3Opus => 18000}
+            Self::Claude3Opus => 18000,
+        }
     }
 
     /// Get cost factor for budget optimization
@@ -372,7 +384,8 @@ impl ModelType {
             Self::Claude3Sonnet => 6.8,
             Self::Llama270B => 12.5,
             Self::Llama3 => 11.0,
-            Self::Claude3Opus => 18.0}
+            Self::Claude3Opus => 18.0,
+        }
     }
 
     /// Check if model supports function calling
@@ -380,7 +393,8 @@ impl ModelType {
     pub const fn supports_function_calling(self) -> bool {
         match self {
             Self::Gpt4O | Self::Gpt35Turbo | Self::Claude3Opus => true,
-            _ => false}
+            _ => false,
+        }
     }
 
     /// Get maximum context window size
@@ -394,7 +408,8 @@ impl ModelType {
             Self::GeminiPro => 32768,
             Self::Mixtral8x7B => 32768,
             Self::Llama270B => 4096,
-            Self::Llama3 => 8192}
+            Self::Llama3 => 8192,
+        }
     }
 
     /// Get human-readable display name for UI
@@ -410,7 +425,8 @@ impl ModelType {
             Self::GeminiPro => "Gemini Pro",
             Self::Mixtral8x7B => "Mixtral 8x7B",
             Self::Llama270B => "Llama 2 70B",
-            Self::Llama3 => "Llama 3"}
+            Self::Llama3 => "Llama 3",
+        }
     }
 }
 
@@ -425,7 +441,8 @@ pub struct Model {
     pub rate_limit_per_minute: u32,
     pub provider: Arc<dyn fluent_ai_domain::completion::CompletionBackend>,
     pub health_status: Arc<RwLock<HealthStatus>>,
-    pub metrics: Arc<RwLock<ModelMetrics>>}
+    pub metrics: Arc<RwLock<ModelMetrics>>,
+}
 
 impl Model {
     /// Create new model configuration with optimal defaults
@@ -445,10 +462,12 @@ impl Model {
                 "openai" => 3500,
                 "anthropic" => 4000,
                 "google" => 1500,
-                _ => 1000},
+                _ => 1000,
+            },
             provider,
             health_status: Arc::new(RwLock::new(HealthStatus::default())),
-            metrics: Arc::new(RwLock::new(ModelMetrics::default()))}
+            metrics: Arc::new(RwLock::new(ModelMetrics::default())),
+        }
     }
 
     /// Set custom base URL with zero allocation
@@ -487,7 +506,8 @@ pub struct EvaluationConfig {
     /// Enable aggressive caching for performance
     pub enable_caching: bool,
     /// Quality score minimum threshold
-    pub quality_threshold: f64}
+    pub quality_threshold: f64,
+}
 
 impl EvaluationConfig {
     /// Create new configuration with optimal defaults
@@ -499,7 +519,8 @@ impl EvaluationConfig {
             consensus_threshold: 0.72,
             max_concurrent_evaluations: 6,
             enable_caching: true,
-            quality_threshold: 0.65}
+            quality_threshold: 0.65,
+        }
     }
 
     /// Add model to committee with validation
@@ -507,11 +528,13 @@ impl EvaluationConfig {
     pub fn add_model(&mut self, model: ModelType) -> Result<(), CommitteeError> {
         if self.models.is_full() {
             return Err(CommitteeError::ConfigurationError {
-                message: "Maximum committee size exceeded".into()});
+                message: "Maximum committee size exceeded".into(),
+            });
         }
         if self.models.contains(&model) {
             return Err(CommitteeError::ConfigurationError {
-                message: "Model already in committee".into()});
+                message: "Model already in committee".into(),
+            });
         }
         self.models.push(model);
         Ok(())
@@ -522,19 +545,23 @@ impl EvaluationConfig {
     pub fn validate(&self) -> Result<(), CommitteeError> {
         if self.models.is_empty() {
             return Err(CommitteeError::ConfigurationError {
-                message: "At least one model required".into()});
+                message: "At least one model required".into(),
+            });
         }
         if !(0.5..=1.0).contains(&self.consensus_threshold) {
             return Err(CommitteeError::ConfigurationError {
-                message: "Consensus threshold must be between 0.5 and 1.0".into()});
+                message: "Consensus threshold must be between 0.5 and 1.0".into(),
+            });
         }
         if self.timeout_ms < 5000 || self.timeout_ms > 300000 {
             return Err(CommitteeError::ConfigurationError {
-                message: "Timeout must be between 5-300 seconds".into()});
+                message: "Timeout must be between 5-300 seconds".into(),
+            });
         }
         if !(0.0..=1.0).contains(&self.quality_threshold) {
             return Err(CommitteeError::ConfigurationError {
-                message: "Quality threshold must be between 0.0 and 1.0".into()});
+                message: "Quality threshold must be between 0.0 and 1.0".into(),
+            });
         }
         Ok(())
     }
@@ -600,7 +627,8 @@ pub struct CommitteeEvaluation {
     /// Whether evaluation indicates progress toward objectives
     pub makes_progress: bool,
     /// Total evaluation time in milliseconds
-    pub evaluation_time: u64}
+    pub evaluation_time: u64,
+}
 
 impl CommitteeEvaluation {
     /// Create new evaluation with validation
@@ -617,19 +645,22 @@ impl CommitteeEvaluation {
         if !(0.0..=1.0).contains(&score) {
             return Err(CommitteeError::ValidationError {
                 field: "score".into(),
-                value: score.to_string().into()});
+                value: score.to_string().into(),
+            });
         }
         if !(0.0..=1.0).contains(&confidence) {
             return Err(CommitteeError::ValidationError {
                 field: "confidence".into(),
-                value: confidence.to_string().into()});
+                value: confidence.to_string().into(),
+            });
         }
 
         let reasoning_bytes = reasoning.as_bytes();
         if reasoning_bytes.len() > MAX_REASONING_BYTES * 4 {
             return Err(CommitteeError::ValidationError {
                 field: "reasoning".into(),
-                value: "reasoning too long".into()});
+                value: "reasoning too long".into(),
+            });
         }
 
         let mut reasoning_storage = SmallVec::new();
@@ -646,14 +677,16 @@ impl CommitteeEvaluation {
             implementation_quality: implementation_quality.clamp(0.0, 1.0),
             risk_assessment: risk_assessment.clamp(0.0, 1.0),
             makes_progress: true,
-            evaluation_time: 0})
+            evaluation_time: 0,
+        })
     }
 
     /// Get reasoning as string with error handling
     #[inline]
     pub fn reasoning_str(&self) -> Result<&str, CommitteeError> {
         std::str::from_utf8(&self.reasoning).map_err(|_| CommitteeError::DecodingError {
-            message: "Invalid UTF-8 in reasoning".into()})
+            message: "Invalid UTF-8 in reasoning".into(),
+        })
     }
 
     /// Set processing time
@@ -704,7 +737,8 @@ pub struct PerformanceSummary {
     pub fastest_time_ms: u64,
     pub slowest_time_ms: u64,
     pub evaluator_count: u8,
-    pub consensus_strength: f64}
+    pub consensus_strength: f64,
+}
 
 /// Evaluation result with comprehensive metadata
 #[derive(Debug, Clone)]
@@ -720,7 +754,8 @@ pub struct EvaluationResult {
     /// Total evaluation duration
     pub evaluation_duration_ms: u64,
     /// Cache generation number for invalidation
-    pub cache_generation: u64}
+    pub cache_generation: u64,
+}
 
 impl EvaluationResult {
     /// Create new evaluation result
@@ -735,7 +770,8 @@ impl EvaluationResult {
             from_cache: false,
             request_timestamp: Instant::now(),
             evaluation_duration_ms: 0,
-            cache_generation: 0}
+            cache_generation: 0,
+        }
     }
 
     /// Mark as cached result with generation
@@ -794,7 +830,8 @@ pub struct CommitteeMetrics {
     /// Best decision quality achieved
     pub best_quality_score: AtomicU64,
     /// Metrics generation counter
-    pub generation: RelaxedCounter}
+    pub generation: RelaxedCounter,
+}
 
 impl CommitteeMetrics {
     /// Create new metrics instance
@@ -811,7 +848,8 @@ impl CommitteeMetrics {
             active_evaluations: AtomicU32::new(0),
             total_quality_score: AtomicU64::new(0),
             best_quality_score: AtomicU64::new(0),
-            generation: RelaxedCounter::new(0)}
+            generation: RelaxedCounter::new(0),
+        }
     }
 
     /// Record evaluation completion with comprehensive metrics
@@ -915,7 +953,8 @@ impl CommitteeMetrics {
             cache_hit_ratio: self.cache_hit_ratio(),
             average_quality_score: self.average_quality_score(),
             best_quality_score: (self.best_quality_score.load(Ordering::Relaxed) as f64) / 1000.0,
-            generation: self.generation.get() as usize}
+            generation: self.generation.get() as usize,
+        }
     }
 
     /// Check if metrics indicate healthy system
@@ -948,7 +987,8 @@ pub struct MetricsSnapshot {
     pub cache_hit_ratio: f64,
     pub average_quality_score: f64,
     pub best_quality_score: f64,
-    pub generation: usize}
+    pub generation: usize,
+}
 
 /// Lock-free cache entry with atomic access tracking
 #[derive(Debug)]
@@ -964,7 +1004,8 @@ pub struct CacheEntry {
     /// Last access timestamp
     pub last_accessed: ArcSwap<Instant>,
     /// Entry generation for cache invalidation
-    pub generation: AtomicU64}
+    pub generation: AtomicU64,
+}
 
 impl CacheEntry {
     /// Create new cache entry with TTL
@@ -979,7 +1020,8 @@ impl CacheEntry {
             expires_at,
             access_count: RelaxedCounter::new(0),
             last_accessed: ArcSwap::from_pointee(now),
-            generation: AtomicU64::new(1)}
+            generation: AtomicU64::new(1),
+        }
     }
 
     /// Check if entry is expired
@@ -1034,7 +1076,8 @@ pub struct CacheMetrics {
     /// Average entry age in seconds
     pub avg_entry_age_seconds: AtomicU64,
     /// Cache generation counter
-    pub generation: RelaxedCounter}
+    pub generation: RelaxedCounter,
+}
 
 impl CacheMetrics {
     /// Create new cache metrics
@@ -1045,7 +1088,8 @@ impl CacheMetrics {
             evictions: RelaxedCounter::new(0),
             memory_usage_bytes: AtomicU64::new(0),
             avg_entry_age_seconds: AtomicU64::new(0),
-            generation: RelaxedCounter::new(0)}
+            generation: RelaxedCounter::new(0),
+        }
     }
 
     /// Record cache entry addition
@@ -1098,7 +1142,8 @@ impl CacheMetrics {
             memory_usage_bytes: self.memory_usage_bytes.load(Ordering::Relaxed),
             avg_entry_age_seconds: self.avg_entry_age_seconds.load(Ordering::Relaxed),
             efficiency_ratio: self.efficiency_ratio(),
-            generation: self.generation.get() as usize}
+            generation: self.generation.get() as usize,
+        }
     }
 
     /// Check if cache is performing optimally
@@ -1125,7 +1170,8 @@ pub struct CacheMetricsSnapshot {
     pub memory_usage_bytes: u64,
     pub avg_entry_age_seconds: u64,
     pub efficiency_ratio: f64,
-    pub generation: usize}
+    pub generation: usize,
+}
 
 /// Committee evaluation errors with comprehensive error handling
 #[derive(Debug, thiserror::Error)]
@@ -1155,7 +1201,8 @@ pub enum CommitteeError {
     ProviderError {
         model_type: ModelType,
         #[source]
-        source: Box<dyn std::error::Error + Send + Sync>},
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
 
     #[error("Cache error: {message}")]
     CacheError { message: Arc<str> },
@@ -1167,7 +1214,8 @@ pub enum CommitteeError {
     ResourceExhausted { resource: Arc<str> },
 
     #[error("Quality threshold not met: {actual:.2} < {required:.2}")]
-    QualityThresholdNotMet { actual: f64, required: f64 }}
+    QualityThresholdNotMet { actual: f64, required: f64 },
+}
 
 impl From<CommitteeError> for CognitiveError {
     fn from(error: CommitteeError) -> Self {
@@ -1190,7 +1238,8 @@ pub struct EvaluationPrompt {
     /// Temperature for response generation
     pub temperature: f32,
     /// Evaluation criteria weights
-    pub criteria_weights: EvaluationCriteria}
+    pub criteria_weights: EvaluationCriteria,
+}
 
 /// Evaluation criteria with weights for scoring
 #[derive(Debug, Clone, Copy)]
@@ -1198,7 +1247,8 @@ pub struct EvaluationCriteria {
     pub objective_alignment_weight: f32,
     pub implementation_quality_weight: f32,
     pub risk_assessment_weight: f32,
-    pub innovation_weight: f32}
+    pub innovation_weight: f32,
+}
 
 impl Default for EvaluationCriteria {
     fn default() -> Self {
@@ -1206,7 +1256,8 @@ impl Default for EvaluationCriteria {
             objective_alignment_weight: 0.4,
             implementation_quality_weight: 0.3,
             risk_assessment_weight: 0.2,
-            innovation_weight: 0.1}
+            innovation_weight: 0.1,
+        }
     }
 }
 
@@ -1268,7 +1319,8 @@ impl EvaluationPrompt {
             user_prompt,
             max_tokens: 2048,
             temperature: 0.1, // Low temperature for consistent evaluation
-            criteria_weights: criteria}
+            criteria_weights: criteria,
+        }
     }
 
     /// Create general evaluation prompt for flexible use cases
@@ -1295,7 +1347,8 @@ impl EvaluationPrompt {
             user_prompt,
             max_tokens: 1536,
             temperature: 0.2,
-            criteria_weights: criteria}
+            criteria_weights: criteria,
+        }
     }
 
     /// Estimate token count for the prompt

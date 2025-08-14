@@ -4,8 +4,9 @@
 //! context change notifications and subscriptions with zero allocation
 //! patterns and blazing-fast performance.
 
-use once_cell::sync::Lazy;
 use std::{collections::HashMap, sync::Arc};
+
+use once_cell::sync::Lazy;
 use tokio::sync::RwLock;
 
 /// Context subscription information

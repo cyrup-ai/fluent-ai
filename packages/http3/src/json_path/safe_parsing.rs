@@ -7,7 +7,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use crate::json_path::error::{JsonPathResult, invalid_expression_error, buffer_error};
+use crate::json_path::error::{JsonPathResult, buffer_error, invalid_expression_error};
 
 /// Maximum allowed nesting depth for JSONPath expressions
 ///
@@ -89,7 +89,7 @@ impl SafeParsingContext {
                 None,
             ));
         }
-        
+
         self.nesting_depth += 1;
         Ok(())
     }
@@ -130,7 +130,7 @@ impl SafeParsingContext {
         // Update tracking
         self.allocated_memory += size;
         GLOBAL_MEMORY_USAGE.fetch_add(size, Ordering::Relaxed);
-        
+
         Ok(())
     }
 
@@ -199,24 +199,22 @@ impl Utf8Handler {
         strategy: Utf8RecoveryStrategy,
     ) -> JsonPathResult<String> {
         match strategy {
-            Utf8RecoveryStrategy::Strict => {
-                std::str::from_utf8(input)
-                    .map(|s| s.to_string())
-                    .map_err(|e| invalid_expression_error(
+            Utf8RecoveryStrategy::Strict => std::str::from_utf8(input)
+                .map(|s| s.to_string())
+                .map_err(|e| {
+                    invalid_expression_error(
                         "",
                         &format!("invalid UTF-8 sequence at byte {}", e.valid_up_to()),
                         Some(e.valid_up_to()),
-                    ))
-            }
-            
-            Utf8RecoveryStrategy::Replace => {
-                Ok(String::from_utf8_lossy(input).into_owned())
-            }
-            
+                    )
+                }),
+
+            Utf8RecoveryStrategy::Replace => Ok(String::from_utf8_lossy(input).into_owned()),
+
             Utf8RecoveryStrategy::Ignore => {
                 let mut result = String::new();
                 let mut pos = 0;
-                
+
                 while pos < input.len() {
                     match std::str::from_utf8(&input[pos..]) {
                         Ok(valid_str) => {
@@ -226,21 +224,24 @@ impl Utf8Handler {
                         Err(e) => {
                             // Add valid portion
                             if e.valid_up_to() > 0 {
-                                let valid_portion = std::str::from_utf8(&input[pos..pos + e.valid_up_to()])
-                                    .map_err(|_| invalid_expression_error(
-                                        "",
-                                        "internal UTF-8 validation error",
-                                        Some(pos),
-                                    ))?;
+                                let valid_portion =
+                                    std::str::from_utf8(&input[pos..pos + e.valid_up_to()])
+                                        .map_err(|_| {
+                                            invalid_expression_error(
+                                                "",
+                                                "internal UTF-8 validation error",
+                                                Some(pos),
+                                            )
+                                        })?;
                                 result.push_str(valid_portion);
                             }
-                            
+
                             // Skip invalid sequence
                             pos += e.valid_up_to() + 1;
                         }
                     }
                 }
-                
+
                 Ok(result)
             }
         }
@@ -251,10 +252,7 @@ impl Utf8Handler {
     /// Specifically handles UTF-8 validation in the context of JSONPath
     /// string literals, including proper handling of escape sequences.
     #[inline]
-    pub fn validate_jsonpath_string(
-        input: &str,
-        allow_escapes: bool,
-    ) -> JsonPathResult<String> {
+    pub fn validate_jsonpath_string(input: &str, allow_escapes: bool) -> JsonPathResult<String> {
         if !allow_escapes {
             // Production validation for unescaped strings
             return Ok(input.to_string());
@@ -262,7 +260,7 @@ impl Utf8Handler {
 
         let mut result = String::new();
         let mut chars = input.chars();
-        
+
         while let Some(ch) = chars.next() {
             if ch == '\\' {
                 match chars.next() {
@@ -285,14 +283,15 @@ impl Utf8Handler {
                                 None,
                             ));
                         }
-                        
-                        let code_point = u32::from_str_radix(&hex_chars, 16)
-                            .map_err(|_| invalid_expression_error(
+
+                        let code_point = u32::from_str_radix(&hex_chars, 16).map_err(|_| {
+                            invalid_expression_error(
                                 input,
                                 &format!("invalid Unicode escape sequence: \\u{}", hex_chars),
                                 None,
-                            ))?;
-                        
+                            )
+                        })?;
+
                         if let Some(unicode_char) = std::char::from_u32(code_point) {
                             result.push(unicode_char);
                         } else {
@@ -322,7 +321,7 @@ impl Utf8Handler {
                 result.push(ch);
             }
         }
-        
+
         Ok(result)
     }
 
@@ -336,7 +335,7 @@ impl Utf8Handler {
         if input.len() >= 3 && input[0] == 0xEF && input[1] == 0xBB && input[2] == 0xBF {
             return &input[3..];
         }
-        
+
         input
     }
 }
@@ -378,7 +377,7 @@ impl SafeStringBuffer {
                 self.max_size - self.buffer.len(),
             ));
         }
-        
+
         self.buffer.extend_from_slice(data);
         Ok(())
     }
@@ -427,15 +426,15 @@ mod tests {
     #[test]
     fn test_nesting_depth_limits() {
         let mut context = SafeParsingContext::new();
-        
+
         // Should be able to nest up to limit
         for _ in 0..MAX_NESTING_DEPTH {
             assert!(context.enter_nesting().is_ok());
         }
-        
+
         // Should fail on exceeding limit
         assert!(context.enter_nesting().is_err());
-        
+
         // Should be able to exit and enter again
         context.exit_nesting();
         assert!(context.enter_nesting().is_ok());
@@ -444,11 +443,11 @@ mod tests {
     #[test]
     fn test_memory_allocation_limits() {
         let mut context = SafeParsingContext::new();
-        
+
         // Should be able to allocate within limits
         assert!(context.allocate_memory(1000).is_ok());
         assert_eq!(context.allocated_memory(), 1000);
-        
+
         // Should fail when exceeding limits
         assert!(context.allocate_memory(MAX_BUFFER_SIZE).is_err());
     }
@@ -457,19 +456,27 @@ mod tests {
     fn test_utf8_recovery_strategies() {
         let valid_utf8 = b"hello world";
         let invalid_utf8 = b"hello \xFF world";
-        
+
         // Strict mode should fail on invalid UTF-8
-        assert!(Utf8Handler::validate_utf8_with_recovery(valid_utf8, Utf8RecoveryStrategy::Strict).is_ok());
-        assert!(Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Strict).is_err());
-        
+        assert!(
+            Utf8Handler::validate_utf8_with_recovery(valid_utf8, Utf8RecoveryStrategy::Strict)
+                .is_ok()
+        );
+        assert!(
+            Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Strict)
+                .is_err()
+        );
+
         // Replace mode should succeed with replacement character
-        let replaced = Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Replace)
-            .expect("Failed to validate UTF-8 with replacement strategy");
+        let replaced =
+            Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Replace)
+                .expect("Failed to validate UTF-8 with replacement strategy");
         assert!(replaced.contains('\u{FFFD}')); // Unicode replacement character
-        
+
         // Ignore mode should succeed by skipping invalid bytes
-        let ignored = Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Ignore)
-            .expect("Failed to validate UTF-8 with ignore strategy");
+        let ignored =
+            Utf8Handler::validate_utf8_with_recovery(invalid_utf8, Utf8RecoveryStrategy::Ignore)
+                .expect("Failed to validate UTF-8 with ignore strategy");
         assert_eq!(ignored, "hello  world"); // Invalid byte skipped
     }
 
@@ -479,10 +486,10 @@ mod tests {
         let result = Utf8Handler::validate_jsonpath_string("hello\\u0041world", true)
             .expect("Failed to validate JSONPath string with Unicode escape");
         assert_eq!(result, "helloAworld");
-        
+
         // Invalid Unicode escape
         assert!(Utf8Handler::validate_jsonpath_string("hello\\uXXXX", true).is_err());
-        
+
         // Incomplete Unicode escape
         assert!(Utf8Handler::validate_jsonpath_string("hello\\u00", true).is_err());
     }
@@ -490,20 +497,21 @@ mod tests {
     #[test]
     fn test_safe_string_buffer() {
         let mut buffer = SafeStringBuffer::with_capacity(10);
-        
+
         // Should accept data within limits
         assert!(buffer.append(b"hello").is_ok());
         assert_eq!(buffer.len(), 5);
-        
+
         // Should accept more data within limits
         assert!(buffer.append(b"world").is_ok());
         assert_eq!(buffer.len(), 10);
-        
+
         // Should reject data exceeding limits
         assert!(buffer.append(b"!").is_err());
-        
+
         // Should convert to string successfully
-        let string = buffer.to_string(Utf8RecoveryStrategy::Strict)
+        let string = buffer
+            .to_string(Utf8RecoveryStrategy::Strict)
             .expect("Failed to convert buffer to string with strict strategy");
         assert_eq!(string, "helloworld");
     }
@@ -512,7 +520,7 @@ mod tests {
     fn test_bom_handling() {
         let with_bom = b"\xEF\xBB\xBFhello";
         let without_bom = b"hello";
-        
+
         assert_eq!(Utf8Handler::handle_bom(with_bom), b"hello");
         assert_eq!(Utf8Handler::handle_bom(without_bom), b"hello");
     }

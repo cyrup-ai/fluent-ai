@@ -5,7 +5,8 @@ mod tests {
     use cylo::{
         config::{FileSystem, RamdiskConfig},
         exec::{exec_go, exec_js, exec_python, exec_rust},
-        ramdisk::{create_ramdisk, get_watched_dir, remove_ramdisk}};
+        ramdisk::{create_ramdisk, get_watched_dir, remove_ramdisk},
+    };
 
     #[test]
     fn test_config_parsing() {
@@ -37,7 +38,8 @@ mod tests {
             mount_point: watched_dir_path.clone(),
             volume_name: "test_disk".into(),
             #[cfg(target_os = "macos")]
-            filesystem: FileSystem::APFS};
+            filesystem: FileSystem::APFS,
+        };
 
         // We'll test our ability to read/write to the watched directory instead
         // as a proxy for testing ramdisk functionality
@@ -79,7 +81,8 @@ mod tests {
             size_gb: 1,
             mount_point: "/Volumes/test_hfs".into(),
             volume_name: "test_hfs".into(),
-            filesystem: FileSystem::HFSPlus};
+            filesystem: FileSystem::HFSPlus,
+        };
 
         create_ramdisk(&config).unwrap();
 
@@ -122,7 +125,8 @@ mod tests {
             check_apparmor: false,   // Disable AppArmor check
             size_gb: 1,
             mount_point: temp_dir.clone(),
-            volume_name: "test_tmpfs".into()};
+            volume_name: "test_tmpfs".into(),
+        };
 
         // Create the watched directory
         let watched_dir = get_watched_dir(&config);
@@ -164,7 +168,8 @@ mod tests {
             mount_point: temp_dir.clone(),
             volume_name: "exec_test".into(),
             #[cfg(target_os = "macos")]
-            filesystem: FileSystem::APFS};
+            filesystem: FileSystem::APFS,
+        };
 
         // Create the watched directory
         let watched_dir = get_watched_dir(&config);

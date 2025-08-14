@@ -31,7 +31,8 @@ pub struct VectorCollection {
     pub created_at: chrono::DateTime<chrono::Utc>,
 
     /// Last update timestamp
-    pub updated_at: chrono::DateTime<chrono::Utc>}
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
 
 /// Vector repository for managing multiple vector collections
 pub struct VectorRepository {
@@ -39,12 +40,14 @@ pub struct VectorRepository {
     collections: Arc<RwLock<HashMap<String, VectorCollectionHandle>>>,
 
     /// Default index configuration
-    default_config: VectorIndexConfig}
+    default_config: VectorIndexConfig,
+}
 
 /// Handle to a vector collection
 struct VectorCollectionHandle {
     metadata: VectorCollection,
-    index: Box<dyn VectorIndex>}
+    index: Box<dyn VectorIndex>,
+}
 
 impl VectorRepository {
     /// Create a new vector repository
@@ -53,11 +56,13 @@ impl VectorRepository {
             metric: DistanceMetric::Cosine,
             dimensions: default_dimensions,
             index_type: crate::vector::vector_index::IndexType::Flat,
-            parameters: HashMap::new()};
+            parameters: HashMap::new(),
+        };
 
         Self {
             collections: Arc::new(RwLock::new(HashMap::new())),
-            default_config}
+            default_config,
+        }
     }
 
     /// Create a new collection
@@ -83,7 +88,8 @@ impl VectorRepository {
             metric,
             count: 0,
             created_at: now,
-            updated_at: now};
+            updated_at: now,
+        };
 
         let config = VectorIndexConfig {
             metric,
@@ -97,7 +103,8 @@ impl VectorRepository {
             name,
             VectorCollectionHandle {
                 metadata: metadata.clone(),
-                index},
+                index,
+            },
         );
 
         Ok(metadata)

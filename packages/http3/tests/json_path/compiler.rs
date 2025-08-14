@@ -332,8 +332,8 @@ mod abnf_grammar_tests {
             ("$[\"\\n\"]", true),     // Newline
             ("$[\"\\f\"]", true),     // Form feed
             ("$[\"\\r\"]", true),     // Carriage return
-            ("$[\"\\\"\"]", true), // Quote
-            ("$[\"\\'\"]", true),    // Apostrophe
+            ("$[\"\\\"\"]", true),    // Quote
+            ("$[\"\\'\"]", true),     // Apostrophe
             ("$[\"\\/\"]", true),     // Solidus
             ("$[\"\\\\\"]", true),    // Backslash
             ("$[\"\\u0041\"]", true), // Unicode escape
@@ -751,54 +751,54 @@ mod wellformedness_tests {
 
 /// Helper function to generate large datasets for performance testing
 fn generate_large_dataset(size: usize) -> serde_json::Value {
-        let items: Vec<LargeDataModel> = (0..size)
-            .map(|i| LargeDataModel {
-                id: i as u32,
-                name: format!("Item_{:06}", i),
-                category: match i % 5 {
-                    0 => "electronics".to_string(),
-                    1 => "books".to_string(),
-                    2 => "clothing".to_string(),
-                    3 => "home".to_string(),
-                    _ => "misc".to_string(),
-                },
-                price: (i as f64 * 1.5) + 10.0,
-                tags: vec![
-                    format!("tag_{}", i % 10),
-                    format!("category_{}", i % 5),
-                    format!("brand_{}", i % 3),
-                ],
-                metadata: {
-                    let mut map = std::collections::HashMap::new();
-                    map.insert(
-                        "weight".to_string(),
-                        serde_json::Value::Number((i % 100).into()),
-                    );
-                    map.insert(
-                        "color".to_string(),
-                        serde_json::Value::String(format!("color_{}", i % 8)),
-                    );
-                    map.insert(
-                        "rating".to_string(),
-                        serde_json::Value::Number(((i % 5) + 1).into()),
-                    );
-                    map
-                },
-                active: i % 7 != 0,
-                created_at: format!("2024-{:02}-{:02}T10:00:00Z", (i % 12) + 1, (i % 28) + 1),
-            })
-            .collect();
-
-        serde_json::json!({
-            "catalog": {
-                "items": items,
-                "metadata": {
-                    "total_count": size,
-                    "generated_at": "2024-01-01T00:00:00Z",
-                    "version": "1.0"
-                }
-            }
+    let items: Vec<LargeDataModel> = (0..size)
+        .map(|i| LargeDataModel {
+            id: i as u32,
+            name: format!("Item_{:06}", i),
+            category: match i % 5 {
+                0 => "electronics".to_string(),
+                1 => "books".to_string(),
+                2 => "clothing".to_string(),
+                3 => "home".to_string(),
+                _ => "misc".to_string(),
+            },
+            price: (i as f64 * 1.5) + 10.0,
+            tags: vec![
+                format!("tag_{}", i % 10),
+                format!("category_{}", i % 5),
+                format!("brand_{}", i % 3),
+            ],
+            metadata: {
+                let mut map = std::collections::HashMap::new();
+                map.insert(
+                    "weight".to_string(),
+                    serde_json::Value::Number((i % 100).into()),
+                );
+                map.insert(
+                    "color".to_string(),
+                    serde_json::Value::String(format!("color_{}", i % 8)),
+                );
+                map.insert(
+                    "rating".to_string(),
+                    serde_json::Value::Number(((i % 5) + 1).into()),
+                );
+                map
+            },
+            active: i % 7 != 0,
+            created_at: format!("2024-{:02}-{:02}T10:00:00Z", (i % 12) + 1, (i % 28) + 1),
         })
+        .collect();
+
+    serde_json::json!({
+        "catalog": {
+            "items": items,
+            "metadata": {
+                "total_count": size,
+                "generated_at": "2024-01-01T00:00:00Z",
+                "version": "1.0"
+            }
+        }
+    })
 }
 
 /// RFC 9535 Performance Tests - Large Dataset Handling
@@ -891,9 +891,7 @@ mod large_dataset_tests {
             let mut stream = JsonArrayStream::<LargeDataModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 

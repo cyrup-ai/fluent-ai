@@ -70,7 +70,10 @@ mod abnf_grammar_tests {
         //                segments = *(S segment)  ; zero or more segments
         // Therefore "$" (root-only) is VALID per RFC 9535
         let result = JsonPathParser::compile("$");
-        assert!(result.is_ok(), "Root-only query '$' should be valid per RFC 9535");
+        assert!(
+            result.is_ok(),
+            "Root-only query '$' should be valid per RFC 9535"
+        );
 
         let result = JsonPathParser::compile("$.store.book[*]");
         assert!(result.is_ok(), "Valid query structure should pass");
@@ -237,7 +240,10 @@ mod wellformedness_validity_tests {
             ("$.store[999].title", "Chain with invalid index"),
             ("$..*", "Universal descendant"),
             ("$..nonexistent", "Descendant with non-existent property"),
-            ("$.store.book[*].nonexistent", "Valid structure with non-existent property"),
+            (
+                "$.store.book[*].nonexistent",
+                "Valid structure with non-existent property",
+            ),
             ("$['']", "Empty string property name"),
             ("$[-999]", "Large negative index"),
             ("$.a.b.c.d.e.f", "Deep property chain"),
@@ -245,8 +251,12 @@ mod wellformedness_validity_tests {
 
         for (expr, _description) in wellformed_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_ok(), 
-                "Well-formed expression '{}' should compile: {}", expr, _description);
+            assert!(
+                result.is_ok(),
+                "Well-formed expression '{}' should compile: {}",
+                expr,
+                _description
+            );
         }
     }
 
@@ -273,8 +283,12 @@ mod wellformedness_validity_tests {
 
         for (expr, _description) in malformed_tests {
             let result = JsonPathParser::compile(expr);
-            assert!(result.is_err(), 
-                "Malformed expression '{}' should fail: {}", expr, _description);
+            assert!(
+                result.is_err(),
+                "Malformed expression '{}' should fail: {}",
+                expr,
+                _description
+            );
         }
     }
 
@@ -286,42 +300,61 @@ mod wellformedness_validity_tests {
         let semantic_tests = vec![
             ("$.store.book[0].title", 1, "Valid path, valid semantics"),
             ("$.store.book[999].title", 0, "Valid syntax, invalid index"),
-            ("$.store.nonexistent.title", 0, "Valid syntax, non-existent property"),
-            ("$.store.book[*].nonexistent", 0, "Valid syntax, non-existent nested property"),
-            ("$.store.book[-1].title", 1, "Valid syntax, negative index semantics"),
-            ("$.store.book[*].title", 2, "Valid syntax, wildcard semantics"),
+            (
+                "$.store.nonexistent.title",
+                0,
+                "Valid syntax, non-existent property",
+            ),
+            (
+                "$.store.book[*].nonexistent",
+                0,
+                "Valid syntax, non-existent nested property",
+            ),
+            (
+                "$.store.book[-1].title",
+                1,
+                "Valid syntax, negative index semantics",
+            ),
+            (
+                "$.store.book[*].title",
+                2,
+                "Valid syntax, wildcard semantics",
+            ),
         ];
 
         for (expr, expected_count, _description) in semantic_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Semantic test '{}' should return {} results: {}", expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Semantic test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
     #[test]
     fn test_error_consistency_across_similar_patterns() {
         // RFC 9535: Similar malformed patterns should fail consistently
-        let bracket_errors = vec![
-            "$[", "$]", "$[[", "$]]", "$[[]", "$[]]",
-        ];
+        let bracket_errors = vec!["$[", "$]", "$[[", "$]]", "$[[]", "$[]]"];
 
-        let quote_errors = vec![
-            "$['unclosed", "$[\"unclosed", "$['", "$[\"",
-        ];
+        let quote_errors = vec!["$['unclosed", "$[\"unclosed", "$['", "$[\""];
 
-        let dot_errors = vec![
-            "$.", "$..", "$...", "$.store.", "$.store..",
-        ];
+        let dot_errors = vec!["$.", "$..", "$...", "$.store.", "$.store.."];
 
         for error_group in [bracket_errors, quote_errors, dot_errors] {
             for expr in error_group {
                 let result = JsonPathParser::compile(expr);
-                assert!(result.is_err(), 
-                    "Consistently malformed expression '{}' should fail", expr);
+                assert!(
+                    result.is_err(),
+                    "Consistently malformed expression '{}' should fail",
+                    expr
+                );
             }
         }
     }
@@ -347,14 +380,18 @@ mod nodelist_semantics_tests {
 
         // Results should maintain document order, not sort by value
         assert_eq!(results.len(), 3, "Should return all three ids");
-        
+
         // Verify document order is preserved (not sorted by priority or id)
-        let ids: Vec<String> = results.into_iter()
+        let ids: Vec<String> = results
+            .into_iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect();
-        
-        assert_eq!(ids, vec!["first", "second", "third"], 
-            "RFC 9535: Nodelist must preserve document order");
+
+        assert_eq!(
+            ids,
+            vec!["first", "second", "third"],
+            "RFC 9535: Nodelist must preserve document order"
+        );
     }
 
     #[test]
@@ -369,16 +406,24 @@ mod nodelist_semantics_tests {
             ("$.store.book[999]", "Out-of-bounds positive index"),
             ("$.store.book[-999]", "Out-of-bounds negative index"),
             ("$..nonexistent", "Descendant search for non-existent"),
-            ("$.store.book[*].title", "Property access on empty array results"),
+            (
+                "$.store.book[*].title",
+                "Property access on empty array results",
+            ),
         ];
 
         for (expr, _description) in emptyresult_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), 0, 
-                "Empty nodelist test '{}' should return 0 results: {}", expr, _description);
+
+            assert_eq!(
+                results.len(),
+                0,
+                "Empty nodelist test '{}' should return 0 results: {}",
+                expr,
+                _description
+            );
         }
     }
 
@@ -429,10 +474,15 @@ mod path_evaluation_semantics_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Root semantics test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Root semantics test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -443,7 +493,11 @@ mod path_evaluation_semantics_tests {
 
         let multiple_selector_tests = vec![
             ("$.items[0,2]", 2, "Multiple index selectors"),
-            ("$.items[1,0,3]", 3, "Multiple index selectors in specific order"),
+            (
+                "$.items[1,0,3]",
+                3,
+                "Multiple index selectors in specific order",
+            ),
             ("$.items[*]", 4, "Wildcard selector"),
         ];
 
@@ -451,10 +505,15 @@ mod path_evaluation_semantics_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Selector order test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Selector order test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -474,7 +533,11 @@ mod path_evaluation_semantics_tests {
         let descendant_tests = vec![
             ("$..target", 3, "All target properties at any depth"),
             ("$.level1..target", 3, "Target properties under level1"),
-            ("$.level1.level2..target", 2, "Target properties under level2"),
+            (
+                "$.level1.level2..target",
+                2,
+                "Target properties under level2",
+            ),
             ("$..level3.target", 1, "Specific path with descendant"),
         ];
 
@@ -482,10 +545,15 @@ mod path_evaluation_semantics_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Descendant semantics test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Descendant semantics test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 
@@ -507,10 +575,15 @@ mod path_evaluation_semantics_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(json_data);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
-                "Array index test '{}' should return {} results: {}", 
-                expr, expected_count, _description);
+
+            assert_eq!(
+                results.len(),
+                expected_count,
+                "Array index test '{}' should return {} results: {}",
+                expr,
+                expected_count,
+                _description
+            );
         }
     }
 }

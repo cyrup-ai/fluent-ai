@@ -98,9 +98,7 @@ mod ast_construction_tests {
                 let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream
-                    .process_chunk(chunk)
-                    .collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 results_sets.push(results);
                 println!(
@@ -234,10 +232,8 @@ mod ast_segment_tests {
             }
         }"#;
 
-        let mut child_stream =
-            JsonArrayStream::<String>::new("$.level1['target']");
-        let mut descendant_stream =
-            JsonArrayStream::<String>::new("$..['target']");
+        let mut child_stream = JsonArrayStream::<String>::new("$.level1['target']");
+        let mut descendant_stream = JsonArrayStream::<String>::new("$..['target']");
 
         let chunk = Bytes::from(json_data);
 
@@ -268,8 +264,7 @@ mod ast_segment_tests {
             }
         }"#;
 
-        let mut stream =
-            JsonArrayStream::<serde_json::Value>::new("$..books[0]");
+        let mut stream = JsonArrayStream::<serde_json::Value>::new("$..books[0]");
 
         let chunk = Bytes::from(json_data);
         let results: Vec<_> = stream.process_chunk(chunk).collect();
@@ -416,10 +411,8 @@ mod ast_validation_tests {
         ];
 
         for (original, normalized, _description) in unicode_key_tests {
-            let mut original_stream =
-                JsonArrayStream::<String>::new(original);
-            let mut normalized_stream =
-                JsonArrayStream::<String>::new(normalized);
+            let mut original_stream = JsonArrayStream::<String>::new(original);
+            let mut normalized_stream = JsonArrayStream::<String>::new(normalized);
 
             let chunk = Bytes::from(json_data);
             let originalresults: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();

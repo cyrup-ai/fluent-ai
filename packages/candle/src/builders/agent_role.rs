@@ -108,11 +108,8 @@ impl CandleAgentRoleAgent {
     pub fn chat(&self, chat_loop: CandleChatLoop) -> AsyncStream<CandleMessageChunk> {
         AsyncStream::with_channel(|sender| match chat_loop {
             CandleChatLoop::Break => {
-                let final_chunk = CandleMessageChunk::Complete(
-                    String::new(),
-                    Some("break".to_string()),
-                    None,
-                );
+                let final_chunk =
+                    CandleMessageChunk::Complete(String::new(), Some("break".to_string()), None);
                 let _ = sender.send(final_chunk);
             }
             CandleChatLoop::UserPrompt(message) | CandleChatLoop::Reprompt(message) => {
@@ -690,11 +687,7 @@ where
                                 id,
                                 name,
                                 partial_input,
-                            } => CandleMessageChunk::ToolCall(
-                                id,
-                                name,
-                                partial_input,
-                            ),
+                            } => CandleMessageChunk::ToolCall(id, name, partial_input),
                             CandleCompletionChunk::ToolCallComplete { id, name, input } => {
                                 CandleMessageChunk::ToolCallComplete(id, name, input)
                             }
@@ -713,11 +706,8 @@ where
     fn chat_direct(self, input: CandleChatLoop) -> AsyncStream<CandleMessageChunk> {
         AsyncStream::with_channel(move |sender| match input {
             CandleChatLoop::Break => {
-                let final_chunk = CandleMessageChunk::Complete(
-                    String::new(),
-                    Some("break".to_string()),
-                    None,
-                );
+                let final_chunk =
+                    CandleMessageChunk::Complete(String::new(), Some("break".to_string()), None);
                 let _ = sender.send(final_chunk);
             }
             CandleChatLoop::UserPrompt(message) | CandleChatLoop::Reprompt(message) => {
@@ -768,11 +758,7 @@ where
                         id,
                         name,
                         partial_input,
-                    } => CandleMessageChunk::ToolCall(
-                        id,
-                        name,
-                        partial_input,
-                    ),
+                    } => CandleMessageChunk::ToolCall(id, name, partial_input),
                     CandleCompletionChunk::ToolCallComplete { id, name, input } => {
                         CandleMessageChunk::ToolCallComplete(id, name, input)
                     }

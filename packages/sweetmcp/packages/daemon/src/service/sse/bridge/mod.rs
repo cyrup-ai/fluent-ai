@@ -9,15 +9,10 @@ pub mod core;
 pub mod forwarding;
 pub mod validation;
 
-// Re-export key types and functions for ergonomic usage  
+// Re-export key types and functions for ergonomic usage
 pub use core::McpBridge;
 
 // Removed unused import: pub use forwarding::ForwardingStats;
 // Removed unused import: McpBridgeBuilder
-
-pub use validation::{
-    create_invalid_request_response, validate_json_rpc_request,
-};
+pub use validation::{create_invalid_request_response, validate_json_rpc_request};
 // Removed unused import: validate_batch_requests
-
-

@@ -1,6 +1,5 @@
-//  DO NOT MODIFY !!!  DO NOT MODIFY !!!
 let stream = FluentAi::agent_role("rusty-squire")
-    .completion_provider(Mistral::MagistralSmall)
+    .completion_provider(Candle::KimiK2)
     .temperature(1.0)
     .max_tokens(8000)
     .system_prompt("Act as a Rust developers 'right hand man'.
@@ -22,9 +21,9 @@ let stream = FluentAi::agent_role("rusty-squire")
     )
     .mcp_server<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait Tool
-        Tool<Perplexity>::new([
-            ("citations", "true")
-        ]),
+        Tool<Perplexity>::new({
+            "citations" => "true"
+        }),
         Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
 
@@ -46,11 +45,11 @@ let stream = FluentAi::agent_role("rusty-squire")
         }
     })
     .into_agent() // Agent Now
-    .conversation_history([
-        (MessageRole::User, "What time is it in Paris, France"),
-        (MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
-        (MessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
-    ])
+    .conversation_history(
+        MessageRole::User => "What time is it in Paris, France",
+        MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
+        MessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
+    )
     .chat(|conversation| {
         let user_input = conversation.latest_user_message();
 
@@ -61,4 +60,3 @@ let stream = FluentAi::agent_role("rusty-squire")
         }
     })
     .collect();
-// DO NOT MODIFY !!!  DO NOT MODIFY !!!

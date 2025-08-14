@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::init::globals::{CONFIG_CACHE, LOCAL_CONFIG};
-use super::super::SurrealDBMemoryManager;
 use super::super::manager::MemoryConfig;
+use super::super::SurrealDBMemoryManager;
+use crate::domain::init::globals::{CONFIG_CACHE, LOCAL_CONFIG};
 
 /// Memory metadata for pool management with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +27,8 @@ pub struct MemoryMetadata {
     /// Access count
     pub access_count: u64,
     /// Whether memory is active
-    pub is_active: bool}
+    pub is_active: bool,
+}
 
 impl MemoryMetadata {
     /// Create new memory metadata
@@ -45,7 +46,8 @@ impl MemoryMetadata {
             created_at_nanos: now,
             last_accessed_nanos: now,
             access_count: 0,
-            is_active: true}
+            is_active: true,
+        }
     }
 
     /// Update access timestamp and count

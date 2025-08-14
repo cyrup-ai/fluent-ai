@@ -1,14 +1,11 @@
 //! Real-time chat system implementation
 
-
 use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::{
-    connection::ConnectionManager,
-    events::RealTimeEvent,
-    streaming::LiveMessageStreamer,
+    connection::ConnectionManager, events::RealTimeEvent, streaming::LiveMessageStreamer,
     typing::TypingIndicator,
 };
 
@@ -52,7 +49,7 @@ impl RealtimeChat {
     /// Create a new real-time chat system
     pub fn new(config: RealtimeConfig) -> Self {
         let (event_sender, _) = broadcast::channel(1000);
-        
+
         Self {
             connection_manager: ConnectionManager::new(
                 config.heartbeat_timeout,
@@ -79,7 +76,7 @@ impl RealtimeChat {
         self.connection_manager.start_health_check();
         let _message_processing = self.message_streamer.start_processing();
         let _typing_cleanup = self.typing_indicator.start_cleanup_task();
-        
+
         // Merge streams manually since AsyncStream::merge doesn't exist
         AsyncStream::with_channel(move |_sender| {
             // Start both streams concurrently
@@ -89,12 +86,12 @@ impl RealtimeChat {
             });
         })
     }
-    
+
     /// Get the current configuration
     pub fn get_config(&self) -> &RealtimeConfig {
         &self.config
     }
-    
+
     /// Update configuration dynamically (selected fields)
     pub fn update_config(&mut self, new_config: RealtimeConfig) {
         self.config = new_config;
@@ -105,17 +102,20 @@ impl RealtimeChat {
             self.config.processing_rate,
         );
     }
-    
+
     /// Broadcast an event to all subscribers
-    pub fn broadcast_event(&self, event: RealTimeEvent) -> Result<usize, broadcast::error::SendError<RealTimeEvent>> {
+    pub fn broadcast_event(
+        &self,
+        event: RealTimeEvent,
+    ) -> Result<usize, broadcast::error::SendError<RealTimeEvent>> {
         self.event_sender.send(event)
     }
-    
+
     /// Create a receiver for real-time events
     pub fn subscribe_to_events(&self) -> broadcast::Receiver<RealTimeEvent> {
         self.event_sender.subscribe()
     }
-    
+
     /// Get the number of active event subscribers
     pub fn get_event_subscriber_count(&self) -> usize {
         self.event_sender.receiver_count()

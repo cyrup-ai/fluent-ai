@@ -7,12 +7,14 @@ use crate::similarity::metrics::{MetricsGuard, SimilarityMetrics, SimilarityMetr
 
 /// Scalar implementation of cosine similarity
 pub struct ScalarSimilarity {
-    metrics: Arc<SimilarityMetrics>}
+    metrics: Arc<SimilarityMetrics>,
+}
 
 impl Default for ScalarSimilarity {
     fn default() -> Self {
         Self {
-            metrics: Arc::new(SimilarityMetrics::default())}
+            metrics: Arc::new(SimilarityMetrics::default()),
+        }
     }
 }
 

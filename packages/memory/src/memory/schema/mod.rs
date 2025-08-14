@@ -33,7 +33,8 @@ impl<T: MemoryType> Memory<T> {
             created_at: now,
             updated_at: now,
             last_accessed_at: now,
-            score: None}
+            score: None,
+        }
     }
 
     /// Updates the last accessed timestamp.

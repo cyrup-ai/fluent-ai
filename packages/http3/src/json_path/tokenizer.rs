@@ -39,10 +39,10 @@ impl ExpressionParser {
         // Invalid: [$, Identifier] (direct identifier after root without dot or bracket)
         // Note: Multiple root identifiers are allowed in complex expressions with functions
         let tokens_vec: Vec<_> = self.tokens.iter().collect();
-        
+
         if self.tokens.len() >= 3 {
-            if matches!(tokens_vec[0], Token::Root) && 
-               matches!(tokens_vec[1], Token::Identifier(_)) {
+            if matches!(tokens_vec[0], Token::Root) && matches!(tokens_vec[1], Token::Identifier(_))
+            {
                 // This is the invalid pattern: $identifier (without dot or bracket)
                 return Err(invalid_expression_error(
                     &self.input,
@@ -77,7 +77,7 @@ impl ExpressionParser {
                 '.' => {
                     // Check for double dot (..)
                     if i + 1 < chars.len() && chars[i + 1] == '.' {
-                        // Check for invalid triple dot (...) 
+                        // Check for invalid triple dot (...)
                         if i + 2 < chars.len() && chars[i + 2] == '.' {
                             return Err(invalid_expression_error(
                                 &self.input,
@@ -105,7 +105,7 @@ impl ExpressionParser {
                     i += 1; // Skip opening quote
                     let start = i;
                     let mut string_value = String::new();
-                    
+
                     while i < chars.len() {
                         if chars[i] == quote {
                             // Found closing quote
@@ -120,9 +120,9 @@ impl ExpressionParser {
                                 '/' => string_value.push('/'),
                                 'b' => string_value.push('\u{0008}'), // Backspace
                                 'f' => string_value.push('\u{000C}'), // Form feed
-                                'n' => string_value.push('\n'),        // Newline
-                                'r' => string_value.push('\r'),        // Carriage return
-                                't' => string_value.push('\t'),        // Tab
+                                'n' => string_value.push('\n'),       // Newline
+                                'r' => string_value.push('\r'),       // Carriage return
+                                't' => string_value.push('\t'),       // Tab
                                 'u' => {
                                     // Unicode escape sequence \uXXXX
                                     if i + 4 >= chars.len() {
@@ -132,20 +132,29 @@ impl ExpressionParser {
                                             Some(i),
                                         ));
                                     }
-                                    let hex_digits: String = chars[i+1..i+5].iter().collect();
+                                    let hex_digits: String = chars[i + 1..i + 5].iter().collect();
                                     if let Ok(code_point) = u32::from_str_radix(&hex_digits, 16) {
                                         // Handle Unicode surrogate pairs (UTF-16)
                                         if (0xD800..=0xDBFF).contains(&code_point) {
                                             // High surrogate - look for low surrogate
-                                            if i + 10 < chars.len() && chars[i+5] == '\\' && chars[i+6] == 'u' {
-                                                let low_hex: String = chars[i+7..i+11].iter().collect();
-                                                if let Ok(low_surrogate) = u32::from_str_radix(&low_hex, 16) {
+                                            if i + 10 < chars.len()
+                                                && chars[i + 5] == '\\'
+                                                && chars[i + 6] == 'u'
+                                            {
+                                                let low_hex: String =
+                                                    chars[i + 7..i + 11].iter().collect();
+                                                if let Ok(low_surrogate) =
+                                                    u32::from_str_radix(&low_hex, 16)
+                                                {
                                                     if (0xDC00..=0xDFFF).contains(&low_surrogate) {
                                                         // Valid surrogate pair - convert to Unicode scalar
                                                         let high = code_point - 0xD800;
                                                         let low = low_surrogate - 0xDC00;
-                                                        let unicode_scalar = 0x10000 + (high << 10) + low;
-                                                        if let Some(unicode_char) = char::from_u32(unicode_scalar) {
+                                                        let unicode_scalar =
+                                                            0x10000 + (high << 10) + low;
+                                                        if let Some(unicode_char) =
+                                                            char::from_u32(unicode_scalar)
+                                                        {
                                                             string_value.push(unicode_char);
                                                             i += 10; // Skip both \uXXXX sequences
                                                         } else {
@@ -183,7 +192,9 @@ impl ExpressionParser {
                                                 "low surrogate without preceding high surrogate",
                                                 Some(i),
                                             ));
-                                        } else if let Some(unicode_char) = char::from_u32(code_point) {
+                                        } else if let Some(unicode_char) =
+                                            char::from_u32(code_point)
+                                        {
                                             // Regular Unicode character (not surrogate)
                                             string_value.push(unicode_char);
                                             i += 4; // Skip the 4 hex digits
@@ -201,7 +212,7 @@ impl ExpressionParser {
                                             Some(i),
                                         ));
                                     }
-                                },
+                                }
                                 _ => {
                                     return Err(invalid_expression_error(
                                         &self.input,
@@ -216,7 +227,7 @@ impl ExpressionParser {
                         }
                         i += 1;
                     }
-                    
+
                     if i >= chars.len() {
                         return Err(invalid_expression_error(
                             &self.input,
@@ -224,7 +235,7 @@ impl ExpressionParser {
                             Some(start),
                         ));
                     }
-                    
+
                     self.tokens.push_back(Token::String(string_value));
                 }
                 c if c.is_ascii_digit() || c == '-' => {
@@ -232,13 +243,13 @@ impl ExpressionParser {
                     if c == '-' {
                         i += 1;
                     }
-                    
+
                     // RFC 9535: integers cannot have leading zeros (except for "0" itself)
                     let digit_start = i;
                     while i < chars.len() && chars[i].is_ascii_digit() {
                         i += 1;
                     }
-                    
+
                     // Validate no leading zeros for multi-digit integers
                     if i > digit_start + 1 && chars[digit_start] == '0' {
                         return Err(invalid_expression_error(
@@ -247,7 +258,7 @@ impl ExpressionParser {
                             Some(digit_start),
                         ));
                     }
-                    
+
                     // RFC 9535: negative zero "-0" is invalid per grammar: int = "0" / (["−"] (non-zero-digit *DIGIT))
                     if start < digit_start && chars[digit_start] == '0' && i == digit_start + 1 {
                         return Err(invalid_expression_error(

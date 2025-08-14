@@ -3,10 +3,9 @@
 //! This module provides utility types for working with model capabilities.
 //! ModelCapabilities is imported from model-info (the single source of truth).
 
-use serde::{Deserialize, Serialize};
-
 // RE-EXPORT ModelCapabilities from model-info (single source of truth)
 pub use model_info::common::ModelCapabilities;
+use serde::{Deserialize, Serialize};
 
 /// Specific capabilities that models can support
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,7 +49,8 @@ pub enum Capability {
     /// Supports model distillation
     Distillation,
     /// Supports model pruning
-    Pruning}
+    Pruning,
+}
 
 /// Domain-specific model capability flags for filtering and selection
 ///
@@ -106,7 +106,7 @@ impl ModelCapabilitiesExt for ModelCapabilities {
         match capability {
             Capability::Vision => self.supports_vision = enabled,
             Capability::FunctionCalling => self.supports_function_calling = enabled,
-            Capability::Streaming => {}, // Always enabled in streaming-only architecture
+            Capability::Streaming => {} // Always enabled in streaming-only architecture
             Capability::FineTuning => self.supports_fine_tuning = enabled,
             Capability::BatchProcessing => self.supports_batch_processing = enabled,
             Capability::Realtime => self.supports_realtime = enabled,
@@ -212,7 +212,8 @@ pub struct ModelPerformance {
     /// Number of parameters in billions
     pub parameter_count_billions: f32,
     /// Floating-point operations per token
-    pub flops_per_token: Option<u64>}
+    pub flops_per_token: Option<u64>,
+}
 
 impl Default for ModelPerformance {
     fn default() -> Self {
@@ -224,7 +225,8 @@ impl Default for ModelPerformance {
             memory_usage_mb: 0.0,
             gpu_memory_usage_mb: None,
             parameter_count_billions: 0.0,
-            flops_per_token: None}
+            flops_per_token: None,
+        }
     }
 }
 
@@ -272,4 +274,5 @@ pub enum UseCase {
     /// Few-shot learning
     FewShotLearning,
     /// Zero-shot learning
-    ZeroShotLearning}
+    ZeroShotLearning,
+}

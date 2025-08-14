@@ -33,7 +33,8 @@ pub enum Cylo {
 
     /// Apple containerization backend with image specification
     /// Example: Cylo::Apple("python:alpine3.20")
-    Apple(String)}
+    Apple(String),
+}
 
 impl Cylo {
     /// Create a named instance of this execution environment
@@ -55,7 +56,8 @@ impl Cylo {
     pub fn instance<N: Into<String>>(self, name: N) -> CyloInstance {
         CyloInstance {
             env: self,
-            name: name.into()}
+            name: name.into(),
+        }
     }
 
     /// Validate the configuration string for this backend
@@ -73,14 +75,16 @@ impl Cylo {
                 if path.is_empty() {
                     return Err(CyloError::InvalidConfiguration {
                         backend: "LandLock",
-                        message: "Path cannot be empty"});
+                        message: "Path cannot be empty",
+                    });
                 }
 
                 // Validate path format - must be absolute for security
                 if !path.starts_with('/') {
                     return Err(CyloError::InvalidConfiguration {
                         backend: "LandLock",
-                        message: "LandLock path must be absolute"});
+                        message: "LandLock path must be absolute",
+                    });
                 }
 
                 Ok(())
@@ -90,14 +94,16 @@ impl Cylo {
                 if image.is_empty() {
                     return Err(CyloError::InvalidConfiguration {
                         backend: "FireCracker",
-                        message: "Image specification cannot be empty"});
+                        message: "Image specification cannot be empty",
+                    });
                 }
 
                 // Validate basic image format: name:tag or registry/name:tag
                 if !image.contains(':') {
                     return Err(CyloError::InvalidConfiguration {
                         backend: "FireCracker",
-                        message: "Image must include tag (e.g., 'rust:alpine3.20')"});
+                        message: "Image must include tag (e.g., 'rust:alpine3.20')",
+                    });
                 }
 
                 Ok(())
@@ -107,14 +113,16 @@ impl Cylo {
                 if image.is_empty() {
                     return Err(CyloError::InvalidConfiguration {
                         backend: "Apple",
-                        message: "Image specification cannot be empty"});
+                        message: "Image specification cannot be empty",
+                    });
                 }
 
                 // Validate basic image format for Apple containerization
                 if !image.contains(':') {
                     return Err(CyloError::InvalidConfiguration {
                         backend: "Apple",
-                        message: "Image must include tag (e.g., 'python:alpine3.20')"});
+                        message: "Image must include tag (e.g., 'python:alpine3.20')",
+                    });
                 }
 
                 Ok(())
@@ -128,7 +136,8 @@ impl Cylo {
         match self {
             Cylo::LandLock(_) => "LandLock",
             Cylo::FireCracker(_) => "FireCracker",
-            Cylo::Apple(_) => "Apple"}
+            Cylo::Apple(_) => "Apple",
+        }
     }
 
     /// Get the configuration value
@@ -137,7 +146,8 @@ impl Cylo {
         match self {
             Cylo::LandLock(path) => path,
             Cylo::FireCracker(image) => image,
-            Cylo::Apple(image) => image}
+            Cylo::Apple(image) => image,
+        }
     }
 }
 
@@ -146,7 +156,8 @@ impl fmt::Display for Cylo {
         match self {
             Cylo::LandLock(path) => write!(f, "LandLock({path})"),
             Cylo::FireCracker(image) => write!(f, "FireCracker({image})"),
-            Cylo::Apple(image) => write!(f, "Apple({image})")}
+            Cylo::Apple(image) => write!(f, "Apple({image})"),
+        }
     }
 }
 
@@ -159,7 +170,8 @@ pub struct CyloInstance {
     /// The execution environment configuration
     pub env: Cylo,
     /// Unique name for this instance
-    pub name: String}
+    pub name: String,
+}
 
 impl CyloInstance {
     /// Create a new CyloInstance
@@ -170,7 +182,8 @@ impl CyloInstance {
     pub fn new<N: Into<String>>(env: Cylo, name: N) -> Self {
         Self {
             env,
-            name: name.into()}
+            name: name.into(),
+        }
     }
 
     /// Validate this instance configuration
@@ -185,7 +198,8 @@ impl CyloInstance {
         if self.name.is_empty() {
             return Err(CyloError::InvalidConfiguration {
                 backend: self.env.backend_type(),
-                message: "Instance name cannot be empty"});
+                message: "Instance name cannot be empty",
+            });
         }
 
         // Instance names must be valid identifiers for security
@@ -196,7 +210,8 @@ impl CyloInstance {
         {
             return Err(CyloError::InvalidConfiguration {
                 backend: self.env.backend_type(),
-                message: "Instance name must contain only alphanumeric characters, hyphens, and underscores"});
+                message: "Instance name must contain only alphanumeric characters, hyphens, and underscores",
+            });
         }
 
         Ok(())
@@ -225,19 +240,22 @@ pub enum CyloError {
     #[error("Invalid {backend} configuration: {message}")]
     InvalidConfiguration {
         backend: &'static str,
-        message: &'static str},
+        message: &'static str,
+    },
 
     /// Platform does not support the requested backend
     #[error("Platform does not support {backend} backend: {details}")]
     PlatformUnsupported {
         backend: &'static str,
-        details: String},
+        details: String,
+    },
 
     /// Backend is available but not currently functional
     #[error("Backend {backend} is unavailable: {reason}")]
     BackendUnavailable {
         backend: &'static str,
-        reason: String},
+        reason: String,
+    },
 
     /// Named instance not found in the registry
     #[error("Instance '{name}' not found in registry")]
@@ -251,20 +269,23 @@ pub enum CyloError {
     #[error("Execution failed in {backend} environment: {details}")]
     ExecutionFailed {
         backend: &'static str,
-        details: String},
+        details: String,
+    },
 
     /// Timeout occurred during execution
     #[error("Execution timeout in {backend} environment after {timeout_secs}s")]
     ExecutionTimeout {
         backend: &'static str,
-        timeout_secs: u64},
+        timeout_secs: u64,
+    },
 
     /// Resource limits exceeded
     #[error("Resource limit exceeded in {backend}: {resource} limit {limit}")]
     ResourceLimitExceeded {
         backend: &'static str,
         resource: String,
-        limit: String},
+        limit: String,
+    },
 
     /// Internal system error
     #[error("Internal system error: {message}")]
@@ -272,47 +293,54 @@ pub enum CyloError {
 
     /// Validation error
     #[error("Validation error: {message}")]
-    Validation { message: String }}
+    Validation { message: String },
+}
 
 impl CyloError {
     /// Create a platform unsupported error with context
     pub fn platform_unsupported(backend: &'static str, details: impl Into<String>) -> Self {
         Self::PlatformUnsupported {
             backend,
-            details: details.into()}
+            details: details.into(),
+        }
     }
 
     /// Create a backend unavailable error with reason
     pub fn backend_unavailable(backend: &'static str, reason: impl Into<String>) -> Self {
         Self::BackendUnavailable {
             backend,
-            reason: reason.into()}
+            reason: reason.into(),
+        }
     }
 
     /// Create an execution failed error with details
     pub fn execution_failed(backend: &'static str, details: impl Into<String>) -> Self {
         Self::ExecutionFailed {
             backend,
-            details: details.into()}
+            details: details.into(),
+        }
     }
 
     /// Create an internal error with message
     pub fn internal(message: impl Into<String>) -> Self {
         Self::Internal {
-            message: message.into()}
+            message: message.into(),
+        }
     }
 
     /// Create a validation error with message
     pub fn validation(message: impl Into<String>) -> Self {
         Self::Validation {
-            message: message.into()}
+            message: message.into(),
+        }
     }
 }
 
 impl From<tokio::task::JoinError> for CyloError {
     fn from(error: tokio::task::JoinError) -> Self {
         Self::Internal {
-            message: format!("Task join error: {error}")}
+            message: format!("Task join error: {error}"),
+        }
     }
 }
 

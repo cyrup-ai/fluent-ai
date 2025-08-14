@@ -48,9 +48,9 @@ pub enum JsonSelector {
     },
 
     /// Multiple selectors (union operator)
-    Union { 
+    Union {
         /// List of selectors in the union
-        selectors: Vec<JsonSelector> 
+        selectors: Vec<JsonSelector>,
     },
 }
 
@@ -61,21 +61,21 @@ pub enum FilterExpression {
     Current,
 
     /// Property access (@.property)
-    Property { 
+    Property {
         /// Property path components
-        path: Vec<String> 
+        path: Vec<String>,
     },
 
     /// Complex JSONPath expressions (@.items[*], @.data[0:5], etc.)
-    JsonPath { 
+    JsonPath {
         /// Selectors in the JSONPath expression
-        selectors: Vec<JsonSelector> 
+        selectors: Vec<JsonSelector>,
     },
 
     /// Literal values (strings, numbers, booleans)
-    Literal { 
+    Literal {
         /// The literal value
-        value: FilterValue 
+        value: FilterValue,
     },
 
     /// Comparison operations

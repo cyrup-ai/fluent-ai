@@ -11,7 +11,8 @@ pub const STABLE_DIFFUSION_3: &str = "stabilityai/stable-diffusion-3-medium-diff
 
 #[derive(Debug)]
 pub struct ImageGenerationResponse {
-    data: Vec<u8>}
+    data: Vec<u8>,
+}
 
 impl TryFrom<ImageGenerationResponse>
     for image_generation::ImageGenerationResponse<ImageGenerationResponse>
@@ -21,7 +22,8 @@ impl TryFrom<ImageGenerationResponse>
     fn try_from(value: ImageGenerationResponse) -> Result<Self, Self::Error> {
         Ok(image_generation::ImageGenerationResponse {
             image: value.data.clone(),
-            response: value})
+            response: value,
+        })
     }
 }
 
@@ -32,7 +34,8 @@ impl ImageGenerationModel {
     pub fn new(client: Client, model: &str) -> Self {
         ImageGenerationModel {
             client,
-            model: model.to_string()}
+            model: model.to_string(),
+        }
     }
 }
 

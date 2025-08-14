@@ -29,11 +29,13 @@ pub enum DistanceMetric {
     /// Cosine similarity
     Cosine,
     /// Dot product
-    DotProduct}
+    DotProduct,
+}
 
 /// A pending vector operation
 pub struct PendingVectorOp {
-    rx: oneshot::Receiver<crate::utils::Result<()>>}
+    rx: oneshot::Receiver<crate::utils::Result<()>>,
+}
 
 impl PendingVectorOp {
     pub fn new(rx: oneshot::Receiver<crate::utils::Result<()>>) -> Self {
@@ -50,13 +52,15 @@ impl Future for PendingVectorOp {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Vector operation task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending}
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
 /// A pending vector search
 pub struct PendingVectorSearch {
-    rx: oneshot::Receiver<crate::utils::Result<Vec<VectorSearchResult>>>}
+    rx: oneshot::Receiver<crate::utils::Result<Vec<VectorSearchResult>>>,
+}
 
 impl PendingVectorSearch {
     pub fn new(rx: oneshot::Receiver<crate::utils::Result<Vec<VectorSearchResult>>>) -> Self {
@@ -73,13 +77,15 @@ impl Future for PendingVectorSearch {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Vector search task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending}
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
 /// A pending embedding generation
 pub struct PendingEmbedding {
-    rx: oneshot::Receiver<crate::utils::Result<Vec<f32>>>}
+    rx: oneshot::Receiver<crate::utils::Result<Vec<f32>>>,
+}
 
 impl PendingEmbedding {
     pub fn new(rx: oneshot::Receiver<crate::utils::Result<Vec<f32>>>) -> Self {
@@ -96,7 +102,8 @@ impl Future for PendingEmbedding {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Embedding task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending}
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
@@ -143,4 +150,5 @@ pub struct VectorSearchResult {
     pub score: f32,
 
     /// Optional metadata
-    pub metadata: Option<serde_json::Value>}
+    pub metadata: Option<serde_json::Value>,
+}

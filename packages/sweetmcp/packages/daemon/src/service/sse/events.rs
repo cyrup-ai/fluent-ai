@@ -3,8 +3,9 @@
 //! Defines the event types and data structures used in the SSE transport
 //! according to the MCP SSE specification and RFC 6455.
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
 
 /// SSE event types as defined in the MCP SSE specification
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

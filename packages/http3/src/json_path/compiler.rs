@@ -69,7 +69,7 @@ impl JsonPathParser {
             ));
         }
 
-        // RFC 9535: descendant-segment = ".." S bracket-segment  
+        // RFC 9535: descendant-segment = ".." S bracket-segment
         // Bare ".." without following segment is invalid
         if expression == "$.." {
             return Err(invalid_expression_error(
@@ -92,13 +92,18 @@ impl JsonPathParser {
         // Valid: "$..property" (recursive descent from root)
         // Invalid: "$.property..property" (property followed by recursive descent followed by property)
         if let Some(double_dot_pos) = expression.find("..") {
-            if double_dot_pos > 2 { // More than just "$."
+            if double_dot_pos > 2 {
+                // More than just "$."
                 let before_double_dot = &expression[..double_dot_pos];
                 let after_double_dot = &expression[double_dot_pos + 2..];
-                
+
                 // Check if we have a property before .. and a property after ..
-                if before_double_dot.len() > 2 && !before_double_dot.ends_with('.') && 
-                   !after_double_dot.is_empty() && !after_double_dot.starts_with('[') && !after_double_dot.starts_with('*') {
+                if before_double_dot.len() > 2
+                    && !before_double_dot.ends_with('.')
+                    && !after_double_dot.is_empty()
+                    && !after_double_dot.starts_with('[')
+                    && !after_double_dot.starts_with('*')
+                {
                     // This is a pattern like "$.store..book" which is invalid
                     return Err(invalid_expression_error(
                         expression,
@@ -109,7 +114,7 @@ impl JsonPathParser {
             }
         }
 
-        // RFC 9535: descendant-segment = ".." S bracket-segment  
+        // RFC 9535: descendant-segment = ".." S bracket-segment
         // According to RFC 9535, ".." can be followed by bracket-segment, wildcard '*', or identifier
         // Valid: "$..*", "$..[*]", "$..level1", "$..['key']"
         // Invalid: bare ".." without any following segment
@@ -153,34 +158,46 @@ mod tests {
     fn test_recursive_descent_wildcard_compilation() {
         // Test RFC 9535 compliant recursive descent patterns
         let valid_patterns = vec![
-            "$..[*]",           // Valid: recursive descent followed by bracket selector
-            "$..level1",        // Valid: recursive descent followed by property  
-            "$..['key']",       // Valid: recursive descent followed by bracket selector
+            "$..[*]",     // Valid: recursive descent followed by bracket selector
+            "$..level1",  // Valid: recursive descent followed by property
+            "$..['key']", // Valid: recursive descent followed by bracket selector
         ];
-        
+
         for pattern in valid_patterns {
             let result = JsonPathParser::compile(pattern);
-            assert!(result.is_ok(), "Pattern {} should compile successfully", pattern);
+            assert!(
+                result.is_ok(),
+                "Pattern {} should compile successfully",
+                pattern
+            );
         }
-        
+
         // Test RFC 9535 valid patterns including recursive descent with wildcard
         let additional_valid_patterns = vec![
-            "$..*",             // Valid: recursive descent followed by wildcard (RFC 9535 compliant)
+            "$..*", // Valid: recursive descent followed by wildcard (RFC 9535 compliant)
         ];
-        
+
         for pattern in additional_valid_patterns {
             let result = JsonPathParser::compile(pattern);
-            assert!(result.is_ok(), "Pattern {} should compile successfully per RFC 9535", pattern);
+            assert!(
+                result.is_ok(),
+                "Pattern {} should compile successfully per RFC 9535",
+                pattern
+            );
         }
-        
+
         // Test that invalid patterns are properly rejected
         let invalid_patterns = vec![
-            "$..",              // Invalid: bare recursive descent without following segment
+            "$..", // Invalid: bare recursive descent without following segment
         ];
-        
+
         for pattern in invalid_patterns {
             let result = JsonPathParser::compile(pattern);
-            assert!(result.is_err(), "Pattern {} should be rejected as invalid", pattern);
+            assert!(
+                result.is_err(),
+                "Pattern {} should be rejected as invalid",
+                pattern
+            );
         }
     }
 }

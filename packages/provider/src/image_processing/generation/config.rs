@@ -16,7 +16,8 @@ pub enum SD3ModelVariant {
     /// SD3.5 Large Turbo (distilled, 4-step inference)
     ThreeFiveLargeTurbo,
     /// SD3.5 Medium (2.5B parameters, improved architecture)
-    ThreeFiveMedium}
+    ThreeFiveMedium,
+}
 
 impl SD3ModelVariant {
     /// Get model identifier for HuggingFace Hub
@@ -25,7 +26,8 @@ impl SD3ModelVariant {
             Self::ThreeMedium => "stabilityai/stable-diffusion-3-medium",
             Self::ThreeFiveLarge => "stabilityai/stable-diffusion-3.5-large",
             Self::ThreeFiveLargeTurbo => "stabilityai/stable-diffusion-3.5-large-turbo",
-            Self::ThreeFiveMedium => "stabilityai/stable-diffusion-3.5-medium"}
+            Self::ThreeFiveMedium => "stabilityai/stable-diffusion-3.5-medium",
+        }
     }
 
     /// Get default number of inference steps
@@ -34,7 +36,8 @@ impl SD3ModelVariant {
             Self::ThreeMedium => 28,
             Self::ThreeFiveLarge => 50,
             Self::ThreeFiveLargeTurbo => 4,
-            Self::ThreeFiveMedium => 28}
+            Self::ThreeFiveMedium => 28,
+        }
     }
 
     /// Check if model supports Skip Layer Guidance
@@ -65,7 +68,8 @@ pub struct GenerationConfig {
     /// Batch size for generation
     pub batch_size: usize,
     /// Additional model-specific parameters
-    pub additional_params: HashMap<String, serde_json::Value>}
+    pub additional_params: HashMap<String, serde_json::Value>,
+}
 
 impl Default for GenerationConfig {
     fn default() -> Self {
@@ -79,7 +83,8 @@ impl Default for GenerationConfig {
             output_size: (1024, 1024),
             seed: None,
             batch_size: 1,
-            additional_params: HashMap::new()}
+            additional_params: HashMap::new(),
+        }
     }
 }
 
@@ -97,7 +102,8 @@ pub struct ModelLoadingConfig {
     /// Enable model caching
     pub cache_enabled: bool,
     /// Model loading timeout (seconds)
-    pub timeout_seconds: u64}
+    pub timeout_seconds: u64,
+}
 
 impl Default for ModelLoadingConfig {
     fn default() -> Self {
@@ -107,7 +113,8 @@ impl Default for ModelLoadingConfig {
             use_safetensors: true,
             cache_dir: None,
             cache_enabled: true,
-            timeout_seconds: 300}
+            timeout_seconds: 300,
+        }
     }
 }
 
@@ -127,7 +134,8 @@ pub enum ConfigValidationError {
     InvalidTimeShift(f64),
 
     #[error("Skip Layer Guidance not supported for model variant: {0:?}")]
-    SlgNotSupported(SD3ModelVariant)}
+    SlgNotSupported(SD3ModelVariant),
+}
 
 /// Configuration validation functions
 impl GenerationConfig {

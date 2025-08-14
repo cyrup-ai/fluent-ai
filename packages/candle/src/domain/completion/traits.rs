@@ -4,14 +4,11 @@
 //! domain/src/completion/core.rs with zero over-engineering.
 
 use fluent_ai_async::AsyncStream;
-use super::{
-    types::CandleCompletionParams,
-};
-use crate::domain::completion::{CandleCompletionRequest, CandleCompletionResponse};
-use crate::domain::{
-    prompt::CandlePrompt,
-};
+
+use super::types::CandleCompletionParams;
 use crate::domain::completion::CandleCompletionChunk;
+use crate::domain::completion::{CandleCompletionRequest, CandleCompletionResponse};
+use crate::domain::prompt::CandlePrompt;
 
 /// Core trait for completion models - EXACT REPLICA of domain CompletionModel
 pub trait CandleCompletionModel: Send + Sync + 'static {
@@ -23,7 +20,11 @@ pub trait CandleCompletionModel: Send + Sync + 'static {
     ///
     /// # Returns
     /// Stream of completion chunks
-    fn prompt(&self, prompt: CandlePrompt, params: &CandleCompletionParams) -> AsyncStream<CandleCompletionChunk>;
+    fn prompt(
+        &self,
+        prompt: CandlePrompt,
+        params: &CandleCompletionParams,
+    ) -> AsyncStream<CandleCompletionChunk>;
 }
 
 /// Backend for completion processing - EXACT REPLICA of domain CompletionBackend

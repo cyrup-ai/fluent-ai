@@ -39,7 +39,8 @@
 
 pub mod execution_env;
 pub use execution_env::{
-    Cylo, CyloError, CyloInstance, CyloResult, validate_environment_spec, validate_instance_name};
+    Cylo, CyloError, CyloInstance, CyloResult, validate_environment_spec, validate_instance_name,
+};
 
 // ============================================================================
 // Backend implementations and traits
@@ -56,7 +57,8 @@ pub use backends::{
     ExecutionResult,
     HealthStatus,
     // Factory function
-    create_backend};
+    create_backend,
+};
 // Platform-specific backends
 #[cfg(target_os = "linux")]
 pub use backends::{FireCrackerBackend, LandLockBackend};
@@ -78,7 +80,8 @@ pub use platform::{
     has_kvm,
     has_landlock,
     is_apple_silicon,
-    is_linux};
+    is_linux,
+};
 
 // ============================================================================
 // Error handling
@@ -128,7 +131,8 @@ pub use macos::MacosRamdisk;
 
 pub mod instance_manager;
 pub use instance_manager::{
-    InstanceManager, global_instance_manager, init_global_instance_manager};
+    InstanceManager, global_instance_manager, init_global_instance_manager,
+};
 // ============================================================================
 // Asynchronous task utilities
 // ============================================================================
@@ -158,7 +162,8 @@ pub fn execute_code_auto(code: &str, language: &str) -> AsyncTask<CyloResult<Exe
 
         let backend = match create_backend(&env, BackendConfig::default()) {
             Ok(backend) => backend,
-            Err(e) => return Err(e)};
+            Err(e) => return Err(e),
+        };
         let request = ExecutionRequest::new(&code, &language);
         let result = backend
             .execute_code(request)
@@ -213,7 +218,8 @@ pub fn get_diagnostics() -> AsyncTask<DiagnosticsReport> {
         let health_results = match manager.health_check_all().await {
             Ok(Ok(results)) => results,
             Ok(Err(_)) => std::collections::HashMap::new(),
-            Err(_) => std::collections::HashMap::new()};
+            Err(_) => std::collections::HashMap::new(),
+        };
 
         let instance_list = manager.list_instances().unwrap_or_default();
 
@@ -222,7 +228,8 @@ pub fn get_diagnostics() -> AsyncTask<DiagnosticsReport> {
             available_backends,
             backend_health: health_results,
             active_instances: instance_list,
-            performance_hints: platform_info.performance.clone()}
+            performance_hints: platform_info.performance.clone(),
+        }
     })
     .spawn()
 }
@@ -239,7 +246,8 @@ pub struct DiagnosticsReport {
     /// Currently active instances
     pub active_instances: Vec<String>,
     /// Performance optimization hints
-    pub performance_hints: PerformanceHints}
+    pub performance_hints: PerformanceHints,
+}
 
 // ============================================================================
 // AsyncTask module - simple wrapper around tokio for backend compatibility
@@ -251,7 +259,8 @@ pub mod async_task {
 
     /// Simple AsyncTaskBuilder for fluent construction
     pub struct AsyncTaskBuilder<F> {
-        future: F}
+        future: F,
+    }
 
     impl<F, T> AsyncTaskBuilder<F>
     where

@@ -5,15 +5,14 @@
 
 use std::{
     collections::HashMap,
-    f64::consts::{E, PI, TAU}};
+    f64::consts::{E, PI, TAU},
+};
 
 use fluent_ai_async::AsyncStream;
 use serde_json::{Value, json};
 
-use super::{
-    core::{ToolExecutor},
-    function_calling::{ToolExecutionContext}};
 use super::super::error::{AnthropicError, AnthropicResult};
+use super::{core::ToolExecutor, function_calling::ToolExecutionContext};
 
 /// Expression evaluation errors
 #[derive(Debug, Clone)]
@@ -34,9 +33,13 @@ impl std::fmt::Display for ExpressionError {
             ExpressionError::InvalidToken { token } => write!(f, "Invalid token: {}", token),
             ExpressionError::UnexpectedToken { token } => write!(f, "Unexpected token: {}", token),
             ExpressionError::MismatchedParentheses => write!(f, "Mismatched parentheses"),
-            ExpressionError::InvalidFunctionCall { function } => write!(f, "Invalid function call: {}", function),
+            ExpressionError::InvalidFunctionCall { function } => {
+                write!(f, "Invalid function call: {}", function)
+            }
             ExpressionError::DivisionByZero => write!(f, "Division by zero"),
-            ExpressionError::UnknownVariable { variable } => write!(f, "Unknown variable: {}", variable),
+            ExpressionError::UnknownVariable { variable } => {
+                write!(f, "Unknown variable: {}", variable)
+            }
         }
     }
 }
@@ -54,49 +57,59 @@ impl ExpressionEvaluator {
         variables.insert("pi".to_string(), PI);
         variables.insert("e".to_string(), E);
         variables.insert("tau".to_string(), TAU);
-        
+
         Self { variables }
     }
-    
+
     pub fn evaluate(&mut self, expression: &str) -> Result<f64, ExpressionError> {
         // Simple evaluator - for production use, consider using a proper expression parser
         let expr = expression.trim().to_lowercase();
-        
+
         // Handle simple constants
-        if expr == "pi" { return Ok(PI); }
-        if expr == "e" { return Ok(E); }
-        if expr == "tau" { return Ok(TAU); }
-        
+        if expr == "pi" {
+            return Ok(PI);
+        }
+        if expr == "e" {
+            return Ok(E);
+        }
+        if expr == "tau" {
+            return Ok(TAU);
+        }
+
         // Try to parse as number
         if let Ok(num) = expr.parse::<f64>() {
             return Ok(num);
         }
-        
+
         // Handle simple binary operations
         if let Some(result) = self.try_parse_binary_operation(&expr)? {
             return Ok(result);
         }
-        
+
         Err(ExpressionError::ParseError {
-            message: format!("Unable to evaluate expression: {}", expression)
+            message: format!("Unable to evaluate expression: {}", expression),
         })
     }
-    
+
     fn try_parse_binary_operation(&self, expr: &str) -> Result<Option<f64>, ExpressionError> {
         // Simple implementation for basic operations
         // For production, use a proper expression parser like pest or nom
-        
+
         for op in &["+", "-", "*", "/", "^"] {
             if let Some(pos) = expr.find(op) {
-                let left = expr[..pos].trim().parse::<f64>()
-                    .map_err(|_| ExpressionError::ParseError { 
-                        message: "Invalid left operand".to_string() 
-                    })?;
-                let right = expr[pos + 1..].trim().parse::<f64>()
-                    .map_err(|_| ExpressionError::ParseError { 
-                        message: "Invalid right operand".to_string() 
-                    })?;
-                    
+                let left =
+                    expr[..pos]
+                        .trim()
+                        .parse::<f64>()
+                        .map_err(|_| ExpressionError::ParseError {
+                            message: "Invalid left operand".to_string(),
+                        })?;
+                let right = expr[pos + 1..].trim().parse::<f64>().map_err(|_| {
+                    ExpressionError::ParseError {
+                        message: "Invalid right operand".to_string(),
+                    }
+                })?;
+
                 let result = match op {
                     "+" => left + right,
                     "-" => left - right,
@@ -106,7 +119,7 @@ impl ExpressionEvaluator {
                             return Err(ExpressionError::DivisionByZero);
                         }
                         left / right
-                    },
+                    }
                     "^" => left.powf(right),
                     _ => unreachable!(),
                 };
@@ -121,11 +134,7 @@ impl ExpressionEvaluator {
 pub struct CalculatorTool;
 
 impl ToolExecutor for CalculatorTool {
-    fn execute(
-        &self,
-        input: Value,
-        _context: &ToolExecutionContext,
-    ) -> AsyncStream<Value> {
+    fn execute(&self, input: Value, _context: &ToolExecutionContext) -> AsyncStream<Value> {
         AsyncStream::with_channel(move |sender| {
             Box::pin(async move {
                 let expression = input
@@ -148,14 +157,15 @@ impl ToolExecutor for CalculatorTool {
                             ExpressionError::MismatchedParentheses => "MISMATCHED_PARENTHESES",
                             ExpressionError::InvalidFunctionCall { .. } => "INVALID_FUNCTION_CALL",
                             ExpressionError::DivisionByZero => "DIVISION_BY_ZERO",
-                            ExpressionError::UnknownVariable { .. } => "UNKNOWN_VARIABLE"};
+                            ExpressionError::UnknownVariable { .. } => "UNKNOWN_VARIABLE",
+                        };
                         json!({
                             "error": format!("{} - {}", error_code, e),
                             "expression": expression
                         })
                     }
                 };
-                
+
                 let _ = sender.send(result).await;
                 Ok(())
             })

@@ -1,6 +1,6 @@
 // Removed unused import: std::collections::HashMap
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use crossbeam_queue::SegQueue;
@@ -45,7 +45,8 @@ pub struct CognitiveState {
     meta_awareness: Arc<CachePadded<AtomicF32>>,
 
     /// Statistics for monitoring cognitive performance
-    stats: Arc<CachePadded<CognitiveStats>>}
+    stats: Arc<CachePadded<CognitiveStats>>,
+}
 
 /// SIMD-aligned activation pattern for vectorized operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +57,8 @@ pub struct AlignedActivationPattern {
     /// Pattern dimension for validation
     pub dimension: usize,
     /// Last update timestamp for decay calculations
-    pub last_update: SystemTime}
+    pub last_update: SystemTime,
+}
 
 impl AlignedActivationPattern {
     /// Create new aligned activation pattern
@@ -66,7 +68,8 @@ impl AlignedActivationPattern {
         Self {
             data,
             dimension,
-            last_update: SystemTime::now()}
+            last_update: SystemTime::now(),
+        }
     }
 
     /// Update pattern with SIMD optimization hint
@@ -121,7 +124,8 @@ pub struct AtomicAttentionWeights {
     /// Background attention weight
     background: AtomicF32,
     /// Meta-attention weight
-    meta: AtomicF32}
+    meta: AtomicF32,
+}
 
 impl AtomicAttentionWeights {
     /// Create new atomic attention weights
@@ -131,7 +135,8 @@ impl AtomicAttentionWeights {
             primary: AtomicF32::new(0.6),
             secondary: AtomicF32::new(0.3),
             background: AtomicF32::new(0.1),
-            meta: AtomicF32::new(0.0)}
+            meta: AtomicF32::new(0.0),
+        }
     }
 
     /// Update primary attention atomically
@@ -215,7 +220,8 @@ pub struct WorkingMemoryItem {
     /// Creation timestamp
     pub created_at: SystemTime,
     /// Time-to-live for automatic cleanup
-    pub ttl: Duration}
+    pub ttl: Duration,
+}
 
 impl WorkingMemoryItem {
     /// Create new working memory item
@@ -226,7 +232,8 @@ impl WorkingMemoryItem {
             content: content.into(),
             activation: activation.clamp(0.0, 1.0),
             created_at: SystemTime::now(),
-            ttl}
+            ttl,
+        }
     }
 
     /// Check if item has expired
@@ -248,7 +255,8 @@ pub struct CognitiveMemoryEntry {
     /// Last access time
     pub last_access: SystemTime,
     /// Decay rate for forgetting
-    pub decay_rate: f32}
+    pub decay_rate: f32,
+}
 
 impl CognitiveMemoryEntry {
     /// Create new cognitive memory entry
@@ -303,7 +311,8 @@ pub struct TemporalContext {
     /// Temporal window duration
     window_duration: Duration,
     /// Atomic sequence counter for ordering
-    sequence_counter: Arc<AtomicU64>}
+    sequence_counter: Arc<AtomicU64>,
+}
 
 impl TemporalContext {
     /// Create new temporal context
@@ -316,7 +325,8 @@ impl TemporalContext {
             temporal_decay: 0.1,
             window_start: SystemTime::now(),
             window_duration,
-            sequence_counter: Arc::new(AtomicU64::new(0))}
+            sequence_counter: Arc::new(AtomicU64::new(0)),
+        }
     }
 
     /// Get next sequence number atomically
@@ -376,7 +386,8 @@ pub struct CausalLink {
     /// Causal strength (0.0 to 1.0)
     pub strength: f32,
     /// Temporal distance in milliseconds
-    pub temporal_distance: i64}
+    pub temporal_distance: i64,
+}
 
 impl CausalLink {
     /// Create new causal link
@@ -387,7 +398,8 @@ impl CausalLink {
             source_id,
             target_id,
             strength: strength.clamp(0.0, 1.0),
-            temporal_distance}
+            temporal_distance,
+        }
     }
 }
 
@@ -420,7 +432,8 @@ pub struct QuantumSignature {
     creation_time: SystemTime,
 
     /// Decoherence rate for quantum state decay
-    decoherence_rate: f64}
+    decoherence_rate: f64,
+}
 
 /// SIMD-aligned coherence fingerprint for quantum operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -431,7 +444,8 @@ pub struct AlignedCoherenceFingerprint {
     /// Phase angles for quantum interference
     pub phases: Vec<f32>,
     /// Dimension for consistency checking
-    pub dimension: usize}
+    pub dimension: usize,
+}
 
 impl AlignedCoherenceFingerprint {
     /// Create new coherence fingerprint
@@ -447,7 +461,8 @@ impl AlignedCoherenceFingerprint {
         Ok(Self {
             amplitudes,
             phases,
-            dimension})
+            dimension,
+        })
     }
 
     /// Calculate quantum state probability with SIMD optimization
@@ -507,7 +522,8 @@ impl Default for AlignedCoherenceFingerprint {
         Self {
             amplitudes: vec![1.0], // Maximum coherence state
             phases: vec![0.0],     // Zero phase
-            dimension: 1}
+            dimension: 1,
+        }
     }
 }
 
@@ -550,7 +566,8 @@ impl QuantumSignature {
             collapse_probability: default_collapse_probability(),
             quantum_entropy: default_quantum_entropy(),
             creation_time: SystemTime::now(),
-            decoherence_rate: 0.001})
+            decoherence_rate: 0.001,
+        })
     }
 
     /// Apply decoherence based on elapsed time
@@ -648,7 +665,8 @@ pub struct EntanglementBond {
     /// Entanglement type classification
     pub entanglement_type: EntanglementType,
     /// Creation timestamp
-    pub created_at: SystemTime}
+    pub created_at: SystemTime,
+}
 
 impl EntanglementBond {
     /// Create new entanglement bond
@@ -659,7 +677,8 @@ impl EntanglementBond {
             target_id,
             bond_strength: bond_strength.clamp(0.0, 1.0),
             entanglement_type,
-            created_at: SystemTime::now()}
+            created_at: SystemTime::now(),
+        }
     }
 }
 
@@ -682,19 +701,22 @@ pub enum EntanglementType {
     /// Bell state entanglement
     Bell = 6,
     /// Bell pair entanglement
-    BellPair = 7}
+    BellPair = 7,
+}
 
 /// Atomic f32 wrapper for concurrent operations
 #[derive(Debug)]
 pub struct AtomicF32 {
-    inner: AtomicU64}
+    inner: AtomicU64,
+}
 
 impl AtomicF32 {
     /// Create new atomic f32
     #[inline]
     pub fn new(value: f32) -> Self {
         Self {
-            inner: AtomicU64::new(value.to_bits() as u64)}
+            inner: AtomicU64::new(value.to_bits() as u64),
+        }
     }
 
     /// Load value atomically
@@ -720,7 +742,8 @@ impl Default for AtomicF32 {
 #[derive(Debug)]
 #[allow(dead_code)] // TODO: Implement atomic f64 operations for quantum calculations
 pub struct AtomicF64 {
-    inner: AtomicU64}
+    inner: AtomicU64,
+}
 
 impl AtomicF64 {
     /// Create new atomic f64
@@ -728,7 +751,8 @@ impl AtomicF64 {
     #[allow(dead_code)] // TODO: Implement atomic f64 constructor
     pub fn new(value: f64) -> Self {
         Self {
-            inner: AtomicU64::new(value.to_bits())}
+            inner: AtomicU64::new(value.to_bits()),
+        }
     }
 
     /// Load value atomically
@@ -765,7 +789,8 @@ pub struct CognitiveStats {
     /// Attention updates count
     pub attention_updates: AtomicU64,
     /// Last update timestamp
-    pub last_update_nanos: AtomicU64}
+    pub last_update_nanos: AtomicU64,
+}
 
 impl CognitiveStats {
     /// Create new cognitive stats
@@ -776,7 +801,8 @@ impl CognitiveStats {
             long_term_memory_accesses: AtomicU64::new(0),
             quantum_operations: AtomicU64::new(0),
             attention_updates: AtomicU64::new(0),
-            last_update_nanos: AtomicU64::new(0)}
+            last_update_nanos: AtomicU64::new(0),
+        }
     }
 
     /// Record working memory access
@@ -881,7 +907,8 @@ impl CognitiveState {
             uncertainty: default_uncertainty(),
             confidence: default_confidence(),
             meta_awareness: default_meta_awareness(),
-            stats: default_cognitive_stats()}
+            stats: default_cognitive_stats(),
+        }
     }
 
     /// Add item to working memory with lock-free operation
@@ -1083,7 +1110,8 @@ impl CognitiveState {
             uncertainty: default_uncertainty(),
             confidence: default_confidence(),
             meta_awareness: default_meta_awareness(),
-            stats: default_cognitive_stats()})
+            stats: default_cognitive_stats(),
+        })
     }
 }
 
@@ -1106,7 +1134,8 @@ pub enum CognitiveError {
     #[error("Temporal inconsistency: {0}")]
     TemporalInconsistency(String),
     #[error("Attention overflow: {0}")]
-    AttentionOverflow(String)}
+    AttentionOverflow(String),
+}
 
 /// Result type for cognitive operations
 pub type CognitiveResult<T> = Result<T, CognitiveError>;
@@ -1127,7 +1156,8 @@ pub struct CognitiveMemory {
     /// Performance metrics
     metrics: Arc<CachePadded<CognitiveMetrics>>,
     /// Configuration settings
-    config: CognitiveMemoryConfig}
+    config: CognitiveMemoryConfig,
+}
 
 /// Cognitive processor for executing cognitive operations
 ///
@@ -1146,7 +1176,8 @@ pub struct CognitiveProcessor {
     /// Pattern matcher for cognitive patterns
     pattern_matcher: Arc<PatternMatcher>,
     /// Decision engine for cognitive decisions
-    decision_engine: Arc<DecisionEngine>}
+    decision_engine: Arc<DecisionEngine>,
+}
 
 /// Configuration for cognitive memory system
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1158,7 +1189,8 @@ pub struct CognitiveMemoryConfig {
     /// Pattern retention time in seconds
     pub pattern_retention_seconds: u64,
     /// Enable performance monitoring
-    pub enable_monitoring: bool}
+    pub enable_monitoring: bool,
+}
 
 /// Configuration for cognitive processor
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1170,7 +1202,8 @@ pub struct CognitiveProcessorConfig {
     /// Learning rate for adaptation
     pub learning_rate: f32,
     /// Maximum processing iterations
-    pub max_iterations: usize}
+    pub max_iterations: usize,
+}
 
 /// Cognitive pattern representation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1186,7 +1219,8 @@ pub struct CognitivePattern {
     /// Last accessed timestamp
     pub last_accessed: SystemTime,
     /// Access count
-    pub access_count: u64}
+    pub access_count: u64,
+}
 
 /// Cognitive metrics for performance monitoring
 #[derive(Debug)]
@@ -1198,7 +1232,8 @@ pub struct CognitiveMetrics {
     /// Average processing time in microseconds
     pub avg_processing_time_us: AtomicU64,
     /// Success rate (0.0 to 1.0)
-    pub success_rate: AtomicF32}
+    pub success_rate: AtomicF32,
+}
 
 /// Current processing state
 #[derive(Debug)]
@@ -1208,7 +1243,8 @@ pub struct ProcessingState {
     /// Current iteration
     pub current_iteration: AtomicU64,
     /// Processing start time
-    pub start_time: std::sync::atomic::AtomicU64}
+    pub start_time: std::sync::atomic::AtomicU64,
+}
 
 /// Pattern matcher for cognitive patterns
 #[derive(Debug)]
@@ -1217,7 +1253,8 @@ pub struct PatternMatcher {
     threshold: f32,
     /// Pattern cache
     #[allow(dead_code)] // TODO: Implement pattern cache functionality
-    cache: Arc<SkipMap<Uuid, f32>>}
+    cache: Arc<SkipMap<Uuid, f32>>,
+}
 
 /// Decision engine for cognitive decisions
 #[derive(Debug)]
@@ -1225,7 +1262,8 @@ pub struct DecisionEngine {
     /// Decision threshold
     threshold: f32,
     /// Decision history
-    history: Arc<SegQueue<Decision>>}
+    history: Arc<SegQueue<Decision>>,
+}
 
 /// Represents a cognitive decision
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1237,7 +1275,8 @@ pub struct Decision {
     /// Decision timestamp
     pub timestamp: SystemTime,
     /// Decision outcome
-    pub outcome: DecisionOutcome}
+    pub outcome: DecisionOutcome,
+}
 
 /// Possible decision outcomes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1249,7 +1288,8 @@ pub enum DecisionOutcome {
     /// Defer the decision
     Defer,
     /// Request more information
-    RequestInfo}
+    RequestInfo,
+}
 
 impl CognitiveMemory {
     /// Create a new cognitive memory system
@@ -1258,7 +1298,8 @@ impl CognitiveMemory {
             state: Arc::new(CognitiveState::new()),
             pattern_storage: Arc::new(SkipMap::new()),
             metrics: Arc::new(CachePadded::new(CognitiveMetrics::new())),
-            config}
+            config,
+        }
     }
 
     /// Get the current cognitive state
@@ -1302,7 +1343,8 @@ impl CognitiveProcessor {
             config,
             state: Arc::new(CachePadded::new(ProcessingState::new())),
             pattern_matcher: Arc::new(PatternMatcher::new(0.8)),
-            decision_engine: Arc::new(DecisionEngine::new(0.7))}
+            decision_engine: Arc::new(DecisionEngine::new(0.7)),
+        }
     }
 
     /// Process cognitive input and return decision
@@ -1385,7 +1427,8 @@ impl Default for CognitiveMemoryConfig {
             max_patterns: 10000,
             consolidation_threshold: 0.8,
             pattern_retention_seconds: 86400, // 24 hours
-            enable_monitoring: true}
+            enable_monitoring: true,
+        }
     }
 }
 
@@ -1395,7 +1438,8 @@ impl Default for CognitiveProcessorConfig {
             batch_size: 32,
             decision_threshold: 0.7,
             learning_rate: 0.01,
-            max_iterations: 1000}
+            max_iterations: 1000,
+        }
     }
 }
 
@@ -1406,7 +1450,8 @@ impl CognitiveMetrics {
             patterns_processed: AtomicU64::new(0),
             decisions_made: AtomicU64::new(0),
             avg_processing_time_us: AtomicU64::new(0),
-            success_rate: AtomicF32::new(0.0)}
+            success_rate: AtomicF32::new(0.0),
+        }
     }
 }
 
@@ -1416,7 +1461,8 @@ impl ProcessingState {
         Self {
             is_processing: std::sync::atomic::AtomicBool::new(false),
             current_iteration: AtomicU64::new(0),
-            start_time: std::sync::atomic::AtomicU64::new(0)}
+            start_time: std::sync::atomic::AtomicU64::new(0),
+        }
     }
 }
 
@@ -1425,7 +1471,8 @@ impl PatternMatcher {
     pub fn new(threshold: f32) -> Self {
         Self {
             threshold,
-            cache: Arc::new(SkipMap::new())}
+            cache: Arc::new(SkipMap::new()),
+        }
     }
 
     /// Match input against patterns
@@ -1470,7 +1517,8 @@ impl DecisionEngine {
     pub fn new(threshold: f32) -> Self {
         Self {
             threshold,
-            history: Arc::new(SegQueue::new())}
+            history: Arc::new(SegQueue::new()),
+        }
     }
 
     /// Make a decision based on pattern match strength
@@ -1485,7 +1533,8 @@ impl DecisionEngine {
                 DecisionOutcome::Defer
             } else {
                 DecisionOutcome::Reject
-            }};
+            },
+        };
 
         self.history.push(decision.clone());
         Ok(decision)

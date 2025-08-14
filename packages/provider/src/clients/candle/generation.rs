@@ -5,8 +5,8 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::time::{SystemTime, UNIX_EPOCH};
-use arrayvec::ArrayVec;
 
+use arrayvec::ArrayVec;
 use crossbeam::atomic::AtomicCell;
 use rand::prelude::*;
 use rand_pcg::Pcg64Mcg;
@@ -34,7 +34,8 @@ pub struct TokenProb {
     /// Log probability
     pub log_prob: f32,
     /// Normalized probability (0.0 to 1.0)
-    pub prob: f32}
+    pub prob: f32,
+}
 
 impl TokenProb {
     /// Create a new token probability
@@ -42,7 +43,8 @@ impl TokenProb {
         Self {
             token_id,
             log_prob,
-            prob}
+            prob,
+        }
     }
 }
 
@@ -75,7 +77,8 @@ pub struct SamplingConfig {
     /// Random seed for reproducible generation
     pub seed: Option<u64>,
     /// Enable deterministic sampling (disable randomness)
-    pub deterministic: bool}
+    pub deterministic: bool,
+}
 
 impl Default for SamplingConfig {
     fn default() -> Self {
@@ -89,7 +92,8 @@ impl Default for SamplingConfig {
             presence_penalty: 0.0,
             min_prob_threshold: 1e-8,
             seed: None,
-            deterministic: false}
+            deterministic: false,
+        }
     }
 }
 
@@ -106,7 +110,8 @@ impl SamplingConfig {
             presence_penalty: 0.1,
             min_prob_threshold: 1e-6,
             seed: None,
-            deterministic: false}
+            deterministic: false,
+        }
     }
 
     /// Create a focused configuration for deterministic, coherent text
@@ -121,7 +126,8 @@ impl SamplingConfig {
             presence_penalty: 0.0,
             min_prob_threshold: 1e-5,
             seed: None,
-            deterministic: temperature < 0.1}
+            deterministic: temperature < 0.1,
+        }
     }
 
     /// Create a creative configuration for diverse, exploratory text
@@ -136,7 +142,8 @@ impl SamplingConfig {
             presence_penalty: 0.2,
             min_prob_threshold: 1e-7,
             seed: None,
-            deterministic: false}
+            deterministic: false,
+        }
     }
 
     /// Create a deterministic configuration with fixed seed
@@ -151,7 +158,8 @@ impl SamplingConfig {
             presence_penalty: 0.0,
             min_prob_threshold: 0.0,
             seed: Some(seed),
-            deterministic: true}
+            deterministic: true,
+        }
     }
 
     /// Validate configuration parameters
@@ -215,7 +223,8 @@ struct TokenHistory {
     /// Presence set for presence penalty
     presence_set: std::collections::HashSet<u32>,
     /// Maximum history length
-    max_length: usize}
+    max_length: usize,
+}
 
 impl TokenHistory {
     /// Create new token history tracker
@@ -224,7 +233,8 @@ impl TokenHistory {
             tokens: VecDeque::with_capacity(max_length),
             frequency_map: std::collections::HashMap::new(),
             presence_set: std::collections::HashSet::new(),
-            max_length}
+            max_length,
+        }
     }
 
     /// Add a new token to history
@@ -289,7 +299,8 @@ pub struct TextGenerator {
     /// Generation statistics
     stats: GenerationStatistics,
     /// Cached sampling probabilities
-    prob_cache: ArrayVec<TokenProb, SAMPLING_CACHE_SIZE>}
+    prob_cache: ArrayVec<TokenProb, SAMPLING_CACHE_SIZE>,
+}
 
 impl TextGenerator {
     /// Create a new text generator
@@ -313,7 +324,8 @@ impl TextGenerator {
             rng,
             token_history,
             stats: GenerationStatistics::default(),
-            prob_cache: ArrayVec::new()})
+            prob_cache: ArrayVec::new(),
+        })
     }
 
     /// Sample the next token from logits using configured sampling strategy
@@ -515,13 +527,16 @@ impl TextGenerator {
         }
 
         // Fallback: return last token (should not happen with valid probabilities)
-        self.prob_cache.last()
+        self.prob_cache
+            .last()
             .map(|prob| prob.token_id)
-            .ok_or_else(|| CandleError::generation(
-                "Empty probability cache",
-                "sample_from_distribution", 
-                "non-empty prob_cache"
-            ))
+            .ok_or_else(|| {
+                CandleError::generation(
+                    "Empty probability cache",
+                    "sample_from_distribution",
+                    "non-empty prob_cache",
+                )
+            })
     }
 
     /// Check if generation should stop
@@ -576,7 +591,8 @@ impl TextGenerator {
             total_sampling_calls: self.stats.total_sampling_calls.load(),
             avg_sampling_candidates: self.stats.avg_sampling_candidates.load(),
             model: self.model,
-            config: self.config.clone()}
+            config: self.config.clone(),
+        }
     }
 }
 
@@ -592,7 +608,8 @@ pub struct GenerationStatistics {
     /// Model being used
     model: CandleModel,
     /// Current sampling configuration
-    config: SamplingConfig}
+    config: SamplingConfig,
+}
 
 impl Default for GenerationStatistics {
     fn default() -> Self {
@@ -601,7 +618,8 @@ impl Default for GenerationStatistics {
             total_sampling_calls: AtomicCell::new(0),
             avg_sampling_candidates: AtomicCell::new(0.0),
             model: CandleModel::Devstral22B,
-            config: SamplingConfig::default()}
+            config: SamplingConfig::default(),
+        }
     }
 }
 
@@ -622,7 +640,8 @@ impl GenerationStatistics {
             CandleModel::Llama27B | CandleModel::Llama213B | CandleModel::Mistral7B => 32000.0,
             CandleModel::CodeLlama7B => 32016.0,
             CandleModel::Phi3Mini => 32064.0,
-            CandleModel::Gemma2B | CandleModel::Gemma7B => 256000.0};
+            CandleModel::Gemma2B | CandleModel::Gemma7B => 256000.0,
+        };
 
         if vocab_size > 0.0 {
             avg_candidates / vocab_size

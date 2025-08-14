@@ -45,20 +45,26 @@ pub struct SecureCredential {
     pub source: CredentialSource,
 
     /// Validation metadata
-    pub metadata: CredentialMetadata}
+    pub metadata: CredentialMetadata,
+}
 
 /// Source of credential data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CredentialSource {
     Environment {
-        variable_name: String},
+        variable_name: String,
+    },
     EncryptedStorage {
         storage_path: String,
-        key_id: String},
+        key_id: String,
+    },
     Configuration {
-        config_path: String},
+        config_path: String,
+    },
     Runtime {
-        origin: String}}
+        origin: String,
+    },
+}
 
 /// Credential validation and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,7 +82,8 @@ pub struct CredentialMetadata {
     pub usage_count: u64,
 
     /// Associated permissions or scopes
-    pub scopes: Vec<String>}
+    pub scopes: Vec<String>,
+}
 
 impl Default for CredentialMetadata {
     fn default() -> Self {
@@ -85,7 +92,8 @@ impl Default for CredentialMetadata {
             last_validated: None,
             validation_failures: 0,
             usage_count: 0,
-            scopes: Vec::new()}
+            scopes: Vec::new(),
+        }
     }
 }
 
@@ -105,34 +113,39 @@ pub struct CredentialConfig {
     pub validation: ValidationConfig,
 
     /// Audit logging configuration
-    pub audit_config: AuditConfig}
+    pub audit_config: AuditConfig,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedStorageConfig {
     pub storage_path: String,
     pub encryption_key_path: String,
-    pub backup_path: Option<String>}
+    pub backup_path: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RotationConfig {
     pub enabled: bool,
     pub rotation_interval: Duration,
     pub warning_threshold: Duration,
-    pub max_age: Duration}
+    pub max_age: Duration,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationConfig {
     pub validate_on_load: bool,
     pub validation_timeout: Duration,
     pub max_validation_failures: u32,
-    pub revalidation_interval: Duration}
+    pub revalidation_interval: Duration,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditConfig {
     pub enabled: bool,
     pub log_path: String,
     pub log_level: String,
-    pub include_credential_hashes: bool}
+    pub include_credential_hashes: bool,
+}
 
 impl Default for CredentialConfig {
     fn default() -> Self {
@@ -192,7 +205,9 @@ impl Default for CredentialConfig {
                 enabled: true,
                 log_path: "/var/log/fluent-ai/credentials.log".to_string(),
                 log_level: "INFO".to_string(),
-                include_credential_hashes: true}}
+                include_credential_hashes: true,
+            },
+        }
     }
 }
 
@@ -214,7 +229,8 @@ pub struct CredentialManager {
     last_refresh: ArcSwap<Instant>,
 
     /// Validation cache to avoid repeated validations
-    validation_cache: Arc<RwLock<HashMap<String, (bool, SystemTime)>>>}
+    validation_cache: Arc<RwLock<HashMap<String, (bool, SystemTime)>>>,
+}
 
 impl CredentialManager {
     /// Create new credential manager with configuration
@@ -223,7 +239,8 @@ impl CredentialManager {
             Some(Arc::new(
                 EncryptionEngine::new(&storage_config.encryption_key_path).map_err(|e| {
                     SecurityError::EncryptionError {
-                        message: format!("Failed to initialize encryption: {}", e)}
+                        message: format!("Failed to initialize encryption: {}", e),
+                    }
                 })?,
             ))
         } else {
@@ -232,7 +249,8 @@ impl CredentialManager {
 
         let audit_logger = Arc::new(AuditLogger::new(&config.audit_config).await.map_err(|e| {
             SecurityError::AuditError {
-                message: format!("Failed to initialize audit logger: {}", e)}
+                message: format!("Failed to initialize audit logger: {}", e),
+            }
         })?);
 
         // Log initialization
@@ -240,7 +258,8 @@ impl CredentialManager {
             .log_security_event(SecurityEvent::SystemStartup {
                 timestamp: SystemTime::now(),
                 component: "CredentialManager".to_string(),
-                configuration: format!("{:?}", config)})
+                configuration: format!("{:?}", config),
+            })
             .await?;
 
         Ok(Self {
@@ -249,7 +268,8 @@ impl CredentialManager {
             encryption,
             audit_logger,
             last_refresh: ArcSwap::from_pointee(Instant::now()),
-            validation_cache: Arc::new(RwLock::new(HashMap::new()))})
+            validation_cache: Arc::new(RwLock::new(HashMap::new())),
+        })
     }
 
     /// Retrieve credential for a provider with comprehensive security
@@ -266,7 +286,8 @@ impl CredentialManager {
                         provider: provider.to_string(),
                         source: credential.source.clone(),
                         timestamp: SystemTime::now(),
-                        success: true})
+                        success: true,
+                    })
                     .await?;
 
                 return Ok(credential);
@@ -289,7 +310,8 @@ impl CredentialManager {
                 provider: provider.to_string(),
                 source: credential.source.clone(),
                 timestamp: SystemTime::now(),
-                success: true})
+                success: true,
+            })
             .await?;
 
         Ok(credential)
@@ -344,11 +366,13 @@ impl CredentialManager {
             .log_credential_event(CredentialEvent::NotFound {
                 provider: provider.to_string(),
                 attempted_sources: self.get_attempted_sources(provider),
-                timestamp: SystemTime::now()})
+                timestamp: SystemTime::now(),
+            })
             .await?;
 
         Err(SecurityError::CredentialNotFound {
-            credential_name: provider.to_string()})
+            credential_name: provider.to_string(),
+        })
     }
 
     /// Validate credential value format and content
@@ -379,7 +403,8 @@ impl CredentialManager {
                     "Credential too long: {} characters (max {})",
                     value.len(),
                     MAX_CREDENTIAL_LENGTH
-                )});
+                ),
+            });
         }
 
         // Check for suspicious patterns
@@ -467,7 +492,8 @@ impl CredentialManager {
         // Implementation would read from encrypted storage
         // For now, return not found
         Err(SecurityError::CredentialNotFound {
-            credential_name: provider.to_string()})
+            credential_name: provider.to_string(),
+        })
     }
 
     /// Get list of attempted credential sources for auditing
@@ -495,19 +521,22 @@ impl CredentialManager {
         // Validate new credential
         if !self.validate_credential_value(&new_value)? {
             return Err(SecurityError::ValidationError {
-                message: "Invalid credential format".to_string()});
+                message: "Invalid credential format".to_string(),
+            });
         }
 
         let credential = SecureCredential {
             value: Arc::new(ArrayString::from(&new_value).map_err(|_| {
                 SecurityError::ValidationError {
-                    message: "Credential too long".to_string()}
+                    message: "Credential too long".to_string(),
+                }
             })?),
             provider: provider.to_string(),
             created_at: SystemTime::now(),
             expires_at: None,
             source,
-            metadata: CredentialMetadata::default()};
+            metadata: CredentialMetadata::default(),
+        };
 
         // Update cache
         self.credentials
@@ -524,7 +553,8 @@ impl CredentialManager {
                 provider: provider.to_string(),
                 source: credential.source,
                 timestamp: SystemTime::now(),
-                success: true})
+                success: true,
+            })
             .await?;
 
         Ok(())
@@ -545,7 +575,8 @@ impl CredentialManager {
             .log_credential_event(CredentialEvent::Remove {
                 provider: provider.to_string(),
                 timestamp: SystemTime::now(),
-                success: true})
+                success: true,
+            })
             .await?;
 
         Ok(())
@@ -578,7 +609,8 @@ impl CredentialManager {
             total_credentials,
             expired_credentials,
             expiring_soon,
-            validation_cache_size: self.validation_cache.read().await.len()}
+            validation_cache_size: self.validation_cache.read().await.len(),
+        }
     }
 }
 
@@ -588,7 +620,8 @@ pub struct CredentialStatistics {
     pub total_credentials: usize,
     pub expired_credentials: usize,
     pub expiring_soon: usize,
-    pub validation_cache_size: usize}
+    pub validation_cache_size: usize,
+}
 
 impl Drop for CredentialManager {
     fn drop(&mut self) {

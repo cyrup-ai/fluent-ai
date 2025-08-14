@@ -275,10 +275,9 @@ pub type HttpResult<T> = Result<T, HttpError>;
     feature = "zstd",
     feature = "brotli",
     feature = "deflate",
-    feature = "blocking",
 ))]
 pub(crate) use crate::hyper::error::into_io;
 pub(crate) use crate::hyper::error::{
-    BadScheme, BoxError, Error as HyperError, TimedOut, body, builder, decode, decode_io, redirect, request,
+    BadScheme, BoxError, TimedOut, body, builder, decode, decode_io, redirect, request,
     status_code, upgrade, url_bad_scheme,
 };

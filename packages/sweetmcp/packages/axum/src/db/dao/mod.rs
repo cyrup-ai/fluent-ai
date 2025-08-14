@@ -13,9 +13,8 @@ pub use core::{
     utc_now, validate_entity_id,
 };
 
-pub use implementation::Dao;
-
 pub use entities::{BaseEntity, PublicUser, PublicUserProfile, User, UserProfile};
+pub use implementation::Dao;
 
 /// Create a new DAO for the specified entity type
 pub fn dao<T: Entity + 'static>(client: super::client::DatabaseClient) -> Dao<T> {

@@ -33,7 +33,8 @@ pub struct CognitiveState {
     pub associations: Vec<Association>,
     /// State creation timestamp
     #[serde(skip, default = "std::time::Instant::now")]
-    pub timestamp: Instant}
+    pub timestamp: Instant,
+}
 
 /// Comprehensive semantic context information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,7 +46,8 @@ pub struct SemanticContext {
     /// Domain-specific tags for categorization
     pub domain_tags: Vec<String>,
     /// Level of conceptual abstraction
-    pub abstraction_level: AbstractionLevel}
+    pub abstraction_level: AbstractionLevel,
+}
 
 /// Multi-dimensional emotional valence measurement
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,7 +57,8 @@ pub struct EmotionalValence {
     /// Valence level (-1.0 to 1.0): negative to positive
     pub valence: f32,
     /// Dominance level (-1.0 to 1.0): submissive to dominant
-    pub dominance: f32}
+    pub dominance: f32,
+}
 
 /// Hierarchical levels of cognitive abstraction
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +70,8 @@ pub enum AbstractionLevel {
     /// Abstract, conceptual ideas
     Abstract,
     /// Meta-cognitive, self-reflective concepts
-    MetaCognitive}
+    MetaCognitive,
+}
 
 /// Association between cognitive states with typed relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +81,8 @@ pub struct Association {
     /// Association strength (0.0 to 1.0)
     pub strength: f32,
     /// Type of association relationship
-    pub association_type: AssociationType}
+    pub association_type: AssociationType,
+}
 
 /// Categorized types of cognitive associations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,7 +96,8 @@ pub enum AssociationType {
     /// Emotion-driven association
     Emotional,
     /// Structural similarity association
-    Structural}
+    Structural,
+}
 
 /// Production-quality thread-safe cognitive state manager
 ///
@@ -107,7 +113,8 @@ pub struct CognitiveStateManager {
     /// High-performance state indexing system
     state_index: Arc<RwLock<StateIndex>>,
     /// Worker thread pool for background processing
-    worker_pool: Arc<StateWorkerPool>}
+    worker_pool: Arc<StateWorkerPool>,
+}
 
 /// High-performance indexing system for cognitive states
 struct StateIndex {
@@ -118,31 +125,37 @@ struct StateIndex {
     /// Time-ordered state tracking
     by_time: Vec<(Instant, Uuid)>,
     /// Activation level ordering for quick access
-    by_activation: Vec<(f32, Uuid)>}
+    by_activation: Vec<(f32, Uuid)>,
+}
 
 /// Worker thread pool for cognitive state processing
 pub struct StateWorkerPool {
     /// Request channel for background tasks
     request_sender: Sender<StateWorkRequest>,
     /// Worker thread handles
-    _worker_handles: Vec<thread::JoinHandle<()>>}
+    _worker_handles: Vec<thread::JoinHandle<()>>,
+}
 
 /// Work request types for background processing
 pub enum StateWorkRequest {
     /// Clean up inactive states
     CleanupInactive {
         decay_time: Duration,
-        response_sender: Sender<Result<usize, Box<dyn std::error::Error + Send + Sync>>>},
+        response_sender: Sender<Result<usize, Box<dyn std::error::Error + Send + Sync>>>,
+    },
     /// Update state associations
     UpdateAssociations {
         state_id: Uuid,
         associations: Vec<Association>,
-        response_sender: Sender<Result<(), Box<dyn std::error::Error + Send + Sync>>>},
+        response_sender: Sender<Result<(), Box<dyn std::error::Error + Send + Sync>>>,
+    },
     /// Analyze memory context
     AnalyzeMemoryContext {
         memory_content: String,
         memory_type: String,
-        response_sender: Sender<Result<CognitiveState, Box<dyn std::error::Error + Send + Sync>>>}}
+        response_sender: Sender<Result<CognitiveState, Box<dyn std::error::Error + Send + Sync>>>,
+    },
+}
 
 impl CognitiveState {
     /// Create a new cognitive state with specified semantic context
@@ -160,7 +173,8 @@ impl CognitiveState {
             processing_depth: 0.5,
             activation_level: 1.0,
             associations: Vec::new(),
-            timestamp: Instant::now()}
+            timestamp: Instant::now(),
+        }
     }
 
     /// Check if cognitive state is still active based on decay parameters
@@ -195,7 +209,8 @@ impl CognitiveState {
         self.associations.push(Association {
             target_id,
             strength: strength.clamp(0.0, 1.0),
-            association_type});
+            association_type,
+        });
 
         // Limit total associations for performance
         if self.associations.len() > 100 {
@@ -297,7 +312,8 @@ impl EmotionalValence {
         Self {
             arousal: 0.0,
             valence: 0.0,
-            dominance: 0.0}
+            dominance: 0.0,
+        }
     }
 
     /// Create emotional valence from specific dimensional values
@@ -313,7 +329,8 @@ impl EmotionalValence {
         Self {
             arousal: arousal.clamp(-1.0, 1.0),
             valence: valence.clamp(-1.0, 1.0),
-            dominance: dominance.clamp(-1.0, 1.0)}
+            dominance: dominance.clamp(-1.0, 1.0),
+        }
     }
 
     /// Calculate Euclidean distance to another emotional valence
@@ -417,7 +434,8 @@ impl CognitiveStateManager {
         Self {
             states: Arc::new(RwLock::new(HashMap::new())),
             state_index: Arc::new(RwLock::new(StateIndex::new())),
-            worker_pool}
+            worker_pool,
+        }
     }
 
     /// Add a new cognitive state with thread-safe operations
@@ -583,7 +601,8 @@ impl CognitiveStateManager {
 
         let request = StateWorkRequest::CleanupInactive {
             decay_time,
-            response_sender: sender};
+            response_sender: sender,
+        };
 
         self.worker_pool
             .request_sender
@@ -613,7 +632,8 @@ impl CognitiveStateManager {
         let request = StateWorkRequest::UpdateAssociations {
             state_id,
             associations,
-            response_sender: sender};
+            response_sender: sender,
+        };
 
         self.worker_pool
             .request_sender
@@ -641,7 +661,8 @@ impl CognitiveStateManager {
         let request = StateWorkRequest::AnalyzeMemoryContext {
             memory_content: memory.content.clone(),
             memory_type: format!("{:?}", memory.memory_type),
-            response_sender: sender};
+            response_sender: sender,
+        };
 
         self.worker_pool
             .request_sender
@@ -695,7 +716,8 @@ impl CognitiveStateManager {
             total_concepts,
             total_domains,
             average_activation_level: avg_activation,
-            average_processing_depth: avg_processing_depth}
+            average_processing_depth: avg_processing_depth,
+        }
     }
 }
 
@@ -711,7 +733,8 @@ pub struct CognitiveStateStatistics {
     /// Average activation level across all states
     pub average_activation_level: f32,
     /// Average processing depth across all states
-    pub average_processing_depth: f32}
+    pub average_processing_depth: f32,
+}
 
 impl StateIndex {
     /// Create a new empty state index
@@ -723,7 +746,8 @@ impl StateIndex {
             by_concept: HashMap::new(),
             by_domain: HashMap::new(),
             by_time: Vec::new(),
-            by_activation: Vec::new()}
+            by_activation: Vec::new(),
+        }
     }
 }
 
@@ -761,7 +785,8 @@ impl StateWorkerPool {
 
         Ok(Self {
             request_sender,
-            _worker_handles: worker_handles})
+            _worker_handles: worker_handles,
+        })
     }
 
     /// Create basic worker pool for fallback scenarios
@@ -772,7 +797,8 @@ impl StateWorkerPool {
         let (request_sender, _) = unbounded();
         Self {
             request_sender,
-            _worker_handles: Vec::new()}
+            _worker_handles: Vec::new(),
+        }
     }
 
     /// Main worker thread loop for processing cognitive state requests
@@ -787,21 +813,24 @@ impl StateWorkerPool {
             match request {
                 StateWorkRequest::CleanupInactive {
                     decay_time,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     let result = Self::process_cleanup_inactive(decay_time);
                     let _ = response_sender.send(result);
                 }
                 StateWorkRequest::UpdateAssociations {
                     state_id,
                     associations,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     let result = Self::process_update_associations(state_id, associations);
                     let _ = response_sender.send(result);
                 }
                 StateWorkRequest::AnalyzeMemoryContext {
                     memory_content,
                     memory_type,
-                    response_sender} => {
+                    response_sender,
+                } => {
                     let result = Self::process_analyze_memory_context(memory_content, memory_type);
                     let _ = response_sender.send(result);
                 }
@@ -871,7 +900,8 @@ impl StateWorkerPool {
             primary_concepts,
             secondary_concepts: vec![],
             domain_tags: vec![memory_type],
-            abstraction_level: AbstractionLevel::Intermediate};
+            abstraction_level: AbstractionLevel::Intermediate,
+        };
 
         // Generate emotional valence from content analysis
         let emotional_valence = EmotionalValence::from_text_analysis(&memory_content);
@@ -900,7 +930,8 @@ impl Default for SemanticContext {
             primary_concepts: vec!["default".to_string()],
             secondary_concepts: vec![],
             domain_tags: vec![],
-            abstraction_level: AbstractionLevel::Intermediate}
+            abstraction_level: AbstractionLevel::Intermediate,
+        }
     }
 }
 

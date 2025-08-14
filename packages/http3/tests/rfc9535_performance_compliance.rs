@@ -192,9 +192,7 @@ mod large_dataset_tests {
             let mut stream = JsonArrayStream::<LargeDataModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             let duration = start_time.elapsed();
 

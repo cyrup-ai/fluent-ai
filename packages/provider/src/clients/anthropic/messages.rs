@@ -23,7 +23,8 @@ fn merge_json_values(mut base: Value, other: Value) -> Value {
 pub enum Role {
     User,
     Assistant,
-    System}
+    System,
+}
 
 /// Complete message structure for Anthropic API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +36,8 @@ pub struct Message {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<Vec<ToolCall>>}
+    pub tool_calls: Option<Vec<ToolCall>>,
+}
 
 /// Zero-allocation content types supporting all Anthropic features
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,7 +46,8 @@ pub enum MessageContent {
     /// Simple text content
     Text(String),
     /// Complex content with multiple blocks
-    Blocks(Vec<ContentBlock>)}
+    Blocks(Vec<ContentBlock>),
+}
 
 /// Individual content block supporting all media types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,25 +61,30 @@ pub enum ContentBlock {
     Document {
         source: DocumentSource,
         #[serde(skip_serializing_if = "Option::is_none")]
-        extract_text: Option<bool>},
+        extract_text: Option<bool>,
+    },
     /// Tool use block for function calling
     ToolUse {
         id: String,
         name: String,
         #[serde(with = "fluent_ai_domain::util::json_util::stringified_json")]
-        input: Value},
+        input: Value,
+    },
     /// Tool result block for function responses
     ToolResult {
         tool_use_id: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         content: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        is_error: Option<bool>},
+        is_error: Option<bool>,
+    },
     /// Search result block for citation support
     SearchResult {
         source: String,
         title: String,
-        content: Vec<ContentBlock>}}
+        content: Vec<ContentBlock>,
+    },
+}
 
 /// Image source with format and data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,14 +110,16 @@ pub struct ToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String, // "function"
-    pub function: FunctionCall}
+    pub function: FunctionCall,
+}
 
 /// Function call details
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionCall {
     pub name: String,
     #[serde(with = "fluent_ai_domain::util::json_util::stringified_json")]
-    pub arguments: Value}
+    pub arguments: Value,
+}
 
 /// Tool definition for Anthropic API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,7 +128,8 @@ pub struct Tool {
     pub description: String,
     pub input_schema: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cache_control: Option<CacheControl>}
+    pub cache_control: Option<CacheControl>,
+}
 
 /// Cache control for tool definitions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,7 +147,8 @@ impl Message {
             content: MessageContent::Text(content.into()),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 
     /// Create assistant message with text content
@@ -147,7 +159,8 @@ impl Message {
             content: MessageContent::Text(content.into()),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 
     /// Create system message with text content
@@ -158,7 +171,8 @@ impl Message {
             content: MessageContent::Text(content.into()),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 
     /// Create user message with image content
@@ -176,11 +190,14 @@ impl Message {
                     source: ImageSource {
                         source_type: "base64".to_string(),
                         media_type: media_type.into(),
-                        data: image_data.into()}},
+                        data: image_data.into(),
+                    },
+                },
             ]),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 
     /// Create user message with document content
@@ -198,12 +215,15 @@ impl Message {
                     source: DocumentSource {
                         source_type: "base64".to_string(),
                         media_type: media_type.into(),
-                        data: document_data.into()},
-                    extract_text: Some(true)},
+                        data: document_data.into(),
+                    },
+                    extract_text: Some(true),
+                },
             ]),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 
     /// Create assistant message with tool calls
@@ -214,7 +234,8 @@ impl Message {
             content: MessageContent::Text(String::new()),
             name: None,
             tool_call_id: None,
-            tool_calls: Some(tool_calls)}
+            tool_calls: Some(tool_calls),
+        }
     }
 
     /// Create user message with tool result
@@ -225,10 +246,12 @@ impl Message {
             content: MessageContent::Blocks(vec![ContentBlock::ToolResult {
                 tool_use_id: tool_use_id.into(),
                 content: Some(content.into()),
-                is_error: Some(false)}]),
+                is_error: Some(false),
+            }]),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 
     /// Create user message with tool error
@@ -239,10 +262,12 @@ impl Message {
             content: MessageContent::Blocks(vec![ContentBlock::ToolResult {
                 tool_use_id: tool_use_id.into(),
                 content: Some(error.into()),
-                is_error: Some(true)}]),
+                is_error: Some(true),
+            }]),
             name: None,
             tool_call_id: None,
-            tool_calls: None}
+            tool_calls: None,
+        }
     }
 }
 
@@ -270,7 +295,8 @@ impl MessageContent {
             MessageContent::Text(_) => false,
             MessageContent::Blocks(blocks) => blocks
                 .iter()
-                .any(|block| matches!(block, ContentBlock::Image { .. }))}
+                .any(|block| matches!(block, ContentBlock::Image { .. })),
+        }
     }
 
     /// Check if content contains documents
@@ -280,7 +306,8 @@ impl MessageContent {
             MessageContent::Text(_) => false,
             MessageContent::Blocks(blocks) => blocks
                 .iter()
-                .any(|block| matches!(block, ContentBlock::Document { .. }))}
+                .any(|block| matches!(block, ContentBlock::Document { .. })),
+        }
     }
 
     /// Check if content contains tool use
@@ -290,7 +317,8 @@ impl MessageContent {
             MessageContent::Text(_) => false,
             MessageContent::Blocks(blocks) => blocks
                 .iter()
-                .any(|block| matches!(block, ContentBlock::ToolUse { .. }))}
+                .any(|block| matches!(block, ContentBlock::ToolUse { .. })),
+        }
     }
 }
 
@@ -306,7 +334,8 @@ impl Tool {
             name: name.into(),
             description: description.into(),
             input_schema,
-            cache_control: None}
+            cache_control: None,
+        }
     }
 
     /// Create tool with caching enabled
@@ -321,7 +350,9 @@ impl Tool {
             description: description.into(),
             input_schema,
             cache_control: Some(CacheControl {
-                cache_type: "ephemeral".to_string()})}
+                cache_type: "ephemeral".to_string(),
+            }),
+        }
     }
 
     /// Convert from fluent-ai ToolDefinition
@@ -343,7 +374,8 @@ impl From<&fluent_ai_domain::message::Message> for Message {
             MessageRole::User => Message::user(msg.content.clone()),
             MessageRole::Assistant => Message::assistant(msg.content.clone()),
             MessageRole::System => Message::system(msg.content.clone()),
-            MessageRole::Tool => Message::user(format!("Tool result: {}", msg.content))}
+            MessageRole::Tool => Message::user(format!("Tool result: {}", msg.content)),
+        }
     }
 }
 
@@ -359,7 +391,8 @@ impl MessageConverter {
         match messages {
             crate::ZeroOneOrMany::None => Vec::new(),
             crate::ZeroOneOrMany::One(msg) => vec![Message::from(msg)],
-            crate::ZeroOneOrMany::Many(msgs) => msgs.iter().map(Message::from).collect()}
+            crate::ZeroOneOrMany::Many(msgs) => msgs.iter().map(Message::from).collect(),
+        }
     }
 
     /// Convert fluent-ai tools to Anthropic format
@@ -370,7 +403,8 @@ impl MessageConverter {
         match tools {
             crate::ZeroOneOrMany::None => Vec::new(),
             crate::ZeroOneOrMany::One(tool) => vec![Tool::from_definition(tool)],
-            crate::ZeroOneOrMany::Many(tools) => tools.iter().map(Tool::from_definition).collect()}
+            crate::ZeroOneOrMany::Many(tools) => tools.iter().map(Tool::from_definition).collect(),
+        }
     }
 
     /// Merge additional parameters into request JSON with zero allocation
@@ -393,12 +427,14 @@ impl MessageConverter {
             crate::ZeroOneOrMany::None => {}
             crate::ZeroOneOrMany::One(doc) => {
                 blocks.push(ContentBlock::Text {
-                    text: format!("Document: {}", doc.content())});
+                    text: format!("Document: {}", doc.content()),
+                });
             }
             crate::ZeroOneOrMany::Many(docs) => {
                 for doc in docs {
                     blocks.push(ContentBlock::Text {
-                        text: format!("Document: {}", doc.content())});
+                        text: format!("Document: {}", doc.content()),
+                    });
                 }
             }
         }

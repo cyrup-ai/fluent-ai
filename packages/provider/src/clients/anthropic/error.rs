@@ -4,8 +4,8 @@
 
 // BadTraitImpl trait removed - not needed for provider error handling
 use std::fmt;
-use fluent_ai_http3::HttpError;
 
+use fluent_ai_http3::HttpError;
 use serde::{Deserialize, Serialize};
 
 /// Zero-allocation error type for Anthropic API operations
@@ -36,7 +36,8 @@ pub enum AnthropicError {
     /// API error
     ApiError(String),
     /// Generic error fallback
-    Unknown(String)}
+    Unknown(String),
+}
 
 impl fmt::Display for AnthropicError {
     #[inline(always)]
@@ -102,7 +103,8 @@ impl std::error::Error for AnthropicError {}
 pub struct ApiResponse<T> {
     #[serde(flatten)]
     pub data: Option<T>,
-    pub error: Option<ApiError>}
+    pub error: Option<ApiError>,
+}
 
 /// Detailed API error structure from Anthropic
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,7 +113,8 @@ pub struct ApiError {
     pub error_type: String,
     pub message: String,
     pub param: Option<String>,
-    pub code: Option<String>}
+    pub code: Option<String>,
+}
 
 /// Response with proper error handling for all Anthropic operations
 pub type AnthropicResult<T> = Result<T, AnthropicError>;
@@ -132,8 +135,10 @@ pub fn handle_http_error(status: u16, body: &str) -> AnthropicError {
         400 => AnthropicError::InvalidRequest(body.to_string()),
         500..=599 => AnthropicError::ServerError {
             status,
-            message: body.to_string()},
-        _ => AnthropicError::Unknown(format!("HTTP {}: {}", status, body))}
+            message: body.to_string(),
+        },
+        _ => AnthropicError::Unknown(format!("HTTP {}: {}", status, body)),
+    }
 }
 
 /// Parse retry-after from error response body
@@ -160,8 +165,10 @@ pub fn handle_http3_error(error: fluent_ai_http3::HttpError) -> AnthropicError {
         }
         fluent_ai_http3::HttpError::Http(status, msg) => AnthropicError::ServerError {
             status: status as u16,
-            message: msg},
-        _ => AnthropicError::NetworkError(error.to_string())}
+            message: msg,
+        },
+        _ => AnthropicError::NetworkError(error.to_string()),
+    }
 }
 
 /// Convert JSON parsing error to AnthropicError

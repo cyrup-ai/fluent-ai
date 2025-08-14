@@ -11,18 +11,18 @@ use thiserror::Error;
 pub enum CandleCommandError {
     /// Command name not recognized
     #[error("Unknown command: {command}")]
-    UnknownCommand { 
+    UnknownCommand {
         /// The unrecognized command name (owned string allocated once)
-        command: String 
+        command: String,
     },
     /// Invalid or malformed arguments provided
     #[error("Invalid arguments: {0}")]
     InvalidArguments(String),
     /// Syntax error in command structure
     #[error("Invalid syntax: {detail}")]
-    InvalidSyntax { 
+    InvalidSyntax {
         /// Details about the syntax error (owned string allocated once)
-        detail: String 
+        detail: String,
     },
     /// Command execution failed
     #[error("Execution failed: {0}")]
@@ -35,9 +35,9 @@ pub enum CandleCommandError {
     ParseError(String),
     /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { 
+    ConfigurationError {
         /// Details about the configuration error (owned string allocated once)
-        detail: String 
+        detail: String,
     },
     /// Input/output operation failed
     #[error("IO error: {0}")]
@@ -112,151 +112,171 @@ impl CandleCommandError {
     /// Create a new unknown command error with zero allocation
     #[inline]
     pub fn unknown_command(command: impl Into<String>) -> Self {
-        Self::UnknownCommand { command: command.into() }
+        Self::UnknownCommand {
+            command: command.into(),
+        }
     }
-    
+
     /// Create a new invalid arguments error with zero allocation
     #[inline]
     pub fn invalid_arguments(message: impl Into<String>) -> Self {
         Self::InvalidArguments(message.into())
     }
-    
+
     /// Create a new invalid syntax error with zero allocation
     #[inline]
     pub fn invalid_syntax(detail: impl Into<String>) -> Self {
-        Self::InvalidSyntax { detail: detail.into() }
+        Self::InvalidSyntax {
+            detail: detail.into(),
+        }
     }
-    
+
     /// Create a new execution failed error with zero allocation
     #[inline]
     pub fn execution_failed(message: impl Into<String>) -> Self {
         Self::ExecutionFailed(message.into())
     }
-    
+
     /// Create a new parse error with zero allocation
     #[inline]
     pub fn parse_error(message: impl Into<String>) -> Self {
         Self::ParseError(message.into())
     }
-    
+
     /// Create a new configuration error with zero allocation
     #[inline]
     pub fn configuration_error(detail: impl Into<String>) -> Self {
-        Self::ConfigurationError { detail: detail.into() }
+        Self::ConfigurationError {
+            detail: detail.into(),
+        }
     }
-    
+
     /// Create a new IO error with zero allocation
     #[inline]
     pub fn io_error(message: impl Into<String>) -> Self {
         Self::IoError(message.into())
     }
-    
+
     /// Create a new network error with zero allocation
     #[inline]
     pub fn network_error(message: impl Into<String>) -> Self {
         Self::NetworkError(message.into())
     }
-    
+
     /// Create a new internal error with zero allocation
     #[inline]
     pub fn internal_error(message: impl Into<String>) -> Self {
         Self::InternalError(message.into())
     }
-    
+
     /// Create a new command already exists error with zero allocation
     #[inline]
     pub fn command_already_exists(command: impl Into<String>) -> Self {
-        Self::CommandAlreadyExists { command: command.into() }
+        Self::CommandAlreadyExists {
+            command: command.into(),
+        }
     }
-    
+
     /// Create a new alias already exists error with zero allocation
     #[inline]
     pub fn alias_already_exists(alias: impl Into<String>) -> Self {
-        Self::AliasAlreadyExists { alias: alias.into() }
+        Self::AliasAlreadyExists {
+            alias: alias.into(),
+        }
     }
-    
+
     /// Create a new validation failed error with zero allocation
     #[inline]
     pub fn validation_failed(reason: impl Into<String>) -> Self {
-        Self::ValidationFailed { reason: reason.into() }
+        Self::ValidationFailed {
+            reason: reason.into(),
+        }
     }
-    
+
     /// Create a new resource limit exceeded error with zero allocation
     #[inline]
     pub fn resource_limit_exceeded(resource: impl Into<String>) -> Self {
-        Self::ResourceLimitExceeded { resource: resource.into() }
+        Self::ResourceLimitExceeded {
+            resource: resource.into(),
+        }
     }
-    
+
     /// Create a new missing dependency error with zero allocation
     #[inline]
     pub fn missing_dependency(dependency: impl Into<String>) -> Self {
-        Self::MissingDependency { dependency: dependency.into() }
+        Self::MissingDependency {
+            dependency: dependency.into(),
+        }
     }
-    
+
     /// Create a new version incompatible error with zero allocation
     #[inline]
     pub fn version_incompatible(expected: impl Into<String>, actual: impl Into<String>) -> Self {
-        Self::VersionIncompatible { 
-            expected: expected.into(), 
-            actual: actual.into() 
+        Self::VersionIncompatible {
+            expected: expected.into(),
+            actual: actual.into(),
         }
     }
-    
+
     /// Create a new feature unavailable error with zero allocation
     #[inline]
     pub fn feature_unavailable(feature: impl Into<String>) -> Self {
-        Self::FeatureUnavailable { feature: feature.into() }
+        Self::FeatureUnavailable {
+            feature: feature.into(),
+        }
     }
-    
+
     /// Create a new rate limit exceeded error with zero allocation
     #[inline]
     pub fn rate_limit_exceeded(limit: u32, window: impl Into<String>) -> Self {
-        Self::RateLimitExceeded { 
-            limit, 
-            window: window.into() 
+        Self::RateLimitExceeded {
+            limit,
+            window: window.into(),
         }
     }
-    
+
     /// Check if error is retriable - used for automatic retry logic
     #[inline]
     pub fn is_retriable(&self) -> bool {
-        matches!(self, 
-            Self::NetworkError(_) |
-            Self::Timeout |
-            Self::RateLimitExceeded { .. } |
-            Self::InternalError(_)
+        matches!(
+            self,
+            Self::NetworkError(_)
+                | Self::Timeout
+                | Self::RateLimitExceeded { .. }
+                | Self::InternalError(_)
         )
     }
-    
+
     /// Check if error is a client error (user mistake) vs server error
     #[inline]
     pub fn is_client_error(&self) -> bool {
-        matches!(self,
-            Self::UnknownCommand { .. } |
-            Self::InvalidArguments(_) |
-            Self::InvalidSyntax { .. } |
-            Self::PermissionDenied |
-            Self::ParseError(_) |
-            Self::ValidationFailed { .. } |
-            Self::FeatureUnavailable { .. }
+        matches!(
+            self,
+            Self::UnknownCommand { .. }
+                | Self::InvalidArguments(_)
+                | Self::InvalidSyntax { .. }
+                | Self::PermissionDenied
+                | Self::ParseError(_)
+                | Self::ValidationFailed { .. }
+                | Self::FeatureUnavailable { .. }
         )
     }
-    
+
     /// Get error severity level for logging and monitoring
     #[inline]
     pub fn severity(&self) -> ErrorSeverity {
         match self {
             Self::InternalError(_) => ErrorSeverity::Critical,
-            Self::NetworkError(_) | 
-            Self::IoError(_) |
-            Self::ConfigurationError { .. } |
-            Self::MissingDependency { .. } |
-            Self::VersionIncompatible { .. } => ErrorSeverity::High,
-            Self::ExecutionFailed(_) |
-            Self::Timeout |
-            Self::NotFound |
-            Self::ResourceLimitExceeded { .. } |
-            Self::RateLimitExceeded { .. } => ErrorSeverity::Medium,
+            Self::NetworkError(_)
+            | Self::IoError(_)
+            | Self::ConfigurationError { .. }
+            | Self::MissingDependency { .. }
+            | Self::VersionIncompatible { .. } => ErrorSeverity::High,
+            Self::ExecutionFailed(_)
+            | Self::Timeout
+            | Self::NotFound
+            | Self::ResourceLimitExceeded { .. }
+            | Self::RateLimitExceeded { .. } => ErrorSeverity::Medium,
             _ => ErrorSeverity::Low,
         }
     }
@@ -281,12 +301,12 @@ impl ErrorSeverity {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Low => "LOW",
-            Self::Medium => "MEDIUM", 
+            Self::Medium => "MEDIUM",
             Self::High => "HIGH",
             Self::Critical => "CRITICAL",
         }
     }
-    
+
     /// Get severity as numeric value
     #[inline]
     pub fn as_u8(&self) -> u8 {

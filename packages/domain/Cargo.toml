@@ -22,7 +22,7 @@ thiserror = "2.0.12"
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 serde_json = "1.0.142"
 log = "0.4.27"
-hashbrown = { version = "0.15.4", features = ["serde"] }
+hashbrown = { version = "0.15.5", features = ["serde"] }
 glob = "0.3.2"
 fluent_ai_http3 = { path = "../http3" }
 # fluent_ai_provider = { path = "../provider" }
@@ -73,7 +73,7 @@ bytes = { version = "1.10.1", features = ["serde"] }
 toml = "0.9.5"
 rkyv = { version = "0.8.11", optional = true }
 bincode = { version = "2.0.1", optional = true }
-reqwest = { version = "0.12.22", features = ["json"] }
+reqwest = { path = "../../forks/reqwest", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
 md5 = "0.8.0"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"

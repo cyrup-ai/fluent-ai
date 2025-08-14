@@ -12,7 +12,8 @@ use tracing::{info, warn};
 
 use crate::cognitive::state::CognitiveStateManager;
 use crate::cognitive::types::{
-    BaselineMetrics, ContentCategory, ContentType, EvolutionRules, OptimizationType, Restrictions};
+    BaselineMetrics, ContentCategory, ContentType, EvolutionRules, OptimizationType, Restrictions,
+};
 use crate::cognitive::{
     committee::CommitteeEvent,
     evolution::CognitiveCodeEvolution,
@@ -20,7 +21,8 @@ use crate::cognitive::{
     performance::PerformanceAnalyzer,
     quantum::{QuantumConfig, QuantumRouter},
     quantum_mcts::{QuantumMCTS, QuantumNodeState, QuantumTreeStatistics},
-    types::{CognitiveError, OptimizationOutcome, OptimizationSpec}};
+    types::{CognitiveError, OptimizationOutcome, OptimizationSpec},
+};
 
 /// Quantum orchestration configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -36,7 +38,8 @@ pub struct QuantumOrchestrationConfig {
     /// Convergence epsilon
     pub convergence_epsilon: f64,
     /// Max iterations per depth
-    pub max_iterations_per_depth: u32}
+    pub max_iterations_per_depth: u32,
+}
 
 impl Default for QuantumOrchestrationConfig {
     fn default() -> Self {
@@ -46,7 +49,8 @@ impl Default for QuantumOrchestrationConfig {
             coherence_time_ms: 1000,
             parallel_circuits: 4,
             convergence_epsilon: 0.001,
-            max_iterations_per_depth: 100}
+            max_iterations_per_depth: 100,
+        }
     }
 }
 
@@ -57,7 +61,8 @@ pub struct RecursiveState {
     pub improvement: f64,
     pub quantum_fidelity: f64,
     pub decoherence_level: f64,
-    pub entanglement_strength: f64}
+    pub entanglement_strength: f64,
+}
 
 /// Quantum orchestrator for recursive improvement
 pub struct QuantumOrchestrator {
@@ -77,7 +82,8 @@ pub struct QuantumOrchestrator {
     #[allow(dead_code)]
     quantum_router: Arc<QuantumRouter>,
     /// Evolution engine
-    evolution_engine: Arc<CognitiveCodeEvolution>}
+    evolution_engine: Arc<CognitiveCodeEvolution>,
+}
 
 impl QuantumOrchestrator {
     pub async fn new(
@@ -122,13 +128,15 @@ impl QuantumOrchestrator {
                 quality_score: 0.9,
                 latency: 100.0,
                 memory: 500.0,
-                relevance: 1.0},
+                relevance: 1.0,
+            },
             content_type: ContentType {
                 category: ContentCategory::Code,
                 complexity: 0.8,
                 processing_hints: vec!["quantum_optimization".to_string()],
                 format: "rust".to_string(),
-                restrictions: Restrictions::default()},
+                restrictions: Restrictions::default(),
+            },
             evolution_rules: EvolutionRules {
                 mutation_rate: 0.1,
                 selection_pressure: 0.5,
@@ -140,7 +148,9 @@ impl QuantumOrchestrator {
                 new_axis_per_iteration: false,
                 max_cumulative_latency_increase: 100.0,
                 min_action_diversity: 0.1,
-                validation_required: true}});
+                validation_required: true,
+            },
+        });
 
         let user_objective = String::from("Optimize quantum routing");
 
@@ -163,7 +173,8 @@ impl QuantumOrchestrator {
             event_tx: event_tx.clone(),
             recursive_states: Arc::new(RwLock::new(Vec::new())),
             quantum_router,
-            evolution_engine})
+            evolution_engine,
+        })
     }
 
     /// Run recursive quantum improvement
@@ -208,7 +219,8 @@ impl QuantumOrchestrator {
                 improvement,
                 quantum_fidelity: self.calculate_fidelity(&stats),
                 decoherence_level: stats.avg_decoherence,
-                entanglement_strength: stats.total_entanglements as f64 / stats.total_nodes as f64};
+                entanglement_strength: stats.total_entanglements as f64 / stats.total_nodes as f64,
+            };
 
             recursive_states.push(recursive_state.clone());
 
@@ -224,7 +236,8 @@ impl QuantumOrchestrator {
                 superposition_coefficients: vec![Complex64::new(1.0, 0.0)],
                 entangled_nodes: Vec::new(),
                 decoherence: stats.avg_decoherence,
-                measurement_history: Vec::new()};
+                measurement_history: Vec::new(),
+            };
 
             // Apply quantum evolution
             let evolved_state = self.apply_quantum_evolution(&quantum_state, &stats).await?;
@@ -262,7 +275,8 @@ impl QuantumOrchestrator {
                     warn!("Failed to collect final metrics: {}", e);
                     e
                 })?,
-            applied: true})
+            applied: true,
+        })
     }
 
     /// Calculate improvement between states
@@ -314,11 +328,13 @@ impl QuantumOrchestrator {
                 code_content: evolved_code,
                 latency: quantum_state.classical_state.latency * 0.98,
                 memory: quantum_state.classical_state.memory * 0.98,
-                relevance: quantum_state.classical_state.relevance * 1.01},
+                relevance: quantum_state.classical_state.relevance * 1.01,
+            },
             superposition_coefficients: quantum_state.superposition_coefficients.clone(),
             entangled_nodes: quantum_state.entangled_nodes.clone(),
             decoherence: quantum_state.decoherence * 0.95,
-            measurement_history: quantum_state.measurement_history.clone()})
+            measurement_history: quantum_state.measurement_history.clone(),
+        })
     }
 
     /// Create evolution parameters from quantum statistics

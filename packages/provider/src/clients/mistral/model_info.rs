@@ -9,11 +9,11 @@
 //! - Constants and compile-time model lookups
 //!
 //! SOLUTION: Use model-info package as single source of truth
-//! 
+//!
 //! CORRECT USAGE:
 //! ```rust
 //! use model_info::{Provider, MistralProvider, ModelInfo};
-//! 
+//!
 //! let provider = Provider::Mistral(MistralProvider);
 //! let model_info = provider.get_model_info("mistral-large-latest");
 //! ```

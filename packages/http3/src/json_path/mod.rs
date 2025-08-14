@@ -37,6 +37,7 @@
 //! ```
 
 pub mod buffer;
+pub mod core_evaluator;
 pub mod deserializer;
 pub mod error;
 pub mod filter;
@@ -45,7 +46,6 @@ pub mod normalized_paths;
 pub mod null_semantics;
 pub mod parser;
 pub mod safe_parsing;
-pub mod core_evaluator;
 pub mod state_machine;
 pub mod stream_processor;
 pub mod type_system;
@@ -84,20 +84,34 @@ use serde::de::DeserializeOwned;
 
 pub use self::{
     buffer::{JsonBuffer, StreamBuffer},
+    core_evaluator::CoreJsonPathEvaluator,
     deserializer::{JsonPathDeserializer, JsonPathIterator, StreamingDeserializer},
     error::{JsonPathError, JsonPathResult, JsonPathResultExt},
     filter::FilterEvaluator,
     functions::FunctionEvaluator,
     parser::{
-        ComparisonOp, ComplexityMetrics, FilterExpression, FilterValue, JsonPathExpression,
-        JsonPathParser, JsonSelector,
+        ComparisonOp,
+        ComplexityMetrics,
+        FilterExpression,
+        FilterValue,
+        FunctionSignature,
         // RFC 9535 Implementation Types
-        FunctionType, TypedValue, FunctionSignature, TypeSystem,
-        NormalizedPath, PathSegment, NormalizedPathProcessor,
-        PropertyAccessResult, NullSemantics,
-        SafeParsingContext, Utf8Handler, Utf8RecoveryStrategy, SafeStringBuffer,
+        FunctionType,
+        JsonPathExpression,
+        JsonPathParser,
+        JsonSelector,
+        NormalizedPath,
+        NormalizedPathProcessor,
+        NullSemantics,
+        PathSegment,
+        PropertyAccessResult,
+        SafeParsingContext,
+        SafeStringBuffer,
+        TypeSystem,
+        TypedValue,
+        Utf8Handler,
+        Utf8RecoveryStrategy,
     },
-    core_evaluator::CoreJsonPathEvaluator,
     state_machine::{JsonStreamState, StreamStateMachine},
     stream_processor::JsonStreamProcessor,
 };
@@ -184,7 +198,6 @@ impl JsonArrayStream<serde_json::Value> {
         Self::new_typed(jsonpath)
     }
 }
-
 
 impl<T> JsonArrayStream<T>
 where
@@ -279,7 +292,7 @@ where
             Ok(value) => {
                 println!("DEBUG: JSON parsing succeeded: {:?}", value);
                 value
-            },
+            }
             Err(e) => {
                 println!("DEBUG: JSON parsing failed: {:?}", e);
                 // Not complete JSON yet, fall back to streaming deserializer
@@ -289,28 +302,34 @@ where
 
         // Use core evaluator for complete JSON
         let expression = self.path_expression.as_string();
-        println!("DEBUG: Creating CoreJsonPathEvaluator for expression: {}", expression);
+        println!(
+            "DEBUG: Creating CoreJsonPathEvaluator for expression: {}",
+            expression
+        );
         let evaluator = match CoreJsonPathEvaluator::new(&expression) {
             Ok(eval) => {
                 println!("DEBUG: CoreJsonPathEvaluator created successfully");
                 eval
-            },
+            }
             Err(e) => {
                 println!("DEBUG: CoreJsonPathEvaluator creation failed: {:?}", e);
                 return AsyncStream::empty();
-            },
+            }
         };
 
         println!("DEBUG: Evaluating expression against JSON value");
         let results = match evaluator.evaluate(&json_value) {
             Ok(values) => {
-                println!("DEBUG: CoreJsonPathEvaluator succeeded with {} results", values.len());
+                println!(
+                    "DEBUG: CoreJsonPathEvaluator succeeded with {} results",
+                    values.len()
+                );
                 values
-            },
+            }
             Err(e) => {
                 println!("DEBUG: CoreJsonPathEvaluator evaluation failed: {:?}", e);
                 return AsyncStream::empty();
-            },
+            }
         };
 
         // Convert JSON values to target type T
@@ -326,7 +345,10 @@ where
             }
         }
 
-        println!("DEBUG: Complete JSON path produced {} typed results", typed_results.len());
+        println!(
+            "DEBUG: Complete JSON path produced {} typed results",
+            typed_results.len()
+        );
 
         // If no results, return a Vec directly instead of an AsyncStream that waits for timeout
         if typed_results.is_empty() {
@@ -340,7 +362,10 @@ where
 
         // Create AsyncStream from the processed results using proper streaming architecture
         AsyncStream::with_channel(move |sender| {
-            println!("DEBUG: Complete JSON AsyncStream closure started with {} results", typed_results.len());
+            println!(
+                "DEBUG: Complete JSON AsyncStream closure started with {} results",
+                typed_results.len()
+            );
             for typed_value in typed_results {
                 if sender.try_send(typed_value).is_err() {
                     break; // Channel closed
@@ -355,34 +380,47 @@ where
         T: Send + 'static,
     {
         println!("DEBUG: fallback_to_streaming_deserializer called");
-        
+
         // Process available data using the streaming deserializer
-        let mut deserializer =
-            JsonPathDeserializer::new(&self.path_expression, &mut self.buffer);
+        let mut deserializer = JsonPathDeserializer::new(&self.path_expression, &mut self.buffer);
         let mut results = Vec::new();
-        
+
         println!("DEBUG: Starting streaming deserializer iteration");
-        
+
         // Manually collect the iterator to avoid lifetime dependency
         let mut iterator = deserializer.process_available();
         let mut iteration_count = 0;
         while let Some(result) = iterator.next() {
             iteration_count += 1;
-            println!("DEBUG: Streaming iteration {}: {:?}", iteration_count, result.is_ok());
+            println!(
+                "DEBUG: Streaming iteration {}: {:?}",
+                iteration_count,
+                result.is_ok()
+            );
             results.push(result);
-            
+
             // Safety check to prevent infinite loops
             if iteration_count > 1000 {
-                println!("DEBUG: Breaking streaming iteration after {} iterations", iteration_count);
+                println!(
+                    "DEBUG: Breaking streaming iteration after {} iterations",
+                    iteration_count
+                );
                 break;
             }
         }
-        
-        println!("DEBUG: Streaming deserializer completed with {} results after {} iterations", results.len(), iteration_count);
 
-        // Create AsyncStream from the processed results using proper streaming architecture  
+        println!(
+            "DEBUG: Streaming deserializer completed with {} results after {} iterations",
+            results.len(),
+            iteration_count
+        );
+
+        // Create AsyncStream from the processed results using proper streaming architecture
         AsyncStream::with_channel(move |sender| {
-            println!("DEBUG: Streaming AsyncStream closure started with {} results", results.len());
+            println!(
+                "DEBUG: Streaming AsyncStream closure started with {} results",
+                results.len()
+            );
             for (i, result) in results.into_iter().enumerate() {
                 match result {
                     Ok(typed_value) => {

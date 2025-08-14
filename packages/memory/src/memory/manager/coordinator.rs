@@ -9,7 +9,8 @@ use tokio::sync::{Mutex, RwLock, oneshot};
 
 use crate::memory::{
     MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType, filter::MemoryFilter,
-    primitives::types::MemoryTypeEnum, repository::MemoryRepository, storage::MemoryStorage};
+    primitives::types::MemoryTypeEnum, repository::MemoryRepository, storage::MemoryStorage,
+};
 use crate::utils::{Error, Result};
 use crate::vector::VectorStore;
 
@@ -21,7 +22,8 @@ where
 {
     storage: Arc<S>,
     vector_store: Arc<Mutex<V>>,
-    repository: Arc<RwLock<MemoryRepository>>}
+    repository: Arc<RwLock<MemoryRepository>>,
+}
 
 impl<S, V> MemoryCoordinator<S, V>
 where
@@ -33,7 +35,8 @@ where
         Self {
             storage,
             vector_store: Arc::new(Mutex::new(vector_store)),
-            repository: Arc::new(RwLock::new(MemoryRepository::new()))}
+            repository: Arc::new(RwLock::new(MemoryRepository::new())),
+        }
     }
 
     /// Add a new memory
@@ -233,7 +236,8 @@ where
 
 /// Future type for memory operations
 pub struct MemoryFuture<T> {
-    rx: oneshot::Receiver<Result<T>>}
+    rx: oneshot::Receiver<Result<T>>,
+}
 
 impl<T> MemoryFuture<T> {
     pub fn new(rx: oneshot::Receiver<Result<T>>) -> Self {
@@ -250,7 +254,8 @@ impl<T> Future for MemoryFuture<T> {
             Poll::Ready(Err(_)) => Poll::Ready(Err(Error::Internal(
                 "Memory operation task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending}
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 

@@ -1,7 +1,8 @@
-use crate::ConfigFormat;
 use anyhow::{anyhow, Result};
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
+
+use crate::ConfigFormat;
 
 /// Zero-allocation config merger for different formats
 pub struct ConfigMerger {

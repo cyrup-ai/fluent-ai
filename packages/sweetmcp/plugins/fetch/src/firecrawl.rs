@@ -1,8 +1,9 @@
-use async_trait::async_trait;
-use base64::Engine;
 use std::error::Error as StdError;
 use std::fmt;
 use std::time::Duration;
+
+use async_trait::async_trait;
+use base64::Engine;
 
 use crate::chromiumoxide::{ContentFetcher, FetchResult};
 

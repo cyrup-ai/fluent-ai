@@ -49,7 +49,8 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
             .map_err(|e| CommandError::ParseError(e.to_string()))
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string()})
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }
 
@@ -67,7 +68,8 @@ pub async fn execute_command_async(command: ImmutableChatCommand) -> CommandResu
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string()})
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }
 
@@ -90,15 +92,14 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
                     })?;
                     // Use AsyncStream try_next method (NO FUTURES architecture)
                     result_stream.try_next().ok_or_else(|| {
-                        CommandError::ExecutionFailed(
-                            "Stream closed without result".to_string(),
-                        )
+                        CommandError::ExecutionFailed("Stream closed without result".to_string())
                     })
                 })
                 .join()
                 {
                     Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string()))}
+                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
+                }
             }
             Err(_) => {
                 // We're not in async context - safe to use new runtime
@@ -113,7 +114,8 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string()})
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }
 
@@ -131,7 +133,8 @@ pub async fn parse_and_execute_command_async(input: &str) -> CommandResult<Comma
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string()})
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }
 
@@ -154,15 +157,14 @@ pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
                     })?;
                     // Use AsyncStream try_next method (NO FUTURES architecture)
                     result_stream.try_next().ok_or_else(|| {
-                        CommandError::ExecutionFailed(
-                            "Stream closed without result".to_string(),
-                        )
+                        CommandError::ExecutionFailed("Stream closed without result".to_string())
                     })
                 })
                 .join()
                 {
                     Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string()))}
+                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
+                }
             }
             Err(_) => {
                 // We're not in async context - safe to use new runtime
@@ -177,6 +179,7 @@ pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
         }
     } else {
         Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string()})
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }

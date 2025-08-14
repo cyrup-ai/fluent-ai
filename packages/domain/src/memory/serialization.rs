@@ -16,7 +16,8 @@ pub struct MemoryRecord {
     pub output_hash: u64,
     pub timestamp: u64,
     pub input_length: u32,
-    pub output_length: u32}
+    pub output_length: u32,
+}
 
 impl MemoryRecord {
     /// Create new memory record with zero allocation
@@ -27,7 +28,8 @@ impl MemoryRecord {
             output_hash: content_hash(output),
             timestamp,
             input_length: input.len() as u32,
-            output_length: output.len() as u32}
+            output_length: output.len() as u32,
+        }
     }
 
     /// Serialize to binary format with zero allocation
@@ -65,7 +67,8 @@ impl MemoryRecord {
             output_hash,
             timestamp,
             input_length,
-            output_length})
+            output_length,
+        })
     }
 
     /// Format as string for storage (minimal allocation)
@@ -86,7 +89,8 @@ impl MemoryRecord {
 #[derive(Debug)]
 pub struct SerializationBuffer {
     data: Vec<u8>,
-    capacity: usize}
+    capacity: usize,
+}
 
 impl SerializationBuffer {
     /// Create new buffer with pre-allocated capacity
@@ -94,7 +98,8 @@ impl SerializationBuffer {
     pub fn new(capacity: usize) -> Self {
         Self {
             data: Vec::with_capacity(capacity),
-            capacity}
+            capacity,
+        }
     }
 
     /// Clear buffer for reuse (zero allocation)

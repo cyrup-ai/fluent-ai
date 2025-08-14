@@ -16,6 +16,35 @@ macro_rules! emit {
     };
 }
 
+/// Pattern matching syntax for on_chunk processing with arbitrary user code
+///
+/// Transforms `|chunk| { Ok => { arbitrary_code; expr }, Err(e) => { more_code; expr } }`
+/// into proper match syntax. Supports multi-statement blocks and complex expressions.
+#[macro_export]
+macro_rules! on_chunk_pattern {
+    // Single expression version
+    (|$param:ident| { Ok => $ok_expr:expr, Err($err:ident) => $err_expr:expr $(,)? }) => {
+        |$param| match $param {
+            Ok(val) => {
+                let $param = val;
+                $ok_expr
+            }
+            Err($err) => $err_expr,
+        }
+    };
+
+    // Block expression version for arbitrary code
+    (|$param:ident| { Ok => $ok_block:block, Err($err:ident) => $err_block:block $(,)? }) => {
+        |$param| match $param {
+            Ok(val) => {
+                let $param = val;
+                $ok_block
+            }
+            Err($err) => $err_block,
+        }
+    };
+}
+
 /// Handles an error within a stream-producing task.
 ///
 /// This macro logs the error with a consistent format and then gracefully

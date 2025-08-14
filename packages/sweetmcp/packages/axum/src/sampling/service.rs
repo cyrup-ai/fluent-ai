@@ -1,12 +1,13 @@
 // use futures_util::StreamExt; // Temporarily unused
+use std::env;
+
 use arrayvec::ArrayString;
 use log::{self, error};
 use rpc_router::HandlerResult;
 use smallvec::SmallVec;
-use std::env;
 use tokio::sync::{mpsc, oneshot};
-// use fluent_ai::{FluentAi, Providers, Models}; // Temporarily disabled due to dependency issues
 
+// use fluent_ai::{FluentAi, Providers, Models}; // Temporarily disabled due to dependency issues
 use super::model::*;
 // use crate::auth::JwtAuth; // Auth module not available
 use crate::sampling::notifications::SamplingProgressNotification;
@@ -162,7 +163,7 @@ pub fn sampling_create_message_pending(request: CreateMessageRequest) -> AsyncSa
                     model: model_name,
                     stop_reason: Some("endTurn".to_string()),
                     usage: Some(CompletionUsage {
-                        completion_tokens: 150, // Estimate - could be improved with actual token counting
+                        completion_tokens: 150, /* Estimate - could be improved with actual token counting */
                         prompt_tokens: prompt_text.len() as u32 / 4, // Rough estimate
                         total_tokens: 150 + (prompt_text.len() as u32 / 4),
                     }),

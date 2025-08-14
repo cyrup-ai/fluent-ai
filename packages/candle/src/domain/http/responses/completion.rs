@@ -58,11 +58,11 @@ use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::http::Provider;
 use crate::domain::http::common::{
-    BaseMessage, CommonUsage, FinishReason, MAX_IDENTIFIER_LEN, MAX_TOOLS, ToolCall,
-    ValidationError,
+    BaseMessage, CommonUsage, FinishReason, ToolCall, ValidationError, MAX_IDENTIFIER_LEN,
+    MAX_TOOLS,
 };
+use crate::domain::http::Provider;
 
 /// Maximum number of choices in a completion response
 pub const MAX_CHOICES: usize = 16;
@@ -1711,8 +1711,8 @@ mod tests {
             logprobs: None,
         };
 
-        let chunk =
-            CandleCompletionResponseChunk::new("chunk-123", "gpt-4", vec![choice]).expect("Should create chunk");
+        let chunk = CandleCompletionResponseChunk::new("chunk-123", "gpt-4", vec![choice])
+            .expect("Should create chunk");
 
         assert_eq!(chunk.id.as_str(), "chunk-123");
         assert_eq!(chunk.model.as_str(), "gpt-4");
@@ -1756,7 +1756,8 @@ mod tests {
         assert!(!stream.completed);
         assert_eq!(stream.chunk_count, 0);
 
-        let chunk = CandleCompletionResponseChunk::new("chunk-1", "gpt-4", vec![]).expect("Should create chunk");
+        let chunk = CandleCompletionResponseChunk::new("chunk-1", "gpt-4", vec![])
+            .expect("Should create chunk");
         stream.record_chunk(&chunk);
 
         assert_eq!(stream.chunk_count, 1);

@@ -18,7 +18,8 @@ use thiserror::Error;
 use crate::cognitive::quantum::{
     BasisType, Complex64, EntanglementGraph, QuantumConfig, QuantumErrorCorrection, QuantumMetrics,
     SuperpositionState,
-    types::{EnhancedQuery, RoutingDecision, RoutingStrategy}};
+    types::{EnhancedQuery, RoutingDecision, RoutingStrategy},
+};
 use crate::cognitive::state::CognitiveStateManager;
 use crate::cognitive::types::{CognitiveResult, QueryIntent};
 
@@ -47,7 +48,8 @@ pub struct QuantumRouter {
         SuperpositionState,
         EnhancedQuery,
         Sender<Result<SuperpositionState, QuantumRouterError>>,
-    )>}
+    )>,
+}
 
 #[derive(Error, Debug)]
 pub enum QuantumRouterError {
@@ -62,7 +64,8 @@ pub enum QuantumRouterError {
     #[error("Channel error: {0}")]
     ChannelError(String),
     #[error("I/O error: {0}")]
-    IoError(#[from] std::io::Error)}
+    IoError(#[from] std::io::Error),
+}
 
 /// Lock-free coherence tracking system
 pub struct CoherenceTracker {
@@ -70,7 +73,8 @@ pub struct CoherenceTracker {
     pub decoherence_models: Vec<DecoherenceModel>,
     pub measurement_history: VecDeque<CoherenceEvent>,
     pub environmental_factors: EnvironmentalFactors,
-    pub error_correction: Option<QuantumErrorCorrection>}
+    pub error_correction: Option<QuantumErrorCorrection>,
+}
 
 /// Decoherence models for quantum state evolution
 #[derive(Debug, Clone)]
@@ -80,7 +84,8 @@ pub enum DecoherenceModel {
     Gaussian { width: f64 },
     PhaseNoise { noise_strength: f64 },
     AmplitudeDamping { damping_rate: f64 },
-    DepolarizingChannel { error_rate: f64 }}
+    DepolarizingChannel { error_rate: f64 },
+}
 
 /// Environmental factors affecting coherence
 #[derive(Debug, Clone)]
@@ -90,14 +95,16 @@ pub struct EnvironmentalFactors {
     pub electromagnetic_noise: f64,
     pub thermal_photons: f64,
     pub system_load: f64,
-    pub network_latency: Duration}
+    pub network_latency: Duration,
+}
 
 /// Thread-safe quantum memory management
 pub struct QuantumMemory {
     pub quantum_registers: HashMap<String, QuantumRegister>,
     pub memory_capacity: usize,
     pub current_usage: usize,
-    pub garbage_collection: QuantumGarbageCollector}
+    pub garbage_collection: QuantumGarbageCollector,
+}
 
 /// Quantum register for storing quantum states
 #[derive(Debug, Clone)]
@@ -106,7 +113,8 @@ pub struct QuantumRegister {
     pub register_size: usize,
     pub entanglement_pattern: EntanglementPattern,
     pub decoherence_time: Duration,
-    pub last_access: Instant}
+    pub last_access: Instant,
+}
 
 /// Individual qubit state
 #[derive(Debug, Clone)]
@@ -115,7 +123,8 @@ pub struct Qubit {
     pub decoherence_time_t1: Duration,
     pub decoherence_time_t2: Duration,
     pub gate_fidelity: f64,
-    pub readout_fidelity: f64}
+    pub readout_fidelity: f64,
+}
 
 /// Entanglement patterns for quantum register organization
 #[derive(Debug, Clone)]
@@ -124,13 +133,15 @@ pub enum EntanglementPattern {
     Bell,
     Linear,
     Star,
-    Graph(Vec<(usize, usize)>)}
+    Graph(Vec<(usize, usize)>),
+}
 
 /// Lock-free garbage collector for quantum memory
 pub struct QuantumGarbageCollector {
     pub collection_threshold: f64,
     pub collection_strategy: CollectionStrategy,
-    pub last_collection: Instant}
+    pub last_collection: Instant,
+}
 
 /// Collection strategies for quantum memory management
 #[derive(Debug, Clone)]
@@ -138,7 +149,8 @@ pub enum CollectionStrategy {
     MarkAndSweep,
     ReferenceCount,
     Generational,
-    CoherenceBasedCollection}
+    CoherenceBasedCollection,
+}
 
 /// Coherence event tracking for quantum state monitoring
 #[derive(Debug, Clone)]
@@ -148,26 +160,33 @@ pub struct CoherenceEvent {
     pub coherence_level: f64,
     pub event_type: CoherenceEventType,
     pub environmental_snapshot: EnvironmentalFactors,
-    pub measurement_uncertainty: f64}
+    pub measurement_uncertainty: f64,
+}
 
 /// Types of coherence events in quantum processing
 #[derive(Debug, Clone)]
 pub enum CoherenceEventType {
     Creation {
         initial_coherence: f64,
-        creation_fidelity: f64},
+        creation_fidelity: f64,
+    },
     Observation {
         measurement_basis: BasisType,
-        collapse_probability: f64},
+        collapse_probability: f64,
+    },
     Evolution {
         gate_sequence: Vec<String>,
-        fidelity_loss: f64},
+        fidelity_loss: f64,
+    },
     Decoherence {
         decoherence_model: DecoherenceModel,
-        final_coherence: f64},
+        final_coherence: f64,
+    },
     ErrorCorrection {
         syndrome_detected: Vec<usize>,
-        correction_applied: bool}}
+        correction_applied: bool,
+    },
+}
 
 /// Quantum measurement result
 #[derive(Debug, Clone)]
@@ -177,7 +196,8 @@ pub struct QuantumMeasurement {
     pub probability: f64,
     pub context: Vec<(String, f64)>,
     pub measurement_time: Instant,
-    pub fidelity: f64}
+    pub fidelity: f64,
+}
 
 impl QuantumRouter {
     /// Create new quantum router with streaming channels
@@ -202,9 +222,11 @@ impl QuantumRouter {
             coherence_threshold: config.coherence_threshold,
             decoherence_models: vec![
                 DecoherenceModel::Exponential {
-                    decay_constant: 0.1},
+                    decay_constant: 0.1,
+                },
                 DecoherenceModel::PhaseNoise {
-                    noise_strength: 0.01},
+                    noise_strength: 0.01,
+                },
                 DecoherenceModel::AmplitudeDamping { damping_rate: 0.05 },
             ],
             measurement_history: VecDeque::new(),
@@ -214,8 +236,10 @@ impl QuantumRouter {
                 electromagnetic_noise: 0.001,
                 thermal_photons: 0.0,
                 system_load: 0.5,
-                network_latency: Duration::from_millis(10)},
-            error_correction: Some(QuantumErrorCorrection::new(3))};
+                network_latency: Duration::from_millis(10),
+            },
+            error_correction: Some(QuantumErrorCorrection::new(3)),
+        };
 
         let quantum_memory = QuantumMemory {
             quantum_registers: HashMap::new(),
@@ -224,7 +248,9 @@ impl QuantumRouter {
             garbage_collection: QuantumGarbageCollector {
                 collection_threshold: 0.8,
                 collection_strategy: CollectionStrategy::CoherenceBasedCollection,
-                last_collection: Instant::now()}};
+                last_collection: Instant::now(),
+            },
+        };
 
         let router = Self {
             superposition_states: Arc::new(std::sync::RwLock::new(HashMap::new())),
@@ -236,7 +262,8 @@ impl QuantumRouter {
             metrics: Arc::new(std::sync::RwLock::new(QuantumMetrics::default())),
             routing_tx,
             measurement_tx,
-            evolution_tx};
+            evolution_tx,
+        };
 
         // Start worker threads for streaming processing
         router.start_routing_worker(routing_rx);
@@ -421,7 +448,8 @@ impl QuantumRouter {
             QueryIntent::Search => 0.8,
             QueryIntent::Analysis => 0.9,
             QueryIntent::Generation => 0.7,
-            QueryIntent::Exploration => 0.6};
+            QueryIntent::Exploration => 0.6,
+        };
         contexts.push(("semantic".to_string(), semantic_weight));
 
         // Add embedding-based contexts using SIMD-optimized similarity
@@ -505,7 +533,8 @@ impl QuantumRouter {
             QueryIntent::Search => BasisType::Computational,
             QueryIntent::Analysis => BasisType::Hadamard,
             QueryIntent::Generation => BasisType::Phase,
-            QueryIntent::Exploration => BasisType::Bell};
+            QueryIntent::Exploration => BasisType::Bell,
+        };
 
         // Perform measurement
         let measurement_result = superposition.measure(&basis).map_err(|e| {
@@ -523,7 +552,8 @@ impl QuantumRouter {
             probability: measurement_result.probability,
             context: contexts,
             measurement_time: Instant::now(),
-            fidelity: measurement_result.fidelity})
+            fidelity: measurement_result.fidelity,
+        })
     }
 
     /// Process measurement request
@@ -559,8 +589,10 @@ impl QuantumRouter {
                 entanglement_level: measurement.fidelity,
                 coherence_time: Duration::from_secs_f64(1.0 / (1.0 - measurement.fidelity)),
                 measurement_basis: measurement.basis,
-                eigenvalue: measurement.eigenvalue}),
-            routing_metadata: measurement.context.into_iter().collect()})
+                eigenvalue: measurement.eigenvalue,
+            }),
+            routing_metadata: measurement.context.into_iter().collect(),
+        })
     }
 
     /// Determine routing strategy from quantum context
@@ -575,8 +607,10 @@ impl QuantumRouter {
                 "embedding" => RoutingStrategy::VectorRouting,
                 "temporal" => RoutingStrategy::TemporalRouting,
                 "complexity" => RoutingStrategy::HybridRouting,
-                _ => RoutingStrategy::QuantumRouting},
-            _ => RoutingStrategy::QuantumRouting}
+                _ => RoutingStrategy::QuantumRouting,
+            },
+            _ => RoutingStrategy::QuantumRouting,
+        }
     }
 
     /// Update metrics after routing
@@ -598,6 +632,7 @@ impl Default for RoutingDecision {
             strategy: RoutingStrategy::QuantumRouting,
             confidence: 0.5,
             quantum_signature: None,
-            routing_metadata: HashMap::new()}
+            routing_metadata: HashMap::new(),
+        }
     }
 }

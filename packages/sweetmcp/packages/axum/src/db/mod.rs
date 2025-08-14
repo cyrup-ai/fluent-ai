@@ -12,9 +12,9 @@ pub use client::{DatabaseClient, connect_database};
 pub use config::{DatabaseConfig, StorageEngine};
 pub use dao::{BaseDao, Dao, Entity};
 pub use error::{SurrealdbError, SurrealdbErrorContext};
-pub use surrealdb::Surreal;
 // Export common SurrealDB types for convenience
 pub use group::Group;
 pub use role::Role;
+pub use surrealdb::Surreal;
 pub use surrealdb::sql::{Array, Id, Object, Thing, Value};
 pub use user::User;

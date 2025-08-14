@@ -3,10 +3,11 @@
 use std::collections::HashMap;
 
 use serde_json::Value;
-use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
+
 use crate::domain::chat::message::types::CandleMessageRole as MessageRole;
 use crate::domain::context::CandleContext;
 use crate::domain::tool::CandleTool;
+use crate::domain::CandleZeroOneOrMany as ZeroOneOrMany;
 // Type aliases for trait objects
 type Context = Box<dyn CandleContext + Send + Sync>;
 type Tool = Box<dyn CandleTool + Send + Sync>;
@@ -27,27 +28,27 @@ impl CandleAdditionalParams {
             params: HashMap::new(),
         }
     }
-    
+
     /// Create from a map of parameters
     pub fn from_map(params: HashMap<String, Value>) -> Self {
         Self { params }
     }
-    
+
     /// Get a parameter value by key
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.params.get(key)
     }
-    
+
     /// Set a parameter value
     pub fn set(&mut self, key: impl Into<String>, value: impl Into<Value>) {
         self.params.insert(key.into(), value.into());
     }
-    
+
     /// Check if a parameter exists
     pub fn contains_key(&self, key: &str) -> bool {
         self.params.contains_key(key)
     }
-    
+
     /// Get a reference to the underlying parameters
     pub fn as_map(&self) -> &HashMap<String, Value> {
         &self.params
@@ -98,24 +99,24 @@ impl CandleAgent {
             conversation: AgentConversation::new(),
         }
     }
-    
+
     /// Get the agent's name
     pub fn name(&self) -> &str {
         &self.config.name
     }
-    
+
     /// Set the system prompt
     pub fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.config.system_prompt = Some(prompt.into());
         self
     }
-    
+
     /// Set the temperature
     pub fn with_temperature(mut self, temperature: f64) -> Self {
         self.config.temperature = temperature;
         self
     }
-    
+
     /// Set max tokens
     pub fn with_max_tokens(mut self, max_tokens: usize) -> Self {
         self.config.max_tokens = Some(max_tokens);
@@ -127,7 +128,8 @@ impl CandleAgent {
 #[derive(Debug, Clone)]
 pub struct AgentConversation {
     /// Optional collection of conversation messages with their roles
-    pub messages: Option<ZeroOneOrMany<(MessageRole, String)>>}
+    pub messages: Option<ZeroOneOrMany<(MessageRole, String)>>,
+}
 
 impl AgentConversation {
     /// Create a new empty agent conversation
@@ -146,7 +148,8 @@ impl AgentConversation {
                     let all: Vec<_> = msgs.clone().into_iter().collect();
                     all.last().map(|(_, m)| m.clone())
                 })
-                .unwrap_or_default()}
+                .unwrap_or_default(),
+        }
     }
 }
 
@@ -159,7 +162,8 @@ impl Default for AgentConversation {
 /// A single message in an agent conversation
 #[derive(Debug, Clone)]
 pub struct AgentConversationMessage {
-    content: String}
+    content: String,
+}
 
 impl AgentConversationMessage {
     /// Get the message content as a string slice
@@ -167,7 +171,6 @@ impl AgentConversationMessage {
         &self.content
     }
 }
-
 
 /// Trait for context arguments - zero-allocation with static dispatch
 pub trait ContextArgs {

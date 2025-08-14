@@ -36,7 +36,8 @@ pub use crate::ansi_writer::Ansi;
 pub use crate::buffer_writer::{Buffer, BufferWriter};
 pub use crate::color_writer::NoColor;
 pub use crate::formatting_writer::{
-    BufferedStandardStream, StandardStream, StandardStreamLock};
+    BufferedStandardStream, StandardStream, StandardStreamLock,
+};
 
 // Additional utility types for compatibility
 use crate::{ColorSpec, HyperlinkSpec, WriteColor};
@@ -122,7 +123,8 @@ impl WriteColor for Vec<u8> {
 #[derive(Debug, Default)]
 pub struct StringWriter {
     /// The internal string buffer that collects written data
-    pub inner: String}
+    pub inner: String,
+}
 
 impl StringWriter {
     /// Creates a new empty StringWriter
@@ -182,7 +184,8 @@ impl io::Write for StringWriter {
             Err(_) => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid UTF-8 sequence in StringWriter",
-            ))}
+            )),
+        }
     }
 
     /// Flush the StringWriter (no-op for string buffers)
@@ -392,7 +395,8 @@ impl io::Write for TermString {
             Err(_) => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid UTF-8 sequence in TermString",
-            ))}
+            )),
+        }
     }
 
     /// Flush the TermString (no-op for string buffers)

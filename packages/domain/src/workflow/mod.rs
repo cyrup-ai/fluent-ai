@@ -20,7 +20,8 @@ pub struct WorkflowStep {
     /// JSON parameters specific to this step type
     pub parameters: serde_json::Value,
     /// IDs of steps that must complete before this step can execute
-    pub dependencies: ZeroOneOrMany<String>}
+    pub dependencies: ZeroOneOrMany<String>,
+}
 
 /// Defines the different types of workflow steps and their configurations.
 ///
@@ -32,11 +33,13 @@ pub enum StepType {
     /// A prompt step that generates text using a template
     Prompt {
         /// The template string with placeholders for dynamic content
-        template: String},
+        template: String,
+    },
     /// A transformation step that processes data using a function
     Transform {
         /// The name or definition of the transformation function to apply
-        function: String},
+        function: String,
+    },
     /// A conditional step that branches based on a condition
     Conditional {
         /// The condition expression to evaluate
@@ -44,17 +47,21 @@ pub enum StepType {
         /// The step ID to execute if the condition is true
         true_branch: String,
         /// The step ID to execute if the condition is false
-        false_branch: String},
+        false_branch: String,
+    },
     /// A parallel step that executes multiple branches concurrently
     Parallel {
         /// The step IDs to execute in parallel
-        branches: ZeroOneOrMany<String>},
+        branches: ZeroOneOrMany<String>,
+    },
     /// A loop step that repeats execution while a condition is true
     Loop {
         /// The condition expression that controls loop continuation
         condition: String,
         /// The step ID to execute in each loop iteration
-        body: String}}
+        body: String,
+    },
+}
 
 /// A complete workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,4 +77,5 @@ pub struct Workflow {
     /// ID of the first step to execute when starting this workflow
     pub entry_point: String,
     /// Additional metadata and configuration for this workflow
-    pub metadata: HashMap<String, serde_json::Value>}
+    pub metadata: HashMap<String, serde_json::Value>,
+}

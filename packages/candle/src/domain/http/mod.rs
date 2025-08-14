@@ -107,7 +107,7 @@ pub use {
             CompletionResponseError, GoogleMetadata, LogProbs, OpenAIMetadata, SafetyRating,
             StreamingResponse, TokenLogProb,
         }, /* embedding::EmbeddingResponse,
-            * error::{HttpError, ProviderError} */
+           * error::{HttpError, ProviderError} */
     },
 };
 

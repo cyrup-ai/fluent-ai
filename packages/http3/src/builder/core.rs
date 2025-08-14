@@ -212,8 +212,6 @@ impl<S> Http3Builder<S> {
         }
     }
 
-
-
     /// Set request timeout in seconds
     ///
     /// # Arguments  
@@ -261,6 +259,4 @@ impl<S> Http3Builder<S> {
         self.request = self.request.with_retry_attempts(attempts);
         self
     }
-
-
 }

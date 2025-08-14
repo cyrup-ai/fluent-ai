@@ -1,13 +1,11 @@
 //! Retry execution engine with streaming support
 //!
-//! Provides the core retry execution logic using async streams for
+//! Provides the core retry execution logic using pure streams for
 //! zero-allocation retry orchestration with comprehensive error handling.
 
-use std::pin::Pin;
 use std::time::Instant;
 
-use futures_util::stream::{self, Stream};
-use futures_util::{StreamExt, pin_mut};
+use fluent_ai_async::{AsyncStream, emit};
 
 use super::{RetryPolicy, RetryStats};
 use crate::{HttpError, HttpResult};
@@ -19,10 +17,7 @@ pub trait RetryExecutor<T>: Send + Sync + 'static {
     /// Returns a stream of retry results that includes intermediate retry
     /// attempts and the final result. Consumers can observe retry progress
     /// or wait for the final outcome.
-    fn execute_with_retry(
-        self,
-        policy: RetryPolicy,
-    ) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>;
+    fn execute_with_retry(self, policy: RetryPolicy) -> AsyncStream<RetryResult<T>>;
 }
 
 /// Result of a retry attempt
@@ -55,10 +50,10 @@ pub enum RetryResult<T> {
     },
 }
 
-/// Retry executor for HTTP operations using native Streams
+/// Retry executor for HTTP operations using AsyncStreams
 pub struct HttpRetryExecutor<F, T>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
     operation: F,
@@ -66,12 +61,12 @@ where
 
 impl<F, T> HttpRetryExecutor<F, T>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
     /// Create new retry executor for HTTP operation
     ///
-    /// Takes a closure that produces a stream of results for each retry attempt.
+    /// Takes a closure that produces a result for each retry attempt.
     /// The closure will be called once per retry attempt.
     #[inline]
     pub fn new(operation: F) -> Self {
@@ -81,50 +76,44 @@ where
 
 impl<F, T> RetryExecutor<T> for HttpRetryExecutor<F, T>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
     /// Execute HTTP operation with comprehensive retry logic
     ///
-    /// Implements zero-allocation retry orchestration using stream unfold
+    /// Implements zero-allocation retry orchestration using AsyncStream
     /// for maximum performance. Handles delay calculation, error classification,
     /// and statistics collection with precise timing measurements.
-    fn execute_with_retry(
-        self,
-        policy: RetryPolicy,
-    ) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>> {
+    fn execute_with_retry(self, policy: RetryPolicy) -> AsyncStream<RetryResult<T>> {
         let operation = self.operation;
-        Box::pin(stream::unfold(
-            (policy, operation, 0, RetryStats::default()),
-            move |(policy, operation, attempt, mut stats)| async move {
-                if attempt >= policy.max_attempts {
-                    return None; // All attempts exhausted
-                }
 
+        AsyncStream::with_channel(move |sender| {
+            let mut attempt = 0;
+            let mut stats = RetryStats::default();
+
+            while attempt < policy.max_attempts {
                 stats.total_attempts = attempt + 1;
                 let attempt_start = Instant::now();
 
                 // Execute the operation
-                let operation_stream = (operation)();
-                pin_mut!(operation_stream);
-
-                match operation_stream.next().await {
-                    Some(Ok(result)) => {
+                match (operation)() {
+                    Ok(result) => {
                         if attempt > 0 {
                             stats.successful_retries += 1;
                         }
                         stats.total_retry_time += attempt_start.elapsed();
                         stats.complete();
 
-                        Some((
+                        emit!(
+                            sender,
                             RetryResult::Success {
                                 result,
                                 stats: stats.clone(),
-                            },
-                            (policy.clone(), operation, policy.max_attempts, stats),
-                        ))
+                            }
+                        );
+                        return; // Success - exit retry loop
                     }
-                    Some(Err(error)) => {
+                    Err(error) => {
                         stats.total_retry_time += attempt_start.elapsed();
                         stats.retry_errors.push(error.to_string());
 
@@ -133,50 +122,37 @@ where
                             let delay = policy.calculate_delay(attempt + 1);
                             stats.total_delay_time += delay;
 
-                            // Apply delay if needed
-                            if delay > std::time::Duration::ZERO {
-                                tokio::time::sleep(delay).await;
-                            }
-
-                            Some((
+                            emit!(
+                                sender,
                                 RetryResult::Retry {
                                     error: error.clone(),
                                     attempt: attempt + 1,
                                     delay,
                                     stats: stats.clone(),
-                                },
-                                (policy, operation, attempt + 1, stats),
-                            ))
+                                }
+                            );
+
+                            // Apply delay if needed
+                            if delay > std::time::Duration::ZERO {
+                                std::thread::sleep(delay);
+                            }
+
+                            attempt += 1;
+                            continue;
                         } else {
                             stats.complete();
-                            Some((
+                            emit!(
+                                sender,
                                 RetryResult::FinalFailure {
                                     error,
                                     stats: stats.clone(),
-                                },
-                                (policy.clone(), operation, policy.max_attempts, stats),
-                            ))
+                                }
+                            );
+                            return; // Final failure - exit retry loop
                         }
                     }
-                    None => {
-                        // Stream ended without result - treat as error
-                        let error = HttpError::InvalidResponse {
-                            message: "Empty response stream".to_string(),
-                        };
-                        stats.total_retry_time += attempt_start.elapsed();
-                        stats.retry_errors.push(error.to_string());
-                        stats.complete();
-
-                        Some((
-                            RetryResult::FinalFailure {
-                                error,
-                                stats: stats.clone(),
-                            },
-                            (policy.clone(), operation, policy.max_attempts, stats),
-                        ))
-                    }
                 }
-            },
-        ))
+            }
+        })
     }
 }

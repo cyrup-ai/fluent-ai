@@ -43,7 +43,8 @@ pub struct MemoryMetadata {
     pub embedding: Option<Vec<f32>>,
 
     /// Additional custom metadata as key-value pairs
-    pub custom: serde_json::Value}
+    pub custom: serde_json::Value,
+}
 
 impl MemoryMetadata {
     /// Create new empty metadata
@@ -60,7 +61,8 @@ impl MemoryMetadata {
             created_at: chrono::Utc::now(),
             last_accessed_at: None,
             embedding: None,
-            custom: serde_json::Value::Null}
+            custom: serde_json::Value::Null,
+        }
     }
 
     /// Create new metadata with memory type
@@ -77,7 +79,8 @@ impl MemoryMetadata {
             created_at: chrono::Utc::now(),
             last_accessed_at: None,
             embedding: None,
-            custom: serde_json::Value::Null}
+            custom: serde_json::Value::Null,
+        }
     }
 
     /// Create new metadata with memory type
@@ -101,7 +104,8 @@ impl MemoryMetadata {
             created_at: Utc::now(),
             last_accessed_at: None,
             embedding: None,
-            custom: serde_json::Value::Object(serde_json::Map::new())}
+            custom: serde_json::Value::Object(serde_json::Map::new()),
+        }
     }
 
     /// Add a keyword
@@ -188,7 +192,8 @@ pub struct MemoryFilter {
     pub time_range: Option<TimeRange>,
 
     /// Filter by custom metadata
-    pub custom_filters: Vec<CustomFilter>}
+    pub custom_filters: Vec<CustomFilter>,
+}
 
 /// Time range for filtering
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,7 +202,8 @@ pub struct TimeRange {
     pub start: Option<DateTime<Utc>>,
 
     /// End time (inclusive)
-    pub end: Option<DateTime<Utc>>}
+    pub end: Option<DateTime<Utc>>,
+}
 
 /// Custom filter for metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,7 +215,8 @@ pub struct CustomFilter {
     pub operation: FilterOperation,
 
     /// Filter value
-    pub value: serde_json::Value}
+    pub value: serde_json::Value,
+}
 
 /// Filter operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -239,4 +246,5 @@ pub enum FilterOperation {
     In,
 
     /// Not in array
-    NotIn}
+    NotIn,
+}

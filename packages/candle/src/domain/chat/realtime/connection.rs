@@ -4,20 +4,17 @@
 //! health checks, and connection state tracking using atomic operations and lock-free
 //! data structures for maximum performance.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
-
-use crossbeam_channel::{unbounded, Sender, Receiver};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
-
 use uuid::Uuid;
 
-
-use super::events::{RealTimeEvent, ConnectionStatus};
+use super::events::{ConnectionStatus, RealTimeEvent};
 
 /// Connection state with atomic operations
 #[derive(Debug)]
@@ -53,7 +50,7 @@ impl ConnectionState {
     pub fn new(user_id: Arc<str>, session_id: Arc<str>) -> Self {
         let now = Instant::now();
         let now_nanos = now.elapsed().as_nanos() as u64;
-        
+
         Self {
             connection_id: Arc::from(Uuid::new_v4().to_string()),
             user_id,
@@ -81,10 +78,10 @@ impl ConnectionState {
         if !self.is_active.load(Ordering::Acquire) {
             return false;
         }
-        
+
         let now_nanos = Instant::now().elapsed().as_nanos() as u64;
         let last_activity = self.last_activity.load(Ordering::Acquire);
-        
+
         now_nanos.saturating_sub(last_activity) < heartbeat_timeout * 1_000_000_000
     }
 
@@ -205,7 +202,7 @@ impl ConnectionManager {
     /// Create a new connection manager
     pub fn new(heartbeat_timeout: u64, health_check_interval: u64) -> Self {
         let (event_sender, event_receiver) = unbounded();
-        
+
         Self {
             connections: SkipMap::new(),
             heartbeat_timeout,
@@ -227,17 +224,20 @@ impl ConnectionManager {
         session_id: Arc<str>,
     ) -> Result<Arc<ConnectionState>, String> {
         let connection = Arc::new(ConnectionState::new(user_id, session_id));
-        
-        self.connections.insert(connection.connection_id.clone(), connection.clone());
+
+        self.connections
+            .insert(connection.connection_id.clone(), connection.clone());
         self.total_connections.fetch_add(1, Ordering::AcqRel);
         self.active_connections.fetch_add(1, Ordering::AcqRel);
-        
+
         // Notify about the new connection
-        let _ = self.event_sender.send(RealTimeEvent::connection_status_changed(
-            connection.user_id.clone(),
-            ConnectionStatus::Connected,
-        ));
-        
+        let _ = self
+            .event_sender
+            .send(RealTimeEvent::connection_status_changed(
+                connection.user_id.clone(),
+                ConnectionStatus::Connected,
+            ));
+
         Ok(connection)
     }
 
@@ -247,13 +247,15 @@ impl ConnectionManager {
             let connection = entry.value();
             connection.close();
             self.active_connections.fetch_sub(1, Ordering::AcqRel);
-            
+
             // Notify about the disconnection
-            let _ = self.event_sender.send(RealTimeEvent::connection_status_changed(
-                connection.user_id.clone(),
-                ConnectionStatus::Disconnected,
-            ));
-            
+            let _ = self
+                .event_sender
+                .send(RealTimeEvent::connection_status_changed(
+                    connection.user_id.clone(),
+                    ConnectionStatus::Disconnected,
+                ));
+
             Ok(())
         } else {
             Err("Connection not found".to_string())
@@ -262,7 +264,9 @@ impl ConnectionManager {
 
     /// Get a connection by ID
     pub fn get_connection(&self, connection_id: &str) -> Option<Arc<ConnectionState>> {
-        self.connections.get(connection_id).map(|e| e.value().clone())
+        self.connections
+            .get(connection_id)
+            .map(|e| e.value().clone())
     }
 
     /// Get all connections
@@ -275,32 +279,32 @@ impl ConnectionManager {
         if self.health_check_running.load(Ordering::Acquire) {
             return false;
         }
-        
+
         self.health_check_running.store(true, Ordering::Release);
         let running = self.health_check_running.clone();
         let _event_sender = self.event_sender.clone();
         let _heartbeat_timeout = self.heartbeat_timeout;
-        
+
         // Since SkipMap doesn't support clone, we'll implement the health check differently
         // For now, mark the health check as started but implement a simpler approach
         std::thread::spawn(move || {
             while running.load(Ordering::Acquire) {
                 // Health check implementation simplified due to SkipMap clone limitations
                 // In production, this would need a different architecture for sharing connection state
-                
+
                 // Sleep for the health check interval
                 std::thread::sleep(Duration::from_secs(1));
             }
         });
-        
+
         true
     }
-    
+
     /// Stop health check task
     pub fn stop_health_check(&self) {
         self.health_check_running.store(false, Ordering::Release);
     }
-    
+
     /// Get manager statistics
     pub fn get_statistics(&self) -> ConnectionManagerStatistics {
         ConnectionManagerStatistics {
@@ -312,7 +316,7 @@ impl ConnectionManager {
             health_check_interval: self.health_check_interval,
         }
     }
-    
+
     /// Subscribe to connection events
     pub fn subscribe(&self) -> Receiver<RealTimeEvent> {
         self.event_receiver.clone()

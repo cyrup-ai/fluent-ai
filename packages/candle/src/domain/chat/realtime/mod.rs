@@ -16,7 +16,7 @@ mod typing;
 pub use connection::{ConnectionManager, ConnectionState, ConnectionStatistics};
 pub use events::{ConnectionStatus, EventFilter, NotificationLevel, RealTimeEvent};
 pub use streaming::{LiveMessageStreamer, LiveUpdateMessage, MessagePriority};
-pub use system::{RealtimeChat, RealtimeConfig, RealTimeSystem};
+pub use system::{RealTimeSystem, RealtimeChat, RealtimeConfig};
 pub use typing::{TypingIndicator, TypingStatistics};
 
 /// Real-time error type
@@ -25,35 +25,35 @@ pub enum RealTimeError {
     /// Connection error
     #[error("Connection error: {0}")]
     ConnectionError(String),
-    
+
     /// Message error
     #[error("Message error: {0}")]
     MessageError(String),
-    
+
     /// Subscription error
     #[error("Subscription error: {0}")]
     SubscriptionError(String),
-    
+
     /// System error
     #[error("System error: {0}")]
     SystemError(String),
-    
+
     /// Timeout error
     #[error("Operation timed out")]
     TimeoutError,
-    
+
     /// Invalid argument
     #[error("Invalid argument: {0}")]
     InvalidArgument(String),
-    
+
     /// Resource not found
     #[error("Resource not found: {0}")]
     NotFound(String),
-    
+
     /// Permission denied
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
-    
+
     /// Internal error
     #[error("Internal error: {0}")]
     InternalError(String),

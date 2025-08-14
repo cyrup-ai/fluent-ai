@@ -572,11 +572,7 @@ mod xpath_nodeset_vs_jsonpath_nodelist_tests {
         let chunk = Bytes::from(nested_data);
         let allresults: Vec<_> = all_items_stream.process_chunk(chunk).collect();
 
-        assert_eq!(
-            allresults.len(),
-            9,
-            "Should get all 9 items when using [*]"
-        );
+        assert_eq!(allresults.len(), 9, "Should get all 9 items when using [*]");
         assert_eq!(
             allresults,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],

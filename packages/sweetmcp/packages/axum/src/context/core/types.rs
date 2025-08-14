@@ -4,8 +4,9 @@
 //! including ApplicationContext and SamplingContext with zero allocation
 //! patterns and blazing-fast performance.
 
-use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
+
+use serde_json::Value;
 use tokio::sync::RwLock;
 
 use crate::context::{MemoryContextAdapter, logger};

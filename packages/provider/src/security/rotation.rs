@@ -40,7 +40,8 @@ pub struct RotationPolicy {
     pub rotation_window: Option<RotationWindow>,
 
     /// Emergency rotation settings
-    pub emergency_rotation: EmergencyRotationConfig}
+    pub emergency_rotation: EmergencyRotationConfig,
+}
 
 /// Time window for scheduled rotations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,7 +53,8 @@ pub struct RotationWindow {
     pub end_hour: u8,
 
     /// Days of week when rotation is allowed (0=Sunday, 6=Saturday)
-    pub allowed_days: Vec<u8>}
+    pub allowed_days: Vec<u8>,
+}
 
 /// Emergency rotation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,7 +66,8 @@ pub struct EmergencyRotationConfig {
     pub triggers: Vec<EmergencyTrigger>,
 
     /// Maximum time to wait before forcing emergency rotation
-    pub max_delay: Duration}
+    pub max_delay: Duration,
+}
 
 /// Triggers for emergency key rotation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,7 +75,8 @@ pub enum EmergencyTrigger {
     /// Multiple authentication failures
     AuthenticationFailures {
         threshold: u32,
-        time_window: Duration},
+        time_window: Duration,
+    },
 
     /// Suspicious activity detected
     SuspiciousActivity { risk_score_threshold: f32 },
@@ -81,7 +85,8 @@ pub enum EmergencyTrigger {
     PolicyViolation { severity: String },
 
     /// External security alert
-    ExternalAlert { source: String }}
+    ExternalAlert { source: String },
+}
 
 /// Rotation status for a specific provider
 #[derive(Debug, Clone)]
@@ -91,7 +96,8 @@ pub struct RotationStatus {
     pub next_scheduled: Option<SystemTime>,
     pub rotation_count: u64,
     pub last_rotation_duration: Option<Duration>,
-    pub status: RotationState}
+    pub status: RotationState,
+}
 
 /// Current state of rotation for a provider
 #[derive(Debug, Clone, PartialEq)]
@@ -124,7 +130,8 @@ pub struct KeyRotationScheduler {
     emergency_events: Arc<RwLock<Vec<EmergencyEvent>>>,
 
     /// Statistics
-    statistics: Arc<RwLock<RotationStatistics>>}
+    statistics: Arc<RwLock<RotationStatistics>>,
+}
 
 /// Emergency event that may trigger rotation
 #[derive(Debug, Clone)]
@@ -133,7 +140,8 @@ pub struct EmergencyEvent {
     pub timestamp: SystemTime,
     pub provider: String,
     pub risk_score: f32,
-    pub handled: bool}
+    pub handled: bool,
+}
 
 /// Statistics about rotation operations
 #[derive(Debug, Clone)]
@@ -143,7 +151,8 @@ pub struct RotationStatistics {
     pub failed_rotations: u64,
     pub emergency_rotations: u64,
     pub average_rotation_time: Duration,
-    pub last_rotation_time: Option<SystemTime>}
+    pub last_rotation_time: Option<SystemTime>,
+}
 
 impl Default for RotationPolicy {
     fn default() -> Self {
@@ -175,12 +184,15 @@ impl Default for RotationPolicy {
                         time_window: Duration::from_secs(3600), // 1 hour
                     },
                     EmergencyTrigger::SuspiciousActivity {
-                        risk_score_threshold: 0.8},
+                        risk_score_threshold: 0.8,
+                    },
                     EmergencyTrigger::PolicyViolation {
-                        severity: "HIGH".to_string()},
+                        severity: "HIGH".to_string(),
+                    },
                 ],
                 max_delay: Duration::from_secs(300), // 5 minutes
-            }}
+            },
+        }
     }
 }
 
@@ -197,14 +209,16 @@ impl KeyRotationScheduler {
             failed_rotations: 0,
             emergency_rotations: 0,
             average_rotation_time: Duration::ZERO,
-            last_rotation_time: None};
+            last_rotation_time: None,
+        };
 
         // Log scheduler startup
         audit_logger
             .log_security_event(SecurityEvent::SystemStartup {
                 timestamp: SystemTime::now(),
                 component: "KeyRotationScheduler".to_string(),
-                configuration: format!("{:?}", policy)})
+                configuration: format!("{:?}", policy),
+            })
             .await?;
 
         Ok(Self {
@@ -214,7 +228,8 @@ impl KeyRotationScheduler {
             rotation_status: Arc::new(DashMap::new()),
             rotation_timer: Arc::new(RwLock::new(None)),
             emergency_events: Arc::new(RwLock::new(Vec::new())),
-            statistics: Arc::new(RwLock::new(statistics))})
+            statistics: Arc::new(RwLock::new(statistics)),
+        })
     }
 
     /// Start the rotation scheduler
@@ -349,7 +364,8 @@ impl KeyRotationScheduler {
                 details: format!("Emergency rotation triggered by: {:?}", event.trigger),
                 timestamp: SystemTime::now(),
                 risk_score: event.risk_score,
-                recommended_action: "Credential rotated immediately".to_string()})
+                recommended_action: "Credential rotated immediately".to_string(),
+            })
             .await?;
 
         Ok(())
@@ -374,7 +390,8 @@ impl KeyRotationScheduler {
                     "emergency".to_string()
                 } else {
                     "scheduled".to_string()
-                }})
+                },
+            })
             .await?;
 
         // Perform the actual rotation
@@ -416,7 +433,8 @@ impl KeyRotationScheduler {
                             "emergency".to_string()
                         } else {
                             "scheduled".to_string()
-                        }})
+                        },
+                    })
                     .await?;
 
                 info!(
@@ -448,7 +466,8 @@ impl KeyRotationScheduler {
                         violation_type: "rotation_failure".to_string(),
                         details: format!("Failed to rotate {} credentials: {}", provider, e),
                         timestamp: end_time,
-                        severity: super::audit::SecuritySeverity::High})
+                        severity: super::audit::SecuritySeverity::High,
+                    })
                     .await?;
 
                 return Err(e);
@@ -472,11 +491,13 @@ impl KeyRotationScheduler {
                 provider,
                 new_credential,
                 CredentialSource::Runtime {
-                    origin: "key_rotation".to_string()},
+                    origin: "key_rotation".to_string(),
+                },
             )
             .await
             .map_err(|e| SecurityError::RotationFailed {
-                reason: format!("Failed to update credential: {}", e)})?;
+                reason: format!("Failed to update credential: {}", e),
+            })?;
 
         // 3. Validate new credential
         if let Ok(credential) = self.credential_manager.get_credential(provider).await {
@@ -484,7 +505,8 @@ impl KeyRotationScheduler {
             debug!("New credential validated for provider: {}", provider);
         } else {
             return Err(SecurityError::RotationFailed {
-                reason: "Failed to validate new credential".to_string()});
+                reason: "Failed to validate new credential".to_string(),
+            });
         }
 
         Ok(())
@@ -576,7 +598,8 @@ impl KeyRotationScheduler {
                 next_scheduled: None,
                 rotation_count: 0,
                 last_rotation_duration: None,
-                status: RotationState::Active});
+                status: RotationState::Active,
+            });
 
         status.status = state;
 
@@ -596,7 +619,8 @@ impl KeyRotationScheduler {
                 next_scheduled: None,
                 rotation_count: 0,
                 last_rotation_duration: None,
-                status: RotationState::Active},
+                status: RotationState::Active,
+            },
         );
     }
 
@@ -678,7 +702,8 @@ impl KeyRotationScheduler {
                 }
                 (
                     EmergencyTrigger::SuspiciousActivity {
-                        risk_score_threshold},
+                        risk_score_threshold,
+                    },
                     EmergencyTrigger::SuspiciousActivity { .. },
                 ) => {
                     if event.risk_score >= *risk_score_threshold {
@@ -732,7 +757,8 @@ impl Clone for KeyRotationScheduler {
             rotation_status: self.rotation_status.clone(),
             rotation_timer: self.rotation_timer.clone(),
             emergency_events: self.emergency_events.clone(),
-            statistics: self.statistics.clone()}
+            statistics: self.statistics.clone(),
+        }
     }
 }
 
@@ -800,11 +826,13 @@ mod tests {
 
         let emergency_event = EmergencyEvent {
             trigger: EmergencyTrigger::SuspiciousActivity {
-                risk_score_threshold: 0.9},
+                risk_score_threshold: 0.9,
+            },
             timestamp: SystemTime::now(),
             provider: "openai".to_string(),
             risk_score: 0.95,
-            handled: false};
+            handled: false,
+        };
 
         scheduler.add_emergency_event(emergency_event).await;
 

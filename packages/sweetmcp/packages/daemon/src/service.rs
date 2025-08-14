@@ -2,15 +2,17 @@ mod autoconfig;
 
 pub mod sse;
 
-use crate::config::ServiceDefinition;
-use crate::ipc::{Cmd, Evt};
+use std::process::{Child, Command, Stdio};
+use std::thread;
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use crossbeam_channel::{bounded, select, tick, Receiver, Sender};
 use log::{error, info, warn};
-use std::process::{Child, Command, Stdio};
-use std::thread;
-use std::time::Duration;
+
+use crate::config::ServiceDefinition;
+use crate::ipc::{Cmd, Evt};
 
 pub struct ServiceWorker {
     name: &'static str,

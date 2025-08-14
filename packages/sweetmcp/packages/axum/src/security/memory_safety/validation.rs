@@ -4,12 +4,14 @@
 //! with zero allocation patterns, blazing-fast performance, and comprehensive
 //! safety rule enforcement for production environments.
 
-use crate::security::memory_safety::core::*;
-use dashmap::DashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use dashmap::DashMap;
 use tokio::time::timeout;
+
+use crate::security::memory_safety::core::*;
 
 /// Memory safety rule trait for validation logic
 pub trait MemorySafetyRule: Send + Sync {

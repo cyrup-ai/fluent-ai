@@ -3,9 +3,10 @@
 //! This module provides base entity structures and example implementations
 //! with zero allocation patterns and blazing-fast performance.
 
-use super::core::{Entity, utc_now};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+use super::core::{Entity, utc_now};
 
 /// Common fields for database entities
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,6 +1,7 @@
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
 use extism_pdk::*;
 use serde_json::{Value, json};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use sweetmcp_plugin_builder::prelude::*;
 use sweetmcp_plugin_builder::{CallToolRequest, CallToolResult, ListToolsResult, Ready};
 

@@ -9,9 +9,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-
 use crate::domain::completion::response::CompletionResponse;
-use crate::{AsyncStream, AsyncTask, spawn_task};
+use crate::{spawn_task, AsyncStream, AsyncTask};
 
 /// Handle errors in streaming context without panicking
 macro_rules! handle_error {
@@ -42,16 +41,16 @@ pub enum EngineError {
 
     #[error("Rate limit exceeded, retry after {retry_after_seconds}s")]
     /// Rate limit was exceeded by the provider
-    RateLimitExceeded { 
+    RateLimitExceeded {
         /// Number of seconds to wait before retrying
-        retry_after_seconds: u64 
+        retry_after_seconds: u64,
     },
 
     #[error("Request timeout after {timeout_seconds}s")]
     /// Request timed out after the specified duration
-    RequestTimeout { 
+    RequestTimeout {
         /// Number of seconds the request waited before timing out
-        timeout_seconds: u64 
+        timeout_seconds: u64,
     },
 
     #[error("Network error: {0}")]
@@ -68,7 +67,8 @@ pub enum EngineError {
 
     #[error("Internal error: {0}")]
     /// An unexpected internal error occurred
-    InternalError(String)}
+    InternalError(String),
+}
 
 /// Result type for engine operations
 pub type EngineResult<T> = Result<T, EngineError>;
@@ -91,7 +91,8 @@ pub struct EngineConfig {
     /// Whether to enable streaming responses
     pub enable_streaming: bool,
     /// Custom endpoint URL override
-    pub endpoint_url: Option<String>}
+    pub endpoint_url: Option<String>,
+}
 
 impl Default for EngineConfig {
     #[inline]
@@ -104,7 +105,8 @@ impl Default for EngineConfig {
             max_tokens: Some(4096),
             temperature: Some(0.7),
             enable_streaming: false,
-            endpoint_url: None}
+            endpoint_url: None,
+        }
     }
 }
 
@@ -201,7 +203,8 @@ pub struct CompletionRequest<'a> {
     pub system_prompt: Option<&'a str>,
     pub conversation_history: &'a [&'a str],
     pub tools: &'a [&'a str],
-    pub metadata: Option<&'a str>}
+    pub metadata: Option<&'a str>,
+}
 
 impl<'a> CompletionRequest<'a> {
     /// Create a new completion request with borrowed data
@@ -212,7 +215,8 @@ impl<'a> CompletionRequest<'a> {
             system_prompt: None,
             conversation_history: &[],
             tools: &[],
-            metadata: None}
+            metadata: None,
+        }
     }
 
     /// Set system prompt
@@ -260,7 +264,8 @@ pub struct Engine {
     active_requests: AtomicU64,
     successful_requests: AtomicU64,
     failed_requests: AtomicU64,
-    is_healthy: AtomicBool}
+    is_healthy: AtomicBool,
+}
 
 impl Engine {
     /// Create a new engine with the given configuration
@@ -274,7 +279,8 @@ impl Engine {
             active_requests: AtomicU64::new(0),
             successful_requests: AtomicU64::new(0),
             failed_requests: AtomicU64::new(0),
-            is_healthy: AtomicBool::new(true)})
+            is_healthy: AtomicBool::new(true),
+        })
     }
 
     /// Get immutable reference to configuration
@@ -386,9 +392,6 @@ impl Engine {
             }
         })
     }
-
-    
-
 
     /// Execute completion request as stream (internal implementation)
     fn execute_completion_stream(
@@ -520,7 +523,8 @@ impl Engine {
             active_requests: self.active_requests.load(Ordering::Relaxed),
             successful_requests: self.successful_requests.load(Ordering::Relaxed),
             failed_requests: self.failed_requests.load(Ordering::Relaxed),
-            is_healthy: self.is_healthy.load(Ordering::Relaxed)}
+            is_healthy: self.is_healthy.load(Ordering::Relaxed),
+        }
     }
 
     /// Reset all metrics (atomic operations)
@@ -540,7 +544,8 @@ pub struct EngineStats {
     pub active_requests: u64,
     pub successful_requests: u64,
     pub failed_requests: u64,
-    pub is_healthy: bool}
+    pub is_healthy: bool,
+}
 
 impl EngineStats {
     /// Calculate success rate as a percentage
@@ -560,6 +565,5 @@ impl EngineStats {
         100.0 - self.success_rate()
     }
 }
-
 
 // Engine is automatically Send + Sync due to atomic operations - no unsafe impl needed

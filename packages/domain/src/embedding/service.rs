@@ -22,16 +22,10 @@ pub enum VectorStoreError {
 /// Production-ready embedding service trait with zero-allocation methods
 pub trait EmbeddingService: Send + Sync {
     /// Get embedding for content with zero-copy return
-    fn get_embedding(
-        &self,
-        content: &str,
-    ) -> AsyncStream<Option<Vec<f32>>>;
+    fn get_embedding(&self, content: &str) -> AsyncStream<Option<Vec<f32>>>;
 
     /// Get or compute embedding with zero-allocation caching
-    fn get_or_compute_embedding(
-        &self,
-        content: &str,
-    ) -> AsyncStream<Vec<f32>>;
+    fn get_or_compute_embedding(&self, content: &str) -> AsyncStream<Vec<f32>>;
 
     /// Precompute embeddings for batch content
     fn precompute_batch(&self, content: &[&str]) -> AsyncStream<()>;
@@ -47,7 +41,8 @@ pub trait EmbeddingService: Send + Sync {
 pub struct EmbeddingPool {
     available: crossbeam_queue::ArrayQueue<Vec<f32>>,
     dimension: usize,
-    max_capacity: usize}
+    max_capacity: usize,
+}
 impl EmbeddingPool {
     /// Create new embedding pool with specified capacity
     #[inline]
@@ -55,7 +50,8 @@ impl EmbeddingPool {
         let pool = Self {
             available: crossbeam_queue::ArrayQueue::new(capacity),
             dimension,
-            max_capacity: capacity};
+            max_capacity: capacity,
+        };
 
         // Pre-allocate vectors to avoid allocations during runtime
         for _ in 0..capacity {
@@ -96,7 +92,8 @@ pub struct InMemoryEmbeddingCache {
     cache: std::sync::RwLock<HashMap<String, Vec<f32>>>,
     pool: EmbeddingPool,
     #[allow(dead_code)] // TODO: Implement in embedding cache system
-    dimension: usize}
+    dimension: usize,
+}
 impl InMemoryEmbeddingCache {
     /// Create new embedding cache with specified dimension
     #[inline]
@@ -104,7 +101,8 @@ impl InMemoryEmbeddingCache {
         Self {
             cache: std::sync::RwLock::new(HashMap::with_capacity(1000)),
             pool: EmbeddingPool::new(dimension, 100),
-            dimension}
+            dimension,
+        }
     }
 
     /// Get cached embedding with zero-copy return

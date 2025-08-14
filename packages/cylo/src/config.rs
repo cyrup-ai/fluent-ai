@@ -8,13 +8,15 @@ use crate::error::StorageError;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum FileSystem {
     APFS,
-    HFSPlus}
+    HFSPlus,
+}
 
 #[cfg(not(target_os = "macos"))]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum FileSystem {
     Ext4,
-    Tmpfs}
+    Tmpfs,
+}
 
 impl std::fmt::Display for FileSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -26,7 +28,8 @@ impl std::fmt::Display for FileSystem {
             #[cfg(not(target_os = "macos"))]
             Self::Ext4 => write!(f, "Ext4"),
             #[cfg(not(target_os = "macos"))]
-            Self::Tmpfs => write!(f, "Tmpfs")}
+            Self::Tmpfs => write!(f, "Tmpfs"),
+        }
     }
 }
 
@@ -53,7 +56,8 @@ pub struct RamdiskConfig {
 
     #[cfg(target_os = "macos")]
     /// File system to use for macOS
-    pub filesystem: FileSystem}
+    pub filesystem: FileSystem,
+}
 
 /// Default implementation for RamdiskConfig
 impl Default for RamdiskConfig {
@@ -66,7 +70,8 @@ impl Default for RamdiskConfig {
             landlock_enabled: true,
             check_apparmor: true,
             #[cfg(target_os = "macos")]
-            filesystem: FileSystem::APFS}
+            filesystem: FileSystem::APFS,
+        }
     }
 }
 
@@ -90,7 +95,8 @@ impl TryFrom<&str> for RamdiskConfig {
             match parts[3] {
                 "APFS" => FileSystem::APFS,
                 "HFSPlus" => FileSystem::HFSPlus,
-                _ => FileSystem::APFS}
+                _ => FileSystem::APFS,
+            }
         } else {
             FileSystem::APFS
         };
@@ -100,7 +106,8 @@ impl TryFrom<&str> for RamdiskConfig {
             match parts[3] {
                 "Ext4" => FileSystem::Ext4,
                 "Tmpfs" => FileSystem::Tmpfs,
-                _ => FileSystem::Tmpfs}
+                _ => FileSystem::Tmpfs,
+            }
         } else {
             FileSystem::Tmpfs
         };
@@ -113,6 +120,7 @@ impl TryFrom<&str> for RamdiskConfig {
             landlock_enabled: true, // Add default value
             check_apparmor: true,   // Add default value
             #[cfg(target_os = "macos")]
-            filesystem})
+            filesystem,
+        })
     }
 }

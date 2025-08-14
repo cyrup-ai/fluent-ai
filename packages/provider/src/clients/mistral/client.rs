@@ -12,16 +12,19 @@
 use fluent_ai_domain::AsyncTask;
 
 use super::completion::MistralCompletionBuilder;
+pub use super::completion::MistralCompletionBuilder;
 use super::completion::{
     CODESTRAL, CODESTRAL_MAMBA, MINISTRAL_3B, MINISTRAL_8B, MISTRAL_LARGE, MISTRAL_NEMO,
-    MISTRAL_SABA, MISTRAL_SMALL, PIXTRAL_LARGE, PIXTRAL_SMALL};
+    MISTRAL_SABA, MISTRAL_SMALL, PIXTRAL_LARGE, PIXTRAL_SMALL,
+};
 use crate::client::{CompletionClient, ProviderClient};
 use crate::completion_provider::{CompletionError, CompletionProvider};
 
 /// Mistral client providing clean completion builder factory methods
 #[derive(Clone)]
 pub struct MistralClient {
-    api_key: String}
+    api_key: String,
+}
 
 impl MistralClient {
     /// Create new Mistral client with API key
@@ -230,12 +233,12 @@ impl<T> ApiResponse<T> {
             id: None,
         }
     }
-    
+
     pub fn with_usage(mut self, usage: Usage) -> Self {
         self.usage = Some(usage);
         self
     }
-    
+
     pub fn with_id(mut self, id: String) -> Self {
         self.id = Some(id);
         self

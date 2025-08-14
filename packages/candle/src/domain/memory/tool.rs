@@ -5,8 +5,8 @@
 
 // Removed unused import: std::future::Future
 // Removed unused import: std::pin::Pin
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 // Ultra-high-performance zero-allocation imports
 // Removed unused import: arrayvec::ArrayVec
@@ -41,7 +41,8 @@ pub struct MemoryTool {
     #[allow(dead_code)]
     data: CandleMcpToolData,
     /// Shared memory instance for lock-free concurrent access
-    memory: Arc<Memory>}
+    memory: Arc<Memory>,
+}
 /// Memory tool operation types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", content = "params")]
@@ -49,7 +50,8 @@ pub enum MemoryOperation {
     /// Memorize content with specified type
     Memorize {
         content: String,
-        memory_type: MemoryType},
+        memory_type: MemoryType,
+    },
     /// Recall memories by content search
     Recall { query: String, limit: Option<usize> },
     /// Search memories by vector similarity
@@ -59,7 +61,8 @@ pub enum MemoryOperation {
     /// Update existing memory
     UpdateMemory { memory: MemoryNode },
     /// Delete memory by ID
-    DeleteMemory { id: String }}
+    DeleteMemory { id: String },
+}
 
 /// Memory tool result types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,7 +75,8 @@ pub enum MemoryResult {
     /// Boolean result for operations
     Success(bool),
     /// Error result
-    Error(String)}
+    Error(String),
+}
 
 /// Memory tool error types with semantic error handling
 #[derive(Debug, thiserror::Error)]
@@ -97,7 +101,8 @@ pub enum MemoryToolError {
     BufferOverflow,
     /// Tool initialization error
     #[error("Tool initialization error: {0}")]
-    InitializationError(String)}
+    InitializationError(String),
+}
 
 /// Zero-allocation result type for memory tool operations
 pub type MemoryToolResult<T> = Result<T, MemoryToolError>;
@@ -119,7 +124,8 @@ impl MemoryTool {
                 },
                 "required": ["operation"]
             }),
-            server: None};
+            server: None,
+        };
 
         Self { data, memory }
     }

@@ -27,7 +27,8 @@ pub struct CyrupTheme {
 
     // Background accents
     pub bg_highlight: Color,
-    pub bg_code: Color}
+    pub bg_code: Color,
+}
 
 impl Default for CyrupTheme {
     /// Default Cyrup.ai brand colors - modern, professional AI aesthetic
@@ -80,7 +81,8 @@ impl CyrupTheme {
             SemanticColor::TextSecondary => self.text_secondary,
             SemanticColor::TextMuted => self.text_muted,
             SemanticColor::BgHighlight => self.bg_highlight,
-            SemanticColor::BgCode => self.bg_code}
+            SemanticColor::BgCode => self.bg_code,
+        }
     }
 
     /// Create ColorSpec for semantic color with optional bold/italic
@@ -111,7 +113,8 @@ impl CyrupTheme {
 /// Zero-allocation theme builder with fluent API
 #[derive(Debug, Clone)]
 pub struct CyrupThemeBuilder {
-    theme: CyrupTheme}
+    theme: CyrupTheme,
+}
 
 impl Default for CyrupThemeBuilder {
     fn default() -> Self {
@@ -239,7 +242,8 @@ pub enum SemanticColor {
     TextSecondary,
     TextMuted,
     BgHighlight,
-    BgCode}
+    BgCode,
+}
 
 impl SemanticColor {
     /// Parse semantic color from string name (for macros)
@@ -259,7 +263,8 @@ impl SemanticColor {
             "text_muted" => Some(SemanticColor::TextMuted),
             "bg_highlight" => Some(SemanticColor::BgHighlight),
             "bg_code" => Some(SemanticColor::BgCode),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -280,7 +285,8 @@ pub enum ThemeConfig {
     /// High contrast theme for development
     Development,
     /// Subtle professional theme for production
-    Production}
+    Production,
+}
 
 impl ThemeConfig {
     /// Get the actual theme for this configuration
@@ -293,7 +299,8 @@ impl ThemeConfig {
             ThemeConfig::Custom(theme) => Some(theme.clone()),
             ThemeConfig::Auto => Some(auto_detect_theme()),
             ThemeConfig::Development => Some(development_theme()),
-            ThemeConfig::Production => Some(production_theme())}
+            ThemeConfig::Production => Some(production_theme()),
+        }
     }
 }
 
@@ -312,7 +319,8 @@ fn monochrome_theme() -> CyrupTheme {
         text_secondary: Color::White,
         text_muted: Color::White,
         bg_highlight: Color::Black,
-        bg_code: Color::Black}
+        bg_code: Color::Black,
+    }
 }
 
 /// Auto-detect theme based on terminal capabilities
@@ -337,7 +345,8 @@ fn development_theme() -> CyrupTheme {
         text_secondary: Color::Rgb(220, 220, 220),
         text_muted: Color::Rgb(150, 150, 150),
         bg_highlight: Color::Rgb(50, 50, 50),
-        bg_code: Color::Rgb(20, 20, 20)}
+        bg_code: Color::Rgb(20, 20, 20),
+    }
 }
 
 /// Subtle professional production theme
@@ -355,7 +364,8 @@ fn production_theme() -> CyrupTheme {
         text_secondary: Color::Rgb(180, 180, 180),
         text_muted: Color::Rgb(120, 120, 120),
         bg_highlight: Color::Rgb(25, 25, 25),
-        bg_code: Color::Rgb(35, 35, 35)}
+        bg_code: Color::Rgb(35, 35, 35),
+    }
 }
 
 /// Set global theme configuration

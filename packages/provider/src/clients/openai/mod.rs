@@ -31,19 +31,19 @@
 pub use audio::{OpenAIAudioClient, TranscriptionResponse};
 // Re-export all public types with zero allocation
 pub use client::{OpenAIClient, OpenAIProvider};
-pub use completion::{
-    CompletionChunk, OpenAICompletionBuilder};
+// Re-export completion module for type compatibility
+pub use completion::*;
+pub use completion::{CompletionChunk, OpenAICompletionBuilder};
 pub use discovery::OpenAIDiscovery;
 pub use embeddings::OpenAIEmbeddingClient;
 pub use error::{OpenAIError, Result as OpenAIResult};
 pub use messages::{AssistantContent, Message, OpenAIMessage};
-// Re-export all types needed by other provider types files
-pub use types::*;
-// Re-export completion module for type compatibility
-pub use completion::*;
 pub use streaming::{
     OpenAIStream, StreamingChoice, StreamingCompletionResponse, StreamingMessage,
-    send_compatible_streaming_request};
+    send_compatible_streaming_request,
+};
+// Re-export all types needed by other provider types files
+pub use types::*;
 pub use vision::OpenAIVisionClient;
 
 use crate::client::{CompletionClient, ProviderClient};
@@ -66,11 +66,11 @@ mod vision;
 
 /// Model enumeration and classification functions removed
 /// All OpenAI model information is now provided by the model-info package
-/// 
+///
 /// Use the following pattern for model operations:
 /// ```rust
 /// use model_info::{OpenAIModelInfo, ModelCapabilities};
-/// 
+///
 /// let model_info = OpenAIModelInfo::get("gpt-4o")?;
 /// if model_info.supports_vision() {
 ///     // Handle vision model
@@ -256,6 +256,7 @@ pub mod metadata {
 /// Utility functions for OpenAI client operations with SIMD optimization
 pub mod utils {
     use arrayvec::ArrayString;
+
     use super::*;
 
     /// Get user agent string for OpenAI requests

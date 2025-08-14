@@ -1,10 +1,12 @@
-use crate::ClientConfigPlugin;
-use anyhow::Result;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
+
+use anyhow::Result;
 use tokio::fs;
 use tracing::{debug, error, info, warn};
+
+use crate::ClientConfigPlugin;
 
 /// Simple auto-configuration watcher
 pub struct AutoConfigWatcher {

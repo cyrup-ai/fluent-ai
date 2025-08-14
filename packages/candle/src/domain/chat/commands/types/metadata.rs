@@ -3,9 +3,10 @@
 //! Provides blazing-fast command metadata management and resource usage tracking
 //! with owned strings allocated once for maximum performance. No Arc usage, no locking.
 
-use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
 
 use super::parameters::ParameterInfo;
 
@@ -14,7 +15,7 @@ use super::parameters::ParameterInfo;
 pub struct CommandInfo {
     /// Command name (owned string allocated once)
     pub name: String,
-    /// Command description (owned string allocated once)  
+    /// Command description (owned string allocated once)
     pub description: String,
     /// Usage string showing syntax (owned string allocated once)
     pub usage: String,
@@ -71,56 +72,56 @@ impl CommandInfo {
             stability: StabilityLevel::Stable,
         }
     }
-    
+
     /// Add parameters - builder pattern for fluent API
     #[inline]
     pub fn with_parameters(mut self, parameters: Vec<ParameterInfo>) -> Self {
         self.parameters = parameters;
         self
     }
-    
+
     /// Add aliases - builder pattern for fluent API
     #[inline]
     pub fn with_aliases(mut self, aliases: Vec<String>) -> Self {
         self.aliases = aliases;
         self
     }
-    
+
     /// Add examples - builder pattern for fluent API
     #[inline]
     pub fn with_examples(mut self, examples: Vec<String>) -> Self {
         self.examples = examples;
         self
     }
-    
+
     /// Set version - builder pattern for fluent API
     #[inline]
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
         self.version = version.into();
         self
     }
-    
+
     /// Set author - builder pattern for fluent API
     #[inline]
     pub fn with_author(mut self, author: impl Into<String>) -> Self {
         self.author = Some(author.into());
         self
     }
-    
+
     /// Add tags - builder pattern for fluent API
     #[inline]
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = tags;
         self
     }
-    
+
     /// Set required permissions - builder pattern for fluent API
     #[inline]
     pub fn with_permissions(mut self, permissions: Vec<String>) -> Self {
         self.required_permissions = permissions;
         self
     }
-    
+
     /// Mark as deprecated - builder pattern for fluent API
     #[inline]
     pub fn deprecated(mut self, message: impl Into<String>) -> Self {
@@ -128,7 +129,7 @@ impl CommandInfo {
         self.deprecation_message = Some(message.into());
         self
     }
-    
+
     /// Mark as experimental - builder pattern for fluent API
     #[inline]
     pub fn experimental(mut self) -> Self {
@@ -136,37 +137,47 @@ impl CommandInfo {
         self.stability = StabilityLevel::Experimental;
         self
     }
-    
+
     /// Set stability level - builder pattern for fluent API
     #[inline]
     pub fn with_stability(mut self, stability: StabilityLevel) -> Self {
         self.stability = stability;
         self
     }
-    
+
     /// Check if command matches search query - zero allocation search
     #[inline]
     pub fn matches_search(&self, query: &str) -> bool {
         let query_lower = query.to_lowercase();
-        
-        self.name.to_lowercase().contains(&query_lower) ||
-        self.description.to_lowercase().contains(&query_lower) ||
-        self.category.to_lowercase().contains(&query_lower) ||
-        self.aliases.iter().any(|alias| alias.to_lowercase().contains(&query_lower)) ||
-        self.tags.iter().any(|tag| tag.to_lowercase().contains(&query_lower))
+
+        self.name.to_lowercase().contains(&query_lower)
+            || self.description.to_lowercase().contains(&query_lower)
+            || self.category.to_lowercase().contains(&query_lower)
+            || self
+                .aliases
+                .iter()
+                .any(|alias| alias.to_lowercase().contains(&query_lower))
+            || self
+                .tags
+                .iter()
+                .any(|tag| tag.to_lowercase().contains(&query_lower))
     }
-    
+
     /// Get command signature for display - minimal allocation
     #[inline]
     pub fn signature(&self) -> String {
         if self.parameters.is_empty() {
             self.name.clone()
         } else {
-            let params: Vec<String> = self.parameters.iter()
-                .map(|p| if p.required {
-                    format!("<{}>", p.name)
-                } else {
-                    format!("[{}]", p.name)
+            let params: Vec<String> = self
+                .parameters
+                .iter()
+                .map(|p| {
+                    if p.required {
+                        format!("<{}>", p.name)
+                    } else {
+                        format!("[{}]", p.name)
+                    }
                 })
                 .collect();
             format!("{} {}", self.name, params.join(" "))
@@ -201,7 +212,7 @@ impl StabilityLevel {
             Self::Deprecated => "deprecated",
         }
     }
-    
+
     /// Check if stability level allows production use
     #[inline]
     pub fn is_production_ready(&self) -> bool {
@@ -214,7 +225,7 @@ impl StabilityLevel {
 pub struct ResourceUsage {
     /// Memory usage in bytes
     pub memory_bytes: u64,
-    /// CPU time in microseconds  
+    /// CPU time in microseconds
     pub cpu_time_us: u64,
     /// Number of network requests made
     pub network_requests: u32,
@@ -248,7 +259,7 @@ impl ResourceUsage {
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_micros() as u64)
             .unwrap_or(0);
-            
+
         Self {
             memory_bytes: 0,
             cpu_time_us: 0,
@@ -265,7 +276,7 @@ impl ResourceUsage {
             warning_count: 0,
         }
     }
-    
+
     /// Finalize resource tracking with end timestamp
     #[inline]
     pub fn finalize(&mut self) {
@@ -273,10 +284,10 @@ impl ResourceUsage {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map(|d| d.as_micros() as u64)
-                .unwrap_or(self.start_time_us)
+                .unwrap_or(self.start_time_us),
         );
     }
-    
+
     /// Get execution duration in microseconds
     #[inline]
     pub fn duration_us(&self) -> u64 {
@@ -287,12 +298,12 @@ impl ResourceUsage {
                 .unwrap_or(self.start_time_us)
         }) - self.start_time_us
     }
-    
+
     /// Get execution duration as human readable string
     #[inline]
     pub fn duration_human(&self) -> String {
         let duration_us = self.duration_us();
-        
+
         if duration_us < 1000 {
             format!("{}μs", duration_us)
         } else if duration_us < 1_000_000 {
@@ -305,7 +316,7 @@ impl ResourceUsage {
             format!("{}m{}s", minutes, seconds)
         }
     }
-    
+
     /// Update memory usage if higher than current peak
     #[inline]
     pub fn update_peak_memory(&mut self, current_bytes: u64) {
@@ -314,55 +325,55 @@ impl ResourceUsage {
         }
         self.memory_bytes = current_bytes;
     }
-    
+
     /// Increment network request counter atomically
     #[inline]
     pub fn increment_network_requests(&mut self) {
         self.network_requests = self.network_requests.saturating_add(1);
     }
-    
+
     /// Increment disk operation counter atomically
     #[inline]
     pub fn increment_disk_operations(&mut self) {
         self.disk_operations = self.disk_operations.saturating_add(1);
     }
-    
+
     /// Increment allocation counter atomically
     #[inline]
     pub fn increment_allocations(&mut self) {
         self.allocation_count = self.allocation_count.saturating_add(1);
     }
-    
+
     /// Increment deallocation counter atomically
     #[inline]
     pub fn increment_deallocations(&mut self) {
         self.deallocation_count = self.deallocation_count.saturating_add(1);
     }
-    
+
     /// Increment cache hit counter
     #[inline]
     pub fn increment_cache_hits(&mut self) {
         self.cache_hits = self.cache_hits.saturating_add(1);
     }
-    
+
     /// Increment cache miss counter
     #[inline]
     pub fn increment_cache_misses(&mut self) {
         self.cache_misses = self.cache_misses.saturating_add(1);
     }
-    
+
     /// Increment error counter
     #[inline]
     pub fn increment_errors(&mut self) {
         self.error_count = self.error_count.saturating_add(1);
     }
-    
+
     /// Increment warning counter
     #[inline]
     pub fn increment_warnings(&mut self) {
         self.warning_count = self.warning_count.saturating_add(1);
     }
-    
+
     /// Calculate cache hit ratio as percentage
     #[inline]
     pub fn cache_hit_ratio(&self) -> f64 {
@@ -373,7 +384,7 @@ impl ResourceUsage {
             (self.cache_hits as f64 / total as f64) * 100.0
         }
     }
-    
+
     /// Get memory efficiency metric (operations per MB)
     #[inline]
     pub fn memory_efficiency(&self) -> f64 {
@@ -385,11 +396,11 @@ impl ResourceUsage {
             operations as f64 / memory_mb
         }
     }
-    
+
     /// Check if execution had any issues (errors or excessive resource usage)
     #[inline]
     pub fn has_issues(&self) -> bool {
-        self.error_count > 0 || 
+        self.error_count > 0 ||
         self.peak_memory_bytes > 100 * 1024 * 1024 || // > 100MB
         self.duration_us() > 30_000_000 // > 30 seconds
     }
@@ -426,52 +437,55 @@ impl PerformanceMetrics {
             slowest_execution_us: AtomicU64::new(0),
         }
     }
-    
+
     /// Record execution metrics atomically
     #[inline]
     pub fn record_execution(&self, usage: &ResourceUsage) {
         let duration = usage.duration_us();
-        
+
         self.total_executions.fetch_add(1, Ordering::Relaxed);
-        self.total_duration_us.fetch_add(duration, Ordering::Relaxed);
-        self.total_memory_bytes.fetch_add(usage.peak_memory_bytes, Ordering::Relaxed);
-        self.total_errors.fetch_add(usage.error_count as u64, Ordering::Relaxed);
-        
+        self.total_duration_us
+            .fetch_add(duration, Ordering::Relaxed);
+        self.total_memory_bytes
+            .fetch_add(usage.peak_memory_bytes, Ordering::Relaxed);
+        self.total_errors
+            .fetch_add(usage.error_count as u64, Ordering::Relaxed);
+
         // Update fastest execution
         let mut current_fastest = self.fastest_execution_us.load(Ordering::Relaxed);
         while duration < current_fastest {
             match self.fastest_execution_us.compare_exchange_weak(
-                current_fastest, 
-                duration, 
-                Ordering::Relaxed, 
-                Ordering::Relaxed
+                current_fastest,
+                duration,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
             ) {
                 Ok(_) => break,
                 Err(actual) => current_fastest = actual,
             }
         }
-        
+
         // Update slowest execution
         let mut current_slowest = self.slowest_execution_us.load(Ordering::Relaxed);
         while duration > current_slowest {
             match self.slowest_execution_us.compare_exchange_weak(
-                current_slowest, 
-                duration, 
-                Ordering::Relaxed, 
-                Ordering::Relaxed
+                current_slowest,
+                duration,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
             ) {
                 Ok(_) => break,
                 Err(actual) => current_slowest = actual,
             }
         }
     }
-    
+
     /// Get total execution count
     #[inline]
     pub fn total_executions(&self) -> u64 {
         self.total_executions.load(Ordering::Relaxed)
     }
-    
+
     /// Get average execution duration in microseconds
     #[inline]
     pub fn average_duration_us(&self) -> u64 {
@@ -482,7 +496,7 @@ impl PerformanceMetrics {
             self.total_duration_us.load(Ordering::Relaxed) / total
         }
     }
-    
+
     /// Get average memory usage in bytes
     #[inline]
     pub fn average_memory_bytes(&self) -> u64 {
@@ -493,7 +507,7 @@ impl PerformanceMetrics {
             self.total_memory_bytes.load(Ordering::Relaxed) / total
         }
     }
-    
+
     /// Get error rate as percentage
     #[inline]
     pub fn error_rate(&self) -> f64 {
@@ -504,7 +518,7 @@ impl PerformanceMetrics {
             (self.total_errors.load(Ordering::Relaxed) as f64 / total as f64) * 100.0
         }
     }
-    
+
     /// Get fastest execution duration in microseconds
     #[inline]
     pub fn fastest_execution_us(&self) -> Option<u64> {
@@ -515,8 +529,8 @@ impl PerformanceMetrics {
             Some(fastest)
         }
     }
-    
-    /// Get slowest execution duration in microseconds  
+
+    /// Get slowest execution duration in microseconds
     #[inline]
     pub fn slowest_execution_us(&self) -> Option<u64> {
         let slowest = self.slowest_execution_us.load(Ordering::Relaxed);

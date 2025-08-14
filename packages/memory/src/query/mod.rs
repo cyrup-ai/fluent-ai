@@ -34,7 +34,8 @@ pub enum QueryError {
     ResourceLimitExceeded(String),
 
     #[error("Index not found: {0}")]
-    IndexNotFound(String)}
+    IndexNotFound(String),
+}
 
 /// Query type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -48,7 +49,8 @@ pub enum QueryType {
     /// Graph traversal
     GraphTraversal,
     /// Hybrid query combining multiple types
-    Hybrid}
+    Hybrid,
+}
 
 /// Query execution plan
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,7 +64,8 @@ pub struct QueryPlan {
     /// Index name if applicable
     pub index_name: Option<String>,
     /// Execution steps
-    pub steps: Vec<QueryStep>}
+    pub steps: Vec<QueryStep>,
+}
 
 /// Individual query execution step
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,7 +77,8 @@ pub struct QueryStep {
     /// Estimated cost
     pub cost: f64,
     /// Whether this step can be parallelized
-    pub parallel: bool}
+    pub parallel: bool,
+}
 
 /// Query statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,4 +92,5 @@ pub struct QueryStats {
     /// Whether an index was used
     pub index_used: bool,
     /// Cache hit rate
-    pub cache_hit_rate: f32}
+    pub cache_hit_rate: f32,
+}

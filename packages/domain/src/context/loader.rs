@@ -60,7 +60,8 @@ pub struct LoaderImpl<T: Send + Sync + fmt::Debug + Clone + 'static> {
     #[allow(dead_code)] // TODO: Use for custom file iteration and processing
     iterator: Option<Box<dyn Iterator<Item = T> + Send + Sync>>,
     #[allow(dead_code)] // TODO: Use for file filtering and selection criteria
-    filter_fn: Option<Box<dyn Fn(&T) -> bool + Send + Sync>>}
+    filter_fn: Option<Box<dyn Fn(&T) -> bool + Send + Sync>>,
+}
 
 // LoaderImpl implements NotResult since it contains no Result types
 
@@ -108,7 +109,8 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                         Err(_) => Vec::new(), // Return empty on pattern error
                     }
                 }
-                None => Vec::new()};
+                None => Vec::new(),
+            };
 
             // Convert Vec<PathBuf> to ZeroOneOrMany<PathBuf> without unwrap
             match results.len() {
@@ -121,7 +123,8 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                         ZeroOneOrMany::None
                     }
                 }
-                _ => ZeroOneOrMany::many(results)}
+                _ => ZeroOneOrMany::many(results),
+            }
         })
     }
 
@@ -155,7 +158,8 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
             let results: Vec<U> = match paths {
                 ZeroOneOrMany::None => Vec::new(),
                 ZeroOneOrMany::One(path) => vec![processor(&path)],
-                ZeroOneOrMany::Many(paths) => paths.iter().map(|p| processor(p)).collect()};
+                ZeroOneOrMany::Many(paths) => paths.iter().map(|p| processor(p)).collect(),
+            };
 
             // Convert Vec<U> to ZeroOneOrMany<U> without unwrap
             match results.len() {
@@ -168,7 +172,8 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                         ZeroOneOrMany::None
                     }
                 }
-                _ => ZeroOneOrMany::many(results)}
+                _ => ZeroOneOrMany::many(results),
+            }
         })
     }
 
@@ -177,7 +182,8 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
             pattern: Some(pattern.into()),
             recursive: false,
             iterator: None,
-            filter_fn: None}
+            filter_fn: None,
+        }
     }
 
     fn with_recursive(mut self, recursive: bool) -> Self {
@@ -205,7 +211,8 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderImpl<T> {
             pattern: None,
             recursive: false,
             iterator: Some(Box::new(iterator)),
-            filter_fn: None}
+            filter_fn: None,
+        }
     }
 }
 

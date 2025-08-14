@@ -1,7 +1,7 @@
 //! Candle provider implementation that complies with domain traits
 
 use fluent_ai_async::AsyncStream;
-use model_info::{ProviderTrait, ModelInfo};
+use model_info::{ModelInfo, ProviderTrait};
 
 use super::models::CandleModel;
 

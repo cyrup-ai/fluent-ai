@@ -14,15 +14,16 @@ pub mod validation;
 // Re-export main Candle types and functions for convenience
 // Global Candle command executor functionality
 use std::sync::{Arc, RwLock};
-use crate::AsyncStream;
 
 pub use execution::CommandExecutor;
 use once_cell::sync::Lazy;
 pub use parsing::{CommandParser, ParseError, ParseResult};
 pub use registry::CommandRegistry;
-pub use types::*;
 pub use response::ResponseFormatter;
+pub use types::*;
 pub use validation::CommandValidator;
+
+use crate::AsyncStream;
 
 /// Global Candle command executor instance - PURE SYNC (no futures)
 static CANDLE_COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> =
@@ -38,7 +39,10 @@ pub fn initialize_candle_command_executor(context: &CommandExecutionContext) {
 
 /// Get global Candle command executor - PURE SYNC (no futures)
 pub fn get_candle_command_executor() -> Option<CommandExecutor> {
-    CANDLE_COMMAND_EXECUTOR.read().ok().and_then(|guard| guard.clone())
+    CANDLE_COMMAND_EXECUTOR
+        .read()
+        .ok()
+        .and_then(|guard| guard.clone())
 }
 
 /// Parse Candle command using global executor - PURE SYNC (no futures)
@@ -50,7 +54,8 @@ pub fn parse_candle_command(input: &str) -> CommandResult<ImmutableChatCommand> 
             .map_err(|e| CandleCommandError::ParseError(e.to_string()))
     } else {
         Err(CandleCommandError::ConfigurationError {
-            detail: "Candle command executor not initialized".to_string()})
+            detail: "Candle command executor not initialized".to_string(),
+        })
     }
 }
 

@@ -1,16 +1,20 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
-use crate::ZeroOneOrMany;
+
+use fluent_ai_async::AsyncStream;
 // AsyncTask and spawn_async removed - not used in this file
 use serde_json::Value;
-use std::sync::atomic::{AtomicU64, Ordering};
-use fluent_ai_async::AsyncStream;
+
+use crate::ZeroOneOrMany;
 
 #[allow(dead_code)] // Library type exported for use by other packages
 #[derive(Debug)]
-pub enum VectorStoreError { // Used in other parts of the project for vector store error handling
+pub enum VectorStoreError {
+    // Used in other parts of the project for vector store error handling
     NotFound,
     ConnectionError(String),
-    InvalidQuery(String)}
+    InvalidQuery(String),
+}
 
 impl std::fmt::Display for VectorStoreError {
     #[cold]
@@ -18,14 +22,15 @@ impl std::fmt::Display for VectorStoreError {
         match self {
             VectorStoreError::NotFound => write!(f, "Vector store item not found"),
             VectorStoreError::ConnectionError(msg) => write!(f, "Connection error: {}", msg),
-            VectorStoreError::InvalidQuery(msg) => write!(f, "Invalid query: {}", msg)}
+            VectorStoreError::InvalidQuery(msg) => write!(f, "Invalid query: {}", msg),
+        }
     }
 }
 
 impl std::error::Error for VectorStoreError {}
 
 /// Compatibility type alias for VectorStoreError
-/// 
+///
 /// This provides a shorter name for error handling in memory operations.
 /// Used by external packages that prefer the generic Error name.
 pub type Error = VectorStoreError;
@@ -58,21 +63,21 @@ pub mod memory_error_utils {
             return Error::InvalidQuery("No errors to chain".to_string());
         }
 
-        let error_messages: Vec<String> = errors.iter()
-            .map(|e| e.to_string())
-            .collect();
-        
+        let error_messages: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
+
         Error::ConnectionError(format!("Multiple errors: {}", error_messages.join("; ")))
     }
 }
 
-#[allow(dead_code)] // Library type exported for use by other packages  
+#[allow(dead_code)] // Library type exported for use by other packages
 #[derive(Debug)]
-pub enum MemoryError { // Used in other parts of the project for memory operation error handling
+pub enum MemoryError {
+    // Used in other parts of the project for memory operation error handling
     NotFound,
     StorageError(String),
     ValidationError(String),
-    NetworkError(String)}
+    NetworkError(String),
+}
 
 impl std::fmt::Display for MemoryError {
     #[cold]
@@ -81,7 +86,8 @@ impl std::fmt::Display for MemoryError {
             MemoryError::NotFound => write!(f, "Memory not found"),
             MemoryError::StorageError(msg) => write!(f, "Storage error: {}", msg),
             MemoryError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
-            MemoryError::NetworkError(msg) => write!(f, "Network error: {}", msg)}
+            MemoryError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+        }
     }
 }
 
@@ -89,9 +95,10 @@ impl std::error::Error for MemoryError {}
 
 /// Memory system operations that utilize MemoryError for comprehensive error handling
 pub mod memory_system {
-    use super::{MemoryError, MemoryNode, MemoryMetadata, MemoryType};
     use std::collections::HashMap;
     use std::time::SystemTime;
+
+    use super::{MemoryError, MemoryMetadata, MemoryNode, MemoryType};
 
     /// Memory storage interface with comprehensive error handling
     pub struct MemoryStorage {
@@ -113,27 +120,27 @@ pub mod memory_system {
             // Validate memory content
             if node.content.trim().is_empty() {
                 return Err(MemoryError::ValidationError(
-                    "Memory content cannot be empty".to_string()
+                    "Memory content cannot be empty".to_string(),
                 ));
             }
 
             if node.content.len() > 100_000 {
                 return Err(MemoryError::ValidationError(
-                    "Memory content exceeds maximum size of 100KB".to_string()
+                    "Memory content exceeds maximum size of 100KB".to_string(),
                 ));
             }
 
             // Validate metadata
             if node.metadata.importance < 0.0 || node.metadata.importance > 1.0 {
                 return Err(MemoryError::ValidationError(
-                    "Memory importance must be between 0.0 and 1.0".to_string()
+                    "Memory importance must be between 0.0 and 1.0".to_string(),
                 ));
             }
 
             // Simulate storage capacity check
             if self.nodes.len() >= 10_000 {
                 return Err(MemoryError::StorageError(
-                    "Memory storage capacity exceeded".to_string()
+                    "Memory storage capacity exceeded".to_string(),
                 ));
             }
 
@@ -152,19 +159,23 @@ pub mod memory_system {
         }
 
         /// Update memory metadata with validation
-        pub fn update_metadata(&mut self, id: u64, metadata: MemoryMetadata) -> Result<(), MemoryError> {
+        pub fn update_metadata(
+            &mut self,
+            id: u64,
+            metadata: MemoryMetadata,
+        ) -> Result<(), MemoryError> {
             let node = self.nodes.get_mut(&id).ok_or(MemoryError::NotFound)?;
 
             // Validate new metadata
             if metadata.importance < 0.0 || metadata.importance > 1.0 {
                 return Err(MemoryError::ValidationError(
-                    "Memory importance must be between 0.0 and 1.0".to_string()
+                    "Memory importance must be between 0.0 and 1.0".to_string(),
                 ));
             }
 
             if metadata.creation_time > SystemTime::now() {
                 return Err(MemoryError::ValidationError(
-                    "Memory creation time cannot be in the future".to_string()
+                    "Memory creation time cannot be in the future".to_string(),
                 ));
             }
 
@@ -181,17 +192,18 @@ pub mod memory_system {
         pub fn search_memories(&self, query: &str) -> Result<Vec<&MemoryNode>, MemoryError> {
             if query.trim().is_empty() {
                 return Err(MemoryError::ValidationError(
-                    "Search query cannot be empty".to_string()
+                    "Search query cannot be empty".to_string(),
                 ));
             }
 
             if query.len() > 1000 {
                 return Err(MemoryError::ValidationError(
-                    "Search query too long (max 1000 characters)".to_string()
+                    "Search query too long (max 1000 characters)".to_string(),
                 ));
             }
 
-            let results: Vec<&MemoryNode> = self.nodes
+            let results: Vec<&MemoryNode> = self
+                .nodes
                 .values()
                 .filter(|node| node.content.to_lowercase().contains(&query.to_lowercase()))
                 .collect();
@@ -200,8 +212,12 @@ pub mod memory_system {
         }
 
         /// Get memories by type with comprehensive filtering
-        pub fn get_memories_by_type(&self, memory_type: MemoryType) -> Result<Vec<&MemoryNode>, MemoryError> {
-            let results: Vec<&MemoryNode> = self.nodes
+        pub fn get_memories_by_type(
+            &self,
+            memory_type: MemoryType,
+        ) -> Result<Vec<&MemoryNode>, MemoryError> {
+            let results: Vec<&MemoryNode> = self
+                .nodes
                 .values()
                 .filter(|node| node.memory_type == memory_type)
                 .collect();
@@ -214,15 +230,17 @@ pub mod memory_system {
             // Check for orphaned memories (this is a simulation)
             for (id, node) in &self.nodes {
                 if node.id != *id {
-                    return Err(MemoryError::StorageError(
-                        format!("Memory ID mismatch: stored as {} but has ID {}", id, node.id)
-                    ));
+                    return Err(MemoryError::StorageError(format!(
+                        "Memory ID mismatch: stored as {} but has ID {}",
+                        id, node.id
+                    )));
                 }
 
                 if node.content.is_empty() {
-                    return Err(MemoryError::StorageError(
-                        format!("Memory {} has empty content", id)
-                    ));
+                    return Err(MemoryError::StorageError(format!(
+                        "Memory {} has empty content",
+                        id
+                    )));
                 }
             }
 
@@ -273,14 +291,12 @@ pub mod memory_system {
             // Simulate network connection
             if self.base_url.is_empty() {
                 return Err(MemoryError::NetworkError(
-                    "Base URL cannot be empty".to_string()
+                    "Base URL cannot be empty".to_string(),
                 ));
             }
 
             if !self.base_url.starts_with("http") {
-                return Err(MemoryError::NetworkError(
-                    "Invalid URL format".to_string()
-                ));
+                return Err(MemoryError::NetworkError("Invalid URL format".to_string()));
             }
 
             // Simulate connection success/failure
@@ -290,9 +306,7 @@ pub mod memory_system {
                     Ok(())
                 }
                 "http://unreachable.example.com" => {
-                    Err(MemoryError::NetworkError(
-                        "Connection timeout".to_string()
-                    ))
+                    Err(MemoryError::NetworkError("Connection timeout".to_string()))
                 }
                 _ => {
                     self.connected = true;
@@ -305,7 +319,7 @@ pub mod memory_system {
         pub fn sync_memories(&self) -> Result<usize, MemoryError> {
             if !self.connected {
                 return Err(MemoryError::NetworkError(
-                    "Not connected to memory service".to_string()
+                    "Not connected to memory service".to_string(),
                 ));
             }
 
@@ -323,7 +337,8 @@ impl From<MemoryError> for VectorStoreError {
             MemoryError::NotFound => VectorStoreError::NotFound,
             MemoryError::StorageError(msg) => VectorStoreError::ConnectionError(msg),
             MemoryError::ValidationError(msg) => VectorStoreError::InvalidQuery(msg),
-            MemoryError::NetworkError(msg) => VectorStoreError::ConnectionError(msg)}
+            MemoryError::NetworkError(msg) => VectorStoreError::ConnectionError(msg),
+        }
     }
 }
 
@@ -344,20 +359,20 @@ impl MemoryType {
     /// Get the default retention duration for each memory type
     pub fn default_retention_hours(&self) -> u64 {
         match self {
-            MemoryType::ShortTerm => 2,        // 2 hours
-            MemoryType::LongTerm => 8760,      // 1 year
-            MemoryType::Semantic => 43800,     // 5 years
-            MemoryType::Episodic => 17520,     // 2 years
+            MemoryType::ShortTerm => 2,    // 2 hours
+            MemoryType::LongTerm => 8760,  // 1 year
+            MemoryType::Semantic => 43800, // 5 years
+            MemoryType::Episodic => 17520, // 2 years
         }
     }
 
     /// Get the importance weight factor for each memory type
     pub fn importance_weight(&self) -> f32 {
         match self {
-            MemoryType::ShortTerm => 0.3,   // Lower importance weight
-            MemoryType::LongTerm => 0.8,    // High importance weight
-            MemoryType::Semantic => 0.9,    // Highest importance weight
-            MemoryType::Episodic => 0.7,    // Medium-high importance weight
+            MemoryType::ShortTerm => 0.3, // Lower importance weight
+            MemoryType::LongTerm => 0.8,  // High importance weight
+            MemoryType::Semantic => 0.9,  // Highest importance weight
+            MemoryType::Episodic => 0.7,  // Medium-high importance weight
         }
     }
 
@@ -365,7 +380,7 @@ impl MemoryType {
     pub fn all_types() -> &'static [MemoryType] {
         &[
             MemoryType::ShortTerm,
-            MemoryType::LongTerm, 
+            MemoryType::LongTerm,
             MemoryType::Semantic,
             MemoryType::Episodic,
         ]
@@ -382,10 +397,10 @@ impl MemoryType {
 
         // Categorize based on content nature
         match (is_factual, is_personal) {
-            (true, false) => MemoryType::Semantic,    // Factual, impersonal
-            (false, true) => MemoryType::Episodic,    // Personal experience
-            (true, true) => MemoryType::LongTerm,     // Important personal facts
-            (false, false) => MemoryType::LongTerm,   // General long-term storage
+            (true, false) => MemoryType::Semantic,  // Factual, impersonal
+            (false, true) => MemoryType::Episodic,  // Personal experience
+            (true, true) => MemoryType::LongTerm,   // Important personal facts
+            (false, false) => MemoryType::LongTerm, // General long-term storage
         }
     }
 }
@@ -403,24 +418,27 @@ impl std::fmt::Display for MemoryType {
 
 #[allow(dead_code)] // Library type exported for future use
 #[derive(Debug, Clone, Copy)]
-pub enum ImportanceContext { // Intended for future use in memory importance calculation
+pub enum ImportanceContext {
+    // Intended for future use in memory importance calculation
     UserInput,
     SystemResponse,
     SuccessfulExecution,
     ErrorCondition,
     BackgroundProcess,
-    CriticalOperation}
+    CriticalOperation,
+}
 
 impl MemoryType {
     /// Calculate base importance for memory type with zero allocation
     #[allow(dead_code)] // Library method exported for use by other packages
     #[inline]
-    pub const fn base_importance(&self) -> f32 { // Used in other parts of the project for calculating memory importance
+    pub const fn base_importance(&self) -> f32 {
+        // Used in other parts of the project for calculating memory importance
         match self {
-            MemoryType::ShortTerm => 0.3,    // Temporary, less important
-            MemoryType::LongTerm => 0.8,     // Persistent, more important
-            MemoryType::Semantic => 0.9,     // Knowledge, very important
-            MemoryType::Episodic => 0.6,     // Experiences, moderately important
+            MemoryType::ShortTerm => 0.3, // Temporary, less important
+            MemoryType::LongTerm => 0.8,  // Persistent, more important
+            MemoryType::Semantic => 0.9,  // Knowledge, very important
+            MemoryType::Episodic => 0.6,  // Experiences, moderately important
         }
     }
 }
@@ -429,14 +447,15 @@ impl ImportanceContext {
     /// Calculate context modifier with zero allocation
     #[allow(dead_code)] // Library method exported for future use
     #[inline]
-    pub const fn modifier(&self) -> f32 { // Intended for future use in memory importance calculation
+    pub const fn modifier(&self) -> f32 {
+        // Intended for future use in memory importance calculation
         match self {
-            ImportanceContext::UserInput => 0.2,           // User-driven, important
-            ImportanceContext::SystemResponse => 0.0,      // Neutral
+            ImportanceContext::UserInput => 0.2, // User-driven, important
+            ImportanceContext::SystemResponse => 0.0, // Neutral
             ImportanceContext::SuccessfulExecution => 0.1, // Positive outcome
-            ImportanceContext::ErrorCondition => -0.2,     // Negative outcome
-            ImportanceContext::BackgroundProcess => -0.1,  // Less important
-            ImportanceContext::CriticalOperation => 0.3,   // Very important
+            ImportanceContext::ErrorCondition => -0.2, // Negative outcome
+            ImportanceContext::BackgroundProcess => -0.1, // Less important
+            ImportanceContext::CriticalOperation => 0.3, // Very important
         }
     }
 }
@@ -449,7 +468,8 @@ static MEMORY_ID_COUNTER: AtomicU64 = AtomicU64::new(1); // Intended for future 
 #[allow(dead_code)] // Library function exported for future use
 #[inline(always)]
 #[must_use]
-pub fn next_memory_id() -> u64 { // Intended for future use in memory ID generation
+pub fn next_memory_id() -> u64 {
+    // Intended for future use in memory ID generation
     MEMORY_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
@@ -457,14 +477,15 @@ pub fn next_memory_id() -> u64 { // Intended for future use in memory ID generat
 #[allow(dead_code)] // Library function exported for future use
 #[inline(always)]
 #[must_use]
-pub fn calculate_importance( // Intended for future use in memory importance calculation
+pub fn calculate_importance(
+    // Intended for future use in memory importance calculation
     memory_type: &MemoryType,
     context: ImportanceContext,
     content_length: usize,
 ) -> f32 {
     let base = memory_type.base_importance();
     let context_mod = context.modifier();
-    
+
     // Content length modifier: longer content gets slight boost, capped at 0.1
     let length_mod = if content_length > 1000 {
         0.1
@@ -473,26 +494,30 @@ pub fn calculate_importance( // Intended for future use in memory importance cal
     } else {
         0.0
     };
-    
+
     // Clamp final importance between 0.0 and 1.0
     (base + context_mod + length_mod).clamp(0.0, 1.0)
 }
 
 #[allow(dead_code)] // Library struct exported for use by other packages
 #[derive(Debug, Clone)]
-pub struct MemoryNode { // Used in other parts of the project for representing memory nodes
+pub struct MemoryNode {
+    // Used in other parts of the project for representing memory nodes
     pub id: u64,
     pub content: String,
     pub memory_type: MemoryType,
     pub metadata: MemoryMetadata,
-    pub embedding: Option<Vec<f32>>}
+    pub embedding: Option<Vec<f32>>,
+}
 
 #[allow(dead_code)] // Library struct exported for use by other packages
 #[derive(Debug, Clone)]
-pub struct MemoryMetadata { // Used in other parts of the project for representing memory metadata
+pub struct MemoryMetadata {
+    // Used in other parts of the project for representing memory metadata
     pub importance: f32,
     pub last_accessed: SystemTime,
-    pub creation_time: SystemTime}
+    pub creation_time: SystemTime,
+}
 
 #[allow(dead_code)] // Library struct exported for use by other packages
 #[derive(Debug, Clone)]
@@ -500,33 +525,28 @@ pub struct MemoryRelationship {
     pub id: u64,
     pub from_id: u64,
     pub to_id: u64,
-    pub relationship_type: String}
+    pub relationship_type: String,
+}
 
 pub trait VectorStoreIndexDyn: Send + Sync {
-    fn top_n(
-        &self,
-        query: &str,
-        n: usize,
-    ) -> AsyncStream<ZeroOneOrMany<(f64, String, Value)>>;
-    fn top_n_ids(
-        &self,
-        query: &str,
-        n: usize,
-    ) -> AsyncStream<ZeroOneOrMany<(f64, String)>>;
+    fn top_n(&self, query: &str, n: usize) -> AsyncStream<ZeroOneOrMany<(f64, String, Value)>>;
+    fn top_n_ids(&self, query: &str, n: usize) -> AsyncStream<ZeroOneOrMany<(f64, String)>>;
 }
 
 pub struct VectorStoreIndex {
-    pub backend: Box<dyn VectorStoreIndexDyn>}
+    pub backend: Box<dyn VectorStoreIndexDyn>,
+}
 
 impl VectorStoreIndex {
     /// Direct creation from backend
     pub fn with_backend<B: VectorStoreIndexDyn + 'static>(backend: B) -> Self {
         VectorStoreIndex {
-            backend: Box::new(backend)}
+            backend: Box::new(backend),
+        }
     }
 
     /// Validate vector store connection and perform health check
-    /// 
+    ///
     /// # Returns
     /// Result indicating connection status
     pub fn validate_connection(&self) -> Result<(), VectorStoreError> {
@@ -539,44 +559,44 @@ impl VectorStoreIndex {
         match health_check_result {
             Ok(true) => Ok(()),
             Ok(false) => Err(VectorStoreError::ConnectionError(
-                "Vector store health check failed".to_string()
+                "Vector store health check failed".to_string(),
             )),
             Err(_) => Err(VectorStoreError::ConnectionError(
-                "Vector store connection panic during validation".to_string()
-            ))
+                "Vector store connection panic during validation".to_string(),
+            )),
         }
     }
 
     /// Validate query parameters for vector search operations
-    /// 
+    ///
     /// # Arguments
     /// * `query` - The query string to validate
     /// * `limit` - Maximum number of results
-    /// 
+    ///
     /// # Returns
     /// Result indicating query validity
     pub fn validate_query(&self, query: &str, limit: usize) -> Result<(), VectorStoreError> {
         if query.trim().is_empty() {
             return Err(VectorStoreError::InvalidQuery(
-                "Query string cannot be empty".to_string()
+                "Query string cannot be empty".to_string(),
             ));
         }
 
         if query.len() > 10_000 {
             return Err(VectorStoreError::InvalidQuery(
-                "Query string exceeds maximum length of 10,000 characters".to_string()
+                "Query string exceeds maximum length of 10,000 characters".to_string(),
             ));
         }
 
         if limit == 0 {
             return Err(VectorStoreError::InvalidQuery(
-                "Result limit must be greater than 0".to_string()
+                "Result limit must be greater than 0".to_string(),
             ));
         }
 
         if limit > 1000 {
             return Err(VectorStoreError::InvalidQuery(
-                "Result limit exceeds maximum of 1000".to_string()
+                "Result limit exceeds maximum of 1000".to_string(),
             ));
         }
 
@@ -598,7 +618,7 @@ impl VectorStoreIndex {
     ) -> Result<AsyncStream<ZeroOneOrMany<(f64, String, Value)>>, VectorStoreError> {
         // Validate connection first
         self.validate_connection()?;
-        
+
         // Validate query parameters
         self.validate_query(query, n)?;
 
@@ -621,8 +641,8 @@ impl VectorStoreIndex {
     ) -> Result<AsyncStream<ZeroOneOrMany<(f64, String)>>, VectorStoreError> {
         // Validate connection first
         self.validate_connection()?;
-        
-        // Validate query parameters  
+
+        // Validate query parameters
         self.validate_query(query, n)?;
 
         // If validation passes, return the stream
@@ -637,25 +657,31 @@ pub mod vector_store_utils {
     use super::VectorStoreError;
 
     /// Parse and validate vector embedding dimensions
-    pub fn validate_embedding_dimensions(embedding: &[f32], expected_dim: usize) -> Result<(), VectorStoreError> {
+    pub fn validate_embedding_dimensions(
+        embedding: &[f32],
+        expected_dim: usize,
+    ) -> Result<(), VectorStoreError> {
         if embedding.is_empty() {
             return Err(VectorStoreError::InvalidQuery(
-                "Embedding vector cannot be empty".to_string()
+                "Embedding vector cannot be empty".to_string(),
             ));
         }
 
         if embedding.len() != expected_dim {
-            return Err(VectorStoreError::InvalidQuery(
-                format!("Embedding dimension mismatch: expected {}, got {}", expected_dim, embedding.len())
-            ));
+            return Err(VectorStoreError::InvalidQuery(format!(
+                "Embedding dimension mismatch: expected {}, got {}",
+                expected_dim,
+                embedding.len()
+            )));
         }
 
         // Check for invalid values (NaN, infinity)
         for (i, &value) in embedding.iter().enumerate() {
             if !value.is_finite() {
-                return Err(VectorStoreError::InvalidQuery(
-                    format!("Invalid embedding value at index {}: {}", i, value)
-                ));
+                return Err(VectorStoreError::InvalidQuery(format!(
+                    "Invalid embedding value at index {}: {}",
+                    i, value
+                )));
             }
         }
 
@@ -666,15 +692,15 @@ pub mod vector_store_utils {
     pub fn normalize_embedding(embedding: &mut [f32]) -> Result<(), VectorStoreError> {
         if embedding.is_empty() {
             return Err(VectorStoreError::InvalidQuery(
-                "Cannot normalize empty embedding".to_string()
+                "Cannot normalize empty embedding".to_string(),
             ));
         }
 
         let magnitude: f32 = embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
-        
+
         if magnitude == 0.0 {
             return Err(VectorStoreError::InvalidQuery(
-                "Cannot normalize zero-magnitude embedding".to_string()
+                "Cannot normalize zero-magnitude embedding".to_string(),
             ));
         }
 
@@ -689,7 +715,7 @@ pub mod vector_store_utils {
     pub fn check_index_exists(index_name: &str) -> Result<bool, VectorStoreError> {
         if index_name.trim().is_empty() {
             return Err(VectorStoreError::InvalidQuery(
-                "Index name cannot be empty".to_string()
+                "Index name cannot be empty".to_string(),
             ));
         }
 
@@ -698,7 +724,7 @@ pub mod vector_store_utils {
         match index_name {
             "default" | "memory" | "documents" => Ok(true),
             "nonexistent" | "deleted" => Err(VectorStoreError::NotFound),
-            _ => Ok(false)
+            _ => Ok(false),
         }
     }
 }

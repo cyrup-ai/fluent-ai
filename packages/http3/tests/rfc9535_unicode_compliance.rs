@@ -26,15 +26,15 @@ mod unicode_escape_sequence_tests {
         ]}"#;
 
         let test_cases = vec![
-            ("$.strings[0]", 1),    // Backspace
-            ("$.strings[1]", 1),    // Tab
-            ("$.strings[2]", 1),    // Newline
-            ("$.strings[3]", 1),    // Form feed
-            ("$.strings[4]", 1),    // Carriage return
-            ("$.strings[5]", 1),    // Quote
-            ("$.strings[6]", 1),    // Apostrophe
-            ("$.strings[7]", 1),    // Solidus
-            ("$.strings[8]", 1),    // Backslash
+            ("$.strings[0]", 1), // Backspace
+            ("$.strings[1]", 1), // Tab
+            ("$.strings[2]", 1), // Newline
+            ("$.strings[3]", 1), // Form feed
+            ("$.strings[4]", 1), // Carriage return
+            ("$.strings[5]", 1), // Quote
+            ("$.strings[6]", 1), // Apostrophe
+            ("$.strings[7]", 1), // Solidus
+            ("$.strings[8]", 1), // Backslash
         ];
 
         for (expr, expected_count) in test_cases {
@@ -65,7 +65,7 @@ mod unicode_escape_sequence_tests {
 
         let test_cases = vec![
             ("$.unicode[0]", 1), // Euro symbol - first item
-            ("$.unicode[1]", 1), // Copyright - second item 
+            ("$.unicode[1]", 1), // Copyright - second item
             ("$.unicode[2]", 1), // Trademark - third item
             ("$.unicode[3]", 1), // Smile - fourth item
             ("$.unicode[4]", 1), // Snowman - fifth item

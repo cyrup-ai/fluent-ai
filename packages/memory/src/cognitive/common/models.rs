@@ -6,12 +6,13 @@ use std::env;
 
 use fluent_ai_async::AsyncStream;
 use fluent_ai_domain::{
-    chat::{Message, MessageRole}, 
+    chat::{Message, MessageRole},
     completion::CompletionResponse,
-    http::common::CommonUsage as TokenUsage};
-use fluent_ai_http3::{Http3, HttpError, HttpClient, HttpConfig, HttpChunk};
-use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
+    http::common::CommonUsage as TokenUsage,
+};
+use fluent_ai_http3::{Http3, HttpChunk, HttpClient, HttpConfig, HttpError};
 use model_info::providers::anthropic::AnthropicProvider;
+use model_info::{DiscoveryProvider as Provider, ModelInfo, ModelInfoBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -83,11 +84,16 @@ impl ModelType {
                 Provider::Anthropic
             }
             ModelType::GeminiPro => Provider::Google,
-            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => Provider::HuggingFace,
+            ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => {
+                Provider::HuggingFace
+            }
         }
     }
-    
-    pub fn from_name_and_provider(name: &str, provider: Provider) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+
+    pub fn from_name_and_provider(
+        name: &str,
+        provider: Provider,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         match (provider, name) {
             (Provider::OpenAI, "gpt-3.5-turbo") => Ok(ModelType::Gpt35Turbo),
             (Provider::OpenAI, "gpt-4") => Ok(ModelType::Gpt4),
@@ -107,7 +113,8 @@ pub struct Model {
     provider: Provider,
     model_info: ModelInfo,
     api_key: String,
-    http_client: HttpClient}
+    http_client: HttpClient,
+}
 
 impl Model {
     pub async fn create(
@@ -116,14 +123,14 @@ impl Model {
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let api_key_env = match provider {
             Provider::OpenAI => "OPENAI_API_KEY",
-            Provider::Anthropic => "ANTHROPIC_API_KEY",  
+            Provider::Anthropic => "ANTHROPIC_API_KEY",
             _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
         };
-        
+
         // Alternative constructor for backward compatibility with ModelType
         Self::create_with_model_type(ModelType::from_name_and_provider(model_name, provider)?).await
     }
-    
+
     pub async fn create_with_model_type(
         model_type: ModelType,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
@@ -136,10 +143,10 @@ impl Model {
             }
             _ => return Err(format!("Model type {:?} is not yet implemented", model_type).into()),
         };
-        
+
         let api_key_env = match provider {
             Provider::OpenAI => "OPENAI_API_KEY",
-            Provider::Anthropic => "ANTHROPIC_API_KEY",  
+            Provider::Anthropic => "ANTHROPIC_API_KEY",
             _ => return Err(format!("Provider {:?} is not yet implemented", provider).into()),
         };
 
@@ -162,7 +169,8 @@ impl Model {
             provider,
             model_info,
             api_key,
-            http_client})
+            http_client,
+        })
     }
 
     pub fn available_types() -> Vec<ModelType> {
@@ -175,7 +183,7 @@ impl Model {
             ModelType::Claude3Haiku,
         ]
     }
-    
+
     pub fn available_models() -> Vec<(&'static str, Provider)> {
         vec![
             ("gpt-3.5-turbo", Provider::OpenAI),
@@ -197,9 +205,9 @@ impl Model {
             Provider::OpenAI | Provider::Anthropic => "/chat/completions",
             _ => return Err("Provider not implemented".into()),
         };
-        
+
         let url = format!("{}{}", base_url, endpoint);
-        
+
         // Build request payload based on provider
         let request_body = match self.provider {
             Provider::OpenAI => {
@@ -214,7 +222,7 @@ impl Model {
             Provider::Anthropic => {
                 let system_msgs: Vec<_> = messages.iter().filter(|m| m.role == "system").collect();
                 let user_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
-                
+
                 json!({
                     "model": self.model_info.name,
                     "max_tokens": 4096,
@@ -238,18 +246,14 @@ impl Model {
 
         // Parse response based on provider
         let content = match self.provider {
-            Provider::OpenAI => {
-                response["choices"][0]["message"]["content"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string()
-            }
-            Provider::Anthropic => {
-                response["content"][0]["text"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string()
-            }
+            Provider::OpenAI => response["choices"][0]["message"]["content"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            Provider::Anthropic => response["content"][0]["text"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
             _ => return Err("Provider not implemented".into()),
         };
 
@@ -266,7 +270,7 @@ impl Model {
         // Create completion response using domain types
         let mut completion_response = CompletionResponse::text(content.clone());
         completion_response.set_token_usage(usage);
-        
+
         Ok(completion_response)
     }
 
@@ -294,7 +298,7 @@ impl Model {
         let provider = self.provider.clone();
         let api_key = self.api_key.clone();
         let http_client = self.http_client.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             Box::pin(async move {
                 let base_url = provider.default_base_url();
@@ -305,9 +309,9 @@ impl Model {
                         return Ok(());
                     }
                 };
-                
+
                 let url = format!("{}{}", base_url, endpoint);
-                
+
                 // Build streaming request payload
                 let request_body = match provider {
                     Provider::OpenAI => {
@@ -320,9 +324,11 @@ impl Model {
                         })
                     }
                     Provider::Anthropic => {
-                        let system_msgs: Vec<_> = messages.iter().filter(|m| m.role == "system").collect();
-                        let user_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
-                        
+                        let system_msgs: Vec<_> =
+                            messages.iter().filter(|m| m.role == "system").collect();
+                        let user_msgs: Vec<_> =
+                            messages.iter().filter(|m| m.role != "system").collect();
+
                         json!({
                             "model": model_info.name,
                             "max_tokens": 4096,
@@ -350,7 +356,9 @@ impl Model {
                     match chunk_result {
                         Ok(HttpChunk::Body(chunk_bytes)) => {
                             // Parse SSE chunk and extract content
-                            if let Some(content) = Self::parse_streaming_chunk(&chunk_bytes, &provider) {
+                            if let Some(content) =
+                                Self::parse_streaming_chunk(&chunk_bytes, &provider)
+                            {
                                 let _ = sender.send(content).await;
                             }
                         }
@@ -364,7 +372,7 @@ impl Model {
                         }
                     }
                 }
-                
+
                 Ok(())
             })
         })
@@ -373,7 +381,7 @@ impl Model {
     /// Parse streaming chunk based on provider format
     fn parse_streaming_chunk(chunk_bytes: &[u8], provider: &Provider) -> Option<String> {
         let chunk_str = std::str::from_utf8(chunk_bytes).ok()?;
-        
+
         // Handle Server-Sent Events format
         for line in chunk_str.lines() {
             if line.starts_with("data: ") {
@@ -381,25 +389,21 @@ impl Model {
                 if data == "[DONE]" {
                     break;
                 }
-                
+
                 if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(data) {
                     return match provider {
-                        Provider::OpenAI => {
-                            json_data["choices"][0]["delta"]["content"]
-                                .as_str()
-                                .map(|s| s.to_string())
-                        }
+                        Provider::OpenAI => json_data["choices"][0]["delta"]["content"]
+                            .as_str()
+                            .map(|s| s.to_string()),
                         Provider::Anthropic => {
-                            json_data["delta"]["text"]
-                                .as_str()
-                                .map(|s| s.to_string())
+                            json_data["delta"]["text"].as_str().map(|s| s.to_string())
                         }
                         _ => None,
                     };
                 }
             }
         }
-        
+
         None
     }
 
@@ -424,14 +428,16 @@ impl Model {
 pub struct CompletionRequest {
     pub messages: Vec<Message>,
     pub temperature: Option<f64>,
-    pub max_tokens: Option<u32>}
+    pub max_tokens: Option<u32>,
+}
 
 impl CompletionRequest {
     pub fn new(messages: Vec<Message>) -> Self {
         Self {
             messages,
             temperature: None,
-            max_tokens: None}
+            max_tokens: None,
+        }
     }
 
     pub fn with_temperature(mut self, temperature: f64) -> Self {

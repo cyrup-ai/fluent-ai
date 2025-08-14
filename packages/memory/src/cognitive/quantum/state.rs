@@ -19,7 +19,8 @@ pub struct SuperpositionState {
     pub phase_evolution: PhaseEvolution,
     pub decoherence_rate: f64,
     pub creation_time: Instant,
-    pub observation_count: u64}
+    pub observation_count: u64,
+}
 
 /// Phase evolution tracking for quantum states
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,14 +28,16 @@ pub struct PhaseEvolution {
     pub initial_phase: f64,
     pub evolution_rate: f64,
     pub hamiltonian_coefficients: Vec<f64>,
-    pub time_dependent_terms: Vec<TimeDependentTerm>}
+    pub time_dependent_terms: Vec<TimeDependentTerm>,
+}
 
 /// Time-dependent term for Hamiltonian evolution
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeDependentTerm {
     pub amplitude: f64,
     pub frequency: f64,
-    pub phase_offset: f64}
+    pub phase_offset: f64,
+}
 
 impl SuperpositionState {
     /// Create a new superposition state
@@ -47,7 +50,8 @@ impl SuperpositionState {
             phase_evolution: PhaseEvolution::default(),
             decoherence_rate: 0.01,
             creation_time: Instant::now(),
-            observation_count: 0}
+            observation_count: 0,
+        }
     }
 
     /// Add a quantum state with given amplitude
@@ -205,7 +209,8 @@ impl Default for PhaseEvolution {
             initial_phase: 0.0,
             evolution_rate: 1.0,
             hamiltonian_coefficients: Vec::new(),
-            time_dependent_terms: Vec::new()}
+            time_dependent_terms: Vec::new(),
+        }
     }
 }
 

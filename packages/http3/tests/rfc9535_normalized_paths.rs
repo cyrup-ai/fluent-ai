@@ -283,17 +283,20 @@ mod single_quote_delimiter_tests {
             match (originalresult, normalizedresult) {
                 (Ok(_), Ok(_)) => {
                     println!("  Both forms compiled successfully");
-                    
+
                     // Test that both forms produce equivalent results when executed
                     let mut original_stream = JsonArrayStream::<serde_json::Value>::new(original);
-                    let mut normalized_stream = JsonArrayStream::<serde_json::Value>::new(normalized);
+                    let mut normalized_stream =
+                        JsonArrayStream::<serde_json::Value>::new(normalized);
 
                     let chunk = Bytes::from(json_data);
-                    let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-                    let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk.clone()).collect();
-                    
+                    let original_results: Vec<_> =
+                        original_stream.process_chunk(chunk.clone()).collect();
+                    let normalized_results: Vec<_> =
+                        normalized_stream.process_chunk(chunk.clone()).collect();
+
                     assert_eq!(
-                        original_results.len(), 
+                        original_results.len(),
                         normalized_results.len(),
                         "Results count should match for equivalent paths"
                     );
@@ -400,17 +403,21 @@ mod character_escaping_tests {
             match (originalresult, normalizedresult) {
                 (Ok(_), Ok(_)) => {
                     println!("  Both paths compiled successfully");
-                    
+
                     // Test that both forms produce equivalent results when executed
-                    let mut original_stream = JsonArrayStream::<serde_json::Value>::new(&original_path);
-                    let mut normalized_stream = JsonArrayStream::<serde_json::Value>::new(&normalized_path);
+                    let mut original_stream =
+                        JsonArrayStream::<serde_json::Value>::new(&original_path);
+                    let mut normalized_stream =
+                        JsonArrayStream::<serde_json::Value>::new(&normalized_path);
 
                     let chunk = Bytes::from(json_data);
-                    let original_results: Vec<_> = original_stream.process_chunk(chunk.clone()).collect();
-                    let normalized_results: Vec<_> = normalized_stream.process_chunk(chunk.clone()).collect();
-                    
+                    let original_results: Vec<_> =
+                        original_stream.process_chunk(chunk.clone()).collect();
+                    let normalized_results: Vec<_> =
+                        normalized_stream.process_chunk(chunk.clone()).collect();
+
                     assert_eq!(
-                        original_results.len(), 
+                        original_results.len(),
                         normalized_results.len(),
                         "Results count should match for equivalent paths"
                     );
@@ -523,9 +530,7 @@ mod path_uniqueness_tests {
                 let mut stream = JsonArrayStream::<String>::new(path);
 
                 let chunk = Bytes::from(json_data);
-                let results: Vec<_> = stream
-                    .process_chunk(chunk)
-                    .collect();
+                let results: Vec<_> = stream.process_chunk(chunk).collect();
 
                 results_sets.push(results);
                 println!(

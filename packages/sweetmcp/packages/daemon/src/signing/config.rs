@@ -1,11 +1,13 @@
 //! Signing configuration management
 
-use super::{PlatformConfig, SigningConfig};
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+
+use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
+
+use super::{PlatformConfig, SigningConfig};
 
 /// Signing configuration file structure
 #[derive(Debug, Serialize, Deserialize)]

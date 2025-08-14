@@ -8,7 +8,9 @@ use std::ops::RangeInclusive;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::domain::model::{CandleValidationError as ValidationError, CandleValidationResult as ValidationResult};
+use crate::domain::model::{
+    CandleValidationError as ValidationError, CandleValidationResult as ValidationResult,
+};
 
 /// Temperature range for generation (0.0 to 2.0)
 pub const TEMPERATURE_RANGE: RangeInclusive<f64> = 0.0..=2.0;
@@ -32,7 +34,8 @@ pub struct CandleCompletionParams {
     /// Whether to stream the response
     pub stream: bool,
     /// Additional provider-specific parameters
-    pub additional_params: Option<Value>}
+    pub additional_params: Option<Value>,
+}
 
 impl Default for CandleCompletionParams {
     fn default() -> Self {
@@ -44,7 +47,8 @@ impl Default for CandleCompletionParams {
                 None => std::num::NonZeroU8::MIN, // Use minimum valid value as fallback
             },
             stream: false,
-            additional_params: None}
+            additional_params: None,
+        }
     }
 }
 
@@ -64,7 +68,8 @@ impl CandleCompletionParams {
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
                     TEMPERATURE_RANGE.end()
-                )});
+                ),
+            });
         }
         self.temperature = temperature;
         Ok(self)
@@ -97,7 +102,8 @@ pub struct CandleModelParams {
     /// Context window size
     pub context_length: u32,
     /// Vocabulary size
-    pub vocab_size: u32}
+    pub vocab_size: u32,
+}
 
 impl Default for CandleModelParams {
     #[inline(always)]
@@ -106,6 +112,7 @@ impl Default for CandleModelParams {
             rope_theta: 10000.0,
             rope_freq_base: 1.0,
             context_length: 2048,
-            vocab_size: 32000}
+            vocab_size: 32000,
+        }
     }
 }

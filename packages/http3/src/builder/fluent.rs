@@ -3,11 +3,9 @@
 //! Provides additional fluent interface components including download
 //! functionality and progress tracking for enhanced user experience.
 
-use futures_util::StreamExt;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+// Pure streams - no futures imports needed
 
-use crate::{DownloadStream, HttpError};
+use crate::DownloadStream;
 
 /// Builder for download-specific operations
 ///
@@ -35,17 +33,15 @@ impl DownloadBuilder {
     /// * `local_path` - Local filesystem path where the file should be saved
     ///
     /// # Returns
-    /// `Result<DownloadProgress, HttpError>` - Download progress on success
+    /// `DownloadProgress` - Download progress information
     ///
     /// # Examples
     /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
+    /// use fluent_ai_http3::Http3;
     ///
-    /// # tokio_test::block_on(async {
-    /// let progress = Http3Builder::new(&client)
+    /// let progress = Http3::new()
     ///     .download_file("https://example.com/large-file.zip")
-    ///     .save("/tmp/downloaded-file.zip")
-    ///     .await?;
+    ///     .save("/tmp/downloaded-file.zip");
     ///
     /// println!("Downloaded {} bytes to {}",
     ///     progress.bytes_written,
@@ -54,40 +50,33 @@ impl DownloadBuilder {
     /// if let Some(percentage) = progress.progress_percentage() {
     ///     println!("Download completed: {:.1}%", percentage);
     /// }
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// # });
     /// ```
-    pub async fn save(self, local_path: &str) -> Result<DownloadProgress, HttpError> {
-        let mut file = File::create(local_path)
-            .await
-            .map_err::<HttpError, _>(|e| e.into())?;
+    pub fn save(self, local_path: &str) -> DownloadProgress {
         let mut stream = self.stream;
         let mut total_written = 0;
         let mut chunk_count = 0;
         let mut total_size = None;
 
-        while let Some(chunk_result) = stream.next().await {
-            match chunk_result {
-                Ok(download_chunk) => {
-                    total_size = download_chunk.total_size;
-                    let bytes_written = file
-                        .write(&download_chunk.data)
-                        .await
-                        .map_err::<HttpError, _>(|e| e.into())?;
-                    total_written += bytes_written as u64;
-                    chunk_count += 1;
-                }
-                Err(e) => return Err(e),
-            }
+        // Use blocking file I/O - pure streams, no async
+        let mut file = std::fs::File::create(local_path).expect("Failed to create file");
+
+        while let Some(download_chunk) = stream.poll_next() {
+            total_size = download_chunk.total_size;
+            use std::io::Write;
+            let bytes_written = file
+                .write(&download_chunk.data)
+                .expect("Failed to write to file");
+            total_written += bytes_written as u64;
+            chunk_count += 1;
         }
 
-        Ok(DownloadProgress {
+        DownloadProgress {
             chunk_count,
             bytes_written: total_written,
             total_size,
             local_path: local_path.to_string(),
             is_complete: true,
-        })
+        }
     }
 
     /// Set a custom destination path (alternative to save)
@@ -100,18 +89,14 @@ impl DownloadBuilder {
     ///
     /// # Examples
     /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
+    /// use fluent_ai_http3::Http3;
     ///
-    /// # tokio_test::block_on(async {
-    /// let progress = Http3Builder::new(&client)
+    /// let progress = Http3::new()
     ///     .download_file("https://example.com/file.zip")
-    ///     .destination("/downloads/file.zip")
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// # });
+    ///     .destination("/downloads/file.zip");
     /// ```
-    pub async fn destination(self, path: &str) -> Result<DownloadProgress, HttpError> {
-        self.save(path).await
+    pub fn destination(self, path: &str) -> DownloadProgress {
+        self.save(path)
     }
 
     /// Start the download with progress monitoring
@@ -123,18 +108,14 @@ impl DownloadBuilder {
     ///
     /// # Examples
     /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
+    /// use fluent_ai_http3::Http3;
     ///
-    /// # tokio_test::block_on(async {
-    /// let progress = Http3Builder::new(&client)
+    /// let progress = Http3::new()
     ///     .download_file("https://example.com/file.zip")
-    ///     .start("/downloads/file.zip")
-    ///     .await?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// # });
+    ///     .start("/downloads/file.zip");
     /// ```
-    pub async fn start(self, local_path: &str) -> Result<DownloadProgress, HttpError> {
-        self.save(local_path).await
+    pub fn start(self, local_path: &str) -> DownloadProgress {
+        self.save(local_path)
     }
 }
 

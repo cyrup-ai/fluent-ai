@@ -1,27 +1,30 @@
-use super::{ModelData, ProviderBuilder, StandardModelsResponse, StandardModel};
+use super::response_types::{OpenAiModel, OpenAiModelsListResponse};
+use super::{ModelData, ProviderBuilder};
 
 /// X.AI provider implementation with dynamic API fetching
 /// Uses the official X.AI API endpoint as documented at https://docs.x.ai/docs/api-reference#list-models
 pub struct XaiProvider;
 
 impl ProviderBuilder for XaiProvider {
-    type ListResponse = StandardModelsResponse; // Uses OpenAI-compatible format
-    type GetResponse = StandardModel;
+    type ListResponse = OpenAiModelsListResponse; // Uses OpenAI-compatible format
+    type GetResponse = OpenAiModel;
 
     fn provider_name(&self) -> &'static str {
         "xai"
     }
-    
+
     fn base_url(&self) -> &'static str {
         "https://api.x.ai"
     }
-    
-    fn api_key_env_var(&self) -> Option<&'static str> {
-        Some("XAI_API_KEY")
+
+    fn api_key_env_vars(&self) -> cyrup_sugars::ZeroOneOrMany<&'static str> {
+        cyrup_sugars::ZeroOneOrMany::One("XAI_API_KEY")
     }
-    
+
     fn response_to_models(&self, response: Self::ListResponse) -> Vec<ModelData> {
-        response.data.into_iter()
+        response
+            .data
+            .into_iter()
             .map(|model| xai_model_to_data(&model.id))
             .collect()
     }
@@ -38,7 +41,7 @@ fn xai_model_to_data(model_id: &str) -> ModelData {
         "grok-beta" => (model_id.to_string(), 131072, 5.0, 15.0, true, Some(1.0)),
         "grok-2" => (model_id.to_string(), 131072, 2.0, 10.0, true, Some(1.0)),
         "grok-2-mini" => (model_id.to_string(), 131072, 0.3, 0.5, true, None),
-        
+
         // Default for unknown models
         _ => (model_id.to_string(), 131072, 2.0, 10.0, true, None),
     }

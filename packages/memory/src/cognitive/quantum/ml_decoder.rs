@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Complex {
     pub real: f64,
-    pub imag: f64}
+    pub imag: f64,
+}
 
 impl Complex {
     pub fn new(real: f64, imag: f64) -> Self {
@@ -16,19 +17,22 @@ impl Complex {
     pub fn zero() -> Self {
         Self {
             real: 0.0,
-            imag: 0.0}
+            imag: 0.0,
+        }
     }
 
     pub fn one() -> Self {
         Self {
             real: 1.0,
-            imag: 0.0}
+            imag: 0.0,
+        }
     }
 
     pub fn i() -> Self {
         Self {
             real: 0.0,
-            imag: 1.0}
+            imag: 1.0,
+        }
     }
 
     pub fn magnitude_squared(&self) -> f64 {
@@ -42,7 +46,8 @@ impl Complex {
     pub fn conjugate(&self) -> Self {
         Self {
             real: self.real,
-            imag: -self.imag}
+            imag: -self.imag,
+        }
     }
 
     pub fn normalize(&self) -> Self {
@@ -50,7 +55,8 @@ impl Complex {
         if mag > 0.0 {
             Self {
                 real: self.real / mag,
-                imag: self.imag / mag}
+                imag: self.imag / mag,
+            }
         } else {
             *self
         }
@@ -63,7 +69,8 @@ impl std::ops::Add for Complex {
     fn add(self, other: Complex) -> Complex {
         Complex {
             real: self.real + other.real,
-            imag: self.imag + other.imag}
+            imag: self.imag + other.imag,
+        }
     }
 }
 
@@ -73,7 +80,8 @@ impl std::ops::Mul for Complex {
     fn mul(self, other: Complex) -> Complex {
         Complex {
             real: self.real * other.real - self.imag * other.imag,
-            imag: self.real * other.imag + self.imag * other.real}
+            imag: self.real * other.imag + self.imag * other.real,
+        }
     }
 }
 
@@ -83,7 +91,8 @@ impl std::ops::Mul<f64> for Complex {
     fn mul(self, scalar: f64) -> Complex {
         Complex {
             real: self.real * scalar,
-            imag: self.imag * scalar}
+            imag: self.imag * scalar,
+        }
     }
 }
 
@@ -91,7 +100,8 @@ impl std::ops::Mul<f64> for Complex {
 #[derive(Debug, Clone)]
 pub struct QuantumState {
     pub amplitudes: Vec<Complex>,
-    pub num_qubits: usize}
+    pub num_qubits: usize,
+}
 
 impl QuantumState {
     /// Create a new quantum state with all qubits in |0⟩ state
@@ -102,7 +112,8 @@ impl QuantumState {
 
         Self {
             amplitudes,
-            num_qubits}
+            num_qubits,
+        }
     }
 
     /// Create quantum state from classical bit string
@@ -123,7 +134,8 @@ impl QuantumState {
 
         Self {
             amplitudes,
-            num_qubits}
+            num_qubits,
+        }
     }
 
     /// Apply a single qubit gate to the specified qubit
@@ -341,7 +353,8 @@ impl QuantumGates {
 pub struct MLDecoder {
     pub model_type: MLModelType,
     pub trained_parameters: Vec<f64>,
-    pub inference_engine: InferenceEngine}
+    pub inference_engine: InferenceEngine,
+}
 
 /// Types of machine learning models for decoding
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -349,21 +362,24 @@ pub enum MLModelType {
     NeuralNetwork { layers: Vec<usize> },
     SupportVectorMachine { kernel: String },
     RandomForest { trees: usize },
-    QuantumNeuralNetwork { quantum_layers: Vec<QuantumLayer> }}
+    QuantumNeuralNetwork { quantum_layers: Vec<QuantumLayer> },
+}
 
 /// Quantum layer for quantum neural networks
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuantumLayer {
     pub qubit_count: usize,
     pub parameterized_gates: Vec<ParameterizedGate>,
-    pub entangling_structure: EntanglingStructure}
+    pub entangling_structure: EntanglingStructure,
+}
 
 /// Parameterized quantum gate
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParameterizedGate {
     pub gate_type: ParameterizedGateType,
     pub target_qubits: Vec<usize>,
-    pub parameters: Vec<f64>}
+    pub parameters: Vec<f64>,
+}
 
 /// Types of parameterized quantum gates
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -374,7 +390,8 @@ pub enum ParameterizedGateType {
     CRX, // Controlled RX
     CRY, // Controlled RY
     CRZ, // Controlled RZ
-    Custom(String)}
+    Custom(String),
+}
 
 /// Entangling structure for quantum circuits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -382,13 +399,15 @@ pub enum EntanglingStructure {
     Linear,
     AllToAll,
     Circular,
-    Custom(Vec<(usize, usize)>)}
+    Custom(Vec<(usize, usize)>),
+}
 
 /// Inference engine for ML models
 pub struct InferenceEngine {
     pub optimization_backend: OptimizationBackend,
     pub gradient_computation: GradientMethod,
-    pub hardware_acceleration: HardwareAcceleration}
+    pub hardware_acceleration: HardwareAcceleration,
+}
 
 /// Optimization backend for training
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -396,13 +415,17 @@ pub enum OptimizationBackend {
     Adam {
         learning_rate: f64,
         beta1: f64,
-        beta2: f64},
+        beta2: f64,
+    },
     SGD {
         learning_rate: f64,
-        momentum: f64},
+        momentum: f64,
+    },
     LBFGS {
-        memory_size: usize},
-    QuantumNaturalGradient}
+        memory_size: usize,
+    },
+    QuantumNaturalGradient,
+}
 
 /// Gradient computation methods
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -410,19 +433,24 @@ pub enum GradientMethod {
     ParameterShift,
     FiniteDifference,
     Adjoint,
-    QuantumBackpropagation}
+    QuantumBackpropagation,
+}
 
 /// Hardware acceleration options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HardwareAcceleration {
     CPU,
     GPU {
-        device_id: usize},
+        device_id: usize,
+    },
     QuantumProcessor {
-        backend: String},
+        backend: String,
+    },
     Hybrid {
         classical: Box<HardwareAcceleration>,
-        quantum: Box<HardwareAcceleration>}}
+        quantum: Box<HardwareAcceleration>,
+    },
+}
 
 impl MLDecoder {
     /// Create a new ML decoder
@@ -446,12 +474,14 @@ impl MLDecoder {
                     .flat_map(|gate| gate.parameters.clone())
                     .collect()
             }
-            _ => Vec::new()};
+            _ => Vec::new(),
+        };
 
         Self {
             model_type,
             trained_parameters,
-            inference_engine: InferenceEngine::default()}
+            inference_engine: InferenceEngine::default(),
+        }
     }
 
     /// Perform inference on error syndrome
@@ -758,12 +788,14 @@ impl MLDecoder {
             OptimizationBackend::Adam {
                 learning_rate,
                 beta1,
-                beta2} => {
+                beta2,
+            } => {
                 self.train_adam(training_data, *learning_rate, *beta1, *beta2);
             }
             OptimizationBackend::SGD {
                 learning_rate,
-                momentum} => {
+                momentum,
+            } => {
                 self.train_sgd(training_data, *learning_rate, *momentum);
             }
             _ => {
@@ -855,9 +887,11 @@ impl Default for InferenceEngine {
             optimization_backend: OptimizationBackend::Adam {
                 learning_rate: 0.001,
                 beta1: 0.9,
-                beta2: 0.999},
+                beta2: 0.999,
+            },
             gradient_computation: GradientMethod::ParameterShift,
-            hardware_acceleration: HardwareAcceleration::CPU}
+            hardware_acceleration: HardwareAcceleration::CPU,
+        }
     }
 }
 
@@ -867,7 +901,8 @@ impl QuantumLayer {
         Self {
             qubit_count,
             parameterized_gates: Vec::new(),
-            entangling_structure: EntanglingStructure::Linear}
+            entangling_structure: EntanglingStructure::Linear,
+        }
     }
 
     /// Add a parameterized gate to the layer
@@ -902,7 +937,8 @@ mod tests {
     #[test]
     fn test_ml_decoder_creation() {
         let model_type = MLModelType::NeuralNetwork {
-            layers: vec![10, 5, 2]};
+            layers: vec![10, 5, 2],
+        };
         let decoder = MLDecoder::new(model_type);
 
         // Should have (10*5 + 5) + (5*2 + 2) = 55 + 12 = 67 parameters
@@ -912,7 +948,8 @@ mod tests {
     #[test]
     fn test_neural_network_inference() {
         let model_type = MLModelType::NeuralNetwork {
-            layers: vec![4, 3, 2]};
+            layers: vec![4, 3, 2],
+        };
         let mut decoder = MLDecoder::new(model_type);
 
         // Set some non-zero parameters

@@ -5,6 +5,8 @@
 
 use std::collections::HashMap;
 
+use tokio_stream::Stream;
+
 use super::*;
 use crate::image_processing::candle_backend::CandleImageProcessor;
 
@@ -26,7 +28,8 @@ impl ImageProcessingFactory {
     ) -> ImageProcessingResult<Box<dyn ImageProcessingBackend>> {
         let backend = match backend_type {
             BackendType::Candle => Self::create_candle_backend(config)?,
-            BackendType::Auto => Self::create_auto_backend(config)?};
+            BackendType::Auto => Self::create_auto_backend(config)?,
+        };
 
         Ok(backend)
     }
@@ -38,7 +41,8 @@ impl ImageProcessingFactory {
     ) -> ImageProcessingResult<Box<dyn ImageEmbeddingProvider>> {
         let backend = match backend_type {
             BackendType::Candle => Self::create_candle_embedding_provider(config)?,
-            BackendType::Auto => Self::create_auto_embedding_provider(config)?};
+            BackendType::Auto => Self::create_auto_embedding_provider(config)?,
+        };
 
         Ok(backend)
     }
@@ -51,7 +55,8 @@ impl ImageProcessingFactory {
     ) -> ImageProcessingResult<Box<dyn ImageGenerationProvider>> {
         let backend = match backend_type {
             BackendType::Candle => Self::create_candle_generation_provider(config)?,
-            BackendType::Auto => Self::create_auto_generation_provider(config)?};
+            BackendType::Auto => Self::create_auto_generation_provider(config)?,
+        };
 
         Ok(backend)
     }
@@ -183,7 +188,8 @@ impl ImageProcessingFactory {
             device_type,
             device_index: None,
             memory_limit_mb: None,
-            mixed_precision: matches!(device_type, DeviceType::Cuda | DeviceType::Metal)}
+            mixed_precision: matches!(device_type, DeviceType::Cuda | DeviceType::Metal),
+        }
     }
 
     /// Check CUDA availability
@@ -220,13 +226,15 @@ pub enum BackendType {
     /// Candle ML framework backend
     Candle,
     /// Automatically select best available backend
-    Auto}
+    Auto,
+}
 
 /// Provider registry for managing available backends
 pub struct ProviderRegistry {
     embedding_providers: HashMap<String, Box<dyn ImageEmbeddingProvider>>,
     #[cfg(feature = "generation")]
-    generation_providers: HashMap<String, Box<dyn ImageGenerationProvider>>}
+    generation_providers: HashMap<String, Box<dyn ImageGenerationProvider>>,
+}
 
 impl ProviderRegistry {
     /// Create new provider registry
@@ -234,7 +242,8 @@ impl ProviderRegistry {
         Self {
             embedding_providers: HashMap::new(),
             #[cfg(feature = "generation")]
-            generation_providers: HashMap::new()}
+            generation_providers: HashMap::new(),
+        }
     }
 
     /// Register an embedding provider
@@ -309,13 +318,15 @@ impl Default for ProviderRegistry {
 
 /// Configuration builder for image processing backends
 pub struct BackendConfigBuilder {
-    config: HashMap<String, serde_json::Value>}
+    config: HashMap<String, serde_json::Value>,
+}
 
 impl BackendConfigBuilder {
     /// Create new configuration builder
     pub fn new() -> Self {
         Self {
-            config: HashMap::new()}
+            config: HashMap::new(),
+        }
     }
 
     /// Set device configuration
@@ -390,7 +401,8 @@ pub mod factory_utils {
             device_type,
             device_index: None,
             memory_limit_mb: None,
-            mixed_precision: matches!(device_type, DeviceType::Cuda | DeviceType::Metal)};
+            mixed_precision: matches!(device_type, DeviceType::Cuda | DeviceType::Metal),
+        };
 
         BackendConfigBuilder::new()
             .device_config(device_config)
@@ -404,7 +416,8 @@ pub mod factory_utils {
                 device_type: DeviceType::Cpu,
                 device_index: None,
                 memory_limit_mb: Some(1024), // 1GB limit
-                mixed_precision: false})
+                mixed_precision: false,
+            })
             .batch_size(8)
             .build()
     }
@@ -425,8 +438,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use crossbeam_queue::SegQueue;
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use fluent_ai_async::AsyncStream;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
@@ -462,7 +475,8 @@ pub struct ProcessingStats {
     pub http3_requests: AtomicUsize,
     pub cache_hits: AtomicUsize,
     pub cache_misses: AtomicUsize,
-    pub streaming_operations: AtomicUsize}
+    pub streaming_operations: AtomicUsize,
+}
 
 impl ProcessingStats {
     pub fn new() -> Self {
@@ -473,7 +487,8 @@ impl ProcessingStats {
             http3_requests: AtomicUsize::new(0),
             cache_hits: AtomicUsize::new(0),
             cache_misses: AtomicUsize::new(0),
-            streaming_operations: AtomicUsize::new(0)}
+            streaming_operations: AtomicUsize::new(0),
+        }
     }
 
     pub fn get_stats(&self) -> (usize, u64, usize, usize, usize, usize, usize) {
@@ -495,7 +510,8 @@ pub enum ImageFormat {
     Png,
     Jpeg,
     WebP,
-    Unknown}
+    Unknown,
+}
 
 impl ImageFormat {
     /// Detect format from magic number with zero-allocation validation
@@ -523,7 +539,8 @@ impl ImageFormat {
             ImageFormat::Png => "image/png",
             ImageFormat::Jpeg => "image/jpeg",
             ImageFormat::WebP => "image/webp",
-            ImageFormat::Unknown => "application/octet-stream"}
+            ImageFormat::Unknown => "application/octet-stream",
+        }
     }
 
     /// Get file extension for format
@@ -533,7 +550,8 @@ impl ImageFormat {
             ImageFormat::Png => "png",
             ImageFormat::Jpeg => "jpg",
             ImageFormat::WebP => "webp",
-            ImageFormat::Unknown => "bin"}
+            ImageFormat::Unknown => "bin",
+        }
     }
 }
 
@@ -548,7 +566,8 @@ pub struct AdvancedProcessingConfig {
     pub enable_caching: bool,
     pub memory_limit_mb: Option<usize>,
     pub supported_formats: SmallVec<ImageFormat, 4>,
-    pub quality_settings: QualitySettings}
+    pub quality_settings: QualitySettings,
+}
 
 impl Default for AdvancedProcessingConfig {
     fn default() -> Self {
@@ -565,7 +584,8 @@ impl Default for AdvancedProcessingConfig {
                 ImageFormat::Jpeg,
                 ImageFormat::WebP,
             ]),
-            quality_settings: QualitySettings::default()}
+            quality_settings: QualitySettings::default(),
+        }
     }
 }
 
@@ -576,7 +596,8 @@ pub struct QualitySettings {
     pub png_compression: u8,
     pub webp_quality: u8,
     pub enable_progressive: bool,
-    pub enable_optimization: bool}
+    pub enable_optimization: bool,
+}
 
 impl Default for QualitySettings {
     fn default() -> Self {
@@ -585,7 +606,8 @@ impl Default for QualitySettings {
             png_compression: 6,
             webp_quality: 80,
             enable_progressive: true,
-            enable_optimization: true}
+            enable_optimization: true,
+        }
     }
 }
 
@@ -594,7 +616,8 @@ pub struct AdvancedImageProcessingFactory {
     config: AdvancedProcessingConfig,
     http_client: HttpClient,
     processors: SmallVec<Arc<dyn StreamingImageProcessor + Send + Sync>, 8>,
-    format_cache: Arc<SegQueue<(String, ImageFormat)>>}
+    format_cache: Arc<SegQueue<(String, ImageFormat)>>,
+}
 
 impl AdvancedImageProcessingFactory {
     /// Create new advanced image processing factory
@@ -626,7 +649,8 @@ impl AdvancedImageProcessingFactory {
             config,
             http_client,
             processors,
-            format_cache: Arc::new(SegQueue::new())})
+            format_cache: Arc::new(SegQueue::new()),
+        })
     }
 
     /// Fetch image from URL with HTTP3 streaming
@@ -755,7 +779,10 @@ pub trait StreamingImageProcessor {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         tokio::spawn(async move {
             // Use handle_error! macro for proper internal error handling
-            handle_error!(ImageProcessingError::ProcessingError("Not implemented".to_string()), "Image processing not implemented");
+            handle_error!(
+                ImageProcessingError::ProcessingError("Not implemented".to_string()),
+                "Image processing not implemented"
+            );
         });
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
@@ -766,7 +793,8 @@ pub struct ImageStream {
     inner: Box<dyn Stream<Item = Result<Vec<u8>, HttpError>> + Send + Unpin>,
     chunk_size: usize,
     buffer: Vec<u8>,
-    bytes_read: AtomicU64}
+    bytes_read: AtomicU64,
+}
 
 impl ImageStream {
     pub fn new(
@@ -777,7 +805,8 @@ impl ImageStream {
             inner: stream,
             chunk_size,
             buffer: Vec::with_capacity(chunk_size),
-            bytes_read: AtomicU64::new(0)}
+            bytes_read: AtomicU64::new(0),
+        }
     }
 
     /// Read next chunk with fixed-size buffer
@@ -792,7 +821,8 @@ impl ImageStream {
                         .fetch_add(chunk.len() as u64, Ordering::Relaxed);
                     Ok(Some(chunk))
                 }
-                Err(e) => Err(ImageProcessingError::NetworkError(e.to_string()))}
+                Err(e) => Err(ImageProcessingError::NetworkError(e.to_string())),
+            }
         } else {
             Ok(None)
         }
@@ -808,7 +838,8 @@ impl ImageStream {
 pub struct ProcessedImageStream {
     pub format: ImageFormat,
     pub metadata: ImageMetadata,
-    pub chunks: mpsc::UnboundedReceiver<Result<Vec<u8>, ImageProcessingError>>}
+    pub chunks: mpsc::UnboundedReceiver<Result<Vec<u8>, ImageProcessingError>>,
+}
 
 impl ProcessedImageStream {
     pub fn new(
@@ -819,7 +850,8 @@ impl ProcessedImageStream {
         Self {
             format,
             metadata,
-            chunks}
+            chunks,
+        }
     }
 
     /// Collect all chunks into single buffer
@@ -829,7 +861,8 @@ impl ProcessedImageStream {
         while let Some(chunk_result) = self.chunks.recv().await {
             match chunk_result {
                 Ok(chunk) => result.extend_from_slice(&chunk),
-                Err(e) => return Err(e)}
+                Err(e) => return Err(e),
+            }
         }
 
         Ok(result)
@@ -845,7 +878,8 @@ pub struct ImageMetadata {
     pub color_type: ColorType,
     pub bit_depth: u8,
     pub size_bytes: usize,
-    pub quality: Option<u8>}
+    pub quality: Option<u8>,
+}
 
 /// Color type for image processing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -854,11 +888,13 @@ pub enum ColorType {
     Rgb,
     Rgba,
     Indexed,
-    GrayscaleAlpha}
+    GrayscaleAlpha,
+}
 
 /// PNG streaming processor
 pub struct PngStreamingProcessor {
-    config: AdvancedProcessingConfig}
+    config: AdvancedProcessingConfig,
+}
 
 impl PngStreamingProcessor {
     pub fn new(config: AdvancedProcessingConfig) -> ImageProcessingResult<Self> {
@@ -898,7 +934,8 @@ impl StreamingImageProcessor for PngStreamingProcessor {
                 color_type: ColorType::Rgba,
                 bit_depth: 8,
                 size_bytes: first_chunk.len(),
-                quality: None};
+                quality: None,
+            };
 
             // Process remaining chunks
             tokio::spawn(async move {
@@ -922,7 +959,8 @@ impl StreamingImageProcessor for PngStreamingProcessor {
 
 /// JPEG streaming processor
 pub struct JpegStreamingProcessor {
-    config: AdvancedProcessingConfig}
+    config: AdvancedProcessingConfig,
+}
 
 impl JpegStreamingProcessor {
     pub fn new(config: AdvancedProcessingConfig) -> ImageProcessingResult<Self> {
@@ -962,7 +1000,8 @@ impl StreamingImageProcessor for JpegStreamingProcessor {
                 color_type: ColorType::Rgb,
                 bit_depth: 8,
                 size_bytes: first_chunk.len(),
-                quality: Some(config.quality_settings.jpeg_quality)};
+                quality: Some(config.quality_settings.jpeg_quality),
+            };
 
             // Process remaining chunks
             tokio::spawn(async move {
@@ -986,7 +1025,8 @@ impl StreamingImageProcessor for JpegStreamingProcessor {
 
 /// WebP streaming processor
 pub struct WebPStreamingProcessor {
-    config: AdvancedProcessingConfig}
+    config: AdvancedProcessingConfig,
+}
 
 impl WebPStreamingProcessor {
     pub fn new(config: AdvancedProcessingConfig) -> ImageProcessingResult<Self> {
@@ -1026,7 +1066,8 @@ impl StreamingImageProcessor for WebPStreamingProcessor {
                 color_type: ColorType::Rgba,
                 bit_depth: 8,
                 size_bytes: first_chunk.len(),
-                quality: Some(config.quality_settings.webp_quality)};
+                quality: Some(config.quality_settings.webp_quality),
+            };
 
             // Process remaining chunks
             tokio::spawn(async move {
@@ -1065,8 +1106,9 @@ pub mod batch_processing {
             let result = async {
                 let stream = factory.fetch_image_stream(url).await?;
                 factory.process_image_stream(stream).await
-            }.await;
-            
+            }
+            .await;
+
             match result {
                 Ok(processed_stream) => {
                     results.push(processed_stream);
@@ -1095,7 +1137,8 @@ pub struct ParallelProcessingPipeline {
     factory: Arc<AdvancedImageProcessingFactory>,
     max_workers: usize,
     task_queue: Arc<SegQueue<ProcessingTask>>,
-    worker_handles: Vec<tokio::task::JoinHandle<()>>}
+    worker_handles: Vec<tokio::task::JoinHandle<()>>,
+}
 
 impl ParallelProcessingPipeline {
     pub fn new(factory: Arc<AdvancedImageProcessingFactory>, max_workers: usize) -> Self {
@@ -1123,7 +1166,8 @@ impl ParallelProcessingPipeline {
             factory,
             max_workers,
             task_queue,
-            worker_handles}
+            worker_handles,
+        }
     }
 
     /// Submit processing task
@@ -1142,7 +1186,8 @@ impl ParallelProcessingPipeline {
 /// Processing task for parallel pipeline
 pub struct ProcessingTask {
     pub url: String,
-    pub result_sender: tokio::sync::oneshot::Sender<ImageProcessingResult<ProcessedImageStream>>}
+    pub result_sender: tokio::sync::oneshot::Sender<ImageProcessingResult<ProcessedImageStream>>,
+}
 
 impl ProcessingTask {
     pub fn new(

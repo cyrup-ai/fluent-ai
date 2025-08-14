@@ -27,7 +27,8 @@ pub mod types {
         /// Optional message ID
         pub id: Option<String>,
         /// Optional timestamp
-        pub timestamp: Option<u64>}
+        pub timestamp: Option<u64>,
+    }
 
     /// Role of the message sender
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -40,7 +41,8 @@ pub mod types {
         /// Message from the assistant
         Assistant,
         /// Message from a tool or function
-        Tool}
+        Tool,
+    }
 
     impl Message {
         /// Create a new message with the given role and content
@@ -54,7 +56,8 @@ pub mod types {
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap_or_default()
                         .as_secs(),
-                )}
+                ),
+            }
         }
     }
 
@@ -64,7 +67,8 @@ pub mod types {
                 MessageRole::System => write!(f, "system"),
                 MessageRole::User => write!(f, "user"),
                 MessageRole::Assistant => write!(f, "assistant"),
-                MessageRole::Tool => write!(f, "tool")}
+                MessageRole::Tool => write!(f, "tool"),
+            }
         }
     }
 
@@ -74,7 +78,8 @@ pub mod types {
         /// The content of this chunk
         pub content: String,
         /// Whether this is the last chunk
-        pub done: bool}
+        pub done: bool,
+    }
 
     /// Type classification for messages
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -88,7 +93,8 @@ pub mod types {
         /// Information message
         Info,
         /// Agent chat message
-        AgentChat}
+        AgentChat,
+    }
 
     /// Message specifically for search operations
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,7 +104,8 @@ pub mod types {
         /// Search relevance score
         pub relevance_score: f64,
         /// Optional highlighting information
-        pub highlights: Vec<String>}
+        pub highlights: Vec<String>,
+    }
 }
 
 /// Media type handling for messages
@@ -181,33 +188,35 @@ pub mod media {
                 "image/png" => Some(MediaType::Image(ImageMediaType::Png)),
                 "image/gif" => Some(MediaType::Image(ImageMediaType::Gif)),
                 "image/webp" => Some(MediaType::Image(ImageMediaType::WebP)),
-                
+
                 // Document types
                 "application/pdf" => Some(MediaType::Document(DocumentMediaType::Pdf)),
                 "text/plain" => Some(MediaType::Document(DocumentMediaType::Text)),
                 "text/html" => Some(MediaType::Document(DocumentMediaType::Html)),
                 "text/markdown" => Some(MediaType::Document(DocumentMediaType::Markdown)),
-                
+
                 // Audio types
                 "audio/mpeg" => Some(MediaType::Audio(AudioMediaType::Mp3)),
                 "audio/wav" => Some(MediaType::Audio(AudioMediaType::Wav)),
                 "audio/ogg" => Some(MediaType::Audio(AudioMediaType::Ogg)),
-                
+
                 // Video types
                 "video/mp4" => Some(MediaType::Video(VideoMediaType::Mp4)),
                 "video/webm" => Some(MediaType::Video(VideoMediaType::WebM)),
-                
+
                 // Handle unknown types
-                mime_type if mime_type.starts_with("image/") => {
-                    Some(MediaType::Image(ImageMediaType::Other(mime_type.to_string())))
-                }
-                mime_type if mime_type.starts_with("audio/") => {
-                    Some(MediaType::Audio(AudioMediaType::Other(mime_type.to_string())))
-                }
-                mime_type if mime_type.starts_with("video/") => {
-                    Some(MediaType::Video(VideoMediaType::Other(mime_type.to_string())))
-                }
-                _ => Some(MediaType::Document(DocumentMediaType::Other(mime_type.to_string()))),
+                mime_type if mime_type.starts_with("image/") => Some(MediaType::Image(
+                    ImageMediaType::Other(mime_type.to_string()),
+                )),
+                mime_type if mime_type.starts_with("audio/") => Some(MediaType::Audio(
+                    AudioMediaType::Other(mime_type.to_string()),
+                )),
+                mime_type if mime_type.starts_with("video/") => Some(MediaType::Video(
+                    VideoMediaType::Other(mime_type.to_string()),
+                )),
+                _ => Some(MediaType::Document(DocumentMediaType::Other(
+                    mime_type.to_string(),
+                ))),
             }
         }
 
@@ -298,15 +307,14 @@ pub mod processing {
 }
 
 // Re-export commonly used types (MessageChunk and MessageRole are used throughout the codebase)
-pub use types::{Message, MessageChunk, MessageRole, MessageType, SearchChatMessage};
 pub use error::MessageError;
-pub use media::{MediaType, ImageMediaType, DocumentMediaType, AudioMediaType, VideoMediaType};
-
-// Import ToolCall from HTTP module for message processing
-pub use crate::http::{ToolCall, ToolCallType, FunctionCall};
-
 // Alias for backward compatibility - some code expects MimeType instead of MediaType
 pub use media::MediaType as MimeType;
+pub use media::{AudioMediaType, DocumentMediaType, ImageMediaType, MediaType, VideoMediaType};
+pub use types::{Message, MessageChunk, MessageRole, MessageType, SearchChatMessage};
+
+// Import ToolCall from HTTP module for message processing
+pub use crate::http::{FunctionCall, ToolCall, ToolCallType};
 
 #[cfg(test)]
 mod tests {
@@ -318,7 +326,8 @@ mod tests {
             role: MessageRole::User,
             content: "Hello, world!".to_string(),
             id: Some("123".to_string()),
-            timestamp: Some(1234567890)};
+            timestamp: Some(1234567890),
+        };
 
         assert_eq!(message.role, MessageRole::User);
         assert_eq!(message.content, "Hello, world!");
@@ -330,7 +339,8 @@ mod tests {
             role: MessageRole::User,
             content: "  Hello, world!  ".to_string(),
             id: None,
-            timestamp: None};
+            timestamp: None,
+        };
 
         processing::process_message(&mut message).unwrap();
         assert_eq!(message.content, "Hello, world!");

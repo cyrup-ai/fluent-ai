@@ -4,18 +4,16 @@
 //! data structures and high-performance SIMD-optimized operations.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::sync::RwLock;
 
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 
+use super::types::{IndexEntry, SearchError, SearchStatistics, TermFrequency};
 use crate::domain::chat::message::CandleSearchChatMessage as SearchChatMessage;
-use super::types::{
-    SearchError, SearchStatistics, TermFrequency, IndexEntry,
-};
 
 /// Chat search index with SIMD optimization
 pub struct ChatSearchIndex {
@@ -214,9 +212,6 @@ impl ChatSearchIndex {
     pub fn document_store(&self) -> &SkipMap<Arc<str>, SearchChatMessage> {
         &self.document_store
     }
-
-
-
 
     /// Update search statistics with performance tracking
     pub fn update_statistics(&self) {

@@ -4,21 +4,32 @@
 
 use std::sync::Arc;
 
-use crate::domain::chat::templates::core::{TemplateError as CandleTemplateError, TemplateResult as CandleTemplateResult, TemplateValue as CandleTemplateValue};
+use crate::domain::chat::templates::core::{
+    TemplateError as CandleTemplateError, TemplateResult as CandleTemplateResult,
+    TemplateValue as CandleTemplateValue,
+};
 
 /// Template filter function type
-pub type FilterFunction =
-    Arc<dyn Fn(&CandleTemplateValue, &[CandleTemplateValue]) -> CandleTemplateResult<CandleTemplateValue> + Send + Sync>;
+pub type FilterFunction = Arc<
+    dyn Fn(
+            &CandleTemplateValue,
+            &[CandleTemplateValue],
+        ) -> CandleTemplateResult<CandleTemplateValue>
+        + Send
+        + Sync,
+>;
 
 /// Filter registry for managing template filters
 pub struct FilterRegistry {
-    filters: std::collections::HashMap<Arc<str>, FilterFunction>}
+    filters: std::collections::HashMap<Arc<str>, FilterFunction>,
+}
 
 impl FilterRegistry {
     /// Create a new filter registry
     pub fn new() -> Self {
         Self {
-            filters: std::collections::HashMap::new()}
+            filters: std::collections::HashMap::new(),
+        }
     }
 
     /// Create a registry with default filters
@@ -48,7 +59,9 @@ impl FilterRegistry {
         match self.get(name) {
             Some(filter) => filter(value, args),
             None => Err(CandleTemplateError::RenderError {
-                message: Arc::from(format!("Unknown filter: {}", name))})}
+                message: Arc::from(format!("Unknown filter: {}", name)),
+            }),
+        }
     }
 
     /// Register default filters
@@ -57,27 +70,39 @@ impl FilterRegistry {
         self.register(
             "uppercase",
             Arc::new(|value, _args| match value {
-                CandleTemplateValue::String(s) => Ok(CandleTemplateValue::String(Arc::from(s.to_uppercase()))),
+                CandleTemplateValue::String(s) => {
+                    Ok(CandleTemplateValue::String(Arc::from(s.to_uppercase())))
+                }
                 _ => Err(CandleTemplateError::RenderError {
-                    message: Arc::from("uppercase filter can only be applied to strings")})}),
+                    message: Arc::from("uppercase filter can only be applied to strings"),
+                }),
+            }),
         );
 
         // lowercase filter
         self.register(
             "lowercase",
             Arc::new(|value, _args| match value {
-                CandleTemplateValue::String(s) => Ok(CandleTemplateValue::String(Arc::from(s.to_lowercase()))),
+                CandleTemplateValue::String(s) => {
+                    Ok(CandleTemplateValue::String(Arc::from(s.to_lowercase())))
+                }
                 _ => Err(CandleTemplateError::RenderError {
-                    message: Arc::from("lowercase filter can only be applied to strings")})}),
+                    message: Arc::from("lowercase filter can only be applied to strings"),
+                }),
+            }),
         );
 
         // trim filter
         self.register(
             "trim",
             Arc::new(|value, _args| match value {
-                CandleTemplateValue::String(s) => Ok(CandleTemplateValue::String(Arc::from(s.trim()))),
+                CandleTemplateValue::String(s) => {
+                    Ok(CandleTemplateValue::String(Arc::from(s.trim())))
+                }
                 _ => Err(CandleTemplateError::RenderError {
-                    message: Arc::from("trim filter can only be applied to strings")})}),
+                    message: Arc::from("trim filter can only be applied to strings"),
+                }),
+            }),
         );
 
         // length filter
@@ -85,9 +110,13 @@ impl FilterRegistry {
             "length",
             Arc::new(|value, _args| match value {
                 CandleTemplateValue::String(s) => Ok(CandleTemplateValue::Number(s.len() as f64)),
-                CandleTemplateValue::Array(arr) => Ok(CandleTemplateValue::Number(arr.len() as f64)),
+                CandleTemplateValue::Array(arr) => {
+                    Ok(CandleTemplateValue::Number(arr.len() as f64))
+                }
                 _ => Err(CandleTemplateError::RenderError {
-                    message: Arc::from("length filter can only be applied to strings or arrays")})}),
+                    message: Arc::from("length filter can only be applied to strings or arrays"),
+                }),
+            }),
         );
 
         // default filter
@@ -97,7 +126,8 @@ impl FilterRegistry {
                 let is_empty = match value {
                     CandleTemplateValue::String(s) => s.is_empty(),
                     CandleTemplateValue::Null => true,
-                    _ => false};
+                    _ => false,
+                };
 
                 if is_empty && !args.is_empty() {
                     Ok(args[0].clone())

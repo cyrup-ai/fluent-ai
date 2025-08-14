@@ -92,7 +92,6 @@ pub struct CompletionCoreRequest<'a> {
 }
 
 impl<'a> CompletionCoreRequest<'a> {
-
     /// Get the prompt as a string slice
     #[inline(always)]
     pub fn prompt(&self) -> &[u8] {
@@ -131,7 +130,6 @@ pub struct CompletionCoreResponse {
 }
 
 impl CompletionCoreResponse {
-
     /// Get the generated text as a string slice
     #[inline(always)]
     pub fn text(&self) -> CompletionCoreResult<&str> {

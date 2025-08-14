@@ -27,7 +27,8 @@ pub struct VectorIndexConfig {
     pub index_type: IndexType,
 
     /// Additional index-specific parameters
-    pub parameters: HashMap<String, serde_json::Value>}
+    pub parameters: HashMap<String, serde_json::Value>,
+}
 
 /// Types of vector indexes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,7 +43,8 @@ pub enum IndexType {
     /// Locality Sensitive Hashing
     LSH,
     /// Annoy (Approximate Nearest Neighbors Oh Yeah)
-    Annoy}
+    Annoy,
+}
 
 /// Vector index trait
 pub trait VectorIndex: Send + Sync {
@@ -70,14 +72,16 @@ pub trait VectorIndex: Send + Sync {
 /// Flat (brute-force) vector index
 pub struct FlatIndex {
     config: VectorIndexConfig,
-    vectors: HashMap<String, Vec<f32>>}
+    vectors: HashMap<String, Vec<f32>>,
+}
 
 impl FlatIndex {
     /// Create a new flat index
     pub fn new(config: VectorIndexConfig) -> Self {
         Self {
             config,
-            vectors: HashMap::new()}
+            vectors: HashMap::new(),
+        }
     }
 
     /// Calculate distance between two vectors
@@ -100,7 +104,8 @@ impl FlatIndex {
                     1.0 - (dot_product / (norm_a * norm_b))
                 }
             }
-            DistanceMetric::DotProduct => -a.iter().zip(b.iter()).map(|(x, y)| x * y).sum::<f32>()}
+            DistanceMetric::DotProduct => -a.iter().zip(b.iter()).map(|(x, y)| x * y).sum::<f32>(),
+        }
     }
 }
 
@@ -161,12 +166,14 @@ impl VectorIndex for FlatIndex {
 /// Custom point type for instant-distance HNSW
 #[derive(Debug, Clone)]
 pub struct VectorPoint {
-    pub data: Vec<f32>}
+    pub data: Vec<f32>,
+}
 
 /// Space implementation for different distance metrics
 #[derive(Debug, Clone)]
 pub struct ConfigurableSpace {
-    metric: DistanceMetric}
+    metric: DistanceMetric,
+}
 
 impl ConfigurableSpace {
     pub fn new(metric: DistanceMetric) -> Self {
@@ -177,7 +184,8 @@ impl ConfigurableSpace {
         match self.metric {
             DistanceMetric::Cosine => cosine_distance(&a.data, &b.data),
             DistanceMetric::Euclidean => euclidean_distance(&a.data, &b.data),
-            DistanceMetric::DotProduct => dot_product_distance(&a.data, &b.data)}
+            DistanceMetric::DotProduct => dot_product_distance(&a.data, &b.data),
+        }
     }
 }
 
@@ -201,7 +209,8 @@ pub struct HNSWIndex {
     /// Atomic counter for generating internal indices
     next_index: std::sync::atomic::AtomicUsize,
     /// Space configuration for distance metric
-    space: ConfigurableSpace}
+    space: ConfigurableSpace,
+}
 
 impl HNSWIndex {
     /// Create a new HNSW index with production configuration
@@ -218,7 +227,8 @@ impl HNSWIndex {
             index_to_id: Arc::new(DashMap::new()),
             vectors: Arc::new(DashMap::new()),
             next_index: std::sync::atomic::AtomicUsize::new(0),
-            space}
+            space,
+        }
     }
 
     /// Get the index configuration
@@ -273,7 +283,8 @@ impl HNSWIndex {
             ef_construction,
             max_m,
             max_m0,
-            ml}
+            ml,
+        }
     }
 
     /// Rebuild the HNSW index with current vectors
@@ -347,7 +358,8 @@ struct HNSWParams {
     #[allow(dead_code)]
     max_m0: usize,
     /// Level generation factor (mL)
-    ml: f64}
+    ml: f64,
+}
 
 impl VectorIndex for HNSWIndex {
     fn add(&mut self, id: String, vector: Vec<f32>) -> Result<()> {
@@ -421,7 +433,8 @@ impl VectorIndex for HNSWIndex {
 
         // Create query point
         let query_point = VectorPoint {
-            data: query.to_vec()};
+            data: query.to_vec(),
+        };
 
         match &self.hnsw {
             Some(hnsw) => {
@@ -536,7 +549,8 @@ mod tests {
             metric: DistanceMetric::Cosine,
             dimensions: 3,
             index_type: IndexType::Flat,
-            parameters: HashMap::new()};
+            parameters: HashMap::new(),
+        };
 
         let mut index = FlatIndex::new(config);
 
@@ -566,7 +580,8 @@ mod tests {
             metric: DistanceMetric::Cosine,
             dimensions: 4,
             index_type: IndexType::HNSW,
-            parameters: HashMap::new()};
+            parameters: HashMap::new(),
+        };
 
         // Configure HNSW parameters for testing
         config.parameters.insert(
@@ -638,7 +653,8 @@ mod tests {
             metric: DistanceMetric::Cosine,
             dimensions: 3,
             index_type: IndexType::HNSW,
-            parameters: HashMap::new()};
+            parameters: HashMap::new(),
+        };
 
         let index = VectorIndexFactory::create(config);
         assert_eq!(index.len(), 0);

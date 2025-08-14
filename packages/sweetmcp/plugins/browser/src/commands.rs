@@ -82,6 +82,7 @@ pub struct RunAutomationCommand {
 
 /// Command execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct CommandResult {
     pub success: bool,
     pub message: String,

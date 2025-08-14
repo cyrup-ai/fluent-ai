@@ -1,11 +1,10 @@
-
 use arrayvec::ArrayVec;
 use smallvec::SmallVec;
+
 use crate::domain::completion::{
-    CompletionCoreRequest, CompletionCoreResponse, 
-    CompletionCoreResult, CompletionCoreError,
+    candle::{MAX_PROMPT_SIZE, MAX_RESPONSE_SIZE, MAX_STOP_TOKENS, MAX_TOKEN_BUFFER},
     types::CandleModelParams as ModelParams,
-    candle::{MAX_PROMPT_SIZE, MAX_RESPONSE_SIZE, MAX_STOP_TOKENS, MAX_TOKEN_BUFFER}
+    CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse, CompletionCoreResult,
 };
 
 /// Zero-allocation completion request builder for high-performance use cases
@@ -123,9 +122,9 @@ impl<'a> CompletionCoreRequestBuilder<'a> {
         Ok(CompletionCoreRequest::from_builder(
             self.prompt,
             self.max_tokens,
-            self.temperature.into(),  // f32 -> f64
+            self.temperature.into(), // f32 -> f64
             self.top_k,
-            self.top_p.into(),  // f32 -> f64
+            self.top_p.into(), // f32 -> f64
             self.stop_tokens,
             self.stream,
             self.model_params,

@@ -1,19 +1,19 @@
 //! Completion request types and builders
-//! 
+//!
 //! Contains request structures and builder patterns for completion functionality.
 
 // Removed unused import: std::borrow::Cow
 use std::num::NonZeroU64;
 
+use cyrup_sugars::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
 use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE};
-use crate::domain::http::requests::completion::ToolDefinition;
-use cyrup_sugars::ZeroOneOrMany;
 use crate::domain::chat::message::types::CandleMessage as ChatMessage;
 use crate::domain::context::CandleDocument as Document;
+use crate::domain::http::requests::completion::ToolDefinition;
 use crate::domain::model::{ValidationError, ValidationResult};
 
 /// A request for text completion
@@ -46,10 +46,10 @@ pub enum CompletionRequestError {
 
     /// Validation error
     #[error(transparent)]
-    Validation(#[from] ValidationError)}
+    Validation(#[from] ValidationError),
+}
 
 impl CompletionRequest {
-
     /// Validate the request parameters
     pub fn validate(&self) -> ValidationResult<()> {
         // Validate temperature
@@ -61,7 +61,8 @@ impl CompletionRequest {
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
                     TEMPERATURE_RANGE.end()
-                )});
+                ),
+            });
         }
 
         // Validate max_tokens
@@ -70,7 +71,8 @@ impl CompletionRequest {
                 return Err(ValidationError::InvalidRange {
                     field: "max_tokens".into(),
                     value: max_tokens.to_string(),
-                    expected: format!("less than or equal to {}", MAX_TOKENS)});
+                    expected: format!("less than or equal to {}", MAX_TOKENS),
+                });
             }
         }
 
@@ -80,7 +82,8 @@ impl CompletionRequest {
                 return Err(ValidationError::InvalidRange {
                     field: "chunk_size".into(),
                     value: chunk_size.to_string(),
-                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE)});
+                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE),
+                });
             }
         }
 
@@ -98,6 +101,7 @@ impl CompletionRequest {
             temperature: self.temperature,
             max_tokens: self.max_tokens,
             chunk_size: self.chunk_size,
-            additional_params: self.additional_params}
+            additional_params: self.additional_params,
+        }
     }
 }

@@ -3,13 +3,14 @@
 //! Provides blazing-fast event streaming and execution context management
 //! with owned strings allocated once for maximum performance. No Arc usage, no locking.
 
-use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::AsyncStreamSender;
-use super::commands::{ImmutableChatCommand, CommandExecutionResult, OutputType};
+use serde::{Deserialize, Serialize};
+
+use super::commands::{CommandExecutionResult, ImmutableChatCommand, OutputType};
 use super::metadata::ResourceUsage;
+use crate::AsyncStreamSender;
 
 /// Command execution context with owned strings allocated once for performance
 #[derive(Debug)]
@@ -46,13 +47,13 @@ impl CommandExecutionContext {
     pub fn new(
         execution_id: u64,
         command_name: impl Into<String>,
-        environment: impl Into<String>
+        environment: impl Into<String>,
     ) -> Self {
         let start_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_micros() as u64)
             .unwrap_or(0);
-            
+
         Self {
             execution_id,
             command_name: command_name.into(),
@@ -61,49 +62,49 @@ impl CommandExecutionContext {
             user_id: None,
             session_id: None,
             environment: environment.into(),
-            priority: 128, // Default medium priority
+            priority: 128,      // Default medium priority
             timeout_ms: 30_000, // Default 30 second timeout
             metadata: None,
             execution_counter: AtomicU64::new(0),
             event_counter: AtomicUsize::new(0),
         }
     }
-    
+
     /// Set user identifier - builder pattern for fluent API
     #[inline]
     pub fn with_user_id(mut self, user_id: impl Into<String>) -> Self {
         self.user_id = Some(user_id.into());
         self
     }
-    
+
     /// Set session identifier - builder pattern for fluent API
     #[inline]
     pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
         self.session_id = Some(session_id.into());
         self
     }
-    
+
     /// Set execution priority - builder pattern for fluent API
     #[inline]
     pub fn with_priority(mut self, priority: u8) -> Self {
         self.priority = priority;
         self
     }
-    
+
     /// Set execution timeout - builder pattern for fluent API
     #[inline]
     pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = timeout_ms;
         self
     }
-    
+
     /// Set metadata - builder pattern for fluent API
     #[inline]
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
         self.metadata = Some(metadata);
         self
     }
-    
+
     /// Get elapsed execution time in microseconds
     #[inline]
     pub fn elapsed_time_us(&self) -> u64 {
@@ -113,13 +114,13 @@ impl CommandExecutionContext {
             .unwrap_or(self.start_time);
         current_time.saturating_sub(self.start_time)
     }
-    
+
     /// Check if execution has timed out
     #[inline]
     pub fn is_timed_out(&self) -> bool {
         self.elapsed_time_us() > (self.timeout_ms * 1000)
     }
-    
+
     /// Get remaining time in microseconds before timeout
     #[inline]
     pub fn remaining_time_us(&self) -> u64 {
@@ -258,14 +259,10 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create progress event with zero allocation constructor
     #[inline]
-    pub fn progress(
-        execution_id: u64,
-        progress: f32,
-        message: String
-    ) -> Self {
+    pub fn progress(execution_id: u64, progress: f32, message: String) -> Self {
         Self::Progress {
             execution_id,
             progress,
@@ -273,14 +270,10 @@ impl CommandEvent {
             timestamp: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create output event with zero allocation constructor
-    #[inline] 
-    pub fn output(
-        execution_id: u64,
-        output: impl Into<String>,
-        output_type: OutputType
-    ) -> Self {
+    #[inline]
+    pub fn output(execution_id: u64, output: impl Into<String>, output_type: OutputType) -> Self {
         Self::Output {
             execution_id,
             content: output.into(),
@@ -288,14 +281,14 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create completed event with zero allocation constructor
     #[inline]
     pub fn completed(
         execution_id: u64,
         result: CommandExecutionResult,
         duration_us: u64,
-        resource_usage: ResourceUsage
+        resource_usage: ResourceUsage,
     ) -> Self {
         Self::Completed {
             execution_id,
@@ -305,7 +298,7 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create failed event with zero allocation constructor
     #[inline]
     pub fn failed(
@@ -313,7 +306,7 @@ impl CommandEvent {
         error: impl Into<String>,
         error_code: u32,
         duration_us: u64,
-        resource_usage: ResourceUsage
+        resource_usage: ResourceUsage,
     ) -> Self {
         Self::Failed {
             execution_id,
@@ -324,14 +317,14 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create cancelled event with zero allocation constructor
     #[inline]
     pub fn cancelled(
         execution_id: u64,
         reason: impl Into<String>,
         duration_us: u64,
-        resource_usage: ResourceUsage
+        resource_usage: ResourceUsage,
     ) -> Self {
         Self::Cancelled {
             execution_id,
@@ -341,14 +334,10 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create warning event with zero allocation constructor
     #[inline]
-    pub fn warning(
-        execution_id: u64,
-        message: impl Into<String>,
-        severity: u8
-    ) -> Self {
+    pub fn warning(execution_id: u64, message: impl Into<String>, severity: u8) -> Self {
         Self::Warning {
             execution_id,
             message: message.into(),
@@ -356,14 +345,14 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Create resource alert event with zero allocation constructor
     #[inline]
     pub fn resource_alert(
         execution_id: u64,
         resource_type: impl Into<String>,
         current_value: u64,
-        threshold_value: u64
+        threshold_value: u64,
     ) -> Self {
         Self::ResourceAlert {
             execution_id,
@@ -373,7 +362,7 @@ impl CommandEvent {
             timestamp_us: Self::current_timestamp_us(),
         }
     }
-    
+
     /// Get current timestamp in microseconds since epoch
     #[inline]
     fn current_timestamp_us() -> u64 {
@@ -382,61 +371,64 @@ impl CommandEvent {
             .map(|d| d.as_micros() as u64)
             .unwrap_or(0)
     }
-    
+
     /// Get execution ID from any event type
     #[inline]
     pub const fn execution_id(&self) -> u64 {
         match self {
-            Self::Started { execution_id, .. } |
-            Self::Progress { execution_id, .. } |
-            Self::Output { execution_id, .. } |
-            Self::Completed { execution_id, .. } |
-            Self::Failed { execution_id, .. } |
-            Self::Cancelled { execution_id, .. } |
-            Self::Warning { execution_id, .. } |
-            Self::ResourceAlert { execution_id, .. } => *execution_id,
+            Self::Started { execution_id, .. }
+            | Self::Progress { execution_id, .. }
+            | Self::Output { execution_id, .. }
+            | Self::Completed { execution_id, .. }
+            | Self::Failed { execution_id, .. }
+            | Self::Cancelled { execution_id, .. }
+            | Self::Warning { execution_id, .. }
+            | Self::ResourceAlert { execution_id, .. } => *execution_id,
         }
     }
-    
+
     /// Get timestamp from any event type
     #[inline]
     pub const fn timestamp_us(&self) -> u64 {
         match self {
-            Self::Started { timestamp_us, .. } |
-            Self::Output { timestamp_us, .. } |
-            Self::Completed { timestamp_us, .. } |
-            Self::Failed { timestamp_us, .. } |
-            Self::Cancelled { timestamp_us, .. } |
-            Self::Warning { timestamp_us, .. } |
-            Self::ResourceAlert { timestamp_us, .. } => *timestamp_us,
+            Self::Started { timestamp_us, .. }
+            | Self::Output { timestamp_us, .. }
+            | Self::Completed { timestamp_us, .. }
+            | Self::Failed { timestamp_us, .. }
+            | Self::Cancelled { timestamp_us, .. }
+            | Self::Warning { timestamp_us, .. }
+            | Self::ResourceAlert { timestamp_us, .. } => *timestamp_us,
             Self::Progress { timestamp, .. } => *timestamp,
         }
     }
-    
+
     /// Check if event indicates completion (success, failure, or cancellation)
     #[inline]
     pub const fn is_terminal(&self) -> bool {
-        matches!(self, Self::Completed { .. } | Self::Failed { .. } | Self::Cancelled { .. })
+        matches!(
+            self,
+            Self::Completed { .. } | Self::Failed { .. } | Self::Cancelled { .. }
+        )
     }
-    
+
     /// Check if event indicates success
     #[inline]
     pub const fn is_success(&self) -> bool {
         matches!(self, Self::Completed { .. })
     }
-    
+
     /// Check if event indicates failure
     #[inline]
     pub const fn is_failure(&self) -> bool {
         matches!(self, Self::Failed { .. })
     }
-    
+
     /// Check if event indicates cancellation
     #[inline]
     pub const fn is_cancelled(&self) -> bool {
         matches!(self, Self::Cancelled { .. })
     }
-    
+
     /// Get event severity level for filtering and monitoring
     #[inline]
     pub const fn severity(&self) -> u8 {
@@ -482,7 +474,7 @@ impl StreamingCommandExecutor {
             event_sender: None,
         }
     }
-    
+
     /// Create with event sender for streaming events
     #[inline]
     pub fn with_event_sender(event_sender: AsyncStreamSender<CommandEvent>) -> Self {
@@ -495,14 +487,14 @@ impl StreamingCommandExecutor {
             event_sender: Some(event_sender),
         }
     }
-    
+
     /// Start new command execution and return unique ID
     #[inline]
     pub fn start_execution(&self, command: &ImmutableChatCommand) -> u64 {
         let execution_id = self.execution_counter.fetch_add(1, Ordering::Relaxed);
         self.active_executions.fetch_add(1, Ordering::Relaxed);
         self.total_executions.fetch_add(1, Ordering::Relaxed);
-        
+
         // Send started event if sender available
         if let Some(ref sender) = self.event_sender {
             let event = CommandEvent::started(command.clone(), execution_id);
@@ -510,10 +502,10 @@ impl StreamingCommandExecutor {
                 // Event channel closed, continue execution
             }
         }
-        
+
         execution_id
     }
-    
+
     /// Mark execution as completed successfully
     #[inline]
     pub fn complete_execution(
@@ -521,11 +513,11 @@ impl StreamingCommandExecutor {
         execution_id: u64,
         result: CommandExecutionResult,
         duration_us: u64,
-        resource_usage: ResourceUsage
+        resource_usage: ResourceUsage,
     ) {
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
         self.successful_executions.fetch_add(1, Ordering::Relaxed);
-        
+
         // Send completed event if sender available
         if let Some(ref sender) = self.event_sender {
             let event = CommandEvent::completed(execution_id, result, duration_us, resource_usage);
@@ -534,7 +526,7 @@ impl StreamingCommandExecutor {
             }
         }
     }
-    
+
     /// Mark execution as failed
     #[inline]
     pub fn fail_execution(
@@ -543,20 +535,21 @@ impl StreamingCommandExecutor {
         error: impl Into<String>,
         error_code: u32,
         duration_us: u64,
-        resource_usage: ResourceUsage
+        resource_usage: ResourceUsage,
     ) {
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
         self.failed_executions.fetch_add(1, Ordering::Relaxed);
-        
+
         // Send failed event if sender available
         if let Some(ref sender) = self.event_sender {
-            let event = CommandEvent::failed(execution_id, error, error_code, duration_us, resource_usage);
+            let event =
+                CommandEvent::failed(execution_id, error, error_code, duration_us, resource_usage);
             if sender.send(event).is_err() {
                 // Event channel closed, continue
             }
         }
     }
-    
+
     /// Cancel command execution
     #[inline]
     pub fn cancel_execution(
@@ -564,10 +557,10 @@ impl StreamingCommandExecutor {
         execution_id: u64,
         reason: impl Into<String>,
         duration_us: u64,
-        resource_usage: ResourceUsage
+        resource_usage: ResourceUsage,
     ) {
         self.active_executions.fetch_sub(1, Ordering::Relaxed);
-        
+
         // Send cancelled event if sender available
         if let Some(ref sender) = self.event_sender {
             let event = CommandEvent::cancelled(execution_id, reason, duration_us, resource_usage);
@@ -576,15 +569,10 @@ impl StreamingCommandExecutor {
             }
         }
     }
-    
+
     /// Send progress update
     #[inline]
-    pub fn send_progress(
-        &self,
-        execution_id: u64,
-        progress: f32,
-        message: Option<String>
-    ) {
+    pub fn send_progress(&self, execution_id: u64, progress: f32, message: Option<String>) {
         if let Some(ref sender) = self.event_sender {
             let event = CommandEvent::progress(execution_id, progress, message.unwrap_or_default());
             if sender.send(event).is_err() {
@@ -592,14 +580,14 @@ impl StreamingCommandExecutor {
             }
         }
     }
-    
+
     /// Send output data
     #[inline]
     pub fn send_output(
         &self,
         execution_id: u64,
         output: impl Into<String>,
-        output_type: OutputType
+        output_type: OutputType,
     ) {
         if let Some(ref sender) = self.event_sender {
             let event = CommandEvent::output(execution_id, output, output_type);
@@ -608,15 +596,10 @@ impl StreamingCommandExecutor {
             }
         }
     }
-    
+
     /// Send warning
     #[inline]
-    pub fn send_warning(
-        &self,
-        execution_id: u64,
-        message: impl Into<String>,
-        severity: u8
-    ) {
+    pub fn send_warning(&self, execution_id: u64, message: impl Into<String>, severity: u8) {
         if let Some(ref sender) = self.event_sender {
             let event = CommandEvent::warning(execution_id, message, severity);
             if sender.send(event).is_err() {
@@ -624,7 +607,7 @@ impl StreamingCommandExecutor {
             }
         }
     }
-    
+
     /// Get execution statistics (atomic reads) - zero allocation
     #[inline]
     pub fn stats(&self) -> CommandExecutorStats {
@@ -635,7 +618,7 @@ impl StreamingCommandExecutor {
             failed_executions: self.failed_executions.load(Ordering::Relaxed),
         }
     }
-    
+
     /// Get next execution ID without starting execution
     #[inline]
     pub fn peek_next_execution_id(&self) -> u64 {
@@ -674,13 +657,13 @@ impl CommandExecutorStats {
             (self.successful_executions as f64 / completed as f64) * 100.0
         }
     }
-    
+
     /// Calculate failure rate as percentage - zero allocation
     #[inline]
     pub const fn failure_rate(&self) -> f64 {
         100.0 - self.success_rate()
     }
-    
+
     /// Get completion rate (completed vs total) - zero allocation
     #[inline]
     pub const fn completion_rate(&self) -> f64 {
@@ -691,13 +674,13 @@ impl CommandExecutorStats {
             (completed as f64 / self.total_executions as f64) * 100.0
         }
     }
-    
+
     /// Check if any executions are currently active
     #[inline]
     pub const fn has_active_executions(&self) -> bool {
         self.active_executions > 0
     }
-    
+
     /// Check if system is idle (no active executions)
     #[inline]
     pub const fn is_idle(&self) -> bool {
@@ -709,11 +692,26 @@ impl std::fmt::Debug for StreamingCommandExecutor {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StreamingCommandExecutor")
-            .field("execution_counter", &self.execution_counter.load(Ordering::Relaxed))
-            .field("active_executions", &self.active_executions.load(Ordering::Relaxed))
-            .field("total_executions", &self.total_executions.load(Ordering::Relaxed))
-            .field("successful_executions", &self.successful_executions.load(Ordering::Relaxed))
-            .field("failed_executions", &self.failed_executions.load(Ordering::Relaxed))
+            .field(
+                "execution_counter",
+                &self.execution_counter.load(Ordering::Relaxed),
+            )
+            .field(
+                "active_executions",
+                &self.active_executions.load(Ordering::Relaxed),
+            )
+            .field(
+                "total_executions",
+                &self.total_executions.load(Ordering::Relaxed),
+            )
+            .field(
+                "successful_executions",
+                &self.successful_executions.load(Ordering::Relaxed),
+            )
+            .field(
+                "failed_executions",
+                &self.failed_executions.load(Ordering::Relaxed),
+            )
             .field("event_sender", &self.event_sender.is_some())
             .finish()
     }

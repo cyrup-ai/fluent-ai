@@ -56,88 +56,110 @@ pub mod workflow;
 // Backward compatibility aliases
 pub use core::{ChannelError, ChannelSender};
 
-// Re-export HashMap from hashbrown for domain consistency
-pub use hashbrown::HashMap;
-
+pub use chat::ConversationImpl as Conversation;
 pub use chat::message;
 pub use context::chunk;
 pub use context::chunk::ChatMessageChunk;
-pub use model::usage;
-// Alias for backward compatibility - people expect async_task module
-pub use fluent_ai_async as async_task;
-// Re-export from cyrup_sugars for convenience
-pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
+// Additional legacy compatibility aliases
+pub use context::provider::ImmutableFileContext as FileContext;
 // Re-export JSON syntax macros from cyrup_sugars
 pub use cyrup_sugars::macros::*;
+// Re-export from cyrup_sugars for convenience
+pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
+// Alias for backward compatibility - people expect async_task module
+pub use fluent_ai_async as async_task;
 pub use fluent_ai_async::spawn_task as spawn_async; // Alias for backward compatibility
+// Re-export HashMap from hashbrown for domain consistency
+pub use hashbrown::HashMap;
+pub use memory::Library as Memory;
+pub use model::usage;
 pub use util::json_util;
+pub use util::json_util as AdditionalParams;
+pub use util::json_util as Metadata;
 pub use {
+    // Agent system
+    agent::{
+        AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
+    },
+
     // Chat system
     chat::{
         ChatConfig, CommandExecutor, CommandRegistry, Conversation as ConversationTrait,
         ConversationImpl, ImmutableChatCommand, Message, MessageChunk, MessageRole,
-        PersonalityConfig},
+        PersonalityConfig,
+    },
 
     // Completion system
-    completion::{CompletionModel, CompletionBackend as CompletionProvider},
+    completion::{CompletionBackend as CompletionProvider, CompletionModel},
 
     // Concurrency primitives
     concurrency::{Channel, IntoTask, OneshotChannel},
 
     // Context system
-    context::{ContentFormat, Document, DocumentLoader, DocumentMediaType,
-              provider::{ImmutableFileContext as Context}},
+    context::{
+        ContentFormat, Document, DocumentLoader, DocumentMediaType,
+        provider::ImmutableFileContext as Context,
+    },
     // Core types
     core::{DomainInitError, execute_with_circuit_breaker},
-
-    // HTTP types
-    http::{ToolCall, FunctionCall},
 
     // Streaming primitives from fluent-ai-async
     fluent_ai_async::{AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task},
 
-    // Memory system
-    memory::{Library, VectorStoreIndex, VectorStoreIndexDyn},
+    // HTTP types
+    http::{FunctionCall, ToolCall},
 
     // Core initialization and management
     init::{
         get_default_memory_config, get_from_pool, initialize_domain, initialize_domain_with_config,
-        pool_size, return_to_pool},
+        pool_size, return_to_pool,
+    },
+
+    // Memory system
+    memory::{Library, VectorStoreIndex, VectorStoreIndexDyn},
 
     // Model system - primarily from model-info package
     model::{
+        BatchValidationResult,
+        CacheConfig,
+        CacheStats,
         // Domain-specific capabilities and validation
-        Capability, DomainModelCapabilities, ModelPerformance, Usage, UseCase,
-        ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
-        // Core model types from model-info (single source of truth)
-        Provider, Model, ModelInfo, ModelInfoBuilder, ProviderTrait, ModelError, Result,
-
-        UnifiedModelRegistry, RegistryStats,
+        Capability,
+        DomainModelCapabilities,
+        Model,
         // Domain-specific model-info integration
-        ModelCache, ModelValidator, ModelFilter, ModelQueryResult,
-        CacheStats, CacheConfig, BatchValidationResult
-        },
+        ModelCache,
+        ModelError,
+        ModelFilter,
+        ModelInfo,
+        ModelInfoBuilder,
+        ModelPerformance,
+        ModelQueryResult,
+        ModelValidator,
+        // Core model types from model-info (single source of truth)
+        Provider,
+        ProviderTrait,
+        RegistryStats,
+        Result,
+
+        UnifiedModelRegistry,
+        Usage,
+        UseCase,
+        ValidationError,
+        ValidationIssue,
+        ValidationReport,
+        ValidationResult,
+        ValidationSeverity,
+    },
 
     // Prompt system
     prompt::Prompt,
 
+    // Tool system
+    tool::{McpClient as McpServer, McpTool, McpToolData, NamedTool, Tool},
     // Voice system
     voice::{Audio, AudioMediaType, transcription::Transcription},
 
     // Workflow system
     workflow::{StepType, Workflow, WorkflowStep},
-
-    // Agent system
-    agent::{AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl},
-
-    // Tool system
-    tool::{Tool, NamedTool, McpTool, McpClient as McpServer, McpToolData}};
-
-// Additional legacy compatibility aliases
-pub use context::provider::ImmutableFileContext as FileContext;
-pub use memory::Library as Memory;
-pub use util::json_util as AdditionalParams;
-pub use util::json_util as Metadata;
-pub use chat::ConversationImpl as Conversation;
-
-
+};

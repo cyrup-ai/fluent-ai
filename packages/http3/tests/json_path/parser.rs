@@ -171,7 +171,10 @@ mod abnf_grammar_tests {
         //                segments = *(S segment)  ; zero or more segments
         // Therefore "$" (root-only) is VALID per RFC 9535
         let result = JsonPathParser::compile("$");
-        assert!(result.is_ok(), "Root-only query '$' should be valid per RFC 9535");
+        assert!(
+            result.is_ok(),
+            "Root-only query '$' should be valid per RFC 9535"
+        );
 
         let result = JsonPathParser::compile("$.store.book[*]");
         assert!(result.is_ok(), "Valid query structure should pass");

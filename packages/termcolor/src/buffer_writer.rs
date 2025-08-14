@@ -7,7 +7,8 @@
 use crate::ansi_writer::Ansi;
 use crate::color_writer::NoColor;
 use crate::formatting_writer::{
-    IoStandardStream, LossyStandardStream, StandardStreamType};
+    IoStandardStream, LossyStandardStream, StandardStreamType,
+};
 use crate::{ColorChoice, ColorSpec, HyperlinkSpec, WriteColor};
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,7 +35,8 @@ pub struct BufferWriter {
     /// Optional separator to print between buffers
     separator: Option<Vec<u8>>,
     /// Whether color output is enabled
-    use_color: bool}
+    use_color: bool,
+}
 
 impl BufferWriter {
     /// Create a new `BufferWriter` that writes to a standard stream with color preferences
@@ -52,7 +54,8 @@ impl BufferWriter {
             stream: LossyStandardStream::new(IoStandardStream::new(sty)),
             printed: AtomicBool::new(false),
             separator: None,
-            use_color}
+            use_color,
+        }
     }
 
     /// Create a new `BufferWriter` with Windows-specific console handling
@@ -102,7 +105,8 @@ impl BufferWriter {
             stream,
             printed: AtomicBool::new(false),
             separator: None,
-            use_color}
+            use_color,
+        }
     }
 
     /// Create a new `BufferWriter` that writes to stdout with color preferences
@@ -178,7 +182,8 @@ impl BufferWriter {
         }
         match buf.0 {
             BufferInner::NoColor(ref b) => stream.write_all(&b.0)?,
-            BufferInner::Ansi(ref b) => stream.write_all(&b.0)?}
+            BufferInner::Ansi(ref b) => stream.write_all(&b.0)?,
+        }
         self.printed.store(true, Ordering::Relaxed);
         Ok(())
     }
@@ -212,7 +217,8 @@ enum BufferInner {
     NoColor(NoColor<Vec<u8>>),
     /// Apply coloring using ANSI escape sequences embedded into the buffer.
     /// This provides full color support with minimal overhead.
-    Ansi(Ansi<Vec<u8>>)}
+    Ansi(Ansi<Vec<u8>>),
+}
 
 impl Buffer {
     /// Create a new buffer with the given color settings (Unix)
@@ -284,7 +290,8 @@ impl Buffer {
     pub fn len(&self) -> usize {
         match self.0 {
             BufferInner::NoColor(ref b) => b.0.len(),
-            BufferInner::Ansi(ref b) => b.0.len()}
+            BufferInner::Ansi(ref b) => b.0.len(),
+        }
     }
 
     /// Clears this buffer of all content
@@ -292,7 +299,8 @@ impl Buffer {
     pub fn clear(&mut self) {
         match self.0 {
             BufferInner::NoColor(ref mut b) => b.0.clear(),
-            BufferInner::Ansi(ref mut b) => b.0.clear()}
+            BufferInner::Ansi(ref mut b) => b.0.clear(),
+        }
     }
 
     /// Consume this buffer and return the underlying raw data
@@ -303,7 +311,8 @@ impl Buffer {
     pub fn into_inner(self) -> Vec<u8> {
         match self.0 {
             BufferInner::NoColor(b) => b.0,
-            BufferInner::Ansi(b) => b.0}
+            BufferInner::Ansi(b) => b.0,
+        }
     }
 
     /// Return the underlying data of the buffer as a slice
@@ -314,7 +323,8 @@ impl Buffer {
     pub fn as_slice(&self) -> &[u8] {
         match self.0 {
             BufferInner::NoColor(ref b) => &b.0,
-            BufferInner::Ansi(ref b) => &b.0}
+            BufferInner::Ansi(ref b) => &b.0,
+        }
     }
 
     /// Return the underlying data of the buffer as a mutable slice
@@ -325,7 +335,8 @@ impl Buffer {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         match self.0 {
             BufferInner::NoColor(ref mut b) => &mut b.0,
-            BufferInner::Ansi(ref mut b) => &mut b.0}
+            BufferInner::Ansi(ref mut b) => &mut b.0,
+        }
     }
 }
 
@@ -341,7 +352,8 @@ impl io::Write for Buffer {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.write(buf),
-            BufferInner::Ansi(ref mut w) => w.write(buf)}
+            BufferInner::Ansi(ref mut w) => w.write(buf),
+        }
     }
 
     /// Flush the buffer (no-op for memory buffers)
@@ -352,7 +364,8 @@ impl io::Write for Buffer {
     fn flush(&mut self) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut w) => w.flush(),
-            BufferInner::Ansi(ref mut w) => w.flush()}
+            BufferInner::Ansi(ref mut w) => w.flush(),
+        }
     }
 }
 
@@ -365,7 +378,8 @@ impl WriteColor for Buffer {
     fn supports_color(&self) -> bool {
         match self.0 {
             BufferInner::NoColor(_) => false,
-            BufferInner::Ansi(_) => true}
+            BufferInner::Ansi(_) => true,
+        }
     }
 
     /// Check if this buffer supports hyperlinks
@@ -376,7 +390,8 @@ impl WriteColor for Buffer {
     fn supports_hyperlinks(&self) -> bool {
         match self.0 {
             BufferInner::NoColor(_) => false,
-            BufferInner::Ansi(_) => true}
+            BufferInner::Ansi(_) => true,
+        }
     }
 
     /// Set color and formatting for subsequent writes
@@ -390,7 +405,8 @@ impl WriteColor for Buffer {
     fn set_color(&mut self, spec: &ColorSpec) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut wtr) => wtr.set_color(spec),
-            BufferInner::Ansi(ref mut wtr) => wtr.set_color(spec)}
+            BufferInner::Ansi(ref mut wtr) => wtr.set_color(spec),
+        }
     }
 
     /// Set hyperlink for subsequent writes
@@ -404,7 +420,8 @@ impl WriteColor for Buffer {
     fn set_hyperlink(&mut self, link: &HyperlinkSpec) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut wtr) => wtr.set_hyperlink(link),
-            BufferInner::Ansi(ref mut wtr) => wtr.set_hyperlink(link)}
+            BufferInner::Ansi(ref mut wtr) => wtr.set_hyperlink(link),
+        }
     }
 
     /// Reset all color and formatting to defaults
@@ -415,7 +432,8 @@ impl WriteColor for Buffer {
     fn reset(&mut self) -> io::Result<()> {
         match self.0 {
             BufferInner::NoColor(ref mut wtr) => wtr.reset(),
-            BufferInner::Ansi(ref mut wtr) => wtr.reset()}
+            BufferInner::Ansi(ref mut wtr) => wtr.reset(),
+        }
     }
 }
 

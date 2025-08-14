@@ -4,15 +4,16 @@
 //! workflow operations using fluent-ai streams-only architecture. All operations are
 //! zero-allocation in hot paths with extensive inlining for maximum performance.
 
-use fluent_ai_async::AsyncStream;
 use std::marker::PhantomData;
 
+use fluent_ai_async::AsyncStream;
+
 /// Core operation trait for zero-cost async-aware transformations
-/// 
+///
 /// The Op trait defines the fundamental building block for composable workflow
 /// operations. All implementations must be zero-allocation with Send + Sync + Clone
 /// for maximum concurrent performance.
-/// 
+///
 /// ## Architecture Constraints
 /// - Zero-allocation with PhantomData for type safety
 /// - Send + Sync + Clone for concurrent reusability
@@ -20,28 +21,28 @@ use std::marker::PhantomData;
 /// - All hot-path methods marked #[inline] for zero-cost abstractions
 /// - Clone for efficient operation sharing and composition
 /// - Unwrapped Stream pattern - no Result wrapping in stream values
-/// 
+///
 /// ## Performance Characteristics
 /// - Concrete type specialization for blazing-fast execution
 /// - Zero-cost abstractions through extensive inlining
 /// - Memory-efficient with no heap allocation in execution paths
 /// - Lock-free design for maximum concurrency
-/// 
+///
 /// ## Example
 /// ```rust,no_run
 /// use fluent_ai_candle::workflow::ops::{Op, map};
-/// 
+///
 /// let double_op = map(|x: i32| x * 2);
 /// let stream = double_op.call(5);
 /// // Result: AsyncStream containing [10]
 /// ```
 pub trait Op<In, Out>: Send + Sync + Clone + 'static {
     /// Execute the operation with streaming output
-    /// 
+    ///
     /// Takes input of type `In` and produces a stream of `Out` values
     /// using AsyncStream. This follows the fluent-ai unwrapped stream
     /// architecture for maximum performance.
-    /// 
+    ///
     /// ## Implementation Requirements
     /// - Must use AsyncStream for return type (streams-only architecture)
     /// - No .await on AsyncStream (streams are consumed, not awaited)  
@@ -49,13 +50,13 @@ pub trait Op<In, Out>: Send + Sync + Clone + 'static {
     /// - Real execution logic - no mocking or simulation
     /// - Hot path should be marked #[inline] for zero-cost abstractions
     fn call(&self, input: In) -> AsyncStream<Out>;
-    
+
     /// Fluent combinator: chain this operation with another
-    /// 
+    ///
     /// Creates a new operation that first executes this operation, then
     /// pipes each output value to the next operation. This creates
     /// streaming composition with zero intermediate allocation.
-    /// 
+    ///
     /// ## Streaming Semantics
     /// - First operation outputs are piped to second operation
     /// - Zero allocation streaming composition
@@ -73,13 +74,13 @@ pub trait Op<In, Out>: Send + Sync + Clone + 'static {
             _phantom: PhantomData,
         }
     }
-    
+
     /// Fluent combinator: transform output values
-    /// 
+    ///
     /// Creates a new operation that applies a transformation function to each
     /// output value from this operation. This enables zero-allocation
     /// functional composition patterns.
-    /// 
+    ///
     /// ## Performance
     /// - Function applied to all stream values
     /// - Zero allocation transformation
@@ -97,9 +98,9 @@ pub trait Op<In, Out>: Send + Sync + Clone + 'static {
             _phantom: PhantomData,
         }
     }
-    
+
     /// Fluent combinator: chain operations sequentially  
-    /// 
+    ///
     /// Alias for `then()` that emphasizes sequential execution semantics.
     /// Useful for building linear operation chains where sequence matters.
     #[inline]
@@ -113,11 +114,11 @@ pub trait Op<In, Out>: Send + Sync + Clone + 'static {
 }
 
 /// Sequential composition of two operations
-/// 
+///
 /// Executes the first operation, then pipes each output to the second operation.
 /// This creates a streaming composition with zero intermediate allocation and
 /// optimal performance through extensive inlining.
-/// 
+///
 /// ## Memory Efficiency
 /// - PhantomData for zero-cost type tracking
 /// - No intermediate buffering or collection
@@ -142,20 +143,21 @@ where
     fn call(&self, input: In) -> AsyncStream<Out> {
         let first = self.first.clone();
         let second = self.second.clone();
-        
+
         // Create streaming composition using correct AsyncStream patterns
         AsyncStream::with_channel(move |sender| {
             // Execute first operation to get intermediate stream
             let mut first_stream = first.call(input);
-            
+
             // Process each intermediate value through second operation
             while let Some(mid_value) = first_stream.try_next() {
                 // Execute second operation with intermediate value
                 let mut second_stream = second.call(mid_value);
-                
+
                 // Forward all outputs from second operation
                 while let Some(output) = second_stream.try_next() {
                     if sender.send(output).is_err() {
+                        tracing::debug!("Stream receiver dropped during sequential operation - execution terminated");
                         return; // Receiver dropped, exit gracefully
                     }
                 }
@@ -165,11 +167,11 @@ where
 }
 
 /// Function-based transformation operation
-/// 
+///
 /// Applies a transformation function to each input value, producing a stream
 /// of transformed outputs. The transformation is executed in a streaming
 /// fashion with zero allocation in the hot path.
-/// 
+///
 /// ## Performance Characteristics  
 /// - Zero allocation with PhantomData type tracking
 /// - Function inlining for maximum performance
@@ -194,14 +196,17 @@ where
     fn call(&self, input: In) -> AsyncStream<NewOut> {
         let op = self.op.clone();
         let func = self.func.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             let mut stream = op.call(input);
-            
+
             // Apply transformation function to each output
             while let Some(output) = stream.try_next() {
                 let transformed = func(output);
                 if sender.send(transformed).is_err() {
+                    tracing::debug!(
+                        "Stream receiver dropped during map operation - execution terminated"
+                    );
                     return; // Receiver dropped
                 }
             }
@@ -210,11 +215,11 @@ where
 }
 
 /// Passthrough operation that forwards input unchanged
-/// 
+///
 /// Identity operation that passes input through as output without modification.
 /// Useful for testing, debugging, and as a neutral element in operation
 /// composition chains.
-/// 
+///
 /// ## Zero-Cost Implementation
 /// - PhantomData eliminates runtime overhead
 /// - Direct forwarding without transformation
@@ -238,11 +243,11 @@ where
 }
 
 /// Simple function-based operation wrapper
-/// 
+///
 /// Wraps a function to create an operation that applies the function to its input.
 /// This is the most basic operation type, useful for wrapping pure functions
 /// into the operation system.
-/// 
+///
 /// ## Performance
 /// - Zero allocation with PhantomData
 /// - Function inlining opportunities
@@ -270,15 +275,15 @@ where
 }
 
 /// Ergonomic helper function: create a mapping operation
-/// 
+///
 /// Creates a FuncOp that applies the given function to its input.
 /// This is the most common way to create simple transformation operations
 /// from pure functions.
-/// 
+///
 /// ## Example
 /// ```rust,no_run
 /// use fluent_ai_candle::workflow::ops::map;
-/// 
+///
 /// let double = map(|x: i32| x * 2);
 /// let result_stream = double.call(5);
 /// // Result: AsyncStream containing [10]
@@ -297,15 +302,15 @@ where
 }
 
 /// Ergonomic helper function: create a passthrough operation
-/// 
+///
 /// Creates a Passthrough operation that forwards its input unchanged.
 /// Useful as an identity element in operation composition or for
 /// debugging purposes.
-/// 
+///
 /// ## Example
 /// ```rust,no_run
 /// use fluent_ai_candle::workflow::ops::passthrough;
-/// 
+///
 /// let identity = passthrough::<i32>();
 /// let result_stream = identity.call(42);
 /// // Result: AsyncStream containing [42]
@@ -321,14 +326,14 @@ where
 }
 
 /// Ergonomic helper function: create a sequential composition
-/// 
+///
 /// Creates a Then operation that executes two operations in sequence,
 /// piping the output of the first to the input of the second.
-/// 
+///
 /// ## Example
 /// ```rust,no_run
 /// use fluent_ai_candle::workflow::ops::{map, then};
-/// 
+///
 /// let double = map(|x: i32| x * 2);
 /// let add_one = map(|x: i32| x + 1);
 /// let composed = then(double, add_one);

@@ -13,7 +13,7 @@ use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 use fluent_ai_async::channel;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::graph::entity::BaseEntity;
 use crate::memory::primitives::metadata::MemoryMetadata;
@@ -36,7 +36,8 @@ pub struct EpisodicContext {
     pub value: String,
 
     /// Additional metadata for the context
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+}
 
 impl EpisodicContext {
     /// Create a new episodic context
@@ -45,7 +46,8 @@ impl EpisodicContext {
             id: id.to_string(),
             context_type: context_type.to_string(),
             value: value.to_string(),
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Add metadata to the context
@@ -87,7 +89,8 @@ pub struct EpisodicEvent {
     pub context: Vec<EpisodicContext>,
 
     /// Additional metadata for the event
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+}
 
 impl EpisodicEvent {
     /// Create a new episodic event
@@ -97,7 +100,8 @@ impl EpisodicEvent {
             timestamp: Utc::now(),
             content,
             context: Vec::new(),
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+        }
     }
 
     /// Add a context to the event
@@ -120,7 +124,8 @@ pub struct EpisodicMemory {
     pub base: BaseMemory,
 
     /// Collection of events, indexed by timestamp for fast temporal queries
-    pub events: Arc<ArcSwap<SkipMap<DateTime<Utc>, EpisodicEvent>>>}
+    pub events: Arc<ArcSwap<SkipMap<DateTime<Utc>, EpisodicEvent>>>,
+}
 
 impl MemoryType for EpisodicMemory {
     fn id(&self) -> &str {
@@ -160,16 +165,21 @@ impl MemoryType for EpisodicMemory {
     fn to_entity(&self) -> BaseEntity {
         BaseEntity::new(&self.base.id, "episodic_memory")
             .with_attribute("name", serde_json::Value::String(self.base.name.clone()))
-            .with_attribute("description", serde_json::Value::String(self.base.description.clone()))
+            .with_attribute(
+                "description",
+                serde_json::Value::String(self.base.description.clone()),
+            )
     }
 
     fn from_entity(entity: BaseEntity) -> Result<Self> {
-        let name = entity.get_attribute("name")
+        let name = entity
+            .get_attribute("name")
             .and_then(|v| v.as_str())
             .unwrap_or("Unnamed")
             .to_string();
-        
-        let description = entity.get_attribute("description")
+
+        let description = entity
+            .get_attribute("description")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
@@ -191,8 +201,10 @@ impl EpisodicMemory {
                 description: description.to_string(),
                 updated_at: Utc::now(),
                 metadata,
-                content: MemoryContent::None},
-            events: Arc::new(ArcSwap::new(Arc::new(SkipMap::new())))}
+                content: MemoryContent::None,
+            },
+            events: Arc::new(ArcSwap::new(Arc::new(SkipMap::new()))),
+        }
     }
 
     /// Create from a BaseMemory
@@ -207,7 +219,7 @@ impl EpisodicMemory {
                 "No episodic events data found in memory content".to_string(),
             ));
         };
-        
+
         // Convert HashMap to SkipMap
         let events = SkipMap::new();
         for (timestamp, event) in events_map {
@@ -216,7 +228,8 @@ impl EpisodicMemory {
 
         Ok(Self {
             base: memory.clone(),
-            events: Arc::new(ArcSwap::new(Arc::new(events)))})
+            events: Arc::new(ArcSwap::new(Arc::new(events))),
+        })
     }
 
     /// Convert to BaseMemory
@@ -304,7 +317,8 @@ impl EpisodicMemory {
                     created_at: episodic.base.metadata.created_at,
                     updated_at: episodic.base.updated_at,
                     embedding: None,
-                    metadata};
+                    metadata,
+                };
 
                 // Lock-free create operation
                 let created_memory = memory_repo.create(&id_string, &memory_node)?;
@@ -319,7 +333,8 @@ impl EpisodicMemory {
                     description: description_string.clone(),
                     updated_at: created_memory.updated_at,
                     metadata,
-                    content: MemoryContent::text(&created_memory.content)};
+                    content: MemoryContent::text(&created_memory.content),
+                };
                 let created_episodic = EpisodicMemory::from_memory(&base_memory)?;
 
                 Ok(created_episodic)

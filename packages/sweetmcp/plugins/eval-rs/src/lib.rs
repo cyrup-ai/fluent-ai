@@ -1,6 +1,5 @@
 mod plugin;
 
-use rustpython_vm::{self as vm, Settings, scope::Scope};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use extism_pdk::*;
@@ -8,6 +7,7 @@ use json::Value;
 use plugin::types::{
     CallToolRequest, CallToolResult, Content, ContentType, ListToolsResult, ToolDescription,
 };
+use rustpython_vm::{self as vm, Settings, scope::Scope};
 use serde_json::json;
 
 struct StoredVirtualMachine {

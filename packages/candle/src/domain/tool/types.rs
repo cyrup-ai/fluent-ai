@@ -15,7 +15,8 @@ pub struct CandleMcpToolData {
     /// JSON schema for the tool's input parameters
     pub parameters: Value,
     /// Optional server identifier this tool belongs to
-    pub server: Option<String>}
+    pub server: Option<String>,
+}
 
 impl CandleMcpToolData {
     /// Create a new MCP tool data structure
@@ -24,7 +25,8 @@ impl CandleMcpToolData {
             name: name.into(),
             description: description.into(),
             parameters,
-            server: None}
+            server: None,
+        }
     }
 
     /// Create a new MCP tool with server identifier
@@ -38,7 +40,8 @@ impl CandleMcpToolData {
             name: name.into(),
             description: description.into(),
             parameters,
-            server: Some(server.into())}
+            server: Some(server.into()),
+        }
     }
 }
 
@@ -50,4 +53,5 @@ pub struct CandleTool {
     /// Human-readable description of what this tool does
     pub description: String,
     /// JSON schema defining the expected input parameters for this tool
-    pub input_schema: Value}
+    pub input_schema: Value,
+}

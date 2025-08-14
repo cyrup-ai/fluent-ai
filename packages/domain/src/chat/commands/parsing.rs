@@ -15,42 +15,42 @@ use super::types::*;
 pub enum ParseError {
     /// Invalid command syntax
     #[error("Invalid command syntax: {detail}")]
-    InvalidSyntax { 
+    InvalidSyntax {
         /// Details about the syntax error
-        detail: String 
+        detail: String,
     },
 
     /// Required parameter is missing
     #[error("Missing required parameter: {parameter}")]
-    MissingParameter { 
+    MissingParameter {
         /// Name of the missing parameter
-        parameter: String 
+        parameter: String,
     },
 
     /// Parameter has invalid value
     #[error("Invalid parameter value: {parameter} = {value}")]
-    InvalidParameterValue { 
+    InvalidParameterValue {
         /// Name of the parameter
-        parameter: String, 
+        parameter: String,
         /// The invalid value provided
-        value: String 
+        value: String,
     },
 
     /// Parameter name is not recognized
     #[error("Unknown parameter: {parameter}")]
-    UnknownParameter { 
+    UnknownParameter {
         /// Name of the unknown parameter
-        parameter: String 
+        parameter: String,
     },
 
     /// Parameter type doesn't match expected type
     #[error("Parameter type mismatch: expected {expected}, got {actual}")]
-    TypeMismatch { 
+    TypeMismatch {
         /// Expected parameter type
-        expected: String, 
+        expected: String,
         /// Actual parameter type provided
-        actual: String 
-    }
+        actual: String,
+    },
 }
 
 /// Result type for parsing operations
@@ -90,7 +90,8 @@ impl CommandParser {
         let input = input.trim();
         if input.is_empty() {
             return Err(CommandError::InvalidSyntax {
-                detail: "Empty command".to_string()});
+                detail: "Empty command".to_string(),
+            });
         }
 
         // Remove leading slash if present
@@ -104,7 +105,8 @@ impl CommandParser {
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
             return Err(CommandError::InvalidSyntax {
-                detail: "No command specified".to_string()});
+                detail: "No command specified".to_string(),
+            });
         }
 
         let command_name = parts[0].to_lowercase();
@@ -146,7 +148,8 @@ impl CommandParser {
                 Ok(ImmutableChatCommand::Export {
                     format,
                     output,
-                    include_metadata})
+                    include_metadata,
+                })
             }
             "config" => {
                 let show = args.contains(&"--show");
@@ -173,7 +176,8 @@ impl CommandParser {
                     key,
                     value,
                     show,
-                    reset})
+                    reset,
+                })
             }
             "search" => {
                 let query = args
@@ -200,10 +204,13 @@ impl CommandParser {
                     query,
                     scope,
                     limit,
-                    include_context})
+                    include_context,
+                })
             }
             _ => Err(CommandError::UnknownCommand {
-                command: command_name})}
+                command: command_name,
+            }),
+        }
     }
 
     /// Register built-in commands
@@ -219,13 +226,15 @@ impl CommandParser {
                     description: "Optional command to get help for".to_string(),
                     parameter_type: ParameterType::String,
                     required: false,
-                    default_value: None},
+                    default_value: None,
+                },
                 ParameterInfo {
                     name: "extended".to_string(),
                     description: "Show extended help".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some("false".to_string())},
+                    default_value: Some("false".to_string()),
+                },
             ],
             aliases: vec!["h".to_string(), "?".to_string()],
             category: "General".to_string(),
@@ -233,7 +242,8 @@ impl CommandParser {
                 "/help".to_string(),
                 "/help config".to_string(),
                 "/help --extended".to_string(),
-            ]});
+            ],
+        });
 
         // Clear command
         self.register_command(CommandInfo {
@@ -246,13 +256,15 @@ impl CommandParser {
                     description: "Confirm the action".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some("false".to_string())},
+                    default_value: Some("false".to_string()),
+                },
                 ParameterInfo {
                     name: "keep-last".to_string(),
                     description: "Keep last N messages".to_string(),
                     parameter_type: ParameterType::Integer,
                     required: false,
-                    default_value: None},
+                    default_value: None,
+                },
             ],
             aliases: vec!["cls".to_string(), "reset".to_string()],
             category: "History".to_string(),
@@ -260,7 +272,8 @@ impl CommandParser {
                 "/clear".to_string(),
                 "/clear --confirm".to_string(),
                 "/clear --keep-last 10".to_string(),
-            ]});
+            ],
+        });
 
         // Export command
         self.register_command(CommandInfo {
@@ -273,19 +286,22 @@ impl CommandParser {
                     description: "Export format (json, markdown, pdf, html)".to_string(),
                     parameter_type: ParameterType::Enum,
                     required: true,
-                    default_value: None},
+                    default_value: None,
+                },
                 ParameterInfo {
                     name: "output".to_string(),
                     description: "Output file path".to_string(),
                     parameter_type: ParameterType::Path,
                     required: false,
-                    default_value: None},
+                    default_value: None,
+                },
                 ParameterInfo {
                     name: "include-metadata".to_string(),
                     description: "Include metadata in export".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some("true".to_string())},
+                    default_value: Some("true".to_string()),
+                },
             ],
             aliases: vec!["save".to_string()],
             category: "Export".to_string(),
@@ -293,7 +309,8 @@ impl CommandParser {
                 "/export --format json".to_string(),
                 "/export --format markdown --output chat.md".to_string(),
                 "/export --format pdf --include-metadata".to_string(),
-            ]});
+            ],
+        });
 
         // Config command
         self.register_command(CommandInfo {
@@ -306,25 +323,29 @@ impl CommandParser {
                     description: "Configuration key".to_string(),
                     parameter_type: ParameterType::String,
                     required: false,
-                    default_value: None},
+                    default_value: None,
+                },
                 ParameterInfo {
                     name: "value".to_string(),
                     description: "Configuration value".to_string(),
                     parameter_type: ParameterType::String,
                     required: false,
-                    default_value: None},
+                    default_value: None,
+                },
                 ParameterInfo {
                     name: "show".to_string(),
                     description: "Show current configuration".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some("false".to_string())},
+                    default_value: Some("false".to_string()),
+                },
                 ParameterInfo {
                     name: "reset".to_string(),
                     description: "Reset to defaults".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some("false".to_string())},
+                    default_value: Some("false".to_string()),
+                },
             ],
             aliases: vec!["cfg".to_string(), "settings".to_string()],
             category: "Configuration".to_string(),
@@ -332,7 +353,8 @@ impl CommandParser {
                 "/config --show".to_string(),
                 "/config theme dark".to_string(),
                 "/config --reset".to_string(),
-            ]});
+            ],
+        });
 
         // Search command
         self.register_command(CommandInfo {
@@ -345,25 +367,29 @@ impl CommandParser {
                     description: "Search query".to_string(),
                     parameter_type: ParameterType::String,
                     required: true,
-                    default_value: None},
+                    default_value: None,
+                },
                 ParameterInfo {
                     name: "scope".to_string(),
                     description: "Search scope (all, current, recent)".to_string(),
                     parameter_type: ParameterType::Enum,
                     required: false,
-                    default_value: Some("all".to_string())},
+                    default_value: Some("all".to_string()),
+                },
                 ParameterInfo {
                     name: "limit".to_string(),
                     description: "Maximum results".to_string(),
                     parameter_type: ParameterType::Integer,
                     required: false,
-                    default_value: Some("10".to_string())},
+                    default_value: Some("10".to_string()),
+                },
                 ParameterInfo {
                     name: "include-context".to_string(),
                     description: "Include context in results".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some("true".to_string())},
+                    default_value: Some("true".to_string()),
+                },
             ],
             aliases: vec!["find".to_string(), "grep".to_string()],
             category: "Search".to_string(),
@@ -371,7 +397,8 @@ impl CommandParser {
                 "/search rust".to_string(),
                 "/search \"error handling\" --scope recent".to_string(),
                 "/search async --limit 5 --include-context".to_string(),
-            ]});
+            ],
+        });
     }
 
     /// Register a command
@@ -392,7 +419,8 @@ impl CommandParser {
         // Check if it's a command (starts with /)
         if !input.starts_with('/') {
             return Err(ParseError::InvalidSyntax {
-                detail: "Commands must start with '/'".to_string()});
+                detail: "Commands must start with '/'".to_string(),
+            });
         }
 
         // Remove the leading slash
@@ -402,7 +430,8 @@ impl CommandParser {
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
             return Err(ParseError::InvalidSyntax {
-                detail: "Empty command".to_string()});
+                detail: "Empty command".to_string(),
+            });
         }
 
         let command_name = parts[0];
@@ -423,7 +452,9 @@ impl CommandParser {
             "config" => self.parse_config_command(args),
             "search" => self.parse_search_command(args),
             _ => Err(ParseError::InvalidSyntax {
-                detail: format!("Unknown command: {}", command_name)})}
+                detail: format!("Unknown command: {}", command_name),
+            }),
+        }
     }
 
     /// Parse help command
@@ -438,7 +469,8 @@ impl CommandParser {
                 arg if !arg.starts_with('-') => command = Some(arg.to_string()),
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string()});
+                        parameter: args[i].to_string(),
+                    });
                 }
             }
             i += 1;
@@ -460,7 +492,8 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "keep-last".to_string()});
+                            parameter: "keep-last".to_string(),
+                        });
                     }
                     keep_last =
                         Some(
@@ -468,12 +501,14 @@ impl CommandParser {
                                 .parse()
                                 .map_err(|_| ParseError::InvalidParameterValue {
                                     parameter: "keep-last".to_string(),
-                                    value: args[i].to_string()})?,
+                                    value: args[i].to_string(),
+                                })?,
                         );
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string()});
+                        parameter: args[i].to_string(),
+                    });
                 }
             }
             i += 1;
@@ -495,7 +530,8 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "format".to_string()});
+                            parameter: "format".to_string(),
+                        });
                     }
                     format = Some(args[i].to_string());
                 }
@@ -503,26 +539,30 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "output".to_string()});
+                            parameter: "output".to_string(),
+                        });
                     }
                     output = Some(args[i].to_string());
                 }
                 "--include-metadata" => include_metadata = true,
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string()});
+                        parameter: args[i].to_string(),
+                    });
                 }
             }
             i += 1;
         }
 
         let format = format.ok_or_else(|| ParseError::MissingParameter {
-            parameter: "format".to_string()})?;
+            parameter: "format".to_string(),
+        })?;
 
         Ok(ImmutableChatCommand::Export {
             format,
             output,
-            include_metadata})
+            include_metadata,
+        })
     }
 
     /// Parse config command
@@ -544,12 +584,14 @@ impl CommandParser {
                         value = Some(arg.to_string());
                     } else {
                         return Err(ParseError::InvalidSyntax {
-                            detail: "Too many positional arguments".to_string()});
+                            detail: "Too many positional arguments".to_string(),
+                        });
                     }
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string()});
+                        parameter: args[i].to_string(),
+                    });
                 }
             }
             i += 1;
@@ -559,7 +601,8 @@ impl CommandParser {
             key,
             value,
             show,
-            reset})
+            reset,
+        })
     }
 
     /// Parse search command
@@ -576,7 +619,8 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "scope".to_string()});
+                            parameter: "scope".to_string(),
+                        });
                     }
                     scope = match args[i] {
                         "all" => SearchScope::All,
@@ -585,7 +629,8 @@ impl CommandParser {
                         _ => {
                             return Err(ParseError::InvalidParameterValue {
                                 parameter: "scope".to_string(),
-                                value: args[i].to_string()});
+                                value: args[i].to_string(),
+                            });
                         }
                     };
                 }
@@ -593,7 +638,8 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: "limit".to_string()});
+                            parameter: "limit".to_string(),
+                        });
                     }
                     limit =
                         Some(
@@ -601,7 +647,8 @@ impl CommandParser {
                                 .parse()
                                 .map_err(|_| ParseError::InvalidParameterValue {
                                     parameter: "limit".to_string(),
-                                    value: args[i].to_string()})?,
+                                    value: args[i].to_string(),
+                                })?,
                         );
                 }
                 "--include-context" => include_context = true,
@@ -610,25 +657,29 @@ impl CommandParser {
                         query = Some(arg.to_string());
                     } else {
                         return Err(ParseError::InvalidSyntax {
-                            detail: "Multiple query arguments not supported".to_string()});
+                            detail: "Multiple query arguments not supported".to_string(),
+                        });
                     }
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: args[i].to_string()});
+                        parameter: args[i].to_string(),
+                    });
                 }
             }
             i += 1;
         }
 
         let query = query.ok_or_else(|| ParseError::MissingParameter {
-            parameter: "query".to_string()})?;
+            parameter: "query".to_string(),
+        })?;
 
         Ok(ImmutableChatCommand::Search {
             query,
             scope,
             limit,
-            include_context})
+            include_context,
+        })
     }
 
     /// Validate command parameters
@@ -639,7 +690,8 @@ impl CommandParser {
                 if !valid_formats.contains(&format.as_str()) {
                     return Err(ParseError::InvalidParameterValue {
                         parameter: "format".to_string(),
-                        value: format.clone()});
+                        value: format.clone(),
+                    });
                 }
             }
             ImmutableChatCommand::Clear {
@@ -648,7 +700,8 @@ impl CommandParser {
                 if *n == 0 {
                     return Err(ParseError::InvalidParameterValue {
                         parameter: "keep-last".to_string(),
-                        value: "0".to_string()});
+                        value: "0".to_string(),
+                    });
                 }
             }
             _ => {}

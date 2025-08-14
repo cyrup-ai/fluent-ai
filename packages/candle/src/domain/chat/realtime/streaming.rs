@@ -3,21 +3,22 @@
 //! This module provides high-performance message streaming using lock-free queues,
 //! atomic counters, and AsyncStream patterns for blazing-fast real-time updates.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{emit, AsyncStream};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::events::RealTimeEvent;
 // Use the domain's RealTimeError
-
-use crate::domain::chat::message::types::{CandleMessage as Message, CandleMessageRole as MessageRole};
+use crate::domain::chat::message::types::{
+    CandleMessage as Message, CandleMessageRole as MessageRole,
+};
 
 /// Live update message with zero-allocation string handling
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +42,8 @@ pub struct LiveUpdateMessage {
     /// Message size in bytes for monitoring
     pub size_bytes: u32,
     /// Sequence number for ordering
-    pub sequence_number: u64}
+    pub sequence_number: u64,
+}
 
 impl LiveUpdateMessage {
     /// Create a new live update message with current timestamp
@@ -59,7 +61,9 @@ impl LiveUpdateMessage {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0);
 
-        let size_bytes = (id.len() + content.len() + message_type.len() + session_id.len() + user_id.len()) as u32;
+        let size_bytes =
+            (id.len() + content.len() + message_type.len() + session_id.len() + user_id.len())
+                as u32;
 
         Self {
             id,
@@ -96,7 +100,7 @@ impl LiveUpdateMessage {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0);
-        
+
         now_nanos.saturating_sub(self.timestamp_nanos)
     }
 
@@ -129,7 +133,8 @@ pub enum MessagePriority {
     /// High priority - important updates
     High,
     /// Critical priority - urgent notifications
-    Critical}
+    Critical,
+}
 
 impl MessagePriority {
     /// Get priority weight for ordering (higher = more important)
@@ -139,7 +144,8 @@ impl MessagePriority {
             Self::Low => 1,
             Self::Normal => 5,
             Self::High => 10,
-            Self::Critical => 20}
+            Self::Critical => 20,
+        }
     }
 
     /// Convert to atomic representation
@@ -149,7 +155,8 @@ impl MessagePriority {
             Self::Low => 0,
             Self::Normal => 1,
             Self::High => 2,
-            Self::Critical => 3}
+            Self::Critical => 3,
+        }
     }
 
     /// Convert from atomic representation
@@ -159,7 +166,8 @@ impl MessagePriority {
             0 => Self::Low,
             1 => Self::Normal,
             2 => Self::High,
-            _ => Self::Critical}
+            _ => Self::Critical,
+        }
     }
 }
 
@@ -200,7 +208,8 @@ pub struct LiveMessageStreamer {
     /// Backpressure event counter
     backpressure_events: Arc<AtomicU64>,
     /// Processing task active flag
-    processing_active: Arc<std::sync::atomic::AtomicBool>}
+    processing_active: Arc<std::sync::atomic::AtomicBool>,
+}
 
 /// Stream subscriber with atomic statistics
 #[derive(Debug)]
@@ -220,7 +229,8 @@ pub struct StreamSubscriber {
     /// Subscription timestamp
     pub subscribed_at: u64,
     /// Last message timestamp
-    pub last_message_at: Arc<AtomicU64>}
+    pub last_message_at: Arc<AtomicU64>,
+}
 
 impl StreamSubscriber {
     /// Create new stream subscriber
@@ -239,7 +249,8 @@ impl StreamSubscriber {
             messages_received: Arc::new(AtomicU64::new(0)),
             bytes_received: Arc::new(AtomicU64::new(0)),
             subscribed_at: now_nanos,
-            last_message_at: Arc::new(AtomicU64::new(now_nanos))}
+            last_message_at: Arc::new(AtomicU64::new(now_nanos)),
+        }
     }
 
     /// Set session filter
@@ -291,8 +302,10 @@ impl StreamSubscriber {
     #[inline]
     pub fn record_delivery(&self, message: &LiveUpdateMessage) {
         self.messages_received.fetch_add(1, Ordering::AcqRel);
-        self.bytes_received.fetch_add(message.size_bytes as u64, Ordering::AcqRel);
-        self.last_message_at.store(message.timestamp_nanos, Ordering::Release);
+        self.bytes_received
+            .fetch_add(message.size_bytes as u64, Ordering::AcqRel);
+        self.last_message_at
+            .store(message.timestamp_nanos, Ordering::Release);
     }
 
     /// Get subscription duration in nanoseconds
@@ -302,7 +315,7 @@ impl StreamSubscriber {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0);
-        
+
         now_nanos.saturating_sub(self.subscribed_at)
     }
 }
@@ -331,7 +344,8 @@ impl LiveMessageStreamer {
             processing_rate: Arc::new(AtomicU64::new(processing_rate)),
             sequence_generator: Arc::new(AtomicU64::new(1)),
             backpressure_events: Arc::new(AtomicU64::new(0)),
-            processing_active: Arc::new(std::sync::atomic::AtomicBool::new(false))}
+            processing_active: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
     }
 
     /// Send live update message with backpressure handling
@@ -341,7 +355,7 @@ impl LiveMessageStreamer {
         } else {
             self.message_queue.clone()
         };
-        
+
         let counter = if message.priority >= MessagePriority::High {
             self.priority_message_counter.clone()
         } else {
@@ -364,21 +378,23 @@ impl LiveMessageStreamer {
             // Hard limit check - reject messages
             if current_queue_size >= queue_limit {
                 backpressure_events.fetch_add(1, Ordering::AcqRel);
-                
+
                 let result = StreamingResult::BackpressureError {
                     current_size: current_queue_size,
                     limit: queue_limit,
-                    message_id: message.id.clone()};
+                    message_id: message.id.clone(),
+                };
                 emit!(sender, result);
                 return;
             }
-            
+
             // Soft limit check - emit warning but allow message
             if current_queue_size >= bp_threshold {
                 let warning_result = StreamingResult::BackpressureWarning {
                     current_size: current_queue_size,
                     threshold: bp_threshold,
-                    message_id: message.id.clone()};
+                    message_id: message.id.clone(),
+                };
                 emit!(sender, warning_result);
             }
 
@@ -396,7 +412,8 @@ impl LiveMessageStreamer {
             let result = StreamingResult::MessageQueued {
                 message_id: message.id,
                 sequence_number: message.sequence_number,
-                queue_position: current_queue_size + 1};
+                queue_position: current_queue_size + 1,
+            };
             emit!(sender, result);
         })
     }
@@ -405,7 +422,7 @@ impl LiveMessageStreamer {
     pub fn subscribe(&self, subscriber: StreamSubscriber) -> AsyncStream<LiveUpdateMessage> {
         let subscriber_arc = Arc::new(subscriber);
         let subscriber_id = subscriber_arc.id.clone();
-        
+
         self.subscribers.insert(subscriber_id, subscriber_arc);
         self.subscriber_counter.inc();
 
@@ -432,10 +449,10 @@ impl LiveMessageStreamer {
 
                 UnsubscribeResult::Success {
                     subscriber_id: id,
-                    remaining_subscribers: subscriber_counter.get() as u64}
+                    remaining_subscribers: subscriber_counter.get() as u64,
+                }
             } else {
-                UnsubscribeResult::NotFound {
-                    subscriber_id: id}
+                UnsubscribeResult::NotFound { subscriber_id: id }
             };
 
             emit!(sender, result);
@@ -444,7 +461,11 @@ impl LiveMessageStreamer {
 
     /// Start message processing task with lock-free distribution
     pub fn start_processing(&self) -> AsyncStream<ProcessingEvent> {
-        if self.processing_active.compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed).is_err() {
+        if self
+            .processing_active
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed)
+            .is_err()
+        {
             // Already running
             return AsyncStream::with_channel(|_sender| {});
         }
@@ -503,7 +524,8 @@ impl LiveMessageStreamer {
                             sequence_number: message.sequence_number,
                             delivered_count,
                             total_bytes,
-                            priority: message.priority};
+                            priority: message.priority,
+                        };
                         emit!(sender, event);
 
                         // Rate limiting with nanosecond precision
@@ -515,12 +537,14 @@ impl LiveMessageStreamer {
 
                     // Report processing rate periodically
                     if last_rate_check.elapsed() >= Duration::from_secs(10) {
-                        let rate = messages_processed as f64 / last_rate_check.elapsed().as_secs_f64();
-                        
+                        let rate =
+                            messages_processed as f64 / last_rate_check.elapsed().as_secs_f64();
+
                         let event = ProcessingEvent::RateReport {
                             messages_per_second: rate,
                             messages_processed,
-                            active_subscribers: subscribers.len() as u64};
+                            active_subscribers: subscribers.len() as u64,
+                        };
                         emit!(sender, event);
 
                         messages_processed = 0;
@@ -541,17 +565,18 @@ impl LiveMessageStreamer {
     pub fn stop_processing(&self) {
         self.processing_active.store(false, Ordering::Release);
     }
-    
+
     /// Get current backpressure threshold
     #[inline]
     pub fn get_backpressure_threshold(&self) -> usize {
         self.backpressure_threshold.load(Ordering::Acquire)
     }
-    
+
     /// Update backpressure threshold dynamically
     #[inline]
     pub fn set_backpressure_threshold(&self, threshold: usize) {
-        self.backpressure_threshold.store(threshold, Ordering::Release);
+        self.backpressure_threshold
+            .store(threshold, Ordering::Release);
     }
 
     /// Get comprehensive streaming statistics
@@ -565,7 +590,8 @@ impl LiveMessageStreamer {
             queue_size_limit: self.queue_size_limit.load(Ordering::Acquire),
             backpressure_events: self.backpressure_events.load(Ordering::Acquire),
             processing_rate: self.processing_rate.load(Ordering::Acquire),
-            processing_active: self.processing_active.load(Ordering::Acquire)}
+            processing_active: self.processing_active.load(Ordering::Acquire),
+        }
     }
 
     /// Subscribe to real-time events
@@ -588,17 +614,21 @@ pub enum StreamingResult {
     MessageQueued {
         message_id: Arc<str>,
         sequence_number: u64,
-        queue_position: usize},
+        queue_position: usize,
+    },
     /// Backpressure warning - queue size approaching limit
     BackpressureWarning {
         current_size: usize,
         threshold: usize,
-        message_id: Arc<str>},
+        message_id: Arc<str>,
+    },
     /// Backpressure error occurred
     BackpressureError {
         current_size: usize,
         limit: usize,
-        message_id: Arc<str>}}
+        message_id: Arc<str>,
+    },
+}
 
 /// Unsubscribe operation results
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -606,10 +636,11 @@ pub enum UnsubscribeResult {
     /// Successfully unsubscribed
     Success {
         subscriber_id: Arc<str>,
-        remaining_subscribers: u64},
+        remaining_subscribers: u64,
+    },
     /// Subscriber not found
-    NotFound {
-        subscriber_id: Arc<str>}}
+    NotFound { subscriber_id: Arc<str> },
+}
 
 /// Processing events for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -620,12 +651,15 @@ pub enum ProcessingEvent {
         sequence_number: u64,
         delivered_count: u64,
         total_bytes: u64,
-        priority: MessagePriority},
+        priority: MessagePriority,
+    },
     /// Processing rate report
     RateReport {
         messages_per_second: f64,
         messages_processed: u64,
-        active_subscribers: u64}}
+        active_subscribers: u64,
+    },
+}
 
 /// Live streaming statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -647,5 +681,5 @@ pub struct StreamingStatistics {
     /// Target processing rate (messages/second)
     pub processing_rate: u64,
     /// Whether processing is active
-    pub processing_active: bool}
-
+    pub processing_active: bool,
+}

@@ -136,7 +136,7 @@ impl<'a> CompletionCoreRequest<'a> {
         // Simple approximation: ~4 characters per token
         (self.prompt.len() / 4) as u32
     }
-    
+
     /// Create a new default completion request
     #[inline(always)]
     pub fn new() -> Self {
@@ -152,28 +152,29 @@ impl<'a> CompletionCoreRequest<'a> {
             seed: None,
         }
     }
-    
+
     /// Set the prompt text
     #[inline(always)]
     pub fn set_prompt(&mut self, prompt: &str) -> Result<(), CompletionCoreError> {
         self.prompt.clear();
-        self.prompt.try_extend_from_slice(prompt.as_bytes())
+        self.prompt
+            .try_extend_from_slice(prompt.as_bytes())
             .map_err(|_| CompletionCoreError::InvalidRequest("Prompt too large".into()))?;
         Ok(())
     }
-    
+
     /// Set maximum tokens to generate
     #[inline(always)]
     pub fn set_max_tokens(&mut self, max_tokens: u32) {
         self.max_tokens = max_tokens;
     }
-    
+
     /// Set temperature for sampling
     #[inline(always)]
     pub fn set_temperature(&mut self, temperature: f32) {
         self.temperature = temperature as f64;
     }
-    
+
     /// Enable or disable streaming
     #[inline(always)]
     pub fn set_stream(&mut self, stream: bool) {
@@ -280,7 +281,7 @@ impl CompletionCoreResponse {
     pub fn set_tokens_per_second(&self, tps: u32) {
         self.tokens_per_second.store(tps, Ordering::Relaxed);
     }
-    
+
     /// Create a new completion response
     #[inline(always)]
     pub fn new() -> Self {
@@ -293,12 +294,13 @@ impl CompletionCoreResponse {
             model: ArrayVec::new(),
         }
     }
-    
+
     /// Set the response text
     #[inline(always)]
     pub fn set_text(&mut self, text: &str) -> Result<(), CompletionCoreError> {
         self.text.clear();
-        self.text.try_extend_from_slice(text.as_bytes())
+        self.text
+            .try_extend_from_slice(text.as_bytes())
             .map_err(|_| CompletionCoreError::Internal("Response text too large".into()))?;
         Ok(())
     }

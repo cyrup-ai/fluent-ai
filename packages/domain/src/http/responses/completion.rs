@@ -54,10 +54,10 @@ use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use arrayvec::{ArrayString, ArrayVec};
+use model_info::DiscoveryProvider as Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use model_info::DiscoveryProvider as Provider;
 use crate::http::common::{
     BaseMessage, CommonUsage, FinishReason, MAX_IDENTIFIER_LEN, MAX_TOOLS, ToolCall,
     ValidationError,
@@ -431,7 +431,6 @@ impl CompletionResponse {
         Self::from_openai_json(json)
     }
 
-
     /// Parse Mistral response format
     #[inline]
     fn from_mistral_json(json: &Value) -> Result<Self, CompletionResponseError> {
@@ -446,14 +445,12 @@ impl CompletionResponse {
         Self::from_openai_json(json)
     }
 
-
     /// Parse xAI response format
     #[inline]
     fn from_xai_json(json: &Value) -> Result<Self, CompletionResponseError> {
         // xAI is OpenAI-compatible
         Self::from_openai_json(json)
     }
-
 
     /// Parse Anthropic tool use block
     #[inline]
@@ -1025,7 +1022,8 @@ impl CompletionChunk {
         Self::new("ollama-chunk", model, choices)
     }
 
-    /// Parse AI21 streaming chunk
+    /// Parse AI21 streaming chunk - Provider API
+    #[allow(dead_code)] // Provider API - called by match statement in from_provider_chunk
     #[inline]
     fn from_ai21_chunk(data: &[u8]) -> Result<Self, CompletionResponseError> {
         // AI21 may not support streaming or have different format
@@ -1046,7 +1044,8 @@ impl CompletionChunk {
         Self::from_openai_chunk(data)
     }
 
-    /// Parse Perplexity streaming chunk
+    /// Parse Perplexity streaming chunk - Provider API
+    #[allow(dead_code)] // Provider API - called by match statement in from_provider_chunk
     #[inline]
     fn from_perplexity_chunk(data: &[u8]) -> Result<Self, CompletionResponseError> {
         // Perplexity is OpenAI-compatible
@@ -1060,7 +1059,8 @@ impl CompletionChunk {
         Self::from_openai_chunk(data)
     }
 
-    /// Parse DeepSeek streaming chunk
+    /// Parse DeepSeek streaming chunk - Provider API
+    #[allow(dead_code)] // Provider API - called by match statement in from_provider_chunk
     #[inline]
     fn from_deepseek_chunk(data: &[u8]) -> Result<Self, CompletionResponseError> {
         // DeepSeek is OpenAI-compatible
@@ -1533,7 +1533,9 @@ impl fmt::Display for CompletionResponseError {
             Self::SystemTimeError => write!(f, "System time error"),
             Self::InternalError => write!(f, "Internal processing error"),
             Self::ValidationError(e) => write!(f, "Validation error: {}", e),
-            Self::UnsupportedProvider(provider) => write!(f, "Unsupported provider: {:?}", provider),
+            Self::UnsupportedProvider(provider) => {
+                write!(f, "Unsupported provider: {:?}", provider)
+            }
             Self::ProviderError {
                 provider,
                 message,

@@ -11,6 +11,7 @@ edition = "2021"
 
 
 [dependencies]
+
 # CRITICAL: NEVER ADD DEPENDENCY ON ./packages/domain or ./packages/fluent-ai
 # fluent-ai-candle MUST remain completely standalone and independent
 # ONLY ALLOWED fluent-ai dependencies: fluent-ai-async and fluent_ai_http3
@@ -94,13 +95,13 @@ bytes = "1.10.1"
 toml = "0.9.5"
 rkyv = { version = "0.8.11", optional = true }
 bincode = { version = "2.0.1", optional = true }
-reqwest = { version = "0.12.22", features = ["json"] }
+reqwest = { path = "../../forks/reqwest", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
 md5 = "0.8.0"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 async-stream = "0.3.6"
 clap = { version = "4.5.42", features = ["derive"] }
-progresshub = { path = "../../../progresshub/tui" }
+progresshub = { path = "../../../progresshub/packages/progresshub" }
 
 [dev-dependencies]
 tracing-subscriber = "0.3.19"
@@ -194,6 +195,3 @@ candle-kernels = { git = "https://github.com/huggingface/candle", branch = "main
 
 [target.'cfg(target_os = "macos")'.dependencies]
 accelerate-src = { version = "0.3.2", optional = true }
-
-
-

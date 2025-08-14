@@ -12,14 +12,16 @@ pub struct RelationshipGraph {
     /// Adjacency list for outgoing edges
     edges: HashMap<String, Vec<(String, RelationshipType, f32)>>,
     /// Adjacency list for incoming edges
-    reverse_edges: HashMap<String, Vec<(String, RelationshipType, f32)>>}
+    reverse_edges: HashMap<String, Vec<(String, RelationshipType, f32)>>,
+}
 
 impl RelationshipGraph {
     /// Create a new relationship graph
     pub fn new() -> Self {
         Self {
             edges: HashMap::new(),
-            reverse_edges: HashMap::new()}
+            reverse_edges: HashMap::new(),
+        }
     }
 
     /// Add a relationship to the graph

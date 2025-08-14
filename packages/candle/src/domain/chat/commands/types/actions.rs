@@ -11,7 +11,7 @@ pub enum TemplateAction {
     /// List available templates
     List,
     /// Create a new template
-    Create, 
+    Create,
     /// Delete a template
     Delete,
     /// Edit an existing template
@@ -39,7 +39,7 @@ impl TemplateAction {
         match self {
             Self::List => "list",
             Self::Create => "create",
-            Self::Delete => "delete", 
+            Self::Delete => "delete",
             Self::Edit => "edit",
             Self::Use => "use",
             Self::Show => "show",
@@ -50,22 +50,30 @@ impl TemplateAction {
             Self::Rename => "rename",
         }
     }
-    
+
     /// Check if action requires template name parameter
     #[inline]
     pub const fn requires_name(&self) -> bool {
-        matches!(self, 
-            Self::Create | Self::Delete | Self::Edit | Self::Use | 
-            Self::Show | Self::Validate | Self::Export | Self::Copy | Self::Rename
+        matches!(
+            self,
+            Self::Create
+                | Self::Delete
+                | Self::Edit
+                | Self::Use
+                | Self::Show
+                | Self::Validate
+                | Self::Export
+                | Self::Copy
+                | Self::Rename
         )
     }
-    
+
     /// Check if action modifies templates
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
-            Self::Create | Self::Delete | Self::Edit | Self::Import | 
-            Self::Copy | Self::Rename
+        matches!(
+            self,
+            Self::Create | Self::Delete | Self::Edit | Self::Import | Self::Copy | Self::Rename
         )
     }
 }
@@ -84,7 +92,7 @@ pub enum MacroAction {
     /// Execute a macro
     Execute,
     /// Show macro details
-    Show, 
+    Show,
     /// Record new macro from commands
     Record,
     /// Stop macro recording
@@ -118,29 +126,36 @@ impl MacroAction {
             Self::Import => "import",
         }
     }
-    
+
     /// Check if action requires macro name parameter
     #[inline]
     pub const fn requires_name(&self) -> bool {
-        matches!(self, 
-            Self::Create | Self::Delete | Self::Edit | Self::Execute | 
-            Self::Show | Self::Export | Self::Record
+        matches!(
+            self,
+            Self::Create
+                | Self::Delete
+                | Self::Edit
+                | Self::Execute
+                | Self::Show
+                | Self::Export
+                | Self::Record
         )
     }
-    
+
     /// Check if action modifies macros
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
-            Self::Create | Self::Delete | Self::Edit | Self::Record | 
-            Self::Stop | Self::Import
+        matches!(
+            self,
+            Self::Create | Self::Delete | Self::Edit | Self::Record | Self::Stop | Self::Import
         )
     }
-    
+
     /// Check if action affects running macros
     #[inline]
     pub const fn affects_execution(&self) -> bool {
-        matches!(self, 
+        matches!(
+            self,
             Self::Execute | Self::Pause | Self::Resume | Self::Stop
         )
     }
@@ -188,22 +203,34 @@ impl BranchAction {
             Self::Restore => "restore",
         }
     }
-    
+
     /// Check if action requires branch name parameter
     #[inline]
     pub const fn requires_name(&self) -> bool {
-        matches!(self, 
-            Self::Create | Self::Switch | Self::Delete | Self::Show | 
-            Self::Rename | Self::Archive | Self::Restore
+        matches!(
+            self,
+            Self::Create
+                | Self::Switch
+                | Self::Delete
+                | Self::Show
+                | Self::Rename
+                | Self::Archive
+                | Self::Restore
         )
     }
-    
+
     /// Check if action modifies branches
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
-            Self::Create | Self::Switch | Self::Merge | Self::Delete | 
-            Self::Rename | Self::Archive | Self::Restore
+        matches!(
+            self,
+            Self::Create
+                | Self::Switch
+                | Self::Merge
+                | Self::Delete
+                | Self::Rename
+                | Self::Archive
+                | Self::Restore
         )
     }
 }
@@ -256,22 +283,37 @@ impl SessionAction {
             Self::Rename => "rename",
         }
     }
-    
+
     /// Check if action requires session name parameter
     #[inline]
     pub const fn requires_name(&self) -> bool {
-        matches!(self, 
-            Self::New | Self::Switch | Self::Delete | Self::Export | 
-            Self::Show | Self::Archive | Self::Backup | Self::Clone | Self::Rename
+        matches!(
+            self,
+            Self::New
+                | Self::Switch
+                | Self::Delete
+                | Self::Export
+                | Self::Show
+                | Self::Archive
+                | Self::Backup
+                | Self::Clone
+                | Self::Rename
         )
     }
-    
+
     /// Check if action modifies sessions
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
-            Self::New | Self::Switch | Self::Delete | Self::Import | 
-            Self::Archive | Self::Restore | Self::Clone | Self::Rename
+        matches!(
+            self,
+            Self::New
+                | Self::Switch
+                | Self::Delete
+                | Self::Import
+                | Self::Archive
+                | Self::Restore
+                | Self::Clone
+                | Self::Rename
         )
     }
 }
@@ -324,23 +366,38 @@ impl ToolAction {
             Self::Help => "help",
         }
     }
-    
+
     /// Check if action requires tool name parameter
     #[inline]
     pub const fn requires_name(&self) -> bool {
-        matches!(self, 
-            Self::Install | Self::Remove | Self::Configure | Self::Update | 
-            Self::Execute | Self::Show | Self::Enable | Self::Disable | 
-            Self::Reset | Self::Test | Self::Help
+        matches!(
+            self,
+            Self::Install
+                | Self::Remove
+                | Self::Configure
+                | Self::Update
+                | Self::Execute
+                | Self::Show
+                | Self::Enable
+                | Self::Disable
+                | Self::Reset
+                | Self::Test
+                | Self::Help
         )
     }
-    
+
     /// Check if action modifies tools
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
-            Self::Install | Self::Remove | Self::Configure | Self::Update | 
-            Self::Enable | Self::Disable | Self::Reset
+        matches!(
+            self,
+            Self::Install
+                | Self::Remove
+                | Self::Configure
+                | Self::Update
+                | Self::Enable
+                | Self::Disable
+                | Self::Reset
         )
     }
 }
@@ -397,13 +454,13 @@ impl SearchScope {
             Self::Archived => "archived",
         }
     }
-    
+
     /// Check if scope requires additional parameters
     #[inline]
     pub const fn requires_parameters(&self) -> bool {
-        matches!(self, 
-            Self::Session | Self::Branch | Self::TimeRange | 
-            Self::MessageType | Self::Tags
+        matches!(
+            self,
+            Self::Session | Self::Branch | Self::TimeRange | Self::MessageType | Self::Tags
         )
     }
 }
@@ -450,13 +507,19 @@ impl StatsType {
             Self::Commands => "commands",
         }
     }
-    
+
     /// Check if stats type requires time range
     #[inline]
     pub const fn supports_time_range(&self) -> bool {
-        matches!(self, 
-            Self::Usage | Self::Performance | Self::History | 
-            Self::Tokens | Self::Costs | Self::Errors | Self::Commands
+        matches!(
+            self,
+            Self::Usage
+                | Self::Performance
+                | Self::History
+                | Self::Tokens
+                | Self::Costs
+                | Self::Errors
+                | Self::Commands
         )
     }
 }
@@ -503,22 +566,34 @@ impl ThemeAction {
             Self::Clone => "clone",
         }
     }
-    
+
     /// Check if action requires theme name parameter
     #[inline]
     pub const fn requires_name(&self) -> bool {
-        matches!(self, 
-            Self::Set | Self::Create | Self::Export | Self::Edit | 
-            Self::Delete | Self::Preview | Self::Clone
+        matches!(
+            self,
+            Self::Set
+                | Self::Create
+                | Self::Export
+                | Self::Edit
+                | Self::Delete
+                | Self::Preview
+                | Self::Clone
         )
     }
-    
+
     /// Check if action modifies themes
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
-            Self::Set | Self::Create | Self::Import | Self::Edit | 
-            Self::Delete | Self::Reset | Self::Clone
+        matches!(
+            self,
+            Self::Set
+                | Self::Create
+                | Self::Import
+                | Self::Edit
+                | Self::Delete
+                | Self::Reset
+                | Self::Clone
         )
     }
 }
@@ -571,13 +646,18 @@ impl DebugAction {
             Self::Diagnostics => "diagnostics",
         }
     }
-    
+
     /// Check if action supports filtering parameters
     #[inline]
     pub const fn supports_filtering(&self) -> bool {
-        matches!(self, 
-            Self::Logs | Self::Performance | Self::Memory | Self::Network | 
-            Self::Trace | Self::Profile
+        matches!(
+            self,
+            Self::Logs
+                | Self::Performance
+                | Self::Memory
+                | Self::Network
+                | Self::Trace
+                | Self::Profile
         )
     }
 }
@@ -624,21 +704,22 @@ impl HistoryAction {
             Self::Stats => "stats",
         }
     }
-    
+
     /// Check if action modifies history
     #[inline]
     pub const fn is_mutating(&self) -> bool {
-        matches!(self, 
+        matches!(
+            self,
             Self::Clear | Self::Import | Self::Restore | Self::Compact
         )
     }
-    
+
     /// Check if action supports time range filtering
     #[inline]
     pub const fn supports_time_range(&self) -> bool {
-        matches!(self, 
-            Self::Show | Self::Search | Self::Export | Self::Backup | 
-            Self::Analyze | Self::Stats
+        matches!(
+            self,
+            Self::Show | Self::Search | Self::Export | Self::Backup | Self::Analyze | Self::Stats
         )
     }
 }
@@ -682,19 +763,19 @@ impl ImportType {
             Self::All => "all",
         }
     }
-    
+
     /// Check if import type requires file path
     #[inline]
     pub const fn requires_file_path(&self) -> bool {
         true // All import types require a source file
     }
-    
+
     /// Check if import type supports selective import
     #[inline]
     pub const fn supports_selective_import(&self) -> bool {
-        matches!(self, 
-            Self::Templates | Self::Macros | Self::Themes | 
-            Self::Sessions | Self::Tools
+        matches!(
+            self,
+            Self::Templates | Self::Macros | Self::Themes | Self::Sessions | Self::Tools
         )
     }
 }

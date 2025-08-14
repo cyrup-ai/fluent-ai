@@ -4,11 +4,12 @@
 //! capabilities for memory safety validation with zero allocation patterns
 //! and blazing-fast performance for production environments.
 
-use crate::security::memory_safety::core::*;
-use crate::security::memory_safety::validation::*;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::security::memory_safety::core::*;
+use crate::security::memory_safety::validation::*;
 
 /// Alert thresholds for memory safety monitoring
 #[derive(Debug, Clone)]

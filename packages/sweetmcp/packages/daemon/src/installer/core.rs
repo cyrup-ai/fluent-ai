@@ -6,14 +6,15 @@
 
 // All install functions removed as unused
 // Removed unused import: use crate::signing;
-use anyhow::{Context, Result};
-use futures::{Stream, StreamExt};
-// Removed unused imports: use log::{info, warn};
-use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
-use rcgen::string::Ia5String;
 use std::fs;
 use std::path::PathBuf;
 use std::pin::Pin;
+
+use anyhow::{Context, Result};
+use futures::{Stream, StreamExt};
+use rcgen::string::Ia5String;
+// Removed unused imports: use log::{info, warn};
+use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
 // Removed unused import: use std::process::Command;
 // Removed unused import: use time::OffsetDateTime;
 use tokio::sync::mpsc;
@@ -81,24 +82,20 @@ impl<T, E> AsyncTask<Result<T, E>> {
         U: Send + 'static,
     {
         match self {
-            AsyncTask::FutureVariant(fut) => {
-                AsyncTask::from_future(async move {
-                    match fut.await {
-                        Ok(value) => Ok(f(value)),
-                        Err(err) => Err(err),
-                    }
-                })
-            }
-            AsyncTask::StreamVariant(stream) => {
-                AsyncTask::from_future(async move {
-                    let mut stream = stream;
-                    match stream.next().await {
-                        Some(Ok(value)) => Ok(f(value)),
-                        Some(Err(err)) => Err(err),
-                        None => panic!("Stream ended without producing a value"),
-                    }
-                })
-            }
+            AsyncTask::FutureVariant(fut) => AsyncTask::from_future(async move {
+                match fut.await {
+                    Ok(value) => Ok(f(value)),
+                    Err(err) => Err(err),
+                }
+            }),
+            AsyncTask::StreamVariant(stream) => AsyncTask::from_future(async move {
+                let mut stream = stream;
+                match stream.next().await {
+                    Some(Ok(value)) => Ok(f(value)),
+                    Some(Err(err)) => Err(err),
+                    None => panic!("Stream ended without producing a value"),
+                }
+            }),
         }
     }
 
@@ -112,24 +109,20 @@ impl<T, E> AsyncTask<Result<T, E>> {
         G: Send + 'static,
     {
         match self {
-            AsyncTask::FutureVariant(fut) => {
-                AsyncTask::from_future(async move {
-                    match fut.await {
-                        Ok(value) => Ok(value),
-                        Err(err) => Err(f(err)),
-                    }
-                })
-            }
-            AsyncTask::StreamVariant(stream) => {
-                AsyncTask::from_future(async move {
-                    let mut stream = stream;
-                    match stream.next().await {
-                        Some(Ok(value)) => Ok(value),
-                        Some(Err(err)) => Err(f(err)),
-                        None => panic!("Stream ended without producing a value"),
-                    }
-                })
-            }
+            AsyncTask::FutureVariant(fut) => AsyncTask::from_future(async move {
+                match fut.await {
+                    Ok(value) => Ok(value),
+                    Err(err) => Err(f(err)),
+                }
+            }),
+            AsyncTask::StreamVariant(stream) => AsyncTask::from_future(async move {
+                let mut stream = stream;
+                match stream.next().await {
+                    Some(Ok(value)) => Ok(value),
+                    Some(Err(err)) => Err(f(err)),
+                    None => panic!("Stream ended without producing a value"),
+                }
+            }),
         }
     }
 
@@ -144,24 +137,20 @@ impl<T, E> AsyncTask<Result<T, E>> {
         U: Send + 'static,
     {
         match self {
-            AsyncTask::FutureVariant(fut) => {
-                AsyncTask::from_future(async move {
-                    match fut.await {
-                        Ok(value) => f(value).await,
-                        Err(err) => Err(err),
-                    }
-                })
-            }
-            AsyncTask::StreamVariant(stream) => {
-                AsyncTask::from_future(async move {
-                    let mut stream = stream;
-                    match stream.next().await {
-                        Some(Ok(value)) => f(value).await,
-                        Some(Err(err)) => Err(err),
-                        None => panic!("Stream ended without producing a value"),
-                    }
-                })
-            }
+            AsyncTask::FutureVariant(fut) => AsyncTask::from_future(async move {
+                match fut.await {
+                    Ok(value) => f(value).await,
+                    Err(err) => Err(err),
+                }
+            }),
+            AsyncTask::StreamVariant(stream) => AsyncTask::from_future(async move {
+                let mut stream = stream;
+                match stream.next().await {
+                    Some(Ok(value)) => f(value).await,
+                    Some(Err(err)) => Err(err),
+                    None => panic!("Stream ended without producing a value"),
+                }
+            }),
         }
     }
 }
@@ -457,10 +446,10 @@ impl InstallContext {
     pub fn create_directories(&self) -> Result<()> {
         fs::create_dir_all(&self.data_dir)
             .with_context(|| format!("Failed to create data directory: {:?}", self.data_dir))?;
-        
+
         fs::create_dir_all(&self.log_dir)
             .with_context(|| format!("Failed to create log directory: {:?}", self.log_dir))?;
-        
+
         fs::create_dir_all(&self.cert_dir)
             .with_context(|| format!("Failed to create cert directory: {:?}", self.cert_dir))?;
 
@@ -476,11 +465,11 @@ impl InstallContext {
     /// Generate certificates with optimized certificate generation
     pub fn generate_certificates(&self) -> Result<()> {
         let config = &self.certificate_config;
-        
+
         // Create CA certificate parameters
         let mut ca_params = CertificateParams::new(vec![config.common_name.clone()])?;
         ca_params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
-        
+
         // Set distinguished name
         let mut dn = DistinguishedName::new();
         dn.push(DnType::CommonName, &config.common_name);
@@ -496,18 +485,20 @@ impl InstallContext {
         ca_params.not_after = not_after;
 
         // Generate CA certificate
-        let ca_key_pair = rcgen::KeyPair::generate()
-            .with_context(|| "Failed to generate CA key pair")?;
-        let ca_cert = ca_params.clone().self_signed(&ca_key_pair)
+        let ca_key_pair =
+            rcgen::KeyPair::generate().with_context(|| "Failed to generate CA key pair")?;
+        let ca_cert = ca_params
+            .clone()
+            .self_signed(&ca_key_pair)
             .with_context(|| "Failed to generate CA certificate")?;
 
         // Save CA certificate and key
         let ca_cert_path = self.cert_dir.join("ca.crt");
         let ca_key_path = self.cert_dir.join("ca.key");
-        
+
         fs::write(&ca_cert_path, ca_cert.pem())
             .with_context(|| format!("Failed to write CA certificate to {:?}", ca_cert_path))?;
-        
+
         fs::write(&ca_key_path, ca_key_pair.serialize_pem())
             .with_context(|| format!("Failed to write CA key to {:?}", ca_key_path))?;
 
@@ -524,12 +515,17 @@ impl InstallContext {
     }
 
     /// Generate server certificate with optimized server cert generation
-    fn generate_server_certificate(&self, _ca_cert: &rcgen::Certificate, ca_params: &rcgen::CertificateParams, ca_key_pair: rcgen::KeyPair) -> Result<()> {
+    fn generate_server_certificate(
+        &self,
+        _ca_cert: &rcgen::Certificate,
+        ca_params: &rcgen::CertificateParams,
+        ca_key_pair: rcgen::KeyPair,
+    ) -> Result<()> {
         let config = &self.certificate_config;
-        
+
         // Create server certificate parameters
         let mut server_params = CertificateParams::new(vec!["localhost".to_string()])?;
-        
+
         // Set distinguished name
         let mut dn = DistinguishedName::new();
         dn.push(DnType::CommonName, "localhost");
@@ -540,10 +536,15 @@ impl InstallContext {
         // Add SAN entries
         for san in &config.san_entries {
             if san.parse::<std::net::IpAddr>().is_ok() {
-                server_params.subject_alt_names.push(SanType::IpAddress(san.parse()?));
+                server_params
+                    .subject_alt_names
+                    .push(SanType::IpAddress(san.parse()?));
             } else {
-                let ia5_string = Ia5String::try_from(san.as_str()).context("Invalid DNS name in SAN")?;
-                server_params.subject_alt_names.push(SanType::DnsName(ia5_string));
+                let ia5_string =
+                    Ia5String::try_from(san.as_str()).context("Invalid DNS name in SAN")?;
+                server_params
+                    .subject_alt_names
+                    .push(SanType::DnsName(ia5_string));
             }
         }
 
@@ -554,22 +555,27 @@ impl InstallContext {
         server_params.not_before = not_before;
         server_params.not_after = not_after;
 
-        // Create CA issuer for signing server certificate (rcgen 0.14+ API)  
+        // Create CA issuer for signing server certificate (rcgen 0.14+ API)
         let ca_issuer = rcgen::Issuer::new(ca_params.clone(), ca_key_pair);
 
         // Generate server certificate signed by CA
-        let server_key_pair = rcgen::KeyPair::generate()
-            .with_context(|| "Failed to generate server key pair")?;
-        let server_cert = server_params.signed_by(&server_key_pair, &ca_issuer)
+        let server_key_pair =
+            rcgen::KeyPair::generate().with_context(|| "Failed to generate server key pair")?;
+        let server_cert = server_params
+            .signed_by(&server_key_pair, &ca_issuer)
             .with_context(|| "Failed to generate server certificate")?;
 
         // Save server certificate and key
         let server_cert_path = self.cert_dir.join("server.crt");
         let server_key_path = self.cert_dir.join("server.key");
-        
-        fs::write(&server_cert_path, server_cert.pem())
-            .with_context(|| format!("Failed to write server certificate to {:?}", server_cert_path))?;
-        
+
+        fs::write(&server_cert_path, server_cert.pem()).with_context(|| {
+            format!(
+                "Failed to write server certificate to {:?}",
+                server_cert_path
+            )
+        })?;
+
         fs::write(&server_key_path, server_key_pair.serialize_pem())
             .with_context(|| format!("Failed to write server key to {:?}", server_key_path))?;
 
@@ -591,10 +597,7 @@ impl InstallContext {
 
         // Check if executable exists and is executable
         if !self.exe_path.exists() {
-            return Err(anyhow::anyhow!(
-                "Executable not found: {:?}",
-                self.exe_path
-            ));
+            return Err(anyhow::anyhow!("Executable not found: {:?}", self.exe_path));
         }
 
         #[cfg(unix)]
@@ -602,7 +605,7 @@ impl InstallContext {
             use std::os::unix::fs::PermissionsExt;
             let metadata = fs::metadata(&self.exe_path)
                 .with_context(|| format!("Failed to read metadata for {:?}", self.exe_path))?;
-            
+
             if metadata.permissions().mode() & 0o111 == 0 {
                 return Err(anyhow::anyhow!(
                     "Executable is not executable: {:?}",

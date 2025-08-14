@@ -44,6 +44,7 @@
 //     .with_openai_response_format("json_object")
 //     .with_openai_seed(42);
 // ```
+use std::collections::HashMap;
 #[forbid(unsafe_code)]
 #[deny(clippy::all)]
 #[deny(clippy::pedantic)]
@@ -55,12 +56,11 @@ use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use std::collections::HashMap;
-use crate::domain::http::Provider;
 use crate::domain::http::common::{
-    BaseMessage, MAX_IDENTIFIER_LEN, MAX_MESSAGES, MAX_STOP_SEQUENCE_LEN, MAX_STOP_SEQUENCES,
-    MAX_TOOLS, ModelParameters, ValidationError,
+    BaseMessage, ModelParameters, ValidationError, MAX_IDENTIFIER_LEN, MAX_MESSAGES,
+    MAX_STOP_SEQUENCES, MAX_STOP_SEQUENCE_LEN, MAX_TOOLS,
 };
+use crate::domain::http::Provider;
 
 /// Maximum number of provider-specific parameters
 pub const MAX_PROVIDER_PARAMS: usize = 16;
@@ -603,9 +603,9 @@ impl CompletionRequest {
             if let Some(last_message) = self.messages.last() {
                 request["message"] = last_message.content.clone().into();
                 if self.messages.len() > 1 {
-                    request["chat_history"] = serde_json::to_value(
-                        &self.messages[..self.messages.len() - 1]
-                    ).unwrap_or_default();
+                    request["chat_history"] =
+                        serde_json::to_value(&self.messages[..self.messages.len() - 1])
+                            .unwrap_or_default();
                 }
             }
         }

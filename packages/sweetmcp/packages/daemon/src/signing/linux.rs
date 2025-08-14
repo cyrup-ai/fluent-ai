@@ -1,10 +1,12 @@
 //! Linux code signing implementation using GPG
 
-use super::{PlatformConfig, SigningConfig};
-use anyhow::{bail, Context, Result};
 use std::path::Path;
 use std::process::Command;
+
+use anyhow::{bail, Context, Result};
 use which::which;
+
+use super::{PlatformConfig, SigningConfig};
 
 /// Sign a binary on Linux using GPG
 pub fn sign(config: &SigningConfig) -> Result<()> {

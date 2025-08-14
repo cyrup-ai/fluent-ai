@@ -3,7 +3,9 @@
 pub mod globals;
 
 use std::sync::Arc;
+
 use fluent_ai_async::AsyncStream;
+
 use crate::domain::core::DomainInitError;
 use crate::domain::memory::config::memory::MemoryConfig;
 use crate::domain::memory::manager::SurrealDBMemoryManager;
@@ -15,7 +17,7 @@ pub fn initialize_domain() -> AsyncStream<Arc<SurrealDBMemoryManager>> {
         match initialize_memory_manager(config) {
             Ok(manager) => {
                 let _ = sender.try_send(manager);
-            },
+            }
             Err(_err) => {
                 // For now, send a default manager on error
                 // TODO: Implement proper error propagation through AsyncStream
@@ -34,7 +36,7 @@ pub fn initialize_domain_with_config(
         match initialize_memory_manager(config) {
             Ok(manager) => {
                 let _ = sender.try_send(manager);
-            },
+            }
             Err(_err) => {
                 // For now, send a default manager on error
                 // TODO: Implement proper error propagation through AsyncStream

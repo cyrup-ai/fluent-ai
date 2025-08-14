@@ -20,18 +20,21 @@ pub struct MigrationRecord {
     pub applied_at: DateTime<Utc>,
 
     /// Checksum of migration
-    pub checksum: String}
+    pub checksum: String,
+}
 
 /// Schema migration tracker
 pub struct SchemaTracker {
     /// Applied migrations
-    applied: HashMap<u32, MigrationRecord>}
+    applied: HashMap<u32, MigrationRecord>,
+}
 
 impl SchemaTracker {
     /// Create a new schema tracker
     pub fn new() -> Self {
         Self {
-            applied: HashMap::new()}
+            applied: HashMap::new(),
+        }
     }
 
     /// Check if a migration is applied
@@ -45,7 +48,8 @@ impl SchemaTracker {
             version,
             name,
             applied_at: Utc::now(),
-            checksum};
+            checksum,
+        };
         self.applied.insert(version, record);
     }
 

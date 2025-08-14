@@ -46,11 +46,9 @@ pub fn initialize_timestamp_cache() {
         update_cached_timestamp();
 
         // Start background thread for periodic updates
-        std::thread::spawn(|| {
-            loop {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                update_cached_timestamp();
-            }
+        std::thread::spawn(|| loop {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            update_cached_timestamp();
         });
     });
 }

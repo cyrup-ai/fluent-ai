@@ -90,14 +90,13 @@ mod tests {
     use super::super::types::{CandleMessage, CandleMessageRole};
     use super::*;
 
-
     #[tokio::test]
     async fn test_process_message() {
         let message = CandleMessage {
             role: CandleMessageRole::User,
             content: "  Hello, world!  ".to_string(),
             id: None,
-            timestamp: None
+            timestamp: None,
         };
 
         let processed: Vec<_> = process_message(message).collect();
@@ -111,20 +110,20 @@ mod tests {
             role: CandleMessageRole::User,
             content: "Hello, world!".to_string(),
             id: None,
-            timestamp: None
+            timestamp: None,
         };
 
         let empty_message = CandleMessage {
             role: CandleMessageRole::User,
             content: "   ".to_string(),
             id: None,
-            timestamp: None
+            timestamp: None,
         };
 
         let mut valid_stream = validate_message(valid_message);
         let valid_result = valid_stream.next().unwrap();
         assert_eq!(valid_result.content, "Hello, world!");
-        
+
         let mut empty_stream = validate_message(empty_message);
         let empty_result = empty_stream.next().unwrap();
         assert_eq!(empty_result.content, "   "); // Validation is now handled by on_chunk handler

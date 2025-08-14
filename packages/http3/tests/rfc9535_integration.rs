@@ -238,8 +238,7 @@ mod full_spec_integration {
                 expr
             );
 
-            let mut stream =
-                JsonArrayStream::<serde_json::Value>::new(expr);
+            let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
 
             let chunk = Bytes::from(unicode_json);
             let results: Vec<_> = stream.process_chunk(chunk).collect();

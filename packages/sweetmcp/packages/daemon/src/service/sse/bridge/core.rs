@@ -4,10 +4,11 @@
 //! for communicating with the sweetmcp-axum MCP server with zero allocation
 //! patterns and blazing-fast performance.
 
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use reqwest::{Client, Response};
 use serde_json::Value;
-use std::time::Duration;
 use tracing::{debug, warn};
 
 /// Bridge for communicating with the MCP server

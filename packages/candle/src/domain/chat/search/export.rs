@@ -1,10 +1,11 @@
 //! Search result export functionality
 
 use std::sync::Arc;
-use serde_json;
-use fluent_ai_async::AsyncStream;
 
-use super::types::{SearchResult, ExportFormat, ExportOptions, SearchError};
+use fluent_ai_async::AsyncStream;
+use serde_json;
+
+use super::types::{ExportFormat, ExportOptions, SearchError, SearchResult};
 
 /// Search result exporter with streaming capabilities
 pub struct SearchExporter {
@@ -46,7 +47,8 @@ impl SearchExporter {
         AsyncStream::with_channel(move |sender| {
             match export_options.format {
                 ExportFormat::Json => {
-                    if let Ok(json) = self_clone.export_json_sync(&limited_results, &export_options) {
+                    if let Ok(json) = self_clone.export_json_sync(&limited_results, &export_options)
+                    {
                         let _ = sender.send(json);
                     }
                 }

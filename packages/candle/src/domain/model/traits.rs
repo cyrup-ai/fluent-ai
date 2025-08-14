@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::model::{CandleUsage as Usage, CandleModelInfo};
+use crate::domain::model::{CandleModelInfo, CandleUsage as Usage};
 
 /// Core trait for all Candle AI models
 ///
@@ -91,7 +91,8 @@ pub enum ChatMessage {
         /// The contents of the system message
         content: String,
         /// An optional name for the participant
-        name: Option<String>},
+        name: Option<String>,
+    },
 
     /// A message from a human user
     User {
@@ -101,7 +102,8 @@ pub enum ChatMessage {
         name: Option<String>,
         /// Optional list of image URLs or base64-encoded images
         #[serde(skip_serializing_if = "Option::is_none")]
-        images: Option<Vec<String>>},
+        images: Option<Vec<String>>,
+    },
 
     /// A message from the assistant
     Assistant {
@@ -111,14 +113,17 @@ pub enum ChatMessage {
         name: Option<String>,
         /// Function calls made by the assistant
         #[serde(skip_serializing_if = "Option::is_none")]
-        function_calls: Option<Vec<FunctionCall>>},
+        function_calls: Option<Vec<FunctionCall>>,
+    },
 
     /// A function call result
     Function {
         /// The name of the function that was called
         name: String,
         /// The output of the function call
-        content: String}}
+        content: String,
+    },
+}
 
 /// A function call made by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -126,7 +131,8 @@ pub struct FunctionCall {
     /// The name of the function to call
     pub name: String,
     /// The arguments to pass to the function (JSON-encoded string)
-    pub arguments: String}
+    pub arguments: String,
+}
 
 /// A function definition that can be called by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -136,7 +142,8 @@ pub struct FunctionDefinition {
     /// A description of what the function does
     pub description: Option<String>,
     /// The parameters the function accepts, described as a JSON Schema object
-    pub parameters: serde_json::Value}
+    pub parameters: serde_json::Value,
+}
 
 /// Parameters for text generation
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -163,7 +170,8 @@ pub struct GenerationParams {
     pub stop_sequences: Option<Vec<String>>,
 
     /// Whether to stream the response
-    pub stream: bool}
+    pub stream: bool,
+}
 
 /// A chunk of generated text
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -177,7 +185,8 @@ pub struct TextChunk {
     /// The reason generation stopped (if complete)
     pub finish_reason: Option<String>,
     /// Token usage for this chunk (if available)
-    pub usage: Option<Usage>}
+    pub usage: Option<Usage>,
+}
 
 /// Request for text generation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -185,7 +194,8 @@ pub struct TextGenerationRequest {
     /// The input prompt
     pub prompt: String,
     /// Generation parameters
-    pub params: GenerationParams}
+    pub params: GenerationParams,
+}
 
 /// Request for chat completion
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -195,13 +205,15 @@ pub struct ChatCompletionRequest {
     /// Generation parameters
     pub params: GenerationParams,
     /// Optional function definitions
-    pub functions: Option<Vec<FunctionDefinition>>}
+    pub functions: Option<Vec<FunctionDefinition>>,
+}
 
 /// Request for embedding generation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EmbeddingRequest {
     /// The text(s) to embed
-    pub texts: Vec<String>}
+    pub texts: Vec<String>,
+}
 
 /// An embedding result
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -211,7 +223,8 @@ pub struct Embedding {
     /// The original text that was embedded
     pub text: String,
     /// Token usage for this embedding (if available)
-    pub usage: Option<Usage>}
+    pub usage: Option<Usage>,
+}
 
 /// Fine-tuning configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -223,7 +236,8 @@ pub struct FineTuningConfig {
     /// Batch size for training
     pub batch_size: Option<u32>,
     /// Validation split ratio
-    pub validation_split: Option<f32>}
+    pub validation_split: Option<f32>,
+}
 
 /// Trait for models that can generate text
 pub trait TextGenerationCapable: CandleModel {
@@ -320,7 +334,8 @@ pub trait FineTunable: CandleModel {
             learning_rate: Some(0.0001),
             epochs: Some(3),
             batch_size: Some(32),
-            validation_split: Some(0.1)}
+            validation_split: Some(0.1),
+        }
     }
 
     /// Check if the model supports saving/loading fine-tuned versions

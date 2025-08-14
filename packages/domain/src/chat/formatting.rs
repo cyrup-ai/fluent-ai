@@ -15,9 +15,9 @@ use thiserror::Error;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ImmutableMessageContent {
     /// Plain text content
-    Plain { 
+    Plain {
         /// The plain text content
-        text: String 
+        text: String,
     },
     /// Markdown formatted content
     Markdown {
@@ -43,9 +43,9 @@ pub enum ImmutableMessageContent {
         styles: Vec<FormatStyle>,
     },
     /// Composite content with multiple parts
-    Composite { 
+    Composite {
         /// Individual content parts making up the composite
-        parts: Vec<ImmutableMessageContent> 
+        parts: Vec<ImmutableMessageContent>,
     },
 }
 
@@ -70,7 +70,8 @@ impl ImmutableMessageContent {
             Self::Markdown { .. } => "markdown",
             Self::Code { .. } => "code",
             Self::Formatted { .. } => "formatted",
-            Self::Composite { .. } => "composite"}
+            Self::Composite { .. } => "composite",
+        }
     }
 
     /// Check if content is empty
@@ -81,7 +82,8 @@ impl ImmutableMessageContent {
             Self::Markdown { content, .. } => content.is_empty(),
             Self::Code { content, .. } => content.is_empty(),
             Self::Formatted { content, .. } => content.is_empty(),
-            Self::Composite { parts } => parts.is_empty()}
+            Self::Composite { parts } => parts.is_empty(),
+        }
     }
 
     /// Get estimated character count
@@ -92,7 +94,8 @@ impl ImmutableMessageContent {
             Self::Markdown { content, .. } => content.chars().count(),
             Self::Code { content, .. } => content.chars().count(),
             Self::Formatted { content, .. } => content.chars().count(),
-            Self::Composite { parts } => parts.iter().map(|p| p.char_count()).sum()}
+            Self::Composite { parts } => parts.iter().map(|p| p.char_count()).sum(),
+        }
     }
 
     /// Validate content structure
@@ -102,18 +105,21 @@ impl ImmutableMessageContent {
             Self::Code { language, .. } => {
                 if language.is_empty() {
                     return Err(FormatError::InvalidContent {
-                        detail: "Code language cannot be empty".to_string()});
+                        detail: "Code language cannot be empty".to_string(),
+                    });
                 }
             }
             Self::Formatted { content, styles } => {
                 for style in styles {
                     if style.end > content.len() {
                         return Err(FormatError::InvalidContent {
-                            detail: "Style range exceeds content length".to_string()});
+                            detail: "Style range exceeds content length".to_string(),
+                        });
                     }
                     if style.start >= style.end {
                         return Err(FormatError::InvalidContent {
-                            detail: "Invalid style range".to_string()});
+                            detail: "Invalid style range".to_string(),
+                        });
                     }
                 }
             }
@@ -136,7 +142,8 @@ pub struct FormatStyle {
     /// End position in the text
     pub end: usize,
     /// Style type
-    pub style: StyleType}
+    pub style: StyleType,
+}
 
 impl FormatStyle {
     /// Create new format style with validation
@@ -144,7 +151,8 @@ impl FormatStyle {
     pub fn new(start: usize, end: usize, style: StyleType) -> FormatResult<Self> {
         if start >= end {
             return Err(FormatError::InvalidContent {
-                detail: "Style start must be less than end".to_string()});
+                detail: "Style start must be less than end".to_string(),
+            });
         }
         Ok(Self { start, end, style })
     }
@@ -176,20 +184,21 @@ pub enum StyleType {
     /// Inline code formatting
     Code,
     /// Hyperlink with URL
-    Link { 
+    Link {
         /// URL target for the link
-        url: String 
+        url: String,
     },
     /// Text color formatting
-    Color { 
+    Color {
         /// RGB color value (24-bit)
-        rgb: u32 
+        rgb: u32,
     },
     /// Background color formatting
-    Background { 
+    Background {
         /// RGB background color value (24-bit)
-        rgb: u32 
-    }}
+        rgb: u32,
+    },
+}
 
 impl StyleType {
     /// Get style name as static string (zero allocation)
@@ -203,7 +212,8 @@ impl StyleType {
             Self::Code => "code",
             Self::Link { .. } => "link",
             Self::Color { .. } => "color",
-            Self::Background { .. } => "background"}
+            Self::Background { .. } => "background",
+        }
     }
 
     /// Check if style requires additional data
@@ -221,61 +231,62 @@ impl StyleType {
 pub enum FormatError {
     /// Invalid markdown syntax encountered
     #[error("Invalid markdown syntax: {detail}")]
-    InvalidMarkdown { 
+    InvalidMarkdown {
         /// Details about the syntax error
-        detail: String 
+        detail: String,
     },
     /// Programming language not supported for syntax highlighting
     #[error("Unsupported language: {language}")]
-    UnsupportedLanguage { 
+    UnsupportedLanguage {
         /// The unsupported language identifier
-        language: String 
+        language: String,
     },
     /// Error occurred during parsing
     #[error("Parse error: {detail}")]
-    ParseError { 
+    ParseError {
         /// Details about the parsing error
-        detail: String 
+        detail: String,
     },
     /// Error occurred during rendering
     #[error("Render error: {detail}")]
-    RenderError { 
+    RenderError {
         /// Details about the rendering error
-        detail: String 
+        detail: String,
     },
     /// Content validation failed
     #[error("Invalid content: {detail}")]
-    InvalidContent { 
+    InvalidContent {
         /// Details about the content validation failure
-        detail: String 
+        detail: String,
     },
     /// Configuration is invalid or missing
     #[error("Configuration error: {detail}")]
-    ConfigurationError { 
+    ConfigurationError {
         /// Details about the configuration error
-        detail: String 
+        detail: String,
     },
     /// Input/output operation failed
     #[error("IO error: {detail}")]
-    IoError { 
+    IoError {
         /// Details about the IO error
-        detail: String 
+        detail: String,
     },
     /// Operation timed out
     #[error("Timeout error")]
     Timeout,
     /// Required resource was not found
     #[error("Resource not found: {resource}")]
-    ResourceNotFound { 
+    ResourceNotFound {
         /// Name of the missing resource
-        resource: String 
+        resource: String,
     },
     /// Internal system error occurred
     #[error("Internal error: {detail}")]
-    InternalError { 
+    InternalError {
         /// Details about the internal error
-        detail: String 
-    }}
+        detail: String,
+    },
+}
 
 /// Result type for formatting operations
 pub type FormatResult<T> = Result<T, FormatError>;
@@ -310,7 +321,8 @@ pub struct ImmutableFormatOptions {
     /// Custom CSS classes for HTML output
     pub custom_css_classes: HashMap<String, String>,
     /// Custom formatting rules
-    pub custom_rules: Vec<ImmutableCustomFormatRule>}
+    pub custom_rules: Vec<ImmutableCustomFormatRule>,
+}
 
 impl ImmutableFormatOptions {
     /// Create new format options with default values
@@ -360,11 +372,13 @@ impl ImmutableFormatOptions {
     pub fn validate(&self) -> FormatResult<()> {
         if self.max_line_length > 0 && self.max_line_length < 10 {
             return Err(FormatError::ConfigurationError {
-                detail: "Max line length must be at least 10 or 0 for no wrapping".to_string()});
+                detail: "Max line length must be at least 10 or 0 for no wrapping".to_string(),
+            });
         }
         if self.indent_size > 20 {
             return Err(FormatError::ConfigurationError {
-                detail: "Indent size cannot exceed 20".to_string()});
+                detail: "Indent size cannot exceed 20".to_string(),
+            });
         }
         for rule in &self.custom_rules {
             rule.validate()?;
@@ -390,7 +404,8 @@ impl Default for ImmutableFormatOptions {
             include_metadata: false,
             enable_optimizations: true,
             custom_css_classes: HashMap::new(),
-            custom_rules: Vec::new()}
+            custom_rules: Vec::new(),
+        }
     }
 }
 
@@ -412,7 +427,8 @@ pub enum SyntaxTheme {
     /// VS Code theme
     VSCode,
     /// Custom theme
-    Custom}
+    Custom,
+}
 
 impl SyntaxTheme {
     /// Get theme name as static string (zero allocation)
@@ -426,7 +442,8 @@ impl SyntaxTheme {
             Self::SolarizedDark => "solarized-dark",
             Self::GitHub => "github",
             Self::VSCode => "vscode",
-            Self::Custom => "custom"}
+            Self::Custom => "custom",
+        }
     }
 
     /// Check if theme is dark
@@ -454,7 +471,8 @@ pub struct ImmutableColorScheme {
     /// Success color
     pub success: String,
     /// Link color
-    pub link: String}
+    pub link: String,
+}
 
 impl ImmutableColorScheme {
     /// Create new color scheme with validation
@@ -477,7 +495,8 @@ impl ImmutableColorScheme {
             error,
             warning,
             success,
-            link};
+            link,
+        };
         scheme.validate()?;
         Ok(scheme)
     }
@@ -499,7 +518,8 @@ impl ImmutableColorScheme {
         for color in &colors {
             if !Self::is_valid_color(color) {
                 return Err(FormatError::ConfigurationError {
-                    detail: format!("Invalid color format: {}", color)});
+                    detail: format!("Invalid color format: {}", color),
+                });
             }
         }
         Ok(())
@@ -526,7 +546,8 @@ impl Default for ImmutableColorScheme {
             error: "#cc0000".to_string(),
             warning: "#ff9900".to_string(),
             success: "#00cc00".to_string(),
-            link: "#0066cc".to_string()}
+            link: "#0066cc".to_string(),
+        }
     }
 }
 
@@ -544,7 +565,8 @@ pub enum OutputFormat {
     /// Rich text format
     RichText,
     /// LaTeX output
-    LaTeX}
+    LaTeX,
+}
 
 impl OutputFormat {
     /// Get format name as static string (zero allocation)
@@ -556,7 +578,8 @@ impl OutputFormat {
             Self::Markdown => "markdown",
             Self::AnsiTerminal => "ansi-terminal",
             Self::RichText => "rich-text",
-            Self::LaTeX => "latex"}
+            Self::LaTeX => "latex",
+        }
     }
 
     /// Check if format supports styling
@@ -584,7 +607,8 @@ pub struct ImmutableCustomFormatRule {
     /// Rule priority (higher = applied first)
     pub priority: u32,
     /// Whether rule is enabled
-    pub enabled: bool}
+    pub enabled: bool,
+}
 
 impl ImmutableCustomFormatRule {
     /// Create new custom format rule with validation
@@ -598,11 +622,13 @@ impl ImmutableCustomFormatRule {
     ) -> FormatResult<Self> {
         if name.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule name cannot be empty".to_string()});
+                detail: "Rule name cannot be empty".to_string(),
+            });
         }
         if pattern.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule pattern cannot be empty".to_string()});
+                detail: "Rule pattern cannot be empty".to_string(),
+            });
         }
 
         Ok(Self {
@@ -610,7 +636,8 @@ impl ImmutableCustomFormatRule {
             pattern,
             replacement,
             priority,
-            enabled})
+            enabled,
+        })
     }
 
     /// Validate rule configuration
@@ -618,11 +645,13 @@ impl ImmutableCustomFormatRule {
     pub fn validate(&self) -> FormatResult<()> {
         if self.name.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule name cannot be empty".to_string()});
+                detail: "Rule name cannot be empty".to_string(),
+            });
         }
         if self.pattern.is_empty() {
             return Err(FormatError::ConfigurationError {
-                detail: "Rule pattern cannot be empty".to_string()});
+                detail: "Rule pattern cannot be empty".to_string(),
+            });
         }
         // TODO: Validate regex pattern syntax
         Ok(())
@@ -639,7 +668,8 @@ pub enum FormattingEvent {
         /// Type of content being formatted
         content_type: String,
         /// Timestamp when formatting started (nanoseconds)
-        timestamp_nanos: u64},
+        timestamp_nanos: u64,
+    },
     /// Formatting progress
     Progress {
         /// Unique identifier for the content being formatted
@@ -647,7 +677,8 @@ pub enum FormattingEvent {
         /// Progress percentage (0.0 to 100.0)
         progress_percent: f32,
         /// Current formatting stage description
-        stage: String},
+        stage: String,
+    },
     /// Formatting completed
     Completed {
         /// Unique identifier for the content that was formatted
@@ -655,7 +686,8 @@ pub enum FormattingEvent {
         /// Final formatted content result
         result: ImmutableMessageContent,
         /// Total formatting duration in nanoseconds
-        duration_nanos: u64},
+        duration_nanos: u64,
+    },
     /// Formatting failed
     Failed {
         /// Unique identifier for the content that failed to format
@@ -663,13 +695,16 @@ pub enum FormattingEvent {
         /// Error that caused the formatting to fail
         error: FormatError,
         /// Duration before failure occurred (nanoseconds)
-        duration_nanos: u64},
+        duration_nanos: u64,
+    },
     /// Partial result available
     PartialResult {
         /// Unique identifier for the content being formatted
         content_id: u64,
         /// Partially formatted content available so far
-        partial_content: String}}
+        partial_content: String,
+    },
+}
 
 /// Streaming message formatter with atomic state tracking
 pub struct StreamingMessageFormatter {
@@ -686,7 +721,8 @@ pub struct StreamingMessageFormatter {
     /// Event stream sender
     event_sender: Option<AsyncStreamSender<FormattingEvent>>,
     /// Formatter configuration
-    options: ImmutableFormatOptions}
+    options: ImmutableFormatOptions,
+}
 
 impl std::fmt::Debug for StreamingMessageFormatter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -739,7 +775,8 @@ impl StreamingMessageFormatter {
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
             event_sender: None,
-            options})
+            options,
+        })
     }
 
     /// Create formatter with event streaming
@@ -758,7 +795,8 @@ impl StreamingMessageFormatter {
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
             event_sender: None, // Will be set up separately if needed
-            options};
+            options,
+        };
         Ok((formatter, stream))
     }
 
@@ -780,7 +818,8 @@ impl StreamingMessageFormatter {
             let _ = sender.send(FormattingEvent::Started {
                 content_id,
                 content_type: content.content_type().to_string(),
-                timestamp_nanos: Self::current_timestamp_nanos()});
+                timestamp_nanos: Self::current_timestamp_nanos(),
+            });
         }
 
         // TODO: Implement actual formatting logic here
@@ -805,7 +844,8 @@ impl StreamingMessageFormatter {
             active_operations: self.active_operations.load(Ordering::Relaxed) as u64,
             total_operations: self.total_operations.load(Ordering::Relaxed),
             successful_operations: self.successful_operations.load(Ordering::Relaxed),
-            failed_operations: self.failed_operations.load(Ordering::Relaxed)}
+            failed_operations: self.failed_operations.load(Ordering::Relaxed),
+        }
     }
 
     /// Get formatter options (borrowed reference)
@@ -833,7 +873,8 @@ pub struct FormatterStats {
     /// Number of operations that completed successfully
     pub successful_operations: u64,
     /// Number of operations that failed
-    pub failed_operations: u64}
+    pub failed_operations: u64,
+}
 
 impl FormatterStats {
     /// Calculate success rate as percentage
@@ -855,7 +896,7 @@ impl FormatterStats {
 }
 
 /// Legacy compatibility type aliases (deprecated)
-/// 
+///
 /// Deprecated alias for ImmutableMessageContent - use ImmutableMessageContent instead for zero-allocation streaming
 #[deprecated(note = "Use ImmutableMessageContent instead for zero-allocation streaming")]
 pub type MessageContent = ImmutableMessageContent;
@@ -883,7 +924,8 @@ mod tests {
     #[test]
     fn test_message_content_validation() {
         let content = ImmutableMessageContent::Plain {
-            text: "Hello, world!".to_string()};
+            text: "Hello, world!".to_string(),
+        };
         assert!(content.validate().is_ok());
         assert_eq!(content.content_type(), "plain");
         assert!(!content.is_empty());

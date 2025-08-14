@@ -1,7 +1,8 @@
 //! QUIC protocol definitions for voice service communication
 
-use crate::types::{ListenParams, ListenResult, SpeakParams};
 use serde::{Deserialize, Serialize};
+
+use crate::types::{ListenParams, ListenResult, SpeakParams};
 
 /// Request types for voice operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -232,7 +232,8 @@ impl StreamBuffer {
             current_capacity: self.buffer.capacity(),
             growth_operations: self.capacity_manager.growth_operations,
             last_shrink_size: self.capacity_manager.last_shrink_size,
-            can_shrink: self.capacity_manager.growth_operations >= self.capacity_manager.hysteresis_threshold,
+            can_shrink: self.capacity_manager.growth_operations
+                >= self.capacity_manager.hysteresis_threshold,
         }
     }
 }
@@ -338,7 +339,7 @@ impl CapacityManager {
             );
 
             buffer.reserve(new_capacity - current_capacity);
-            
+
             // Track growth operation for hysteresis
             self.growth_operations = self.growth_operations.saturating_add(1);
         }
@@ -363,10 +364,10 @@ impl CapacityManager {
 
         // Only shrink if significantly under-utilized and above initial capacity
         // Additional check: only shrink if we can save significant memory (at least 8KB)
-        if utilization < self.shrink_threshold 
-            && capacity > self.initial_capacity * 2 
-            && capacity > size + 8192 {
-            
+        if utilization < self.shrink_threshold
+            && capacity > self.initial_capacity * 2
+            && capacity > size + 8192
+        {
             let target_capacity = std::cmp::max(
                 self.initial_capacity,
                 (size as f64 / self.shrink_threshold) as usize,
@@ -376,19 +377,19 @@ impl CapacityManager {
             if target_capacity < capacity / 2 {
                 // Create new buffer with optimal capacity
                 let mut new_buffer = BytesMut::with_capacity(target_capacity);
-                
+
                 // Zero-copy the existing data into the new buffer
                 if size > 0 {
                     new_buffer.extend_from_slice(&buffer[..size]);
                 }
-                
+
                 // Replace the old buffer with the optimized one
                 *buffer = new_buffer;
-                
+
                 // Update shrink tracking
                 self.last_shrink_size = Some(capacity);
                 self.growth_operations = 0; // Reset growth counter after shrink
-                
+
                 log::debug!(
                     "Buffer shrunk: {} bytes -> {} bytes (saved {} bytes)",
                     capacity,

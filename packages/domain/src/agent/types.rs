@@ -14,7 +14,8 @@ pub struct AgentRoleAgent;
 /// Agent conversation type
 pub struct AgentConversation {
     /// Optional collection of conversation messages with their roles
-    pub messages: Option<ZeroOneOrMany<(MessageRole, String)>>}
+    pub messages: Option<ZeroOneOrMany<(MessageRole, String)>>,
+}
 
 impl AgentConversation {
     /// Create a new empty agent conversation
@@ -33,7 +34,8 @@ impl AgentConversation {
                     let all: Vec<_> = msgs.clone().into_iter().collect();
                     all.last().map(|(_, m)| m.clone())
                 })
-                .unwrap_or_default()}
+                .unwrap_or_default(),
+        }
     }
 }
 
@@ -45,7 +47,8 @@ impl Default for AgentConversation {
 
 /// A single message in an agent conversation
 pub struct AgentConversationMessage {
-    content: String}
+    content: String,
+}
 
 impl AgentConversationMessage {
     /// Get the message content as a string slice
@@ -53,7 +56,6 @@ impl AgentConversationMessage {
         &self.content
     }
 }
-
 
 /// Trait for context arguments - zero-allocation with static dispatch
 pub trait ContextArgs {

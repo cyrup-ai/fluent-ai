@@ -7,11 +7,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use fluent_ai_domain::{
-    http::CompletionChunk,
-    completion::{CompletionModel, CompletionParams},
-    prompt::Prompt};
 use fluent_ai_async::{AsyncStream, AsyncTask};
+use fluent_ai_domain::{
+    completion::{CompletionModel, CompletionParams},
+    http::CompletionChunk,
+    prompt::Prompt,
+};
 use smallvec::SmallVec;
 use tokio::sync::OnceCell;
 
@@ -50,7 +51,8 @@ pub struct CandleConfig {
     /// Memory limit for KV cache in bytes (0 = no limit)
     pub kv_cache_memory_limit: u64,
     /// Enable performance monitoring
-    pub enable_metrics: bool}
+    pub enable_metrics: bool,
+}
 
 impl Default for CandleConfig {
     fn default() -> Self {
@@ -64,7 +66,8 @@ impl Default for CandleConfig {
             optimize_memory: true,
             enable_device_fallback: true,
             kv_cache_memory_limit: 0, // No limit by default
-            enable_metrics: true}
+            enable_metrics: true,
+        }
     }
 }
 
@@ -133,7 +136,8 @@ pub struct CandleCompletionClient {
     /// Core components (lazy-initialized)
     components: OnceCell<CandleComponents>,
     /// Hot-swappable client state
-    state: ArcSwap<CandleClientState>}
+    state: ArcSwap<CandleClientState>,
+}
 
 /// Integrated Candle ML components
 #[derive(Debug)]
@@ -157,7 +161,8 @@ struct CandleComponents {
     /// Global configuration and metrics collector
     global_config: CandleGlobalConfig,
     /// Real-time metrics collection
-    metrics_collector: MetricsCollector}
+    metrics_collector: MetricsCollector,
+}
 
 /// Client state with atomic coordination
 #[derive(Debug)]
@@ -173,7 +178,8 @@ struct CandleClientState {
     /// Total tokens generated
     tokens_generated: u64,
     /// Current generation session ID
-    session_id: u64}
+    session_id: u64,
+}
 
 impl Default for CandleClientState {
     fn default() -> Self {
@@ -183,7 +189,8 @@ impl Default for CandleClientState {
             tokenizer_ready: false,
             sequences_processed: 0,
             tokens_generated: 0,
-            session_id: 0}
+            session_id: 0,
+        }
     }
 }
 
@@ -193,7 +200,8 @@ impl Clone for CandleCompletionClient {
             config: Arc::clone(&self.config),
             model_info: self.model_info.clone(),
             components: OnceCell::new(), // Components will be lazy-initialized
-            state: ArcSwap::new(Arc::clone(&self.state.load()))}
+            state: ArcSwap::new(Arc::clone(&self.state.load())),
+        }
     }
 }
 
@@ -210,7 +218,8 @@ impl CandleCompletionClient {
                 .as_ref()
                 .map(|p| p.to_string_lossy().into_owned()),
             tokenizer_path: None, // Will be determined from model repository
-            device: config.device.unwrap_or_default()};
+            device: config.device.unwrap_or_default(),
+        };
 
         let initial_state = CandleClientState::default();
 
@@ -218,7 +227,8 @@ impl CandleCompletionClient {
             config: Arc::new(config),
             model_info,
             components: OnceCell::new(),
-            state: ArcSwap::from_pointee(initial_state)})
+            state: ArcSwap::from_pointee(initial_state),
+        })
     }
 
     /// Create a client with default configuration
@@ -314,7 +324,8 @@ impl CandleCompletionClient {
                     memory_pool_manager,
                     performance_optimizer,
                     global_config,
-                    metrics_collector})
+                    metrics_collector,
+                })
             })
             .await
     }
@@ -371,7 +382,8 @@ impl CandleCompletionClient {
             streaming_stats: components.streaming_coordinator.statistics(),
             performance_stats: components.performance_optimizer.statistics(),
             global_config_metrics: components.global_config.metrics(),
-            realtime_metrics: components.metrics_collector.current_metrics()})
+            realtime_metrics: components.metrics_collector.current_metrics(),
+        })
     }
 
     /// Run forward pass through the Candle model
@@ -535,7 +547,8 @@ impl CandleCompletionClient {
             CandleModel::Mistral_7B => 32000,
             CandleModel::CodeLlama_7B => 32016,
             CandleModel::Phi3_Mini => 32064,
-            CandleModel::Gemma_2B | CandleModel::Gemma_7B => 256000}
+            CandleModel::Gemma_2B | CandleModel::Gemma_7B => 256000,
+        }
     }
 
     /// Get embedding dimension for the current model
@@ -545,7 +558,8 @@ impl CandleCompletionClient {
             CandleModel::Llama2_13B => 5120,
             CandleModel::Phi3_Mini => 3072,
             CandleModel::Gemma_2B => 2048,
-            CandleModel::Gemma_7B => 3072}
+            CandleModel::Gemma_7B => 3072,
+        }
     }
 
     /// Get number of layers for the current model
@@ -557,7 +571,8 @@ impl CandleCompletionClient {
             | CandleModel::Phi3_Mini => 32,
             CandleModel::Llama2_13B => 40,
             CandleModel::Gemma_2B => 18,
-            CandleModel::Gemma_7B => 28}
+            CandleModel::Gemma_7B => 28,
+        }
     }
 
     /// Simulate embedding lookup (placeholder for actual Candle tensor operations)
@@ -706,14 +721,15 @@ pub struct CandleStatistics {
     /// Global configuration metrics
     pub global_config_metrics: super::config::PerformanceMetrics,
     /// Real-time system metrics
-    pub realtime_metrics: super::config::MemoryMetrics}
+    pub realtime_metrics: super::config::MemoryMetrics,
+}
 
 impl CompletionModel for CandleCompletionClient {
     fn prompt<'a>(
         &'a self,
-        prompt: Prompt<'a>,
+        prompt: Prompt,
         params: &'a CompletionParams,
-    ) -> AsyncStream<CompletionChunk<'a>> {
+    ) -> AsyncStream<CompletionChunk> {
         Box::pin(async_stream::stream! {
             // Initialize components if needed
             let components = match self.initialize_components().await {
@@ -834,7 +850,7 @@ impl CompletionModel for CandleCompletionClient {
                         single_token.push(*last_token);
                     } else {
                         return Err(CandleError::generation(
-                            "No tokens in current_tokens for subsequent inference", 
+                            "No tokens in current_tokens for subsequent inference",
                             "stream_completion",
                             "non-empty current_tokens"
                         ));
@@ -983,7 +999,8 @@ pub enum CandleClientError {
 
     /// Configuration error
     #[error("Invalid configuration: {0}")]
-    ConfigError(String)}
+    ConfigError(String),
+}
 
 impl From<CandleClientError> for fluent_ai_domain::completion::CompletionCoreError {
     fn from(err: CandleClientError) -> Self {
@@ -1014,7 +1031,8 @@ impl ProviderClient for CandleCompletionClient {
                             as Box<dyn std::error::Error + Send + Sync>)
                     }
                 }
-                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)}
+                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),
+            }
         })
     }
 }
@@ -1053,7 +1071,8 @@ impl CompletionClient for CandleCompletionClient {
 #[derive(Debug, Clone)]
 pub struct CandleCompletionModel {
     client: CandleCompletionClient,
-    model: CandleModel}
+    model: CandleModel,
+}
 
 impl CandleCompletionModel {
     /// Create new completion model wrapper
@@ -1081,9 +1100,9 @@ impl CandleCompletionModel {
 impl CompletionModel for CandleCompletionModel {
     fn prompt<'a>(
         &'a self,
-        prompt: Prompt<'a>,
+        prompt: Prompt,
         params: &'a CompletionParams,
-    ) -> AsyncStream<CompletionChunk<'a>> {
+    ) -> AsyncStream<CompletionChunk> {
         // Delegate to the underlying client
         self.client.prompt(prompt, params)
     }

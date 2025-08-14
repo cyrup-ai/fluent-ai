@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use cyrup_sugars::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -26,7 +27,28 @@ pub struct DocumentChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for DocumentChunk {
+    fn bad_chunk(error: String) -> Self {
+        DocumentChunk {
+            path: None,
+            content: format!("[ERROR] {}", error),
+            byte_range: None,
+            metadata: HashMap::new(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 /// Image format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -42,7 +64,8 @@ pub enum ImageFormat {
     /// Bitmap image format
     BMP,
     /// Tagged Image File Format
-    TIFF}
+    TIFF,
+}
 
 /// Chunk of image data for streaming image operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,7 +81,28 @@ pub struct ImageChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for ImageChunk {
+    fn bad_chunk(error: String) -> Self {
+        ImageChunk {
+            data: vec![],
+            format: ImageFormat::PNG,
+            dimensions: None,
+            metadata: HashMap::new(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 /// Audio format types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -74,7 +118,8 @@ pub enum AudioFormat {
     /// MPEG-4 Audio compressed format (AAC)
     M4A,
     /// Opus low-latency audio codec
-    OPUS}
+    OPUS,
+}
 
 /// Chunk of audio/voice data for streaming audio operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,7 +138,29 @@ pub struct VoiceChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for VoiceChunk {
+    fn bad_chunk(error: String) -> Self {
+        VoiceChunk {
+            audio_data: vec![],
+            format: AudioFormat::PCM,
+            duration_ms: None,
+            sample_rate: None,
+            metadata: HashMap::new(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 /// Chunk of chat message for streaming responses
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,7 +176,28 @@ pub struct ChatMessageChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for ChatMessageChunk {
+    fn bad_chunk(error: String) -> Self {
+        ChatMessageChunk {
+            content: format!("[ERROR] {}", error),
+            role: crate::chat::message::MessageRole::System,
+            is_final: true,
+            metadata: HashMap::new(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 /// Reason why a completion finished
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -123,7 +211,8 @@ pub enum FinishReason {
     /// Completion finished to execute tool calls
     ToolCalls,
     /// Completion failed due to an error
-    Error}
+    Error,
+}
 
 /// Comprehensive completion chunk supporting all streaming features
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -139,22 +228,39 @@ pub enum CompletionChunk {
     ToolCall {
         id: String,
         name: String,
-        partial_input: String},
+        partial_input: String,
+    },
 
     /// Tool call completed
     ToolCallComplete {
         id: String,
         name: String,
-        input: String},
+        input: String,
+    },
 
     /// Completion finished with final information
     Complete {
         text: String,
         finish_reason: Option<FinishReason>,
-        usage: Option<Usage>},
+        usage: Option<Usage>,
+    },
 
     /// Error occurred during streaming
-    Error(String)}
+    Error(String),
+}
+
+impl MessageChunk for CompletionChunk {
+    fn bad_chunk(error: String) -> Self {
+        CompletionChunk::Error(error)
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            CompletionChunk::Error(err) => Some(err),
+            _ => None,
+        }
+    }
+}
 
 /// Chunk of embedding data for streaming embeddings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,7 +273,27 @@ pub struct EmbeddingChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for EmbeddingChunk {
+    fn bad_chunk(error: String) -> Self {
+        EmbeddingChunk {
+            embeddings: crate::ZeroOneOrMany::None,
+            index: 0,
+            metadata: HashMap::new(),
+            error: Some(error.clone()),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 /// Chunk of transcribed text from speech-to-text
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,7 +315,30 @@ pub struct TranscriptionChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for TranscriptionChunk {
+    fn bad_chunk(error: String) -> Self {
+        TranscriptionChunk {
+            text: format!("[ERROR] {}", error),
+            confidence: None,
+            start_time_ms: None,
+            end_time_ms: None,
+            is_final: true,
+            metadata: HashMap::new(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 /// Chunk of synthesized speech for text-to-speech
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -211,7 +360,30 @@ pub struct SpeechChunk {
 
     /// Additional metadata
     #[serde(flatten)]
-    pub metadata: HashMap<String, Value>}
+    pub metadata: HashMap<String, Value>,
+
+    /// Error message if this chunk represents an error
+    #[serde(skip)]
+    error: Option<String>,
+}
+
+impl MessageChunk for SpeechChunk {
+    fn bad_chunk(error: String) -> Self {
+        SpeechChunk {
+            audio_data: vec![],
+            format: AudioFormat::PCM,
+            duration_ms: None,
+            sample_rate: None,
+            is_final: true,
+            metadata: HashMap::new(),
+            error: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
 
 // Convenience constructors
 impl DocumentChunk {
@@ -220,7 +392,9 @@ impl DocumentChunk {
             path: None,
             content: content.into(),
             byte_range: None,
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+            error: None,
+        }
     }
 }
 
@@ -230,7 +404,9 @@ impl ChatMessageChunk {
             content: content.into(),
             role,
             is_final: false,
-            metadata: HashMap::new()}
+            metadata: HashMap::new(),
+            error: None,
+        }
     }
 }
 
@@ -244,7 +420,8 @@ impl CompletionChunk {
     pub fn tool_start(id: impl Into<String>, name: impl Into<String>) -> Self {
         Self::ToolCallStart {
             id: id.into(),
-            name: name.into()}
+            name: name.into(),
+        }
     }
 
     /// Create a partial tool call chunk
@@ -256,7 +433,8 @@ impl CompletionChunk {
         Self::ToolCall {
             id: id.into(),
             name: name.into(),
-            partial_input: partial_input.into()}
+            partial_input: partial_input.into(),
+        }
     }
 
     /// Create a completed tool call chunk
@@ -268,7 +446,8 @@ impl CompletionChunk {
         Self::ToolCallComplete {
             id: id.into(),
             name: name.into(),
-            input: input.into()}
+            input: input.into(),
+        }
     }
 
     /// Create a completion finished chunk
@@ -280,7 +459,8 @@ impl CompletionChunk {
         Self::Complete {
             text: text.into(),
             finish_reason,
-            usage}
+            usage,
+        }
     }
 
     /// Create an error chunk
@@ -298,7 +478,8 @@ impl CompletionChunk {
         match self {
             Self::Text(text) => Some(text),
             Self::Complete { text, .. } => Some(text),
-            _ => None}
+            _ => None,
+        }
     }
 
     /// Check if this is a completion chunk

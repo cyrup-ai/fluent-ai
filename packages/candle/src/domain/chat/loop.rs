@@ -11,11 +11,11 @@ use std::fmt;
 pub enum CandleChatLoop {
     /// Break out of the chat loop and end the conversation.
     Break,
-    
+
     /// Send a response back to the user and continue the conversation.
     /// The String contains the response message.
     Reprompt(String),
-    
+
     /// Prompt the user for input and continue the conversation.
     /// The String contains the prompt message.
     UserPrompt(String),
@@ -26,7 +26,9 @@ impl fmt::Display for CandleChatLoop {
         match self {
             CandleChatLoop::Break => write!(f, "CandleChatLoop::Break"),
             CandleChatLoop::Reprompt(msg) => write!(f, "CandleChatLoop::Reprompt({:?})", msg),
-            CandleChatLoop::UserPrompt(prompt) => write!(f, "CandleChatLoop::UserPrompt({:?})", prompt),
+            CandleChatLoop::UserPrompt(prompt) => {
+                write!(f, "CandleChatLoop::UserPrompt({:?})", prompt)
+            }
         }
     }
 }
@@ -37,10 +39,7 @@ mod tests {
 
     #[test]
     fn test_chat_loop_display() {
-        assert_eq!(
-            CandleChatLoop::Break.to_string(),
-            "CandleChatLoop::Break"
-        );
+        assert_eq!(CandleChatLoop::Break.to_string(), "CandleChatLoop::Break");
         assert_eq!(
             CandleChatLoop::Reprompt("Hello".to_string()).to_string(),
             "CandleChatLoop::Reprompt(\"Hello\")"

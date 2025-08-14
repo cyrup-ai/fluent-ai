@@ -31,9 +31,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -58,9 +56,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -86,9 +82,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -114,9 +108,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -142,9 +134,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -170,9 +160,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,

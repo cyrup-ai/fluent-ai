@@ -54,7 +54,8 @@ pub enum CompatibilityMode {
     #[default]
     Flexible,
     /// Hybrid mode: Support both modern and transitional types simultaneously
-    Hybrid}
+    Hybrid,
+}
 
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use cognitive::{CognitiveMemory, CognitiveProcessor};
@@ -62,7 +63,8 @@ pub use config::database::{DatabaseType, PoolConfig};
 pub use config::shared::RetryConfig;
 pub use config::shared::{EmbeddingConfig, EmbeddingModelType};
 pub use config::vector::{
-    DistanceMetric, IndexConfig, IndexType, PerformanceConfig, SimdConfig, VectorStoreType};
+    DistanceMetric, IndexConfig, IndexType, PerformanceConfig, SimdConfig, VectorStoreType,
+};
 pub use config::{DatabaseConfig, MemoryConfig, VectorStoreConfig};
 // Conditional re-exports for cognitive features
 // Removed unexpected cfg condition "cognitive" - feature does not exist
@@ -71,13 +73,14 @@ pub use config::{DatabaseConfig, MemoryConfig, VectorStoreConfig};
 // Re-export core types for backward compatibility
 pub use manager::Memory;
 pub use ops::{
-    CpuArchitecture, CpuFeatures, EMBEDDING_DIMENSION, Op, SIMD_WIDTH, SMALL_EMBEDDING_DIMENSION};
+    CpuArchitecture, CpuFeatures, Op, EMBEDDING_DIMENSION, SIMD_WIDTH, SMALL_EMBEDDING_DIMENSION,
+};
 pub use primitives::*;
 // Re-export commonly used primitives types
 pub use primitives::{MemoryContent, MemoryTypeEnum};
 pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
 // Re-export trait types for trait-backed architecture
-pub use traits::{CandleMemory, CandleMemoryStats, CandleMemoryImpl, MockCandleMemory};
+pub use traits::{CandleMemory, CandleMemoryImpl, CandleMemoryStats, MockCandleMemory};
 
 // BoxFuture replaced with AsyncStream - use .collect() for Future-like behavior
 
@@ -110,7 +113,8 @@ pub struct MemorySystemConfig {
     /// Enable cognitive features for advanced memory processing
     pub enable_cognitive: bool,
     /// Compatibility mode for transitional systems migration
-    pub compatibility_mode: CompatibilityMode}
+    pub compatibility_mode: CompatibilityMode,
+}
 
 impl MemorySystemConfig {
     /// Create optimized configuration for production use
@@ -120,7 +124,8 @@ impl MemorySystemConfig {
             vector_store: VectorStoreConfig::default(),
             llm: LLMConfig::default(),
             enable_cognitive: true,
-            compatibility_mode: CompatibilityMode::Hybrid})
+            compatibility_mode: CompatibilityMode::Hybrid,
+        })
     }
 
     /// Create minimal configuration for testing
@@ -134,7 +139,8 @@ impl MemorySystemConfig {
             )?,
             llm: LLMConfig::new(LLMProvider::OpenAI, "gpt-4")?,
             enable_cognitive: false,
-            compatibility_mode: CompatibilityMode::Strict})
+            compatibility_mode: CompatibilityMode::Strict,
+        })
     }
 
     /// Validate configuration consistency
@@ -151,10 +157,8 @@ impl Default for MemorySystemConfig {
     }
 }
 
-
 /// Convenience functions for creating memory system configurations
 impl MemorySystemConfig {
-
     /// Create configuration optimized for semantic search
     pub fn for_semantic_search() -> primitives::MemoryResult<Self> {
         Ok(Self {
@@ -177,8 +181,12 @@ impl MemorySystemConfig {
         Ok(Self {
             database: DatabaseConfig::new(DatabaseType::Memory, "memory", "chat", "realtime")?
                 .with_pool_config(PoolConfig::minimal()),
-            vector_store: VectorStoreConfig::new(VectorStoreType::Memory, EmbeddingConfig::default(), 1536)?
-                .with_performance_config(PerformanceConfig::minimal()),
+            vector_store: VectorStoreConfig::new(
+                VectorStoreType::Memory,
+                EmbeddingConfig::default(),
+                1536,
+            )?
+            .with_performance_config(PerformanceConfig::minimal()),
             llm: LLMConfig::new(LLMProvider::OpenAI, "gpt-4")?.with_streaming(true),
             enable_cognitive: false,
             compatibility_mode: CompatibilityMode::Hybrid,
@@ -195,9 +203,13 @@ impl MemorySystemConfig {
                 "memory_large",
             )?
             .with_pool_config(PoolConfig::optimized(DatabaseType::PostgreSQL)),
-            vector_store: VectorStoreConfig::new(VectorStoreType::FAISS, EmbeddingConfig::default(), 1536)?
-                .with_index_config(IndexConfig::optimized(IndexType::IVFPQ, 1536, 1000000))
-                .with_performance_config(PerformanceConfig::optimized(VectorStoreType::FAISS)),
+            vector_store: VectorStoreConfig::new(
+                VectorStoreType::FAISS,
+                EmbeddingConfig::default(),
+                1536,
+            )?
+            .with_index_config(IndexConfig::optimized(IndexType::IVFPQ, 1536, 1000000))
+            .with_performance_config(PerformanceConfig::optimized(VectorStoreType::FAISS)),
             llm: LLMConfig::default(),
             enable_cognitive: true,
             compatibility_mode: CompatibilityMode::Hybrid,

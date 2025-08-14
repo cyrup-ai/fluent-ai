@@ -18,7 +18,8 @@ pub struct QuantumConfig {
     pub simulation_parameters: SimulationParameters,
     pub exploration_constant: f64,
     pub decoherence_rate: f64,
-    pub entanglement_probability: f64}
+    pub entanglement_probability: f64,
+}
 
 /// Quantum hardware backend options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,36 +27,45 @@ pub enum QuantumHardwareBackend {
     Simulator {
         precision: SimulationPrecision,
         parallelization: bool,
-        gpu_acceleration: bool},
+        gpu_acceleration: bool,
+    },
     IBM {
         device_name: String,
         api_token: String,
-        queue_priority: Priority},
+        queue_priority: Priority,
+    },
     Google {
         processor_id: String,
         project_id: String,
-        credentials_path: String},
+        credentials_path: String,
+    },
     IonQ {
         api_key: String,
-        backend_type: String},
+        backend_type: String,
+    },
     Rigetti {
         quantum_processor_id: String,
-        api_key: String},
+        api_key: String,
+    },
     Azure {
         subscription_id: String,
         resource_group: String,
-        workspace_name: String},
+        workspace_name: String,
+    },
     Hybrid {
         primary: Box<QuantumHardwareBackend>,
         fallback: Box<QuantumHardwareBackend>,
-        failover_criteria: FailoverCriteria}}
+        failover_criteria: FailoverCriteria,
+    },
+}
 
 /// Simulation precision options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SimulationPrecision {
     Float32,
     Float64,
-    Arbitrary { precision_bits: usize }}
+    Arbitrary { precision_bits: usize },
+}
 
 /// Queue priority levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,7 +73,8 @@ pub enum Priority {
     Low,
     Normal,
     High,
-    Premium}
+    Premium,
+}
 
 /// Failover criteria for hybrid backends
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,7 +82,8 @@ pub struct FailoverCriteria {
     pub max_queue_time: Duration,
     pub min_fidelity_threshold: f64,
     pub max_error_rate: f64,
-    pub availability_threshold: f64}
+    pub availability_threshold: f64,
+}
 
 /// Simulation parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +92,8 @@ pub struct SimulationParameters {
     pub noise_model: NoiseModel,
     pub optimization_level: usize,
     pub basis_gates: Vec<String>,
-    pub coupling_map: Option<CouplingMap>}
+    pub coupling_map: Option<CouplingMap>,
+}
 
 /// Noise model for quantum simulation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,13 +103,15 @@ pub struct NoiseModel {
     pub thermal_relaxation: bool,
     pub dephasing: bool,
     pub depolarizing: bool,
-    pub amplitude_damping: bool}
+    pub amplitude_damping: bool,
+}
 
 /// Coupling map for quantum hardware topology
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CouplingMap {
     pub edges: Vec<(usize, usize)>,
-    pub topology: TopologyType}
+    pub topology: TopologyType,
+}
 
 /// Quantum hardware topology types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,7 +120,8 @@ pub enum TopologyType {
     Grid { rows: usize, cols: usize },
     HeavyHex,
     Falcon,
-    Custom}
+    Custom,
+}
 
 impl Default for QuantumConfig {
     fn default() -> Self {
@@ -131,7 +147,8 @@ impl QuantumHardwareBackend {
         Self::Simulator {
             precision: SimulationPrecision::Float64,
             parallelization: true,
-            gpu_acceleration: false}
+            gpu_acceleration: false,
+        }
     }
 
     /// Get backend name for logging
@@ -146,14 +163,16 @@ impl QuantumHardwareBackend {
                 ..
             } => format!("Rigetti {}", quantum_processor_id),
             Self::Azure { workspace_name, .. } => format!("Azure {}", workspace_name),
-            Self::Hybrid { .. } => "Hybrid Backend".to_string()}
+            Self::Hybrid { .. } => "Hybrid Backend".to_string(),
+        }
     }
 
     /// Check if backend requires authentication
     pub fn requires_auth(&self) -> bool {
         match self {
             Self::Simulator { .. } => false,
-            _ => true}
+            _ => true,
+        }
     }
 
     /// Get maximum qubit count for backend
@@ -166,15 +185,18 @@ impl QuantumHardwareBackend {
                 "ibm_lagos" => 7,
                 "ibm_perth" => 7,
                 "ibm_brisbane" => 127,
-                _ => 5},
+                _ => 5,
+            },
             Self::Google { processor_id, .. } => match processor_id.as_str() {
                 "sycamore" => 54,
                 "rainbow" => 23,
-                _ => 23},
+                _ => 23,
+            },
             Self::IonQ { .. } => 32,
             Self::Rigetti { .. } => 40,
             Self::Azure { .. } => 20,
-            Self::Hybrid { primary, .. } => primary.max_qubits()}
+            Self::Hybrid { primary, .. } => primary.max_qubits(),
+        }
     }
 }
 
@@ -190,7 +212,8 @@ impl Default for SimulationParameters {
                 "u3".to_string(),
                 "cx".to_string(),
             ],
-            coupling_map: None}
+            coupling_map: None,
+        }
     }
 }
 
@@ -211,7 +234,8 @@ impl Default for NoiseModel {
             thermal_relaxation: true,
             dephasing: true,
             depolarizing: false,
-            amplitude_damping: true}
+            amplitude_damping: true,
+        }
     }
 }
 
@@ -224,7 +248,8 @@ impl NoiseModel {
             thermal_relaxation: false,
             dephasing: false,
             depolarizing: false,
-            amplitude_damping: false}
+            amplitude_damping: false,
+        }
     }
 
     /// Create a realistic noise model based on current hardware
@@ -242,7 +267,8 @@ impl NoiseModel {
             thermal_relaxation: true,
             dephasing: true,
             depolarizing: true,
-            amplitude_damping: true}
+            amplitude_damping: true,
+        }
     }
 
     /// Get average gate error rate
@@ -276,7 +302,8 @@ impl CouplingMap {
 
         Self {
             edges,
-            topology: TopologyType::Linear}
+            topology: TopologyType::Linear,
+        }
     }
 
     /// Create a grid coupling map
@@ -303,7 +330,8 @@ impl CouplingMap {
 
         Self {
             edges,
-            topology: TopologyType::Grid { rows, cols }}
+            topology: TopologyType::Grid { rows, cols },
+        }
     }
 
     /// Check if two qubits are connected
@@ -352,7 +380,8 @@ mod tests {
         let ibm = QuantumHardwareBackend::IBM {
             device_name: "ibm_nairobi".to_string(),
             api_token: "token".to_string(),
-            queue_priority: Priority::Normal};
+            queue_priority: Priority::Normal,
+        };
         assert_eq!(ibm.name(), "IBM ibm_nairobi");
     }
 

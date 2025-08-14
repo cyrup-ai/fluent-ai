@@ -382,10 +382,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -410,10 +407,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -439,10 +433,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -468,10 +459,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -497,10 +485,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -526,10 +511,7 @@ mod array_slice_tests {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results, expected,
@@ -1258,10 +1240,7 @@ mod algorithm_compliance_validation {
             let mut stream = JsonArrayStream::<i32>::new(expr);
 
             let chunk = Bytes::from(json_data);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!(
                 "Algorithm test '{}' -> {:?} ({})",
@@ -1535,8 +1514,7 @@ mod singular_query_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(jsonpath);
 
             let chunk = Bytes::from(json_data);
-            let jsonpathresults: Vec<_> =
-                stream.process_chunk(chunk).collect();
+            let jsonpathresults: Vec<_> = stream.process_chunk(chunk).collect();
 
             // Simulate JSON Pointer access (manual traversal for testing)
             let json_value: serde_json::Value =

@@ -4,9 +4,10 @@
 //! with zero allocation patterns, blazing-fast performance, and comprehensive
 //! project scaffolding for production environments.
 
+use std::{fs, process::Command};
+
 use clap::Args;
 use ratatui::style::Stylize;
-use std::{fs, process::Command};
 
 /// Plugin initialization arguments
 #[derive(Args, Debug)]

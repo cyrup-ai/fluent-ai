@@ -1,11 +1,12 @@
+use std::error::Error as StdError;
+use std::fmt;
+use std::time::Duration;
+
 use async_trait::async_trait;
 use base64::Engine;
 use chromiumoxide::handler::viewport::Viewport;
 use chromiumoxide::{Browser, BrowserConfig, Page};
 use futures::StreamExt;
-use std::error::Error as StdError;
-use std::fmt;
-use std::time::Duration;
 
 #[derive(Debug)]
 pub enum ChromiumFetchError {

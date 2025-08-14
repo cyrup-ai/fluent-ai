@@ -2,11 +2,10 @@
 
 use extism_pdk::Error;
 use serde_json::Value;
-
 // Import required types from sweetmcp_plugin_builder
 use sweetmcp_plugin_builder::{
-    generate_mcp_functions, CallToolResult, ContentBuilder, DescriptionBuilder, McpTool, SchemaBuilder,
-    mcp_plugin, McpPlugin, Ready,
+    CallToolResult, ContentBuilder, DescriptionBuilder, McpPlugin, McpTool, Ready, SchemaBuilder,
+    generate_mcp_functions, mcp_plugin,
 };
 
 // Example tool implementations

@@ -117,16 +117,10 @@ mod operator_precedence_tests {
             let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results1: Vec<_> = stream1
-                .process_chunk(chunk.clone())
-
-                .collect();
+            let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
             let chunk = Bytes::from(json_data.clone());
-            let results2: Vec<_> = stream2
-                .process_chunk(chunk)
-
-                .collect();
+            let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
             assert_eq!(
                 results1.len(),
@@ -243,16 +237,10 @@ mod operator_precedence_tests {
                     let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results1: Vec<_> = stream1
-                        .process_chunk(chunk.clone())
-        
-                        .collect();
+                    let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
                     let chunk = Bytes::from(json_data.clone());
-                    let results2: Vec<_> = stream2
-                        .process_chunk(chunk)
-        
-                        .collect();
+                    let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
                     assert_eq!(
                         results1.len(),
@@ -365,10 +353,7 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results.len(),
@@ -426,10 +411,7 @@ mod parentheses_grouping_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert!(
                 results.len() >= min_expected,
@@ -518,16 +500,10 @@ mod logical_precedence_tests {
             let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results1: Vec<_> = stream1
-                .process_chunk(chunk.clone())
-
-                .collect();
+            let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
             let chunk = Bytes::from(json_data.clone());
-            let results2: Vec<_> = stream2
-                .process_chunk(chunk)
-
-                .collect();
+            let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
             assert_eq!(
                 results1.len(),
@@ -577,16 +553,10 @@ mod logical_precedence_tests {
             let mut stream2 = JsonArrayStream::<TestModel>::new(explicit_expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results1: Vec<_> = stream1
-                .process_chunk(chunk.clone())
-
-                .collect();
+            let results1: Vec<_> = stream1.process_chunk(chunk.clone()).collect();
 
             let chunk = Bytes::from(json_data.clone());
-            let results2: Vec<_> = stream2
-                .process_chunk(chunk)
-
-                .collect();
+            let results2: Vec<_> = stream2.process_chunk(chunk).collect();
 
             assert_eq!(
                 results1.len(),
@@ -805,10 +775,7 @@ mod complex_evaluation_tests {
             let mut stream = JsonArrayStream::<TestModel>::new(expr);
 
             let chunk = Bytes::from(json_data.clone());
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             println!("{}: {} items matched", _description, results.len());
 

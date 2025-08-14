@@ -1,6 +1,7 @@
 //! Query optimization and cost estimation
 
 use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::query::{QueryPlan, QueryStep, QueryType, Result};
@@ -14,13 +15,15 @@ pub struct QueryOptimizer {
     rules: Vec<Box<dyn OptimizationRule>>,
 
     /// Statistics
-    stats: QueryStatistics}
+    stats: QueryStatistics,
+}
 
 /// Cost model for query operations
 #[derive(Debug, Clone)]
 pub struct CostModel {
     /// Cost factors
-    factors: HashMap<String, f64>}
+    factors: HashMap<String, f64>,
+}
 
 impl Default for CostModel {
     fn default() -> Self {
@@ -53,7 +56,8 @@ pub struct QueryStatistics {
     pub index_cardinalities: HashMap<String, u64>,
 
     /// Selectivity estimates
-    pub selectivities: HashMap<String, f64>}
+    pub selectivities: HashMap<String, f64>,
+}
 
 impl QueryOptimizer {
     /// Create a new optimizer
@@ -61,7 +65,8 @@ impl QueryOptimizer {
         Self {
             cost_model: CostModel::default(),
             rules: Self::default_rules(),
-            stats: QueryStatistics::default()}
+            stats: QueryStatistics::default(),
+        }
     }
 
     /// Get default optimization rules
@@ -247,7 +252,8 @@ impl OptimizationRule for CacheRule {
                 name: "Cache Lookup".to_string(),
                 description: "Check if results are cached".to_string(),
                 cost: 1.0,
-                parallel: false},
+                parallel: false,
+            },
         );
 
         // Add cache write step at the end
@@ -255,7 +261,8 @@ impl OptimizationRule for CacheRule {
             name: "Cache Write".to_string(),
             description: "Store results in cache".to_string(),
             cost: 2.0,
-            parallel: false});
+            parallel: false,
+        });
 
         Ok(plan)
     }
@@ -278,4 +285,5 @@ pub struct OptimizationHints {
     pub no_cache: bool,
 
     /// Custom cost factors
-    pub cost_overrides: HashMap<String, f64>}
+    pub cost_overrides: HashMap<String, f64>,
+}

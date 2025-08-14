@@ -19,14 +19,16 @@ pub struct JailConfig {
     /// Whether to enable Landlock file system restrictions
     pub enable_landlock: bool,
     /// Whether to check for AppArmor restrictions
-    pub check_apparmor: bool}
+    pub check_apparmor: bool,
+}
 
 impl Default for JailConfig {
     fn default() -> Self {
         Self {
             allowed_dir: PathBuf::from("/tmp/cylo"),
             enable_landlock: true,
-            check_apparmor: true}
+            check_apparmor: true,
+        }
     }
 }
 
@@ -89,7 +91,8 @@ pub fn init_jail(config: &JailConfig) -> Result<(), StorageError> {
             Err(e) => warn!(
                 "Failed to apply Landlock restrictions: {}. Continuing with reduced security.",
                 e
-            )}
+            ),
+        }
     } else {
         warn!("Landlock restrictions not applied - running with reduced security");
     }
@@ -106,7 +109,8 @@ fn apply_landlock_restrictions(allowed_dir: &str) -> Result<(), StorageError> {
     {
         use landlock::{
             ABI, Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr,
-            RulesetStatus};
+            RulesetStatus,
+        };
 
         // Set up Landlock to only allow file access in the specified directory
         let abi = ABI::V1;

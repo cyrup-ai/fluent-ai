@@ -40,13 +40,21 @@ mod state_machine_tests {
         // Validate that object boundaries are detected correctly
         // For this JSON "[{\"id\":1}]", we expect at least one boundary for the object
         if !boundaries.is_empty() {
-            assert!(boundaries[0].end > boundaries[0].start, 
-                "Object boundary end should be after start");
-            println!("✓ Detected {} object boundaries in JSON stream", boundaries.len());
+            assert!(
+                boundaries[0].end > boundaries[0].start,
+                "Object boundary end should be after start"
+            );
+            println!(
+                "✓ Detected {} object boundaries in JSON stream",
+                boundaries.len()
+            );
         }
-        
+
         // Verify state machine processed the data
-        assert!(sm.stats().state_transitions > 0, "State machine should transition during JSON processing");
+        assert!(
+            sm.stats().state_transitions > 0,
+            "State machine should transition during JSON processing"
+        );
     }
 
     #[test]
@@ -62,7 +70,7 @@ mod state_machine_tests {
 
         sm.exit_array();
         assert_eq!(sm.stats().current_depth, 1);
-        
+
         sm.exit_object();
         assert_eq!(sm.stats().current_depth, 0);
         assert_eq!(sm.stats().max_depth, 2); // Max remains

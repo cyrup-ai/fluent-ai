@@ -4,44 +4,45 @@
 //! including temperature, top-k, top-p, and penalty settings. Includes validation
 //! methods and preset configurations for common use cases.
 
-use super::types::{SIMD_THRESHOLD, DEFAULT_CONTEXT_LENGTH};
+use super::types::{DEFAULT_CONTEXT_LENGTH, SIMD_THRESHOLD};
 
 /// Comprehensive sampling configuration for text generation
-/// 
+///
 /// Encapsulates all parameters that control the generation process,
 /// including temperature, nucleus sampling, penalties, and SIMD optimization.
 #[derive(Debug, Clone)]
 pub struct SamplingConfig {
     /// Temperature for scaling logits (0.0 = deterministic, higher = more random)
     pub temperature: f32,
-    
+
     /// Top-k sampling: only consider top k tokens (None = disabled)
     pub top_k: Option<usize>,
-    
+
     /// Top-p (nucleus) sampling: cumulative probability threshold (None = disabled)
     pub top_p: Option<f64>,
-    
+
     /// Repetition penalty: penalize repeated tokens (1.0 = no penalty)
     pub repetition_penalty: f32,
-    
+
     /// Frequency penalty: penalize frequent tokens (0.0 = no penalty)
     pub frequency_penalty: f32,
-    
+
     /// Presence penalty: penalize tokens present in context (0.0 = no penalty)
     pub presence_penalty: f32,
-    
+
     /// Number of recent tokens to consider for repetition penalty
     pub repetition_context_length: usize,
-    
+
     /// Random seed for reproducible generation (None = non-deterministic)
     pub seed: Option<u64>,
-    
+
     /// Whether to use SIMD acceleration when available
     pub use_simd: bool,
-    
+
     /// Minimum sequence length before applying SIMD optimizations
     pub simd_threshold: usize,
-}impl SamplingConfig {
+}
+impl SamplingConfig {
     /// Create a new SamplingConfig with specified temperature
     pub fn new(temperature: f32) -> Self {
         Self {
@@ -57,85 +58,85 @@ pub struct SamplingConfig {
             simd_threshold: SIMD_THRESHOLD,
         }
     }
-    
+
     /// Builder method to set top-k sampling
     pub fn with_top_k(mut self, top_k: usize) -> Self {
         self.top_k = Some(top_k);
         self
     }
-    
+
     /// Builder method to set top-p sampling
     pub fn with_top_p(mut self, top_p: f64) -> Self {
         self.top_p = Some(top_p);
         self
     }
-    
+
     /// Builder method to set repetition penalty
     pub fn with_repetition_penalty(mut self, penalty: f32) -> Self {
         self.repetition_penalty = penalty;
         self
     }
-    
+
     /// Builder method to set frequency penalty
     pub fn with_frequency_penalty(mut self, penalty: f32) -> Self {
         self.frequency_penalty = penalty;
         self
     }
-    
+
     /// Builder method to set presence penalty
     pub fn with_presence_penalty(mut self, penalty: f32) -> Self {
         self.presence_penalty = penalty;
         self
     }
-    
+
     /// Builder method to set random seed
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
-    
+
     /// Builder method to disable SIMD acceleration
     pub fn without_simd(mut self) -> Self {
         self.use_simd = false;
         self
-    }    
+    }
     /// Validate configuration parameters
     pub fn validate(&self) -> Result<(), String> {
         if self.temperature < 0.0 {
             return Err("Temperature must be non-negative".to_string());
         }
-        
+
         if let Some(top_k) = self.top_k {
             if top_k == 0 {
                 return Err("Top-k must be greater than 0".to_string());
             }
         }
-        
+
         if let Some(top_p) = self.top_p {
             if top_p <= 0.0 || top_p > 1.0 {
                 return Err("Top-p must be in (0, 1]".to_string());
             }
         }
-        
+
         if self.repetition_penalty < 0.0 {
             return Err("Repetition penalty must be non-negative".to_string());
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if deterministic sampling is enabled (temperature == 0.0)
     pub fn is_deterministic(&self) -> bool {
         self.temperature == 0.0
     }
-    
+
     /// Check if any penalty is enabled
     pub fn has_penalties(&self) -> bool {
-        self.repetition_penalty != 1.0 || 
-        self.frequency_penalty != 0.0 || 
-        self.presence_penalty != 0.0
+        self.repetition_penalty != 1.0
+            || self.frequency_penalty != 0.0
+            || self.presence_penalty != 0.0
     }
-    
+
     /// Check if SIMD should be used for given sequence length
     pub fn should_use_simd(&self, sequence_length: usize) -> bool {
         self.use_simd && sequence_length >= self.simd_threshold
@@ -147,10 +148,10 @@ impl Default for SamplingConfig {
     fn default() -> Self {
         Self::new(0.8) // Slightly creative but stable
     }
-}/// Preset configuration for deterministic generation
+}
+/// Preset configuration for deterministic generation
 pub fn deterministic_config() -> SamplingConfig {
-    SamplingConfig::new(0.0)
-        .with_seed(42)
+    SamplingConfig::new(0.0).with_seed(42)
 }
 
 /// Preset configuration for balanced generation
@@ -185,33 +186,33 @@ mod tests {
     fn test_config_validation() {
         let valid_config = SamplingConfig::new(0.8);
         assert!(valid_config.validate().is_ok());
-        
+
         let invalid_config = SamplingConfig::new(-1.0);
         assert!(invalid_config.validate().is_err());
-        
+
         let invalid_top_p = SamplingConfig::new(1.0).with_top_p(1.5);
         assert!(invalid_top_p.validate().is_err());
     }
-    
+
     #[test]
     fn test_builder_pattern() {
         let config = SamplingConfig::new(0.7)
             .with_top_k(50)
             .with_top_p(0.9)
             .with_repetition_penalty(1.1);
-            
+
         assert_eq!(config.temperature, 0.7);
         assert_eq!(config.top_k, Some(50));
         assert_eq!(config.top_p, Some(0.9));
         assert_eq!(config.repetition_penalty, 1.1);
     }
-    
+
     #[test]
     fn test_preset_configs() {
         let det = deterministic_config();
         assert!(det.is_deterministic());
         assert_eq!(det.seed, Some(42));
-        
+
         let balanced = balanced_config();
         assert!(balanced.validate().is_ok());
         assert!(!balanced.is_deterministic());

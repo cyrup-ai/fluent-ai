@@ -15,7 +15,8 @@ pub struct CandleUsage {
     /// Number of tokens in the output/completion
     pub output_tokens: u32,
     /// Total tokens used (input + output)
-    pub total_tokens: u32}
+    pub total_tokens: u32,
+}
 
 impl CandleUsage {
     /// Creates a new `Usage` instance with the given token counts
@@ -24,7 +25,8 @@ impl CandleUsage {
         Self {
             input_tokens,
             output_tokens,
-            total_tokens: input_tokens + output_tokens}
+            total_tokens: input_tokens + output_tokens,
+        }
     }
 
     /// Creates a new `Usage` instance with zero tokens
@@ -50,21 +52,30 @@ impl CandleUsage {
 
     /// Backward compatibility: get input tokens as prompt tokens
     #[inline]
-    #[deprecated(since = "0.1.0", note = "Use `input_tokens` instead for HTTP3 API standardization")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use `input_tokens` instead for HTTP3 API standardization"
+    )]
     pub const fn prompt_tokens(&self) -> u32 {
         self.input_tokens
     }
 
     /// Backward compatibility: get output tokens as completion tokens
     #[inline]
-    #[deprecated(since = "0.1.0", note = "Use `output_tokens` instead for HTTP3 API standardization")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use `output_tokens` instead for HTTP3 API standardization"
+    )]
     pub const fn completion_tokens(&self) -> u32 {
         self.output_tokens
     }
 
     /// Create from legacy OpenAI-style field names
     #[inline]
-    #[deprecated(since = "0.1.0", note = "Use `new` instead for HTTP3 API standardization")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use `new` instead for HTTP3 API standardization"
+    )]
     pub const fn from_openai(prompt_tokens: u32, completion_tokens: u32) -> Self {
         Self::new(prompt_tokens, completion_tokens)
     }

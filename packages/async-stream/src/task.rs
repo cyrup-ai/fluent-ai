@@ -3,14 +3,16 @@
 //! Zero-allocation, crossbeam-based streaming primitives with proven performance.
 //! Stream-first design with .collect() for await-like behavior.
 
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
+use cyrup_sugars::prelude::*;
 
 use crate::stream::{AsyncStream, AsyncStreamSender};
 
 /// Pure streaming task - NO Future implementation!
 /// Zero-allocation one-shot streaming built on crossbeam
 pub struct AsyncTask<T> {
-    rx: Receiver<T>}
+    rx: Receiver<T>,
+}
 
 impl<T> AsyncTask<T>
 where
@@ -81,9 +83,9 @@ where
 pub fn spawn_stream<F, T>(f: F) -> AsyncStream<T>
 where
     F: FnOnce(AsyncStreamSender<T>) + Send + 'static,
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
-    AsyncStream::with_channel(f)
+    AsyncStream::<T, 1024>::with_channel(f)
 }
 
 /// Spawn a closure with custom stream capacity
@@ -91,11 +93,7 @@ where
 pub fn spawn_stream_with_capacity<F, T, const CAP: usize>(f: F) -> AsyncStream<T, CAP>
 where
     F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
-    AsyncStream::with_channel(move |sender| {
-        std::thread::spawn(move || {
-            f(sender);
-        });
-    })
+    AsyncStream::<T, CAP>::with_channel(f)
 }

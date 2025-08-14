@@ -33,7 +33,8 @@ pub enum ExtractionError {
 
     /// Generic error for other cases
     #[error("Extraction error: {0}")]
-    Other(String)}
+    Other(String),
+}
 
 /// Result type for extraction operations (planned API)
 pub type _ExtractionResult<T> = Result<T, ExtractionError>;
@@ -42,13 +43,15 @@ impl ExtractionError {
     /// Create a new validation error
     pub fn validation_failed(reason: impl Into<String>) -> Self {
         Self::ValidationFailed {
-            reason: reason.into()}
+            reason: reason.into(),
+        }
     }
 
     /// Create a new missing fields error
     pub fn missing_fields(fields: &[&str]) -> Self {
         Self::MissingFields {
-            fields: fields.iter().map(|&s| s.to_string()).collect()}
+            fields: fields.iter().map(|&s| s.to_string()).collect(),
+        }
     }
 }
 
@@ -71,6 +74,7 @@ mod tests {
             ExtractionError::MissingFields { fields } => {
                 assert_eq!(fields, vec!["name", "age"]);
             }
-            _ => panic!("Expected MissingFields error")}
+            _ => panic!("Expected MissingFields error"),
+        }
     }
 }

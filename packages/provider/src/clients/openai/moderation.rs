@@ -3,12 +3,13 @@
 //! Provides comprehensive content safety analysis using OpenAI's moderation models
 //! with blazing-fast performance and no unsafe operations.
 
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{OpenAIError, OpenAIResult};
 use fluent_ai_async::AsyncTask;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde::{Deserialize, Serialize};
+
+use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 
 /// Content moderation request
@@ -16,7 +17,8 @@ use crate::ZeroOneOrMany;
 pub struct ModerationRequest {
     pub input: ModerationInput,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>}
+    pub model: Option<String>,
+}
 
 /// Input for moderation analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,14 +27,16 @@ pub enum ModerationInput {
     /// Single text string
     Single(String),
     /// Array of text strings for batch processing
-    Array(ZeroOneOrMany<String>)}
+    Array(ZeroOneOrMany<String>),
+}
 
 /// Moderation response from OpenAI
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModerationResponse {
     pub id: String,
     pub model: String,
-    pub results: ZeroOneOrMany<ModerationResult>}
+    pub results: ZeroOneOrMany<ModerationResult>,
+}
 
 /// Individual moderation result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +45,8 @@ pub struct ModerationResult {
     pub categories: ModerationCategories,
     pub category_scores: ModerationScores,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub category_applied_input_types: Option<HashMap<String, ZeroOneOrMany<String>>>}
+    pub category_applied_input_types: Option<HashMap<String, ZeroOneOrMany<String>>>,
+}
 
 /// Content violation categories
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +72,8 @@ pub struct ModerationCategories {
     pub self_harm_instructions: bool,
     pub violence: bool,
     #[serde(rename = "violence/graphic")]
-    pub violence_graphic: bool}
+    pub violence_graphic: bool,
+}
 
 /// Confidence scores for each category
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,7 +99,8 @@ pub struct ModerationScores {
     pub self_harm_instructions: f32,
     pub violence: f32,
     #[serde(rename = "violence/graphic")]
-    pub violence_graphic: f32}
+    pub violence_graphic: f32,
+}
 
 /// Moderation policy configuration
 #[derive(Debug, Clone)]
@@ -105,7 +112,8 @@ pub struct ModerationPolicy {
     pub self_harm_threshold: f32,
     pub illicit_threshold: f32,
     pub strict_mode: bool,
-    pub block_minors_content: bool}
+    pub block_minors_content: bool,
+}
 
 /// Content safety assessment
 #[derive(Debug, Clone)]
@@ -114,7 +122,8 @@ pub struct SafetyAssessment {
     pub risk_level: RiskLevel,
     pub triggered_categories: ZeroOneOrMany<String>,
     pub highest_score: f32,
-    pub recommendation: SafetyRecommendation}
+    pub recommendation: SafetyRecommendation,
+}
 
 /// Risk level classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,7 +132,8 @@ pub enum RiskLevel {
     Low,
     Medium,
     High,
-    Critical}
+    Critical,
+}
 
 /// Safety recommendation
 #[derive(Debug, Clone)]
@@ -131,7 +141,8 @@ pub enum SafetyRecommendation {
     Allow,
     Review,
     Block,
-    RedFlag}
+    RedFlag,
+}
 
 /// Content analysis context
 #[derive(Debug, Clone)]
@@ -140,7 +151,8 @@ pub struct AnalysisContext {
     pub content_type: ContentType,
     pub platform: Option<String>,
     pub region: Option<String>,
-    pub is_public: bool}
+    pub is_public: bool,
+}
 
 /// Type of content being analyzed
 #[derive(Debug, Clone, Copy)]
@@ -152,7 +164,8 @@ pub enum ContentType {
     Email,
     ChatMessage,
     Review,
-    GeneratedContent}
+    GeneratedContent,
+}
 
 impl ModerationInput {
     /// Create single input
@@ -175,7 +188,9 @@ impl ModerationInput {
             Self::Array(texts) => match texts {
                 ZeroOneOrMany::None => 0,
                 ZeroOneOrMany::One(_) => 1,
-                ZeroOneOrMany::Many(vec) => vec.len()}}
+                ZeroOneOrMany::Many(vec) => vec.len(),
+            },
+        }
     }
 
     /// Validate input for API compliance
@@ -236,7 +251,8 @@ impl ModerationInput {
                         }
                     }
                 }
-            }}
+            },
+        }
         Ok(())
     }
 }
@@ -247,7 +263,8 @@ impl ModerationRequest {
     pub fn new(input: ModerationInput) -> Self {
         Self {
             input,
-            model: Some("text-moderation-latest".to_string())}
+            model: Some("text-moderation-latest".to_string()),
+        }
     }
 
     /// Create with stable model
@@ -255,7 +272,8 @@ impl ModerationRequest {
     pub fn with_stable_model(input: ModerationInput) -> Self {
         Self {
             input,
-            model: Some("text-moderation-stable".to_string())}
+            model: Some("text-moderation-stable".to_string()),
+        }
     }
 
     /// Set custom model
@@ -404,14 +422,16 @@ impl ModerationResult {
             (true, RiskLevel::High, false) => SafetyRecommendation::Review,
             (true, RiskLevel::Medium, _) => SafetyRecommendation::Review,
             (false, RiskLevel::Low, _) => SafetyRecommendation::Allow,
-            _ => SafetyRecommendation::Allow};
+            _ => SafetyRecommendation::Allow,
+        };
 
         SafetyAssessment {
             is_safe: !is_violation,
             risk_level,
             triggered_categories,
             highest_score,
-            recommendation}
+            recommendation,
+        }
     }
 }
 
@@ -427,7 +447,8 @@ impl ModerationPolicy {
             self_harm_threshold: 0.5,
             illicit_threshold: 0.5,
             strict_mode: false,
-            block_minors_content: true}
+            block_minors_content: true,
+        }
     }
 
     /// Create strict policy for public content
@@ -441,7 +462,8 @@ impl ModerationPolicy {
             self_harm_threshold: 0.2,
             illicit_threshold: 0.3,
             strict_mode: true,
-            block_minors_content: true}
+            block_minors_content: true,
+        }
     }
 
     /// Create permissive policy for private content
@@ -455,7 +477,8 @@ impl ModerationPolicy {
             self_harm_threshold: 0.5,
             illicit_threshold: 0.7,
             strict_mode: false,
-            block_minors_content: true}
+            block_minors_content: true,
+        }
     }
 
     /// Create policy for educational content
@@ -469,7 +492,8 @@ impl ModerationPolicy {
             self_harm_threshold: 0.3,
             illicit_threshold: 0.5,
             strict_mode: false,
-            block_minors_content: false}
+            block_minors_content: false,
+        }
     }
 
     /// Customize thresholds
@@ -531,7 +555,8 @@ impl AnalysisContext {
             content_type,
             platform: None,
             region: None,
-            is_public: true}
+            is_public: true,
+        }
     }
 
     /// Create context for private content
@@ -542,7 +567,8 @@ impl AnalysisContext {
             content_type,
             platform: None,
             region: None,
-            is_public: false}
+            is_public: false,
+        }
     }
 
     /// Set user age for content filtering
@@ -586,7 +612,8 @@ impl RiskLevel {
             Self::Low => 1,
             Self::Medium => 2,
             Self::High => 3,
-            Self::Critical => 4}
+            Self::Critical => 4,
+        }
     }
 
     /// Check if risk level requires human review
@@ -628,7 +655,8 @@ impl SafetyRecommendation {
             Self::Allow => 0,
             Self::Review => 1,
             Self::Block => 2,
-            Self::RedFlag => 3}
+            Self::RedFlag => 3,
+        }
     }
 }
 
@@ -654,7 +682,8 @@ pub fn batch_moderate(
                             risk_level: RiskLevel::Safe,
                             triggered_categories: ZeroOneOrMany::None,
                             highest_score: 0.0,
-                            recommendation: SafetyRecommendation::Allow})
+                            recommendation: SafetyRecommendation::Allow,
+                        })
                     }
                 }
             }
@@ -670,7 +699,8 @@ pub fn batch_moderate(
                                 risk_level: RiskLevel::Safe,
                                 triggered_categories: ZeroOneOrMany::None,
                                 highest_score: 0.0,
-                                recommendation: SafetyRecommendation::Allow});
+                                recommendation: SafetyRecommendation::Allow,
+                            });
                         }
                     }
                 }
@@ -694,7 +724,8 @@ async fn call_openai_moderation_api(
     // Build moderation request
     let moderation_request = ModerationRequest {
         input: ModerationInput::Single(text.to_string()),
-        model: Some("text-moderation-latest".to_string())};
+        model: Some("text-moderation-latest".to_string()),
+    };
 
     let request_body = serde_json::to_vec(&moderation_request).map_err(|e| {
         OpenAIError::SerializationError(format!("Failed to serialize request: {}", e))
@@ -792,7 +823,8 @@ fn convert_moderation_response_to_assessment(
         risk_level,
         triggered_categories,
         highest_score,
-        recommendation})
+        recommendation,
+    })
 }
 
 /// Get available moderation models

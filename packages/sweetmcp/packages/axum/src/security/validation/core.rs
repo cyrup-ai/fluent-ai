@@ -4,9 +4,10 @@
 //! patterns, blazing-fast performance, and comprehensive validation support
 //! for production environments.
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use arrayvec::{ArrayString, ArrayVec};
 use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Maximum number of validation errors to track without heap allocation
 pub const MAX_VALIDATION_ERRORS: usize = 32;

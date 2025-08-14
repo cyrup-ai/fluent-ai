@@ -636,7 +636,7 @@ mod well_typedness_tests {
             "@.active",                        // Boolean property access
             "@.name == 'test'",                // String equality
             "length(@.items) > 0",             // Function call returning number
-            
+
             // Invalid test expressions (if caught at compile time)
             // "@.items[*]",                   // NodesType in test context (invalid)
             // "length(@.items, extra)",       // Wrong argument count
@@ -696,7 +696,7 @@ mod well_typedness_tests {
             ("length(@.array_value)", "ValueType"),          // Array to length()
             ("count(@.items[*])", "NodesType"),              // NodeList to count()
             (r#"match(@.text, "pattern")"#, "ValueType, String"), // String, Pattern to match()
-            
+
             // Invalid function argument types (if caught)
             // ("length(@.items[*])", "NodesType"),          // NodeList to length() (invalid)
             // ("count(@.single_value)", "ValueType"),       // Single value to count() (invalid)
@@ -756,44 +756,108 @@ mod type_conversion_boundary_tests {
 
         let boundary_tests = vec![
             // RFC 9535: null should be falsy in logical context
-            ("$.boundary_cases[?@.value]", 15, "null should be falsy, all other values should be truthy"),
-            ("$.boundary_cases[?!@.value]", 6, "Only null, false, 0, -0.0, 0.0, and empty string should be falsy"),
-            
+            (
+                "$.boundary_cases[?@.value]",
+                15,
+                "null should be falsy, all other values should be truthy",
+            ),
+            (
+                "$.boundary_cases[?!@.value]",
+                6,
+                "Only null, false, 0, -0.0, 0.0, and empty string should be falsy",
+            ),
             // Explicit boolean conversions
-            ("$.boundary_cases[?@.value == true]", 1, "Only explicit true should equal true"),
-            ("$.boundary_cases[?@.value == false]", 1, "Only explicit false should equal false"),
-            
+            (
+                "$.boundary_cases[?@.value == true]",
+                1,
+                "Only explicit true should equal true",
+            ),
+            (
+                "$.boundary_cases[?@.value == false]",
+                1,
+                "Only explicit false should equal false",
+            ),
             // Null vs falsy distinction
-            ("$.boundary_cases[?@.value == null]", 1, "Only null should equal null"),
-            ("$.boundary_cases[?@.value != null]", 20, "All non-null values should not equal null"),
-            
+            (
+                "$.boundary_cases[?@.value == null]",
+                1,
+                "Only null should equal null",
+            ),
+            (
+                "$.boundary_cases[?@.value != null]",
+                20,
+                "All non-null values should not equal null",
+            ),
             // Zero vs falsy distinction
-            ("$.boundary_cases[?@.value == 0]", 3, "Zero, negative zero, and float zero should equal 0"),
-            ("$.boundary_cases[?@.value != 0]", 18, "All non-zero values should not equal 0"),
-            
+            (
+                "$.boundary_cases[?@.value == 0]",
+                3,
+                "Zero, negative zero, and float zero should equal 0",
+            ),
+            (
+                "$.boundary_cases[?@.value != 0]",
+                18,
+                "All non-zero values should not equal 0",
+            ),
             // Empty vs falsy distinction for strings
-            ("$.boundary_cases[?@.value == \"\"]", 1, "Only empty string should equal empty string"),
-            ("$.boundary_cases[?@.type == \"empty_string\" && @.value]", 0, "Empty string should be falsy"),
-            
+            (
+                "$.boundary_cases[?@.value == \"\"]",
+                1,
+                "Only empty string should equal empty string",
+            ),
+            (
+                "$.boundary_cases[?@.type == \"empty_string\" && @.value]",
+                0,
+                "Empty string should be falsy",
+            ),
             // Array/Object truthiness (non-empty collections are truthy)
-            ("$.boundary_cases[?@.type == \"empty_array\" && @.value]", 1, "Empty array should be truthy"),
-            ("$.boundary_cases[?@.type == \"empty_object\" && @.value]", 1, "Empty object should be truthy"),
-            
+            (
+                "$.boundary_cases[?@.type == \"empty_array\" && @.value]",
+                1,
+                "Empty array should be truthy",
+            ),
+            (
+                "$.boundary_cases[?@.type == \"empty_object\" && @.value]",
+                1,
+                "Empty object should be truthy",
+            ),
             // String representation vs value distinction
-            ("$.boundary_cases[?@.value == \"false\"]", 1, "Only string 'false' should equal string 'false'"),
-            ("$.boundary_cases[?@.value == \"0\"]", 1, "Only string '0' should equal string '0'"),
-            ("$.boundary_cases[?@.type == \"string_false\" && !@.value]", 0, "String 'false' should be truthy"),
-            ("$.boundary_cases[?@.type == \"string_zero\" && !@.value]", 0, "String '0' should be truthy"),
+            (
+                "$.boundary_cases[?@.value == \"false\"]",
+                1,
+                "Only string 'false' should equal string 'false'",
+            ),
+            (
+                "$.boundary_cases[?@.value == \"0\"]",
+                1,
+                "Only string '0' should equal string '0'",
+            ),
+            (
+                "$.boundary_cases[?@.type == \"string_false\" && !@.value]",
+                0,
+                "String 'false' should be truthy",
+            ),
+            (
+                "$.boundary_cases[?@.type == \"string_zero\" && !@.value]",
+                0,
+                "String '0' should be truthy",
+            ),
         ];
 
         for (expr, expected_count, _description) in boundary_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(boundary_test_json);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
+
+            assert_eq!(
+                results.len(),
+                expected_count,
                 "RFC 9535 boundary condition: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, results.len());
+                _description,
+                expr,
+                expected_count,
+                results.len()
+            );
         }
     }
 
@@ -804,7 +868,7 @@ mod type_conversion_boundary_tests {
             "conversions": [
                 {"emptyresult": [], "type": "empty_nodelist"},
                 {"single_null": [null], "type": "single_null_node"},
-                {"single_false": [false], "type": "single_false_node"}, 
+                {"single_false": [false], "type": "single_false_node"},
                 {"single_zero": [0], "type": "single_zero_node"},
                 {"single_empty_string": [""], "type": "single_empty_string_node"},
                 {"single_empty_array": [[]], "type": "single_empty_array_node"},
@@ -818,38 +882,96 @@ mod type_conversion_boundary_tests {
 
         let nodes_boundary_tests = vec![
             // Empty nodelist conversions
-            ("$.conversions[?@.emptyresult[*]]", 0, "Empty nodelist should produce no matches"),
-            ("$.conversions[?count(@.emptyresult[*]) == 0]", 1, "Empty nodelist count should be 0"),
-            
+            (
+                "$.conversions[?@.emptyresult[*]]",
+                0,
+                "Empty nodelist should produce no matches",
+            ),
+            (
+                "$.conversions[?count(@.emptyresult[*]) == 0]",
+                1,
+                "Empty nodelist count should be 0",
+            ),
             // Single node extractions (should succeed)
-            ("$.conversions[?@.single_null[0] == null]", 1, "Single null node should extract null"),
-            ("$.conversions[?@.single_false[0] == false]", 1, "Single false node should extract false"),
-            ("$.conversions[?@.single_zero[0] == 0]", 1, "Single zero node should extract 0"),
-            ("$.conversions[?@.single_empty_string[0] == \"\"]", 1, "Single empty string node should extract empty string"),
-            
+            (
+                "$.conversions[?@.single_null[0] == null]",
+                1,
+                "Single null node should extract null",
+            ),
+            (
+                "$.conversions[?@.single_false[0] == false]",
+                1,
+                "Single false node should extract false",
+            ),
+            (
+                "$.conversions[?@.single_zero[0] == 0]",
+                1,
+                "Single zero node should extract 0",
+            ),
+            (
+                "$.conversions[?@.single_empty_string[0] == \"\"]",
+                1,
+                "Single empty string node should extract empty string",
+            ),
             // Multiple node extractions (specific index access should work)
-            ("$.conversions[?@.multiple_values[0] == 1]", 1, "First node of multiple should be accessible"),
-            ("$.conversions[?@.multiple_values[2] == 3]", 1, "Third node of multiple should be accessible"),
-            ("$.conversions[?@.multiple_values[999] == null]", 0, "Out-of-bounds access should return nothing"),
-            
+            (
+                "$.conversions[?@.multiple_values[0] == 1]",
+                1,
+                "First node of multiple should be accessible",
+            ),
+            (
+                "$.conversions[?@.multiple_values[2] == 3]",
+                1,
+                "Third node of multiple should be accessible",
+            ),
+            (
+                "$.conversions[?@.multiple_values[999] == null]",
+                0,
+                "Out-of-bounds access should return nothing",
+            ),
             // Mixed type node handling
-            ("$.conversions[?@.mixed_types[0] == null]", 1, "First mixed type should be null"),
-            ("$.conversions[?@.mixed_types[1] == false]", 1, "Second mixed type should be false"),
-            ("$.conversions[?@.mixed_types[2] == 0]", 1, "Third mixed type should be 0"),
-            
+            (
+                "$.conversions[?@.mixed_types[0] == null]",
+                1,
+                "First mixed type should be null",
+            ),
+            (
+                "$.conversions[?@.mixed_types[1] == false]",
+                1,
+                "Second mixed type should be false",
+            ),
+            (
+                "$.conversions[?@.mixed_types[2] == 0]",
+                1,
+                "Third mixed type should be 0",
+            ),
             // Nested structure boundary cases
-            ("$.conversions[?@.nested_empty[0][*]]", 0, "Nested empty array should produce no matches"),
-            ("$.conversions[?@.deeply_nested[0][0][0] == null]", 1, "Deeply nested null should be accessible"),
+            (
+                "$.conversions[?@.nested_empty[0][*]]",
+                0,
+                "Nested empty array should produce no matches",
+            ),
+            (
+                "$.conversions[?@.deeply_nested[0][0][0] == null]",
+                1,
+                "Deeply nested null should be accessible",
+            ),
         ];
 
         for (expr, expected_count, _description) in nodes_boundary_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(nodes_conversion_json);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
-            assert_eq!(results.len(), expected_count,
+
+            assert_eq!(
+                results.len(),
+                expected_count,
                 "RFC 9535 NodesType boundary: {} - '{}' should return {} results, got {}",
-                _description, expr, expected_count, results.len());
+                _description,
+                expr,
+                expected_count,
+                results.len()
+            );
         }
     }
 
@@ -888,19 +1010,53 @@ mod type_conversion_boundary_tests {
 
         let complex_tests = vec![
             // Nested conditional evaluations with type conversions
-            ("$.complex_cases[?@.conditionals.null_check || @.conditionals.empty_check || @.conditionals.zero_check]", 0, "Multiple falsy OR should be falsy"),
-            ("$.complex_cases[?@.conditionals.array_check && @.conditionals.object_check]", 1, "Empty collections should be truthy in AND"),
-            ("$.complex_cases[?!(@.conditionals.null_check && @.conditionals.false_check)]", 1, "Negated falsy AND should be truthy"),
-            
+            (
+                "$.complex_cases[?@.conditionals.null_check || @.conditionals.empty_check || @.conditionals.zero_check]",
+                0,
+                "Multiple falsy OR should be falsy",
+            ),
+            (
+                "$.complex_cases[?@.conditionals.array_check && @.conditionals.object_check]",
+                1,
+                "Empty collections should be truthy in AND",
+            ),
+            (
+                "$.complex_cases[?!(@.conditionals.null_check && @.conditionals.false_check)]",
+                1,
+                "Negated falsy AND should be truthy",
+            ),
             // Array-based type conversions in filters
-            ("$.complex_cases[?@.nested_arrays[0][*]]", 0, "Empty nested array should produce no results"),
-            ("$.complex_cases[?@.nested_arrays[1][0] == null]", 1, "Nested null should be accessible"),
-            ("$.complex_cases[?count(@.nested_arrays[2][*]) == 3]", 1, "Count of mixed falsy values should be 3"),
-            
+            (
+                "$.complex_cases[?@.nested_arrays[0][*]]",
+                0,
+                "Empty nested array should produce no results",
+            ),
+            (
+                "$.complex_cases[?@.nested_arrays[1][0] == null]",
+                1,
+                "Nested null should be accessible",
+            ),
+            (
+                "$.complex_cases[?count(@.nested_arrays[2][*]) == 3]",
+                1,
+                "Count of mixed falsy values should be 3",
+            ),
             // Function argument type boundary conditions
-            ("$.complex_cases[?length(@.function_inputs.empty_string) == 0]", 1, "Length of empty string should be 0"),
-            ("$.complex_cases[?length(@.function_inputs.empty_array) == 0]", 1, "Length of empty array should be 0"),
-            ("$.complex_cases[?length(@.function_inputs.empty_object) == 0]", 1, "Length of empty object should be 0"),
+            (
+                "$.complex_cases[?length(@.function_inputs.empty_string) == 0]",
+                1,
+                "Length of empty string should be 0",
+            ),
+            (
+                "$.complex_cases[?length(@.function_inputs.empty_array) == 0]",
+                1,
+                "Length of empty array should be 0",
+            ),
+            (
+                "$.complex_cases[?length(@.function_inputs.empty_object) == 0]",
+                1,
+                "Length of empty object should be 0",
+            ),
         ];
 
         for (expr, expected_count, _description) in complex_tests {
@@ -910,13 +1066,22 @@ mod type_conversion_boundary_tests {
                     let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                     let chunk = Bytes::from(complex_conversion_json);
                     let results: Vec<_> = stream.process_chunk(chunk).collect();
-                    
-                    assert_eq!(results.len(), expected_count,
+
+                    assert_eq!(
+                        results.len(),
+                        expected_count,
                         "RFC 9535 complex conversion: {} - '{}' should return {} results, got {}",
-                        _description, expr, expected_count, results.len());
+                        _description,
+                        expr,
+                        expected_count,
+                        results.len()
+                    );
                 }
                 Err(_) => {
-                    println!("RFC 9535 complex conversion test not supported: {} - '{}'", _description, expr);
+                    println!(
+                        "RFC 9535 complex conversion test not supported: {} - '{}'",
+                        _description, expr
+                    );
                 }
             }
         }
@@ -938,36 +1103,87 @@ mod type_conversion_boundary_tests {
 
         let error_boundary_tests = vec![
             // Type mismatch scenarios that should handle gracefully
-            ("$.error_boundaries[?@.value > @.numeric_field]", 0, "String vs number comparison should handle gracefully"),
-            ("$.error_boundaries[?@.value == @.numeric_field]", 0, "Type mismatched equality should handle gracefully"),
-            ("$.error_boundaries[?@.value != @.numeric_field]", 6, "Type mismatched inequality should work consistently"),
-            
+            (
+                "$.error_boundaries[?@.value > @.numeric_field]",
+                0,
+                "String vs number comparison should handle gracefully",
+            ),
+            (
+                "$.error_boundaries[?@.value == @.numeric_field]",
+                0,
+                "Type mismatched equality should handle gracefully",
+            ),
+            (
+                "$.error_boundaries[?@.value != @.numeric_field]",
+                6,
+                "Type mismatched inequality should work consistently",
+            ),
             // Null boundary conditions
-            ("$.error_boundaries[?@.value == null]", 1, "Only null should equal null"),
-            ("$.error_boundaries[?@.numeric_field == null]", 1, "Only null numeric field should equal null"),
-            ("$.error_boundaries[?@.value != null && @.numeric_field != null]", 4, "Non-null pairs should be identifiable"),
-            
+            (
+                "$.error_boundaries[?@.value == null]",
+                1,
+                "Only null should equal null",
+            ),
+            (
+                "$.error_boundaries[?@.numeric_field == null]",
+                1,
+                "Only null numeric field should equal null",
+            ),
+            (
+                "$.error_boundaries[?@.value != null && @.numeric_field != null]",
+                4,
+                "Non-null pairs should be identifiable",
+            ),
             // Boolean boundary conditions
-            ("$.error_boundaries[?@.value == true]", 1, "Only true should equal true"),
-            ("$.error_boundaries[?@.value == false]", 1, "Only false should equal false"),
-            ("$.error_boundaries[?@.numeric_field > 0]", 2, "Positive numeric fields should be identifiable"),
-            ("$.error_boundaries[?@.numeric_field < 0]", 1, "Negative numeric fields should be identifiable"),
-            ("$.error_boundaries[?@.numeric_field == 0]", 1, "Zero numeric field should be identifiable"),
+            (
+                "$.error_boundaries[?@.value == true]",
+                1,
+                "Only true should equal true",
+            ),
+            (
+                "$.error_boundaries[?@.value == false]",
+                1,
+                "Only false should equal false",
+            ),
+            (
+                "$.error_boundaries[?@.numeric_field > 0]",
+                2,
+                "Positive numeric fields should be identifiable",
+            ),
+            (
+                "$.error_boundaries[?@.numeric_field < 0]",
+                1,
+                "Negative numeric fields should be identifiable",
+            ),
+            (
+                "$.error_boundaries[?@.numeric_field == 0]",
+                1,
+                "Zero numeric field should be identifiable",
+            ),
         ];
 
         for (expr, expected_count, _description) in error_boundary_tests {
             let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
             let chunk = Bytes::from(error_boundary_json);
             let results: Vec<_> = stream.process_chunk(chunk).collect();
-            
+
             // Note: Results may vary based on implementation's error handling strategy
-            println!("RFC 9535 error boundary: {} - '{}' returned {} results (expected {})",
-                _description, expr, results.len(), expected_count);
-                
+            println!(
+                "RFC 9535 error boundary: {} - '{}' returned {} results (expected {})",
+                _description,
+                expr,
+                results.len(),
+                expected_count
+            );
+
             // Assert compilation succeeds (runtime behavior may vary)
             let compileresult = JsonPathParser::compile(expr);
-            assert!(compileresult.is_ok(), 
-                "RFC 9535 error boundary test should compile: {} - '{}'", _description, expr);
+            assert!(
+                compileresult.is_ok(),
+                "RFC 9535 error boundary test should compile: {} - '{}'",
+                _description,
+                expr
+            );
         }
     }
 }

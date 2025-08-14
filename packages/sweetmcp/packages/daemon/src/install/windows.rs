@@ -3,15 +3,15 @@
 //! This implementation provides sophisticated service management with zero allocation,
 //! blazing-fast performance, and comprehensive error handling to match the macOS implementation.
 
-use crate::install::{InstallerBuilder, InstallerError};
-use anyhow::{Context, Result};
-use once_cell::sync::OnceCell;
 use std::ffi::{OsStr, OsString};
 use std::mem::{self, MaybeUninit};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
 use std::ptr;
 use std::sync::atomic::{AtomicU32, Ordering};
+
+use anyhow::{Context, Result};
+use once_cell::sync::OnceCell;
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, ERROR_ACCESS_DENIED, ERROR_SERVICE_EXISTS, HANDLE};
 use windows::Win32::Security::{TOKEN_ELEVATION, TOKEN_QUERY};
@@ -32,6 +32,8 @@ use windows::Win32::System::Services::{
 };
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use windows::Win32::UI::Shell::{ShellExecuteW, SW_HIDE};
+
+use crate::install::{InstallerBuilder, InstallerError};
 
 pub(crate) struct PlatformExecutor;
 

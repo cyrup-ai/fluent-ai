@@ -23,7 +23,8 @@ pub struct CommandValidator {
     /// Allowed file extensions for path parameters
     allowed_extensions: Vec<Arc<str>>,
     /// Blocked patterns for security
-    blocked_patterns: Vec<Regex>}
+    blocked_patterns: Vec<Regex>,
+}
 
 impl Default for CommandValidator {
     fn default() -> Self {
@@ -53,7 +54,8 @@ impl CommandValidator {
                 Regex::new(r"\.\.[\\/]").unwrap(),
                 // Prevent script injection
                 Regex::new(r"<script[^>]*>").unwrap(),
-            ]}
+            ],
+        }
     }
 
     /// Validate a command with comprehensive checks
@@ -93,7 +95,12 @@ impl CommandValidator {
                     self.validate_integer_parameter("limit", *n as i64, Some(1), Some(100))?;
                 }
             }
-            ImmutableChatCommand::Template { name, content, variables, .. } => {
+            ImmutableChatCommand::Template {
+                name,
+                content,
+                variables,
+                ..
+            } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -134,7 +141,9 @@ impl CommandValidator {
                     self.validate_enum_parameter("period", p, &["day", "week", "month", "year"])?;
                 }
             }
-            ImmutableChatCommand::Theme { name, properties, .. } => {
+            ImmutableChatCommand::Theme {
+                name, properties, ..
+            } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -142,7 +151,11 @@ impl CommandValidator {
             }
             ImmutableChatCommand::Debug { level, .. } => {
                 if let Some(l) = level {
-                    self.validate_enum_parameter("level", l, &["trace", "debug", "info", "warn", "error"])?;
+                    self.validate_enum_parameter(
+                        "level",
+                        l,
+                        &["trace", "debug", "info", "warn", "error"],
+                    )?;
                 }
             }
             ImmutableChatCommand::History { filter, .. } => {
@@ -182,7 +195,11 @@ impl CommandValidator {
                     self.validate_string_parameter(&format!("arg_{}", k), v, true)?;
                 }
             }
-            ImmutableChatCommand::Copy { message_id, content, format: _ } => {
+            ImmutableChatCommand::Copy {
+                message_id,
+                content,
+                format: _,
+            } => {
                 if let Some(msg_id) = message_id {
                     self.validate_string_parameter("message_id", msg_id, false)?;
                 }
@@ -191,7 +208,9 @@ impl CommandValidator {
                 }
                 // Format is an enum, so no need to validate
             }
-            ImmutableChatCommand::Retry { command, attempts, .. } => {
+            ImmutableChatCommand::Retry {
+                command, attempts, ..
+            } => {
                 if let Some(cmd) = command {
                     self.validate_string_parameter("command", cmd, false)?;
                 }
@@ -216,7 +235,11 @@ impl CommandValidator {
                     }
                 }
             }
-            ImmutableChatCommand::Chat { message, context, priority } => {
+            ImmutableChatCommand::Chat {
+                message,
+                context,
+                priority,
+            } => {
                 self.validate_string_parameter("message", message, false)?;
                 if let Some(ctx) = context {
                     self.validate_string_parameter("context", ctx, true)?;
@@ -229,7 +252,6 @@ impl CommandValidator {
                     });
                 }
             }
-
         }
 
         Ok(())
@@ -244,14 +266,16 @@ impl CommandValidator {
     ) -> Result<(), ValidationError> {
         if !allow_empty && value.is_empty() {
             return Err(ValidationError::EmptyParameter {
-                parameter: Arc::from(name)});
+                parameter: Arc::from(name),
+            });
         }
 
         if value.len() > self.max_parameter_value_length {
             return Err(ValidationError::ParameterTooLong {
                 parameter: Arc::from(name),
                 max_length: self.max_parameter_value_length,
-                actual_length: value.len()});
+                actual_length: value.len(),
+            });
         }
 
         // Check for blocked patterns
@@ -259,7 +283,8 @@ impl CommandValidator {
             if pattern.is_match(value) {
                 return Err(ValidationError::SecurityViolation {
                     parameter: Arc::from(name),
-                    detail: Arc::from("Contains blocked pattern")});
+                    detail: Arc::from("Contains blocked pattern"),
+                });
             }
         }
 
@@ -280,7 +305,8 @@ impl CommandValidator {
                     parameter: Arc::from(name),
                     value: value.to_string(),
                     min: Some(min_val.to_string()),
-                    max: max.map(|m| m.to_string())});
+                    max: max.map(|m| m.to_string()),
+                });
             }
         }
 
@@ -290,7 +316,8 @@ impl CommandValidator {
                     parameter: Arc::from(name),
                     value: value.to_string(),
                     min: min.map(|m| m.to_string()),
-                    max: Some(max_val.to_string())});
+                    max: Some(max_val.to_string()),
+                });
             }
         }
 
@@ -308,7 +335,8 @@ impl CommandValidator {
             return Err(ValidationError::InvalidEnumValue {
                 parameter: Arc::from(name),
                 value: Arc::from(value),
-                allowed_values: allowed.iter().map(|s| Arc::from(*s)).collect()});
+                allowed_values: allowed.iter().map(|s| Arc::from(*s)).collect(),
+            });
         }
         Ok(())
     }
@@ -322,7 +350,8 @@ impl CommandValidator {
         if path.contains("..") {
             return Err(ValidationError::SecurityViolation {
                 parameter: Arc::from(name),
-                detail: Arc::from("Path traversal attempt detected")});
+                detail: Arc::from("Path traversal attempt detected"),
+            });
         }
 
         // Validate file extension if present
@@ -336,7 +365,8 @@ impl CommandValidator {
                 return Err(ValidationError::InvalidFileExtension {
                     parameter: Arc::from(name),
                     extension: Arc::from(extension),
-                    allowed_extensions: self.allowed_extensions.clone()});
+                    allowed_extensions: self.allowed_extensions.clone(),
+                });
             }
         }
 
@@ -353,7 +383,8 @@ impl CommandValidator {
             return Err(ValidationError::InvalidParameterFormat {
                 parameter: Arc::from("key"),
                 value: Arc::from(key),
-                expected_format: Arc::from("alphanumeric with dots, underscores, and hyphens")});
+                expected_format: Arc::from("alphanumeric with dots, underscores, and hyphens"),
+            });
         }
 
         Ok(())
@@ -375,7 +406,8 @@ impl CommandValidator {
             return Err(ValidationError::InvalidParameterFormat {
                 parameter: Arc::from(param_name),
                 value: Arc::from(name),
-                expected_format: Arc::from("alphanumeric with underscores and hyphens")});
+                expected_format: Arc::from("alphanumeric with underscores and hyphens"),
+            });
         }
 
         Ok(())
@@ -388,7 +420,8 @@ impl CommandValidator {
             return Err(ValidationError::ParameterTooLong {
                 parameter: Arc::from(name),
                 max_length: self.max_parameter_value_length * 4,
-                actual_length: content.len()});
+                actual_length: content.len(),
+            });
         }
 
         // Check for script injection attempts
@@ -396,7 +429,8 @@ impl CommandValidator {
         if script_regex.is_match(content) {
             return Err(ValidationError::SecurityViolation {
                 parameter: Arc::from(name),
-                detail: Arc::from("Script injection attempt detected")});
+                detail: Arc::from("Script injection attempt detected"),
+            });
         }
 
         Ok(())
@@ -410,7 +444,8 @@ impl CommandValidator {
         if variables.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
                 max_count: self.max_parameter_count,
-                actual_count: variables.len()});
+                actual_count: variables.len(),
+            });
         }
 
         for (key, value) in variables {
@@ -426,7 +461,8 @@ impl CommandValidator {
         if args.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
                 max_count: self.max_parameter_count,
-                actual_count: args.len()});
+                actual_count: args.len(),
+            });
         }
 
         for (key, value) in args {
@@ -445,7 +481,8 @@ impl CommandValidator {
         if properties.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
                 max_count: self.max_parameter_count,
-                actual_count: properties.len()});
+                actual_count: properties.len(),
+            });
         }
 
         for (key, value) in properties {

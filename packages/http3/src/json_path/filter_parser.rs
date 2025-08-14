@@ -153,10 +153,10 @@ impl<'a> FilterParser<'a> {
                     self.consume_token(); // consume '('
                     let args = self.parse_function_arguments()?;
                     self.expect_token(Token::RightParen)?;
-                    
+
                     // RFC 9535: Validate function argument count
                     self.validate_function_arguments(&name, &args)?;
-                    
+
                     Ok(FilterExpression::Function { name, args })
                 } else {
                     Err(invalid_expression_error(
@@ -172,13 +172,21 @@ impl<'a> FilterParser<'a> {
             Some(Token::Root) => {
                 // Parse JSONPath expression starting with $ or @
                 let mut jsonpath_tokens = Vec::new();
-                
+
                 // Consume all tokens until we hit a delimiter or end
                 while let Some(token) = self.peek_token() {
                     match token {
-                        Token::Root | Token::At | Token::Dot | Token::DoubleDot | Token::LeftBracket | 
-                        Token::RightBracket | Token::Star | Token::Identifier(_) | 
-                        Token::Integer(_) | Token::String(_) | Token::Colon => {
+                        Token::Root
+                        | Token::At
+                        | Token::Dot
+                        | Token::DoubleDot
+                        | Token::LeftBracket
+                        | Token::RightBracket
+                        | Token::Star
+                        | Token::Identifier(_)
+                        | Token::Integer(_)
+                        | Token::String(_)
+                        | Token::Colon => {
                             if let Some(consumed_token) = self.consume_token() {
                                 jsonpath_tokens.push(consumed_token);
                             }
@@ -186,10 +194,10 @@ impl<'a> FilterParser<'a> {
                         _ => break, // Stop at other tokens (comma, right paren, operators, etc.)
                     }
                 }
-                
+
                 // Parse the collected tokens into selectors
                 use crate::json_path::ast::JsonSelector;
-                
+
                 if jsonpath_tokens.is_empty() {
                     return Err(invalid_expression_error(
                         self.input,
@@ -197,11 +205,11 @@ impl<'a> FilterParser<'a> {
                         Some(self.position),
                     ));
                 }
-                
+
                 // Convert tokens to selectors using a simple direct mapping
                 let mut selectors = Vec::new();
                 let mut i = 0;
-                
+
                 while i < jsonpath_tokens.len() {
                     match &jsonpath_tokens[i] {
                         Token::Root => {
@@ -238,7 +246,7 @@ impl<'a> FilterParser<'a> {
                         }
                     }
                 }
-                
+
                 Ok(FilterExpression::JsonPath { selectors })
             }
             _ => Err(invalid_expression_error(
@@ -279,20 +287,20 @@ impl<'a> FilterParser<'a> {
 
         // Handle property access patterns like @.author
         use crate::json_path::ast::JsonSelector;
-        
+
         // After @, check for property access chain (e.g., @.author.length)
         if matches!(self.peek_token(), Some(Token::Dot)) {
             self.consume_token(); // consume the first dot
-            
+
             let mut path = Vec::new();
-            
+
             // Parse property chain: @.prop1.prop2.prop3...
             loop {
                 if let Some(Token::Identifier(name)) = self.peek_token() {
                     let name = name.clone();
                     self.consume_token();
                     path.push(name);
-                    
+
                     // Check if there's another dot for chaining
                     if matches!(self.peek_token(), Some(Token::Dot)) {
                         self.consume_token(); // consume the dot and continue
@@ -308,7 +316,7 @@ impl<'a> FilterParser<'a> {
                     ));
                 }
             }
-            
+
             if path.is_empty() {
                 return Err(invalid_expression_error(
                     self.input,
@@ -316,14 +324,14 @@ impl<'a> FilterParser<'a> {
                     Some(self.position),
                 ));
             }
-            
+
             // Return property with full chain path
             return Ok(FilterExpression::Property { path });
         }
 
         // Handle complex JSONPath patterns like @..book, @.*, etc.
         let mut selectors = Vec::new();
-        
+
         // @ represents current node in filter context
         selectors.push(JsonSelector::Root);
 
@@ -428,7 +436,11 @@ impl<'a> FilterParser<'a> {
     }
 
     /// Validate function arguments according to RFC 9535
-    fn validate_function_arguments(&self, function_name: &str, args: &[FilterExpression]) -> JsonPathResult<()> {
+    fn validate_function_arguments(
+        &self,
+        function_name: &str,
+        args: &[FilterExpression],
+    ) -> JsonPathResult<()> {
         // Check for known functions with case sensitivity
         let expected_count = match function_name {
             "count" => 1,
@@ -439,18 +451,20 @@ impl<'a> FilterParser<'a> {
             _ => {
                 // Check if this might be a case-sensitivity error
                 let lowercase_name = function_name.to_lowercase();
-                if matches!(lowercase_name.as_str(), "count" | "length" | "value" | "match" | "search") {
+                if matches!(
+                    lowercase_name.as_str(),
+                    "count" | "length" | "value" | "match" | "search"
+                ) {
                     return Err(invalid_expression_error(
                         self.input,
                         &format!(
                             "unknown function '{}' - did you mean '{}'? (function names are case-sensitive)",
-                            function_name,
-                            lowercase_name
+                            function_name, lowercase_name
                         ),
                         Some(self.position),
                     ));
                 }
-                
+
                 // Unknown function - let it pass for now (could be user-defined)
                 return Ok(());
             }
@@ -472,6 +486,4 @@ impl<'a> FilterParser<'a> {
 
         Ok(())
     }
-
-
 }

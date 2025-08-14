@@ -8,6 +8,6 @@ pub mod qwen3_coder;
 pub mod tokenizer; // tokenizers dependency is available in Cargo.toml
 
 // Re-export primary provider types
-pub use kimi_k2::{CandleKimiK2Provider, CandleKimiK2Config};
-pub use qwen3_coder::{CandleQwen3CoderProvider, CandleQwen3CoderConfig};
+pub use kimi_k2::{CandleKimiK2Config, CandleKimiK2Provider};
+pub use qwen3_coder::{CandleQwen3CoderConfig, CandleQwen3CoderProvider};
 pub use tokenizer::{CandleTokenizer, CandleTokenizerConfig};

@@ -2,6 +2,7 @@
 //! Relationship schema definition.
 
 use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use surrealdb::RecordId;
@@ -33,7 +34,8 @@ pub struct Relationship {
     pub strength: f32,
     /// Additional fields
     #[serde(flatten, skip_serializing_if = "HashMap::is_empty")]
-    pub additional_fields: HashMap<String, Value>}
+    pub additional_fields: HashMap<String, Value>,
+}
 
 impl Relationship {
     /// Create a new relationship
@@ -54,7 +56,8 @@ impl Relationship {
             created_at: now,
             updated_at: now,
             strength: 1.0,
-            additional_fields: HashMap::new()}
+            additional_fields: HashMap::new(),
+        }
     }
 
     /// Create a new relationship with ID
@@ -76,7 +79,8 @@ impl Relationship {
             created_at: now,
             updated_at: now,
             strength: 1.0,
-            additional_fields: HashMap::new()}
+            additional_fields: HashMap::new(),
+        }
     }
 
     /// Set metadata

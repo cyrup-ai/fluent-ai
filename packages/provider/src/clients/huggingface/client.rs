@@ -14,12 +14,14 @@ use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 use super::completion::HuggingFaceCompletionBuilder;
 use crate::{
     client::{CompletionClient, ProviderClient},
-    completion_provider::{CompletionError, CompletionProvider}};
+    completion_provider::{CompletionError, CompletionProvider},
+};
 
 /// HuggingFace client providing clean completion builder factory methods
 #[derive(Clone)]
 pub struct HuggingFaceClient {
-    api_key: String}
+    api_key: String,
+}
 
 impl HuggingFaceClient {
     /// Create new HuggingFace client with API key

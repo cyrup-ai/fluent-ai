@@ -1,17 +1,19 @@
 use std::num::NonZeroU64;
+
 use serde_json::Value;
 use thiserror::Error;
+
 use crate::domain::{
-    CandleZeroOneOrMany as ZeroOneOrMany,
-    chat::{CandleMessage as ChatMessage},
-    context::{CandleDocument as Document},
+    chat::CandleMessage as ChatMessage,
     completion::{
+        types::{MAX_TOKENS, TEMPERATURE_RANGE},
         CandleCompletionRequest as CompletionRequest,
-        types::{MAX_TOKENS, TEMPERATURE_RANGE}
     },
-    tool::{CandleTool},
-    model::{CandleValidationError as ValidationError},
-    http::requests::completion::{ToolDefinition, FunctionDefinition, ToolType}
+    context::CandleDocument as Document,
+    http::requests::completion::{FunctionDefinition, ToolDefinition, ToolType},
+    model::CandleValidationError as ValidationError,
+    tool::CandleTool,
+    CandleZeroOneOrMany as ZeroOneOrMany,
 };
 
 /// Builder for completion requests
@@ -115,11 +117,16 @@ impl CompletionRequestBuilder {
                     function: FunctionDefinition::new(
                         tool.name(),
                         tool.description(),
-                        tool.parameters().clone()
-                    ).map_err(|_| CompletionRequestError::InvalidParameter("Failed to create function definition".to_string()))?
+                        tool.parameters().clone(),
+                    )
+                    .map_err(|_| {
+                        CompletionRequestError::InvalidParameter(
+                            "Failed to create function definition".to_string(),
+                        )
+                    })?,
                 };
                 ZeroOneOrMany::One(tool_def)
-            },
+            }
             ZeroOneOrMany::Many(tools) => {
                 let mut tool_defs = Vec::new();
                 for tool in tools {
@@ -128,8 +135,13 @@ impl CompletionRequestBuilder {
                         function: FunctionDefinition::new(
                             tool.name(),
                             tool.description(),
-                            tool.parameters().clone()
-                        ).map_err(|_| CompletionRequestError::InvalidParameter("Failed to create function definition".to_string()))?
+                            tool.parameters().clone(),
+                        )
+                        .map_err(|_| {
+                            CompletionRequestError::InvalidParameter(
+                                "Failed to create function definition".to_string(),
+                            )
+                        })?,
                     };
                     tool_defs.push(tool_def);
                 }

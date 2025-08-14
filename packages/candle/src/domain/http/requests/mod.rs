@@ -29,7 +29,7 @@ pub mod completion;
 
 // Re-exports for convenience
 pub use completion::{
-    CompletionRequest, CompletionRequestError, ProviderExtensions,
-    ToolDefinition, ToolChoice, FunctionDefinition, ToolType,
-    OpenAIExtensions, AnthropicExtensions, GoogleExtensions,
-    BedrockExtensions, CohereExtensions};
+    AnthropicExtensions, BedrockExtensions, CohereExtensions, CompletionRequest,
+    CompletionRequestError, FunctionDefinition, GoogleExtensions, OpenAIExtensions,
+    ProviderExtensions, ToolChoice, ToolDefinition, ToolType,
+};

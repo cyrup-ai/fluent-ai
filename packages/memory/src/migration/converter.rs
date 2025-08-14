@@ -23,7 +23,8 @@ pub struct ImportData {
     /// Memory records
     pub memories: Vec<serde_json::Value>,
     /// Relationship records
-    pub relationships: Vec<serde_json::Value>}
+    pub relationships: Vec<serde_json::Value>,
+}
 
 /// Import metadata
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -32,7 +33,8 @@ pub struct ImportMetadata {
     pub timestamp: chrono::DateTime<chrono::Utc>,
     pub format: String,
     /// Format version
-    pub format_version: String}
+    pub format_version: String,
+}
 
 /// Data converter for migrating between different format versions
 pub struct DataConverter {
@@ -41,7 +43,8 @@ pub struct DataConverter {
     /// Target version
     target_version: String,
     /// Custom conversion rules
-    custom_rules: ConversionRulesMap}
+    custom_rules: ConversionRulesMap,
+}
 
 impl DataConverter {
     /// Create a new data converter
@@ -49,7 +52,8 @@ impl DataConverter {
         Self {
             source_version: source_version.into(),
             target_version: target_version.into(),
-            custom_rules: HashMap::new()}
+            custom_rules: HashMap::new(),
+        }
     }
 
     /// Convert data from source version to target version
@@ -72,7 +76,8 @@ impl DataConverter {
         match (self.source_version.as_str(), self.target_version.as_str()) {
             ("0.1.0", "0.2.0") => self.convert_0_1_0_to_0_2_0(data),
             ("0.2.0", "0.1.0") => self.convert_0_2_0_to_0_1_0(data),
-            _ => self.apply_generic_upgrade(data)}
+            _ => self.apply_generic_upgrade(data),
+        }
     }
 
     /// Convert from version 0.1.0 to 0.2.0
@@ -349,14 +354,16 @@ mod tests {
             source: "test".to_string(),
             timestamp: chrono::Utc::now(),
             format: "memory_export".to_string(),
-            format_version: "0.1.0".to_string()};
+            format_version: "0.1.0".to_string(),
+        };
 
         let mut data = ImportData {
             version: "0.1.0".to_string(),
             metadata,
             data: serde_json::Value::Object(serde_json::Map::new()),
             memories: Vec::new(),
-            relationships: Vec::new()};
+            relationships: Vec::new(),
+        };
 
         // Add a test memory
         let memory = crate::schema::memory_schema::Memory {
@@ -367,7 +374,8 @@ mod tests {
             last_accessed_at: chrono::Utc::now(),
             importance: 0.5,
             tags: vec![],
-            metadata: Some(serde_json::Value::Object(serde_json::Map::new()))};
+            metadata: Some(serde_json::Value::Object(serde_json::Map::new())),
+        };
         data.memories
             .push(serde_json::to_value(memory).expect("Failed to serialize memory"));
 
@@ -428,14 +436,16 @@ mod tests {
             source: "test".to_string(),
             timestamp: chrono::Utc::now(),
             format: "memory_export".to_string(),
-            format_version: "0.2.0".to_string()};
+            format_version: "0.2.0".to_string(),
+        };
 
         let mut data = ImportData {
             version: "0.2.0".to_string(),
             metadata,
             data: serde_json::Value::Object(serde_json::Map::new()),
             memories: Vec::new(),
-            relationships: Vec::new()};
+            relationships: Vec::new(),
+        };
 
         // Add a test memory with schema version
         let mut memory_metadata = serde_json::Map::new();
@@ -450,7 +460,8 @@ mod tests {
             last_accessed_at: chrono::Utc::now(),
             importance: 0.5,
             tags: vec![],
-            metadata: Some(serde_json::Value::Object(memory_metadata))};
+            metadata: Some(serde_json::Value::Object(memory_metadata)),
+        };
         data.memories
             .push(serde_json::to_value(memory).expect("Failed to serialize memory"));
 
@@ -513,14 +524,16 @@ mod tests {
             source: "test".to_string(),
             timestamp: chrono::Utc::now(),
             format: "memory_export".to_string(),
-            format_version: "custom".to_string()};
+            format_version: "custom".to_string(),
+        };
 
         let data = ImportData {
             version: "custom".to_string(),
             metadata,
             data: serde_json::Value::Object(serde_json::Map::new()),
             memories: Vec::new(),
-            relationships: Vec::new()};
+            relationships: Vec::new(),
+        };
 
         // Convert using custom rule
         let result = converter.convert(&data).expect("Failed to convert data");

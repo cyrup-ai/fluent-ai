@@ -73,7 +73,8 @@ pub enum Error {
     Internal(String),
 
     #[error("Other error: {0}")]
-    Other(String)}
+    Other(String),
+}
 
 // Implement axum::response::IntoResponse for AppError to use it in handlers
 #[cfg(feature = "api")] // Changed from "axum-api" to "api"
@@ -143,7 +144,8 @@ impl axum::response::IntoResponse for Error {
                 format!("Database error: {}", e),
             ),
             Error::Internal(e) => (StatusCode::INTERNAL_SERVER_ERROR, e),
-            Error::Other(e) => (StatusCode::INTERNAL_SERVER_ERROR, e)};
+            Error::Other(e) => (StatusCode::INTERNAL_SERVER_ERROR, e),
+        };
 
         (status, Json(serde_json::json!({ "error": error_message }))).into_response()
     }

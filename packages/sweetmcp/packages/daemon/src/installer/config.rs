@@ -3,20 +3,22 @@
 //! This module provides configuration generation, service setup, and platform-specific
 //! installation logic with zero allocation fast paths and blazing-fast performance.
 
-use crate::install::{install_daemon_async, InstallerBuilder};
-use crate::install::fluent_voice;
-use crate::signing;
-use anyhow::{Context, Result};
-use log::{info, warn};
-use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
-use rcgen::string::Ia5String;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+
+use anyhow::{Context, Result};
+use log::{info, warn};
 // Removed unused import: use time::OffsetDateTime;
 use pem;
+use rcgen::string::Ia5String;
+use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
 use x509_parser;
-use super::core::{InstallContext, ServiceConfig, InstallProgress};
+
+use super::core::{InstallContext, InstallProgress, ServiceConfig};
+use crate::install::fluent_voice;
+use crate::install::{install_daemon_async, InstallerBuilder};
+use crate::signing;
 
 /// Configure and install the SweetMCP daemon with optimized installation flow
 pub async fn install_sweetmcp_daemon(
@@ -78,8 +80,12 @@ pub async fn install_sweetmcp_daemon(
                     Ok(false) => {
                         warn!("Installed binary lost its signature during installation");
                         // Re-sign the installed binary
-                        info!("Re-signing installed binary at {}", installed_path.display());
-                        let signing_config = crate::signing::SigningConfig::new(installed_path.clone());
+                        info!(
+                            "Re-signing installed binary at {}",
+                            installed_path.display()
+                        );
+                        let signing_config =
+                            crate::signing::SigningConfig::new(installed_path.clone());
                         if let Err(e) = signing::sign_binary(&signing_config) {
                             warn!("Failed to re-sign installed binary: {}", e);
                         } else {
@@ -149,9 +155,9 @@ fn build_installer_config(context: &InstallContext) -> Result<InstallerBuilder> 
         .description("Cyrup Service Manager")
         .args([
             "run",
-            "--foreground", 
+            "--foreground",
             "--config",
-            context.config_path.to_str().unwrap()
+            context.config_path.to_str().unwrap(),
         ])
         .env("RUST_LOG", "info")
         .auto_restart(true)
@@ -224,7 +230,10 @@ fn convert_to_service_definition(
         name: service.name.clone(),
         description: Some(service.description.clone()),
         command: service.command.clone(),
-        working_dir: service.working_dir.as_ref().map(|p| p.to_string_lossy().to_string()),
+        working_dir: service
+            .working_dir
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string()),
         env_vars,
         auto_restart: service.auto_restart,
         user: service.user.clone(),
@@ -295,7 +304,9 @@ async fn generate_and_import_wildcard_certificate() -> Result<()> {
         SanType::DnsName(Ia5String::try_from("cyrup.dev").context("Invalid DNS name")?),
         SanType::DnsName(Ia5String::try_from("*.sweetmcp.cyrup.dev").context("Invalid DNS name")?),
         SanType::DnsName(Ia5String::try_from("sweetmcp.cyrup.dev").context("Invalid DNS name")?),
-        SanType::DnsName(Ia5String::try_from("*.sweetmcp.cyrup.cloud").context("Invalid DNS name")?),
+        SanType::DnsName(
+            Ia5String::try_from("*.sweetmcp.cyrup.cloud").context("Invalid DNS name")?,
+        ),
         SanType::DnsName(Ia5String::try_from("sweetmcp.cyrup.cloud").context("Invalid DNS name")?),
         SanType::DnsName(Ia5String::try_from("*.sweetmcp.cyrup.pro").context("Invalid DNS name")?),
         SanType::DnsName(Ia5String::try_from("sweetmcp.cyrup.pro").context("Invalid DNS name")?),
@@ -315,7 +326,8 @@ async fn generate_and_import_wildcard_certificate() -> Result<()> {
 
     // Generate self-signed certificate with key pair
     let key_pair = rcgen::KeyPair::generate()?;
-    let cert = params.self_signed(&key_pair)
+    let cert = params
+        .self_signed(&key_pair)
         .context("Failed to generate certificate")?;
 
     // Create combined PEM file with certificate and private key
@@ -371,12 +383,10 @@ fn get_cert_dir() -> PathBuf {
 /// Validate existing wildcard certificate with fast validation
 fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<()> {
     // Read certificate file
-    let cert_pem = fs::read_to_string(cert_path)
-        .context("Failed to read certificate file")?;
+    let cert_pem = fs::read_to_string(cert_path).context("Failed to read certificate file")?;
 
     // Parse certificate to validate it's well-formed
-    let cert_der = pem::parse(&cert_pem)
-        .context("Failed to parse certificate PEM")?;
+    let cert_der = pem::parse(&cert_pem).context("Failed to parse certificate PEM")?;
 
     if cert_der.tag() != "CERTIFICATE" {
         return Err(anyhow::anyhow!("Invalid certificate format"));
@@ -394,7 +404,7 @@ fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<()> {
         .as_secs();
 
     let not_after = cert.validity().not_after.timestamp() as u64;
-    
+
     if now > not_after {
         return Err(anyhow::anyhow!("Certificate has expired"));
     }
@@ -410,10 +420,10 @@ fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<()> {
 /// Add SweetMCP host entries with optimized host file modification
 fn add_sweetmcp_host_entries() -> Result<()> {
     let hosts_file_path = get_hosts_file_path();
-    
+
     // Read existing hosts file
-    let existing_content = fs::read_to_string(&hosts_file_path)
-        .context("Failed to read hosts file")?;
+    let existing_content =
+        fs::read_to_string(&hosts_file_path).context("Failed to read hosts file")?;
 
     // Check if SweetMCP entries already exist
     if existing_content.contains("# SweetMCP entries") {
@@ -446,10 +456,12 @@ fn add_sweetmcp_host_entries() -> Result<()> {
     new_content.push('\n');
 
     // Write updated hosts file
-    fs::write(&hosts_file_path, new_content)
-        .context("Failed to write hosts file")?;
+    fs::write(&hosts_file_path, new_content).context("Failed to write hosts file")?;
 
-    info!("Added SweetMCP host entries to {}", hosts_file_path.display());
+    info!(
+        "Added SweetMCP host entries to {}",
+        hosts_file_path.display()
+    );
     Ok(())
 }
 
@@ -472,10 +484,10 @@ fn get_hosts_file_path() -> PathBuf {
 /// Remove SweetMCP host entries with optimized host file cleanup
 pub fn remove_sweetmcp_host_entries() -> Result<()> {
     let hosts_file_path = get_hosts_file_path();
-    
+
     // Read existing hosts file
-    let existing_content = fs::read_to_string(&hosts_file_path)
-        .context("Failed to read hosts file")?;
+    let existing_content =
+        fs::read_to_string(&hosts_file_path).context("Failed to read hosts file")?;
 
     // Check if SweetMCP entries exist
     if !existing_content.contains("# SweetMCP entries") {
@@ -504,10 +516,12 @@ pub fn remove_sweetmcp_host_entries() -> Result<()> {
 
     // Write updated hosts file
     let new_content = new_lines.join("\n");
-    fs::write(&hosts_file_path, new_content)
-        .context("Failed to write hosts file")?;
+    fs::write(&hosts_file_path, new_content).context("Failed to write hosts file")?;
 
-    info!("Removed SweetMCP host entries from {}", hosts_file_path.display());
+    info!(
+        "Removed SweetMCP host entries from {}",
+        hosts_file_path.display()
+    );
     Ok(())
 }
 
@@ -521,12 +535,12 @@ pub fn validate_configuration(config_path: &Path) -> Result<()> {
     }
 
     // Read and validate configuration file
-    let config_content = fs::read_to_string(config_path)
-        .context("Failed to read configuration file")?;
+    let config_content =
+        fs::read_to_string(config_path).context("Failed to read configuration file")?;
 
     // Basic TOML validation
-    let _config: toml::Value = toml::from_str(&config_content)
-        .context("Invalid TOML configuration")?;
+    let _config: toml::Value =
+        toml::from_str(&config_content).context("Invalid TOML configuration")?;
 
     info!("Configuration file validated successfully");
     Ok(())
@@ -535,12 +549,12 @@ pub fn validate_configuration(config_path: &Path) -> Result<()> {
 /// Create default configuration file with optimized config generation
 #[allow(dead_code)] // Library function for installer/setup operations
 pub fn create_default_configuration(config_path: &Path) -> Result<()> {
-    let config_dir = config_path.parent()
+    let config_dir = config_path
+        .parent()
         .ok_or_else(|| anyhow::anyhow!("Invalid configuration path"))?;
 
     // Create configuration directory if it doesn't exist
-    fs::create_dir_all(config_dir)
-        .context("Failed to create configuration directory")?;
+    fs::create_dir_all(config_dir).context("Failed to create configuration directory")?;
 
     // Default configuration content
     let default_config = r#"
@@ -586,8 +600,7 @@ timeout_seconds = 30
 "#;
 
     // Write default configuration
-    fs::write(config_path, default_config)
-        .context("Failed to write default configuration")?;
+    fs::write(config_path, default_config).context("Failed to write default configuration")?;
 
     info!("Created default configuration at {:?}", config_path);
     Ok(())

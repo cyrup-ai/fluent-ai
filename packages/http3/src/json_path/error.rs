@@ -229,13 +229,15 @@ impl<T> JsonPathResultExt<T> for JsonPathResult<T> {
 
     fn with_stream_context(self, context: &str) -> JsonPathResult<T> {
         self.map_err(|err| match err {
-            JsonPathError::StreamError { message, recoverable, .. } => {
-                JsonPathError::StreamError {
-                    message,
-                    state: context.to_string(),
-                    recoverable,
-                }
-            }
+            JsonPathError::StreamError {
+                message,
+                recoverable,
+                ..
+            } => JsonPathError::StreamError {
+                message,
+                state: context.to_string(),
+                recoverable,
+            },
             other => other,
         })
     }

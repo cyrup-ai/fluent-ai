@@ -130,7 +130,7 @@ impl FunctionEvaluator {
                         Ok(FilterValue::Null) // Primitives return null per RFC
                     }
                     FilterValue::Null => Ok(FilterValue::Null),
-                    FilterValue::Missing => Ok(FilterValue::Null), // Missing properties have no length
+                    FilterValue::Missing => Ok(FilterValue::Null), /* Missing properties have no length */
                 }
             }
         }
@@ -467,12 +467,12 @@ impl FunctionEvaluator {
         F: FnOnce() -> bool + Send + 'static,
     {
         use std::time::Instant;
-        
+
         let timeout_duration = Duration::from_millis(500); // 500ms aggressive timeout
         let start_time = Instant::now();
-        
+
         let (tx, rx) = std::sync::mpsc::channel();
-        
+
         // Spawn regex execution in separate thread
         let handle = thread::spawn(move || {
             log::debug!("Starting regex execution in timeout thread");
@@ -480,7 +480,7 @@ impl FunctionEvaluator {
             log::debug!("Regex execution completed in thread");
             let _ = tx.send(result); // Ignore send errors if receiver dropped
         });
-        
+
         // Wait for completion or timeout
         match rx.recv_timeout(timeout_duration) {
             Ok(result) => {
@@ -490,12 +490,18 @@ impl FunctionEvaluator {
             }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
                 let elapsed = start_time.elapsed();
-                log::warn!("Regex execution timed out after {:?} - potential ReDoS attack", elapsed);
-                
+                log::warn!(
+                    "Regex execution timed out after {:?} - potential ReDoS attack",
+                    elapsed
+                );
+
                 // Clean up thread - it will continue running but we ignore result
                 drop(handle);
-                
-                Err(format!("regex execution timed out after {}ms - potential ReDoS attack", elapsed.as_millis()))
+
+                Err(format!(
+                    "regex execution timed out after {}ms - potential ReDoS attack",
+                    elapsed.as_millis()
+                ))
             }
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
                 let elapsed = start_time.elapsed();

@@ -15,4 +15,5 @@ pub use crate::memory::MemoryType;
 pub enum RelationshipDirection {
     Outgoing,
     Incoming,
-    Both}
+    Both,
+}

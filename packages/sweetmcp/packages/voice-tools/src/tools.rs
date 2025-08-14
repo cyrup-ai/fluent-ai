@@ -1,7 +1,8 @@
 //! MCP tool definitions for voice operations
 
-use crate::{Tool, ToolInputSchema, ToolInputSchemaProperty};
 use std::collections::HashMap;
+
+use crate::{Tool, ToolInputSchema, ToolInputSchemaProperty};
 
 /// Create the speak tool definition
 pub fn speak_tool() -> Tool {

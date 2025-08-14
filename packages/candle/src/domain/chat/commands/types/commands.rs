@@ -3,8 +3,9 @@
 //! Provides blazing-fast command enumeration with owned strings allocated once
 //! for maximum performance. No Arc usage, no locking, comprehensive validation.
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 use super::actions::*;
 use super::errors::{CandleCommandError, CommandResult};
@@ -104,7 +105,7 @@ impl OutputType {
             Self::Error => "error",
         }
     }
-    
+
     /// Get MIME type for HTTP responses
     #[inline]
     pub const fn mime_type(&self) -> &'static str {
@@ -163,13 +164,13 @@ impl CommandExecutionResult {
     pub fn success(message: impl Into<String>) -> Self {
         Self::Success(message.into())
     }
-    
+
     /// Create data result with JSON value
     #[inline]
     pub fn data(value: serde_json::Value) -> Self {
         Self::Data(value)
     }
-    
+
     /// Create file result with zero allocation constructor
     #[inline]
     pub fn file(path: impl Into<String>, size_bytes: u64, mime_type: impl Into<String>) -> Self {
@@ -179,19 +180,19 @@ impl CommandExecutionResult {
             mime_type: mime_type.into(),
         }
     }
-    
+
     /// Create multiple results
     #[inline]
     pub fn multiple(results: Vec<CommandExecutionResult>) -> Self {
         Self::Multiple(results)
     }
-    
+
     /// Create stream result with zero allocation constructor
     #[inline]
     pub fn stream(
-        stream_id: impl Into<String>, 
-        stream_type: OutputType, 
-        initial_data: Option<String>
+        stream_id: impl Into<String>,
+        stream_type: OutputType,
+        initial_data: Option<String>,
     ) -> Self {
         Self::Stream {
             stream_id: stream_id.into(),
@@ -199,19 +200,26 @@ impl CommandExecutionResult {
             initial_data,
         }
     }
-    
+
     /// Create error result with zero allocation constructor
     #[inline]
     pub fn error(message: impl Into<String>) -> Self {
         Self::Error(message.into())
     }
-    
+
     /// Check if result indicates success
     #[inline]
     pub fn is_success(&self) -> bool {
-        matches!(self, Self::Success(_) | Self::Data(_) | Self::File { .. } | Self::Multiple(_) | Self::Stream { .. })
+        matches!(
+            self,
+            Self::Success(_)
+                | Self::Data(_)
+                | Self::File { .. }
+                | Self::Multiple(_)
+                | Self::Stream { .. }
+        )
     }
-    
+
     /// Check if result indicates error
     #[inline]
     pub fn is_error(&self) -> bool {
@@ -469,56 +477,54 @@ impl ImmutableChatCommand {
             Self::Chat { .. } => "chat",
         }
     }
-    
+
     /// Check if command requires confirmation - zero allocation check
     #[inline]
     pub const fn requires_confirmation(&self) -> bool {
         matches!(
             self,
-            Self::Clear { .. } | 
-            Self::Load { .. } | 
-            Self::Import { .. } |
-            Self::Undo { .. } |
-            Self::Settings { reset: true, .. }
+            Self::Clear { .. }
+                | Self::Load { .. }
+                | Self::Import { .. }
+                | Self::Undo { .. }
+                | Self::Settings { reset: true, .. }
         )
     }
-    
+
     /// Check if command modifies state - zero allocation check
     #[inline]
     pub const fn is_mutating(&self) -> bool {
         matches!(
             self,
-            Self::Clear { .. } |
-            Self::Config { .. } |
-            Self::Template { .. } |
-            Self::Macro { .. } |
-            Self::Branch { .. } |
-            Self::Session { .. } |
-            Self::Save { .. } |
-            Self::Load { .. } |
-            Self::Import { .. } |
-            Self::Settings { .. } |
-            Self::Undo { .. }
+            Self::Clear { .. }
+                | Self::Config { .. }
+                | Self::Template { .. }
+                | Self::Macro { .. }
+                | Self::Branch { .. }
+                | Self::Session { .. }
+                | Self::Save { .. }
+                | Self::Load { .. }
+                | Self::Import { .. }
+                | Self::Settings { .. }
+                | Self::Undo { .. }
         )
     }
-    
+
     /// Check if command requires network access - zero allocation check
     #[inline]
     pub const fn requires_network(&self) -> bool {
         matches!(
             self,
-            Self::Import { .. } |
-            Self::Tool { .. } |
-            Self::Stats { .. }
+            Self::Import { .. } | Self::Tool { .. } | Self::Stats { .. }
         )
     }
-    
+
     /// Check if command can be executed offline - zero allocation check
     #[inline]
     pub const fn is_offline_capable(&self) -> bool {
         !self.requires_network()
     }
-    
+
     /// Get command priority for execution scheduling - zero allocation
     #[inline]
     pub const fn priority(&self) -> u8 {
@@ -534,13 +540,16 @@ impl ImmutableChatCommand {
             _ => 10, // Standard priority
         }
     }
-    
+
     /// Validate command arguments with comprehensive error checking
     #[inline]
     pub fn validate(&self) -> CommandResult<()> {
         match self {
             Self::Export { format, .. } => {
-                if !matches!(format.as_str(), "json" | "markdown" | "pdf" | "html" | "csv" | "xml" | "yaml") {
+                if !matches!(
+                    format.as_str(),
+                    "json" | "markdown" | "pdf" | "html" | "csv" | "xml" | "yaml"
+                ) {
                     return Err(CandleCommandError::invalid_arguments(
                         format!("Invalid export format '{}'. Supported: json, markdown, pdf, html, csv, xml, yaml", format)
                     ));
@@ -549,58 +558,62 @@ impl ImmutableChatCommand {
             Self::Search { query, .. } => {
                 if query.is_empty() {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Search query cannot be empty"
+                        "Search query cannot be empty",
                     ));
                 }
                 if query.len() > 1000 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Search query too long (max 1000 characters)"
+                        "Search query too long (max 1000 characters)",
                     ));
                 }
             }
             Self::Load { name, .. } => {
                 if name.is_empty() {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Load name cannot be empty"
+                        "Load name cannot be empty",
                     ));
                 }
                 if name.len() > 255 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Load name too long (max 255 characters)"
+                        "Load name too long (max 255 characters)",
                     ));
                 }
             }
             Self::Import { source, .. } => {
                 if source.is_empty() {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Import source cannot be empty"
+                        "Import source cannot be empty",
                     ));
                 }
                 // Basic URL/path validation
-                if !source.starts_with("http://") && 
-                   !source.starts_with("https://") && 
-                   !source.starts_with("file://") &&
-                   !source.starts_with("/") &&
-                   !source.starts_with("./") &&
-                   !source.starts_with("../") {
+                if !source.starts_with("http://")
+                    && !source.starts_with("https://")
+                    && !source.starts_with("file://")
+                    && !source.starts_with("/")
+                    && !source.starts_with("./")
+                    && !source.starts_with("../")
+                {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Import source must be a valid URL or file path"
+                        "Import source must be a valid URL or file path",
                     ));
                 }
             }
             Self::Custom { name, .. } => {
                 if name.is_empty() {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Custom command name cannot be empty"
+                        "Custom command name cannot be empty",
                     ));
                 }
                 if name.len() > 100 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Custom command name too long (max 100 characters)"
+                        "Custom command name too long (max 100 characters)",
                     ));
                 }
                 // Check for valid command name characters
-                if !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+                if !name
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+                {
                     return Err(CandleCommandError::invalid_arguments(
                         "Custom command name can only contain alphanumeric characters, underscores, and hyphens"
                     ));
@@ -609,53 +622,71 @@ impl ImmutableChatCommand {
             Self::Chat { message, .. } => {
                 if message.is_empty() {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Chat message cannot be empty"
+                        "Chat message cannot be empty",
                     ));
                 }
                 if message.len() > 100_000 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Chat message too long (max 100,000 characters)"
+                        "Chat message too long (max 100,000 characters)",
                     ));
                 }
             }
-            Self::Template { name: Some(name), .. } |
-            Self::Macro { name: Some(name), .. } |
-            Self::Branch { name: Some(name), .. } |
-            Self::Session { name: Some(name), .. } |
-            Self::Tool { name: Some(name), .. } |
-            Self::Theme { name: Some(name), .. } => {
+            Self::Template {
+                name: Some(name), ..
+            }
+            | Self::Macro {
+                name: Some(name), ..
+            }
+            | Self::Branch {
+                name: Some(name), ..
+            }
+            | Self::Session {
+                name: Some(name), ..
+            }
+            | Self::Tool {
+                name: Some(name), ..
+            }
+            | Self::Theme {
+                name: Some(name), ..
+            } => {
                 if name.is_empty() {
-                    return Err(CandleCommandError::invalid_arguments(
-                        format!("{} name cannot be empty", self.command_name())
-                    ));
+                    return Err(CandleCommandError::invalid_arguments(format!(
+                        "{} name cannot be empty",
+                        self.command_name()
+                    )));
                 }
                 if name.len() > 100 {
-                    return Err(CandleCommandError::invalid_arguments(
-                        format!("{} name too long (max 100 characters)", self.command_name())
-                    ));
+                    return Err(CandleCommandError::invalid_arguments(format!(
+                        "{} name too long (max 100 characters)",
+                        self.command_name()
+                    )));
                 }
             }
-            Self::History { limit: Some(limit), .. } => {
+            Self::History {
+                limit: Some(limit), ..
+            } => {
                 if *limit == 0 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "History limit must be greater than 0"
+                        "History limit must be greater than 0",
                     ));
                 }
                 if *limit > 10_000 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "History limit too large (max 10,000)"
+                        "History limit too large (max 10,000)",
                     ));
                 }
             }
-            Self::Undo { count: Some(count), .. } => {
+            Self::Undo {
+                count: Some(count), ..
+            } => {
                 if *count == 0 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Undo count must be greater than 0"
+                        "Undo count must be greater than 0",
                     ));
                 }
                 if *count > 100 {
                     return Err(CandleCommandError::invalid_arguments(
-                        "Undo count too large (max 100)"
+                        "Undo count too large (max 100)",
                     ));
                 }
             }
@@ -663,7 +694,7 @@ impl ImmutableChatCommand {
         }
         Ok(())
     }
-    
+
     /// Get estimated execution time in milliseconds for scheduling
     #[inline]
     pub const fn estimated_duration_ms(&self) -> u64 {
@@ -682,30 +713,30 @@ impl ImmutableChatCommand {
             _ => 1000,
         }
     }
-    
+
     /// Get memory requirements in bytes for resource planning
     #[inline]
     pub const fn memory_requirement_bytes(&self) -> u64 {
         match self {
             Self::Export { .. } => 50 * 1024 * 1024, // 50MB for large exports
             Self::Import { .. } => 100 * 1024 * 1024, // 100MB for imports
-            Self::Stats { .. } => 10 * 1024 * 1024, // 10MB for statistics
+            Self::Stats { .. } => 10 * 1024 * 1024,  // 10MB for statistics
             Self::History { .. } => 20 * 1024 * 1024, // 20MB for large history
-            Self::Search { .. } => 5 * 1024 * 1024, // 5MB for search operations
-            _ => 1024 * 1024, // 1MB for standard operations
+            Self::Search { .. } => 5 * 1024 * 1024,  // 5MB for search operations
+            _ => 1024 * 1024,                        // 1MB for standard operations
         }
     }
-    
+
     /// Check if command can be parallelized with other commands
     #[inline]
     pub const fn is_parallelizable(&self) -> bool {
         matches!(
             self,
-            Self::Help { .. } |
-            Self::Stats { .. } |
-            Self::Debug { .. } |
-            Self::History { .. } |
-            Self::Search { .. }
+            Self::Help { .. }
+                | Self::Stats { .. }
+                | Self::Debug { .. }
+                | Self::History { .. }
+                | Self::Search { .. }
         )
     }
 }

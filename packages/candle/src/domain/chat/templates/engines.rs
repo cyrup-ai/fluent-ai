@@ -5,9 +5,10 @@
 use std::sync::Arc;
 
 use crate::domain::chat::templates::core::{
-    ChatTemplate as CandleChatTemplate, TemplateContext as CandleTemplateContext, 
-    TemplateError as CandleTemplateError, TemplateResult as CandleTemplateResult, 
-    TemplateValue as CandleTemplateValue};
+    ChatTemplate as CandleChatTemplate, TemplateContext as CandleTemplateContext,
+    TemplateError as CandleTemplateError, TemplateResult as CandleTemplateResult,
+    TemplateValue as CandleTemplateValue,
+};
 
 /// Template rendering engine trait
 pub trait TemplateEngine: Send + Sync {
@@ -51,7 +52,8 @@ impl TemplateEngine for SimpleEngine {
                 }
                 CandleTemplateValue::Array(_) => "[array]", // Simplified
                 CandleTemplateValue::Object(_) => "[object]", // Simplified
-                CandleTemplateValue::Null => ""};
+                CandleTemplateValue::Null => "",
+            };
             result = result.replace(&placeholder, replacement);
         }
 
@@ -69,13 +71,15 @@ impl TemplateEngine for SimpleEngine {
 
 /// Template engine registry
 pub struct EngineRegistry {
-    engines: Vec<Box<dyn TemplateEngine>>}
+    engines: Vec<Box<dyn TemplateEngine>>,
+}
 
 impl EngineRegistry {
     /// Create a new engine registry
     pub fn new() -> Self {
         Self {
-            engines: Vec::new()}
+            engines: Vec::new(),
+        }
     }
 
     /// Create a registry with default engines
@@ -107,7 +111,9 @@ impl EngineRegistry {
         match self.find_engine(template) {
             Some(engine) => engine.render(template, context),
             None => Err(CandleTemplateError::RenderError {
-                message: Arc::from("No suitable rendering engine found")})}
+                message: Arc::from("No suitable rendering engine found"),
+            }),
+        }
     }
 }
 

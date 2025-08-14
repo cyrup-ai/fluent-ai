@@ -32,12 +32,12 @@ async fn test_exact_architecture_api() {
 
         ~ Be Useful, Not Thorough")
         .context( // trait Context
-            Context<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
-            Context<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
-            Context<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-            Context<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+            Context::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            Context::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+            Context::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+            Context::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
         )
-        .mcp_server<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
+        .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait Tool
             Tool<Perplexity>::new([
                 ("citations", "true")

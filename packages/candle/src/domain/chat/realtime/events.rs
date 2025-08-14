@@ -4,7 +4,9 @@
 //! zero-allocation string handling and atomic operations for blazing-fast performance.
 
 use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
+
 use crate::domain::chat::message::types::CandleMessage as Message;
 
 /// Real-time event types with zero-allocation patterns
@@ -14,53 +16,64 @@ pub enum RealTimeEvent {
     TypingStarted {
         user_id: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// User stopped typing
     TypingStopped {
         user_id: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// New message received
     MessageReceived {
         message: Message,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// Message updated
     MessageUpdated {
         message_id: Arc<str>,
         content: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// Message deleted
     MessageDeleted {
         message_id: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// User joined session
     UserJoined {
         user_id: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// User left session
     UserLeft {
         user_id: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// Connection status changed
     ConnectionStatusChanged {
         user_id: Arc<str>,
         status: ConnectionStatus,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// Heartbeat received
     HeartbeatReceived {
         user_id: Arc<str>,
         session_id: Arc<str>,
-        timestamp: u64},
+        timestamp: u64,
+    },
     /// System notification
     SystemNotification {
         message: Arc<str>,
         level: NotificationLevel,
-        timestamp: u64}}
+        timestamp: u64,
+    },
+}
 
 impl RealTimeEvent {
     /// Get current timestamp in nanoseconds for zero-allocation timing
@@ -78,7 +91,8 @@ impl RealTimeEvent {
         Self::TypingStarted {
             user_id,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create typing stopped event with current timestamp
@@ -87,7 +101,8 @@ impl RealTimeEvent {
         Self::TypingStopped {
             user_id,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create message received event with current timestamp
@@ -96,7 +111,8 @@ impl RealTimeEvent {
         Self::MessageReceived {
             message,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create message updated event with current timestamp
@@ -106,7 +122,8 @@ impl RealTimeEvent {
             message_id,
             content,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create message deleted event with current timestamp
@@ -115,7 +132,8 @@ impl RealTimeEvent {
         Self::MessageDeleted {
             message_id,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create user joined event with current timestamp
@@ -124,7 +142,8 @@ impl RealTimeEvent {
         Self::UserJoined {
             user_id,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create user left event with current timestamp
@@ -133,7 +152,8 @@ impl RealTimeEvent {
         Self::UserLeft {
             user_id,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create connection status changed event with current timestamp
@@ -142,7 +162,8 @@ impl RealTimeEvent {
         Self::ConnectionStatusChanged {
             user_id,
             status,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create heartbeat received event with current timestamp
@@ -151,7 +172,8 @@ impl RealTimeEvent {
         Self::HeartbeatReceived {
             user_id,
             session_id,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Create system notification event with current timestamp
@@ -160,7 +182,8 @@ impl RealTimeEvent {
         Self::SystemNotification {
             message,
             level,
-            timestamp: Self::current_timestamp()}
+            timestamp: Self::current_timestamp(),
+        }
     }
 
     /// Get event type name for zero-allocation logging
@@ -176,7 +199,8 @@ impl RealTimeEvent {
             Self::UserLeft { .. } => "UserLeft",
             Self::ConnectionStatusChanged { .. } => "ConnectionStatusChanged",
             Self::HeartbeatReceived { .. } => "HeartbeatReceived",
-            Self::SystemNotification { .. } => "SystemNotification"}
+            Self::SystemNotification { .. } => "SystemNotification",
+        }
     }
 
     /// Get timestamp for any event type
@@ -192,7 +216,8 @@ impl RealTimeEvent {
             | Self::UserLeft { timestamp, .. }
             | Self::ConnectionStatusChanged { timestamp, .. }
             | Self::HeartbeatReceived { timestamp, .. }
-            | Self::SystemNotification { timestamp, .. } => *timestamp}
+            | Self::SystemNotification { timestamp, .. } => *timestamp,
+        }
     }
 }
 
@@ -214,7 +239,8 @@ pub enum ConnectionStatus {
     /// Idle (connected but inactive)
     Idle,
     /// Unstable connection
-    Unstable}
+    Unstable,
+}
 
 impl ConnectionStatus {
     /// Convert to atomic representation (u8) for lock-free storage
@@ -228,7 +254,8 @@ impl ConnectionStatus {
             Self::Reconnecting => 4,
             Self::Failed => 5,
             Self::Idle => 6,
-            Self::Unstable => 7}
+            Self::Unstable => 7,
+        }
     }
 
     /// Convert from atomic representation (u8) for lock-free retrieval
@@ -275,7 +302,8 @@ impl ConnectionStatus {
             Self::Unstable => 60,
             Self::Disconnected => 40,
             Self::Error => 20,
-            Self::Failed => 10}
+            Self::Failed => 10,
+        }
     }
 }
 
@@ -300,7 +328,8 @@ pub enum NotificationLevel {
     /// Debug message (development only)
     Debug,
     /// Critical system message
-    Critical}
+    Critical,
+}
 
 impl NotificationLevel {
     /// Get level priority for filtering (higher = more important)
@@ -312,7 +341,8 @@ impl NotificationLevel {
             Self::Warning => 60,
             Self::Success => 40,
             Self::Info => 20,
-            Self::Debug => 10}
+            Self::Debug => 10,
+        }
     }
 
     /// Get level name for zero-allocation logging
@@ -324,7 +354,8 @@ impl NotificationLevel {
             Self::Error => "ERROR",
             Self::Success => "SUCCESS",
             Self::Debug => "DEBUG",
-            Self::Critical => "CRITICAL"}
+            Self::Critical => "CRITICAL",
+        }
     }
 
     /// Check if level should be displayed in production
@@ -353,7 +384,8 @@ pub struct EventFilter {
     /// Filter by minimum notification level
     pub min_notification_level: Option<NotificationLevel>,
     /// Filter by timestamp range
-    pub timestamp_range: Option<(u64, u64)>}
+    pub timestamp_range: Option<(u64, u64)>,
+}
 
 impl EventFilter {
     /// Create new event filter with no restrictions
@@ -364,7 +396,8 @@ impl EventFilter {
             session_id: None,
             event_types: None,
             min_notification_level: None,
-            timestamp_range: None}
+            timestamp_range: None,
+        }
     }
 
     /// Filter by user ID
@@ -413,8 +446,9 @@ impl EventFilter {
                 | RealTimeEvent::UserLeft { user_id, .. }
                 | RealTimeEvent::ConnectionStatusChanged { user_id, .. }
                 | RealTimeEvent::HeartbeatReceived { user_id, .. } => Some(user_id),
-                _ => None};
-            
+                _ => None,
+            };
+
             if let Some(user_id) = event_user_id {
                 if user_id != filter_user_id {
                     return false;
@@ -433,8 +467,9 @@ impl EventFilter {
                 | RealTimeEvent::UserJoined { session_id, .. }
                 | RealTimeEvent::UserLeft { session_id, .. }
                 | RealTimeEvent::HeartbeatReceived { session_id, .. } => Some(session_id),
-                _ => None};
-            
+                _ => None,
+            };
+
             if let Some(session_id) = event_session_id {
                 if session_id != filter_session_id {
                     return false;

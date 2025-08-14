@@ -3,9 +3,7 @@
 //! Provides simple helper functions that encapsulate common retry patterns
 //! for ease of use while maintaining zero-allocation performance.
 
-use std::pin::Pin;
-
-use futures_util::stream::Stream;
+use fluent_ai_async::AsyncStream;
 
 use super::{HttpRetryExecutor, RetryExecutor, RetryPolicy, RetryResult};
 use crate::HttpResult;
@@ -17,7 +15,7 @@ use crate::HttpResult;
 #[inline]
 pub fn with_retry<F, T>(operation: F) -> HttpRetryExecutor<F, T>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
     HttpRetryExecutor::new(operation)
@@ -27,58 +25,70 @@ where
 ///
 /// Convenience wrapper that applies the default retry policy (3 attempts,
 /// exponential backoff) to the given operation. Suitable for most HTTP operations.
-pub fn execute_with_default_retry<F, T>(
-    operation: F,
-) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_with_default_retry<F, T>(operation: F) -> AsyncStream<RetryResult<T>>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
-    let executor = HttpRetryExecutor::new(operation);
-    executor.execute_with_retry(RetryPolicy::default())
+    AsyncStream::with_channel(move |sender| {
+        let executor = HttpRetryExecutor::new(operation);
+        let mut retry_stream = executor.execute_with_retry(RetryPolicy::default());
+        while let Some(result) = retry_stream.try_next() {
+            fluent_ai_async::emit!(sender, result);
+        }
+    })
 }
 
 /// Helper function to execute operation with aggressive retry policy
 ///
 /// Uses the aggressive retry policy (5 attempts, faster backoff) for
 /// critical operations that must succeed and can tolerate retry overhead.
-pub fn execute_with_aggressive_retry<F, T>(
-    operation: F,
-) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_with_aggressive_retry<F, T>(operation: F) -> AsyncStream<RetryResult<T>>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
-    let executor = HttpRetryExecutor::new(operation);
-    executor.execute_with_retry(RetryPolicy::aggressive())
+    AsyncStream::with_channel(move |sender| {
+        let executor = HttpRetryExecutor::new(operation);
+        let mut retry_stream = executor.execute_with_retry(RetryPolicy::aggressive());
+        while let Some(result) = retry_stream.try_next() {
+            fluent_ai_async::emit!(sender, result);
+        }
+    })
 }
 
 /// Helper function to execute operation with conservative retry policy
 ///
 /// Uses the conservative retry policy (2 attempts, longer delays) for
 /// non-critical operations that should minimize resource consumption.
-pub fn execute_with_conservative_retry<F, T>(
-    operation: F,
-) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_with_conservative_retry<F, T>(operation: F) -> AsyncStream<RetryResult<T>>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
-    let executor = HttpRetryExecutor::new(operation);
-    executor.execute_with_retry(RetryPolicy::conservative())
+    AsyncStream::with_channel(move |sender| {
+        let executor = HttpRetryExecutor::new(operation);
+        let mut retry_stream = executor.execute_with_retry(RetryPolicy::conservative());
+        while let Some(result) = retry_stream.try_next() {
+            fluent_ai_async::emit!(sender, result);
+        }
+    })
 }
 
 /// Helper function to execute operation without retries
 ///
 /// Uses the no-retry policy (single attempt) for operations that should
 /// fail fast without consuming additional resources.
-pub fn execute_without_retry<F, T>(
-    operation: F,
-) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_without_retry<F, T>(operation: F) -> AsyncStream<RetryResult<T>>
 where
-    F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
+    F: Fn() -> HttpResult<T> + Send + Sync + 'static,
     T: Send + 'static,
 {
-    let executor = HttpRetryExecutor::new(operation);
-    executor.execute_with_retry(RetryPolicy::no_retry())
+    AsyncStream::with_channel(move |sender| {
+        let executor = HttpRetryExecutor::new(operation);
+        let mut retry_stream = executor.execute_with_retry(RetryPolicy::no_retry());
+        while let Some(result) = retry_stream.try_next() {
+            fluent_ai_async::emit!(sender, result);
+        }
+    })
 }

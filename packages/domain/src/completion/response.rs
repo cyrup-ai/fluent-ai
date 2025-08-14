@@ -27,10 +27,10 @@ pub struct CompletionResponse<'a> {
     /// Generation time in milliseconds for performance tracking (optional)
     pub generation_time_ms: Option<u32>,
     /// Tokens per second throughput for performance tracking (optional)
-    pub tokens_per_second: Option<f64>}
+    pub tokens_per_second: Option<f64>,
+}
 
 impl<'a> CompletionResponse<'a> {
-
     /// Get the completion text
     pub fn text(&self) -> &str {
         &self.text
@@ -87,7 +87,6 @@ impl<'a> CompletionResponse<'a> {
     }
 }
 
-
 /// A more compact representation of a completion response using Arcs for shared ownership
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompactCompletionResponse {
@@ -102,11 +101,10 @@ pub struct CompactCompletionResponse {
     /// The reason the completion finished
     pub finish_reason: Arc<str>,
     /// Response time in milliseconds
-    pub response_time_ms: u64}
-
+    pub response_time_ms: u64,
+}
 
 impl CompactCompletionResponse {
-
     /// Convert back to a standard CompletionResponse
     pub fn into_standard(self) -> CompletionResponse<'static> {
         CompletionResponse {
@@ -129,4 +127,3 @@ impl CompactCompletionResponse {
         }
     }
 }
-

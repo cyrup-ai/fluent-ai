@@ -21,7 +21,8 @@ use crate::utils::error::Error;
 struct MemoryNodeCreateContent {
     pub content: String,
     pub memory_type: MemoryTypeEnum,
-    pub metadata: MemoryMetadataSchema}
+    pub metadata: MemoryMetadataSchema,
+}
 
 impl From<&MemoryNode> for MemoryNodeCreateContent {
     fn from(memory: &MemoryNode) -> Self {
@@ -36,7 +37,9 @@ impl From<&MemoryNode> for MemoryNodeCreateContent {
                     .unwrap_or(memory.metadata.created_at),
                 importance: memory.metadata.importance,
                 embedding: memory.metadata.embedding.clone(),
-                custom: memory.metadata.custom.clone()}}
+                custom: memory.metadata.custom.clone(),
+            },
+        }
     }
 }
 
@@ -49,7 +52,8 @@ struct RelationshipCreateContent {
     pub metadata: serde_json::Value,
     pub created_at: u64,
     pub updated_at: u64,
-    pub strength: f32}
+    pub strength: f32,
+}
 
 impl From<&MemoryRelationship> for RelationshipCreateContent {
     fn from(relationship: &MemoryRelationship) -> Self {
@@ -63,7 +67,8 @@ impl From<&MemoryRelationship> for RelationshipCreateContent {
                 .unwrap_or_else(|| serde_json::Value::Object(serde_json::Map::new())),
             created_at: crate::utils::current_timestamp_ms(),
             updated_at: crate::utils::current_timestamp_ms(),
-            strength: 1.0}
+            strength: 1.0,
+        }
     }
 }
 
@@ -74,7 +79,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// A pending memory operation that resolves to a MemoryNode
 pub struct PendingMemory {
-    rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>}
+    rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>,
+}
 
 impl PendingMemory {
     pub fn new(rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>) -> Self {
@@ -94,13 +100,15 @@ impl Future for PendingMemory {
             std::task::Poll::Ready(Err(_)) => {
                 std::task::Poll::Ready(Err(Error::Other("Channel closed".to_string())))
             }
-            std::task::Poll::Pending => std::task::Poll::Pending}
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
 /// A query for a specific memory
 pub struct MemoryQuery {
-    rx: tokio::sync::oneshot::Receiver<Result<Option<MemoryNode>>>}
+    rx: tokio::sync::oneshot::Receiver<Result<Option<MemoryNode>>>,
+}
 
 impl MemoryQuery {
     pub fn new(rx: tokio::sync::oneshot::Receiver<Result<Option<MemoryNode>>>) -> Self {
@@ -120,13 +128,15 @@ impl Future for MemoryQuery {
             std::task::Poll::Ready(Err(_)) => {
                 std::task::Poll::Ready(Err(Error::Other("Channel closed".to_string())))
             }
-            std::task::Poll::Pending => std::task::Poll::Pending}
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
 /// A pending deletion operation
 pub struct PendingDeletion {
-    rx: tokio::sync::oneshot::Receiver<Result<bool>>}
+    rx: tokio::sync::oneshot::Receiver<Result<bool>>,
+}
 
 impl PendingDeletion {
     fn new(rx: tokio::sync::oneshot::Receiver<Result<bool>>) -> Self {
@@ -146,13 +156,15 @@ impl Future for PendingDeletion {
             std::task::Poll::Ready(Err(_)) => {
                 std::task::Poll::Ready(Err(Error::Other("Channel closed".to_string())))
             }
-            std::task::Poll::Pending => std::task::Poll::Pending}
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
 /// A pending relationship operation
 pub struct PendingRelationship {
-    rx: tokio::sync::oneshot::Receiver<Result<MemoryRelationship>>}
+    rx: tokio::sync::oneshot::Receiver<Result<MemoryRelationship>>,
+}
 
 impl PendingRelationship {
     fn new(rx: tokio::sync::oneshot::Receiver<Result<MemoryRelationship>>) -> Self {
@@ -172,13 +184,15 @@ impl Future for PendingRelationship {
             std::task::Poll::Ready(Err(_)) => {
                 std::task::Poll::Ready(Err(Error::Other("Channel closed".to_string())))
             }
-            std::task::Poll::Pending => std::task::Poll::Pending}
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
 /// A stream of memory nodes
 pub struct MemoryStream {
-    rx: tokio::sync::mpsc::Receiver<Result<MemoryNode>>}
+    rx: tokio::sync::mpsc::Receiver<Result<MemoryNode>>,
+}
 
 impl MemoryStream {
     fn new(rx: tokio::sync::mpsc::Receiver<Result<MemoryNode>>) -> Self {
@@ -199,7 +213,8 @@ impl futures_util::Stream for MemoryStream {
 
 /// A stream of memory relationships
 pub struct RelationshipStream {
-    rx: tokio::sync::mpsc::Receiver<Result<MemoryRelationship>>}
+    rx: tokio::sync::mpsc::Receiver<Result<MemoryRelationship>>,
+}
 
 impl RelationshipStream {
     fn new(rx: tokio::sync::mpsc::Receiver<Result<MemoryRelationship>>) -> Self {
@@ -254,7 +269,8 @@ pub trait MemoryManager: Send + Sync + 'static {
 /// SurrealDB implementation of the memory manager
 #[derive(Debug)]
 pub struct SurrealDBMemoryManager {
-    db: Surreal<Any>}
+    db: Surreal<Any>,
+}
 
 impl SurrealDBMemoryManager {
     /// Create a new SurrealDB memory manager
@@ -317,7 +333,8 @@ impl SurrealDBMemoryManager {
             created_at: schema.metadata.created_at,
             updated_at: schema.metadata.last_accessed_at,
             embedding,
-            metadata}
+            metadata,
+        }
     }
 
     /// Execute a raw query against the database
@@ -336,7 +353,8 @@ impl SurrealDBMemoryManager {
         // Perform a simple query to check if the database is responsive
         match self.db.query("SELECT 1 as health").await {
             Ok(_) => Ok(()),
-            Err(e) => Err(Error::Database(Box::new(e)))}
+            Err(e) => Err(Error::Database(Box::new(e))),
+        }
     }
 }
 
@@ -364,7 +382,8 @@ impl MemoryManager for SurrealDBMemoryManager {
 
             let result = match created {
                 Some(schema) => Ok(SurrealDBMemoryManager::from_schema(schema)),
-                None => Err(Error::NotFound("Failed to create memory".to_string()))};
+                None => Err(Error::NotFound("Failed to create memory".to_string())),
+            };
 
             let _ = tx.send(result);
         });
@@ -381,7 +400,8 @@ impl MemoryManager for SurrealDBMemoryManager {
         tokio::spawn(async move {
             let result = match db.select::<Option<MemoryNodeSchema>>(("memory", id)).await {
                 Ok(result) => Ok(result.map(SurrealDBMemoryManager::from_schema)),
-                Err(e) => Err(Error::Database(Box::new(e)))};
+                Err(e) => Err(Error::Database(Box::new(e))),
+            };
 
             let _ = tx.send(result);
         });
@@ -410,7 +430,8 @@ impl MemoryManager for SurrealDBMemoryManager {
 
             let result = match updated {
                 Some(schema) => Ok(SurrealDBMemoryManager::from_schema(schema)),
-                None => Err(Error::NotFound(format!("Memory with id {id} not found")))};
+                None => Err(Error::NotFound(format!("Memory with id {id} not found"))),
+            };
 
             let _ = tx.send(result);
         });
@@ -431,7 +452,8 @@ impl MemoryManager for SurrealDBMemoryManager {
                 .await
             {
                 Ok(result) => Ok(result.is_some()),
-                Err(e) => Err(Error::Database(Box::new(e)))};
+                Err(e) => Err(Error::Database(Box::new(e))),
+            };
 
             let _ = tx.send(result);
         });
@@ -465,8 +487,10 @@ impl MemoryManager for SurrealDBMemoryManager {
                     source_id: schema.source_id,
                     target_id: schema.target_id,
                     relationship_type: schema.relationship_type,
-                    metadata: Some(schema.metadata)}),
-                None => Err(Error::NotFound("Failed to create relationship".to_string()))};
+                    metadata: Some(schema.metadata),
+                }),
+                None => Err(Error::NotFound("Failed to create relationship".to_string())),
+            };
 
             let _ = tx.send(result);
         });
@@ -493,7 +517,8 @@ impl MemoryManager for SurrealDBMemoryManager {
                             source_id: schema.source_id,
                             target_id: schema.target_id,
                             relationship_type: schema.relationship_type,
-                            metadata: Some(schema.metadata)};
+                            metadata: Some(schema.metadata),
+                        };
 
                         if tx.send(Ok(relationship)).await.is_err() {
                             break;
@@ -521,7 +546,8 @@ impl MemoryManager for SurrealDBMemoryManager {
                 .await
             {
                 Ok(result) => Ok(result.is_some()),
-                Err(e) => Err(Error::Database(Box::new(e)))};
+                Err(e) => Err(Error::Database(Box::new(e))),
+            };
 
             let _ = tx.send(result);
         });
@@ -537,7 +563,8 @@ impl MemoryManager for SurrealDBMemoryManager {
             MemoryTypeEnum::Semantic => "Semantic".to_string(),
             MemoryTypeEnum::Procedural => "Procedural".to_string(),
             MemoryTypeEnum::Working => "Working".to_string(),
-            MemoryTypeEnum::LongTerm => "LongTerm".to_string()};
+            MemoryTypeEnum::LongTerm => "LongTerm".to_string(),
+        };
 
         let (tx, rx) = tokio::sync::mpsc::channel(100);
 

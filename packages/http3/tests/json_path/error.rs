@@ -2,11 +2,10 @@
 //!
 //! Tests for the JSONPath error handling and RFC 9535 error compliance
 
-
-use fluent_ai_http3::json_path::error::{
-    JsonPathError, JsonPathResultExt, JsonPathResult, invalid_expression_error,
-};
 use fluent_ai_http3::json_path::JsonPathParser;
+use fluent_ai_http3::json_path::error::{
+    JsonPathError, JsonPathResult, JsonPathResultExt, invalid_expression_error,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

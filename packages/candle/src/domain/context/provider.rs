@@ -1,4 +1,3 @@
-
 //! Zero-Allocation Context Provider System
 //!
 //! Production-ready context management with streaming-only architecture, zero Arc usage,
@@ -14,7 +13,9 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
-use fluent_ai_async::{AsyncStream, AsyncStreamSender, spawn_task};
+// Domain imports
+use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_async::{spawn_task, AsyncStream, AsyncStreamSender};
 // Local macro definitions removed - using fluent_ai_async macros instead
 // Streaming primitives from fluent-ai-async
 // Macros now available from fluent_ai_async crate
@@ -25,8 +26,6 @@ use serde_json;
 use thiserror::Error;
 use uuid::Uuid;
 
-// Domain imports
-use cyrup_sugars::ZeroOneOrMany;
 use crate::domain::context::CandleDocument as Document;
 
 // Macros now imported from fluent_ai_async - removed local definitions
@@ -71,7 +70,8 @@ pub enum CandleContextError {
     PerformanceThresholdExceeded(String),
     #[error("Provider unavailable: {0}")]
     /// Context provider service is temporarily or permanently unavailable. Includes network, API, and resource availability issues.
-    ProviderUnavailable(String)}
+    ProviderUnavailable(String),
+}
 
 /// Provider-specific error types for Candle
 #[derive(Error, Debug, Clone, Serialize, Deserialize)]
@@ -104,7 +104,8 @@ pub enum CandleValidationError {
     PatternValidation(String),
     #[error("Size limit exceeded: {0}")]
     /// Content size exceeds configured limits. Includes file size, directory depth, and processing constraints.
-    SizeLimitExceeded(String)}
+    SizeLimitExceeded(String),
+}
 
 /// Candle context events for real-time streaming monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,7 +117,8 @@ pub enum CandleContextEvent {
         /// Unique identifier for this provider instance
         provider_id: String,
         /// When the provider was started
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
     /// Provider shutdown event
     ProviderStopped {
         /// Type of provider that was stopped (File, Directory, Github, etc.)
@@ -124,7 +126,8 @@ pub enum CandleContextEvent {
         /// Unique identifier for this provider instance
         provider_id: String,
         /// When the provider was stopped
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
 
     /// Operation events
     ContextLoadStarted {
@@ -133,7 +136,8 @@ pub enum CandleContextEvent {
         /// Source path or identifier for the context
         source: String,
         /// When the context loading operation started
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
     ContextLoadCompleted {
         /// Type of context that was loaded (file, directory, github, etc.)
         context_type: String,
@@ -144,7 +148,8 @@ pub enum CandleContextEvent {
         /// Duration of the loading operation in nanoseconds
         duration_nanos: u64,
         /// When the context loading operation completed
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
     ContextLoadFailed {
         /// Type of context that failed to load (file, directory, github, etc.)
         context_type: String,
@@ -153,7 +158,8 @@ pub enum CandleContextEvent {
         /// Error message describing the failure
         error: String,
         /// When the context loading operation failed
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
 
     /// Memory integration events
     MemoryCreated {
@@ -162,7 +168,8 @@ pub enum CandleContextEvent {
         /// Hash of the content for deduplication and integrity verification
         content_hash: String,
         /// When the memory entry was created
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
     MemorySearchCompleted {
         /// Search query that was executed
         query: String,
@@ -171,7 +178,8 @@ pub enum CandleContextEvent {
         /// Duration of the search operation in nanoseconds
         duration_nanos: u64,
         /// When the search operation completed
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
 
     /// Performance events
     PerformanceThresholdBreached {
@@ -182,7 +190,8 @@ pub enum CandleContextEvent {
         /// Actual measured value that exceeded the threshold
         actual: f64,
         /// When the threshold breach was detected
-        timestamp: SystemTime},
+        timestamp: SystemTime,
+    },
 
     /// Validation events
     ValidationFailed {
@@ -191,7 +200,9 @@ pub enum CandleContextEvent {
         /// Error message describing the validation failure
         error: String,
         /// When the validation failure occurred
-        timestamp: SystemTime}}
+        timestamp: SystemTime,
+    },
+}
 
 /// Candle memory node representation with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,7 +216,8 @@ pub struct CandleMemoryNode {
     /// Optional vector embedding for similarity search
     pub embedding: Option<Vec<f32>>,
     /// When this memory node was created or last updated
-    pub timestamp: SystemTime}
+    pub timestamp: SystemTime,
+}
 
 /// Immutable file context with owned strings and atomic tracking for Candle
 #[derive(Debug, Clone)]
@@ -219,7 +231,8 @@ pub struct CandleImmutableFileContext {
     /// Last modified timestamp
     pub modified: SystemTime,
     /// Memory integration layer
-    pub memory_integration: Option<CandleMemoryIntegration>}
+    pub memory_integration: Option<CandleMemoryIntegration>,
+}
 
 /// Immutable files context with owned strings for Candle
 #[derive(Debug, Clone)]
@@ -231,7 +244,8 @@ pub struct CandleImmutableFilesContext {
     /// Total files count
     pub total_files: usize,
     /// Memory integration layer
-    pub memory_integration: Option<CandleMemoryIntegration>}
+    pub memory_integration: Option<CandleMemoryIntegration>,
+}
 
 /// Immutable directory context with owned strings for Candle
 #[derive(Debug, Clone)]
@@ -245,7 +259,8 @@ pub struct CandleImmutableDirectoryContext {
     /// Maximum depth for traversal
     pub max_depth: Option<usize>,
     /// Memory integration layer
-    pub memory_integration: Option<CandleMemoryIntegration>}
+    pub memory_integration: Option<CandleMemoryIntegration>,
+}
 
 /// Immutable GitHub context with owned strings for Candle
 #[derive(Debug, Clone)]
@@ -259,7 +274,8 @@ pub struct CandleImmutableGithubContext {
     /// Authentication token (if needed)
     pub auth_token: Option<String>,
     /// Memory integration layer
-    pub memory_integration: Option<CandleMemoryIntegration>}
+    pub memory_integration: Option<CandleMemoryIntegration>,
+}
 
 /// Candle memory integration layer with atomic operations
 #[derive(Debug)]
@@ -274,7 +290,8 @@ pub struct CandleMemoryIntegration {
     pub memory_requests: AtomicU64,
     pub successful_operations: AtomicU64,
     pub failed_operations: AtomicU64,
-    pub total_processing_time_nanos: AtomicU64}
+    pub total_processing_time_nanos: AtomicU64,
+}
 
 impl Clone for CandleMemoryIntegration {
     fn clone(&self) -> Self {
@@ -297,7 +314,8 @@ impl Clone for CandleMemoryIntegration {
             total_processing_time_nanos: AtomicU64::new(
                 self.total_processing_time_nanos
                     .load(std::sync::atomic::Ordering::Relaxed),
-            )}
+            ),
+        }
     }
 }
 
@@ -312,7 +330,8 @@ impl CandleMemoryIntegration {
             memory_requests: AtomicU64::new(0),
             successful_operations: AtomicU64::new(0),
             failed_operations: AtomicU64::new(0),
-            total_processing_time_nanos: AtomicU64::new(0)}
+            total_processing_time_nanos: AtomicU64::new(0),
+        }
     }
 
     /// Record successful operation
@@ -374,7 +393,8 @@ pub struct CandleEmbeddingModelInfo {
     pub version: String,
     pub vector_dimension: usize,
     pub max_input_length: usize,
-    pub supported_languages: Vec<String>}
+    pub supported_languages: Vec<String>,
+}
 
 /// Immutable memory manager with streaming operations for Candle
 pub trait CandleImmutableMemoryManager: Send + Sync + 'static {
@@ -404,7 +424,8 @@ pub struct CandleMemoryManagerInfo {
     pub version: String,
     pub storage_type: String,
     pub max_memory_nodes: Option<usize>,
-    pub supported_operations: Vec<String>}
+    pub supported_operations: Vec<String>,
+}
 
 /// Streaming context processor with atomic state tracking for Candle
 pub struct CandleStreamingContextProcessor {
@@ -426,22 +447,61 @@ pub struct CandleStreamingContextProcessor {
     /// Performance thresholds
     _max_processing_time_ms: u64,
     _max_documents_per_context: usize,
-    _max_concurrent_contexts: usize}
+    _max_concurrent_contexts: usize,
+}
 
 impl std::fmt::Debug for CandleStreamingContextProcessor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CandleStreamingContextProcessor")
             .field("processor_id", &self.processor_id)
-            .field("context_requests", &self.context_requests.load(std::sync::atomic::Ordering::Relaxed))
-            .field("active_contexts", &self.active_contexts.load(std::sync::atomic::Ordering::Relaxed))
-            .field("total_contexts_processed", &self.total_contexts_processed.load(std::sync::atomic::Ordering::Relaxed))
-            .field("successful_contexts", &self.successful_contexts.load(std::sync::atomic::Ordering::Relaxed))
-            .field("failed_contexts", &self.failed_contexts.load(std::sync::atomic::Ordering::Relaxed))
-            .field("total_documents_loaded", &self.total_documents_loaded.load(std::sync::atomic::Ordering::Relaxed))
-            .field("total_processing_time_nanos", &self.total_processing_time_nanos.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "context_requests",
+                &self
+                    .context_requests
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "active_contexts",
+                &self
+                    .active_contexts
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "total_contexts_processed",
+                &self
+                    .total_contexts_processed
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "successful_contexts",
+                &self
+                    .successful_contexts
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "failed_contexts",
+                &self
+                    .failed_contexts
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "total_documents_loaded",
+                &self
+                    .total_documents_loaded
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "total_processing_time_nanos",
+                &self
+                    .total_processing_time_nanos
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .field("event_sender", &self.event_sender.is_some())
             .field("_max_processing_time_ms", &self._max_processing_time_ms)
-            .field("_max_documents_per_context", &self._max_documents_per_context)
+            .field(
+                "_max_documents_per_context",
+                &self._max_documents_per_context,
+            )
             .field("_max_concurrent_contexts", &self._max_concurrent_contexts)
             .finish()
     }
@@ -463,7 +523,8 @@ impl CandleStreamingContextProcessor {
             event_sender: None,
             _max_processing_time_ms: 30000, // 30 seconds default
             _max_documents_per_context: 10000,
-            _max_concurrent_contexts: 100}
+            _max_concurrent_contexts: 100,
+        }
     }
 
     /// Create processor with event streaming
@@ -479,7 +540,10 @@ impl CandleStreamingContextProcessor {
 
     /// Process file context with streaming results - returns unwrapped values
     #[inline]
-    pub fn process_file_context(&self, context: CandleImmutableFileContext) -> AsyncStream<Document> {
+    pub fn process_file_context(
+        &self,
+        context: CandleImmutableFileContext,
+    ) -> AsyncStream<Document> {
         let _processor_id = self.processor_id.clone();
         let event_sender = self.event_sender.clone();
 
@@ -491,21 +555,23 @@ impl CandleStreamingContextProcessor {
                 let _ = events.send(CandleContextEvent::ContextLoadStarted {
                     context_type: "File".to_string(),
                     source: context.path.clone(),
-                    timestamp: start_time});
+                    timestamp: start_time,
+                });
             }
 
             // Validate input
             if let Err(validation_error) = Self::validate_file_context(&context) {
                 let error = CandleContextError::ValidationError(validation_error.to_string());
-                
+
                 // Emit validation failed event before terminating
                 if let Some(ref events) = event_sender {
                     let _ = events.send(CandleContextEvent::ValidationFailed {
                         validation_type: "FileContext".to_string(),
                         error: error.to_string(),
-                        timestamp: SystemTime::now()});
+                        timestamp: SystemTime::now(),
+                    });
                 }
-                
+
                 fluent_ai_async::handle_error!(error, "File context validation failed");
             }
 
@@ -522,7 +588,8 @@ impl CandleStreamingContextProcessor {
                             source: context.path.clone(),
                             documents_loaded: 1,
                             duration_nanos: duration.as_nanos() as u64,
-                            timestamp: SystemTime::now()});
+                            timestamp: SystemTime::now(),
+                        });
                     }
                 }
                 Err(error) => {
@@ -532,9 +599,10 @@ impl CandleStreamingContextProcessor {
                             context_type: "File".to_string(),
                             source: context.path.clone(),
                             error: error.to_string(),
-                            timestamp: SystemTime::now()});
+                            timestamp: SystemTime::now(),
+                        });
                     }
-                    
+
                     fluent_ai_async::handle_error!(error, "File document loading failed");
                 }
             }
@@ -542,7 +610,9 @@ impl CandleStreamingContextProcessor {
     }
 
     /// Validate file context
-    fn validate_file_context(context: &CandleImmutableFileContext) -> Result<(), CandleValidationError> {
+    fn validate_file_context(
+        context: &CandleImmutableFileContext,
+    ) -> Result<(), CandleValidationError> {
         if context.path.is_empty() {
             return Err(CandleValidationError::PathValidation(
                 "Empty file path".to_string(),
@@ -561,15 +631,15 @@ impl CandleStreamingContextProcessor {
     }
 
     /// Load file document
-    fn load_file_document(context: &CandleImmutableFileContext) -> Result<Document, CandleContextError> {
+    fn load_file_document(
+        context: &CandleImmutableFileContext,
+    ) -> Result<Document, CandleContextError> {
         // Implementation would read file and create Document
         // For now, create a basic document structure
         Ok(Document {
             data: format!("Content from file: {}", context.path),
             format: Some(crate::domain::context::CandleContentFormat::Text),
-            media_type: Some(
-                crate::domain::context::CandleDocumentMediaType::TXT,
-            ),
+            media_type: Some(crate::domain::context::CandleDocumentMediaType::TXT),
             additional_props: {
                 let mut props = HashMap::new();
                 props.insert(
@@ -589,7 +659,8 @@ impl CandleStreamingContextProcessor {
                     serde_json::Value::String(context.content_hash.clone()),
                 );
                 props
-            }})
+            },
+        })
     }
 
     /// Get processor statistics
@@ -604,7 +675,8 @@ impl CandleStreamingContextProcessor {
             failed_contexts: self.failed_contexts.load(Ordering::Relaxed),
             total_documents_loaded: self.total_documents_loaded.load(Ordering::Relaxed),
             success_rate: self.success_rate(),
-            average_processing_time_nanos: self.average_processing_time_nanos()}
+            average_processing_time_nanos: self.average_processing_time_nanos(),
+        }
     }
 
     /// Calculate success rate
@@ -644,14 +716,16 @@ pub struct CandleContextProcessorStatistics {
     pub failed_contexts: u64,
     pub total_documents_loaded: u64,
     pub success_rate: f64,
-    pub average_processing_time_nanos: u64}
+    pub average_processing_time_nanos: u64,
+}
 
 /// Context wrapper with zero Arc usage
 #[derive(Debug)]
 pub struct CandleContext<T> {
     source: CandleContextSourceType,
     processor: CandleStreamingContextProcessor,
-    _marker: PhantomData<T>}
+    _marker: PhantomData<T>,
+}
 
 /// Candle context source types with immutable implementations
 #[derive(Debug, Clone)]
@@ -659,7 +733,8 @@ pub enum CandleContextSourceType {
     File(CandleImmutableFileContext),
     Files(CandleImmutableFilesContext),
     Directory(CandleImmutableDirectoryContext),
-    Github(CandleImmutableGithubContext)}
+    Github(CandleImmutableGithubContext),
+}
 
 impl<T> Clone for CandleContext<T> {
     fn clone(&self) -> Self {
@@ -682,18 +757,22 @@ impl<T> CandleContext<T> {
         Self {
             source,
             processor,
-            _marker: PhantomData}
+            _marker: PhantomData,
+        }
     }
 
     /// Create Candle context with event streaming
     #[inline]
-    pub fn with_streaming(source: CandleContextSourceType) -> (Self, AsyncStream<CandleContextEvent>) {
+    pub fn with_streaming(
+        source: CandleContextSourceType,
+    ) -> (Self, AsyncStream<CandleContextEvent>) {
         let processor_id = Uuid::new_v4().to_string();
         let (processor, stream) = CandleStreamingContextProcessor::with_streaming(processor_id);
         let context = Self {
             source,
             processor,
-            _marker: PhantomData};
+            _marker: PhantomData,
+        };
         (context, stream)
     }
 }
@@ -709,7 +788,8 @@ impl CandleContext<CandleFile> {
             content_hash: String::new(), // Would be computed from file content
             size_bytes: 0,               // Would be read from file metadata
             modified: SystemTime::now(),
-            memory_integration: None};
+            memory_integration: None,
+        };
         Self::new(CandleContextSourceType::File(file_context))
     }
 
@@ -725,7 +805,8 @@ impl CandleContext<CandleFile> {
                     CandleContextError::ContextNotFound("Invalid context type".to_string()),
                     "Invalid context type for file loading"
                 );
-            })}
+            }),
+        }
     }
 }
 
@@ -739,7 +820,8 @@ impl CandleContext<CandleFiles> {
             paths: Vec::new(), // Would be populated by glob expansion
             pattern: pattern_str,
             total_files: 0,
-            memory_integration: None};
+            memory_integration: None,
+        };
         Self::new(CandleContextSourceType::Files(files_context))
     }
 
@@ -793,7 +875,8 @@ impl CandleContext<CandleFiles> {
                                             );
                                         }
                                     },
-                                    _ => ZeroOneOrMany::Many(documents)};
+                                    _ => ZeroOneOrMany::Many(documents),
+                                };
                                 let _ = sender.send(result);
                             }
                             Err(e) => {
@@ -830,7 +913,8 @@ impl CandleContext<CandleDirectory> {
             recursive: true,
             extensions: Vec::new(),
             max_depth: None,
-            memory_integration: None};
+            memory_integration: None,
+        };
         Self::new(CandleContextSourceType::Directory(directory_context))
     }
 
@@ -936,7 +1020,8 @@ impl CandleContext<CandleDirectory> {
                                             );
                                         }
                                     },
-                                    _ => ZeroOneOrMany::Many(documents)};
+                                    _ => ZeroOneOrMany::Many(documents),
+                                };
                                 let _ = sender.send(result);
                             }
                             Err(e) => {
@@ -973,7 +1058,8 @@ impl CandleContext<CandleGithub> {
             branch: "main".to_string(),
             pattern: pattern_str,
             auth_token: None,
-            memory_integration: None};
+            memory_integration: None,
+        };
         Self::new(CandleContextSourceType::Github(github_context))
     }
 

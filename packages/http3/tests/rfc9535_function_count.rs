@@ -383,7 +383,8 @@ mod count_error_tests {
                 // Note: results.len() can be 0 (no matches) or > 0 (matches found) - both are valid
                 println!(
                     "Complex count() expression '{}' returned {} results",
-                    expr, results.len()
+                    expr,
+                    results.len()
                 );
             }
         }
@@ -404,21 +405,26 @@ mod count_error_tests {
 
         for expr in nested_expressions {
             let result = JsonPathParser::compile(expr);
-            
+
             if result.is_ok() {
                 println!("Nested count() expression '{}' compiled successfully", expr);
-                
+
                 // Test execution against the json_data
                 let mut stream = JsonArrayStream::<serde_json::Value>::new(expr);
                 let chunk = Bytes::from(json_data);
                 let results: Vec<_> = stream.process_chunk(chunk).collect();
-                
+
                 println!(
                     "Nested count() expression '{}' returned {} results",
-                    expr, results.len()
+                    expr,
+                    results.len()
                 );
             } else {
-                println!("Nested count() expression '{}' failed to compile: {:?}", expr, result.err());
+                println!(
+                    "Nested count() expression '{}' failed to compile: {:?}",
+                    expr,
+                    result.err()
+                );
             }
         }
     }

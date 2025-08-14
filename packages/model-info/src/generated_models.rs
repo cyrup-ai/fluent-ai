@@ -3,7 +3,8 @@
 // Successfully processed 1/6 providers
 // Failed providers: No models found for openai, No models found for mistral, No models found for xai, No models found for together, No API key configured and no static models for huggingface
 
-use serde::{Serialize, Deserialize};
+#[allow(unused_imports)] // Future API - needed for serialization features
+use serde::{Deserialize, Serialize};
 
 // Generated Provider Enums
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,7 +30,6 @@ impl AnthropicModel {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Anthropic {
     Claude4Sonnet,
@@ -52,7 +52,6 @@ impl Anthropic {
         Self::all_variants().to_vec()
     }
 }
-
 
 // Generated Provider Implementations
 impl crate::common::Model for AnthropicModel {
@@ -147,7 +146,6 @@ impl crate::common::Model for AnthropicModel {
     }
 }
 
-
 impl crate::common::Model for Anthropic {
     #[inline]
     fn name(&self) -> &'static str {
@@ -239,4 +237,3 @@ impl crate::common::Model for Anthropic {
         }
     }
 }
-

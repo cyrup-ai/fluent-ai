@@ -70,9 +70,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<String>::new("$.store.book[*].author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         let expected_authors = vec![
             "Nigel Rees",
@@ -97,9 +95,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<String>::new("$..author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
             results.len(),
@@ -159,9 +155,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<f64>::new("$.store..price");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
             results.len(),
@@ -182,9 +176,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[2]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 1, "Should find exactly one book");
         assert_eq!(
@@ -203,9 +195,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[-1]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 1, "Should find exactly one book");
         assert_eq!(
@@ -224,9 +214,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[0,1]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 2, "Should find exactly two books");
 
@@ -247,9 +235,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[:2]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 2, "Should find exactly two books");
 
@@ -270,9 +256,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.isbn]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 2, "Should find 2 books with ISBN");
 
@@ -298,9 +282,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.price<10]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 2, "Should find 2 books cheaper than 10");
 
@@ -330,12 +312,10 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<serde_json::Value>::new("$..*");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         // Should find all values in the JSON structure recursively
-        // This includes: store object, book array, 4 book objects, bicycle object, 
+        // This includes: store object, book array, 4 book objects, bicycle object,
         // all string values, all number values, etc.
         assert!(
             results.len() >= 20,
@@ -371,9 +351,7 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<String>::new("$..book[2].author");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 1, "Should find exactly one author");
         assert_eq!(
@@ -388,12 +366,11 @@ mod rfc_examples_tests {
         let mut stream = JsonArrayStream::<String>::new("$..book[2].publisher");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(
-            results.len(), 0,
+            results.len(),
+            0,
             "Should return empty result for non-existent publisher field"
         );
     }
@@ -410,9 +387,7 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.category=='fiction']");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 3, "Should find 3 fiction books");
 
@@ -427,9 +402,7 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<BookModel>::new("$..book[?@.price>15]");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 1, "Should find 1 expensive book");
         assert_eq!(
@@ -451,9 +424,7 @@ mod extended_examples_tests {
             let mut stream = JsonArrayStream::<BookModel>::new(expr);
 
             let chunk = Bytes::from(BOOKSTORE_JSON);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results.len(),
@@ -477,9 +448,7 @@ mod extended_examples_tests {
             let mut stream = JsonArrayStream::<BookModel>::new(expr);
 
             let chunk = Bytes::from(BOOKSTORE_JSON);
-            let results: Vec<_> = stream
-                .process_chunk(chunk)
-                .collect();
+            let results: Vec<_> = stream.process_chunk(chunk).collect();
 
             assert_eq!(
                 results.len(),
@@ -497,9 +466,7 @@ mod extended_examples_tests {
         let mut stream = JsonArrayStream::<BicycleModel>::new("$.store.bicycle");
 
         let chunk = Bytes::from(BOOKSTORE_JSON);
-        let results: Vec<_> = stream
-            .process_chunk(chunk)
-            .collect();
+        let results: Vec<_> = stream.process_chunk(chunk).collect();
 
         assert_eq!(results.len(), 1, "Should find the bicycle");
         assert_eq!(results[0].color, "red", "Bicycle should be red");

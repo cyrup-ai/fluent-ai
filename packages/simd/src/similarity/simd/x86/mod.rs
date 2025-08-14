@@ -19,7 +19,8 @@ use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics
 /// Dynamic x86 SIMD implementation that selects the best available instruction set
 pub struct DynamicX86Similarity {
     implementation: Arc<dyn RuntimeSelectable>,
-    metrics: Arc<SimilarityMetrics>}
+    metrics: Arc<SimilarityMetrics>,
+}
 
 impl Default for DynamicX86Similarity {
     fn default() -> Self {
@@ -33,7 +34,8 @@ impl DynamicX86Similarity {
         let implementation = Self::select_best_implementation();
         Self {
             implementation,
-            metrics: Arc::new(SimilarityMetrics::default())}
+            metrics: Arc::new(SimilarityMetrics::default()),
+        }
     }
 
     /// Select the best available x86 SIMD implementation at runtime

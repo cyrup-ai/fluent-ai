@@ -24,7 +24,8 @@ pub mod types {
         /// Optional message ID
         pub id: Option<String>,
         /// Optional timestamp
-        pub timestamp: Option<u64>}
+        pub timestamp: Option<u64>,
+    }
 
     /// Role of the Candle message sender
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -37,7 +38,8 @@ pub mod types {
         /// Message from the assistant
         Assistant,
         /// Message from a tool or function
-        Tool}
+        Tool,
+    }
 
     impl CandleMessage {
         /// Create a new Candle message with the given role and content
@@ -51,7 +53,91 @@ pub mod types {
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap_or_default()
                         .as_secs(),
-                )}
+                ),
+            }
+        }
+    }
+
+    impl CandleMessageChunk {
+        /// Create a simple text chunk
+        pub fn text(text: impl Into<String>) -> Self {
+            Self::Text(text.into())
+        }
+
+        /// Create a tool call start chunk
+        pub fn tool_start(id: impl Into<String>, name: impl Into<String>) -> Self {
+            Self::ToolCallStart {
+                id: id.into(),
+                name: name.into(),
+            }
+        }
+
+        /// Create a partial tool call chunk
+        pub fn tool_partial(
+            id: impl Into<String>,
+            name: impl Into<String>,
+            partial_input: impl Into<String>,
+        ) -> Self {
+            Self::ToolCall {
+                id: id.into(),
+                name: name.into(),
+                partial_input: partial_input.into(),
+            }
+        }
+
+        /// Create a completed tool call chunk
+        pub fn tool_complete(
+            id: impl Into<String>,
+            name: impl Into<String>,
+            input: impl Into<String>,
+        ) -> Self {
+            Self::ToolCallComplete {
+                id: id.into(),
+                name: name.into(),
+                input: input.into(),
+            }
+        }
+
+        /// Create a completion finished chunk
+        pub fn complete(
+            text: impl Into<String>,
+            finish_reason: Option<String>,
+            usage: Option<String>,
+        ) -> Self {
+            Self::Complete {
+                text: text.into(),
+                finish_reason,
+                usage,
+            }
+        }
+
+        /// Create an error chunk
+        pub fn error(error: impl Into<String>) -> Self {
+            Self::Error(error.into())
+        }
+
+        /// Check if this chunk contains text content
+        pub fn has_text(&self) -> bool {
+            matches!(self, Self::Text(_) | Self::Complete { .. })
+        }
+
+        /// Extract text content if available
+        pub fn text_content(&self) -> Option<&str> {
+            match self {
+                Self::Text(text) => Some(text),
+                Self::Complete { text, .. } => Some(text),
+                _ => None,
+            }
+        }
+
+        /// Check if this is a completion chunk
+        pub fn is_complete(&self) -> bool {
+            matches!(self, Self::Complete { .. })
+        }
+
+        /// Check if this is an error chunk
+        pub fn is_error(&self) -> bool {
+            matches!(self, Self::Error(_))
         }
     }
 
@@ -61,17 +147,82 @@ pub mod types {
                 CandleMessageRole::System => write!(f, "system"),
                 CandleMessageRole::User => write!(f, "user"),
                 CandleMessageRole::Assistant => write!(f, "assistant"),
-                CandleMessageRole::Tool => write!(f, "tool")}
+                CandleMessageRole::Tool => write!(f, "tool"),
+            }
         }
     }
 
     /// A chunk of a streaming Candle message
     #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct CandleMessageChunk {
-        /// The content of this chunk
-        pub content: String,
-        /// Whether this is the last chunk
-        pub done: bool}
+    pub enum CandleMessageChunk {
+        /// Text content chunk
+        Text(String),
+
+        /// Tool call started
+        ToolCallStart { id: String, name: String },
+
+        /// Partial tool call with streaming input
+        ToolCall {
+            id: String,
+            name: String,
+            partial_input: String,
+        },
+
+        /// Tool call completed
+        ToolCallComplete {
+            id: String,
+            name: String,
+            input: String,
+        },
+
+        /// Completion finished with final information
+        Complete {
+            text: String,
+            finish_reason: Option<String>,
+            usage: Option<String>,
+        },
+
+        /// Error occurred during streaming
+        Error(String),
+    }
+
+    impl fmt::Display for CandleMessageChunk {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                CandleMessageChunk::Text(text) => write!(f, "{}", text),
+                CandleMessageChunk::ToolCallStart { id, name } => {
+                    write!(f, "🔧 Starting tool call: {} ({})", name, id)
+                }
+                CandleMessageChunk::ToolCall {
+                    id,
+                    name,
+                    partial_input,
+                } => {
+                    write!(f, "🔧 Tool call {}: {} - {}", name, id, partial_input)
+                }
+                CandleMessageChunk::ToolCallComplete { id, name, input } => {
+                    write!(f, "✅ Tool call complete: {} ({}) - {}", name, id, input)
+                }
+                CandleMessageChunk::Complete {
+                    text,
+                    finish_reason,
+                    usage,
+                } => {
+                    let mut output = text.clone();
+                    if let Some(reason) = finish_reason {
+                        output.push_str(&format!(" [{}]", reason));
+                    }
+                    if let Some(usage_info) = usage {
+                        output.push_str(&format!(" ({})", usage_info));
+                    }
+                    write!(f, "{}", output)
+                }
+                CandleMessageChunk::Error(error) => {
+                    write!(f, "❌ Error: {}", error)
+                }
+            }
+        }
+    }
 
     /// Type classification for Candle messages
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -85,7 +236,8 @@ pub mod types {
         /// Information message
         Info,
         /// Agent chat message
-        AgentChat}
+        AgentChat,
+    }
 
     /// Candle message specifically for search operations
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +247,8 @@ pub mod types {
         /// Search relevance score
         pub relevance_score: f64,
         /// Optional highlighting information
-        pub highlights: Vec<String>}
+        pub highlights: Vec<String>,
+    }
 }
 
 /// Candle media type handling for messages
@@ -178,33 +331,37 @@ pub mod media {
                 "image/png" => Some(CandleMediaType::Image(CandleImageMediaType::Png)),
                 "image/gif" => Some(CandleMediaType::Image(CandleImageMediaType::Gif)),
                 "image/webp" => Some(CandleMediaType::Image(CandleImageMediaType::WebP)),
-                
+
                 // Document types
                 "application/pdf" => Some(CandleMediaType::Document(CandleDocumentMediaType::Pdf)),
                 "text/plain" => Some(CandleMediaType::Document(CandleDocumentMediaType::Text)),
                 "text/html" => Some(CandleMediaType::Document(CandleDocumentMediaType::Html)),
-                "text/markdown" => Some(CandleMediaType::Document(CandleDocumentMediaType::Markdown)),
-                
+                "text/markdown" => {
+                    Some(CandleMediaType::Document(CandleDocumentMediaType::Markdown))
+                }
+
                 // Audio types
                 "audio/mpeg" => Some(CandleMediaType::Audio(CandleAudioMediaType::Mp3)),
                 "audio/wav" => Some(CandleMediaType::Audio(CandleAudioMediaType::Wav)),
                 "audio/ogg" => Some(CandleMediaType::Audio(CandleAudioMediaType::Ogg)),
-                
+
                 // Video types
                 "video/mp4" => Some(CandleMediaType::Video(CandleVideoMediaType::Mp4)),
                 "video/webm" => Some(CandleMediaType::Video(CandleVideoMediaType::WebM)),
-                
+
                 // Handle unknown types
-                mime_type if mime_type.starts_with("image/") => {
-                    Some(CandleMediaType::Image(CandleImageMediaType::Other(mime_type.to_string())))
-                }
-                mime_type if mime_type.starts_with("audio/") => {
-                    Some(CandleMediaType::Audio(CandleAudioMediaType::Other(mime_type.to_string())))
-                }
-                mime_type if mime_type.starts_with("video/") => {
-                    Some(CandleMediaType::Video(CandleVideoMediaType::Other(mime_type.to_string())))
-                }
-                _ => Some(CandleMediaType::Document(CandleDocumentMediaType::Other(mime_type.to_string()))),
+                mime_type if mime_type.starts_with("image/") => Some(CandleMediaType::Image(
+                    CandleImageMediaType::Other(mime_type.to_string()),
+                )),
+                mime_type if mime_type.starts_with("audio/") => Some(CandleMediaType::Audio(
+                    CandleAudioMediaType::Other(mime_type.to_string()),
+                )),
+                mime_type if mime_type.starts_with("video/") => Some(CandleMediaType::Video(
+                    CandleVideoMediaType::Other(mime_type.to_string()),
+                )),
+                _ => Some(CandleMediaType::Document(CandleDocumentMediaType::Other(
+                    mime_type.to_string(),
+                ))),
             }
         }
 
@@ -259,9 +416,15 @@ pub mod error {
     impl fmt::Display for CandleMessageError {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
-                CandleMessageError::ConversionError(msg) => write!(f, "Candle conversion error: {}", msg),
-                CandleMessageError::InvalidFormat(msg) => write!(f, "Candle invalid format: {}", msg),
-                CandleMessageError::UnsupportedType(msg) => write!(f, "Candle unsupported type: {}", msg),
+                CandleMessageError::ConversionError(msg) => {
+                    write!(f, "Candle conversion error: {}", msg)
+                }
+                CandleMessageError::InvalidFormat(msg) => {
+                    write!(f, "Candle invalid format: {}", msg)
+                }
+                CandleMessageError::UnsupportedType(msg) => {
+                    write!(f, "Candle unsupported type: {}", msg)
+                }
             }
         }
     }
@@ -271,19 +434,19 @@ pub mod error {
 
 /// Candle message processing functionality
 pub mod processing {
-    use super::types::*;
     use super::error::CandleMessageError;
+    use super::types::*;
 
     /// Process a Candle message in place, applying transformations
-    pub fn candle_process_message(
-        message: &mut CandleMessage,
-    ) -> Result<(), CandleMessageError> {
+    pub fn candle_process_message(message: &mut CandleMessage) -> Result<(), CandleMessageError> {
         // Trim whitespace
         message.content = message.content.trim().to_string();
 
         // Validate message isn't empty after trimming
         if message.content.is_empty() {
-            return Err(CandleMessageError::InvalidFormat("Message cannot be empty after processing".to_string()));
+            return Err(CandleMessageError::InvalidFormat(
+                "Message cannot be empty after processing".to_string(),
+            ));
         }
 
         Ok(())
@@ -296,15 +459,20 @@ pub mod processing {
 }
 
 // Re-export commonly used Candle types (CandleMessageChunk and CandleMessageRole are used throughout the codebase)
-pub use types::{CandleMessage, CandleMessageChunk, CandleMessageRole, CandleMessageType, CandleSearchChatMessage};
 pub use error::CandleMessageError;
-pub use media::{CandleMediaType, CandleImageMediaType, CandleDocumentMediaType, CandleAudioMediaType, CandleVideoMediaType};
+// Alias for backward compatibility - some code expects CandleMimeType instead of CandleMediaType
+pub use media::CandleMediaType as CandleMimeType;
+pub use media::{
+    CandleAudioMediaType, CandleDocumentMediaType, CandleImageMediaType, CandleMediaType,
+    CandleVideoMediaType,
+};
+pub use types::{
+    CandleMessage, CandleMessageChunk, CandleMessageRole, CandleMessageType,
+    CandleSearchChatMessage,
+};
 
 // Import ToolCall from HTTP module for message processing - will be updated to Candle prefixes later
-pub use crate::domain::http::{ToolCall, ToolCallType, FunctionCall};
-
-// Alias for backward compatibility - some code expects CandleMimeType instead of CandleMediaType  
-pub use media::CandleMediaType as CandleMimeType;
+pub use crate::domain::http::{FunctionCall, ToolCall, ToolCallType};
 
 #[cfg(test)]
 mod tests {
@@ -316,7 +484,8 @@ mod tests {
             role: CandleMessageRole::User,
             content: "Hello, world!".to_string(),
             id: Some("123".to_string()),
-            timestamp: Some(1234567890)};
+            timestamp: Some(1234567890),
+        };
 
         assert_eq!(message.role, CandleMessageRole::User);
         assert_eq!(message.content, "Hello, world!");
@@ -328,7 +497,8 @@ mod tests {
             role: CandleMessageRole::User,
             content: "  Hello, world!  ".to_string(),
             id: None,
-            timestamp: None};
+            timestamp: None,
+        };
 
         processing::candle_process_message(&mut message).unwrap();
         assert_eq!(message.content, "Hello, world!");

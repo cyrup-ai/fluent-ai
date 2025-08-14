@@ -6,9 +6,7 @@
 use serde::de::DeserializeOwned;
 
 use super::iterator::JsonPathIterator;
-use crate::json_path::{
-    buffer::StreamBuffer, parser::JsonPathExpression,
-};
+use crate::json_path::{buffer::StreamBuffer, parser::JsonPathExpression};
 
 /// Current state of the JSON deserializer
 #[derive(Debug, Clone, PartialEq)]
@@ -86,10 +84,7 @@ where
     /// * `path_expression` - Compiled JSONPath expression for navigation
     /// * `buffer` - Streaming buffer containing JSON bytes
     #[inline]
-    pub fn new(
-        path_expression: &'a JsonPathExpression,
-        buffer: &'a mut StreamBuffer,
-    ) -> Self {
+    pub fn new(path_expression: &'a JsonPathExpression, buffer: &'a mut StreamBuffer) -> Self {
         let has_recursive_descent = path_expression.has_recursive_descent();
         let initial_capacity = if has_recursive_descent { 256 } else { 32 };
 
@@ -97,7 +92,7 @@ where
         let target_property = {
             let expr = path_expression.as_string();
             if expr.starts_with("$.") && expr.ends_with("[*]") {
-                let property_part = &expr[2..expr.len()-3]; // Remove "$." and "[*]"
+                let property_part = &expr[2..expr.len() - 3]; // Remove "$." and "[*]"
                 if !property_part.contains('.') && !property_part.contains('[') {
                     Some(property_part.to_string())
                 } else {
@@ -168,7 +163,10 @@ where
 
     /// Process single JSON byte and update parsing state
     #[inline]
-    pub(super) fn process_json_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
+    pub(super) fn process_json_byte(
+        &mut self,
+        byte: u8,
+    ) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
         match &self.state {
             DeserializerState::Initial => self.process_initial_byte(byte),
             DeserializerState::Navigating => self.process_navigating_byte(byte),
@@ -180,9 +178,12 @@ where
 
     /// Process byte when parser is in initial state
     #[inline]
-    pub(super) fn process_initial_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
+    pub(super) fn process_initial_byte(
+        &mut self,
+        byte: u8,
+    ) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
         match byte {
-            b' ' | b'\t' | b'\n' | b'\r' => Ok(super::processor::JsonProcessResult::Continue), // Skip whitespace
+            b' ' | b'\t' | b'\n' | b'\r' => Ok(super::processor::JsonProcessResult::Continue), /* Skip whitespace */
             b'{' => {
                 let expression = self.path_expression.as_string();
                 if expression.starts_with("$.") && expression.ends_with("[*]") {
@@ -202,13 +203,13 @@ where
                 self.current_depth = self.current_depth.saturating_add(1);
                 self.array_index_stack.push(self.current_array_index);
                 self.current_array_index = 0;
-                
+
                 // For $[*] expressions, we immediately enter target array at root level
                 let expression = self.path_expression.as_string();
                 if expression == "$[*]" {
                     self.in_target_array = true;
                 }
-                
+
                 Ok(super::processor::JsonProcessResult::Continue)
             }
             _ => Ok(super::processor::JsonProcessResult::Continue),
@@ -216,7 +217,10 @@ where
     }
 
     /// Process byte when navigating through JSON structure
-    pub(super) fn process_navigating_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
+    pub(super) fn process_navigating_byte(
+        &mut self,
+        byte: u8,
+    ) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(super::processor::JsonProcessResult::Continue),
             b'"' => {
@@ -305,7 +309,10 @@ where
     }
 
     /// Process byte when inside target array
-    pub(super) fn process_array_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
+    pub(super) fn process_array_byte(
+        &mut self,
+        byte: u8,
+    ) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
         match byte {
             b' ' | b'\t' | b'\n' | b'\r' => Ok(super::processor::JsonProcessResult::Continue),
             b'{' => {
@@ -338,7 +345,7 @@ where
                     }
                     return Ok(result);
                 }
-                
+
                 if self.in_target_array {
                     self.in_target_array = false;
                 }
@@ -372,7 +379,10 @@ where
     }
 
     /// Process byte when inside JSON object
-    pub(super) fn process_object_byte(&mut self, byte: u8) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
+    pub(super) fn process_object_byte(
+        &mut self,
+        byte: u8,
+    ) -> crate::json_path::error::JsonPathResult<super::processor::JsonProcessResult> {
         // Always add bytes to object buffer if we're in target array BEFORE processing special characters
         if self.in_target_array {
             self.object_buffer.push(byte);
@@ -424,35 +434,35 @@ where
         }
     }
 
-
-
     /// Check if current position matches JSONPath expression
     #[inline]
     pub(super) fn matches_current_path(&self) -> bool {
         // Simplified JSONPath matching for basic patterns
         // This handles common cases like $.data[*], $.items[*]
-        
+
         let expression = self.path_expression.as_string();
-        
+
         // For array wildcard patterns like $.data[*], $.items[*]
         if expression.starts_with("$.") && expression.ends_with("[*]") {
             // Match when we're inside the target array to capture array elements
             return self.in_target_array;
         }
-        
+
         // For root array patterns like $[*]
         if expression == "$[*]" {
             // Match when we're inside the root array
             return self.in_target_array;
         }
-        
+
         // Default fallback - match if we're in target array
         self.in_target_array
     }
 
     /// Deserialize current object from buffer
     #[inline]
-    pub(super) fn deserialize_current_object(&mut self) -> crate::json_path::error::JsonPathResult<Option<T>> {
+    pub(super) fn deserialize_current_object(
+        &mut self,
+    ) -> crate::json_path::error::JsonPathResult<Option<T>> {
         if self.object_buffer.is_empty() {
             return Ok(None);
         }

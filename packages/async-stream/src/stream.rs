@@ -1,198 +1,91 @@
-//! Zero-allocation streaming primitives with lock-free architecture
+//! Blazing-fast, zero-hot-path-allocation streaming primitives (lock-free)
 //!
-//! Provides AsyncStream and AsyncStreamSender types that enforce the streams-only
-//! architecture. All operations are lock-free and zero-allocation in hot paths.
+//! Provides AsyncStream for high-performance streaming with lock-free architecture.
+//! Minimal allocation (one-time leaked Box) for shared state; zero allocation in hot paths.
 
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use crossbeam_queue::ArrayQueue;
+use cyrup_sugars::prelude::*;
 
-/// Zero-allocation async stream with const-generic capacity
-pub struct AsyncStream<T, const CAP: usize = 1024> {
-    inner: Arc<Inner<T, CAP>>}
+use crate::builder::AsyncStreamBuilder;
 
-/// Producer side of AsyncStream
-pub struct AsyncStreamSender<T, const CAP: usize = 1024> {
-    inner: Arc<Inner<T, CAP>>}
-
-struct Inner<T, const CAP: usize> {
-    q: ArrayQueue<T>,
-    len: AtomicUsize, // Runtime metric for monitoring
-}
-
-impl<T, const CAP: usize> AsyncStream<T, CAP>
+pub(crate) struct Inner<T, const CAP: usize>
 where
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
-    /// Create stream with closure - preferred ergonomic pattern
-    #[inline]
-    pub fn with_channel<F>(f: F) -> Self
-    where
-        F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
-    {
-        let (sender, stream) = Self::channel_internal();
-        std::thread::spawn(move || f(sender));
-        stream
-    }
+    queue: ArrayQueue<T>,
+    len: AtomicUsize,
+    completion_rx: crossbeam_channel::Receiver<()>,
+    chunk_handler: Box<dyn Fn(Result<T, String>) -> T + Send + Sync + 'static>,
+}
 
-    /// Create a fresh `(sender, stream)` pair - for channel module use
-    /// Use with_channel() for ergonomic public API
-    #[inline]
-    pub(crate) fn channel_internal() -> (AsyncStreamSender<T, CAP>, Self) {
-        let inner = Arc::new(Inner {
-            q: ArrayQueue::new(CAP),
-            len: AtomicUsize::new(0)});
-        (
-            AsyncStreamSender {
-                inner: inner.clone()},
-            Self { inner },
-        )
-    }
+/// Completion sender for signaling when producer is done (internal only)
+pub(crate) struct AsyncStreamCompletion {
+    completion_tx: crossbeam_channel::Sender<()>,
+}
 
-    /// Empty stream (always returns `Poll::Ready(None)`)
-    #[inline]
-    pub fn empty() -> Self {
-        Self::with_channel(|_sender| {
-            // Empty stream - no values to emit
-        })
-    }
-
-    /// Create from std mpsc receiver - NO tokio dependency!
-    pub fn new(receiver: std::sync::mpsc::Receiver<T>) -> Self
-    where
-        T: Send + 'static,
-    {
-        let (tx, st) = Self::channel_internal();
-        std::thread::spawn(move || {
-            while let Ok(item) = receiver.recv() {
-                if tx.try_send(item).is_err() {
-                    break; // Stream closed
-                }
-            }
-        });
-        st
-    }
-
-    /// Get current length (approximate, for monitoring)
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.inner.len.load(Ordering::Acquire)
-    }
-
-    /// Check if stream is empty (approximate)
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Get capacity of the stream
-    #[inline]
-    pub const fn capacity(&self) -> usize {
-        CAP
-    }
-
-    /// Process each chunk with a closure - streaming pattern
-    pub fn on_chunk<F>(self, mut handler: F) -> Self
-    where
-        F: FnMut(T) + Send + 'static,
-        T: Send + 'static,
-    {
-        let (_tx, stream) = Self::channel_internal();
-        let inner = self.inner.clone();
-
-        std::thread::spawn(move || loop {
-            if let Some(item) = inner.q.pop() {
-                inner.len.fetch_sub(1, Ordering::AcqRel);
-                handler(item);
-            } else {
-                std::thread::yield_now();
-            }
-        });
-
-        stream
-    }
-
-    /// Get the next item from the stream (non-blocking)
-    pub fn try_next(&mut self) -> Option<T> {
-        if let Some(v) = self.inner.q.pop() {
-            self.inner.len.fetch_sub(1, Ordering::AcqRel);
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    /// Poll for the next item (streaming-only pattern)
-    pub fn poll_next(&mut self) -> Option<T> {
-        self.try_next()
-    }
-
-    /// Collect all items from the stream into a Vec (future-like behavior when needed)
-    pub fn collect(mut self) -> Vec<T> {
-        let mut results = Vec::new();
-        
-        // Wait for producer thread to potentially emit values
-        // Use a timeout to avoid infinite waiting - reduced to 1.5 seconds to match JSONPath timeout
-        let start = std::time::Instant::now();
-        let timeout = std::time::Duration::from_millis(1500);
-        
-        loop {
-            if let Some(item) = self.try_next() {
-                results.push(item);
-                // Reset timeout when we get items
-                continue;
-            }
-            
-            // If we haven't seen any items yet and haven't timed out, keep waiting
-            if results.is_empty() && start.elapsed() < timeout {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                continue;
-            }
-            
-            // If we have items but queue is empty, wait a bit more for potential additional items
-            if !results.is_empty() {
-                let mut empty_count = 0;
-                for _ in 0..10 {
-                    std::thread::sleep(std::time::Duration::from_millis(5));
-                    if let Some(item) = self.try_next() {
-                        results.push(item);
-                        empty_count = 0;
-                    } else {
-                        empty_count += 1;
-                        if empty_count >= 5 {
-                            break;
-                        }
-                    }
-                }
-                break;
-            }
-            
-            // Timeout reached with no items
-            break;
-        }
-        
-        results
-    }
-
-    /// Get the next item (blocking, no futures) - replaces async recv()
-    pub fn recv_blocking(&mut self) -> Option<T> {
-        // Block until item is available, following NO FUTURES architecture
-        loop {
-            if let Some(item) = self.try_next() {
-                return Some(item);
-            }
-            // Small yield to prevent busy waiting
-            std::thread::yield_now();
-        }
+impl AsyncStreamCompletion {
+    /// Signal that the producer is done
+    pub(crate) fn signal_completion(self) {
+        let _ = self.completion_tx.send(());
     }
 }
 
-impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
-    /// Zero-alloc try-send; returns `Err(val)` if the buffer is full
+/// Zero-hot-path-allocation async stream with const-generic capacity.
+/// Assumes single receiver (multiple senders via clone); try_next not thread-safe for concurrent calls.
+pub struct AsyncStream<T, const CAP: usize = 1024>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    pub(crate) inner: &'static Inner<T, CAP>,
+}
+
+/// Sender half of an async stream channel
+pub struct AsyncStreamSender<T, const CAP: usize = 1024>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    pub(crate) inner: &'static Inner<T, CAP>,
+}
+
+impl<T, const CAP: usize> Clone for AsyncStreamSender<T, CAP>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    fn clone(&self) -> Self {
+        Self { inner: self.inner }
+    }
+}
+
+impl<T, const CAP: usize> AsyncStreamSender<T, CAP>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    /// Create new sender with given inner reference
+    #[allow(dead_code)]
+    #[inline]
+    pub(crate) fn new(inner: &'static Inner<T, CAP>) -> Self {
+        Self { inner }
+    }
+
     #[inline]
     pub fn try_send(&self, val: T) -> Result<(), T> {
-        match self.inner.q.push(val) {
+        self.try_send_result(Ok(val))
+    }
+
+    #[inline]
+    pub fn send(&self, val: T) -> Result<(), T> {
+        self.send_result(Ok(val))
+    }
+
+    /// Try to send Result<T, String> through handler (cyrup_sugars pattern) - non-blocking
+    #[inline]
+    pub fn try_send_result(&self, result: Result<T, String>) -> Result<(), T> {
+        // Apply handler - always present, zero allocation, blazing-fast
+        let processed_val = (self.inner.chunk_handler)(result);
+
+        match self.inner.queue.push(processed_val) {
             Ok(()) => {
                 self.inner.len.fetch_add(1, Ordering::Release);
                 Ok(())
@@ -201,73 +94,280 @@ impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
         }
     }
 
-    /// Send item, alias for try_send for ergonomics
+    /// Send Result<T, String> through handler (cyrup_sugars pattern)
     #[inline]
-    pub fn send(&self, val: T) -> Result<(), T> {
-        self.try_send(val)
+    pub fn send_result(&self, result: Result<T, String>) -> Result<(), T> {
+        // Apply handler - always present, zero allocation, blazing-fast
+        let processed_val = (self.inner.chunk_handler)(result);
+
+        match self.inner.queue.push(processed_val) {
+            Ok(()) => {
+                self.inner.len.fetch_add(1, Ordering::Release);
+                Ok(())
+            }
+            Err(v) => Err(v),
+        }
     }
 
-    /// Check if sender is closed (approximate)
+    /// Send error through cyrup_sugars pattern (creates bad chunk)
     #[inline]
-    pub fn is_closed(&self) -> bool {
-        // In this implementation, sender is never truly "closed"
-        // This is for API compatibility
-        false
+    pub fn send_error(&self, error: String) -> Result<(), T> {
+        self.send_result(Err(error))
     }
 
-    /// Get current length (approximate, for monitoring)
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len.load(Ordering::Acquire)
     }
 
-    /// Check if stream is empty (approximate)
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
-    /// Get capacity of the stream
-    #[inline]
-    pub const fn capacity(&self) -> usize {
-        CAP
-    }
 }
 
-impl<T, const CAP: usize> Default for AsyncStream<T, CAP>
+impl<T, const CAP: usize> AsyncStream<T, CAP>
 where
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
-    /// Create an empty AsyncStream
+    /// Create stream with ChunkHandler (cyrup_sugars pattern)
+    pub(crate) fn channel_with_handler(
+        handler: Box<dyn Fn(Result<T, String>) -> T + Send + Sync + 'static>,
+    ) -> (Self, AsyncStreamCompletion) {
+        let (completion_tx, completion_rx) = crossbeam_channel::bounded(1);
+        let inner = Box::leak(Box::new(Inner {
+            queue: ArrayQueue::new(CAP),
+            len: AtomicUsize::new(0),
+            completion_rx,
+            chunk_handler: handler,
+        }));
+        let stream = Self { inner };
+        let completion = AsyncStreamCompletion { completion_tx };
+        (stream, completion)
+    }
+
+    /// Create stream and sender with default handler
+    pub fn channel() -> (AsyncStreamSender<T, CAP>, Self) {
+        let (stream, _completion) = Self::channel_with_handler(Box::new(|result| match result {
+            Ok(chunk) => chunk,
+            Err(error) => {
+                log::error!("Stream error: {}", error);
+                T::bad_chunk(error)
+            }
+        }));
+        let sender = AsyncStreamSender {
+            inner: stream.inner,
+        };
+        (sender, stream)
+    }
+
+    /// Create a builder for configuring the stream
+    pub fn builder() -> AsyncStreamBuilder<T, CAP> {
+        AsyncStreamBuilder::new()
+    }
+
+    /// Create empty stream
+    pub fn empty() -> Self {
+        Self::builder().empty()
+    }
+
+    /// Create from mpsc receiver
+    pub fn new(receiver: std::sync::mpsc::Receiver<T>) -> Self {
+        Self::builder().from_receiver(receiver)
+    }
+
+    /// Create stream with channel producer function
+    pub fn with_channel<Func>(f: Func) -> Self
+    where
+        Func: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
+    {
+        Self::builder().with_channel(f)
+    }
+
     #[inline]
-    fn default() -> Self {
-        Self::empty()
+    pub fn try_next(&self) -> Option<T> {
+        self.inner.queue.pop().map(|v| {
+            self.inner.len.fetch_sub(1, Ordering::Release);
+            v
+        })
+    }
+
+    #[inline]
+    pub async fn next(&self) -> Option<T> {
+        loop {
+            if let Some(val) = self.try_next() {
+                return Some(val);
+            }
+            // Simple spin-wait for now without tokio dependency
+            std::thread::yield_now();
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.inner.len.load(Ordering::Acquire)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
-// NO FUTURES! Stream trait removed per NO FUTURES architecture
-
-impl<T, const CAP: usize> Clone for AsyncStreamSender<T, CAP> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone()}
-    }
-}
-
-/// Iterator implementation for AsyncStream to support test patterns
-/// This automatically provides IntoIterator via the standard library's blanket implementation
-impl<T, const CAP: usize> Iterator for AsyncStream<T, CAP>
+#[cfg(test)]
+impl<T, const CAP: usize> futures_util::Stream for AsyncStream<T, CAP>
 where
-    T: Send + 'static,
+    T: MessageChunk + Send + Default + 'static,
 {
     type Item = T;
 
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.try_next()
+    fn poll_next(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<T>> {
+        if let Some(val) = self.try_next() {
+            std::task::Poll::Ready(Some(val))
+        } else {
+            cx.waker().wake_by_ref();
+            std::task::Poll::Pending
+        }
     }
 }
 
-// REMOVED: Deprecated channel creation functions
-// Use AsyncStream::with_channel() instead per fluent-ai streaming architecture
+/// Iterator adapter for AsyncStream to enable for-loop syntax
+pub struct AsyncStreamIterator<T, const CAP: usize>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    stream: AsyncStream<T, CAP>,
+}
+
+impl<T, const CAP: usize> AsyncStream<T, CAP>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    /// Convert to iterator for for-loop usage
+    pub fn into_iter(self) -> AsyncStreamIterator<T, CAP> {
+        AsyncStreamIterator { stream: self }
+    }
+
+    /// Collect all items from the stream (blocking)
+    pub fn collect<C>(self) -> C
+    where
+        C: FromIterator<T>,
+    {
+        let mut items = Vec::new();
+        let backoff = crossbeam_utils::Backoff::new();
+
+        loop {
+            // Drain all available items
+            while let Some(item) = self.try_next() {
+                items.push(item);
+                backoff.reset(); // Reset backoff when we get items
+            }
+
+            // Check if producer is done using completion channel
+            match self.inner.completion_rx.try_recv() {
+                Ok(()) => {
+                    // Producer signaled completion - drain any remaining items and finish
+                    while let Some(item) = self.try_next() {
+                        items.push(item);
+                    }
+                    break;
+                }
+                Err(crossbeam_channel::TryRecvError::Empty) => {
+                    // Producer still working - use elite polling backoff
+                    backoff.snooze();
+                }
+                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    // Producer dropped without signaling - drain remaining items and finish
+                    while let Some(item) = self.try_next() {
+                        items.push(item);
+                    }
+                    break;
+                }
+            }
+        }
+
+        items.into_iter().collect()
+    }
+
+    /// Collect all items from the stream with error handling (blocking)
+    /// If any chunk is a BadChunk type, enters the else condition
+    pub fn collect_or_else<C, F>(self, error_handler: F) -> C
+    where
+        C: FromIterator<T>,
+        F: Fn(String) -> C,
+        T: std::fmt::Debug,
+    {
+        let mut items = Vec::new();
+        let backoff = crossbeam_utils::Backoff::new();
+
+        loop {
+            // Drain all available items and check for error chunks using MessageChunk trait
+            while let Some(item) = self.try_next() {
+                // Check if this item is an error chunk using the proper MessageChunk trait
+                if item.is_error() {
+                    // Found an error chunk - enter error condition
+                    let error_msg = item
+                        .error()
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "Unknown error chunk detected".to_string());
+                    return error_handler(error_msg);
+                }
+                items.push(item);
+                backoff.reset(); // Reset backoff when we get items
+            }
+
+            // Check if producer is done using completion channel
+            match self.inner.completion_rx.try_recv() {
+                Ok(()) => {
+                    // Producer signaled completion - drain any remaining items and check for error chunks
+                    while let Some(item) = self.try_next() {
+                        if item.is_error() {
+                            if let Some(error_msg) = item.error() {
+                                return error_handler(error_msg.to_string());
+                            } else {
+                                return error_handler("Unknown error chunk detected".to_string());
+                            }
+                        }
+                        items.push(item);
+                    }
+                    break;
+                }
+                Err(crossbeam_channel::TryRecvError::Empty) => {
+                    // Producer still working - use elite polling backoff
+                    backoff.snooze();
+                }
+                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    // Producer dropped - drain remaining items and check for error chunks
+                    while let Some(item) = self.try_next() {
+                        if item.is_error() {
+                            if let Some(error_msg) = item.error() {
+                                return error_handler(error_msg.to_string());
+                            } else {
+                                return error_handler("Unknown error chunk detected".to_string());
+                            }
+                        }
+                        items.push(item);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // No BadChunk found - return normal collection
+        items.into_iter().collect()
+    }
+}
+
+impl<T, const CAP: usize> Iterator for AsyncStreamIterator<T, CAP>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.stream.try_next()
+    }
+}

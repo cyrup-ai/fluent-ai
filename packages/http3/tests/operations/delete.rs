@@ -16,7 +16,7 @@ mod delete_operation_tests {
         let builder = Http3::json()
             .url("https://example.com/api/resource/123")
             .headers([("Authorization", "Bearer token123")]);
-        
+
         // Verify builder was created successfully
         assert!(format!("{:?}", builder).contains("Http3"));
     }

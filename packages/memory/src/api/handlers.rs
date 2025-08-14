@@ -7,7 +7,8 @@ use axum::{
     Json as JsonBody,
     extract::{Path, State},
     http::StatusCode,
-    response::Json};
+    response::Json,
+};
 use futures_util::StreamExt;
 
 use super::models::{CreateMemoryRequest, HealthResponse, MemoryResponse, SearchRequest};
@@ -39,7 +40,8 @@ pub async fn create_memory(
                 metadata: request.metadata,
                 user_id: request.user_id,
                 created_at: memory.created_at,
-                updated_at: memory.updated_at};
+                updated_at: memory.updated_at,
+            };
             Ok(Json(response))
         }
         Err(e) => {
@@ -69,7 +71,8 @@ pub async fn get_memory(
                 memory_type: memory.memory_type,
                 user_id: None,
                 created_at: memory.created_at,
-                updated_at: memory.updated_at};
+                updated_at: memory.updated_at,
+            };
             Ok(Json(response))
         }
         Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -105,7 +108,8 @@ pub async fn update_memory(
                 memory_type: memory.memory_type,
                 user_id: None,
                 created_at: memory.created_at,
-                updated_at: memory.updated_at};
+                updated_at: memory.updated_at,
+            };
             Ok(Json(response))
         }
         Err(e) => {
@@ -168,7 +172,8 @@ pub async fn search_memories(
             memory_type: memory.memory_type,
             user_id: None,
             created_at: memory.created_at,
-            updated_at: memory.updated_at})
+            updated_at: memory.updated_at,
+        })
         .collect();
     Ok(Json(responses))
 }
@@ -186,7 +191,8 @@ pub async fn get_health(
 
     Json(HealthResponse {
         status,
-        timestamp: chrono::Utc::now()})
+        timestamp: chrono::Utc::now(),
+    })
 }
 
 /// Metrics endpoint

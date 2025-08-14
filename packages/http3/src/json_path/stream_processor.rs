@@ -3,16 +3,16 @@
 //! Zero-allocation, lock-free HTTP chunk processing with JSONPath streaming.
 //! Maintains streams-only architecture with no futures or blocking operations.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, handle_error};
 use serde::de::DeserializeOwned;
 
-use crate::{HttpChunk, HttpError};
 use super::{JsonArrayStream, JsonPathError};
+use crate::{HttpChunk, HttpError};
 
 /// Circuit breaker state for error recovery
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,43 +57,45 @@ impl ErrorRecoveryState {
             max_backoff_micros: 5_000_000, // 5 second max backoff
         }
     }
-    
+
     /// Record a successful operation
     fn record_success(&self) {
         self.consecutive_failures.store(0, Ordering::Relaxed);
         let current_state = self.circuit_state.load(Ordering::Relaxed);
-        
+
         // If we were half-open and got success, close the circuit
         if current_state == CircuitState::HalfOpen as u64 {
-            self.circuit_state.store(CircuitState::Closed as u64, Ordering::Relaxed);
+            self.circuit_state
+                .store(CircuitState::Closed as u64, Ordering::Relaxed);
         }
     }
-    
+
     /// Record a failure and update circuit state
     fn record_failure(&self) -> CircuitState {
         let now_micros = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_micros() as u64)
             .unwrap_or(0);
-            
+
         self.last_failure_time.store(now_micros, Ordering::Relaxed);
         let failures = self.consecutive_failures.fetch_add(1, Ordering::Relaxed) + 1;
-        
+
         let current_state = self.circuit_state.load(Ordering::Relaxed);
-        
+
         // Open circuit if we've reached the failure threshold
         if failures >= self.failure_threshold && current_state == CircuitState::Closed as u64 {
-            self.circuit_state.store(CircuitState::Open as u64, Ordering::Relaxed);
+            self.circuit_state
+                .store(CircuitState::Open as u64, Ordering::Relaxed);
             CircuitState::Open
         } else {
             self.get_current_state()
         }
     }
-    
+
     /// Check if operation should proceed based on circuit state
     fn should_proceed(&self) -> (bool, CircuitState) {
         let current_state = self.get_current_state();
-        
+
         match current_state {
             CircuitState::Closed => (true, current_state),
             CircuitState::HalfOpen => (true, current_state), // Allow limited requests
@@ -103,11 +105,12 @@ impl ErrorRecoveryState {
                     .duration_since(UNIX_EPOCH)
                     .map(|d| d.as_micros() as u64)
                     .unwrap_or(0);
-                    
+
                 let last_failure = self.last_failure_time.load(Ordering::Relaxed);
                 if now_micros.saturating_sub(last_failure) >= self.circuit_timeout_micros {
                     // Transition to half-open for testing
-                    self.circuit_state.store(CircuitState::HalfOpen as u64, Ordering::Relaxed);
+                    self.circuit_state
+                        .store(CircuitState::HalfOpen as u64, Ordering::Relaxed);
                     (true, CircuitState::HalfOpen)
                 } else {
                     (false, CircuitState::Open)
@@ -115,7 +118,7 @@ impl ErrorRecoveryState {
             }
         }
     }
-    
+
     /// Get current circuit state
     fn get_current_state(&self) -> CircuitState {
         match self.circuit_state.load(Ordering::Relaxed) {
@@ -125,14 +128,14 @@ impl ErrorRecoveryState {
             _ => CircuitState::Closed, // Default fallback
         }
     }
-    
+
     /// Calculate current backoff delay in microseconds
     fn get_backoff_delay_micros(&self) -> u64 {
         let failures = self.consecutive_failures.load(Ordering::Relaxed);
         if failures == 0 {
             return 0;
         }
-        
+
         // Exponential backoff: 100ms * 2^failures, capped at max_backoff
         let base_delay_micros = 100_000; // 100ms in microseconds
         let exponential_delay = base_delay_micros * 2_u64.saturating_pow(failures.min(10) as u32);
@@ -169,7 +172,7 @@ impl ProcessorStats {
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_micros() as u64)
             .unwrap_or(0);
-        
+
         Self {
             chunks_processed: Arc::new(AtomicU64::new(0)),
             bytes_processed: Arc::new(AtomicU64::new(0)),
@@ -180,24 +183,24 @@ impl ProcessorStats {
             last_process_time: Arc::new(AtomicU64::new(now_micros)),
         }
     }
-    
+
     /// Get current statistics snapshot
     pub fn snapshot(&self) -> ProcessorStatsSnapshot {
         let now_micros = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_micros() as u64)
             .unwrap_or(0);
-            
+
         let start_time = self.start_time.load(Ordering::Relaxed);
         let elapsed_micros = now_micros.saturating_sub(start_time);
         let elapsed_seconds = (elapsed_micros as f64) / 1_000_000.0;
-        
+
         let chunks = self.chunks_processed.load(Ordering::Relaxed);
         let bytes = self.bytes_processed.load(Ordering::Relaxed);
         let objects = self.objects_yielded.load(Ordering::Relaxed);
         let errors = self.processing_errors.load(Ordering::Relaxed);
         let parse_errors = self.parse_errors.load(Ordering::Relaxed);
-        
+
         ProcessorStatsSnapshot {
             chunks_processed: chunks,
             bytes_processed: bytes,
@@ -253,7 +256,8 @@ pub struct ProcessorStatsSnapshot {
 /// zero-allocation, lock-free manner following the streams-only architecture.
 pub struct JsonStreamProcessor<T> {
     json_array_stream: JsonArrayStream<T>,
-    chunk_handlers: Vec<Box<dyn FnMut(Result<T, JsonPathError>) -> Result<T, JsonPathError> + Send>>,
+    chunk_handlers:
+        Vec<Box<dyn FnMut(Result<T, JsonPathError>) -> Result<T, JsonPathError> + Send>>,
     stats: ProcessorStats,
     error_recovery: ErrorRecoveryState,
 }
@@ -318,7 +322,7 @@ where
     fn handle_error_with_recovery(&self, error: HttpError) -> Result<(), HttpError> {
         // Check if circuit breaker allows processing
         let (should_proceed, circuit_state) = self.error_recovery.should_proceed();
-        
+
         if !should_proceed {
             log::warn!(
                 "Circuit breaker OPEN - failing fast. State: {:?}, Error: {:?}",
@@ -333,7 +337,7 @@ where
 
         // Record the failure in circuit breaker
         let new_state = self.error_recovery.record_failure();
-        
+
         // Apply exponential backoff if configured
         let backoff_delay = self.error_recovery.get_backoff_delay_micros();
         if backoff_delay > 0 {
@@ -342,7 +346,7 @@ where
                 backoff_delay,
                 new_state
             );
-            
+
             // Sleep for backoff duration (non-blocking approach would be better for production)
             std::thread::sleep(std::time::Duration::from_micros(backoff_delay));
         }
@@ -381,7 +385,7 @@ where
     /// # Examples
     /// ```no_run
     /// use fluent_ai_http3::json_path::JsonStreamProcessor;
-    /// 
+    ///
     /// let processor = processor.with_handler(|result| {
     ///     result.map(|mut obj| {
     ///         // Transform object
@@ -430,14 +434,18 @@ where
                     .duration_since(UNIX_EPOCH)
                     .map(|d| d.as_micros() as u64)
                     .unwrap_or(0);
-                self.stats.last_process_time.store(now_micros, Ordering::Relaxed);
-                
+                self.stats
+                    .last_process_time
+                    .store(now_micros, Ordering::Relaxed);
+
                 match chunk {
                     HttpChunk::Body(bytes) => {
                         // Track chunk and byte counts
                         self.stats.chunks_processed.fetch_add(1, Ordering::Relaxed);
-                        self.stats.bytes_processed.fetch_add(bytes.len() as u64, Ordering::Relaxed);
-                        
+                        self.stats
+                            .bytes_processed
+                            .fetch_add(bytes.len() as u64, Ordering::Relaxed);
+
                         match self.process_body_chunk(&sender, bytes) {
                             Ok(_) => {
                                 // Record successful processing for circuit breaker
@@ -445,11 +453,22 @@ where
                             }
                             Err(e) => {
                                 self.stats.processing_errors.fetch_add(1, Ordering::Relaxed);
-                                let json_error = JsonPathError::Deserialization(format!("Body chunk processing failed: {}", e));
-                                let http_error = HttpError::Generic(format!("JSONPath processing error: {}", json_error));
-                                
-                                if let Err(recovery_error) = self.handle_error_with_recovery(http_error) {
-                                    handle_error!(recovery_error, "Failed to process body chunk with recovery");
+                                let json_error = JsonPathError::Deserialization(format!(
+                                    "Body chunk processing failed: {}",
+                                    e
+                                ));
+                                let http_error = HttpError::Generic(format!(
+                                    "JSONPath processing error: {}",
+                                    json_error
+                                ));
+
+                                if let Err(recovery_error) =
+                                    self.handle_error_with_recovery(http_error)
+                                {
+                                    handle_error!(
+                                        recovery_error,
+                                        "Failed to process body chunk with recovery"
+                                    );
                                 }
                             }
                         }
@@ -498,18 +517,18 @@ where
     ) -> Result<(), JsonPathError> {
         // Process bytes through JSONPath deserializer
         let objects_iter = self.json_array_stream.process_chunk(bytes);
-        
+
         // Stream objects directly without collecting
         objects_iter.for_each(|obj| {
             self.stats.objects_yielded.fetch_add(1, Ordering::Relaxed);
-            
+
             let mut result = Ok(obj);
-            
+
             // Apply all chunk handlers in sequence
             for handler in &mut self.chunk_handlers {
                 result = handler(result);
             }
-            
+
             match result {
                 Ok(processed_obj) => {
                     if sender.try_send(processed_obj).is_err() {
@@ -522,7 +541,7 @@ where
                 }
             }
         });
-        
+
         Ok(())
     }
 
@@ -604,7 +623,8 @@ where
                 match chunk {
                     HttpChunk::Body(bytes) => {
                         if let Err(e) = self.process_body_chunk(&sender, bytes) {
-                            let http_error = HttpError::Generic(format!("JSONPath processing failed: {}", e));
+                            let http_error =
+                                HttpError::Generic(format!("JSONPath processing failed: {}", e));
                             error_handler(http_error);
                         }
                     }

@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
-use log::info;
 use std::fs;
 use std::process::Command;
+
+use anyhow::{Context, Result};
+use log::info;
 
 /// Install fluent voice from git repository
 pub async fn install_fluent_voice(fluent_voice_dir: &std::path::Path) -> Result<()> {
@@ -16,10 +17,14 @@ pub async fn uninstall_fluent_voice(fluent_voice_dir: &std::path::Path) -> Resul
     }
 
     info!("Removing fluent-voice directory: {:?}", fluent_voice_dir);
-    
-    fs::remove_dir_all(fluent_voice_dir)
-        .with_context(|| format!("Failed to remove fluent-voice directory: {:?}", fluent_voice_dir))?;
-    
+
+    fs::remove_dir_all(fluent_voice_dir).with_context(|| {
+        format!(
+            "Failed to remove fluent-voice directory: {:?}",
+            fluent_voice_dir
+        )
+    })?;
+
     info!("Successfully uninstalled fluent-voice components");
     Ok(())
 }

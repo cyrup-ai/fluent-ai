@@ -1,5 +1,5 @@
 //! HTTP middleware for request/response processing
-//! Aligned with Reqwest patterns - simplified direct result processing
+//! Simplified, streaming-first processing aligned with `fluent_ai_http3`'s zero-allocation design
 
 use std::sync::Arc;
 
@@ -7,7 +7,7 @@ use crate::{HttpError, HttpRequest, HttpResponse, HttpResult};
 
 pub mod cache;
 
-/// HTTP middleware trait aligned with Reqwest patterns
+/// HTTP middleware trait for fluent_ai_http3
 pub trait Middleware: Send + Sync {
     /// Process request before sending - returns result directly
     fn process_request(&self, request: HttpRequest) -> HttpResult<HttpRequest> {
@@ -26,7 +26,7 @@ pub trait Middleware: Send + Sync {
 }
 
 /// Middleware chain for sequential processing
-/// Simplified direct result processing aligned with Reqwest patterns
+/// Simplified direct result processing aligned with fluent_ai_http3 patterns
 #[derive(Default)]
 pub struct MiddlewareChain {
     middlewares: Vec<Arc<dyn Middleware>>,

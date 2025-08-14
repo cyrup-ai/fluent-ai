@@ -30,19 +30,22 @@ pub enum MacroAction {
         /// Type of message being sent
         message_type: Arc<str>,
         /// Timestamp when action was recorded
-        timestamp: Duration},
+        timestamp: Duration,
+    },
     /// Execute a command
     ExecuteCommand {
         /// Command to execute
         command: ImmutableChatCommand,
         /// Timestamp when action was recorded
-        timestamp: Duration},
+        timestamp: Duration,
+    },
     /// Wait for a specified duration
     Wait {
         /// Duration to wait
         duration: Duration,
         /// Timestamp when action was recorded
-        timestamp: Duration},
+        timestamp: Duration,
+    },
     /// Set a variable value
     SetVariable {
         /// Variable name to set
@@ -50,7 +53,8 @@ pub enum MacroAction {
         /// Value to assign to the variable
         value: Arc<str>,
         /// Timestamp when action was recorded
-        timestamp: Duration},
+        timestamp: Duration,
+    },
     /// Conditional execution based on variable
     Conditional {
         /// Condition expression to evaluate
@@ -60,7 +64,8 @@ pub enum MacroAction {
         /// Actions to execute if condition is false
         else_actions: Option<Arc<[MacroAction]>>,
         /// Timestamp when action was recorded
-        timestamp: Duration},
+        timestamp: Duration,
+    },
     /// Loop execution
     Loop {
         /// Number of iterations to perform
@@ -68,7 +73,9 @@ pub enum MacroAction {
         /// Actions to execute in each iteration
         actions: Arc<[MacroAction]>,
         /// Timestamp when action was recorded
-        timestamp: Duration}}
+        timestamp: Duration,
+    },
+}
 
 /// Macro recording state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,7 +87,8 @@ pub enum MacroRecordingState {
     /// Recording paused
     Paused,
     /// Recording completed
-    Completed}
+    Completed,
+}
 
 /// Macro playback state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,7 +102,8 @@ pub enum MacroPlaybackState {
     /// Playback completed
     Completed,
     /// Playback failed
-    Failed}
+    Failed,
+}
 
 /// Macro execution context with variable substitution
 #[derive(Debug, Clone)]
@@ -108,7 +117,8 @@ pub struct MacroExecutionContext {
     /// Current action index being executed
     pub current_action: usize,
     /// Stack of nested loop contexts
-    pub loop_stack: Vec<LoopContext>}
+    pub loop_stack: Vec<LoopContext>,
+}
 
 /// Loop execution context
 #[derive(Debug, Clone)]
@@ -120,7 +130,8 @@ pub struct LoopContext {
     /// Index of the first action in the loop
     pub start_action: usize,
     /// Index of the last action in the loop
-    pub end_action: usize}
+    pub end_action: usize,
+}
 
 /// Macro metadata and statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,7 +163,8 @@ pub struct MacroMetadata {
     /// Category this macro belongs to
     pub category: Arc<str>,
     /// Whether this macro is private to the user
-    pub is_private: bool}
+    pub is_private: bool,
+}
 
 /// Complete macro definition with actions and metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,7 +182,8 @@ pub struct ChatMacro {
     /// Other macros this macro depends on
     pub dependencies: Arc<[Arc<str>]>,
     /// Configuration for how this macro executes
-    pub execution_config: MacroExecutionConfig}
+    pub execution_config: MacroExecutionConfig,
+}
 
 /// Macro execution configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,7 +201,8 @@ pub struct MacroExecutionConfig {
     /// Execution priority (0-255, higher = more priority)
     pub priority: u8,
     /// Resource limits for macro execution
-    pub resource_limits: ResourceLimits}
+    pub resource_limits: ResourceLimits,
+}
 
 /// Resource limits for macro execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -200,7 +214,8 @@ pub struct ResourceLimits {
     /// Maximum number of network requests allowed
     pub max_network_requests: u32,
     /// Maximum number of file operations allowed
-    pub max_file_operations: u32}
+    pub max_file_operations: u32,
+}
 
 /// Macro recording session
 #[derive(Debug)]
@@ -218,7 +233,8 @@ pub struct MacroRecordingSession {
     /// Variables captured during recording
     pub variables: HashMap<Arc<str>, Arc<str>>,
     /// Metadata for the macro being recorded
-    pub metadata: MacroMetadata}
+    pub metadata: MacroMetadata,
+}
 
 /// Macro playback session
 #[derive(Debug)]
@@ -238,7 +254,8 @@ pub struct MacroPlaybackSession {
     /// Total number of actions in the macro
     pub total_actions: usize,
     /// Error message if playback failed
-    pub error: Option<Arc<str>>}
+    pub error: Option<Arc<str>>,
+}
 
 /// High-performance macro system with lock-free operations
 pub struct MacroSystem {
@@ -253,7 +270,8 @@ pub struct MacroSystem {
     /// Global macro counter
     macro_counter: ConsistentCounter,
     /// Execution counter
-    execution_counter: ConsistentCounter}
+    execution_counter: ConsistentCounter,
+}
 
 /// Macro execution statistics
 #[derive(Debug, Default)]
@@ -269,7 +287,8 @@ pub struct ExecutionStats {
     /// Average execution duration per macro
     pub average_duration: parking_lot::Mutex<Duration>,
     /// Timestamp of the last macro execution
-    pub last_execution: parking_lot::Mutex<Option<Instant>>}
+    pub last_execution: parking_lot::Mutex<Option<Instant>>,
+}
 
 impl Clone for ExecutionStats {
     fn clone(&self) -> Self {
@@ -279,7 +298,8 @@ impl Clone for ExecutionStats {
             failed_executions: ConsistentCounter::new(self.failed_executions.get()),
             total_duration: parking_lot::Mutex::new(*self.total_duration.lock()),
             average_duration: parking_lot::Mutex::new(*self.average_duration.lock()),
-            last_execution: parking_lot::Mutex::new(*self.last_execution.lock())}
+            last_execution: parking_lot::Mutex::new(*self.last_execution.lock()),
+        }
     }
 }
 
@@ -292,7 +312,8 @@ impl Default for MacroExecutionConfig {
             abort_on_error: false,
             parallel_execution: false,
             priority: 5,
-            resource_limits: ResourceLimits::default()}
+            resource_limits: ResourceLimits::default(),
+        }
     }
 }
 
@@ -302,7 +323,8 @@ impl Default for ResourceLimits {
             max_memory_mb: 100,
             max_cpu_percent: 25,
             max_network_requests: 50,
-            max_file_operations: 20}
+            max_file_operations: 20,
+        }
     }
 }
 
@@ -315,7 +337,8 @@ impl MacroSystem {
             playback_sessions: RwLock::new(HashMap::new()),
             execution_stats: SkipMap::new(),
             macro_counter: ConsistentCounter::new(0),
-            execution_counter: ConsistentCounter::new(0)}
+            execution_counter: ConsistentCounter::new(0),
+        }
     }
 
     /// Start recording a new macro
@@ -351,7 +374,8 @@ impl MacroSystem {
             average_duration: Duration::from_secs(0),
             success_rate: 0.0,
             category: Arc::from("user-defined"),
-            is_private: false};
+            is_private: false,
+        };
 
         let session = MacroRecordingSession {
             id: session_id,
@@ -360,7 +384,8 @@ impl MacroSystem {
             actions: SegQueue::new(),
             state: MacroRecordingState::Recording,
             variables: HashMap::new(),
-            metadata};
+            metadata,
+        };
 
         let mut sessions = self.recording_sessions.write().await;
         sessions.insert(session_id, session);
@@ -410,7 +435,8 @@ impl MacroSystem {
                 triggers: Arc::new([]),
                 conditions: Arc::new([]),
                 dependencies: Arc::new([]),
-                execution_config: MacroExecutionConfig::default()};
+                execution_config: MacroExecutionConfig::default(),
+            };
 
             let macro_id = session.metadata.id;
             self.macros.insert(macro_id, chat_macro);
@@ -481,7 +507,8 @@ impl MacroSystem {
             execution_id: session_id,
             start_time: Instant::now(),
             current_action: 0,
-            loop_stack: Vec::new()};
+            loop_stack: Vec::new(),
+        };
 
         let session = MacroPlaybackSession {
             id: session_id,
@@ -491,7 +518,8 @@ impl MacroSystem {
             state: MacroPlaybackState::Playing,
             current_action: 0,
             total_actions: macro_def.actions.len(),
-            error: None};
+            error: None,
+        };
 
         let mut sessions = self.playback_sessions.write().await;
         sessions.insert(session_id, session);
@@ -564,7 +592,7 @@ impl MacroSystem {
         let action = action.clone();
         let context_variables = context.variables.clone();
         let mut ctx = context.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             let result = match &action {
                 MacroAction::SendMessage {
@@ -618,7 +646,8 @@ impl MacroSystem {
                             Err(e) => {
                                 handle_error!(e, "Action execution failed");
                             }
-                            _ => continue}
+                            _ => continue,
+                        }
                     }
 
                     Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
@@ -632,7 +661,8 @@ impl MacroSystem {
                         iteration: 0,
                         max_iterations: *iterations,
                         start_action: 0,
-                        end_action: actions.len()};
+                        end_action: actions.len(),
+                    };
 
                     ctx.loop_stack.push(loop_context);
 
@@ -648,7 +678,8 @@ impl MacroSystem {
                                     ctx.loop_stack.pop();
                                     handle_error!(e, "Loop action execution failed");
                                 }
-                                _ => continue}
+                                _ => continue,
+                            }
                         }
                     }
 
@@ -656,7 +687,7 @@ impl MacroSystem {
                     Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
                 }
             };
-            
+
             match result {
                 Ok(action_result) => {
                     let _ = sender.send(action_result);
@@ -681,7 +712,11 @@ impl MacroSystem {
     }
 
     /// Evaluate a condition string - planned feature
-    fn _evaluate_condition(&self, condition: &str, variables: &HashMap<Arc<str>, Arc<str>>) -> bool {
+    fn _evaluate_condition(
+        &self,
+        condition: &str,
+        variables: &HashMap<Arc<str>, Arc<str>>,
+    ) -> bool {
         // Simple condition evaluation - in a real implementation, this would be more sophisticated
         if condition.contains("==") {
             let parts: Vec<&str> = condition.split("==").collect();
@@ -724,7 +759,8 @@ pub enum ActionExecutionResult {
     /// Skip to the specified action index
     SkipToAction(usize),
     /// Execution failed with error message
-    Error(Arc<str>)}
+    Error(Arc<str>),
+}
 
 /// Result of macro playback operation
 #[derive(Debug)]
@@ -736,7 +772,8 @@ pub enum MacroPlaybackResult {
     /// Macro playback failed
     Failed,
     /// Playback session is not active
-    SessionNotActive}
+    SessionNotActive,
+}
 
 /// Macro system errors
 #[derive(Debug, thiserror::Error)]
@@ -758,14 +795,14 @@ pub enum MacroSystemError {
     ExecutionError(String),
     /// Macro validation failed
     #[error("Validation error: {0}")]
-    ValidationError(String)}
+    ValidationError(String),
+}
 
 impl Default for MacroSystem {
     fn default() -> Self {
         Self::new()
     }
 }
-
 
 /// Macro processor for executing and managing chat macros
 ///
@@ -787,7 +824,8 @@ pub struct MacroProcessor {
     #[allow(dead_code)] // TODO: Implement in macro execution system
     execution_queue: Arc<SegQueue<MacroExecutionRequest>>,
     /// Configuration settings
-    config: MacroProcessorConfig}
+    config: MacroProcessorConfig,
+}
 
 /// Macro processor statistics (internal atomic counters)
 #[derive(Debug, Default)]
@@ -801,7 +839,8 @@ pub struct MacroProcessorStats {
     /// Total execution time in microseconds
     pub total_execution_time_us: AtomicUsize,
     /// Active executions
-    pub active_executions: AtomicUsize}
+    pub active_executions: AtomicUsize,
+}
 
 /// Macro processor statistics snapshot (for external API)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -815,7 +854,8 @@ pub struct MacroProcessorStatsSnapshot {
     /// Total execution time in microseconds
     pub total_execution_time_us: usize,
     /// Active executions
-    pub active_executions: usize}
+    pub active_executions: usize,
+}
 
 /// Macro processor configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -835,7 +875,8 @@ pub struct MacroProcessorConfig {
     /// Enable performance monitoring
     pub enable_monitoring: bool,
     /// Auto-save macro changes
-    pub auto_save: bool}
+    pub auto_save: bool,
+}
 
 /// Macro execution request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -849,7 +890,8 @@ pub struct MacroExecutionRequest {
     /// Execution priority (higher = more priority)
     pub priority: u32,
     /// Request timestamp
-    pub requested_at: Duration}
+    pub requested_at: Duration,
+}
 
 /// Macro execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -865,7 +907,8 @@ pub struct MacroExecutionResult {
     /// Variables modified during execution
     pub modified_variables: HashMap<Arc<str>, Arc<str>>,
     /// Execution metadata
-    pub metadata: MacroExecutionMetadata}
+    pub metadata: MacroExecutionMetadata,
+}
 
 /// Macro execution metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -881,7 +924,8 @@ pub struct MacroExecutionMetadata {
     /// Execution context
     pub context: HashMap<Arc<str>, Arc<str>>,
     /// Performance metrics
-    pub performance: MacroPerformanceMetrics}
+    pub performance: MacroPerformanceMetrics,
+}
 
 /// Macro performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -893,7 +937,8 @@ pub struct MacroPerformanceMetrics {
     /// Network requests made
     pub network_requests: u32,
     /// Disk operations performed
-    pub disk_operations: u32}
+    pub disk_operations: u32,
+}
 
 impl Default for MacroProcessorConfig {
     fn default() -> Self {
@@ -905,7 +950,8 @@ impl Default for MacroProcessorConfig {
             enable_loop_execution: true,
             max_recursion_depth: 10,
             enable_monitoring: true,
-            auto_save: true}
+            auto_save: true,
+        }
     }
 }
 
@@ -917,7 +963,8 @@ impl MacroProcessor {
             stats: Arc::new(MacroProcessorStats::default()),
             variables: Arc::new(RwLock::new(HashMap::new())),
             execution_queue: Arc::new(SegQueue::new()),
-            config: MacroProcessorConfig::default()}
+            config: MacroProcessorConfig::default(),
+        }
     }
 
     /// Create a macro processor with custom configuration
@@ -927,7 +974,8 @@ impl MacroProcessor {
             stats: Arc::new(MacroProcessorStats::default()),
             variables: Arc::new(RwLock::new(HashMap::new())),
             execution_queue: Arc::new(SegQueue::new()),
-            config}
+            config,
+        }
     }
 
     /// Register a macro
@@ -1046,7 +1094,10 @@ impl MacroProcessor {
                                 cpu_time_us: start_time.elapsed().as_micros() as u64,
                                 memory_bytes: 0, // Would need memory profiling
                                 network_requests: 0,
-                                disk_operations: 0}}});
+                                disk_operations: 0,
+                            },
+                        },
+                    });
                 }
             }
         }
@@ -1086,7 +1137,10 @@ impl MacroProcessor {
                     cpu_time_us: execution_duration.as_micros() as u64,
                     memory_bytes: 0, // Would need memory profiling
                     network_requests: 0,
-                    disk_operations: 0}}})
+                    disk_operations: 0,
+                },
+            },
+        })
     }
 
     /// Execute a single macro action iteratively (zero-allocation, blazing-fast)
@@ -1285,7 +1339,8 @@ impl MacroProcessor {
             successful_executions: self.stats.successful_executions.load(Ordering::Relaxed),
             failed_executions: self.stats.failed_executions.load(Ordering::Relaxed),
             total_execution_time_us: self.stats.total_execution_time_us.load(Ordering::Relaxed),
-            active_executions: self.stats.active_executions.load(Ordering::Relaxed)}
+            active_executions: self.stats.active_executions.load(Ordering::Relaxed),
+        }
     }
 
     /// Set global variable
@@ -1366,7 +1421,9 @@ fn execute_action_sync(
         MacroAction::Wait { duration, .. } => Ok(ActionExecutionResult::Wait(*duration)),
         MacroAction::SetVariable { name, value, .. } => {
             let resolved_value = resolve_variables_sync(value, &context.variables);
-            context.variables.insert(name.clone(), resolved_value.into());
+            context
+                .variables
+                .insert(name.clone(), resolved_value.into());
             Ok(ActionExecutionResult::Success)
         }
         MacroAction::Conditional {
@@ -1404,7 +1461,8 @@ fn execute_action_sync(
                 iteration: 0,
                 max_iterations: *iterations,
                 start_action: 0,
-                end_action: actions.len()};
+                end_action: actions.len(),
+            };
 
             context.loop_stack.push(loop_context);
 

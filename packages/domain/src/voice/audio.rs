@@ -16,7 +16,8 @@ pub struct Audio {
     pub format: Option<ContentFormat>,
 
     /// The media type of the audio
-    pub media_type: Option<AudioMediaType>}
+    pub media_type: Option<AudioMediaType>,
+}
 
 /// Supported audio content formats
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -28,7 +29,8 @@ pub enum ContentFormat {
     Raw,
 
     /// URL pointing to audio resource
-    Url}
+    Url,
+}
 
 /// Supported audio media types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -46,7 +48,8 @@ pub enum AudioMediaType {
     M4A,
 
     /// FLAC audio format
-    FLAC}
+    FLAC,
+}
 
 impl Audio {
     /// Create a new audio instance with basic data
@@ -61,7 +64,8 @@ impl Audio {
         Self {
             data: data.into(),
             format: None,
-            media_type: None}
+            media_type: None,
+        }
     }
 
     /// Set the format of the audio data

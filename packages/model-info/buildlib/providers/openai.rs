@@ -1,12 +1,13 @@
-use super::{ModelData, ProviderBuilder, StandardModelsResponse, StandardModel};
+use super::response_types::{OpenAiModel, OpenAiModelsListResponse};
+use super::{ModelData, ProviderBuilder};
 
 /// OpenAI provider implementation with dynamic API fetching
 /// API must be available - no static data
 pub struct OpenAiProvider;
 
 impl ProviderBuilder for OpenAiProvider {
-    type ListResponse = StandardModelsResponse;
-    type GetResponse = StandardModel;
+    type ListResponse = OpenAiModelsListResponse;
+    type GetResponse = OpenAiModel;
 
     fn provider_name(&self) -> &'static str {
         "openai"
@@ -16,13 +17,14 @@ impl ProviderBuilder for OpenAiProvider {
         "https://api.openai.com"
     }
 
-    fn api_key_env_var(&self) -> Option<&'static str> {
-        Some("OPENAI_API_KEY")
+    fn api_key_env_vars(&self) -> cyrup_sugars::ZeroOneOrMany<&'static str> {
+        cyrup_sugars::ZeroOneOrMany::One("OPENAI_API_KEY")
     }
 
-
     fn response_to_models(&self, response: Self::ListResponse) -> Vec<ModelData> {
-        response.data.into_iter()
+        response
+            .data
+            .into_iter()
             .map(|model| openai_model_to_data(&model.id))
             .collect()
     }
@@ -36,15 +38,24 @@ impl ProviderBuilder for OpenAiProvider {
 /// Uses intelligent pattern matching and web scraping for real-time pricing
 fn openai_model_to_data(model_id: &str) -> ModelData {
     // DYNAMIC CONTEXT LENGTH detection based on model name patterns
-    let max_tokens = if model_id.contains("o1") || model_id.contains("o3") || model_id.contains("gpt-4") {
-        128000
-    } else if model_id.contains("3.5") {
-        if model_id.contains("instruct") { 4096 } else { 16384 }
-    } else if model_id.starts_with("text-") {
-        if model_id.contains("davinci") { 4097 } else { 2049 }
-    } else {
-        8192 // Reasonable default
-    };
+    let max_tokens =
+        if model_id.contains("o1") || model_id.contains("o3") || model_id.contains("gpt-4") {
+            128000
+        } else if model_id.contains("3.5") {
+            if model_id.contains("instruct") {
+                4096
+            } else {
+                16384
+            }
+        } else if model_id.starts_with("text-") {
+            if model_id.contains("davinci") {
+                4097
+            } else {
+                2049
+            }
+        } else {
+            8192 // Reasonable default
+        };
 
     // DYNAMIC PRICING detection - attempt to fetch from OpenAI pricing API or scraping
     let (input_price, output_price) = fetch_dynamic_openai_pricing(model_id)
@@ -54,7 +65,14 @@ fn openai_model_to_data(model_id: &str) -> ModelData {
     let supports_thinking = model_id.contains("o1") || model_id.contains("o3");
     let required_temperature = if supports_thinking { Some(1.0) } else { None };
 
-    (model_id.to_string(), max_tokens, input_price, output_price, supports_thinking, required_temperature)
+    (
+        model_id.to_string(),
+        max_tokens,
+        input_price,
+        output_price,
+        supports_thinking,
+        required_temperature,
+    )
 }
 
 /// Attempt to fetch real-time OpenAI pricing (placeholder for future implementation)
@@ -63,7 +81,7 @@ fn fetch_dynamic_openai_pricing(model_id: &str) -> Option<(f64, f64)> {
     // 1. OpenAI pricing API (when available)
     // 2. Web scraping of https://openai.com/pricing
     // 3. Third-party pricing aggregation APIs
-    
+
     // For now, return None to fall back to pattern estimation
     _ = model_id; // Suppress unused warning
     None
@@ -86,8 +104,11 @@ fn estimate_openai_pricing_by_pattern(model_id: &str) -> (f64, f64) {
     } else if model_id.contains("3.5") {
         (0.001, 0.002) // GPT-3.5
     } else if model_id.starts_with("text-") {
-        if model_id.contains("davinci") { (0.02, 0.02) }
-        else { (0.002, 0.002) }
+        if model_id.contains("davinci") {
+            (0.02, 0.02)
+        } else {
+            (0.002, 0.002)
+        }
     } else {
         (0.001, 0.002) // Conservative default
     }

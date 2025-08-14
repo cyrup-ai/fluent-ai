@@ -25,7 +25,8 @@ pub enum ValidationError {
     InvalidRange {
         field: String,
         value: String,
-        expected: String},
+        expected: String,
+    },
 
     /// Inconsistent data between fields
     InconsistentData { description: String },
@@ -71,7 +72,8 @@ impl std::fmt::Display for ValidationError {
             ValidationError::InvalidRange {
                 field,
                 value,
-                expected} => {
+                expected,
+            } => {
                 write!(
                     f,
                     "Invalid value '{}' for field '{}', expected {}",
@@ -127,7 +129,8 @@ pub enum ValidationSeverity {
     Error,
 
     /// Critical error - must be fixed
-    Critical}
+    Critical,
+}
 
 /// Validation result with severity
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,7 +145,8 @@ pub struct ValidationIssue {
     pub field: Option<String>,
 
     /// Suggested fix (if any)
-    pub suggestion: Option<String>}
+    pub suggestion: Option<String>,
+}
 
 /// Comprehensive validation report
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

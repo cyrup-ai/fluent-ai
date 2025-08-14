@@ -6,11 +6,11 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use fluent_ai_domain::context::chunk::CompletionChunk;
 use fluent_ai_async::AsyncStream;
+use fluent_ai_domain::context::chunk::CompletionChunk;
 use serde::Deserialize;
-// Removed tokio_stream dependency - using pure AsyncStream patterns
 
+// Removed tokio_stream dependency - using pure AsyncStream patterns
 use crate::completion_provider::{CompletionError, ResponseMetadata};
 
 /// Universal streaming completion response trait
@@ -36,20 +36,20 @@ pub trait StreamingCompletionResponse: Send + Sync {
         Self: Sized,
     {
         use fluent_ai_async::{AsyncStream, emit, handle_error};
-        
+
         AsyncStream::with_channel(|sender| {
             let stream = self.into_stream();
-            
+
             // Collect all chunks first, then combine their text content
             let chunks = stream.collect(); // This returns Vec<CompletionChunk>
             let mut content = String::new();
-            
+
             for chunk in chunks {
                 if let Some(text) = chunk.content.text() {
                     content.push_str(text);
                 }
             }
-            
+
             // Emit the final collected content
             emit!(sender, content);
         })
@@ -62,7 +62,8 @@ pub trait StreamingCompletionResponse: Send + Sync {
 /// Uses static string patterns and inline parsing for maximum performance.
 pub struct SseParser {
     buffer: Vec<u8>,
-    last_event_id: Option<String>}
+    last_event_id: Option<String>,
+}
 
 impl SseParser {
     /// Create a new SSE parser with zero allocations
@@ -70,7 +71,8 @@ impl SseParser {
     pub fn new() -> Self {
         Self {
             buffer: Vec::with_capacity(8192), // Pre-allocate reasonable buffer
-            last_event_id: None}
+            last_event_id: None,
+        }
     }
 
     /// Parse SSE chunk with zero allocations for common cases
@@ -163,7 +165,8 @@ pub struct SseEvent {
     /// Event ID (optional)
     pub id: Option<String>,
     /// Retry timeout in milliseconds (optional)
-    pub retry: Option<u64>}
+    pub retry: Option<u64>,
+}
 
 impl SseEvent {
     /// Check if this is a data event with content
@@ -199,7 +202,8 @@ impl SseEvent {
 /// for common cases, using inline parsing and zero-copy string operations.
 pub struct JsonLinesParser {
     buffer: Vec<u8>,
-    line_buffer: String}
+    line_buffer: String,
+}
 
 impl JsonLinesParser {
     /// Create a new JSON Lines parser
@@ -207,7 +211,8 @@ impl JsonLinesParser {
     pub fn new() -> Self {
         Self {
             buffer: Vec::with_capacity(4096),
-            line_buffer: String::with_capacity(1024)}
+            line_buffer: String::with_capacity(1024),
+        }
     }
 
     /// Parse JSON Lines chunk
@@ -268,7 +273,8 @@ impl JsonLinesParser {
 pub struct DefaultStreamingResponse<T> {
     pub raw_response: T,
     pub stream: AsyncStream<CompletionChunk>,
-    pub metadata: ResponseMetadata}
+    pub metadata: ResponseMetadata,
+}
 
 impl<T> DefaultStreamingResponse<T>
 where
@@ -276,14 +282,12 @@ where
 {
     /// Create a new default streaming response
     #[inline(always)]
-    pub fn new(
-        raw_response: T,
-        stream: AsyncStream<CompletionChunk>,
-    ) -> Self {
+    pub fn new(raw_response: T, stream: AsyncStream<CompletionChunk>) -> Self {
         Self {
             raw_response,
             stream,
-            metadata: ResponseMetadata::default()}
+            metadata: ResponseMetadata::default(),
+        }
     }
 
     /// Add metadata
@@ -339,10 +343,9 @@ impl RawStreamingChoice {
             finish_reason: None,
         }
     }
-    
+
     pub fn with_finish_reason(mut self, reason: String) -> Self {
         self.finish_reason = Some(reason);
         self
     }
 }
-

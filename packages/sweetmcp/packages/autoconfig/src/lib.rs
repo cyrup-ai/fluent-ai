@@ -3,11 +3,11 @@ pub mod config;
 pub mod watcher;
 
 // Re-export commonly used types
-pub use config::ConfigMerger;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+pub use config::ConfigMerger;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 
 /// Core trait for MCP client configuration plugins
 pub trait ClientConfigPlugin: Send + Sync {

@@ -26,7 +26,8 @@ pub enum HakariRegenerateError {
     Transaction(#[from] TransactionError),
 
     #[error("Validation error: {0}")]
-    Validation(#[from] ValidationError)}
+    Validation(#[from] ValidationError),
+}
 
 /// Workspace-related errors
 #[derive(Error, Debug)]
@@ -46,13 +47,15 @@ pub enum WorkspaceError {
     #[error("Cargo.toml parse error in {path}: {source}")]
     CargoTomlParse {
         path: PathBuf,
-        source: toml_edit::TomlError},
+        source: toml_edit::TomlError,
+    },
 
     #[error("Cargo.toml format error in {path}: {reason}")]
     CargoTomlFormat { path: PathBuf, reason: String },
 
     #[error("Cargo metadata error: {0}")]
-    CargoMetadata(#[from] cargo_metadata::Error)}
+    CargoMetadata(#[from] cargo_metadata::Error),
+}
 
 /// Hakari-specific operation errors
 #[derive(Error, Debug)]
@@ -73,7 +76,8 @@ pub enum HakariError {
     WorkspaceHackNotFound { path: PathBuf },
 
     #[error("Workspace-hack package rename failed: {from} -> {to}")]
-    RenameFailed { from: String, to: String }}
+    RenameFailed { from: String, to: String },
+}
 
 /// Configuration-related errors
 #[derive(Error, Debug)]
@@ -84,7 +88,8 @@ pub enum ConfigError {
     #[error("Configuration parse error in {path}: {source}")]
     ParseError {
         path: PathBuf,
-        source: toml_edit::TomlError},
+        source: toml_edit::TomlError,
+    },
 
     #[error("Configuration validation error: {field} - {reason}")]
     ValidationError { field: String, reason: String },
@@ -99,7 +104,8 @@ pub enum ConfigError {
     MissingRequired { field: String },
 
     #[error("Invalid configuration value: {field} = {value}")]
-    InvalidValue { field: String, value: String }}
+    InvalidValue { field: String, value: String },
+}
 
 /// File system and I/O errors
 #[derive(Error, Debug)]
@@ -107,12 +113,14 @@ pub enum IoError {
     #[error("File operation failed: {path} - {source}")]
     FileOperation {
         path: PathBuf,
-        source: std::io::Error},
+        source: std::io::Error,
+    },
 
     #[error("Directory operation failed: {path} - {source}")]
     DirectoryOperation {
         path: PathBuf,
-        source: std::io::Error},
+        source: std::io::Error,
+    },
 
     #[error("Permission denied: {path}")]
     PermissionDenied { path: PathBuf },
@@ -130,7 +138,8 @@ pub enum IoError {
     TempFileCreation { source: std::io::Error },
 
     #[error("Atomic file operation failed: {path}")]
-    AtomicOperation { path: PathBuf }}
+    AtomicOperation { path: PathBuf },
+}
 
 /// Transaction and rollback errors
 #[derive(Error, Debug)]
@@ -156,7 +165,9 @@ pub enum TransactionError {
     #[error("Rollback operation failed for {path}: {source}")]
     RollbackOperation {
         path: PathBuf,
-        source: std::io::Error}}
+        source: std::io::Error,
+    },
+}
 
 /// Validation errors
 #[derive(Error, Debug)]
@@ -174,7 +185,8 @@ pub enum ValidationError {
     DependencyValidation { dependency: String, reason: String },
 
     #[error("Hakari validation failed: {reason}")]
-    HakariValidation { reason: String }}
+    HakariValidation { reason: String },
+}
 
 /// Result type alias for convenience
 pub type Result<T> = std::result::Result<T, HakariRegenerateError>;
@@ -190,7 +202,8 @@ impl<T> IoErrorExt<T> for std::result::Result<T, std::io::Error> {
             std::io::ErrorKind::NotFound => IoError::FileNotFound { path },
             std::io::ErrorKind::PermissionDenied => IoError::PermissionDenied { path },
             std::io::ErrorKind::AlreadyExists => IoError::FileExists { path },
-            _ => IoError::FileOperation { path, source }})
+            _ => IoError::FileOperation { path, source },
+        })
     }
 }
 
@@ -209,12 +222,14 @@ impl<T> TomlErrorExt<T> for std::result::Result<T, toml_edit::TomlError> {
 pub fn validation_error(field: &str, reason: &str) -> ValidationError {
     ValidationError::ConfigValidation {
         field: field.to_string(),
-        reason: reason.to_string()}
+        reason: reason.to_string(),
+    }
 }
 
 /// Helper function to create configuration errors
 pub fn config_error(field: &str, reason: &str) -> ConfigError {
     ConfigError::ValidationError {
         field: field.to_string(),
-        reason: reason.to_string()}
+        reason: reason.to_string(),
+    }
 }

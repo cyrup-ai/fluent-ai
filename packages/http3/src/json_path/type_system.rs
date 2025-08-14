@@ -21,11 +21,11 @@ pub enum FunctionType {
     /// ValueType: The type of any JSON value
     /// Can represent strings, numbers, booleans, null, arrays, or objects
     ValueType,
-    
+
     /// LogicalType: The type of test or logical expression results
     /// Represents boolean true/false values from comparisons and logical operations
     LogicalType,
-    
+
     /// NodesType: The type of a nodelist
     /// Represents the result of JSONPath expressions that select multiple nodes
     NodesType,
@@ -39,10 +39,10 @@ pub enum FunctionType {
 pub enum TypedValue {
     /// A JSON value with ValueType
     Value(serde_json::Value),
-    
+
     /// A boolean result with LogicalType
     Logical(bool),
-    
+
     /// A nodelist with NodesType
     Nodes(Vec<serde_json::Value>),
 }
@@ -117,7 +117,7 @@ impl TypeSystem {
                 let logical_result = Self::value_to_logical(&json_val);
                 Ok(TypedValue::Logical(logical_result))
             }
-            
+
             // NodesType to ValueType conversion (single node requirement)
             (TypedValue::Nodes(nodes), FunctionType::ValueType) => {
                 if nodes.len() == 1 {
@@ -145,41 +145,33 @@ impl TypeSystem {
                     ))
                 }
             }
-            
+
             // Same type conversions (no-op)
             (TypedValue::Value(val), FunctionType::ValueType) => Ok(TypedValue::Value(val)),
             (TypedValue::Logical(val), FunctionType::LogicalType) => Ok(TypedValue::Logical(val)),
             (TypedValue::Nodes(val), FunctionType::NodesType) => Ok(TypedValue::Nodes(val)),
-            
+
             // Invalid conversions
-            (TypedValue::Logical(_), FunctionType::ValueType) => {
-                Err(invalid_expression_error(
-                    "",
-                    "LogicalType cannot be converted to ValueType",
-                    None,
-                ))
-            }
-            (TypedValue::Logical(_), FunctionType::NodesType) => {
-                Err(invalid_expression_error(
-                    "",
-                    "LogicalType cannot be converted to NodesType",
-                    None,
-                ))
-            }
-            (TypedValue::Value(_), FunctionType::NodesType) => {
-                Err(invalid_expression_error(
-                    "",
-                    "ValueType cannot be converted to NodesType",
-                    None,
-                ))
-            }
-            (TypedValue::Nodes(_), FunctionType::LogicalType) => {
-                Err(invalid_expression_error(
-                    "",
-                    "NodesType cannot be converted to LogicalType",
-                    None,
-                ))
-            }
+            (TypedValue::Logical(_), FunctionType::ValueType) => Err(invalid_expression_error(
+                "",
+                "LogicalType cannot be converted to ValueType",
+                None,
+            )),
+            (TypedValue::Logical(_), FunctionType::NodesType) => Err(invalid_expression_error(
+                "",
+                "LogicalType cannot be converted to NodesType",
+                None,
+            )),
+            (TypedValue::Value(_), FunctionType::NodesType) => Err(invalid_expression_error(
+                "",
+                "ValueType cannot be converted to NodesType",
+                None,
+            )),
+            (TypedValue::Nodes(_), FunctionType::LogicalType) => Err(invalid_expression_error(
+                "",
+                "NodesType cannot be converted to LogicalType",
+                None,
+            )),
         }
     }
 
@@ -196,12 +188,9 @@ impl TypeSystem {
         arguments: &[FilterExpression],
     ) -> JsonPathResult<FunctionSignature> {
         // 1. Check if function is known
-        let signature = Self::get_function_signature(function_name)
-            .ok_or_else(|| invalid_expression_error(
-                "",
-                &format!("unknown function: {}", function_name),
-                None,
-            ))?;
+        let signature = Self::get_function_signature(function_name).ok_or_else(|| {
+            invalid_expression_error("", &format!("unknown function: {}", function_name), None)
+        })?;
 
         // 2. Check argument count
         if arguments.len() != signature.parameter_types.len() {
@@ -236,7 +225,7 @@ impl TypeSystem {
         expected_type: &FunctionType,
     ) -> JsonPathResult<()> {
         let actual_type = Self::infer_expression_type(expr)?;
-        
+
         // Check if types match exactly or can be converted
         if actual_type == *expected_type {
             return Ok(());
@@ -269,12 +258,10 @@ impl TypeSystem {
             FilterExpression::Current => Ok(FunctionType::ValueType),
             FilterExpression::Property { .. } => Ok(FunctionType::ValueType),
             FilterExpression::JsonPath { .. } => Ok(FunctionType::NodesType),
-            FilterExpression::Literal { value } => {
-                match value {
-                    FilterValue::Boolean(_) => Ok(FunctionType::LogicalType),
-                    _ => Ok(FunctionType::ValueType),
-                }
-            }
+            FilterExpression::Literal { value } => match value {
+                FilterValue::Boolean(_) => Ok(FunctionType::LogicalType),
+                _ => Ok(FunctionType::ValueType),
+            },
             FilterExpression::Comparison { .. } => Ok(FunctionType::LogicalType),
             FilterExpression::Logical { .. } => Ok(FunctionType::LogicalType),
             FilterExpression::Regex { .. } => Ok(FunctionType::LogicalType),
@@ -308,7 +295,7 @@ impl TypeSystem {
                 }
             }
             serde_json::Value::String(s) => !s.is_empty(),
-            serde_json::Value::Array(_) => true,  // Always true, even if empty
+            serde_json::Value::Array(_) => true, // Always true, even if empty
             serde_json::Value::Object(_) => true, // Always true, even if empty
         }
     }
@@ -325,7 +312,7 @@ impl TypeSystem {
             FilterValue::Integer(i) => TypedValue::Value(serde_json::json!(*i)),
             FilterValue::Boolean(b) => TypedValue::Logical(*b),
             FilterValue::Null => TypedValue::Value(serde_json::Value::Null),
-            FilterValue::Missing => TypedValue::Value(serde_json::Value::Null), // Missing converts to null
+            FilterValue::Missing => TypedValue::Value(serde_json::Value::Null), /* Missing converts to null */
         }
     }
 
@@ -336,27 +323,25 @@ impl TypeSystem {
     #[inline]
     pub fn typed_value_to_filter_value(value: &TypedValue) -> JsonPathResult<FilterValue> {
         match value {
-            TypedValue::Value(json_val) => {
-                match json_val {
-                    serde_json::Value::Null => Ok(FilterValue::Null),
-                    serde_json::Value::Bool(b) => Ok(FilterValue::Boolean(*b)),
-                    serde_json::Value::Number(n) => {
-                        if let Some(i) = n.as_i64() {
-                            Ok(FilterValue::Integer(i))
-                        } else if let Some(f) = n.as_f64() {
-                            Ok(FilterValue::Number(f))
-                        } else {
-                            Ok(FilterValue::Null)
-                        }
+            TypedValue::Value(json_val) => match json_val {
+                serde_json::Value::Null => Ok(FilterValue::Null),
+                serde_json::Value::Bool(b) => Ok(FilterValue::Boolean(*b)),
+                serde_json::Value::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        Ok(FilterValue::Integer(i))
+                    } else if let Some(f) = n.as_f64() {
+                        Ok(FilterValue::Number(f))
+                    } else {
+                        Ok(FilterValue::Null)
                     }
-                    serde_json::Value::String(s) => Ok(FilterValue::String(s.clone())),
-                    _ => Err(invalid_expression_error(
-                        "",
-                        "arrays and objects cannot be converted to FilterValue",
-                        None,
-                    )),
                 }
-            }
+                serde_json::Value::String(s) => Ok(FilterValue::String(s.clone())),
+                _ => Err(invalid_expression_error(
+                    "",
+                    "arrays and objects cannot be converted to FilterValue",
+                    None,
+                )),
+            },
             TypedValue::Logical(b) => Ok(FilterValue::Boolean(*b)),
             TypedValue::Nodes(_) => Err(invalid_expression_error(
                 "",

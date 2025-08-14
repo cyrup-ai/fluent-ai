@@ -17,9 +17,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+use crate::ZeroOneOrMany;
 // Removed unused import: wide::f32x8
 use crate::chat::message::{MessageRole, SearchChatMessage};
-use crate::ZeroOneOrMany;
 
 // Streaming architecture macros for zero-futures implementation
 
@@ -44,7 +44,7 @@ where
     fn collect_sync(self) -> AsyncStream<Vec<T>> {
         AsyncStream::with_channel(move |sender| {
             // Use the AsyncStream's built-in collect method for zero-allocation collection
-            let results = self.collect(); 
+            let results = self.collect();
             fluent_ai_async::emit!(sender, results);
         })
     }
@@ -74,7 +74,8 @@ pub struct SearchQuery {
     /// Result offset for pagination
     pub offset: usize,
     /// Sort order
-    pub sort_order: SortOrder}
+    pub sort_order: SortOrder,
+}
 
 /// Query operator enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,10 +89,11 @@ pub enum QueryOperator {
     /// Exact phrase match
     Phrase,
     /// Proximity search
-    Proximity { 
+    Proximity {
         /// Distance value for proximity-based ranking
-        distance: u32 
-    }}
+        distance: u32,
+    },
+}
 
 /// Date range filter
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,7 +101,8 @@ pub struct DateRange {
     /// Start timestamp
     pub start: u64,
     /// End timestamp
-    pub end: u64}
+    pub end: u64,
+}
 
 /// Sort order enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,7 +116,8 @@ pub enum SortOrder {
     /// Sort by user alphabetically
     UserAscending,
     /// Sort by user reverse alphabetically
-    UserDescending}
+    UserDescending,
+}
 
 /// Search result with relevance scoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,7 +137,8 @@ pub struct SearchResult {
     /// Match positions in the content
     pub match_positions: Vec<MatchPosition>,
     /// Search metadata
-    pub metadata: Option<SearchResultMetadata>}
+    pub metadata: Option<SearchResultMetadata>,
+}
 
 /// Search statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -149,7 +154,8 @@ pub struct SearchStatistics {
     /// Index size in bytes
     pub index_size: usize,
     /// Last index update timestamp
-    pub last_index_update: u64}
+    pub last_index_update: u64,
+}
 
 /// Term frequency and document frequency for TF-IDF calculation
 #[derive(Debug, Clone)]
@@ -159,7 +165,8 @@ pub struct TermFrequency {
     /// Document frequency (how many docs contain this term)
     pub df: u32,
     /// Total number of documents
-    pub total_docs: u32}
+    pub total_docs: u32,
+}
 
 impl TermFrequency {
     /// Calculate TF-IDF score
@@ -178,7 +185,8 @@ pub struct IndexEntry {
     /// Term frequency in document
     pub term_frequency: f32,
     /// Positions of term in document
-    pub positions: Vec<usize>}
+    pub positions: Vec<usize>,
+}
 
 /// Chat search index with SIMD optimization
 pub struct ChatSearchIndex {
@@ -197,7 +205,8 @@ pub struct ChatSearchIndex {
     /// Search statistics
     statistics: Arc<RwLock<SearchStatistics>>,
     /// SIMD processing threshold
-    simd_threshold: Arc<AtomicUsize>}
+    simd_threshold: Arc<AtomicUsize>,
+}
 
 impl Clone for ChatSearchIndex {
     fn clone(&self) -> Self {
@@ -256,7 +265,8 @@ impl ChatSearchIndex {
                 total_queries: 0,
                 average_query_time: 0.0,
                 index_size: 0,
-                last_index_update: 0})),
+                last_index_update: 0,
+            })),
             simd_threshold: Arc::new(AtomicUsize::new(8)), // Process 8 terms at once with SIMD
         }
     }
@@ -300,7 +310,8 @@ impl ChatSearchIndex {
                         .enumerate()
                         .filter(|(_, t)| **t == term)
                         .map(|(i, _)| i)
-                        .collect()};
+                        .collect(),
+                };
 
                 // SkipMap doesn't have get_mut method, use insert pattern
                 let mut entries = self_clone
@@ -319,7 +330,8 @@ impl ChatSearchIndex {
                     .unwrap_or(TermFrequency {
                         tf: 0.0,
                         df: 0,
-                        total_docs: 1});
+                        total_docs: 1,
+                    });
                 tf_entry.tf += 1.0;
                 tf_entry.df = 1;
                 self_clone.term_frequencies.insert(term.clone(), tf_entry);
@@ -362,7 +374,9 @@ impl ChatSearchIndex {
         match stream.try_next() {
             Some(_) => Ok(()),
             None => Err(SearchError::IndexError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Search messages with SIMD optimization (streaming individual results)
@@ -402,7 +416,8 @@ impl ChatSearchIndex {
                     .collect(),
                 QueryOperator::Proximity { distance } => self_clone
                     .search_proximity_stream(query_terms_ref, distance, query_fuzzy_matching)
-                    .collect()};
+                    .collect(),
+            };
 
             // Apply filters - for now, pass through results as-is
             let filtered_results = results;
@@ -428,10 +443,10 @@ impl ChatSearchIndex {
     /// Search messages with SIMD optimization (NO FUTURES architecture)
     pub fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>, SearchError> {
         let stream = self.search_stream(query.clone());
-        
+
         // Use AsyncStream collect method (NO FUTURES architecture)
         let results = stream.collect();
-        
+
         Ok(results)
     }
 
@@ -538,7 +553,8 @@ impl ChatSearchIndex {
                                     tags: vec![],
                                     context: vec![],
                                     match_positions: vec![],
-                                    metadata: None};
+                                    metadata: None,
+                                };
                                 let _ = sender.send(result);
                             }
                         }
@@ -587,7 +603,8 @@ impl ChatSearchIndex {
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
-                        metadata: None};
+                        metadata: None,
+                    };
                     let _ = sender.send(result);
                 }
             }
@@ -623,7 +640,8 @@ impl ChatSearchIndex {
                             tags: vec![],
                             context: vec![],
                             match_positions: vec![],
-                            metadata: None};
+                            metadata: None,
+                        };
                         let _ = sender.send(result);
                     }
                 } else if content.contains(&phrase) {
@@ -637,7 +655,8 @@ impl ChatSearchIndex {
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
-                        metadata: None};
+                        metadata: None,
+                    };
                     let _ = sender.send(result);
                 }
             }
@@ -672,7 +691,8 @@ impl ChatSearchIndex {
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
-                        metadata: None};
+                        metadata: None,
+                    };
                     let _ = sender.send(result);
                 }
             }
@@ -707,7 +727,8 @@ impl ChatSearchIndex {
                             tags: vec![],
                             context: vec![],
                             match_positions: vec![],
-                            metadata: None};
+                            metadata: None,
+                        };
                         let _ = sender.send(result);
                     }
                 }
@@ -1013,7 +1034,8 @@ pub struct ConversationTag {
     /// Tag usage count
     pub usage_count: u64,
     /// Tag is active
-    pub is_active: bool}
+    pub is_active: bool,
+}
 
 impl ConversationTag {
     /// Create a new tag
@@ -1035,7 +1057,8 @@ impl ConversationTag {
             created_at: now,
             updated_at: now,
             usage_count: 0,
-            is_active: true}
+            is_active: true,
+        }
     }
 }
 
@@ -1054,7 +1077,8 @@ pub struct ConversationTagger {
     /// Tagging counter
     tagging_counter: Arc<ConsistentCounter>,
     /// Auto-tagging rules
-    auto_tagging_rules: Arc<RwLock<HashMap<Arc<str>, Vec<Arc<str>>>>>}
+    auto_tagging_rules: Arc<RwLock<HashMap<Arc<str>, Vec<Arc<str>>>>>,
+}
 
 impl ConversationTagger {
     /// Create a new conversation tagger
@@ -1066,7 +1090,8 @@ impl ConversationTagger {
             tag_hierarchy: SkipMap::new(),
             tag_counter: Arc::new(ConsistentCounter::new(0)),
             tagging_counter: Arc::new(ConsistentCounter::new(0)),
-            auto_tagging_rules: Arc::new(RwLock::new(HashMap::new()))}
+            auto_tagging_rules: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
     /// Create a new tag (streaming)
@@ -1142,7 +1167,9 @@ impl ConversationTagger {
         match stream.try_next() {
             Some(tag_id) => Ok(tag_id),
             None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Tag a message (streaming)
@@ -1197,7 +1224,9 @@ impl ConversationTagger {
         match stream.try_next() {
             Some(_) => Ok(()),
             None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Auto-tag message based on content (streaming)
@@ -1328,7 +1357,9 @@ impl ConversationTagger {
         match stream.try_next() {
             Some(_) => Ok(()),
             None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Remove auto-tagging rule (streaming)
@@ -1366,7 +1397,9 @@ impl ConversationTagger {
         match stream.try_next() {
             Some(_) => Ok(()),
             None => Err(SearchError::TagError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Get tagging statistics
@@ -1379,7 +1412,8 @@ impl ConversationTagger {
                 .iter()
                 .filter(|entry| entry.value().is_active)
                 .count(),
-            most_used_tag: self.get_most_used_tag()}
+            most_used_tag: self.get_most_used_tag(),
+        }
     }
 
     /// Get most used tag
@@ -1407,7 +1441,8 @@ pub struct TaggingStatistics {
     /// Number of currently active tags
     pub active_tags: usize,
     /// The most frequently used tag
-    pub most_used_tag: Option<Arc<str>>}
+    pub most_used_tag: Option<Arc<str>>,
+}
 
 /// Export format enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1423,7 +1458,8 @@ pub enum ExportFormat {
     /// XML format
     Xml,
     /// Plain text format
-    PlainText}
+    PlainText,
+}
 
 /// Export options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1443,7 +1479,8 @@ pub struct ExportOptions {
     /// User filter
     pub user_filter: Option<Arc<str>>,
     /// Tag filter
-    pub tag_filter: ZeroOneOrMany<Arc<str>>}
+    pub tag_filter: ZeroOneOrMany<Arc<str>>,
+}
 
 /// History exporter with zero-allocation streaming
 #[derive(Clone)]
@@ -1451,7 +1488,8 @@ pub struct HistoryExporter {
     /// Export counter
     export_counter: Arc<ConsistentCounter>,
     /// Export statistics
-    export_statistics: Arc<RwLock<ExportStatistics>>}
+    export_statistics: Arc<RwLock<ExportStatistics>>,
+}
 
 /// Export statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1465,7 +1503,8 @@ pub struct ExportStatistics {
     /// Average time taken per export operation (seconds)
     pub average_export_time: f64,
     /// Timestamp of the last export operation
-    pub last_export_time: u64}
+    pub last_export_time: u64,
+}
 
 #[allow(dead_code)]
 impl HistoryExporter {
@@ -1478,7 +1517,9 @@ impl HistoryExporter {
                 total_messages_exported: 0,
                 most_popular_format: None,
                 average_export_time: 0.0,
-                last_export_time: 0}))}
+                last_export_time: 0,
+            })),
+        }
     }
 
     /// Export conversation history (streaming)
@@ -1501,7 +1542,8 @@ impl HistoryExporter {
                     // Simplified JSON export
                     match serde_json::to_string_pretty(&filtered_messages) {
                         Ok(json) => json,
-                        Err(_) => "{}".to_string()}
+                        Err(_) => "{}".to_string(),
+                    }
                 }
                 ExportFormat::Csv => {
                     // Simplified CSV export
@@ -1515,7 +1557,8 @@ impl HistoryExporter {
                             MessageRole::User => "user",
                             MessageRole::Assistant => "assistant",
                             MessageRole::System => "system",
-                            MessageRole::Tool => "tool"};
+                            MessageRole::Tool => "tool",
+                        };
                         let content = message.message.content.replace('\n', " ").replace(',', ";");
                         csv.push_str(&format!("{},{},{}\n", timestamp, role, content));
                     }
@@ -1529,7 +1572,8 @@ impl HistoryExporter {
                             MessageRole::User => "**User**",
                             MessageRole::Assistant => "**Assistant**",
                             MessageRole::System => "**System**",
-                            MessageRole::Tool => "**Tool**"};
+                            MessageRole::Tool => "**Tool**",
+                        };
                         md.push_str(&format!("{}: {}\n\n", role, message.message.content));
                     }
                     md
@@ -1542,7 +1586,8 @@ impl HistoryExporter {
                             MessageRole::User => "User",
                             MessageRole::Assistant => "Assistant",
                             MessageRole::System => "System",
-                            MessageRole::Tool => "Tool"};
+                            MessageRole::Tool => "Tool",
+                        };
                         html.push_str(&format!(
                             "<p><strong>{}:</strong> {}</p>",
                             role, message.message.content
@@ -1560,7 +1605,8 @@ impl HistoryExporter {
                             MessageRole::User => "user",
                             MessageRole::Assistant => "assistant",
                             MessageRole::System => "system",
-                            MessageRole::Tool => "tool"};
+                            MessageRole::Tool => "tool",
+                        };
                         xml.push_str(&format!(
                             "<message role=\"{}\"><content>{}</content></message>",
                             role, message.message.content
@@ -1577,7 +1623,8 @@ impl HistoryExporter {
                             MessageRole::User => "User",
                             MessageRole::Assistant => "Assistant",
                             MessageRole::System => "System",
-                            MessageRole::Tool => "Tool"};
+                            MessageRole::Tool => "Tool",
+                        };
                         text.push_str(&format!("{}: {}\n\n", role, message.message.content));
                     }
                     text
@@ -1624,7 +1671,9 @@ impl HistoryExporter {
         match stream.try_next() {
             Some(result) => Ok(result),
             None => Err(SearchError::ExportError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Export conversation history with full format support (synchronous implementation calling async methods)
@@ -1634,7 +1683,7 @@ impl HistoryExporter {
         options: &ExportOptions,
     ) -> AsyncStream<String> {
         use fluent_ai_async::emit;
-        
+
         let self_clone = self.clone();
         let options_clone = options.clone();
 
@@ -1651,33 +1700,46 @@ impl HistoryExporter {
             // Execute all async operations using the runtime handle
             rt.block_on(async move {
                 // First filter messages
-                let filtered_messages = match self_clone.filter_messages(messages, &options_clone).await {
-                    Ok(msgs) => msgs,
-                    Err(e) => {
-                        eprintln!("Export failed: Filter error: {}", e);
-                        return;
-                    }
-                };
+                let filtered_messages =
+                    match self_clone.filter_messages(messages, &options_clone).await {
+                        Ok(msgs) => msgs,
+                        Err(e) => {
+                            eprintln!("Export failed: Filter error: {}", e);
+                            return;
+                        }
+                    };
 
                 // Then export based on format using the actual async methods
                 let export_result = match options_clone.format {
                     ExportFormat::Json => {
-                        self_clone.export_json(&filtered_messages, &options_clone).await
+                        self_clone
+                            .export_json(&filtered_messages, &options_clone)
+                            .await
                     }
                     ExportFormat::Csv => {
-                        self_clone.export_csv(&filtered_messages, &options_clone).await
+                        self_clone
+                            .export_csv(&filtered_messages, &options_clone)
+                            .await
                     }
                     ExportFormat::Markdown => {
-                        self_clone.export_markdown(&filtered_messages, &options_clone).await
+                        self_clone
+                            .export_markdown(&filtered_messages, &options_clone)
+                            .await
                     }
                     ExportFormat::Html => {
-                        self_clone.export_html(&filtered_messages, &options_clone).await
+                        self_clone
+                            .export_html(&filtered_messages, &options_clone)
+                            .await
                     }
                     ExportFormat::Xml => {
-                        self_clone.export_xml(&filtered_messages, &options_clone).await
+                        self_clone
+                            .export_xml(&filtered_messages, &options_clone)
+                            .await
                     }
                     ExportFormat::PlainText => {
-                        self_clone.export_plain_text(&filtered_messages, &options_clone).await
+                        self_clone
+                            .export_plain_text(&filtered_messages, &options_clone)
+                            .await
                     }
                 };
 
@@ -1685,7 +1747,10 @@ impl HistoryExporter {
                     Ok(exported_data) => {
                         // Apply compression if needed
                         let final_data = if options_clone.compress {
-                            self_clone.compress_data(&exported_data).await.unwrap_or(exported_data)
+                            self_clone
+                                .compress_data(&exported_data)
+                                .await
+                                .unwrap_or(exported_data)
                         } else {
                             exported_data
                         };
@@ -1795,7 +1860,8 @@ impl HistoryExporter {
         });
 
         serde_json::to_string_pretty(&export_obj).map_err(|e| SearchError::ExportError {
-            reason: Arc::from(e.to_string())})
+            reason: Arc::from(e.to_string()),
+        })
     }
 
     /// Export to CSV format
@@ -2067,7 +2133,8 @@ impl HistoryExporter {
                     let encoded = base64::engine::general_purpose::STANDARD.encode(compressed);
                     let _ = sender.send(encoded);
                 }
-                Err(e) => handle_error!(e, "LZ4 compression failed")}
+                Err(e) => handle_error!(e, "LZ4 compression failed"),
+            }
             // AsyncStream automatically closes when sender is dropped
         })
     }
@@ -2079,7 +2146,9 @@ impl HistoryExporter {
         match stream.try_next() {
             Some(result) => Ok(result),
             None => Err(SearchError::ExportError {
-                reason: Arc::from("Compression stream closed unexpectedly")})}
+                reason: Arc::from("Compression stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Get export statistics (streaming)
@@ -2107,40 +2176,41 @@ impl Default for HistoryExporter {
 pub enum SearchError {
     /// Index-related error occurred
     #[error("Index error: {reason}")]
-    IndexError { 
+    IndexError {
         /// Details about the index error that occurred
-        reason: Arc<str> 
+        reason: Arc<str>,
     },
     /// Search query parsing or execution failed  
     #[error("Search error: {reason}")]
-    SearchQueryError { 
+    SearchQueryError {
         /// Details about the search query error
-        reason: Arc<str> 
+        reason: Arc<str>,
     },
     /// Tag processing error occurred
     #[error("Tag error: {reason}")]
-    TagError { 
+    TagError {
         /// Details about the tag processing error
-        reason: Arc<str> 
+        reason: Arc<str>,
     },
     /// Export operation failed
     #[error("Export error: {reason}")]
-    ExportError { 
+    ExportError {
         /// Details about the export failure
-        reason: Arc<str> 
+        reason: Arc<str>,
     },
     /// Invalid or malformed query provided
     #[error("Invalid query: {details}")]
-    InvalidQuery { 
+    InvalidQuery {
         /// Specific details about the invalid query
-        details: Arc<str> 
+        details: Arc<str>,
     },
     /// System resource overload encountered
     #[error("System overload: {resource}")]
-    SystemOverload { 
+    SystemOverload {
         /// Name of the overloaded system resource
-        resource: Arc<str> 
-    }}
+        resource: Arc<str>,
+    },
+}
 
 /// Enhanced history management system
 #[derive(Clone)]
@@ -2152,7 +2222,8 @@ pub struct EnhancedHistoryManager {
     /// History exporter
     pub exporter: Arc<HistoryExporter>,
     /// System statistics
-    pub statistics: Arc<RwLock<HistoryManagerStatistics>>}
+    pub statistics: Arc<RwLock<HistoryManagerStatistics>>,
+}
 
 /// History manager statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -2166,7 +2237,8 @@ pub struct HistoryManagerStatistics {
     /// Total number of operations performed
     pub total_operations: usize,
     /// System uptime in seconds
-    pub system_uptime: u64}
+    pub system_uptime: u64,
+}
 
 impl EnhancedHistoryManager {
     /// Create a new enhanced history manager
@@ -2182,20 +2254,25 @@ impl EnhancedHistoryManager {
                     total_queries: 0,
                     average_query_time: 0.0,
                     index_size: 0,
-                    last_index_update: 0},
+                    last_index_update: 0,
+                },
                 tagging_stats: TaggingStatistics {
                     total_tags: 0,
                     total_taggings: 0,
                     active_tags: 0,
-                    most_used_tag: None},
+                    most_used_tag: None,
+                },
                 export_stats: ExportStatistics {
                     total_exports: 0,
                     total_messages_exported: 0,
                     most_popular_format: None,
                     average_export_time: 0.0,
-                    last_export_time: 0},
+                    last_export_time: 0,
+                },
                 total_operations: 0,
-                system_uptime: 0}))}
+                system_uptime: 0,
+            })),
+        }
     }
 
     /// Add message to history manager (streaming)
@@ -2242,7 +2319,9 @@ impl EnhancedHistoryManager {
         match stream.try_next() {
             Some(_) => Ok(()),
             None => Err(SearchError::IndexError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Search messages (streaming)
@@ -2315,7 +2394,9 @@ impl EnhancedHistoryManager {
         match stream.try_next() {
             Some(result) => Ok(result),
             None => Err(SearchError::ExportError {
-                reason: Arc::from("Stream closed unexpectedly")})}
+                reason: Arc::from("Stream closed unexpectedly"),
+            }),
+        }
     }
 
     /// Get system statistics (streaming)
@@ -2410,7 +2491,8 @@ pub struct SearchOptions {
     /// Enable query expansion (synonyms, etc.)
     pub enable_query_expansion: bool,
     /// Query expansion dictionary
-    pub expansion_dictionary: HashMap<Arc<str>, Vec<Arc<str>>>}
+    pub expansion_dictionary: HashMap<Arc<str>, Vec<Arc<str>>>,
+}
 
 /// Search scope enumeration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -2426,7 +2508,8 @@ pub enum SearchScope {
     /// Search specific date range
     DateRange,
     /// Search tagged messages
-    Tagged}
+    Tagged,
+}
 
 /// Chat searcher for performing advanced search operations
 ///
@@ -2449,7 +2532,8 @@ pub struct ChatSearcher {
     /// Query processor for advanced queries
     query_processor: Arc<QueryProcessor>,
     /// Result ranker for relevance scoring
-    result_ranker: Arc<ResultRanker>}
+    result_ranker: Arc<ResultRanker>,
+}
 
 impl std::fmt::Debug for ChatSearcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -2474,7 +2558,8 @@ pub struct CachedSearchResult {
     /// Cache TTL in seconds
     pub ttl_seconds: u64,
     /// Query hash for validation
-    pub query_hash: Arc<str>}
+    pub query_hash: Arc<str>,
+}
 
 // Duplicate SearchResult removed - using the one defined above with enhanced fields
 
@@ -2488,7 +2573,8 @@ pub struct MatchPosition {
     /// Matched term
     pub term: Arc<str>,
     /// Match type (exact, fuzzy, semantic)
-    pub match_type: MatchType}
+    pub match_type: MatchType,
+}
 
 /// Match type enumeration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -2500,7 +2586,8 @@ pub enum MatchType {
     /// Semantic match (similar meaning)
     Semantic,
     /// Wildcard match
-    Wildcard}
+    Wildcard,
+}
 
 /// Search result metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2514,7 +2601,8 @@ pub struct SearchResultMetadata {
     /// Index used for search
     pub index_version: u64,
     /// Search algorithm used
-    pub algorithm: Arc<str>}
+    pub algorithm: Arc<str>,
+}
 
 /// Chat searcher statistics
 #[derive(Debug, Default)]
@@ -2530,7 +2618,8 @@ pub struct ChatSearcherStats {
     /// Total results returned
     pub total_results: ConsistentCounter,
     /// Failed searches
-    pub failed_searches: ConsistentCounter}
+    pub failed_searches: ConsistentCounter,
+}
 
 /// Query processor for advanced query parsing
 #[derive(Debug)]
@@ -2540,7 +2629,8 @@ pub struct QueryProcessor {
     expansion_enabled: bool,
     /// Expansion dictionary
     #[allow(dead_code)] // TODO: Implement in query expansion system
-    expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>}
+    expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>,
+}
 
 /// Result ranker for relevance scoring
 #[derive(Debug)]
@@ -2550,7 +2640,8 @@ pub struct ResultRanker {
     algorithm: RankingAlgorithm,
     /// Boost factors for different fields
     #[allow(dead_code)] // TODO: Implement in ranking system
-    field_boosts: HashMap<Arc<str>, f32>}
+    field_boosts: HashMap<Arc<str>, f32>,
+}
 
 /// Ranking algorithm enumeration
 #[derive(Debug, Clone, Copy)]
@@ -2562,7 +2653,8 @@ pub enum RankingAlgorithm {
     /// Simple relevance scoring
     Simple,
     /// Machine learning based ranking
-    MlRanking}
+    MlRanking,
+}
 
 impl Default for SearchOptions {
     fn default() -> Self {
@@ -2585,7 +2677,8 @@ impl Default for SearchOptions {
             min_query_length: 1,
             max_query_length: 1000,
             enable_query_expansion: false,
-            expansion_dictionary: HashMap::new()}
+            expansion_dictionary: HashMap::new(),
+        }
     }
 }
 
@@ -2598,7 +2691,8 @@ impl ChatSearcher {
             cache: Arc::new(SkipMap::new()),
             stats: Arc::new(ChatSearcherStats::default()),
             query_processor: Arc::new(QueryProcessor::new()),
-            result_ranker: Arc::new(ResultRanker::new())}
+            result_ranker: Arc::new(ResultRanker::new()),
+        }
     }
 
     /// Create a chat searcher with custom options
@@ -2609,7 +2703,8 @@ impl ChatSearcher {
             cache: Arc::new(SkipMap::new()),
             stats: Arc::new(ChatSearcherStats::default()),
             query_processor: Arc::new(QueryProcessor::new()),
-            result_ranker: Arc::new(ResultRanker::new())}
+            result_ranker: Arc::new(ResultRanker::new()),
+        }
     }
 
     /// Perform a search with the given query
@@ -2687,7 +2782,8 @@ impl ChatSearcher {
                     .unwrap_or_default()
                     .as_secs(),
                 ttl_seconds: self.options.cache_ttl_seconds,
-                query_hash: query_hash.clone()};
+                query_hash: query_hash.clone(),
+            };
             self.cache.insert(query_hash, cached_result);
         }
 
@@ -2757,7 +2853,8 @@ pub struct ProcessedQuery {
     /// Query operator
     pub operator: QueryOperator,
     /// Processing metadata
-    pub metadata: QueryMetadata}
+    pub metadata: QueryMetadata,
+}
 
 /// Query metadata
 #[derive(Debug, Clone)]
@@ -2769,14 +2866,16 @@ pub struct QueryMetadata {
     /// Expansion applied
     pub expansion_applied: bool,
     /// Normalization applied
-    pub normalization_applied: bool}
+    pub normalization_applied: bool,
+}
 
 impl QueryProcessor {
     /// Create a new query processor
     pub fn new() -> Self {
         Self {
             expansion_enabled: false,
-            expansion_dict: HashMap::new()}
+            expansion_dict: HashMap::new(),
+        }
     }
 
     /// Process a query string
@@ -2813,7 +2912,9 @@ impl QueryProcessor {
                     .as_secs(),
                 processing_time_us: start_time.elapsed().as_micros() as u64,
                 expansion_applied: options.enable_query_expansion,
-                normalization_applied: true}})
+                normalization_applied: true,
+            },
+        })
     }
 
     /// Expand query terms using synonyms
@@ -2839,7 +2940,8 @@ impl ResultRanker {
     pub fn new() -> Self {
         Self {
             algorithm: RankingAlgorithm::Bm25,
-            field_boosts: HashMap::new()}
+            field_boosts: HashMap::new(),
+        }
     }
 
     /// Rank search results by relevance

@@ -1,22 +1,23 @@
 //! Chat functionality for memory-enhanced agent conversations
 
 use std::sync::{
+    atomic::{AtomicUsize, Ordering},
     Arc,
-    atomic::{AtomicUsize, Ordering}};
+};
 
 use arrayvec::ArrayVec;
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 use thiserror::Error;
-// Removed unused import: use tokio_stream::StreamExt;
 
+// Import real completion infrastructure
+use crate::core::engine::{CompletionRequest, Engine, EngineConfig};
+// Removed unused import: use tokio_stream::StreamExt;
 use crate::domain::agent::role::CandleAgentRoleImpl;
 use crate::domain::memory::primitives::{MemoryContent, MemoryTypeEnum};
 use crate::domain::memory::{Memory, MemoryError, MemoryNode};
 use crate::domain::memory::{MemoryTool, MemoryToolError};
-// Import real completion infrastructure
-use crate::core::engine::{Engine, EngineConfig, CompletionRequest};
 
 /// Maximum number of relevant memories for context injection
 const MAX_RELEVANT_MEMORIES: usize = 10;
@@ -44,7 +45,8 @@ pub enum ChatError {
     Message(String),
     /// System error
     #[error("System error: {0}")]
-    System(String)}
+    System(String),
+}
 
 /// Context injection result with relevance scoring
 #[derive(Debug, Clone)]
@@ -54,7 +56,8 @@ pub struct ContextInjectionResult {
     /// Score indicating how relevant the injected context is (0.0 to 1.0)
     pub relevance_score: f64,
     /// Number of memory nodes that were used in the injection
-    pub memory_nodes_used: usize}
+    pub memory_nodes_used: usize,
+}
 
 /// Memory-enhanced chat response with zero-allocation collections
 #[derive(Debug, Clone)]
@@ -64,7 +67,8 @@ pub struct MemoryEnhancedChatResponse {
     /// Details about the context that was injected
     pub context_injection: ContextInjectionResult,
     /// Memory nodes that were considered and stored, using fixed-size allocation
-    pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>}
+    pub memorized_nodes: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>,
+}
 
 impl CandleAgentRoleImpl {
     /// Generate real AI response using `Engine` with `TextGenerator`
@@ -101,12 +105,14 @@ impl CandleAgentRoleImpl {
 
         // Get real AI response using Engine with TextGenerator via AsyncStream
         let mut completion_stream = engine.process_completion_stream(completion_request);
-        
+
         // Collect first response from AsyncStream using try_next pattern
         if let Some(completion_response) = completion_stream.try_next() {
             Ok(completion_response.text().to_string())
         } else {
-            Err(ChatError::System("No response from completion stream".to_string()))
+            Err(ChatError::System(
+                "No response from completion stream".to_string(),
+            ))
         }
     }
 
@@ -137,19 +143,24 @@ impl CandleAgentRoleImpl {
             // Inject relevant memory context with zero-allocation processing
             let memory_arc = Arc::new(memory_clone);
             let mut context_stream = self_clone.inject_memory_context(&message, &memory_arc);
-            
+
             if let Some(context_injection) = context_stream.try_next() {
                 // Generate real AI response using Engine with TextGenerator
-                match self_clone.generate_ai_response(&message, &context_injection.injected_context) {
+                match self_clone.generate_ai_response(&message, &context_injection.injected_context)
+                {
                     Ok(response) => {
                         // Memorize the conversation turn with zero-allocation node creation
-                        let mut memorize_stream = self_clone.memorize_conversation(&message, &response, &memory_tool_clone);
-                        
+                        let mut memorize_stream = self_clone.memorize_conversation(
+                            &message,
+                            &response,
+                            &memory_tool_clone,
+                        );
+
                         if let Some(memorized_nodes) = memorize_stream.try_next() {
                             let result = MemoryEnhancedChatResponse {
                                 response,
                                 context_injection,
-                                memorized_nodes
+                                memorized_nodes,
                             };
                             let _ = sender.send(result);
                         }
@@ -191,9 +202,9 @@ impl CandleAgentRoleImpl {
             let result = ContextInjectionResult {
                 injected_context,
                 relevance_score,
-                memory_nodes_used
+                memory_nodes_used,
             };
-            
+
             let _ = sender.send(result);
         })
     }
@@ -274,7 +285,10 @@ impl CandleAgentRoleImpl {
             let mut memorized_nodes = ArrayVec::new();
 
             // Create memory node for user message using direct constructor
-            let user_memory = MemoryNode::new(MemoryTypeEnum::Episodic, MemoryContent::text(user_message.as_str()));
+            let user_memory = MemoryNode::new(
+                MemoryTypeEnum::Episodic,
+                MemoryContent::text(user_message.as_str()),
+            );
 
             // Store user memory with zero-allocation error handling - PURE STREAMING
             let mut store_stream = memory_tool_clone.memory().store_memory(&user_memory);
@@ -326,11 +340,11 @@ pub enum CandleChatError {
     /// System-level error occurred
     #[error("System error: {0}")]
     System(String),
-    
+
     /// Memory subsystem error
     #[error("Memory error: {0}")]
     Memory(#[from] MemoryError),
-    
+
     /// Memory tool execution error
     #[error("Memory tool error: {0}")]
     MemoryTool(#[from] MemoryToolError),

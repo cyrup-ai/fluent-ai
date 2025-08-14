@@ -6,10 +6,11 @@
 //! - Logical operations (&&, ||)
 //! - Function calls (length(), count(), match(), search(), value())
 
+use std::cell::RefCell;
+
 use crate::json_path::error::{JsonPathResult, deserialization_error};
 use crate::json_path::functions::FunctionEvaluator;
 use crate::json_path::parser::{ComparisonOp, FilterExpression, FilterValue, LogicalOp};
-use std::cell::RefCell;
 
 // Shared thread-local storage for missing property context
 thread_local! {
@@ -30,7 +31,7 @@ impl FilterEvaluator {
         let empty_context = std::collections::HashSet::new();
         Self::evaluate_predicate_with_context(context, expr, &empty_context)
     }
-    
+
     /// Evaluate filter predicate with property existence context
     #[inline]
     pub fn evaluate_predicate_with_context(
@@ -38,8 +39,11 @@ impl FilterEvaluator {
         expr: &FilterExpression,
         existing_properties: &std::collections::HashSet<String>,
     ) -> JsonPathResult<bool> {
-        println!("DEBUG: evaluate_predicate called with context={:?}, expr={:?}", 
-                 serde_json::to_string(context).unwrap_or("invalid".to_string()), expr);
+        println!(
+            "DEBUG: evaluate_predicate called with context={:?}, expr={:?}",
+            serde_json::to_string(context).unwrap_or("invalid".to_string()),
+            expr
+        );
         match expr {
             FilterExpression::Property { path } => {
                 // RFC 9535: Property access in filter context checks existence and truthiness
@@ -52,17 +56,26 @@ impl FilterEvaluator {
                 operator,
                 right,
             } => {
-                let left_val = Self::evaluate_expression_with_context(context, left, existing_properties)?;
-                let right_val = Self::evaluate_expression_with_context(context, right, existing_properties)?;
-                Self::compare_values_with_context(&left_val, *operator, &right_val, existing_properties)
+                let left_val =
+                    Self::evaluate_expression_with_context(context, left, existing_properties)?;
+                let right_val =
+                    Self::evaluate_expression_with_context(context, right, existing_properties)?;
+                Self::compare_values_with_context(
+                    &left_val,
+                    *operator,
+                    &right_val,
+                    existing_properties,
+                )
             }
             FilterExpression::Logical {
                 left,
                 operator,
                 right,
             } => {
-                let left_result = Self::evaluate_predicate_with_context(context, left, existing_properties)?;
-                let right_result = Self::evaluate_predicate_with_context(context, right, existing_properties)?;
+                let left_result =
+                    Self::evaluate_predicate_with_context(context, left, existing_properties)?;
+                let right_result =
+                    Self::evaluate_predicate_with_context(context, right, existing_properties)?;
                 Ok(match operator {
                     LogicalOp::And => left_result && right_result,
                     LogicalOp::Or => left_result || right_result,
@@ -73,33 +86,54 @@ impl FilterEvaluator {
                     context,
                     name,
                     args,
-                    &|ctx, expr| Self::evaluate_expression_with_context(ctx, expr, existing_properties),
+                    &|ctx, expr| {
+                        Self::evaluate_expression_with_context(ctx, expr, existing_properties)
+                    },
                 )?;
                 Ok(Self::is_truthy(&value))
             }
-            _ => Ok(Self::is_truthy(&Self::evaluate_expression_with_context(context, expr, existing_properties)?)),
+            _ => Ok(Self::is_truthy(&Self::evaluate_expression_with_context(
+                context,
+                expr,
+                existing_properties,
+            )?)),
         }
     }
 
     /// Check if property path exists and is truthy in filter context
     /// This is the correct semantics for [?@.property] filters  
     #[inline]
-    fn property_exists_and_truthy(context: &serde_json::Value, path: &[String]) -> JsonPathResult<bool> {
-        println!("DEBUG: property_exists_and_truthy called with context={:?}, path={:?}", 
-                 serde_json::to_string(context).unwrap_or("invalid".to_string()), path);
+    fn property_exists_and_truthy(
+        context: &serde_json::Value,
+        path: &[String],
+    ) -> JsonPathResult<bool> {
+        println!(
+            "DEBUG: property_exists_and_truthy called with context={:?}, path={:?}",
+            serde_json::to_string(context).unwrap_or("invalid".to_string()),
+            path
+        );
         let mut current = context;
 
         for property in path {
-            println!("DEBUG: Checking property '{}' in current={:?}", property, 
-                     serde_json::to_string(current).unwrap_or("invalid".to_string()));
+            println!(
+                "DEBUG: Checking property '{}' in current={:?}",
+                property,
+                serde_json::to_string(current).unwrap_or("invalid".to_string())
+            );
             if let Some(obj) = current.as_object() {
                 if let Some(value) = obj.get(property) {
-                    println!("DEBUG: Found property '{}', value={:?}", property, 
-                             serde_json::to_string(value).unwrap_or("invalid".to_string()));
+                    println!(
+                        "DEBUG: Found property '{}', value={:?}",
+                        property,
+                        serde_json::to_string(value).unwrap_or("invalid".to_string())
+                    );
                     current = value;
                 } else {
                     // Property doesn't exist - return false
-                    println!("DEBUG: Property '{}' does not exist, returning false", property);
+                    println!(
+                        "DEBUG: Property '{}' does not exist, returning false",
+                        property
+                    );
                     return Ok(false);
                 }
             } else {
@@ -115,10 +149,6 @@ impl FilterEvaluator {
         Ok(result)
     }
 
-
-
-
-    
     /// Resolve property path with context about which properties exist
     #[inline]
     fn resolve_property_path_with_context(
@@ -137,7 +167,10 @@ impl FilterEvaluator {
                     // For top-level properties, we need to consider context
                     if i == 0 && !path.is_empty() {
                         let exists_in_context = existing_properties.contains(property);
-                        println!("DEBUG: Property '{}' is missing, exists_in_context={}", property, exists_in_context);
+                        println!(
+                            "DEBUG: Property '{}' is missing, exists_in_context={}",
+                            property, exists_in_context
+                        );
                         // Store property name for context-aware comparison
                         MISSING_PROPERTY_CONTEXT.with(|ctx| {
                             *ctx.borrow_mut() = Some((property.clone(), exists_in_context));
@@ -185,7 +218,7 @@ impl FilterEvaluator {
         let empty_context = std::collections::HashSet::new();
         Self::evaluate_expression_with_context(context, expr, &empty_context)
     }
-    
+
     /// Evaluate expression with property context
     #[inline]
     pub fn evaluate_expression_with_context(
@@ -195,18 +228,17 @@ impl FilterEvaluator {
     ) -> JsonPathResult<FilterValue> {
         match expr {
             FilterExpression::Current => Ok(Self::json_value_to_filter_value(context)),
-            FilterExpression::Property { path } => Self::resolve_property_path_with_context(context, path, existing_properties),
+            FilterExpression::Property { path } => {
+                Self::resolve_property_path_with_context(context, path, existing_properties)
+            }
             FilterExpression::JsonPath { selectors } => {
                 Self::evaluate_jsonpath_selectors(context, selectors)
             }
             FilterExpression::Literal { value } => Ok(value.clone()),
             FilterExpression::Function { name, args } => {
-                FunctionEvaluator::evaluate_function_value(
-                    context,
-                    name,
-                    args,
-                    &|ctx, expr| Self::evaluate_expression_with_context(ctx, expr, existing_properties),
-                )
+                FunctionEvaluator::evaluate_function_value(context, name, args, &|ctx, expr| {
+                    Self::evaluate_expression_with_context(ctx, expr, existing_properties)
+                })
             }
             _ => Err(deserialization_error(
                 "complex expressions not supported in value context".to_string(),
@@ -226,7 +258,7 @@ impl FilterEvaluator {
         let empty_context = std::collections::HashSet::new();
         Self::compare_values_with_context(left, op, right, &empty_context)
     }
-    
+
     /// Compare two filter values with property existence context
     #[inline]
     fn compare_values_with_context(
@@ -289,7 +321,7 @@ impl FilterEvaluator {
                         Ok(false)
                     }
                 })
-            },
+            }
             (FilterValue::Null, FilterValue::Missing) => {
                 MISSING_PROPERTY_CONTEXT.with(|ctx| {
                     if let Some((_, exists_in_context)) = ctx.borrow().clone() {
@@ -305,7 +337,7 @@ impl FilterEvaluator {
                         Ok(false)
                     }
                 })
-            },
+            }
             // Other missing property comparisons always false
             (FilterValue::Missing, _) => Ok(false),
             (_, FilterValue::Missing) => Ok(false),

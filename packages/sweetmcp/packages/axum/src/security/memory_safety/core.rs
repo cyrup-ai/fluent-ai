@@ -4,13 +4,14 @@
 //! allocation patterns, blazing-fast performance, and comprehensive safety validation
 //! for production environments.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use arrayvec::{ArrayString, ArrayVec};
 use dashmap::DashMap;
 use memchr::memmem;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::timeout;
 
 /// Maximum number of memory safety violations to track without heap allocation

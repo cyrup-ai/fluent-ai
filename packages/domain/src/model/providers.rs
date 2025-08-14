@@ -4,4 +4,4 @@
 //! model-info is the single source of truth for all provider types.
 
 // Re-export the ProviderTrait and Provider enum from model-info
-pub use model_info::{ProviderTrait, DiscoveryProvider as Provider};
+pub use model_info::{DiscoveryProvider as Provider, ProviderTrait};

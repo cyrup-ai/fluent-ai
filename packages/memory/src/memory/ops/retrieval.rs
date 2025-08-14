@@ -20,11 +20,13 @@ pub enum RetrievalMethod {
     Semantic,
     Temporal,
     Keyword,
-    Hybrid}
+    Hybrid,
+}
 
 /// A pending retrieval operation
 pub struct PendingRetrieval {
-    rx: oneshot::Receiver<Result<Vec<RetrievalResult>>>}
+    rx: oneshot::Receiver<Result<Vec<RetrievalResult>>>,
+}
 
 impl PendingRetrieval {
     pub fn new(rx: oneshot::Receiver<Result<Vec<RetrievalResult>>>) -> Self {
@@ -41,7 +43,8 @@ impl Future for PendingRetrieval {
             Poll::Ready(Err(_)) => Poll::Ready(Err(crate::utils::error::Error::Internal(
                 "Retrieval task failed".to_string(),
             ))),
-            Poll::Pending => Poll::Pending}
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
@@ -72,13 +75,15 @@ pub struct RetrievalResult {
     pub method: RetrievalMethod,
 
     /// Additional metadata
-    pub metadata: HashMap<String, serde_json::Value>}
+    pub metadata: HashMap<String, serde_json::Value>,
+}
 
 /// Hybrid retrieval strategy combining multiple approaches
 pub struct HybridRetrieval<V: VectorStore> {
     vector_store: V,
     strategies: std::sync::Arc<Vec<std::sync::Arc<dyn RetrievalStrategy>>>,
-    weights: std::sync::Arc<HashMap<String, f32>>}
+    weights: std::sync::Arc<HashMap<String, f32>>,
+}
 
 impl<V: VectorStore> HybridRetrieval<V> {
     /// Create a new hybrid retrieval strategy
@@ -91,7 +96,8 @@ impl<V: VectorStore> HybridRetrieval<V> {
         Self {
             vector_store,
             strategies: std::sync::Arc::new(Vec::new()),
-            weights: std::sync::Arc::new(weights)}
+            weights: std::sync::Arc::new(weights),
+        }
     }
 
     /// Add a retrieval strategy
@@ -123,7 +129,8 @@ impl<V: VectorStore> HybridRetrieval<V> {
                 id: result.id,
                 method: RetrievalMethod::VectorSimilarity,
                 score: result.score,
-                metadata: HashMap::new()})
+                metadata: HashMap::new(),
+            })
             .collect();
         Ok(retrieval_results)
     }
@@ -194,12 +201,14 @@ impl<V: VectorStore + Send + Sync + 'static> RetrievalStrategy for HybridRetriev
 
 /// Semantic similarity retrieval using vector embeddings
 pub struct SemanticRetrieval<V: VectorStore> {
-    vector_store: std::sync::Arc<V>}
+    vector_store: std::sync::Arc<V>,
+}
 
 impl<V: VectorStore> SemanticRetrieval<V> {
     pub fn new(vector_store: V) -> Self {
         Self {
-            vector_store: std::sync::Arc::new(vector_store)}
+            vector_store: std::sync::Arc::new(vector_store),
+        }
     }
 }
 
@@ -249,7 +258,8 @@ impl<V: VectorStore + Send + Sync + 'static> RetrievalStrategy for SemanticRetri
 /// Temporal proximity retrieval with production-ready database integration
 pub struct TemporalRetrieval {
     time_decay_factor: f32,
-    memory_manager: std::sync::Arc<dyn crate::memory::MemoryManager>}
+    memory_manager: std::sync::Arc<dyn crate::memory::MemoryManager>,
+}
 
 impl TemporalRetrieval {
     /// Create a new temporal retrieval strategy with memory manager
@@ -259,7 +269,8 @@ impl TemporalRetrieval {
     ) -> Self {
         Self {
             time_decay_factor,
-            memory_manager}
+            memory_manager,
+        }
     }
 }
 
@@ -285,7 +296,8 @@ impl RetrievalStrategy for TemporalRetrieval {
                     let thirty_days_ago = now - chrono::Duration::days(30);
                     temporal_filter.time_range = Some(crate::memory::filter::TimeRange {
                         start: Some(thirty_days_ago),
-                        end: Some(now)});
+                        end: Some(now),
+                    });
                 }
 
                 // Apply limit multiplier to get enough results for filtering
@@ -452,7 +464,8 @@ impl RetrievalStrategy for TemporalRetrieval {
                             id: memory.id,
                             score: final_score,
                             method: RetrievalMethod::Temporal,
-                            metadata}
+                            metadata,
+                        }
                     })
                     .collect();
 
@@ -483,7 +496,8 @@ impl RetrievalStrategy for TemporalRetrieval {
 pub struct RetrievalManager<V: VectorStore> {
     strategies: HashMap<String, std::sync::Arc<dyn RetrievalStrategy>>,
     default_strategy: String,
-    vector_store: V}
+    vector_store: V,
+}
 
 impl<V: VectorStore + Clone + Send + Sync + 'static> RetrievalManager<V> {
     /// Create a new retrieval manager
@@ -502,7 +516,8 @@ impl<V: VectorStore + Clone + Send + Sync + 'static> RetrievalManager<V> {
         Self {
             strategies,
             default_strategy: "semantic".to_string(),
-            vector_store}
+            vector_store,
+        }
     }
 
     /// Add temporal retrieval strategy with a memory manager

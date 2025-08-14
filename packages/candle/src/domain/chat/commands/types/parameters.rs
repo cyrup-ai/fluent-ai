@@ -3,9 +3,10 @@
 //! Provides blazing-fast parameter validation and type checking with owned strings
 //! allocated once for maximum performance. No Arc usage, no locking.
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
 
 use super::errors::{CandleCommandError, ValidationResult};
 
@@ -63,73 +64,71 @@ impl ParameterType {
         match self {
             Self::String => Ok(()),
             Self::Integer => {
-                i64::from_str(value).map_err(|_| 
-                    CandleCommandError::validation_failed(
-                        format!("Invalid integer: {}", value)
-                    )
-                )?;
+                i64::from_str(value).map_err(|_| {
+                    CandleCommandError::validation_failed(format!("Invalid integer: {}", value))
+                })?;
                 Ok(())
             }
             Self::Float => {
-                f64::from_str(value).map_err(|_| 
-                    CandleCommandError::validation_failed(
-                        format!("Invalid float: {}", value)
-                    )
-                )?;
+                f64::from_str(value).map_err(|_| {
+                    CandleCommandError::validation_failed(format!("Invalid float: {}", value))
+                })?;
                 Ok(())
             }
-            Self::Boolean => {
-                match value.to_lowercase().as_str() {
-                    "true" | "false" | "1" | "0" | "yes" | "no" | "on" | "off" => Ok(()),
-                    _ => Err(CandleCommandError::validation_failed(
-                        format!("Invalid boolean: {}", value)
-                    ))
-                }
-            }
+            Self::Boolean => match value.to_lowercase().as_str() {
+                "true" | "false" | "1" | "0" | "yes" | "no" | "on" | "off" => Ok(()),
+                _ => Err(CandleCommandError::validation_failed(format!(
+                    "Invalid boolean: {}",
+                    value
+                ))),
+            },
             Self::StringArray => {
                 // Basic validation - check if it's valid JSON array
                 if value.starts_with('[') && value.ends_with(']') {
                     Ok(())
                 } else {
                     Err(CandleCommandError::validation_failed(
-                        "String array must be JSON array format".to_string()
+                        "String array must be JSON array format".to_string(),
                     ))
                 }
             }
             Self::FilePath | Self::Path => {
                 if value.is_empty() {
                     Err(CandleCommandError::validation_failed(
-                        "Path cannot be empty".to_string()
+                        "Path cannot be empty".to_string(),
                     ))
                 } else {
                     Ok(())
                 }
             }
             Self::Url => {
-                if value.starts_with("http://") || value.starts_with("https://") || 
-                   value.starts_with("ftp://") || value.starts_with("file://") {
+                if value.starts_with("http://")
+                    || value.starts_with("https://")
+                    || value.starts_with("ftp://")
+                    || value.starts_with("file://")
+                {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid URL format: {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid URL format: {}",
+                        value
+                    )))
                 }
             }
             Self::Json => {
-                serde_json::from_str::<serde_json::Value>(value).map_err(|_| 
-                    CandleCommandError::validation_failed(
-                        format!("Invalid JSON: {}", value)
-                    )
-                )?;
+                serde_json::from_str::<serde_json::Value>(value).map_err(|_| {
+                    CandleCommandError::validation_failed(format!("Invalid JSON: {}", value))
+                })?;
                 Ok(())
             }
             Self::Enum { values } => {
                 if values.contains(&value.to_string()) {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid enum value: {}. Allowed: {:?}", value, values)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid enum value: {}. Allowed: {:?}",
+                        value, values
+                    )))
                 }
             }
             Self::Duration => {
@@ -137,9 +136,10 @@ impl ParameterType {
                 if self.parse_duration(value).is_some() {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid duration format: {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid duration format: {}",
+                        value
+                    )))
                 }
             }
             Self::Size => {
@@ -147,44 +147,49 @@ impl ParameterType {
                 if self.parse_size(value).is_some() {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid size format: {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid size format: {}",
+                        value
+                    )))
                 }
             }
             Self::Regex => {
-                regex::Regex::new(value).map_err(|_| 
-                    CandleCommandError::validation_failed(
-                        format!("Invalid regex pattern: {}", value)
-                    )
-                )?;
+                regex::Regex::new(value).map_err(|_| {
+                    CandleCommandError::validation_failed(format!(
+                        "Invalid regex pattern: {}",
+                        value
+                    ))
+                })?;
                 Ok(())
             }
             Self::Email => {
                 if value.contains('@') && value.contains('.') {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid email format: {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid email format: {}",
+                        value
+                    )))
                 }
             }
             Self::IpAddress => {
                 if value.parse::<std::net::IpAddr>().is_ok() {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid IP address: {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid IP address: {}",
+                        value
+                    )))
                 }
             }
             Self::Uuid => {
                 if value.len() == 36 && value.chars().filter(|&c| c == '-').count() == 4 {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid UUID format: {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid UUID format: {}",
+                        value
+                    )))
                 }
             }
             Self::Date => {
@@ -192,9 +197,10 @@ impl ParameterType {
                 if value.len() == 10 && value.chars().filter(|&c| c == '-').count() == 2 {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid date format (expected YYYY-MM-DD): {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid date format (expected YYYY-MM-DD): {}",
+                        value
+                    )))
                 }
             }
             Self::Time => {
@@ -202,9 +208,10 @@ impl ParameterType {
                 if value.len() >= 5 && value.chars().filter(|&c| c == ':').count() >= 1 {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid time format (expected HH:MM:SS): {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid time format (expected HH:MM:SS): {}",
+                        value
+                    )))
                 }
             }
             Self::DateTime => {
@@ -212,37 +219,38 @@ impl ParameterType {
                 if value.contains('T') || value.len() >= 19 {
                     Ok(())
                 } else {
-                    Err(CandleCommandError::validation_failed(
-                        format!("Invalid datetime format (expected ISO 8601): {}", value)
-                    ))
+                    Err(CandleCommandError::validation_failed(format!(
+                        "Invalid datetime format (expected ISO 8601): {}",
+                        value
+                    )))
                 }
             }
         }
     }
-    
+
     /// Parse duration string to seconds - zero allocation where possible
     #[inline]
     fn parse_duration(&self, value: &str) -> Option<u64> {
         if value.is_empty() {
             return None;
         }
-        
+
         let (num_str, unit) = if value.ends_with("ms") {
-            (&value[..value.len()-2], "ms")
+            (&value[..value.len() - 2], "ms")
         } else if let Some(last_char) = value.chars().last() {
             match last_char {
-                's' => (&value[..value.len()-1], "s"),
-                'm' => (&value[..value.len()-1], "m"),
-                'h' => (&value[..value.len()-1], "h"),
-                'd' => (&value[..value.len()-1], "d"),
+                's' => (&value[..value.len() - 1], "s"),
+                'm' => (&value[..value.len() - 1], "m"),
+                'h' => (&value[..value.len() - 1], "h"),
+                'd' => (&value[..value.len() - 1], "d"),
                 _ => (value, "s"), // default to seconds
             }
         } else {
             return None;
         };
-        
+
         let num: u64 = num_str.parse().ok()?;
-        
+
         Some(match unit {
             "ms" => num / 1000,
             "s" => num,
@@ -252,32 +260,32 @@ impl ParameterType {
             _ => num,
         })
     }
-    
+
     /// Parse size string to bytes - zero allocation where possible
     #[inline]
     fn parse_size(&self, value: &str) -> Option<u64> {
         if value.is_empty() {
             return None;
         }
-        
+
         let (num_str, multiplier) = if value.ends_with("KB") {
-            (&value[..value.len()-2], 1024)
+            (&value[..value.len() - 2], 1024)
         } else if value.ends_with("MB") {
-            (&value[..value.len()-2], 1024 * 1024)
+            (&value[..value.len() - 2], 1024 * 1024)
         } else if value.ends_with("GB") {
-            (&value[..value.len()-2], 1024 * 1024 * 1024)
+            (&value[..value.len() - 2], 1024 * 1024 * 1024)
         } else if value.ends_with("TB") {
-            (&value[..value.len()-2], 1024_u64.pow(4))
+            (&value[..value.len() - 2], 1024_u64.pow(4))
         } else if value.ends_with('B') {
-            (&value[..value.len()-1], 1)
+            (&value[..value.len() - 1], 1)
         } else {
             (value, 1) // assume bytes
         };
-        
+
         let num: u64 = num_str.parse().ok()?;
         Some(num * multiplier)
     }
-    
+
     /// Get type name as static string for zero allocation
     #[inline]
     pub fn type_name(&self) -> &'static str {
@@ -332,9 +340,9 @@ impl ParameterInfo {
     /// Create a new required parameter with zero allocation constructor
     #[inline]
     pub fn required(
-        name: impl Into<String>, 
-        description: impl Into<String>, 
-        parameter_type: ParameterType
+        name: impl Into<String>,
+        description: impl Into<String>,
+        parameter_type: ParameterType,
     ) -> Self {
         Self {
             name: name.into(),
@@ -348,14 +356,14 @@ impl ParameterInfo {
             examples: Vec::new(),
         }
     }
-    
+
     /// Create a new optional parameter with default value
     #[inline]
     pub fn optional(
-        name: impl Into<String>, 
-        description: impl Into<String>, 
+        name: impl Into<String>,
+        description: impl Into<String>,
         parameter_type: ParameterType,
-        default_value: impl Into<String>
+        default_value: impl Into<String>,
     ) -> Self {
         Self {
             name: name.into(),
@@ -369,7 +377,7 @@ impl ParameterInfo {
             examples: Vec::new(),
         }
     }
-    
+
     /// Add numeric range constraints - builder pattern for fluent API
     #[inline]
     pub fn with_range(mut self, min: f64, max: f64) -> Self {
@@ -377,92 +385,96 @@ impl ParameterInfo {
         self.max_value = Some(max);
         self
     }
-    
+
     /// Add validation pattern - builder pattern for fluent API
     #[inline]
     pub fn with_pattern(mut self, pattern: impl Into<String>) -> Self {
         self.pattern = Some(pattern.into());
         self
     }
-    
+
     /// Add usage examples - builder pattern for fluent API
     #[inline]
     pub fn with_examples(mut self, examples: Vec<String>) -> Self {
         self.examples = examples;
         self
     }
-    
+
     /// Validate parameter value with comprehensive checking
     #[inline]
     pub fn validate(&self, value: &str) -> ValidationResult {
         // Type validation first
         self.parameter_type.validate(value)?;
-        
+
         // Range validation for numeric types
         if let Some(min) = self.min_value {
             match &self.parameter_type {
                 ParameterType::Integer => {
-                    let val = value.parse::<i64>().map_err(|_| 
-                        CandleCommandError::validation_failed("Invalid integer")
-                    )?;
+                    let val = value
+                        .parse::<i64>()
+                        .map_err(|_| CandleCommandError::validation_failed("Invalid integer"))?;
                     if (val as f64) < min {
-                        return Err(CandleCommandError::validation_failed(
-                            format!("Value {} is below minimum {}", val, min)
-                        ));
+                        return Err(CandleCommandError::validation_failed(format!(
+                            "Value {} is below minimum {}",
+                            val, min
+                        )));
                     }
                 }
                 ParameterType::Float => {
-                    let val = value.parse::<f64>().map_err(|_| 
-                        CandleCommandError::validation_failed("Invalid float")
-                    )?;
+                    let val = value
+                        .parse::<f64>()
+                        .map_err(|_| CandleCommandError::validation_failed("Invalid float"))?;
                     if val < min {
-                        return Err(CandleCommandError::validation_failed(
-                            format!("Value {} is below minimum {}", val, min)
-                        ));
+                        return Err(CandleCommandError::validation_failed(format!(
+                            "Value {} is below minimum {}",
+                            val, min
+                        )));
                     }
                 }
                 _ => {}
             }
         }
-        
+
         if let Some(max) = self.max_value {
             match &self.parameter_type {
                 ParameterType::Integer => {
-                    let val = value.parse::<i64>().map_err(|_| 
-                        CandleCommandError::validation_failed("Invalid integer")
-                    )?;
+                    let val = value
+                        .parse::<i64>()
+                        .map_err(|_| CandleCommandError::validation_failed("Invalid integer"))?;
                     if (val as f64) > max {
-                        return Err(CandleCommandError::validation_failed(
-                            format!("Value {} is above maximum {}", val, max)
-                        ));
+                        return Err(CandleCommandError::validation_failed(format!(
+                            "Value {} is above maximum {}",
+                            val, max
+                        )));
                     }
                 }
                 ParameterType::Float => {
-                    let val = value.parse::<f64>().map_err(|_| 
-                        CandleCommandError::validation_failed("Invalid float")
-                    )?;
+                    let val = value
+                        .parse::<f64>()
+                        .map_err(|_| CandleCommandError::validation_failed("Invalid float"))?;
                     if val > max {
-                        return Err(CandleCommandError::validation_failed(
-                            format!("Value {} is above maximum {}", val, max)
-                        ));
+                        return Err(CandleCommandError::validation_failed(format!(
+                            "Value {} is above maximum {}",
+                            val, max
+                        )));
                     }
                 }
                 _ => {}
             }
         }
-        
+
         // Pattern validation
         if let Some(pattern) = &self.pattern {
-            let regex = regex::Regex::new(pattern).map_err(|_| 
-                CandleCommandError::validation_failed("Invalid validation pattern")
-            )?;
+            let regex = regex::Regex::new(pattern)
+                .map_err(|_| CandleCommandError::validation_failed("Invalid validation pattern"))?;
             if !regex.is_match(value) {
-                return Err(CandleCommandError::validation_failed(
-                    format!("Value '{}' does not match required pattern", value)
-                ));
+                return Err(CandleCommandError::validation_failed(format!(
+                    "Value '{}' does not match required pattern",
+                    value
+                )));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -479,19 +491,19 @@ impl ParameterValidator {
     pub fn new(parameters: Vec<ParameterInfo>) -> Self {
         Self { parameters }
     }
-    
+
     /// Validate all parameters in a command with comprehensive error reporting
     #[inline]
     pub fn validate_all(&self, values: &HashMap<String, String>) -> ValidationResult {
         let mut errors = Vec::new();
-        
+
         // Check required parameters
         for param in &self.parameters {
             if param.required && !values.contains_key(&param.name) {
                 errors.push(format!("Missing required parameter '{}'", param.name));
                 continue;
             }
-            
+
             // Validate provided values
             if let Some(value) = values.get(&param.name) {
                 if let Err(err) = param.validate(value) {
@@ -499,20 +511,20 @@ impl ParameterValidator {
                 }
             }
         }
-        
+
         if errors.is_empty() {
             Ok(())
         } else {
             Err(CandleCommandError::validation_failed(errors.join("; ")))
         }
     }
-    
+
     /// Get parameter by name - zero allocation lookup
     #[inline]
     pub fn get_parameter(&self, name: &str) -> Option<&ParameterInfo> {
         self.parameters.iter().find(|p| p.name == name)
     }
-    
+
     /// Get all parameters - returns slice to avoid allocation
     #[inline]
     pub fn parameters(&self) -> &[ParameterInfo] {

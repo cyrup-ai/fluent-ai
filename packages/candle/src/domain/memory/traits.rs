@@ -4,13 +4,13 @@
 //! enabling trait composition, testability, and 'room to move' architecture benefits.
 
 use fluent_ai_async::AsyncStream;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::primitives::MemoryNode;
 
 /// CandleMemory trait - mirrors fluent-ai-domain::Memory exactly with Candle prefix
-/// 
+///
 /// This trait enables:
 /// - Trait composition for flexible memory architectures  
 /// - Testability with mock implementations
@@ -25,7 +25,7 @@ pub trait CandleMemory: Send + Sync + 'static {
     /// # Returns
     /// AsyncStream that completes when the memory is stored
     fn store_memory(&self, memory_node: &MemoryNode) -> AsyncStream<()>;
-    
+
     /// Retrieve memory nodes by similarity search
     ///
     /// # Arguments
@@ -35,7 +35,7 @@ pub trait CandleMemory: Send + Sync + 'static {
     /// # Returns
     /// AsyncStream of memory nodes ranked by similarity
     fn search_memory(&self, query: &str, limit: usize) -> AsyncStream<MemoryNode>;
-    
+
     /// Get memory node by ID
     ///
     /// # Arguments
@@ -44,7 +44,7 @@ pub trait CandleMemory: Send + Sync + 'static {
     /// # Returns
     /// AsyncStream containing the memory node if found
     fn get_memory(&self, id: &str) -> AsyncStream<Option<MemoryNode>>;
-    
+
     /// Delete memory node by ID
     ///
     /// # Arguments
@@ -53,7 +53,7 @@ pub trait CandleMemory: Send + Sync + 'static {
     /// # Returns
     /// AsyncStream that completes when the memory is deleted
     fn delete_memory(&self, id: &str) -> AsyncStream<bool>;
-    
+
     /// Get memory statistics
     ///
     /// # Returns
@@ -110,7 +110,7 @@ impl CandleMemoryImpl {
             std::thread::spawn(move || {
                 let memory_stream = crate::domain::memory::manager::Memory::new(config);
                 let mut memory_stream = Box::pin(memory_stream);
-                
+
                 // Collect the memory instance and wrap it
 
                 if let Some(memory) = memory_stream.next() {
@@ -120,7 +120,7 @@ impl CandleMemoryImpl {
             });
         })
     }
-    
+
     /// Create memory implementation with default configuration
     ///
     /// # Returns
@@ -135,28 +135,28 @@ impl CandleMemory for CandleMemoryImpl {
     fn store_memory(&self, memory_node: &MemoryNode) -> AsyncStream<()> {
         self.inner.store_memory(memory_node)
     }
-    
+
     fn search_memory(&self, _query: &str, _limit: usize) -> AsyncStream<MemoryNode> {
         // TODO: Implement search functionality
         AsyncStream::with_channel(move |_sender| {
             // Stub implementation for now
         })
     }
-    
+
     fn get_memory(&self, _id: &str) -> AsyncStream<Option<MemoryNode>> {
         // TODO: Implement get functionality
         AsyncStream::with_channel(move |sender| {
             let _ = sender.send(None);
         })
     }
-    
+
     fn delete_memory(&self, _id: &str) -> AsyncStream<bool> {
         // TODO: Implement delete functionality
         AsyncStream::with_channel(move |sender| {
             let _ = sender.send(false);
         })
     }
-    
+
     fn get_stats(&self) -> AsyncStream<CandleMemoryStats> {
         AsyncStream::with_channel(move |sender| {
             let stats = CandleMemoryStats::default();
@@ -183,7 +183,7 @@ impl CandleMemory for MockCandleMemory {
     fn store_memory(&self, memory_node: &MemoryNode) -> AsyncStream<()> {
         let node = memory_node.clone();
         let stored = self.stored_nodes.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             if let Ok(mut nodes) = stored.lock() {
                 nodes.push(node);
@@ -191,10 +191,10 @@ impl CandleMemory for MockCandleMemory {
             let _ = sender.send(());
         })
     }
-    
+
     fn search_memory(&self, _query: &str, limit: usize) -> AsyncStream<MemoryNode> {
         let stored = self.stored_nodes.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             if let Ok(nodes) = stored.lock() {
                 for node in nodes.iter().take(limit) {
@@ -203,7 +203,7 @@ impl CandleMemory for MockCandleMemory {
             }
         })
     }
-    
+
     fn get_memory(&self, id: &str) -> AsyncStream<Option<MemoryNode>> {
         let search_uuid = match Uuid::parse_str(id) {
             Ok(uuid) => uuid,
@@ -214,17 +214,20 @@ impl CandleMemory for MockCandleMemory {
             }
         };
         let stored = self.stored_nodes.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             if let Ok(nodes) = stored.lock() {
-                let found = nodes.iter().find(|node| node.base_memory.id == search_uuid).cloned();
+                let found = nodes
+                    .iter()
+                    .find(|node| node.base_memory.id == search_uuid)
+                    .cloned();
                 let _ = sender.send(found);
             } else {
                 let _ = sender.send(None);
             }
         })
     }
-    
+
     fn delete_memory(&self, id: &str) -> AsyncStream<bool> {
         let search_uuid = match Uuid::parse_str(id) {
             Ok(uuid) => uuid,
@@ -235,7 +238,7 @@ impl CandleMemory for MockCandleMemory {
             }
         };
         let stored = self.stored_nodes.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             if let Ok(mut nodes) = stored.lock() {
                 let initial_len = nodes.len();
@@ -247,15 +250,18 @@ impl CandleMemory for MockCandleMemory {
             }
         })
     }
-    
+
     fn get_stats(&self) -> AsyncStream<CandleMemoryStats> {
         let stored = self.stored_nodes.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             let stats = if let Ok(nodes) = stored.lock() {
                 CandleMemoryStats {
                     total_memories: nodes.len() as u64,
-                    total_size_bytes: nodes.iter().map(|n| n.base_memory.content.to_string().len() as u64).sum(),
+                    total_size_bytes: nodes
+                        .iter()
+                        .map(|n| n.base_memory.content.to_string().len() as u64)
+                        .sum(),
                     avg_embedding_dimension: 768.0,
                     uptime_seconds: 0,
                     cache_hit_ratio: 1.0,

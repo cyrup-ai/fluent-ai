@@ -6,8 +6,9 @@
 //! The syntax works automatically without exposing any macros to users.
 
 use std::marker::PhantomData;
-use serde_json::Value;
+
 use hashbrown::HashMap;
+use serde_json::Value;
 
 // Note: The transparent array-tuples syntax [("key", "value")] should work automatically
 // through cyrup_sugars transformation without requiring explicit macro imports
@@ -33,7 +34,8 @@ impl ToolSet {
 #[derive(Debug)]
 pub enum ToolDefinition {
     Typed(Box<dyn std::any::Any + Send + Sync>),
-    Named(NamedTool)}
+    Named(NamedTool),
+}
 
 impl Clone for ToolDefinition {
     fn clone(&self) -> Self {
@@ -42,7 +44,8 @@ impl Clone for ToolDefinition {
                 // Can't clone Box<dyn Any>, so create a new empty one
                 ToolDefinition::Typed(Box::new(()))
             }
-            ToolDefinition::Named(named) => ToolDefinition::Named(named.clone())}
+            ToolDefinition::Named(named) => ToolDefinition::Named(named.clone()),
+        }
     }
 }
 
@@ -92,7 +95,6 @@ impl<T> Tool<T> {
             parameters,
         }
     }
-
 }
 
 /// Named tool builder
@@ -132,7 +134,6 @@ impl NamedTool {
         self.description = Some(desc.into());
         self
     }
-
 }
 
 /// Extension trait for executing strings as shell commands and returning text output.
@@ -182,27 +183,28 @@ pub trait ToolEmbeddingDyn: Send + Sync {
 }
 
 // Import the Tool trait
-use crate::tool::traits::Tool as ToolTrait;
 use fluent_ai_async::AsyncStream;
 
+use crate::tool::traits::Tool as ToolTrait;
+
 // Implement Tool trait for Tool<T>
-impl<T> ToolTrait for Tool<T> 
+impl<T> ToolTrait for Tool<T>
 where
     T: Send + Sync + std::fmt::Debug + Clone + 'static,
 {
     fn name(&self) -> &str {
         std::any::type_name::<T>()
     }
-    
+
     fn description(&self) -> &str {
         "Generic tool"
     }
-    
+
     fn parameters(&self) -> &Value {
         // Return the stored parameters
         &self.parameters
     }
-    
+
     fn execute(&self, args: Value) -> AsyncStream<Value> {
         let config = self.config.clone();
         AsyncStream::with_channel(move |sender| {
@@ -223,25 +225,25 @@ impl ToolTrait for NamedTool {
     fn name(&self) -> &str {
         &self.name
     }
-    
+
     fn description(&self) -> &str {
         self.description.as_deref().unwrap_or("Named tool")
     }
-    
+
     fn parameters(&self) -> &Value {
         // Return stored parameters
         &self.parameters
     }
-    
+
     fn execute(&self, args: Value) -> AsyncStream<Value> {
         let name = self.name.clone();
         let bin_path = self.bin_path.clone();
         let _description = self.description.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             // Execute named tool using configured path and args
             let command = bin_path.as_deref().unwrap_or(&name);
-            
+
             // Build command with args if provided
             let mut cmd_args = Vec::new();
             if let Value::Object(ref args_obj) = args {
@@ -252,34 +254,36 @@ impl ToolTrait for NamedTool {
                     }
                 }
             }
-            
+
             // Execute command and capture output
-            let output = std::process::Command::new(command)
-                .args(&cmd_args)
-                .output();
-                
+            let output = std::process::Command::new(command).args(&cmd_args).output();
+
             let result = match output {
                 Ok(output) => {
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    
+
                     if output.status.success() {
                         Value::String(stdout.into_owned())
                     } else {
                         Value::Object(serde_json::Map::from_iter([
                             ("error".to_string(), Value::String(stderr.into_owned())),
-                            ("exit_code".to_string(), Value::Number(output.status.code().unwrap_or(-1).into()))
+                            (
+                                "exit_code".to_string(),
+                                Value::Number(output.status.code().unwrap_or(-1).into()),
+                            ),
                         ]))
                     }
                 }
-                Err(e) => {
-                    Value::Object(serde_json::Map::from_iter([
-                        ("error".to_string(), Value::String(format!("Failed to execute {}: {}", command, e))),
-                        ("exit_code".to_string(), Value::Number((-1).into()))
-                    ]))
-                }
+                Err(e) => Value::Object(serde_json::Map::from_iter([
+                    (
+                        "error".to_string(),
+                        Value::String(format!("Failed to execute {}: {}", command, e)),
+                    ),
+                    ("exit_code".to_string(), Value::Number((-1).into())),
+                ])),
             };
-            
+
             let _ = sender.send(result);
         })
     }

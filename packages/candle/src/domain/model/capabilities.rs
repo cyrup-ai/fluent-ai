@@ -48,7 +48,8 @@ pub enum CandleCapability {
     /// Supports model distillation
     Distillation,
     /// Supports model pruning
-    Pruning}
+    Pruning,
+}
 
 /// Candle model capability flags for filtering and selection
 ///
@@ -96,7 +97,8 @@ pub struct CandleModelCapabilities {
     /// Whether the model supports distillation
     pub supports_distillation: bool,
     /// Whether the model supports pruning
-    pub supports_pruning: bool}
+    pub supports_pruning: bool,
+}
 
 impl CandleModelCapabilities {
     /// Create a new ModelCapabilities with all capabilities disabled
@@ -142,7 +144,8 @@ impl CandleModelCapabilities {
             CandleCapability::HighThroughput => self.is_high_throughput = enabled,
             CandleCapability::Quantization => self.supports_quantization = enabled,
             CandleCapability::Distillation => self.supports_distillation = enabled,
-            CandleCapability::Pruning => self.supports_pruning = enabled}
+            CandleCapability::Pruning => self.supports_pruning = enabled,
+        }
     }
 
     /// Check if a specific capability is enabled
@@ -167,7 +170,8 @@ impl CandleModelCapabilities {
             CandleCapability::HighThroughput => self.is_high_throughput,
             CandleCapability::Quantization => self.supports_quantization,
             CandleCapability::Distillation => self.supports_distillation,
-            CandleCapability::Pruning => self.supports_pruning}
+            CandleCapability::Pruning => self.supports_pruning,
+        }
     }
 
     /// Check if all specified capabilities are enabled
@@ -234,7 +238,8 @@ pub struct CandleModelPerformance {
     /// Number of parameters in billions
     pub parameter_count_billions: f32,
     /// Floating-point operations per token
-    pub flops_per_token: Option<u64>}
+    pub flops_per_token: Option<u64>,
+}
 
 impl Default for CandleModelPerformance {
     fn default() -> Self {
@@ -246,7 +251,8 @@ impl Default for CandleModelPerformance {
             memory_usage_mb: 0.0,
             gpu_memory_usage_mb: None,
             parameter_count_billions: 0.0,
-            flops_per_token: None}
+            flops_per_token: None,
+        }
     }
 }
 
@@ -294,4 +300,5 @@ pub enum CandleUseCase {
     /// Few-shot learning
     FewShotLearning,
     /// Zero-shot learning
-    ZeroShotLearning}
+    ZeroShotLearning,
+}

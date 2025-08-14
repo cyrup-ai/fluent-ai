@@ -1,6 +1,7 @@
 //! Graph database schema definitions
 
 use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Graph node schema
@@ -22,7 +23,8 @@ pub struct GraphNode {
     pub created_at: chrono::DateTime<chrono::Utc>,
 
     /// Update timestamp
-    pub updated_at: chrono::DateTime<chrono::Utc>}
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
 
 /// Graph edge schema
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,7 +48,8 @@ pub struct GraphEdge {
     pub weight: Option<f32>,
 
     /// Creation timestamp
-    pub created_at: chrono::DateTime<chrono::Utc>}
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
 
 /// Graph schema definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,7 +64,8 @@ pub struct GraphSchema {
     pub edge_types: HashMap<String, EdgeTypeDefinition>,
 
     /// Constraints
-    pub constraints: Vec<GraphConstraint>}
+    pub constraints: Vec<GraphConstraint>,
+}
 
 /// Node type definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,7 +80,8 @@ pub struct NodeTypeDefinition {
     pub optional_properties: Vec<PropertyDefinition>,
 
     /// Allowed labels
-    pub allowed_labels: Vec<String>}
+    pub allowed_labels: Vec<String>,
+}
 
 /// Edge type definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,7 +102,8 @@ pub struct EdgeTypeDefinition {
     pub optional_properties: Vec<PropertyDefinition>,
 
     /// Whether the edge is directed
-    pub directed: bool}
+    pub directed: bool,
+}
 
 /// Property definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,7 +118,8 @@ pub struct PropertyDefinition {
     pub default_value: Option<serde_json::Value>,
 
     /// Validation rules
-    pub validation: Option<PropertyValidation>}
+    pub validation: Option<PropertyValidation>,
+}
 
 /// Property types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,7 +132,8 @@ pub enum PropertyType {
     DateTime,
     UUID,
     Array(Box<PropertyType>),
-    Object}
+    Object,
+}
 
 /// Property validation rules
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,7 +154,8 @@ pub struct PropertyValidation {
     pub min_length: Option<usize>,
 
     /// Maximum length (for strings and arrays)
-    pub max_length: Option<usize>}
+    pub max_length: Option<usize>,
+}
 
 /// Graph constraints
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -158,7 +167,8 @@ pub enum GraphConstraint {
     UniqueEdge {
         edge_type: String,
         source_property: Option<String>,
-        target_property: Option<String>},
+        target_property: Option<String>,
+    },
 
     /// Cardinality constraint
     Cardinality {
@@ -166,7 +176,9 @@ pub enum GraphConstraint {
         source_type: String,
         target_type: String,
         min: Option<usize>,
-        max: Option<usize>}}
+        max: Option<usize>,
+    },
+}
 
 impl GraphSchema {
     /// Create a new graph schema
@@ -175,7 +187,8 @@ impl GraphSchema {
             version,
             node_types: HashMap::new(),
             edge_types: HashMap::new(),
-            constraints: Vec::new()}
+            constraints: Vec::new(),
+        }
     }
 
     /// Add a node type definition

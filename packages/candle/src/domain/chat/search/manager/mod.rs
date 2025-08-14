@@ -1,9 +1,10 @@
-use crossbeam_skiplist::SkipMap;
 use std::sync::Arc;
+
+use crossbeam_skiplist::SkipMap;
 use fluent_ai_async::AsyncStream;
 
-use crate::domain::chat::message::CandleSearchChatMessage;
 use super::{SearchQuery as CandleSearchQuery, SearchResult as CandleSearchResult};
+use crate::domain::chat::message::CandleSearchChatMessage;
 
 /// Enhanced history management system with domain-level integration
 #[derive(Debug)]
@@ -42,29 +43,32 @@ impl CandleEnhancedHistoryManager {
         let messages = Arc::clone(&self.messages);
         let message_timestamps = Arc::clone(&self.message_timestamps);
         let search_index: Arc<super::index::ChatSearchIndex> = Arc::clone(&self.search_index);
-        
+
         AsyncStream::with_channel(move |sender| {
             // Add to message store - only if message_id is present
             if let Some(id) = message_id.clone() {
                 messages.insert(id.clone(), message_clone.clone());
-                
+
                 // Index by timestamp - only if timestamp is present
                 if let Some(ts_u64) = timestamp {
                     let ts_i64 = ts_u64 as i64; // Convert u64 to i64 for timestamp indexing
                     message_timestamps.insert(ts_i64, id);
                 }
             }
-            
+
             // Index for search
             let _ = search_index.add_message_stream(message_clone);
-            
+
             // Emit completion
             let _ = sender.try_send(());
         })
     }
 
     /// Search messages (streaming)
-    pub fn search_messages_stream(&self, query: CandleSearchQuery) -> AsyncStream<CandleSearchResult> {
+    pub fn search_messages_stream(
+        &self,
+        query: CandleSearchQuery,
+    ) -> AsyncStream<CandleSearchResult> {
         // TODO: Implement full search functionality in Phase 2.3
         // For now, return empty stream until domain ChatSearchIndex has search methods
         let _query = query; // Avoid unused parameter warning

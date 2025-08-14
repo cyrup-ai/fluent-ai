@@ -1,11 +1,11 @@
-use anyhow::{Context, Result};
-use log::info;
-use nix::sys::stat::{umask, Mode};
-use nix::unistd::{chdir, close, dup2, fork, setsid, ForkResult};
 use std::fs;
 use std::os::unix::io::RawFd;
 use std::path::Path;
 
+use anyhow::{Context, Result};
+use log::info;
+use nix::sys::stat::{umask, Mode};
+use nix::unistd::{chdir, close, dup2, fork, setsid, ForkResult};
 #[cfg(feature = "systemd-notify")]
 use systemd::daemon;
 

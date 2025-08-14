@@ -4,21 +4,19 @@
 //! crossbeam-skiplist for concurrent access, and AsyncStream integration for blazing-fast
 //! performance without any locking mechanisms.
 
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
 use std::time::Duration;
-
 
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{emit, AsyncStream};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::events::RealTimeEvent;
 
 // Re-export RealTimeError from the domain crate
-
 
 /// Typing indicator state with atomic operations for zero-allocation performance
 #[derive(Debug)]
@@ -36,7 +34,8 @@ pub struct TypingState {
     /// Typing session start timestamp
     pub session_start: AtomicU64,
     /// Number of typing events in this session
-    pub event_count: AtomicU64}
+    pub event_count: AtomicU64,
+}
 
 impl TypingState {
     /// Create a new typing state with current timestamp
@@ -54,7 +53,8 @@ impl TypingState {
             is_typing: AtomicBool::new(false),
             typing_duration: AtomicU64::new(0),
             session_start: AtomicU64::new(now_nanos),
-            event_count: AtomicU64::new(0)}
+            event_count: AtomicU64::new(0),
+        }
     }
 
     /// Start typing with atomic timestamp update
@@ -139,7 +139,7 @@ impl TypingState {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0);
-        
+
         let start = self.session_start.load(Ordering::Acquire);
         now_nanos.saturating_sub(start)
     }
@@ -155,7 +155,7 @@ impl TypingState {
 
         self.last_activity.store(now_nanos, Ordering::Release);
     }
-    
+
     /// Get comprehensive typing session statistics
     #[allow(dead_code)] // Statistics API method
     pub fn get_session_statistics(&self) -> TypingSessionStatistics {
@@ -204,7 +204,8 @@ pub struct TypingIndicator {
     /// Total typing events counter
     typing_events: Arc<ConsistentCounter>,
     /// Cleanup task handle with atomic swap
-    cleanup_task_active: Arc<AtomicBool>}
+    cleanup_task_active: Arc<AtomicBool>,
+}
 
 impl TypingIndicator {
     /// Create a new typing indicator with nanosecond precision
@@ -219,11 +220,16 @@ impl TypingIndicator {
             event_broadcaster,
             active_users: Arc::new(ConsistentCounter::new(0)),
             typing_events: Arc::new(ConsistentCounter::new(0)),
-            cleanup_task_active: Arc::new(AtomicBool::new(false))}
+            cleanup_task_active: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     /// Start typing indicator with zero-allocation key generation
-    pub fn start_typing(&self, user_id: Arc<str>, session_id: Arc<str>) -> AsyncStream<RealTimeEvent> {
+    pub fn start_typing(
+        &self,
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    ) -> AsyncStream<RealTimeEvent> {
         let key: Arc<str> = format!("{}:{}", user_id, session_id).into();
         let typing_states = self.typing_states.clone();
         let event_broadcaster = self.event_broadcaster.clone();
@@ -253,7 +259,11 @@ impl TypingIndicator {
     }
 
     /// Stop typing indicator with event emission
-    pub fn stop_typing(&self, user_id: Arc<str>, session_id: Arc<str>) -> AsyncStream<RealTimeEvent> {
+    pub fn stop_typing(
+        &self,
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    ) -> AsyncStream<RealTimeEvent> {
         let key: Arc<str> = format!("{}:{}", user_id, session_id).into();
         let typing_states = self.typing_states.clone();
         let event_broadcaster = self.event_broadcaster.clone();
@@ -293,7 +303,11 @@ impl TypingIndicator {
 
     /// Start cleanup task with lock-free background processing
     pub fn start_cleanup_task(&self) -> AsyncStream<TypingCleanupEvent> {
-        if self.cleanup_task_active.compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed).is_err() {
+        if self
+            .cleanup_task_active
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed)
+            .is_err()
+        {
             // Task already running, return empty stream
             return AsyncStream::with_channel(|_sender| {});
         }
@@ -308,7 +322,8 @@ impl TypingIndicator {
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
                 loop {
-                    let cleanup_interval = Duration::from_nanos(cleanup_interval_nanos.load(Ordering::Acquire));
+                    let cleanup_interval =
+                        Duration::from_nanos(cleanup_interval_nanos.load(Ordering::Acquire));
                     std::thread::sleep(cleanup_interval);
 
                     let expiry_nanos = expiry_duration_nanos.load(Ordering::Acquire);
@@ -357,7 +372,8 @@ impl TypingIndicator {
                         timestamp: std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)
                             .map(|d| d.as_nanos() as u64)
-                            .unwrap_or(0)};
+                            .unwrap_or(0),
+                    };
 
                     emit!(sender, cleanup_event);
 
@@ -388,21 +404,26 @@ impl TypingIndicator {
         TypingStatistics {
             active_users: self.active_users.get(),
             total_typing_events: self.typing_events.get(),
-            expiry_duration_seconds: self.expiry_duration_nanos.load(Ordering::Acquire) / 1_000_000_000,
-            cleanup_interval_seconds: self.cleanup_interval_nanos.load(Ordering::Acquire) / 1_000_000_000,
-            total_states: self.typing_states.len()}
+            expiry_duration_seconds: self.expiry_duration_nanos.load(Ordering::Acquire)
+                / 1_000_000_000,
+            cleanup_interval_seconds: self.cleanup_interval_nanos.load(Ordering::Acquire)
+                / 1_000_000_000,
+            total_states: self.typing_states.len(),
+        }
     }
 
     /// Update expiry duration dynamically
     #[inline]
     pub fn set_expiry_duration(&self, seconds: u64) {
-        self.expiry_duration_nanos.store(seconds * 1_000_000_000, Ordering::Release);
+        self.expiry_duration_nanos
+            .store(seconds * 1_000_000_000, Ordering::Release);
     }
 
     /// Update cleanup interval dynamically
     #[inline]
     pub fn set_cleanup_interval(&self, seconds: u64) {
-        self.cleanup_interval_nanos.store(seconds * 1_000_000_000, Ordering::Release);
+        self.cleanup_interval_nanos
+            .store(seconds * 1_000_000_000, Ordering::Release);
     }
 
     /// Get active typing states count
@@ -433,7 +454,7 @@ impl TypingIndicator {
         }
         sessions
     }
-    
+
     /// Refresh activity for all active typing sessions (keep-alive)
     pub fn refresh_all_typing_activity(&self) {
         for entry in self.typing_states.iter() {
@@ -451,10 +472,19 @@ impl std::fmt::Debug for TypingIndicator {
         f.debug_struct("TypingIndicator")
             .field("active_users", &self.active_users.get())
             .field("total_typing_events", &self.typing_events.get())
-            .field("expiry_duration_seconds", &(self.expiry_duration_nanos.load(Ordering::Relaxed) / 1_000_000_000))
-            .field("cleanup_interval_seconds", &(self.cleanup_interval_nanos.load(Ordering::Relaxed) / 1_000_000_000))
+            .field(
+                "expiry_duration_seconds",
+                &(self.expiry_duration_nanos.load(Ordering::Relaxed) / 1_000_000_000),
+            )
+            .field(
+                "cleanup_interval_seconds",
+                &(self.cleanup_interval_nanos.load(Ordering::Relaxed) / 1_000_000_000),
+            )
             .field("active_states", &self.typing_states.len())
-            .field("cleanup_active", &self.cleanup_task_active.load(Ordering::Relaxed))
+            .field(
+                "cleanup_active",
+                &self.cleanup_task_active.load(Ordering::Relaxed),
+            )
             .finish()
     }
 }
@@ -477,7 +507,8 @@ pub struct TypingStatistics {
     /// Cleanup interval in seconds
     pub cleanup_interval_seconds: u64,
     /// Total number of typing states
-    pub total_states: usize}
+    pub total_states: usize,
+}
 
 /// Typing cleanup event for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -489,7 +520,8 @@ pub struct TypingCleanupEvent {
     /// Duration of cleanup operation in nanoseconds
     pub cleanup_duration_nanos: u64,
     /// Event timestamp in nanoseconds
-    pub timestamp: u64}
+    pub timestamp: u64,
+}
 
 impl TypingCleanupEvent {
     /// Get cleanup duration in seconds
@@ -498,4 +530,3 @@ impl TypingCleanupEvent {
         self.cleanup_duration_nanos as f64 / 1_000_000_000.0
     }
 }
-

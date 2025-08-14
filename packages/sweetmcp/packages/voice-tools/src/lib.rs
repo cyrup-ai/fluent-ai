@@ -4,8 +4,9 @@
 //! and speech-to-text (STT) operations, enabling LLMs to interact with
 //! voice capabilities through a clean, intuitive interface.
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 pub mod error;
 pub mod protocol;

@@ -146,30 +146,30 @@ impl HttpResponse {
     }
 
     /// Stream individual objects from JSON arrays using JSONPath filtering
-    /// 
+    ///
     /// Processes the response body through JSONPath expressions to extract
     /// individual objects from JSON arrays and nested structures.
-    /// 
+    ///
     /// # Arguments
     /// * `jsonpath_expr` - JSONPath expression for filtering (e.g., "$.data[*]", "$.results[?(@.active)]")
-    /// 
+    ///
     /// # Type Parameters
     /// * `T` - Type to deserialize each matching JSON object into
-    /// 
+    ///
     /// # Returns
     /// AsyncStream of successfully deserialized objects of type T
-    /// 
+    ///
     /// # Examples
     /// ```no_run
     /// use fluent_ai_http3::HttpResponse;
     /// use serde::Deserialize;
-    /// 
+    ///
     /// #[derive(Deserialize)]
     /// struct User {
     ///     id: u64,
     ///     name: String,
     /// }
-    /// 
+    ///
     /// // Parse OpenAI-style {"data": [...]} response
     /// let users: Vec<User> = response
     ///     .jsonpath_stream("$.data[*]")
@@ -182,36 +182,36 @@ impl HttpResponse {
     {
         let stream_processor = JsonStreamProcessor::<T>::new(jsonpath_expr);
         let response_bytes = Bytes::from(self.body().to_vec());
-        
+
         // Process the entire response body through JSONPath filtering
         stream_processor.process_body(response_bytes)
     }
 
     /// Extract the first object matching a JSONPath expression
-    /// 
+    ///
     /// Convenience method for getting a single object from JSON responses
     /// using JSONPath filtering.
-    /// 
+    ///
     /// # Arguments
     /// * `jsonpath_expr` - JSONPath expression for filtering
-    /// 
+    ///
     /// # Type Parameters
     /// * `T` - Type to deserialize the matching JSON object into
-    /// 
+    ///
     /// # Returns
     /// Option containing the first matching object, or None if no matches
-    /// 
+    ///
     /// # Examples
     /// ```no_run
     /// use fluent_ai_http3::HttpResponse;
     /// use serde::Deserialize;
-    /// 
+    ///
     /// #[derive(Deserialize)]
     /// struct User {
     ///     id: u64,
     ///     name: String,
     /// }
-    /// 
+    ///
     /// // Get first user from {"data": [...]} response
     /// let first_user: Option<User> = response
     ///     .jsonpath_first("$.data[0]");
@@ -228,30 +228,30 @@ impl HttpResponse {
     }
 
     /// Extract all objects matching a JSONPath expression into a Vec
-    /// 
+    ///
     /// Convenience method for collecting all matching objects from JSON responses
     /// using JSONPath filtering.
-    /// 
+    ///
     /// # Arguments
     /// * `jsonpath_expr` - JSONPath expression for filtering
-    /// 
+    ///
     /// # Type Parameters
     /// * `T` - Type to deserialize each matching JSON object into
-    /// 
+    ///
     /// # Returns
     /// Vec containing all matching objects
-    /// 
+    ///
     /// # Examples
     /// ```no_run
     /// use fluent_ai_http3::HttpResponse;
     /// use serde::Deserialize;
-    /// 
+    ///
     /// #[derive(Deserialize)]
     /// struct User {
     ///     id: u64,
     ///     name: String,
     /// }
-    /// 
+    ///
     /// // Get all active users from response
     /// let active_users: Vec<User> = response
     ///     .jsonpath_collect("$.users[?(@.active == true)]");
@@ -369,5 +369,4 @@ impl HttpResponse {
 
         events
     }
-
 }

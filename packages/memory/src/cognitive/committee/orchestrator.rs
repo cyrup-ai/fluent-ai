@@ -18,7 +18,8 @@ pub struct EvaluationCommittee {
     agents: Vec<ProviderEvaluationAgent>,
     config: CommitteeConfig,
     event_tx: mpsc::Sender<CommitteeEvent>,
-    history: Arc<RwLock<Vec<EvaluationRound>>>}
+    history: Arc<RwLock<Vec<EvaluationRound>>>,
+}
 
 impl EvaluationCommittee {
     pub async fn new(
@@ -42,7 +43,8 @@ impl EvaluationCommittee {
             agents,
             config,
             event_tx,
-            history: Arc::new(RwLock::new(Vec::new()))})
+            history: Arc::new(RwLock::new(Vec::new())),
+        })
     }
 
     pub async fn evaluate_action(
@@ -54,7 +56,8 @@ impl EvaluationCommittee {
         self.event_tx
             .send(CommitteeEvent::EvaluationStarted {
                 action: action.to_string(),
-                agent_count: self.agents.len()})
+                agent_count: self.agents.len(),
+            })
             .await
             .ok();
 
@@ -93,12 +96,14 @@ impl EvaluationCommittee {
                 phase,
                 evaluations,
                 consensus: Some(consensus.clone()),
-                steering_feedback});
+                steering_feedback,
+            });
 
             self.event_tx
                 .send(CommitteeEvent::RoundCompleted {
                     round: current_round,
-                    consensus: Some(consensus.clone())})
+                    consensus: Some(consensus.clone()),
+                })
                 .await
                 .ok();
 
@@ -115,7 +120,8 @@ impl EvaluationCommittee {
         self.event_tx
             .send(CommitteeEvent::ConsensusFailed {
                 action: action.to_string(),
-                rounds: self.config.rounds})
+                rounds: self.config.rounds,
+            })
             .await
             .ok();
 
@@ -130,7 +136,8 @@ impl EvaluationCommittee {
             0 => EvaluationPhase::Initial,
             1 => EvaluationPhase::Review,
             _ if round == self.config.rounds - 1 => EvaluationPhase::Finalize,
-            _ => EvaluationPhase::Refine}
+            _ => EvaluationPhase::Refine,
+        }
     }
 
     async fn execute_evaluation_round(
@@ -182,7 +189,8 @@ impl EvaluationCommittee {
             match result {
                 Ok(Ok(eval)) => evaluations.push(eval),
                 Ok(Err(e)) => warn!("Agent evaluation failed: {}", e),
-                Err(e) => warn!("Agent task failed: {}", e)}
+                Err(e) => warn!("Agent task failed: {}", e),
+            }
         }
 
         Ok(evaluations)
@@ -231,7 +239,8 @@ impl EvaluationCommittee {
                 action: action.to_string(),
                 decision,
                 factors,
-                rounds_taken})
+                rounds_taken,
+            })
             .await
             .ok();
 
