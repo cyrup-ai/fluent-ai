@@ -19,8 +19,7 @@ pub use content_types::ContentTypes;
 pub use headers::HeaderManager;
 pub use metrics::{MetricsCollector, OperationMetrics, RequestMetrics};
 pub use retry::{
-    GLOBAL_RETRY_STATS, GlobalRetryStats, HttpRetryExecutor, RetryExecutor, RetryPolicy,
-    RetryResult, RetryStats, execute_with_aggressive_retry, execute_with_conservative_retry,
+    HttpRetryExecutor, RetryPolicy, execute_with_aggressive_retry, execute_with_conservative_retry,
     execute_with_default_retry, execute_without_retry, with_retry,
 };
 

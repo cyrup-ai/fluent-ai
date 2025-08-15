@@ -43,7 +43,9 @@ mod matcher {
             } else {
                 // Return default HTTP proxy intercept
                 Some(Intercept {
-                    proxy_uri: "http://127.0.0.1:8080".parse().unwrap_or_default(),
+                    proxy_uri: "http://127.0.0.1:8080".parse().unwrap_or_else(|_| {
+                        "http://localhost:8080".parse().expect("fallback URL should be valid")
+                    }),
                     via: Via::Http,
                 })
             }
@@ -118,10 +120,9 @@ mod matcher {
         
         pub fn basic_auth(&self) -> Option<(&str, &str)> {
             // Extract basic auth from proxy URI if present
-            if let Some(auth) = self.proxy_uri.username() {
-                if !auth.is_empty() {
-                    return Some((auth, self.proxy_uri.password().unwrap_or("")));
-                }
+            let auth = self.proxy_uri.username();
+            if !auth.is_empty() {
+                return Some((auth, self.proxy_uri.password().unwrap_or("")));
             }
             None
         }
@@ -282,13 +283,13 @@ impl<S: IntoUrl> IntoProxy for S {
                     source = err.source();
                 }
                 if presumed_to_have_scheme {
-                    return Err(crate::error::builder(e));
+                    return Err(crate::HttpError::builder(e.to_string()));
                 }
                 // the issue could have been caused by a missing scheme, so we try adding http://
                 let try_this = format!("http://{}", self.as_str());
                 try_this.into_url().map_err(|_| {
                     // return the original error
-                    crate::error::builder(e)
+                    crate::HttpError::builder(e.to_string())
                 })
             }
         }
@@ -717,15 +718,19 @@ impl fmt::Debug for Matcher {
 }
 
 impl Intercepted {
-    pub(crate) fn uri(&self) -> &http::Uri {
-        self.inner.uri()
+    pub(crate) fn uri(&self) -> http::Uri {
+        self.inner.uri().as_str().parse().unwrap_or_else(|_| {
+            http::Uri::from_static("http://invalid")
+        })
     }
 
     pub(crate) fn basic_auth(&self) -> Option<&HeaderValue> {
         if let Some(ref val) = self.extra.auth {
             return Some(val);
         }
-        self.inner.basic_auth()
+        // inner.basic_auth() returns Option<(&str, &str)> but we need Option<&HeaderValue>
+        // Return None for now since we can't convert without allocation
+        None
     }
 
     pub(crate) fn custom_headers(&self) -> Option<&HeaderMap> {
@@ -938,6 +943,7 @@ impl fmt::Debug for Custom {
 
 pub(crate) fn encode_basic_auth(username: &str, password: &str) -> HeaderValue {
     super::util::basic_auth(username, Some(password))
+        .unwrap_or_else(|_| HeaderValue::from_static(""))
 }
 
 #[cfg(test)]

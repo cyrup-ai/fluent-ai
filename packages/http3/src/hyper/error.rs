@@ -197,12 +197,11 @@ pub(crate) fn cast_to_internal_error(error: BoxError) -> BoxError {
     if let Some(io_error) = error.downcast_ref::<std::io::Error>() {
         if io_error.kind() == std::io::ErrorKind::TimedOut {
             return Box::new(crate::Error::Timeout {
-                duration: std::time::Duration::from_secs(30), // Default timeout
-                operation: "network_operation".to_string(),
+                message: format!("Network operation timed out after 30 seconds"),
             });
         }
     }
-    
+
     error
 }
 

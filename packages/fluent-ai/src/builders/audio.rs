@@ -29,7 +29,11 @@ pub trait AudioBuilder: Sized {
     where
         F: Fn(String) + Send + Sync + 'static;
     
-
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(self, handler: F) -> impl AudioBuilder
+    where
+        F: Fn(TranscriptionChunk) -> TranscriptionChunk + Send + Sync + 'static;
     
     /// Decode audio - EXACT syntax: .decode()
     fn decode(self) -> impl AsyncStream<Item = TranscriptionChunk>;
@@ -48,7 +52,7 @@ struct AudioBuilderImpl<
     format: Option<ContentFormat>,
     media_type: Option<AudioMediaType>,
     error_handler: Option<F1>,
-    cyrup_chunk_handler: Option<Box<dyn Fn(Result<TranscriptionChunk, String>) -> TranscriptionChunk + Send + Sync>>,
+    chunk_handler: Option<Box<dyn Fn(Result<TranscriptionChunk, String>) -> TranscriptionChunk + Send + Sync>>,
 }
 
 impl Audio {
@@ -59,7 +63,7 @@ impl Audio {
             format: Some(ContentFormat::Base64),
             media_type: None,
             error_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -70,7 +74,7 @@ impl Audio {
             format: Some(ContentFormat::Url),
             media_type: None,
             error_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -81,7 +85,7 @@ impl Audio {
             format: Some(ContentFormat::Raw),
             media_type: None,
             error_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 }
@@ -125,10 +129,25 @@ where
             format: self.format,
             media_type: self.media_type,
             error_handler: Some(handler),
-            cyrup_chunk_handler: self.cyrup_chunk_handler,
+            chunk_handler: self.chunk_handler,
         }
     }
-
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(mut self, handler: F) -> impl AudioBuilder
+    where
+        F: Fn(TranscriptionChunk) -> TranscriptionChunk + Send + Sync + 'static,
+    {
+        // Convert from TranscriptionChunk -> TranscriptionChunk to Result<TranscriptionChunk, String> -> TranscriptionChunk
+        self.chunk_handler = Some(Box::new(move |result| {
+            match result {
+                Ok(chunk) => handler(chunk),
+                Err(error) => TranscriptionChunk::bad_chunk(error),
+            }
+        }));
+        self
+    }
     
     /// Decode audio - EXACT syntax: .decode()
     fn decode(self) -> impl AsyncStream<Item = TranscriptionChunk> {
@@ -182,7 +201,7 @@ where
     where
         F: Fn(Result<TranscriptionChunk, String>) -> TranscriptionChunk + Send + Sync + 'static,
     {
-        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self.chunk_handler = Some(Box::new(handler));
         self
     }
 }

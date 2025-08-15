@@ -1,5 +1,5 @@
 use crate::hyper::dns::resolve::{Resolve, Name, DnsResult};
-use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
 
 #[derive(Debug)]
 pub struct GaiResolver {
@@ -30,7 +30,7 @@ impl Resolve for GaiResolver {
                             addrs_iter.take(8).collect();
                         emit!(sender, DnsResult { addrs });
                     },
-                    Err(e) => {
+                    Err(_e) => {
                         emit!(sender, DnsResult::new()); // Empty result for error case
                     }
                 }

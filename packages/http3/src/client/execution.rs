@@ -3,10 +3,10 @@
 //! Provides streaming execution methods for HTTP requests and downloads
 //! with zero-allocation streaming patterns and efficient error handling.
 
-use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
 
 use super::core::HttpClient;
-use crate::{DownloadChunk, DownloadStream, HttpChunk, HttpError, HttpRequest, HttpStream};
+use crate::{DownloadChunk, DownloadStream, HttpChunk, HttpRequest, HttpStream};
 
 impl HttpClient {
     /// Executes a request and returns a stream of `HttpChunk`s.
@@ -71,22 +71,21 @@ impl HttpClient {
             let task = spawn_task(move || {
                 // Execute the stream and get the first response
                 let mut response_stream = client.execute(http3_request);
-                let responses: Vec<_> = response_stream.into_iter().collect();
-                let response = match responses.into_iter().next() {
+                let response = match response_stream.try_next() {
                     Some(response) => response,
                     None => {
                         emit!(
                             sender,
-                            HttpChunk::Error(crate::HttpError::StreamError {
-                                message: "no response received from client execute".to_string()
-                            })
+                            HttpChunk::Error(
+                                "no response received from client execute".to_string()
+                            )
                         );
                         return;
                     }
                 };
 
-                let status = response.status();
-                let headers = response.headers().clone();
+                let status = response.status_code();
+                let headers = &response.headers;
 
                 // Record response time and success/failure
                 let response_time = start_time.elapsed().as_nanos() as u64;
@@ -99,7 +98,20 @@ impl HttpClient {
                     stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                 }
 
-                emit!(sender, HttpChunk::Head(status, headers));
+                emit!(
+                    sender,
+                    HttpChunk::Head(
+                        status,
+                        http::HeaderMap::from_iter(headers.iter().map(|(k, v)| {
+                            (
+                                http::HeaderName::from_bytes(k.as_bytes())
+                                    .unwrap_or_else(|_| http::HeaderName::from_static("unknown")),
+                                http::HeaderValue::from_str(v)
+                                    .unwrap_or_else(|_| http::HeaderValue::from_static("invalid")),
+                            )
+                        }))
+                    )
+                );
             });
 
             task.collect();
@@ -149,8 +161,7 @@ impl HttpClient {
             let task = spawn_task(move || {
                 // Execute the stream and get the first response
                 let mut response_stream = client.execute(http3_request);
-                let responses: Vec<_> = response_stream.into_iter().collect();
-                let response = match responses.into_iter().next() {
+                let response = match response_stream.try_next() {
                     Some(response) => response,
                     None => {
                         // Record failed request and response time for downloads
@@ -175,8 +186,8 @@ impl HttpClient {
                     }
                 };
 
-                let status = response.status();
-                let total_size = response.content_length();
+                let status = response.status_code();
+                let total_size = None; // HttpResponseChunk doesn't have content_length
                 let mut bytes_downloaded = 0;
                 let mut chunk_number = 0;
 
@@ -192,35 +203,55 @@ impl HttpClient {
                     stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                 }
 
-                // Get full response body as bytes using stream collection
-                let bytes_stream = response.bytes();
-                let bytes_collected = bytes_stream.collect();
-                let all_bytes = match bytes_collected.first() {
-                    Some(bytes) => bytes,
-                    None => {
-                        emit!(
-                            sender,
-                            DownloadChunk {
-                                data: bytes::Bytes::new(),
-                                chunk_number: 0,
-                                total_size,
-                                bytes_downloaded: 0,
-                                error_message: Some(
-                                    "download body processing: no bytes received".to_string()
-                                ),
-                            }
-                        );
-                        return;
+                // Get response body directly from HttpResponseChunk
+                let final_bytes = bytes::Bytes::from(response.body.clone());
+
+                if final_bytes.is_empty() {
+                    emit!(
+                        sender,
+                        DownloadChunk {
+                            data: bytes::Bytes::new(),
+                            chunk_number: 0,
+                            total_size,
+                            bytes_downloaded: 0,
+                            error_message: Some(
+                                "download body processing: no bytes received".to_string()
+                            ),
+                        }
+                    );
+                    return;
+                }
+
+                // Convert HashMap to HeaderMap
+                let mut header_map = http::HeaderMap::new();
+                for (key, value) in &response.headers {
+                    if let (Ok(name), Ok(val)) = (
+                        http::HeaderName::from_bytes(key.as_bytes()),
+                        http::HeaderValue::from_str(value),
+                    ) {
+                        header_map.insert(name, val);
                     }
-                };
+                }
+
+                // Emit download chunk with response data
+                emit!(
+                    sender,
+                    DownloadChunk {
+                        data: final_bytes.clone(),
+                        chunk_number: 0,
+                        total_size,
+                        bytes_downloaded: final_bytes.len() as u64,
+                        error_message: None,
+                    }
+                );
 
                 // Split into chunks for download progress simulation
                 const CHUNK_SIZE: usize = 8192; // 8KB chunks
                 let mut offset = 0;
 
-                while offset < all_bytes.len() {
-                    let end = std::cmp::min(offset + CHUNK_SIZE, all_bytes.len());
-                    let chunk_bytes = all_bytes.slice(offset..end);
+                while offset < final_bytes.len() {
+                    let end = std::cmp::min(offset + CHUNK_SIZE, final_bytes.len());
+                    let chunk_bytes = final_bytes.slice(offset..end);
 
                     bytes_downloaded += chunk_bytes.len() as u64;
                     chunk_number += 1;
@@ -241,7 +272,7 @@ impl HttpClient {
 
                     offset = end;
                 }
-            });
+            }); // Close spawn_task closure
 
             task.collect();
         });

@@ -4,9 +4,7 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde_json::Value;
 
 use crate::operations::HttpOperation;
-use crate::{
-    HttpResult, client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream,
-};
+use crate::{client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream};
 
 /// PUT operation implementation for idempotent resource replacement
 #[derive(Clone)]

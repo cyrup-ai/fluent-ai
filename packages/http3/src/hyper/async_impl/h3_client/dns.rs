@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
-use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
+use fluent_ai_async::prelude::MessageChunk;
 
 // Simplified Name type for H3 DNS resolution - removing hyper_util dependency
 #[derive(Debug, Clone)]
@@ -19,12 +20,35 @@ impl Name {
     }
 }
 
+// Wrapper type for socket address lists to implement MessageChunk
+#[derive(Debug, Clone, Default)]
+pub struct SocketAddrListWrapper(pub Vec<SocketAddr>);
+
+impl MessageChunk for SocketAddrListWrapper {
+    fn bad_chunk(error: String) -> Self {
+        // Return empty list for error case
+        Self(Vec::new())
+    }
+    
+    fn is_error(&self) -> bool {
+        self.0.is_empty()
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if self.is_error() {
+            Some("DNS resolution failed")
+        } else {
+            None
+        }
+    }
+}
+
 // Trait for DNS resolution using pure AsyncStream architecture for HTTP/3 client.
 // Completely eliminates Future/Service abstractions for streams-first design.
 pub trait Resolve {
     /// Resolve a name to socket addresses using pure AsyncStream
     /// Returns unwrapped stream - no Result wrapping per async-stream architecture
-    fn resolve(&mut self, name: Name) -> AsyncStream<Vec<SocketAddr>>;
+    fn resolve(&mut self, name: Name) -> AsyncStream<SocketAddrListWrapper>;
 }
 
 /// Standard DNS resolver implementation for H3 client
@@ -38,11 +62,11 @@ impl StandardResolver {
 }
 
 impl Resolve for StandardResolver {
-    fn resolve(&mut self, name: Name) -> AsyncStream<Vec<SocketAddr>> {
+    fn resolve(&mut self, name: Name) -> AsyncStream<SocketAddrListWrapper> {
         let hostname = name.as_str().to_string();
         
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || {
+            let task = spawn_task(move || -> Vec<SocketAddr> {
                 // Use std::net::ToSocketAddrs for synchronous resolution
                 let dummy_port = 80; // Port will be set by caller
                 let host_with_port = format!("{}:{}", hostname, dummy_port);
@@ -53,9 +77,8 @@ impl Resolve for StandardResolver {
                         // Try DNS resolution
                         match std::net::ToSocketAddrs::to_socket_addrs(&host_with_port) {
                             Ok(addrs) => addrs.collect(),
-                            Err(e) => {
-                                handle_error!(format!("DNS resolution failed for {}: {}", hostname, e), "H3 DNS resolution");
-                                return;
+                            Err(_) => {
+                                Vec::new() // Return empty vec on error
                             }
                         }
                     }
@@ -63,8 +86,10 @@ impl Resolve for StandardResolver {
             });
             
             match task.collect() {
-                Ok(addrs) => emit!(sender, addrs),
-                Err(e) => handle_error!(e, "H3 DNS resolution task"),
+                Ok(addrs) => emit!(sender, SocketAddrListWrapper(addrs)),
+                Err(e) => {
+                    emit!(sender, SocketAddrListWrapper::bad_chunk(format!("DNS task error: {}", e)));
+                }
             }
         })
     }
@@ -72,9 +97,52 @@ impl Resolve for StandardResolver {
 
 /// Pure AsyncStream DNS resolution function - zero allocation streaming architecture
 /// Eliminates all Future abstractions for streams-first pattern
-pub(super) fn resolve<R>(mut resolver: R, name: Name) -> AsyncStream<Vec<SocketAddr>>
+pub(super) fn resolve<R>(mut resolver: R, name: Name) -> AsyncStream<SocketAddrVecWrapper>
 where
     R: Resolve + Send + 'static,
 {
-    resolver.resolve(name)
+    use fluent_ai_async::{AsyncStream, emit};
+    
+    AsyncStream::with_channel(move |sender| {
+        let wrapper_stream = resolver.resolve(name);
+        
+        // Convert SocketAddrListWrapper to SocketAddrVecWrapper
+        for wrapper in wrapper_stream.collect() {
+            emit!(sender, SocketAddrVecWrapper(wrapper.0));
+        }
+    })
+}
+
+// Wrapper for Vec<SocketAddr> to implement MessageChunk for direct use
+#[derive(Debug, Clone)]
+pub struct SocketAddrVecWrapper(pub Vec<SocketAddr>);
+
+impl MessageChunk for SocketAddrVecWrapper {
+    fn bad_chunk(error: String) -> Self {
+        Self(Vec::new())
+    }
+    
+    fn is_error(&self) -> bool {
+        self.0.is_empty()
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if self.is_error() {
+            Some("DNS resolution failed")
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for SocketAddrVecWrapper {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl From<Vec<SocketAddr>> for SocketAddrVecWrapper {
+    fn from(addrs: Vec<SocketAddr>) -> Self {
+        Self(addrs)
+    }
 }

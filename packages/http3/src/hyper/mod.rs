@@ -274,6 +274,8 @@ macro_rules! if_hyper {
     )*}
 }
 
+// Import MessageChunk trait for Response::bad_chunk method
+use fluent_ai_async::prelude::MessageChunk;
 pub use http::Method;
 pub use http::header;
 pub use http::{StatusCode, Version};
@@ -289,7 +291,6 @@ pub mod async_stream_service;
 
 // Stream-to-Future bridge for Service trait compatibility
 mod stream_future;
-use stream_future::StreamFuture;
 // Note: remove `if_hyper` if wasm has been migrated to new config system.
 if_hyper! {
     mod config;
@@ -331,24 +332,31 @@ pub use self::response::ResponseBuilderExt;
 /// - there was an error while sending request
 /// - redirect limit was exhausted
 pub fn get<T: IntoUrl + Send + 'static>(url: T) -> fluent_ai_async::AsyncStream<Response> {
-    use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+    use fluent_ai_async::{AsyncStream, emit, spawn_task};
 
     AsyncStream::with_channel(move |sender| {
-        let task = spawn_task(move || -> crate::Result<Response> {
-            let client = Client::builder().build().map_err(crate::error::request)?;
+        let task = spawn_task(move || {
+            let client = match Client::builder().build() {
+                Ok(c) => c,
+                Err(e) => {
+                    emit!(
+                        sender,
+                        Response::bad_chunk(format!("Client build error: {}", e))
+                    );
+                    return;
+                }
+            };
             let mut response_stream = client.get(url).send();
             match response_stream.try_next() {
-                Some(response) => Ok(response),
-                None => Err(crate::error::request(
-                    "no response received from get request",
-                )),
+                Some(response) => emit!(sender, response),
+                None => emit!(
+                    sender,
+                    Response::bad_chunk("no response received from get request".to_string())
+                ),
             }
         });
 
-        match task.collect() {
-            Ok(response) => emit!(sender, response),
-            Err(e) => handle_error!(e, "hyper get request"),
-        }
+        task.collect();
     })
 }
 
@@ -392,7 +400,7 @@ if_hyper! {
 
 
     mod async_impl;
-    mod connect;
+    pub mod connect;
     #[cfg(feature = "cookies")]
     pub mod cookie;
     pub mod dns;

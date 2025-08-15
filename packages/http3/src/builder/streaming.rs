@@ -3,9 +3,8 @@
 //! Pure streams-first architecture - NO Futures, NO Result wrapping
 //! Transforms HTTP byte streams into individual JSON objects via JSONPath
 
-use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
 use fluent_ai_async::AsyncStream;
-use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use serde::de::DeserializeOwned;
 
 use crate::{HttpChunk, HttpError, HttpStream};
@@ -18,7 +17,7 @@ pub struct JsonPathStream<T> {
 
 impl<T> JsonPathStream<T>
 where
-    T: DeserializeOwned + Send + Default + MessageChunk + FluentMessageChunk + 'static,
+    T: DeserializeOwned + Send + Default + MessageChunk + 'static,
 {
     /// Create JSONPath stream from HTTP response - pure streams architecture
     pub fn new(http_stream: HttpStream, jsonpath_expr: String) -> Self {
@@ -26,7 +25,7 @@ where
             inner: AsyncStream::with_channel(move |sender| {
                 std::thread::spawn(move || {
                     let mut buffer = Vec::new();
-                    let mut stream = http_stream;
+                    let stream = http_stream;
 
                     // Process HTTP chunks from stream
                     let chunks: Vec<HttpChunk> = stream.collect();
@@ -63,12 +62,11 @@ where
         }
     }
 
-    /// Get next item from stream
-    pub fn poll_next(&mut self) -> Option<T> {
-        // AsyncStream doesn't have poll_next, use try_next instead
-        // Note: This consumes the stream, so it's not truly a poll operation
-        // For streaming APIs, consider using collect() on the whole stream
-        self.inner.try_next()
+    /// Get next item from stream - consumes the entire stream
+    pub fn collect_next(self) -> Vec<T> {
+        // AsyncStream uses collect() or for-in iteration
+        // This consumes the entire stream and returns all items
+        self.inner.collect()
     }
 
     /// Extract objects matching JSONPath expression - simplified implementation
@@ -110,15 +108,15 @@ where
         }
     }
 
-    /// Process each object with Result error handling - cyrup_sugars compatible pattern
+    /// Process each object with Result error handling - fluent_ai_async pattern
     pub fn on_chunk<F>(self, handler: F) -> AsyncStream<T>
     where
         F: Fn(Result<T, HttpError>) -> T + Send + Sync + 'static,
     {
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
-                let mut stream = self;
-                while let Some(item) = stream.poll_next() {
+                let items = self.inner.collect();
+                for item in items {
                     // Convert item to Result - success case for existing items
                     let result = Ok(item);
                     let processed = handler(result);
@@ -131,17 +129,5 @@ where
     }
 }
 
-/// Implement ChunkHandler trait for JsonPathStream to support cyrup_sugars on_chunk pattern
-impl<T> ChunkHandler<T, HttpError> for JsonPathStream<T>
-where
-    T: DeserializeOwned + Send + Default + MessageChunk + 'static,
-{
-    fn on_chunk<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(Result<T, HttpError>) -> T + Send + Sync + 'static,
-    {
-        // Store the handler for processing
-        self.chunk_handler = Some(Box::new(handler));
-        self
-    }
-}
+// Pure fluent_ai_async pattern - no cyrup_sugars ChunkHandler needed
+// All error handling is done through MessageChunk trait and AsyncStream patterns

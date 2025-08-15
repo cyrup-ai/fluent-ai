@@ -7,8 +7,6 @@
 //! - search() (2.4.7) - Tests if string contains match for regex
 //! - value() (2.4.8) - Converts single-node nodelist to value
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 

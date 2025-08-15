@@ -8,7 +8,7 @@
 
 use std::env;
 
-use cyrup_sugars::ZeroOneOrMany;
+use cyrup_sugars::prelude::{ChunkHandler, ZeroOneOrMany};
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use fluent_ai_domain::chat::Message;
 use fluent_ai_domain::completion::CompletionRequestError as CompletionCoreError;
@@ -47,10 +47,7 @@ impl From<CompletionCoreError> for CompletionError {
     }
 }
 
-/// Chunk handler with cyrup_sugars pattern matching
-pub type ChunkHandler = Box<
-    dyn Fn(Result<CompletionChunk, CompletionError>) -> Result<(), CompletionError> + Send + Sync,
->;
+
 
 /// Automatic API key discovery using provider's env_api_keys() method
 #[inline(always)]
@@ -141,13 +138,15 @@ pub trait CompletionProvider: Clone + Send + Sync + 'static {
     ///
     /// ```
     /// .on_chunk(|chunk| {
-    ///     Ok => log::info!("Chunk: {:?}", chunk),
-    ///     Err => log::error!("Error: {:?}", chunk)
+    ///     match chunk {
+    ///         Ok(c) => { log::info!("Chunk: {:?}", c); c },
+    ///         Err(e) => CompletionChunk::bad_chunk(e.to_string())
+    ///     }
     /// })
     /// ```
     fn on_chunk<F>(self, handler: F) -> Self
     where
-        F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static;
+        F: Fn(Result<CompletionChunk, CompletionError>) -> CompletionChunk + Send + Sync + 'static;
 
     /// Terminal action - execute completion with user prompt
     /// Returns blazing-fast zero-allocation streaming

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use cyrup_sugars::prelude::ChunkHandler;
 use http::Method;
 
-use crate::{HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream};
+use crate::{HttpChunk, HttpClient, HttpError, HttpRequest};
 
 /// Content type enumeration for elegant API
 #[derive(Debug, Clone, Copy)]

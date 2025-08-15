@@ -11,7 +11,7 @@ use crate::header::{AUTHORIZATION, COOKIE, PROXY_AUTHORIZATION, REFERER, WWW_AUT
 use http::{HeaderMap, HeaderValue, Uri, StatusCode};
 
 use crate::Url;
-use super::async_impl;
+
 // Implement our own redirect policy types instead of using tower_http
 // This aligns with our pure AsyncStream architecture, no Service traits
 
@@ -309,12 +309,12 @@ impl TowerRedirectPolicy {
     pub(crate) fn handle_redirect(&mut self, status: StatusCode, location: &HeaderValue, previous: &Uri) -> Result<ActionKind, crate::Error> {
         let previous_url = match Url::parse(&previous.to_string()) {
             Ok(url) => url,
-            Err(e) => return Err(crate::error::builder(e)),
+            Err(e) => return Err(crate::HttpError::builder(e.to_string())),
         };
 
         let next_url = match location.to_str().ok().and_then(|s| Url::parse(s).ok()) {
             Some(url) => url,
-            None => return Err(crate::error::builder("Invalid redirect location")),
+            None => return Err(crate::HttpError::builder("Invalid redirect location")),
         };
 
         self.urls.push(previous_url.clone());
@@ -322,19 +322,18 @@ impl TowerRedirectPolicy {
         match self.policy.check(status, &next_url, &self.urls) {
             ActionKind::Follow => {
                 if next_url.scheme() != "http" && next_url.scheme() != "https" {
-                    return Err(crate::error::url_bad_scheme(next_url));
+                    return Err(crate::HttpError::url(format!("Bad scheme in URL: {}", next_url)));
                 }
 
                 if self.https_only && next_url.scheme() != "https" {
-                    return Err(crate::error::redirect(
-                        crate::error::url_bad_scheme(next_url.clone()),
-                        next_url,
-                    ));
+                    return Err(crate::HttpError::redirect(format!(
+                        "HTTPS required but got: {}", next_url
+                    )));
                 }
                 Ok(ActionKind::Follow)
             }
             ActionKind::Stop => Ok(ActionKind::Stop),
-            ActionKind::Error(e) => Err(crate::error::redirect(e, previous_url)),
+            ActionKind::Error(e) => Err(crate::HttpError::redirect(format!("Redirect error: {}", e))),
         }
     }
     

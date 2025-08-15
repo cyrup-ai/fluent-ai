@@ -229,12 +229,14 @@ impl Certificate {
     }
 
     fn read_pem_certs(reader: &mut impl BufRead) -> crate::Result<Vec<Vec<u8>>> {
-        rustls_pki_types::CertificateDer::pem_reader_iter(reader)
-            .map(|result| match result {
-                Ok(cert) => Ok(cert.as_ref().to_vec()),
-                Err(_) => Err(crate::error::builder("invalid certificate encoding")),
-            })
-            .collect()
+        let mut certs = Vec::new();
+        for result in rustls_pki_types::CertificateDer::pem_reader_iter(reader) {
+            match result {
+                Ok(cert) => certs.push(cert.as_ref().to_vec()),
+                Err(e) => return Err(crate::HttpError::Tls { message: format!("invalid certificate encoding: {}", e) }),
+            }
+        }
+        Ok(certs)
     }
 }
 
@@ -361,9 +363,9 @@ impl Identity {
                     SectionKind::RsaPrivateKey => sk.push(PrivateKeyDer::Pkcs1(data.into())),
                     SectionKind::EcPrivateKey => sk.push(PrivateKeyDer::Sec1(data.into())),
                     _ => {
-                        return Err(crate::error::builder(TLSError::General(String::from(
-                            "No valid certificate was found",
-                        ))))
+                        return Err(crate::HttpError::builder(
+                            "No valid certificate was found".to_string()
+                        ))
                     }
                 }
             }
@@ -371,9 +373,9 @@ impl Identity {
             if let (Some(sk), false) = (sk.pop(), certs.is_empty()) {
                 (sk, certs)
             } else {
-                return Err(crate::error::builder(TLSError::General(String::from(
-                    "private key or certificate not found",
-                ))));
+                return Err(crate::HttpError::builder(
+                    "private key or certificate not found".to_string()
+                ));
             }
         };
 
@@ -409,7 +411,7 @@ impl Identity {
         match self.inner {
             ClientCert::Pem { key, certs } => config_builder
                 .with_client_auth_cert(certs, key)
-                .map_err(crate::error::builder),
+                .map_err(|e| crate::HttpError::Tls { message: format!("TLS client cert error: {}", e) }),
             #[cfg(feature = "native-tls")]
             ClientCert::Pkcs12(..) | ClientCert::Pkcs8(..) => {
                 Err(crate::error::builder("incompatible TLS identity type"))
@@ -471,12 +473,14 @@ impl CertificateRevocationList {
     /// This requires the `rustls-tls(-...)` Cargo feature enabled.
     #[cfg(feature = "__rustls")]
     pub fn from_pem_bundle(pem_bundle: &[u8]) -> crate::Result<Vec<CertificateRevocationList>> {
-        rustls_pki_types::CertificateRevocationListDer::pem_slice_iter(pem_bundle)
-            .map(|result| match result {
-                Ok(crl) => Ok(CertificateRevocationList { inner: crl }),
-                Err(_) => Err(crate::error::builder("invalid crl encoding")),
-            })
-            .collect::<crate::Result<Vec<CertificateRevocationList>>>()
+        let mut crls = Vec::new();
+        for result in rustls_pki_types::CertificateRevocationListDer::pem_slice_iter(pem_bundle) {
+            match result {
+                Ok(crl) => crls.push(CertificateRevocationList { inner: crl }),
+                Err(e) => return Err(crate::HttpError::Tls { message: format!("invalid crl encoding: {}", e) }),
+            }
+        }
+        Ok(crls)
     }
 
     #[cfg(feature = "__rustls")]

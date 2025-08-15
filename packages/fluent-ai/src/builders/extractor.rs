@@ -37,7 +37,11 @@ where
     where
         F: FnOnce(T) -> T + Send + 'static;
     
-
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(self, handler: F) -> impl ExtractorBuilder<T>
+    where
+        F: Fn(CompletionChunk) -> CompletionChunk + Send + Sync + 'static;
     
     /// Build extractor - EXACT syntax: .build()
     fn build(self) -> impl Extractor<T>;
@@ -67,7 +71,7 @@ struct ExtractorBuilderImpl<
     system_prompt: Option<String>,
     error_handler: Option<F1>,
     result_handler: Option<F2>,
-    cyrup_chunk_handler: Option<Box<dyn Fn(Result<CompletionChunk, String>) -> CompletionChunk + Send + Sync>>,
+    chunk_handler: Option<Box<dyn Fn(Result<CompletionChunk, String>) -> CompletionChunk + Send + Sync>>,
     _marker: PhantomData<T>,
 }
 
@@ -79,7 +83,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
             system_prompt: None,
             error_handler: None,
             result_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
             _marker: PhantomData,
         }
     }
@@ -115,7 +119,7 @@ where
             system_prompt: self.system_prompt,
             error_handler: Some(handler),
             result_handler: self.result_handler,
-            cyrup_chunk_handler: self.cyrup_chunk_handler,
+            chunk_handler: self.chunk_handler,
             _marker: PhantomData,
         }
     }
@@ -131,11 +135,26 @@ where
             system_prompt: self.system_prompt,
             error_handler: self.error_handler,
             result_handler: Some(handler),
-            cyrup_chunk_handler: self.cyrup_chunk_handler,
+            chunk_handler: self.chunk_handler,
             _marker: PhantomData,
         }
     }
-
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(mut self, handler: F) -> impl ExtractorBuilder<T>
+    where
+        F: Fn(CompletionChunk) -> CompletionChunk + Send + Sync + 'static,
+    {
+        // Convert from CompletionChunk -> CompletionChunk to Result<CompletionChunk, String> -> CompletionChunk
+        self.chunk_handler = Some(Box::new(move |result| {
+            match result {
+                Ok(chunk) => handler(chunk),
+                Err(error) => CompletionChunk::bad_chunk(error),
+            }
+        }));
+        self
+    }
     
     /// Build extractor - EXACT syntax: .build()
     fn build(self) -> impl Extractor<T> {
@@ -179,7 +198,7 @@ where
     where
         F: Fn(Result<CompletionChunk, String>) -> CompletionChunk + Send + Sync + 'static,
     {
-        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self.chunk_handler = Some(Box::new(handler));
         self
     }
 }

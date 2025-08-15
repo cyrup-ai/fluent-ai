@@ -3,8 +3,8 @@
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::{
-    HttpResult, client::HttpClient, error::HttpError, operations::HttpOperation,
-    request::HttpRequest, stream::DownloadStream,
+    client::HttpClient, error::HttpError, operations::HttpOperation, request::HttpRequest,
+    stream::DownloadStream,
 };
 
 /// Download operation with progress tracking and resume capability

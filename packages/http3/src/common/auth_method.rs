@@ -5,8 +5,8 @@
 
 use http::HeaderMap;
 
-use crate::HttpResult;
 use crate::common::auth::{ApiKey, ApiKeyPlacement, AuthProvider, BasicAuth, BearerToken};
+use crate::error::HttpResult;
 
 /// Legacy-compatible AuthMethod wrapper
 pub enum AuthMethod {

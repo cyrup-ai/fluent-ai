@@ -29,7 +29,11 @@ pub trait EmbeddingBuilder: Sized {
     where
         F: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static;
     
-
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(self, handler: F) -> impl EmbeddingBuilder
+    where
+        F: Fn(EmbeddingChunk) -> EmbeddingChunk + Send + Sync + 'static;
     
     /// Generate embedding - EXACT syntax: .embed()
     fn embed(self) -> AsyncTask<Embedding>;
@@ -47,7 +51,7 @@ struct EmbeddingBuilderImpl<
     vec: Option<ZeroOneOrMany<f64>>,
     error_handler: Option<F1>,
     result_handler: Option<F2>,
-    cyrup_chunk_handler: Option<Box<dyn Fn(Result<EmbeddingChunk, String>) -> EmbeddingChunk + Send + Sync>>,
+    chunk_handler: Option<Box<dyn Fn(Result<EmbeddingChunk, String>) -> EmbeddingChunk + Send + Sync>>,
 }
 
 impl Embedding {
@@ -58,7 +62,7 @@ impl Embedding {
             vec: None,
             error_handler: None,
             result_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 }
@@ -91,7 +95,7 @@ where
             vec: self.vec,
             error_handler: Some(handler),
             result_handler: self.result_handler,
-            cyrup_chunk_handler: self.cyrup_chunk_handler,
+            chunk_handler: self.chunk_handler,
         }
     }
     
@@ -106,8 +110,24 @@ where
             vec: self.vec,
             error_handler: self.error_handler,
             result_handler: Some(handler),
-            cyrup_chunk_handler: self.cyrup_chunk_handler,
+            chunk_handler: self.chunk_handler,
         }
+    }
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(mut self, handler: F) -> impl EmbeddingBuilder
+    where
+        F: Fn(EmbeddingChunk) -> EmbeddingChunk + Send + Sync + 'static,
+    {
+        // Convert from EmbeddingChunk -> EmbeddingChunk to Result<EmbeddingChunk, String> -> EmbeddingChunk
+        self.chunk_handler = Some(Box::new(move |result| {
+            match result {
+                Ok(chunk) => handler(chunk),
+                Err(error) => EmbeddingChunk::bad_chunk(error),
+            }
+        }));
+        self
     }
     
     /// Generate embedding - EXACT syntax: .embed()
@@ -130,7 +150,7 @@ where
     where
         F: Fn(Result<EmbeddingChunk, String>) -> EmbeddingChunk + Send + Sync + 'static,
     {
-        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self.chunk_handler = Some(Box::new(handler));
         self
     }
 }

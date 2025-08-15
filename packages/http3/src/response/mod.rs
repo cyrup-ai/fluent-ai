@@ -6,6 +6,7 @@
 //! - Body processing including JSON streaming and SSE parsing
 
 pub mod body;
+pub mod chunk;
 pub mod core;
 pub mod headers;
 
@@ -13,3 +14,4 @@ pub mod headers;
 pub use core::HttpResponse;
 
 pub use body::{JsonStream, SseEvent};
+pub use chunk::{HttpDownloadChunk, HttpRequestChunk, HttpResponseChunk};

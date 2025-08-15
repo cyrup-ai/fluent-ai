@@ -5,9 +5,7 @@ use std::collections::HashMap;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::operations::HttpOperation;
-use crate::{
-    HttpResult, client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream,
-};
+use crate::{client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream};
 
 /// GET operation implementation with streaming and conditional request support
 #[derive(Clone)]

@@ -41,7 +41,7 @@ impl Upgraded {
     
     /// Create bidirectional connection with dedicated read/write channels
     fn create_bidirectional_connection(protocol: UpgradeProtocol) -> Result<Self, io::Error> {
-        let (read_tx, read_rx) = bounded(1024); // Bounded channel for backpressure
+        let (_read_tx, read_rx) = bounded(1024); // Bounded channel for backpressure
         let (write_tx, write_rx) = bounded(1024);
         
         let connection_state = Arc::new(ConnectionState {
@@ -82,15 +82,13 @@ impl Upgraded {
     }
     
     /// Convert to a read stream with full bidirectional I/O support
-    pub fn into_read_stream(mut self) -> AsyncStream<Result<Vec<u8>, io::Error>> {
+    pub fn into_read_stream(mut self) -> AsyncStream<crate::HttpResponseChunk> {
         AsyncStream::with_channel(move |sender| {
             let read_receiver = match self.read_receiver.take() {
                 Some(receiver) => receiver,
                 None => {
-                    emit!(sender, Err(io::Error::new(
-                        io::ErrorKind::BrokenPipe,
-                        "Read stream already consumed"
-                    )));
+                    use fluent_ai_async::prelude::MessageChunk;
+                    emit!(sender, crate::HttpResponseChunk::bad_chunk("Read stream already consumed".to_string()));
                     return;
                 }
             };
@@ -105,7 +103,7 @@ impl Upgraded {
     /// Read stream processor with proper error handling and metrics tracking
     fn read_stream_processor(
         receiver: Receiver<Vec<u8>>,
-        sender: AsyncStreamSender<Result<Vec<u8>, io::Error>>,
+        sender: AsyncStreamSender<crate::HttpResponseChunk>,
         state: Arc<ConnectionState>
     ) {
         loop {
@@ -117,7 +115,7 @@ impl Upgraded {
                 Ok(data) => {
                     let bytes_read = data.len() as u64;
                     state.bytes_read.fetch_add(bytes_read, std::sync::atomic::Ordering::Release);
-                    emit!(sender, Ok(data));
+                    emit!(sender, crate::HttpResponseChunk::data(bytes::Bytes::from(data)));
                 }
                 Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
                     // Continue polling - allows for graceful shutdown checking
@@ -160,7 +158,7 @@ impl Upgraded {
     }
     
     /// Create a write stream for continuous data writing
-    pub fn write_stream(&mut self) -> Result<AsyncStreamSender<Vec<u8>>, io::Error> {
+    pub fn write_stream(&mut self) -> Result<Sender<Vec<u8>>, io::Error> {
         if self.connection_state.is_closed.load(std::sync::atomic::Ordering::Acquire) {
             return Err(io::Error::new(
                 io::ErrorKind::BrokenPipe,
@@ -303,46 +301,40 @@ fn create_minimal_connection() -> Upgraded {
 
 impl super::response::Response {
     /// Consumes the response and returns a stream for a possible HTTP upgrade.
-    pub fn upgrade(self) -> fluent_ai_async::AsyncStream<crate::Result<Upgraded>> {
-        use fluent_ai_async::{AsyncStream, emit, spawn_task};
+    pub fn upgrade(self) -> fluent_ai_async::AsyncStream<crate::wrappers::UpgradedWrapper> {
+        use fluent_ai_async::prelude::*;
         
-        AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Upgraded, crate::Error> {
-                // Check if the response indicates a successful upgrade (status 101)
-                if self.status() == http::StatusCode::SWITCHING_PROTOCOLS {
-                    // Determine upgrade protocol from headers
-                    let protocol = Self::detect_upgrade_protocol(&self);
-                    
-                    // Create proper bidirectional I/O connection
-                    match Upgraded::new_with_protocol(protocol) {
-                        Ok(upgraded) => Ok(upgraded),
-                        Err(io_err) => Err(crate::error::upgrade(format!(
+        AsyncStream::<crate::wrappers::UpgradedWrapper, 1024>::with_channel(move |sender| {
+            // Check if the response indicates a successful upgrade (status 101)
+            if self.status() == http::StatusCode::SWITCHING_PROTOCOLS {
+                // Determine upgrade protocol from headers
+                let protocol = Self::detect_upgrade_protocol(&self);
+                
+                // Create proper bidirectional I/O connection
+                match Upgraded::new_with_protocol(protocol) {
+                    Ok(upgraded) => {
+                        emit!(sender, crate::wrappers::UpgradedWrapper::from(upgraded));
+                    }
+                    Err(io_err) => {
+                        emit!(sender, crate::wrappers::UpgradedWrapper::bad_chunk(format!(
                             "Failed to create upgraded connection: {}",
                             io_err
-                        ))),
+                        )));
                     }
-                } else {
-                    Err(crate::error::upgrade(format!(
-                        "HTTP upgrade failed: received status {} instead of 101 Switching Protocols",
-                        self.status()
-                    )))
                 }
-            });
-            
-            match task.collect() {
-                Ok(upgraded) => emit!(sender, Ok(upgraded)),
-                Err(e) => emit!(sender, Err(e)),
+            } else {
+                emit!(sender, crate::wrappers::UpgradedWrapper::bad_chunk(format!(
+                    "HTTP upgrade failed: received status {} instead of 101 Switching Protocols",
+                    self.status()
+                )));
             }
         })
     }
-    
-    /// Detect upgrade protocol from response headers
+
     fn detect_upgrade_protocol(&self) -> UpgradeProtocol {
-        // Check Upgrade header to determine protocol
-        if let Some(upgrade_value) = self.headers().get("upgrade") {
-            if let Ok(upgrade_str) = upgrade_value.to_str() {
+        if let Some(upgrade_header) = self.headers().get("upgrade") {
+            if let Ok(upgrade_str) = upgrade_header.to_str() {
                 let upgrade_lower = upgrade_str.to_lowercase();
-                
                 if upgrade_lower.contains("websocket") {
                     return UpgradeProtocol::WebSocket;
                 } else if upgrade_lower.contains("h2c") || upgrade_lower.contains("http/2") {

@@ -3,7 +3,7 @@
 //! Pure streams-first execution - NO Futures, NO Result wrapping
 //! All operations return unwrapped AsyncStreams per fluent-ai architecture
 
-use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
+use cyrup_sugars::prelude::MessageChunk;
 use fluent_ai_async::AsyncStream;
 use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use serde::de::DeserializeOwned;

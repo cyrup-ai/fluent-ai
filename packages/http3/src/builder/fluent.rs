@@ -51,7 +51,7 @@ impl DownloadBuilder {
     ///     println!("Download completed: {:.1}%", percentage);
     /// }
     /// ```
-    pub fn save(self, local_path: &str) -> DownloadProgress {
+    pub fn save(self, local_path: &str) -> Result<DownloadProgress, crate::Error> {
         let mut stream = self.stream;
         let mut total_written = 0;
         let mut chunk_count = 0;
@@ -59,36 +59,26 @@ impl DownloadBuilder {
 
         // Use blocking file I/O - pure streams, no async
         let mut file = std::fs::File::create(local_path).map_err(|e| {
-            crate::Error::FileSystemError {
-                operation: "create".to_string(),
-                path: local_path.to_string(),
-                source: e.into(),
-            }
+            crate::Error::io(format!("Failed to create file {}: {}", local_path, e))
         })?;
 
         while let Some(download_chunk) = stream.poll_next() {
             total_size = download_chunk.total_size;
             use std::io::Write;
-            let bytes_written = file
-                .write(&download_chunk.data)
-                .map_err(|e| {
-                    crate::Error::FileSystemError {
-                        operation: "write".to_string(),
-                        path: local_path.to_string(),
-                        source: e.into(),
-                    }
-                })?;
+            let bytes_written = file.write(&download_chunk.data).map_err(|e| {
+                crate::Error::io(format!("Failed to write to file {}: {}", local_path, e))
+            })?;
             total_written += bytes_written as u64;
             chunk_count += 1;
         }
 
-        DownloadProgress {
+        Ok(DownloadProgress {
             chunk_count,
             bytes_written: total_written,
             total_size,
             local_path: local_path.to_string(),
             is_complete: true,
-        }
+        })
     }
 
     /// Set a custom destination path (alternative to save)
@@ -107,7 +97,7 @@ impl DownloadBuilder {
     ///     .download_file("https://example.com/file.zip")
     ///     .destination("/downloads/file.zip");
     /// ```
-    pub fn destination(self, path: &str) -> DownloadProgress {
+    pub fn destination(self, path: &str) -> Result<DownloadProgress, crate::Error> {
         self.save(path)
     }
 
@@ -126,7 +116,7 @@ impl DownloadBuilder {
     ///     .download_file("https://example.com/file.zip")
     ///     .start("/downloads/file.zip");
     /// ```
-    pub fn start(self, local_path: &str) -> DownloadProgress {
+    pub fn start(self, local_path: &str) -> Result<DownloadProgress, crate::Error> {
         self.save(local_path)
     }
 }

@@ -38,7 +38,11 @@ pub trait ImageBuilder: Sized {
     where
         F: Fn(String) + Send + Sync + 'static;
     
-
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(self, handler: F) -> impl ImageBuilder
+    where
+        F: Fn(ImageChunk) -> ImageChunk + Send + Sync + 'static;
     
     /// Load image - EXACT syntax: .load()
     fn load(self) -> impl AsyncStream<Item = ImageChunk>;
@@ -60,7 +64,7 @@ struct ImageBuilderImpl<
     media_type: Option<ImageMediaType>,
     detail: Option<ImageDetail>,
     error_handler: Option<F1>,
-    cyrup_chunk_handler: Option<Box<dyn Fn(Result<ImageChunk, String>) -> ImageChunk + Send + Sync>>,
+    chunk_handler: Option<Box<dyn Fn(Result<ImageChunk, String>) -> ImageChunk + Send + Sync>>,
 }
 
 impl Image {
@@ -72,7 +76,7 @@ impl Image {
             media_type: None,
             detail: None,
             error_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -84,7 +88,7 @@ impl Image {
             media_type: None,
             detail: None,
             error_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 
@@ -96,7 +100,7 @@ impl Image {
             media_type: None,
             detail: None,
             error_handler: None,
-            cyrup_chunk_handler: None,
+            chunk_handler: None,
         }
     }
 }
@@ -159,10 +163,25 @@ where
             media_type: self.media_type,
             detail: self.detail,
             error_handler: Some(handler),
-            cyrup_chunk_handler: self.cyrup_chunk_handler,
+            chunk_handler: self.chunk_handler,
         }
     }
-
+    
+    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    /// Zero-allocation: returns self for method chaining
+    fn on_chunk<F>(mut self, handler: F) -> impl ImageBuilder
+    where
+        F: Fn(ImageChunk) -> ImageChunk + Send + Sync + 'static,
+    {
+        // Convert from ImageChunk -> ImageChunk to Result<ImageChunk, String> -> ImageChunk
+        self.chunk_handler = Some(Box::new(move |result| {
+            match result {
+                Ok(chunk) => handler(chunk),
+                Err(error) => ImageChunk::bad_chunk(error),
+            }
+        }));
+        self
+    }
     
     /// Load image - EXACT syntax: .load()
     fn load(self) -> impl AsyncStream<Item = ImageChunk> {
@@ -213,7 +232,7 @@ where
     where
         F: Fn(Result<ImageChunk, String>) -> ImageChunk + Send + Sync + 'static,
     {
-        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self.chunk_handler = Some(Box::new(handler));
         self
     }
 }

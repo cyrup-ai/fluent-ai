@@ -36,7 +36,7 @@ use crate::completion_provider::Usage;
 use crate::spawn_async;
 use crate::{
     AsyncStream,
-    completion_provider::{ChunkHandler, CompletionError, CompletionProvider, ModelConfigInfo},
+    completion_provider::{CompletionError, CompletionProvider, ModelConfigInfo},
 };
 
 /// Maximum messages per completion request (compile-time bounded)
@@ -74,7 +74,7 @@ pub struct AnthropicCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<ChunkHandler>,
+    chunk_handler: Option<Box<dyn Fn(Result<CompletionChunk, CompletionError>) -> CompletionChunk + Send + Sync>>,
     // Prompt caching configuration
     prompt_caching_enabled: bool,
     auto_cache_large_content: bool,
@@ -294,8 +294,11 @@ impl CompletionProvider for AnthropicCompletionBuilder {
 
     /// Set chunk handler for streaming responses
     #[inline(always)]
-    fn on_chunk(mut self, handler: ChunkHandler) -> Self {
-        self.chunk_handler = Some(handler);
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<CompletionChunk, CompletionError>) -> CompletionChunk + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Box::new(handler));
         self
     }
 

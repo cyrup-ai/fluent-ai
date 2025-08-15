@@ -5,11 +5,10 @@
 
 use std::collections::HashMap;
 
-use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::AsyncStream;
 
 use super::{cache_key::CacheKey, response_cache::ResponseCache};
-use crate::{HttpResponse, HttpResult};
+use crate::{HttpResponse, error::HttpResult};
 
 lazy_static::lazy_static! {
     /// Global cache instance for use across the HTTP client

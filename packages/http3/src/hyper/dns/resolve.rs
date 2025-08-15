@@ -1,6 +1,5 @@
 use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
-use cyrup_sugars::prelude::MessageChunk;
-use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use arrayvec::{ArrayVec, IntoIter as ArrayIntoIter};
 
 // Use ArrayVec-based iterator for zero-allocation
@@ -40,7 +39,6 @@ pub type HyperName = Name;
 use std::sync::Arc;
 use std::net::{SocketAddr, ToSocketAddrs, IpAddr};
 use std::str::FromStr;
-use crate::hyper::error::BoxError;
 
 // Full DNS resolution implementation for streams-first architecture
 // Uses synchronous DNS APIs wrapped in spawn_task for zero-allocation performance
@@ -91,24 +89,6 @@ impl MessageChunk for DnsResult {
     }
 }
 
-impl FluentMessageChunk for DnsResult {
-    fn bad_chunk(_error: String) -> Self {
-        Self::new()
-    }
-
-    fn is_error(&self) -> bool {
-        self.addrs.is_empty()
-    }
-
-    fn error(&self) -> Option<&str> {
-        if self.is_error() {
-            Some("DNS resolution failed")
-        } else {
-            None
-        }
-    }
-}
-
 impl Default for DnsResult {
     fn default() -> Self {
         Self::new()
@@ -135,7 +115,7 @@ pub type DnsResolverWithOverrides = DynResolver;
 pub struct DynResolver {
     resolver: Arc<dyn Resolve>,
     prefer_ipv6: bool,
-    cache: Option<Arc<std::collections::HashMap<String, arrayvec::ArrayVec<SocketAddr, 8>>>>,
+    cache: Option<Arc<heapless::FnvIndexMap<String, arrayvec::ArrayVec<SocketAddr, 8>, 64>>>,
 }
 
 impl std::fmt::Debug for DynResolver {
@@ -244,22 +224,12 @@ impl DynResolver {
         let resolver = self.resolver.clone();
         
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || {
-                let mut resolve_stream = resolver.resolve(name);
-                match resolve_stream.try_next() {
-                    Some(dns_result) => dns_result,
-                    None => {
-                        handle_error!("DNS resolver stream ended without producing addresses", "hostname DNS resolution");
-                        DnsResult::new() // Return empty result as error-as-data
-                    }
-                }
-            });
-            
-            match task.collect() {
-                Ok(dns_result) => emit!(sender, dns_result),
-                Err(e) => {
-                    handle_error!(e, "hostname DNS resolution task");
-                    emit!(sender, DnsResult::new()); // Error-as-data pattern
+            let resolve_stream = resolver.resolve(name);
+            match resolve_stream.try_next() {
+                Some(dns_result) => emit!(sender, dns_result),
+                None => {
+                    handle_error!("DNS resolver stream ended without producing addresses", "hostname DNS resolution");
+                    emit!(sender, DnsResult::new()); // Return empty result as error-as-data
                 }
             }
         })
@@ -355,60 +325,6 @@ impl Resolve for GaiResolver {
                     }
                 }
             });
-            
-            // Handle DNS resolution result directly without nested Results
-            let result = {
-                // Use std::net::ToSocketAddrs for synchronous resolution
-                let dummy_port = 80; // Port doesn't matter for hostname resolution
-                let host_with_port = format!("{}:{}", hostname, dummy_port);
-                
-                // Set up timeout handling using thread-local storage
-                let start_time = std::time::Instant::now();
-                
-                let socket_addrs: Result<arrayvec::ArrayVec<SocketAddr, 8>, std::io::Error> = 
-                    host_with_port.to_socket_addrs().map(|iter| {
-                        let mut addrs: arrayvec::ArrayVec<SocketAddr, 8> = iter.take(8).collect();
-                        
-                        // Check timeout using elite polling pattern
-                        if start_time.elapsed().as_millis() > timeout_ms as u128 {
-                            return arrayvec::ArrayVec::new(); // Timeout exceeded
-                        }
-                        
-                        // Sort addresses based on preference using zero-allocation sort
-                        if prefer_ipv6 {
-                            addrs.sort_unstable_by_key(|addr| match addr.ip() {
-                                IpAddr::V6(_) => 0, // IPv6 first
-                                IpAddr::V4(_) => 1, // IPv4 second
-                            });
-                        } else {
-                            addrs.sort_unstable_by_key(|addr| match addr.ip() {
-                                IpAddr::V4(_) => 0, // IPv4 first
-                                IpAddr::V6(_) => 1, // IPv6 second
-                            });
-                        }
-                        
-                        // Remove port information since we added dummy port - zero allocation
-                        for addr in addrs.iter_mut() {
-                            addr.set_port(0); // Clear the dummy port
-                        }
-                        addrs
-                    });
-
-                match socket_addrs {
-                    Ok(addrs) => {
-                        if addrs.is_empty() {
-                            emit!(sender, DnsResult::bad_chunk(format!("DNS resolution timeout or no addresses found for {}", hostname)));
-                        } else {
-                            emit!(sender, DnsResult { addrs });
-                        }
-                    },
-                    Err(e) => {
-                        emit!(sender, DnsResult::bad_chunk(format!("DNS resolution failed for {}: {}", hostname, e)));
-                    }
-                }
-            };
-            
-            emit!(sender, result);
         })
     }
 }
@@ -421,22 +337,12 @@ impl DynResolver {
     pub fn resolve_direct(&mut self, name: HyperName) -> AsyncStream<DnsResult> {
         let resolver = self.resolver.clone();
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || {
-                let mut resolve_stream = resolver.resolve(name);
-                match resolve_stream.try_next() {
-                    Some(dns_result) => dns_result,
-                    None => {
-                        handle_error!("DNS resolver stream ended without producing addresses", "DNS resolution");
-                        DnsResult::new() // Error-as-data pattern
-                    }
-                }
-            });
-            
-            match task.collect() {
-                Ok(dns_result) => emit!(sender, dns_result),
-                Err(e) => {
-                    handle_error!(e, "DNS resolution task execution");
-                    emit!(sender, DnsResult::new()); // Error-as-data pattern
+            let resolve_stream = resolver.resolve(name);
+            match resolve_stream.try_next() {
+                Some(dns_result) => emit!(sender, dns_result),
+                None => {
+                    handle_error!("DNS resolver stream ended without producing addresses", "DNS resolution");
+                    emit!(sender, DnsResult::new()); // Return empty result as error-as-data
                 }
             }
         })
@@ -503,12 +409,12 @@ impl Resolve for DnsResolverWithOverridesImpl {
             spawn_task(move || {
                 // Check for override first
                 if let Some(addrs) = overrides.get(&hostname) {
-                    emit!(sender, DnsResult::from_vec(addrs.clone()));
+                    emit!(sender, DnsResult { addrs: addrs.clone() });
                     return;
                 }
                 
                 // Fall back to actual DNS resolution
-                let mut resolver_stream = dns_resolver.resolve(name);
+                let resolver_stream = dns_resolver.resolve(name);
                 match resolver_stream.try_next() {
                     Some(result) => {
                         if result.is_error() {

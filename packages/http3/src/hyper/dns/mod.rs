@@ -1,7 +1,7 @@
 //! DNS resolution
 
 pub use resolve::{Addrs, Name, Resolve, Resolving};
-pub(crate) use resolve::{DnsResolverWithOverrides, DynResolver};
+pub(crate) use resolve::DynResolver;
 
 pub(crate) mod gai;
 #[cfg(feature = "hickory-dns")]

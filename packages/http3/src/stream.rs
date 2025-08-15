@@ -3,11 +3,11 @@
 
 use bytes::Bytes;
 use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
-use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
-use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use fluent_ai_async::{AsyncStream, AsyncStreamSender, emit};
 use http::{HeaderMap, StatusCode};
 
-use crate::HttpError;
+// MessageChunk implementations moved to wrappers.rs to avoid orphan rule violations
+// Use StringWrapper and BytesWrapper instead of implementing directly on external types
 
 /// Represents a chunk of an HTTP response stream.
 #[derive(Debug, Clone)]
@@ -18,19 +18,55 @@ pub enum HttpChunk {
     Body(Bytes),
     /// Deserialized data from response body for pattern matching
     Deserialized(serde_json::Value),
-    /// Error that occurred during processing
-    Error(crate::HttpError),
+    /// Error that occurred during processing - stores error message directly for fast access
+    Error(String),
 }
 
 impl Default for HttpChunk {
     fn default() -> Self {
-        HttpChunk::Body(Bytes::new())
+        HttpChunk::Head(StatusCode::OK, HeaderMap::new())
     }
 }
 
-impl MessageChunk for HttpChunk {
+impl cyrup_sugars::prelude::MessageChunk for DownloadChunk {
     fn bad_chunk(error: String) -> Self {
-        HttpChunk::Error(crate::HttpError::StreamError { message: error })
+        DownloadChunk {
+            data: bytes::Bytes::new(),
+            chunk_number: 0,
+            total_size: None,
+            bytes_downloaded: 0,
+            error_message: Some(error),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
+impl fluent_ai_async::prelude::MessageChunk for DownloadChunk {
+    fn bad_chunk(error: String) -> Self {
+        DownloadChunk {
+            data: bytes::Bytes::new(),
+            chunk_number: 0,
+            total_size: None,
+            bytes_downloaded: 0,
+            error_message: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
+impl cyrup_sugars::prelude::MessageChunk for HttpChunk {
+    fn bad_chunk(error: String) -> Self {
+        HttpChunk::Error(error)
     }
 
     fn is_error(&self) -> bool {
@@ -39,24 +75,20 @@ impl MessageChunk for HttpChunk {
 
     fn error(&self) -> Option<&str> {
         match self {
-            HttpChunk::Error(_) => None, // Avoid lifetime issues with temporary string
+            HttpChunk::Error(msg) => Some(msg),
             _ => None,
         }
     }
 }
 
-impl FluentMessageChunk for HttpChunk {
+impl fluent_ai_async::prelude::MessageChunk for HttpChunk {
     fn bad_chunk(error: String) -> Self {
-        HttpChunk::Error(crate::HttpError::StreamError { message: error })
-    }
-
-    fn is_error(&self) -> bool {
-        matches!(self, HttpChunk::Error(_))
+        HttpChunk::Error(error)
     }
 
     fn error(&self) -> Option<&str> {
         match self {
-            HttpChunk::Error(_) => None, // Avoid lifetime issues with temporary string
+            HttpChunk::Error(msg) => Some(msg),
             _ => None,
         }
     }
@@ -95,10 +127,10 @@ impl serde::Serialize for HttpChunk {
                 state.serialize_field("data", value)?;
                 state.end()
             }
-            HttpChunk::Error(error) => {
+            HttpChunk::Error(message) => {
                 let mut state = serializer.serialize_struct("HttpChunk", 2)?;
                 state.serialize_field("type", "error")?;
-                state.serialize_field("message", &error.to_string())?;
+                state.serialize_field("message", message)?;
                 state.end()
             }
         }
@@ -163,46 +195,6 @@ impl Default for DownloadChunk {
             bytes_downloaded: 0,
             error_message: None,
         }
-    }
-}
-
-impl MessageChunk for DownloadChunk {
-    fn bad_chunk(error: String) -> Self {
-        DownloadChunk {
-            data: Bytes::new(),
-            chunk_number: 0,
-            total_size: None,
-            bytes_downloaded: 0,
-            error_message: Some(error),
-        }
-    }
-
-    fn is_error(&self) -> bool {
-        self.error_message.is_some()
-    }
-
-    fn error(&self) -> Option<&str> {
-        self.error_message.as_deref()
-    }
-}
-
-impl FluentMessageChunk for DownloadChunk {
-    fn bad_chunk(error: String) -> Self {
-        DownloadChunk {
-            data: Bytes::new(),
-            chunk_number: 0,
-            total_size: None,
-            bytes_downloaded: 0,
-            error_message: Some(error),
-        }
-    }
-
-    fn is_error(&self) -> bool {
-        self.error_message.is_some()
-    }
-
-    fn error(&self) -> Option<&str> {
-        self.error_message.as_deref()
     }
 }
 
@@ -307,17 +299,19 @@ impl HttpStream {
         }
     }
 
-    /// Collect single response with error handler - PUBLIC API COMPATIBILITY
-    pub fn collect_one_or_else<T, F>(self, error_handler: F) -> T
+    /// Collect single response with error handler - fluent_ai_async pattern
+    pub fn collect_or_else<T, F>(self, mut error_handler: F) -> T
     where
-        T: serde::de::DeserializeOwned + From<BadChunk>,
-        F: FnOnce(HttpError) -> T,
+        T: serde::de::DeserializeOwned + MessageChunk + Default + Send + 'static,
+        F: FnMut(&T) -> T,
     {
-        match self.collect_json::<T>() {
-            Some(result) => result,
-            None => error_handler(HttpError::DeserializationError {
-                message: "Failed to parse response".to_string(),
-            }),
+        let bytes = self.collect_bytes();
+        if bytes.is_empty() {
+            return error_handler(&T::bad_chunk("Empty response".to_string()));
+        }
+        match serde_json::from_slice::<T>(&bytes) {
+            Ok(result) => result,
+            Err(_) => error_handler(&T::bad_chunk("Failed to parse response".to_string())),
         }
     }
 
@@ -344,26 +338,6 @@ impl HttpStream {
             });
         })
     }
-
-    /// Process each chunk with Result error handling - cyrup_sugars compatible pattern
-    pub fn on_chunk<F>(self, handler: F) -> AsyncStream<HttpChunk>
-    where
-        F: Fn(Result<HttpChunk, crate::HttpError>) -> HttpChunk + Send + Sync + 'static,
-    {
-        AsyncStream::with_channel(move |sender| {
-            std::thread::spawn(move || {
-                let mut stream = self;
-                while let Some(chunk) = stream.poll_next() {
-                    // Convert chunk to Result - success case for existing chunks
-                    let result = Ok(chunk);
-                    let processed = handler(result);
-                    if sender.send(processed).is_err() {
-                        break;
-                    }
-                }
-            });
-        })
-    }
 }
 
 /// Iterator implementation for backwards compatibility with existing code
@@ -378,13 +352,18 @@ impl Iterator for HttpStream {
 /// Pure AsyncStream of download chunks - NO Result wrapping
 pub struct DownloadStream {
     inner: AsyncStream<DownloadChunk>,
+    chunk_handler:
+        Option<Box<dyn Fn(Result<DownloadChunk, crate::HttpError>) -> DownloadChunk + Send + Sync>>,
 }
 
 impl DownloadStream {
     /// Create new download stream
     #[must_use]
     pub fn new(stream: AsyncStream<DownloadChunk>) -> Self {
-        Self { inner: stream }
+        Self {
+            inner: stream,
+            chunk_handler: None,
+        }
     }
 
     /// Create download stream with progress tracking
@@ -395,6 +374,7 @@ impl DownloadStream {
     {
         Self {
             inner: AsyncStream::with_channel(producer),
+            chunk_handler: None,
         }
     }
 
@@ -406,6 +386,16 @@ impl DownloadStream {
     /// Stream extension method equivalent - NO async, pure streams only
     pub fn try_next(&mut self) -> Option<DownloadChunk> {
         self.poll_next()
+    }
+}
+
+impl ChunkHandler<DownloadChunk, crate::HttpError> for DownloadStream {
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<DownloadChunk, crate::HttpError>) -> DownloadChunk + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Box::new(handler));
+        self
     }
 }
 
@@ -422,8 +412,8 @@ pub type JsonStream = AsyncStream<serde_json::Value>;
 impl From<BadChunk> for HttpChunk {
     fn from(bad_chunk: BadChunk) -> Self {
         match bad_chunk {
-            BadChunk::Error(error) => HttpChunk::Error(error),
-            BadChunk::ProcessingFailed { error, .. } => HttpChunk::Error(error),
+            BadChunk::Error(error) => HttpChunk::Error(error.to_string()),
+            BadChunk::ProcessingFailed { error, .. } => HttpChunk::Error(error.to_string()),
         }
     }
 }
@@ -468,13 +458,12 @@ impl From<BadChunk> for Vec<u8> {
 
 // Remove duplicate implementations - already defined above
 
-/// Implement ChunkHandler trait for HttpStream to support cyrup_sugars on_chunk pattern
+/// Implement ChunkHandler trait for HttpStream - pure fluent_ai_async pattern
 impl ChunkHandler<HttpChunk, crate::HttpError> for HttpStream {
     fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<HttpChunk, crate::HttpError>) -> HttpChunk + Send + Sync + 'static,
     {
-        // Store the handler in the stream for processing
         self.chunk_handler = Some(Box::new(handler));
         self
     }

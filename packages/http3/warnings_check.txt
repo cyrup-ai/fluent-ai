@@ -1,0 +1,226 @@
+    Checking fluent_ai_http3 v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/http3)
+error[E0428]: the name `BytesWrapper` is defined multiple times
+   --> packages/http3/src/wrappers.rs:229:1
+    |
+ 86 | pub struct BytesWrapper(pub Bytes);
+    | ----------------------------------- previous definition of the type `BytesWrapper` here
+...
+229 | pub struct BytesWrapper {
+    | ^^^^^^^^^^^^^^^^^^^^^^^ `BytesWrapper` redefined here
+    |
+    = note: `BytesWrapper` must be defined only once in the type namespace of this module
+
+error[E0405]: cannot find trait `MessageChunk` in this scope
+  --> packages/http3/src/stream.rs:10:6
+   |
+10 | impl MessageChunk for String {
+   |      ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these traits
+   |
+ 4 + use cyrup_sugars::prelude::MessageChunk;
+   |
+ 4 + use fluent_ai_async::prelude::MessageChunk;
+   |
+
+error[E0405]: cannot find trait `MessageChunk` in this scope
+  --> packages/http3/src/stream.rs:28:6
+   |
+28 | impl MessageChunk for Bytes {
+   |      ^^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing one of these traits
+   |
+ 4 + use cyrup_sugars::prelude::MessageChunk;
+   |
+ 4 + use fluent_ai_async::prelude::MessageChunk;
+   |
+
+warning: unused import: `wrappers::TupleWrapper`
+  --> packages/http3/src/hyper/async_impl/h3_client/connect.rs:15:5
+   |
+15 |     wrappers::TupleWrapper,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::time::Duration`
+ --> packages/http3/src/hyper/async_impl/h3_client/dns.rs:4:5
+  |
+4 | use std::time::Duration;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `log::debug`
+ --> packages/http3/src/hyper/async_impl/h3_client/dns.rs:6:5
+  |
+6 | use log::debug;
+  |     ^^^^^^^^^^
+
+warning: unused imports: `BoxError`, `Error`, and `Kind`
+ --> packages/http3/src/hyper/async_impl/h3_client/dns.rs:8:27
+  |
+8 | use crate::hyper::error::{BoxError, Error, Kind};
+  |                           ^^^^^^^^  ^^^^^  ^^^^
+
+warning: unused import: `crate::response::HttpResponseChunk`
+ --> packages/http3/src/hyper/async_impl/h3_client/dns.rs:9:5
+  |
+9 | use crate::response::HttpResponseChunk;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `spawn_task`
+ --> packages/http3/src/hyper/async_impl/h3_client/pool.rs:6:42
+  |
+6 | use fluent_ai_async::{AsyncStream, emit, spawn_task};
+  |                                          ^^^^^^^^^^
+
+warning: unused import: `crate::response::HttpResponseChunk`
+  --> packages/http3/src/hyper/async_impl/h3_client/pool.rs:19:5
+   |
+19 | use crate::response::HttpResponseChunk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `fluent_ai_async::prelude::*`
+ --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:7:5
+  |
+7 | use fluent_ai_async::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bytes::Bytes`
+ --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:9:5
+  |
+9 | use bytes::Bytes;
+  |     ^^^^^^^^^^^^
+
+warning: unused import: `Response`
+  --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:12:21
+   |
+12 | use http::{Request, Response};
+   |                     ^^^^^^^^
+
+warning: unused import: `hyper::body::Body`
+  --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:13:5
+   |
+13 | use hyper::body::Body;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `http_body::Body as HttpBody`
+  --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:14:5
+   |
+14 | use http_body::Body as HttpBody;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::hyper::async_impl::body::Body as ResponseBody`
+  --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:18:5
+   |
+18 | use crate::hyper::async_impl::body::Body as ResponseBody;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Error` and `self`
+  --> packages/http3/src/hyper/async_impl/h3_client/mod.rs:19:27
+   |
+19 | use crate::hyper::error::{self, BoxError, Error, Kind};
+   |                           ^^^^            ^^^^^
+
+warning: unused import: `handle_error`
+   --> packages/http3/src/hyper/async_impl/response.rs:324:50
+    |
+324 |         use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+    |                                                  ^^^^^^^^^^^^
+
+warning: unused import: `spawn_task`
+   --> packages/http3/src/hyper/async_impl/response.rs:555:50
+    |
+555 |         use fluent_ai_async::{AsyncStream, emit, spawn_task};
+    |                                                  ^^^^^^^^^^
+
+warning: unused import: `Ipv6Addr`
+ --> packages/http3/src/hyper/connect.rs:6:64
+  |
+6 | use std::net::{TcpStream, SocketAddr, ToSocketAddrs, Ipv4Addr, Ipv6Addr};
+  |                                                                ^^^^^^^^
+
+warning: unused imports: `SocketAddr` and `TcpStream`
+    --> packages/http3/src/hyper/connect.rs:1686:20
+     |
+1686 |     use std::net::{SocketAddr, TcpStream};
+     |                    ^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused import: `fluent_ai_async::prelude::MessageChunk`
+    --> packages/http3/src/hyper/connect.rs:1687:9
+     |
+1687 |     use fluent_ai_async::prelude::MessageChunk;
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0119]: conflicting implementations of trait `std::fmt::Debug` for type `wrappers::BytesWrapper`
+   --> packages/http3/src/wrappers.rs:228:10
+    |
+ 85 | #[derive(Debug, Clone, Default)]
+    |          ----- first implementation here
+...
+228 | #[derive(Debug, Clone, Default)]
+    |          ^^^^^ conflicting implementation for `wrappers::BytesWrapper`
+
+error[E0119]: conflicting implementations of trait `Clone` for type `wrappers::BytesWrapper`
+   --> packages/http3/src/wrappers.rs:228:17
+    |
+ 85 | #[derive(Debug, Clone, Default)]
+    |                 ----- first implementation here
+...
+228 | #[derive(Debug, Clone, Default)]
+    |                 ^^^^^ conflicting implementation for `wrappers::BytesWrapper`
+
+error[E0119]: conflicting implementations of trait `From<bytes::Bytes>` for type `wrappers::BytesWrapper`
+   --> packages/http3/src/wrappers.rs:251:1
+    |
+101 | impl From<Bytes> for BytesWrapper {
+    | --------------------------------- first implementation here
+...
+251 | impl From<Bytes> for BytesWrapper {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `wrappers::BytesWrapper`
+
+error[E0119]: conflicting implementations of trait `From<wrappers::BytesWrapper>` for type `bytes::Bytes`
+   --> packages/http3/src/wrappers.rs:260:1
+    |
+107 | impl From<BytesWrapper> for Bytes {
+    | --------------------------------- first implementation here
+...
+260 | impl From<BytesWrapper> for Bytes {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `bytes::Bytes`
+
+error[E0119]: conflicting implementations of trait `Default` for type `ResultWrapper<_, _>`
+   --> packages/http3/src/wrappers.rs:303:1
+    |
+270 | / impl<T, E> Default for ResultWrapper<T, E>
+271 | | where
+272 | |     T: Default,
+273 | |     E: Default,
+    | |_______________- first implementation here
+...
+303 | / impl<T, E> Default for ResultWrapper<T, E>
+304 | | where
+305 | |     T: Default,
+    | |_______________^ conflicting implementation for `ResultWrapper<_, _>`
+
+error[E0119]: conflicting implementations of trait `Default` for type `wrappers::BytesWrapper`
+   --> packages/http3/src/wrappers.rs:228:24
+    |
+ 85 | #[derive(Debug, Clone, Default)]
+    |                        ------- first implementation here
+...
+228 | #[derive(Debug, Clone, Default)]
+    |                        ^^^^^^^ conflicting implementation for `wrappers::BytesWrapper`
+
+error[E0119]: conflicting implementations of trait `fluent_ai_async::prelude::MessageChunk` for type `wrappers::BytesWrapper`
+   --> packages/http3/src/wrappers.rs:234:1
+    |
+113 | impl MessageChunk for BytesWrapper {
+    | ---------------------------------- first implementation here
+...
+234 | impl MessageChunk for BytesWrapper {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `wrappers::BytesWrapper`
+
+Some errors have detailed explanations: E0119, E0405, E0428.
+For more information about an error, try `rustc --explain E0119`.
+warning: `fluent_ai_http3` (lib) generated 19 warnings
+error: could not compile `fluent_ai_http3` (lib) due to 10 previous errors; 19 warnings emitted

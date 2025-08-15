@@ -34,7 +34,10 @@ impl IntoUrlSealed for Url {
         if self.has_host() {
             Ok(self)
         } else {
-            Err(crate::error::url_bad_scheme(self))
+            Err(crate::HttpError::url(format!(
+                "Bad scheme in URL: {}",
+                self
+            )))
         }
     }
 
@@ -77,7 +80,7 @@ if_hyper! {
     pub(crate) fn try_uri(url: &Url) -> crate::Result<http::Uri> {
         url.as_str()
             .parse()
-            .map_err(|_| super::error::url_invalid_uri(url.clone()))
+            .map_err(|_| crate::HttpError::url(format!("Invalid URI: {}", url)))
     }
 }
 

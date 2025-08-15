@@ -166,7 +166,7 @@ impl Form {
     }
 
     /// Produce a stream of the bytes in this `Form`, consuming it.
-    pub fn into_stream(mut self) -> AsyncStream<Result<Bytes, crate::Error>> {
+    pub fn into_stream(mut self) -> AsyncStream<HttpResponseChunk> {
         AsyncStream::with_channel(move |sender| {
             let task = spawn_task(move || -> Result<(), crate::Error> {
                 if self.inner.fields.is_empty() {
@@ -182,16 +182,19 @@ impl Form {
                     while let Some(chunk_result) = part_stream.try_next() {
                         match chunk_result {
                             Ok(chunk) => {
-                                emit!(sender, Ok(chunk));
+                                emit!(sender, crate::response::HttpResponseChunk::data(chunk));
                             }
-                            Err(e) => return Err(e),
+                            Err(e) => {
+                                emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Part stream error: {}", e)));
+                                return Err(e);
+                            }
                         }
                     }
                 }
                 
                 // Append final boundary
                 let final_boundary = format!("--{}--\r\n", self.boundary());
-                emit!(sender, Ok(Bytes::from(final_boundary)));
+                emit!(sender, crate::response::HttpResponseChunk::data(Bytes::from(final_boundary)));
                 
                 Ok(())
             });
@@ -208,7 +211,7 @@ impl Form {
         &mut self,
         name: T,
         part: Part,
-    ) -> AsyncStream<Result<Bytes, crate::Error>>
+    ) -> AsyncStream<HttpResponseChunk>
     where
         T: Into<Cow<'static, str>>,
     {
@@ -220,24 +223,27 @@ impl Form {
             let task = spawn_task(move || -> Result<(), crate::Error> {
                 // Emit boundary
                 let boundary_bytes = format!("--{}\r\n", boundary_str);
-                emit!(sender, Ok(Bytes::from(boundary_bytes)));
+                emit!(sender, crate::response::HttpResponseChunk::data(Bytes::from(boundary_bytes)));
                 
                 // Emit headers
                 let mut header_bytes = percent_encoding.encode_headers(&name_cow, &part.meta);
                 header_bytes.extend_from_slice(b"\r\n\r\n");
-                emit!(sender, Ok(Bytes::from(header_bytes)));
+                emit!(sender, crate::response::HttpResponseChunk::data(Bytes::from(header_bytes)));
                 
                 // Emit part value stream
                 let mut part_stream = part.value.into_stream();
                 while let Some(chunk_result) = part_stream.try_next() {
                     match chunk_result {
-                        Ok(chunk) => emit!(sender, Ok(chunk)),
-                        Err(e) => return Err(e),
+                        Ok(chunk) => emit!(sender, crate::response::HttpResponseChunk::data(chunk)),
+                        Err(e) => {
+                            emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Part value stream error: {}", e)));
+                            return Err(e);
+                        }
                     }
                 }
                 
                 // Emit terminating CRLF
-                emit!(sender, Ok(Bytes::from("\r\n")));
+                emit!(sender, crate::response::HttpResponseChunk::data(Bytes::from("\r\n")));
                 
                 Ok(())
             });

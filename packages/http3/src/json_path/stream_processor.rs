@@ -331,7 +331,7 @@ where
                 circuit_state,
                 error
             );
-            return Err(HttpError::Generic(format!(
+            return Err(HttpError::generic(format!(
                 "Circuit breaker open due to consecutive failures: {}",
                 error
             )));
@@ -355,12 +355,12 @@ where
 
         // Categorize error for specific handling
         match &error {
-            HttpError::Generic(msg) if msg.contains("timeout") => {
-                log::warn!("Timeout error in JsonStreamProcessor: {}", msg);
+            HttpError::Generic { message } if message.contains("timeout") => {
+                log::warn!("Timeout error in JsonStreamProcessor: {}", message);
                 // Timeout errors are often transient - less severe
             }
-            HttpError::Generic(msg) if msg.contains("connection") => {
-                log::warn!("Connection error in JsonStreamProcessor: {}", msg);
+            HttpError::Generic { message } if message.contains("connection") => {
+                log::warn!("Connection error in JsonStreamProcessor: {}", message);
                 // Connection errors may indicate network issues
             }
             _ => {
@@ -460,7 +460,7 @@ where
                                     "Body chunk processing failed: {}",
                                     e
                                 ));
-                                let http_error = HttpError::Generic(format!(
+                                let http_error = HttpError::generic(format!(
                                     "JSONPath processing error: {}",
                                     json_error
                                 ));
@@ -478,7 +478,11 @@ where
                     }
                     HttpChunk::Error(e) => {
                         self.stats.processing_errors.fetch_add(1, Ordering::Relaxed);
-                        if let Err(recovery_error) = self.handle_error_with_recovery(e) {
+                        if let Err(recovery_error) =
+                            self.handle_error_with_recovery(crate::HttpError::NetworkError {
+                                message: e,
+                            })
+                        {
                             handle_error!(recovery_error, "HTTP chunk error with recovery");
                         }
                     }
@@ -541,12 +545,16 @@ where
 
             match result {
                 Ok(processed_obj) => {
-                    fluent_ai_async::emit!(sender, processed_obj);
+                    if let Err(_) = sender.send(processed_obj) {
+                        return Ok(());
+                    }
                 }
                 Err(e) => {
                     log::error!("JSONPath processing failed: {:?}", e);
-                    let error_chunk = T::bad_chunk(e.to_string());
-                    fluent_ai_async::emit!(sender, error_chunk);
+                    let error_chunk = <T as MessageChunk>::bad_chunk(e.to_string());
+                    if let Err(_) = sender.send(error_chunk) {
+                        return Ok(());
+                    }
                 }
             }
         }
@@ -640,12 +648,12 @@ where
                     HttpChunk::Body(bytes) => {
                         if let Err(e) = self.process_body_chunk(&sender, bytes) {
                             let http_error =
-                                HttpError::Generic(format!("JSONPath processing failed: {}", e));
+                                HttpError::generic(format!("JSONPath processing failed: {}", e));
                             error_handler(http_error);
                         }
                     }
                     HttpChunk::Error(e) => {
-                        error_handler(e);
+                        error_handler(crate::HttpError::NetworkError { message: e });
                     }
                     _ => {
                         // Ignore non-body chunks

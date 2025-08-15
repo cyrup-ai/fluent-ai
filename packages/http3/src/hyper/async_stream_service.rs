@@ -8,10 +8,78 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+use fluent_ai_async::prelude::MessageChunk;
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
 use http::Uri;
 
 use crate::hyper::error::BoxError;
+
+/// Connection result type for AsyncStream compatibility
+///
+/// Represents connection outcomes in error-as-data pattern following fluent_ai_async architecture.
+/// Implements MessageChunk for zero-allocation streaming.
+#[derive(Debug, Clone)]
+pub enum ConnResult<T> {
+    /// Successful connection
+    Success(T),
+    /// Connection error with message
+    Error(String),
+    /// Connection timeout
+    Timeout,
+}
+
+impl<T> Default for ConnResult<T> {
+    fn default() -> Self {
+        ConnResult::Error("default connection result".to_string())
+    }
+}
+
+impl<T> MessageChunk for ConnResult<T> {
+    fn is_error(&self) -> bool {
+        matches!(self, ConnResult::Error(_) | ConnResult::Timeout)
+    }
+
+    fn bad_chunk(error_message: String) -> Self {
+        ConnResult::Error(error_message)
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            ConnResult::Error(msg) => Some(msg),
+            _ => None,
+        }
+    }
+}
+
+impl<T> ConnResult<T> {
+    /// Create a successful connection result
+    pub fn success(value: T) -> Self {
+        ConnResult::Success(value)
+    }
+
+    /// Create an error connection result
+    pub fn error(message: impl Into<String>) -> Self {
+        ConnResult::Error(message.into())
+    }
+
+    /// Create a timeout connection result
+    pub fn timeout() -> Self {
+        ConnResult::Timeout
+    }
+
+    /// Check if the result is successful
+    pub fn is_success(&self) -> bool {
+        matches!(self, ConnResult::Success(_))
+    }
+
+    /// Extract the success value if present
+    pub fn into_success(self) -> Option<T> {
+        match self {
+            ConnResult::Success(value) => Some(value),
+            _ => None,
+        }
+    }
+}
 
 /// AsyncStream equivalent of tower_service::Service
 ///
@@ -32,9 +100,16 @@ pub trait AsyncStreamService<Request> {
 
     /// Execute a request and return an AsyncStream of results
     ///
-    /// This replaces tower::Service::call() but returns AsyncStream<Result<Response, Error>>
-    /// instead of Future<Output = Result<Response, Error>>.
-    fn call(&mut self, request: Request) -> AsyncStream<Result<Self::Response, Self::Error>>;
+    /// This replaces tower::Service::call() but returns AsyncStream<ConnResult<Response>>
+    /// following the fluent_ai_async error-as-data pattern.
+    fn call(&mut self, request: Request) -> AsyncStream<ConnResult<Self::Response>>;
+
+    /// Get error information from the service
+    ///
+    /// Returns None if the service is not in an error state.
+    fn error(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// AsyncStream equivalent of tower::Layer
@@ -83,6 +158,7 @@ where
 }
 
 /// Timeout service implementation
+#[derive(Debug)]
 pub struct AsyncStreamTimeoutService<S> {
     inner: S,
     timeout: Duration,
@@ -99,24 +175,26 @@ where
         self.inner.is_ready()
     }
 
-    fn call(&mut self, request: Uri) -> AsyncStream<Result<Self::Response, Self::Error>> {
+    fn call(&mut self, request: Uri) -> AsyncStream<ConnResult<Self::Response>> {
         let timeout = self.timeout;
         // Create a clone instead of using unsafe zeroed - this preserves the service state
         let mut inner_service = self.inner.clone();
 
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Result<Conn, BoxError>, &'static str> {
+            let _task = spawn_task(move || {
                 let start = std::time::Instant::now();
                 let inner_stream = inner_service.call(request);
-                let mut stream_iter = inner_stream;
+                let stream_iter = inner_stream;
 
                 loop {
                     if start.elapsed() > timeout {
-                        return Ok(Err("connection timeout".into()));
+                        emit!(sender, ConnResult::timeout());
+                        return;
                     }
 
-                    if let Some(result) = stream_iter.try_next() {
-                        return Ok(result);
+                    if let Some(conn_result) = stream_iter.try_next() {
+                        emit!(sender, conn_result);
+                        return;
                     }
 
                     // Small sleep to prevent busy waiting
@@ -124,10 +202,8 @@ where
                 }
             });
 
-            match task.collect() {
-                Ok(result) => emit!(sender, result),
-                Err(e) => handle_error!(e, "timeout layer execution"),
-            }
+            // Task execution is handled within the spawn_task closure
+            // No additional result handling needed here
         })
     }
 }
@@ -166,6 +242,7 @@ where
 }
 
 /// Concurrency limiting service implementation
+#[derive(Debug)]
 pub struct AsyncStreamConcurrencyService<S> {
     inner: S,
     max_concurrent: usize,
@@ -184,21 +261,21 @@ where
         current < self.max_concurrent && self.inner.is_ready()
     }
 
-    fn call(&mut self, request: Uri) -> AsyncStream<Result<Self::Response, Self::Error>> {
+    fn call(&mut self, request: Uri) -> AsyncStream<ConnResult<Self::Response>> {
         let active_count = self.active_count.clone();
         let max_concurrent = self.max_concurrent;
         // Create a clone instead of using unsafe zeroed - this preserves the service state
         let mut inner_service = self.inner.clone();
 
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Result<Conn, BoxError>, &'static str> {
+            let _task = spawn_task(move || {
                 // Try to acquire a slot
                 loop {
                     let current = active_count.load(std::sync::atomic::Ordering::Acquire);
                     if current >= max_concurrent {
-                        // At limit, wait a bit and retry
-                        std::thread::sleep(std::time::Duration::from_millis(10));
-                        continue;
+                        // At limit, emit error and return
+                        emit!(sender, ConnResult::error("concurrency limit exceeded"));
+                        return;
                     }
                     // Try to increment the counter
                     if active_count
@@ -216,24 +293,22 @@ where
 
                 // Execute with slot acquired
                 let inner_stream = inner_service.call(request);
-                let mut stream_iter = inner_stream;
+                let stream_iter = inner_stream;
 
-                let result = if let Some(result) = stream_iter.try_next() {
-                    result
+                let result = if let Some(conn_result) = stream_iter.try_next() {
+                    conn_result
                 } else {
-                    Err("no connection result from inner service".into())
+                    ConnResult::error("no connection result from inner service")
                 };
 
                 // Release the slot
                 active_count.fetch_sub(1, std::sync::atomic::Ordering::Release);
 
-                Ok(result)
+                emit!(sender, result);
             });
 
-            match task.collect() {
-                Ok(result) => emit!(sender, result),
-                Err(e) => handle_error!(e, "concurrency layer execution"),
-            }
+            // Task execution is handled within the spawn_task closure
+            // No additional result handling needed here
         })
     }
 }

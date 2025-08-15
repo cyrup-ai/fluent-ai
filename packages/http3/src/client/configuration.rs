@@ -32,10 +32,12 @@ impl HttpClient {
         }
 
         // Compression configuration
-        builder = builder
-            .gzip(config.gzip)
-            .brotli(config.brotli)
-            .deflate(config.deflate);
+        builder = builder.gzip(config.gzip).deflate(config.deflate);
+
+        #[cfg(feature = "brotli")]
+        {
+            builder = builder.brotli(config.brotli);
+        }
 
         // Build the client with error handling
         let inner = builder

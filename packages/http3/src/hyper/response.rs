@@ -31,10 +31,7 @@ mod tests {
             Ok(url) => url,
             Err(_) => return, // Skip test if URL parsing fails
         };
-        let response = match Builder::new()
-            .status(200)
-            .url(url.clone())
-            .body(()) {
+        let response = match Builder::new().status(200).url(url.clone()).body(()) {
             Ok(response) => response,
             Err(_) => return, // Skip test if response build fails
         };

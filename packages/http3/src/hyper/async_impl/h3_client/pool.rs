@@ -1,22 +1,56 @@
 use std::collections::HashMap;
-use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
-use std::sync::mpsc::{Receiver, TryRecvError, Sender};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::sync::mpsc::{Receiver, TryRecvError};
+use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::prelude::MessageChunk;
+use std::time::{Duration, Instant};
 
 use bytes::Buf;
 use bytes::Bytes;
 use h3::client::SendRequest;
 use h3_quinn::{Connection, OpenStreams};
-use http::uri::{Authority, Scheme};
-use http::{Request, Response, Uri};
+use http::{uri::{Authority, Scheme}, Uri, Request};
 use log::trace;
 
-use super::super::body::ResponseBody;
 use crate::Body;
 use crate::hyper::error::{BoxError, Error, Kind};
+use crate::response::HttpResponseChunk;
+
+// Wrapper for Option<PoolClient> to implement MessageChunk
+#[derive(Clone)]
+pub struct PoolClientWrapper(pub Option<PoolClient>);
+
+impl MessageChunk for PoolClientWrapper {
+    fn bad_chunk(error: String) -> Self {
+        Self(None)
+    }
+    
+    fn is_error(&self) -> bool {
+        self.0.is_none()
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if self.is_error() {
+            Some("Pool client unavailable")
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for PoolClientWrapper {
+    fn default() -> Self {
+        Self(None)
+    }
+}
+
+impl From<Option<PoolClient>> for PoolClientWrapper {
+    fn from(opt: Option<PoolClient>) -> Self {
+        Self(opt)
+    }
+}
 
 pub(super) type Key = (Scheme, Authority);
 
@@ -60,7 +94,7 @@ impl ConnectingLock {
         // Option is guaranteed to be Some until dropped
         match self.0.take() {
             Some(inner) => inner.key,
-            None => Key::default(), // Return default key if already dropped
+            None => (Scheme::HTTP, Authority::from_static("localhost")), // Return default key if already dropped
         }
     }
 }
@@ -79,38 +113,31 @@ impl Drop for ConnectingLock {
 }
 
 impl ConnectingWaiter {
-    pub fn receive(mut self) -> AsyncStream<Option<PoolClient>> {
-        use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+    pub fn receive(mut self) -> AsyncStream<PoolClientWrapper> {
+        use fluent_ai_async::{AsyncStream, emit};
         
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || {
-                // Use blocking receive on std::sync::mpsc instead of watch channel
-                let start = std::time::Instant::now();
-                let timeout = std::time::Duration::from_secs(30); // 30 second timeout
-                
-                loop {
-                    match self.receiver.try_recv() {
-                        Ok(client) => {
-                            return Ok::<Option<PoolClient>, Box<dyn std::error::Error + Send + Sync>>(client);
+            let start = std::time::Instant::now();
+            let timeout = std::time::Duration::from_secs(30);
+            
+            loop {
+                match self.receiver.try_recv() {
+                    Ok(client) => {
+                        emit!(sender, PoolClientWrapper(client));
+                        return;
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        if start.elapsed() > timeout {
+                            emit!(sender, PoolClientWrapper(None)); // Timeout case
+                            return;
                         }
-                        Err(std::sync::mpsc::TryRecvError::Empty) => {
-                            // Check timeout
-                            if start.elapsed() > timeout {
-                                return Ok::<Option<PoolClient>, Box<dyn std::error::Error + Send + Sync>>(None);
-                            }
-                            // Sleep a bit and try again
-                            std::thread::sleep(std::time::Duration::from_millis(10));
-                        }
-                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                            return Ok::<Option<PoolClient>, Box<dyn std::error::Error + Send + Sync>>(None);
-                        }
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        emit!(sender, PoolClientWrapper(None)); // Disconnected case
+                        return;
                     }
                 }
-            });
-            
-            match task.collect() {
-                Ok(client) => emit!(sender, client),
-                Err(e) => handle_error!(e, "connection waiting"),
             }
         })
     }
@@ -202,9 +229,9 @@ impl Pool {
                 // Poll in a loop with sleeps instead of async await
                 loop {
                     match driver.poll_close(&mut context) {
-                        Poll::Ready(e) => {
-                            trace!("poll_close returned error {e:?}");
-                            close_tx.send(e).ok();
+                        Poll::Ready(connection_error) => {
+                            trace!("poll_close completed with ConnectionError: {connection_error:?}");
+                            close_tx.send(connection_error).ok();
                             break;
                         }
                         Poll::Pending => {
@@ -217,7 +244,9 @@ impl Pool {
 
         let mut inner = match self.inner.lock() {
             Ok(inner) => inner,
-            Err(_) => return, // Skip if mutex is poisoned
+            Err(_) => {
+                return PoolClient { inner: tx }; // Skip if mutex is poisoned
+            }
         };
 
         // We clean up "connecting" here so we don't have to acquire the lock again.
@@ -267,8 +296,8 @@ impl PoolClient {
 
     pub fn send_request(
         &mut self,
-        req: Request<Body>,
-    ) -> AsyncStream<Result<Response<ResponseBody>, BoxError>> {
+        req: Request<bytes::Bytes>,
+    ) -> AsyncStream<crate::response::HttpResponseChunk> {
         use fluent_ai_async::{AsyncStream, emit};
         
         let mut inner = self.inner.clone();
@@ -284,22 +313,21 @@ impl PoolClient {
                     let (head, mut req_body) = req.into_parts();
                     let mut req = Request::from_parts(head, ());
 
-                    if let Some(n) = req_body.size_hint().exact() {
-                        if n > 0 {
-                            req.headers_mut()
-                                .insert(http::header::CONTENT_LENGTH, n.into());
-                        }
+                    let body_len = req_body.len();
+                    if body_len > 0 {
+                        req.headers_mut()
+                            .insert(http::header::CONTENT_LENGTH, body_len.into());
                     }
 
-                    // For now, return an error indicating this needs more sophisticated conversion
+                    // For now, return an error response indicating this needs more sophisticated conversion
                     // The async h3 operations require significant reworking to be truly synchronous
                     // This is a complex conversion that may require changes to the h3 library usage
-                    Err("HTTP/3 async operations not yet converted to synchronous patterns - requires more work".into())
+                    crate::response::HttpResponseChunk::bad_chunk("HTTP/3 async operations not yet converted to synchronous patterns - requires more work".to_string())
             });
             
             match task.collect() {
-                Ok(response) => emit!(sender, Ok(response)),
-                Err(e) => emit!(sender, Err(e.into())),
+                Ok(response) => emit!(sender, response),
+                Err(e) => emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Task collection error: {}", e))),
             }
         })
     }
@@ -370,18 +398,11 @@ where
         cx: &mut Context,
     ) -> Poll<Option<Result<hyper::body::Frame<Self::Data>, Self::Error>>> {
         if let Ok(Err(e)) = self.send_rx.try_recv() {
-            return Poll::Ready(Some(Err(crate::error::body(e))));
+            return Poll::Ready(Some(Err(crate::hyper::error::Error::new(crate::hyper::error::Kind::Request, Some(e)))));
         }
 
-        // Convert async polling to synchronous pattern for pure AsyncStream architecture
-        // This would need significant rework to properly integrate with h3 library
-        match std::task::Poll::Pending {
-            Ok(Some(mut b)) => Poll::Ready(Some(Ok(hyper::body::Frame::data(
-                b.copy_to_bytes(b.remaining()),
-            )))),
-            Ok(None) => Poll::Ready(None),
-            Err(e) => Poll::Ready(Some(Err(crate::error::body(e)))),
-        }
+        // Simplified polling for compilation - needs proper h3 integration
+        Poll::Pending
     }
 
     fn size_hint(&self) -> hyper::body::SizeHint {

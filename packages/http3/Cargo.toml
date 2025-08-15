@@ -140,7 +140,7 @@ name = "performance_suite"
 harness = false
 
 [features]
-default = ["http3", "connection-pool", "compression", "http3_unstable", "default-tls", "charset", "http2", "system-proxy", "json", "stream", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"]
+default = ["http3", "connection-pool", "compression", "http3_unstable", "default-tls", "charset", "http2", "system-proxy", "json", "stream", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate"]
 http3 = ["rustls-tls-manual-roots", "dep:h3", "dep:h3-quinn", "dep:quinn"]
 connection-pool = []
 compression = []

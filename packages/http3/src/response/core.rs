@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
-use fluent_ai_async::prelude::MessageChunk;
+use cyrup_sugars::prelude::MessageChunk;
 use http::StatusCode;
 
 /// HTTP response structure with zero-allocation design
@@ -129,18 +129,18 @@ impl HttpResponse {
     }
 
     /// Convert to error if not successful
-    pub fn error_for_status(self) -> crate::HttpResult<Self> {
+    pub fn error_for_status(self) -> crate::error::HttpResult<Self> {
         if self.is_success() {
-            crate::HttpResult::Ok(self)
+            Ok(self)
         } else {
-            crate::HttpResult::Err(crate::HttpError::HttpStatus {
+            Err(crate::error::HttpError::HttpStatus {
                 status: self.status.as_u16(),
                 message: format!(
                     "HTTP {} {}",
                     self.status.as_u16(),
                     self.status.canonical_reason().unwrap_or("Unknown")
                 ),
-                body: String::from_utf8_lossy(&self.body).to_string(),
+                body: String::new(),
             })
         }
     }
@@ -276,6 +276,24 @@ impl MessageChunk for HttpResponse {
 
     fn is_error(&self) -> bool {
         self.status.is_client_error() || self.status.is_server_error()
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.status.is_client_error() || self.status.is_server_error() {
+            std::str::from_utf8(&self.body).ok()
+        } else {
+            None
+        }
+    }
+}
+
+impl fluent_ai_async::prelude::MessageChunk for HttpResponse {
+    fn bad_chunk(error: String) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            headers: HashMap::new(),
+            body: error.into_bytes(),
+        }
     }
 
     fn error(&self) -> Option<&str> {

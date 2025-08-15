@@ -18,11 +18,12 @@ where
             let _ = write!(encoder, "{password}");
         }
     }
-    let mut header = HeaderValue::from_bytes(&buf).map_err(|e| {
-        crate::Error::InvalidHeader {
+    let mut header = HeaderValue::from_bytes(&buf).map_err(|_e| {
+        crate::HttpError::InvalidHeader {
             name: "authorization".to_string(),
-            value: String::from_utf8_lossy(&buf).to_string(),
-            source: e.into(),
+            message: format!("Invalid authorization header: {}", String::from_utf8_lossy(&buf)),
+            value: Some(String::from_utf8_lossy(&buf).to_string()),
+            error_source: None,
         }
     })?;
     header.set_sensitive(true);
