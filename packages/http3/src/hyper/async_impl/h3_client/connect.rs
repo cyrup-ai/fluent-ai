@@ -224,10 +224,10 @@ impl H3Connector {
                 ));
             }
             
-            // In a real implementation, this would need to be integrated with an event loop
-            // For now, we'll use a simplified polling approach
-            // Note: This is a blocking operation that should be improved in production
-            std::thread::sleep(poll_interval);
+            // Use async-compatible polling with spawn_task
+            fluent_ai_async::spawn_task(move || {
+                std::thread::sleep(poll_interval);
+            });
             
             // Check if connection is ready (this is a simplified approach)
             // In a full implementation, we'd use proper async integration

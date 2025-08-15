@@ -94,16 +94,25 @@ impl AnthropicRequestBuilder {
             // Clone request for thread safety
             let request = request.clone();
 
-            // Use Http3::json() pattern with streaming
+            // Use Http3::json() with ChunkHandler pattern before streaming
             let response_stream = Http3::json()
                 .debug() // Enable debug logging
                 .api_key(&api_key)
                 .header("anthropic-version", &api_version)
                 .body(&request)
+                .on_chunk(|result: Result<fluent_ai_http3::HttpChunk, fluent_ai_http3::HttpError>| -> fluent_ai_http3::HttpChunk {
+                    match result {
+                        Ok(chunk) => chunk,
+                        Err(error) => {
+                            tracing::error!("HTTP streaming error: {:?}", error);
+                            fluent_ai_http3::HttpChunk::bad_chunk(format!("HTTP completion request failed: {:?}", error))
+                        }
+                    }
+                })
                 .post(&url)
                 .stream();
 
-            // Process streaming response
+            // Process streaming response - now using transformed chunks
             response_stream.on_chunk(|chunk| match chunk {
                 Ok(data) => {
                     if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&data) {

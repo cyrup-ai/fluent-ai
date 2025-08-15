@@ -2,7 +2,7 @@
 //! Zero futures, zero Result wrapping - all AsyncStream based
 
 use bytes::Bytes;
-use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
+use fluent_ai_async::prelude::{ChunkHandler, MessageChunk};
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, emit};
 use http::{HeaderMap, StatusCode};
 

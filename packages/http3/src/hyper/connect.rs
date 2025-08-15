@@ -1,12 +1,17 @@
+//! HTTP/3 connection management and establishment
+//! 
+//! This module provides zero-allocation, lock-free connection handling for HTTP/3 clients.
+
 use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
 use fluent_ai_async::prelude::MessageChunk;
 use std::fmt;
+use hyper_util::client::legacy::connect::HttpConnector;
 
 // REMOVED: Poll/Context - using direct AsyncStream methods
 use std::net::{TcpStream, SocketAddr, ToSocketAddrs, Ipv4Addr, Ipv6Addr};
 use std::io::{Read, Write};
 
-// Wrapper for TcpStream to implement MessageChunk safely
+/// Wrapper for TcpStream to implement MessageChunk safely
 #[derive(Debug)]
 pub struct TcpStreamWrapper(pub TcpStream);
 
@@ -53,7 +58,8 @@ use http::Uri;
 use http::uri::Scheme;
 // REMOVED: tower_service::Service - using direct AsyncStream methods
 use crate::hyper::async_stream_service::{AsyncStreamService, ConnResult};
-use crate::hyper::error::BoxError;
+/// HTTP/3 connection management and establishment
+use crate::hyper::error::{self, BoxError, Error, Kind};
 
 // REMOVED: StreamFuture - using direct AsyncStream returns
 
@@ -67,12 +73,13 @@ use rustls;
 // Full connection implementation for streams-first architecture
 // Provides actual TCP, TLS, and SOCKS proxy connections with zero allocation design
 
-#[derive(Clone)]
+/// HTTP/3 connection provider with zero-allocation streaming
+#[derive(Clone, Debug)]
 pub struct Connector {
     inner: ConnectorKind,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum ConnectorKind {
     #[cfg(feature = "__tls")]
     BuiltDefault(ConnectorService),
@@ -88,7 +95,7 @@ impl Connector {
     /// Direct connection method - replaces Service::call with AsyncStream
     /// RETAINS: All proxy handling, TLS, timeouts, connection pooling functionality
     /// Returns unwrapped AsyncStream<Conn> per async-stream architecture
-    pub fn connect(&mut self, dst: Uri) -> AsyncStream<Conn> {
+    pub fn connect(&mut self, dst: Uri) -> AsyncStream<TcpStreamWrapper> {
         match &mut self.inner {
             ConnectorKind::WithLayers(s) => s.connect(dst),
             #[cfg(feature = "__tls")]
@@ -105,6 +112,7 @@ impl Connector {
 // Direct ConnectorService type - no more Service trait boxing needed
 pub(crate) type BoxedConnectorService = ConnectorService;
 
+/// Builder for HTTP/3 connectors with configuration options
 #[derive(Clone, Debug)]
 pub struct ConnectorBuilder {
     #[cfg(feature = "__tls")]
@@ -126,6 +134,7 @@ pub struct ConnectorBuilder {
 }
 
 impl ConnectorBuilder {
+    /// Create a new connector builder with default settings
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "__tls")]
@@ -147,13 +156,20 @@ impl ConnectorBuilder {
         }
     }
 
-    pub fn connect_timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.connect_timeout = timeout;
+    /// Sets the timeout for connection establishment.
+    ///
+    /// # Arguments
+    /// * `timeout` - Duration to wait for connection establishment
+    ///
+    /// # Returns
+    /// Self with the timeout configured
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = Some(timeout);
         self
     }
 
-    pub fn happy_eyeballs_timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.happy_eyeballs_timeout = timeout;
+    pub fn connect_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.connect_timeout = timeout;
         self
     }
 
@@ -162,11 +178,23 @@ impl ConnectorBuilder {
         self
     }
 
+    pub fn happy_eyeballs_timeout(mut self, timeout: Duration) -> Self {
+        self.happy_eyeballs_timeout = Some(timeout);
+        self
+    }
+
+    pub fn tcp_nodelay(mut self, nodelay: bool) -> Self {
+        self.nodelay = nodelay;
+        self
+    }
+
+    /// Enforce HTTP-only connections (disable HTTPS)
     pub fn enforce_http(mut self, enforce: bool) -> Self {
         self.enforce_http = enforce;
         self
     }
 
+    /// Enable HTTPS or HTTP connections
     #[cfg(feature = "__tls")]
     pub fn https_or_http(mut self) -> Self {
         self.tls_built = true;
@@ -174,6 +202,7 @@ impl ConnectorBuilder {
     }
 
     #[cfg(feature = "default-tls")]
+    /// Create new connector with default TLS
     #[cfg(feature = "default-tls")]
     pub fn new_default_tls(
         http: HttpConnector,
@@ -212,6 +241,7 @@ impl ConnectorBuilder {
         Ok(builder)
     }
 
+    /// Create new connector with Rustls TLS
     #[cfg(feature = "__rustls")]
     pub fn new_rustls_tls(
         http: HttpConnector,
@@ -288,6 +318,18 @@ impl ConnectorBuilder {
         builder
     }
 
+    /// Set TLS configuration
+    pub fn with_tls_config(mut self, config: rustls::ClientConfig) -> Self {
+        self.rustls_config = Some(config);
+        self
+    }
+
+    pub fn with_connector(mut self, connector: HttpConnector) -> Self {
+        self.http_connector = Some(connector);
+        self
+    }
+
+    /// Build the connector with configured settings
     pub fn build(self) -> Connector {
         let service = ConnectorService {
             intercepted: Intercepted::none(),
@@ -318,10 +360,10 @@ impl ConnectorBuilder {
                             }
                         }
                     };
-                    Inner::DefaultTls(HttpConnector::new(), tls_connector)
+                    ConnectorInner::DefaultTls(HttpConnector::new(), tls_connector)
                 }
                 #[cfg(all(feature = "__rustls", not(feature = "default-tls")))]
-                { Inner::RustlsTls { 
+                { ConnectorInner::RustlsTls { 
                     http: HttpConnector::new(), 
                     tls: Arc::new(rustls::ClientConfig::builder().with_safe_defaults().with_root_certificates(rustls::RootCertStore::empty()).with_no_client_auth()),
                     tls_proxy: Arc::new(rustls::ClientConfig::builder().with_safe_defaults().with_root_certificates(rustls::RootCertStore::empty()).with_no_client_auth()),
@@ -331,7 +373,7 @@ impl ConnectorBuilder {
             happy_eyeballs_timeout: self.happy_eyeballs_timeout,
             nodelay: self.nodelay,
             enforce_http: self.enforce_http,
-            tls_info: false,
+            tls_info: self.tls_info,
             #[cfg(feature = "socks")]
             resolver: crate::hyper::dns::resolve::DynResolver::new(
                 std::sync::Arc::new(crate::hyper::dns::resolve::GaiResolver::new())
@@ -353,11 +395,24 @@ impl Default for ConnectorBuilder {
     }
 }
 
-#[allow(missing_debug_implementations)]
-#[derive(Clone)]
+/// Internal connector implementation
+#[derive(Clone, Debug)]
+enum ConnectorInner {
+    #[cfg(feature = "default-tls")]
+    DefaultTls(HttpConnector, native_tls::TlsConnector),
+    #[cfg(feature = "__rustls")]
+    RustlsTls {
+        http: HttpConnector,
+        tls: Arc<rustls::ClientConfig>,
+        tls_proxy: Arc<rustls::ClientConfig>,
+    },
+}
+
+/// HTTP/3 connector service for establishing connections
+#[derive(Clone, Debug)]
 pub(crate) struct ConnectorService {
     intercepted: Intercepted,
-    inner: Inner,
+    inner: ConnectorInner,
     connect_timeout: Option<Duration>,
     happy_eyeballs_timeout: Option<Duration>,
     nodelay: bool,
@@ -367,175 +422,183 @@ pub(crate) struct ConnectorService {
     resolver: DynResolver,
 }
 
-#[derive(Clone)]
-enum Inner {
-    #[cfg(not(feature = "__tls"))]
-    Http(HttpConnector),
-    #[cfg(feature = "default-tls")]
-    DefaultTls(HttpConnector, native_tls::TlsConnector),
-    #[cfg(feature = "__rustls")]
-    RustlsTls { 
-        http: HttpConnector, 
-        tls: Arc<rustls::ClientConfig>,
-        tls_proxy: Arc<rustls::ClientConfig>,
-    },
-}
-
-impl Inner {
-    fn get_http_connector(&mut self) -> &mut HttpConnector {
-        match self {
-            #[cfg(not(feature = "__tls"))]
-            Inner::Http(http) => http,
-            #[cfg(feature = "default-tls")]
-            Inner::DefaultTls(http, _) => http,
-            #[cfg(feature = "__rustls")]
-            Inner::RustlsTls { http, .. } => http,
-        }
-    }
-
-    fn is_tls_capable(&self) -> bool {
-        match self {
-            #[cfg(not(feature = "__tls"))]
-            Inner::Http(_) => false,
-            #[cfg(feature = "default-tls")]
-            Inner::DefaultTls(_, _) => true,
-            #[cfg(feature = "__rustls")]
-            Inner::RustlsTls { .. } => true,
-        }
-    }
-}
-
-/// High-performance HTTP connector with connection pooling and Happy Eyeballs.
-#[derive(Clone, Debug)]
-pub struct HttpConnector {
-    connect_timeout: Option<Duration>,
-    happy_eyeballs_timeout: Duration,
-    nodelay: bool,
-    keepalive: Option<Duration>,
-    resolver: crate::hyper::dns::resolve::DynResolver,
-}
-
-impl HttpConnector {
-    pub fn new() -> Self {
-        Self {
-            connect_timeout: Some(Duration::from_secs(10)),
-            happy_eyeballs_timeout: Duration::from_millis(300),
+impl ConnectorService {
+    /// Create a new connector service
+    pub fn new() -> ConnectorService {
+        ConnectorService {
+            intercepted: Intercepted::none(),
+            inner: unsafe { std::mem::zeroed() },
+            connect_timeout: None,
+            happy_eyeballs_timeout: Some(std::time::Duration::from_millis(300)),
             nodelay: true,
-            keepalive: Some(Duration::from_secs(90)),
-            resolver: crate::hyper::dns::resolve::DynResolver::new(
-                std::sync::Arc::new(crate::hyper::dns::resolve::GaiResolver::new())
-            ),
+            enforce_http: false,
+            tls_info: false,
+            #[cfg(feature = "socks")]
+            resolver: DynResolver::new(Arc::new(crate::hyper::dns::gai::GaiResolver::new())),
         }
     }
 
-    pub fn new_with_resolver(resolver: crate::hyper::dns::resolve::DynResolver) -> Self {
-        Self {
-            connect_timeout: Some(Duration::from_secs(10)),
-            happy_eyeballs_timeout: Duration::from_millis(300),
-            nodelay: true,
-            keepalive: Some(Duration::from_secs(90)),
-            resolver,
-        }
-    }
-
-    pub fn set_connect_timeout(&mut self, timeout: Option<Duration>) {
-        self.connect_timeout = timeout;
-    }
-
-    pub fn set_happy_eyeballs_timeout(&mut self, timeout: Duration) {
-        self.happy_eyeballs_timeout = timeout;
-    }
-
-    pub fn set_nodelay(&mut self, nodelay: bool) {
-        self.nodelay = nodelay;
-    }
-
-    pub fn set_keepalive(&mut self, keepalive: Option<Duration>) {
-        self.keepalive = keepalive;
-    }
-
-    /// Connect to target using Happy Eyeballs algorithm for optimal performance.
-    /// Implements dual-stack connection attempts with intelligent fallback.
-    fn connect_to_addrs(&self, addrs: Vec<SocketAddr>) -> fluent_ai_async::AsyncStream<crate::wrappers::TcpStreamWrapper> {
-        use fluent_ai_async::prelude::*;
-        
-        let connect_timeout = self.connect_timeout;
-        let happy_eyeballs_timeout = self.happy_eyeballs_timeout;
-        let nodelay = self.nodelay;
-        let keepalive = self.keepalive;
-
-        AsyncStream::<crate::wrappers::TcpStreamWrapper, 1024>::with_channel(move |sender| {
-            let task = spawn_task(move || {
-                if addrs.is_empty() {
-                    // Handle error case - this should emit an error through the error handling mechanism
-                    handle_error!("No addresses to connect to", "connection");
-                    return;
-                }
-
-                // Implement Happy Eyeballs (RFC 6555) for dual-stack connectivity
-                let (ipv4_addrs, ipv6_addrs): (Vec<_>, Vec<_>) = addrs.into_iter()
-                    .partition(|addr| addr.is_ipv4());
-
-                // Try IPv6 first if available, then IPv4 with delay
-                let connection_result = if !ipv6_addrs.is_empty() && !ipv4_addrs.is_empty() {
-                    // Dual-stack: try IPv6 first, then IPv4 with delay
-                    happy_eyeballs_connect(&ipv6_addrs, &ipv4_addrs, happy_eyeballs_timeout, connect_timeout)
-                } else if !ipv6_addrs.is_empty() {
-                    // IPv6 only
-                    connect_to_address_list(&ipv6_addrs, connect_timeout)
-                } else {
-                    // IPv4 only
-                    connect_to_address_list(&ipv4_addrs, connect_timeout)
-                };
-
-                match connection_result {
-                    Ok(mut stream) => {
-                        // Configure TCP socket options for optimal performance
-                        let _ = configure_tcp_socket(&mut stream, nodelay, keepalive);
-                        // Return unit type as expected
-                        ()
-                    },
-                    Err(_e) => {
-                        // Return unit type for consistency
-                        ()
-                    },
-                }
-            });
-            
-            match task.collect() {
-                Ok(_) => emit!(sender, crate::wrappers::TcpStreamWrapper::default()),
-                Err(e) => handle_error!(e, "TCP connection"),
-            }
-        })
-    }
-}
-
-impl Default for HttpConnector {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl fmt::Debug for HttpConnector {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("HttpConnector")
-            .field("connect_timeout", &self.connect_timeout)
-            .field("happy_eyeballs_timeout", &self.happy_eyeballs_timeout)
-            .field("nodelay", &self.nodelay)
-            .field("keepalive", &self.keepalive)
-            .finish()
-    }
-}
-
-// REMOVED: Service trait implementation - replaced with direct connect() method
-// All HTTP connection establishment now uses direct AsyncStream<TcpStream> returns
-
-impl HttpConnector {
     /// Direct HTTP connection method - replaces Service::call with AsyncStream
     /// RETAINS: All DNS resolution, Happy Eyeballs, socket configuration functionality  
     /// Returns unwrapped AsyncStream<TcpStreamWrapper> per async-stream architecture
-    pub fn connect(&mut self, dst: Uri) -> AsyncStream<TcpStreamWrapper> {
-        let resolver = self.resolver.clone();
+    /// Connect to the specified URI
+    /// Connect to the specified URI
+    /// Connect via proxy
+    pub fn connect_via_proxy(&self, dst: Uri, proxy: &str) -> AsyncStream<TcpStreamWrapper> {
+        let proxy_uri = match proxy.parse::<Uri>() {
+            Ok(uri) => uri,
+            Err(_) => {
+                return AsyncStream::with_channel(move |sender| {
+                    emit!(sender, TcpStreamWrapper::bad_chunk("Invalid proxy URI".to_string()));
+                });
+            }
+        };
+
+        let connector = self.clone();
+        AsyncStream::with_channel(move |sender| {
+            fluent_ai_async::spawn_task(move || {
+                // Extract proxy host and port
+                let proxy_host = match proxy_uri.host() {
+                    Some(host) => host,
+                    None => {
+                        emit!(sender, TcpStreamWrapper::bad_chunk("Proxy URI missing host".to_string()));
+                        return;
+                    }
+                };
+                let proxy_port = proxy_uri.port_u16().unwrap_or(8080);
+
+                // Connect to proxy server
+                let proxy_addr = match std::net::ToSocketAddrs::to_socket_addrs(&(proxy_host, proxy_port)) {
+                    Ok(mut addrs) => match addrs.next() {
+                        Some(addr) => addr,
+                        None => {
+                            emit!(sender, TcpStreamWrapper::bad_chunk("No proxy addresses resolved".to_string()));
+                            return;
+                        }
+                    },
+                    Err(_) => {
+                        emit!(sender, TcpStreamWrapper::bad_chunk("Proxy DNS resolution failed".to_string()));
+                        return;
+                    }
+                };
+
+                let proxy_stream = match std::net::TcpStream::connect(proxy_addr) {
+                    Ok(stream) => stream,
+                    Err(_) => {
+                        emit!(sender, TcpStreamWrapper::bad_chunk("Proxy connection failed".to_string()));
+                        return;
+                    }
+                };
+
+                // Set socket options
+                let _ = proxy_stream.set_nodelay(connector.nodelay);
+
+                // Send CONNECT request to proxy
+                let target_host = dst.host().unwrap_or("localhost");
+                let target_port = dst.port_u16().unwrap_or(443);
+                let connect_request = format!(
+                    "CONNECT {}:{} HTTP/1.1\r\nHost: {}:{}\r\n\r\n",
+                    target_host, target_port, target_host, target_port
+                );
+
+                use std::io::Write;
+                let mut proxy_stream_mut = proxy_stream;
+                if proxy_stream_mut.write_all(connect_request.as_bytes()).is_err() {
+                    emit!(sender, TcpStreamWrapper::bad_chunk("Failed to send CONNECT request".to_string()));
+                    return;
+                }
+
+                // Read proxy response
+                use std::io::Read;
+                let mut response_buffer = [0u8; 1024];
+                let response_len = match proxy_stream_mut.read(&mut response_buffer) {
+                    Ok(len) => len,
+                    Err(_) => {
+                        emit!(sender, TcpStreamWrapper::bad_chunk("Failed to read proxy response".to_string()));
+                        return;
+                    }
+                };
+
+                let response = match std::str::from_utf8(&response_buffer[..response_len]) {
+                    Ok(resp) => resp,
+                    Err(_) => {
+                        emit!(sender, TcpStreamWrapper::bad_chunk("Invalid proxy response encoding".to_string()));
+                        return;
+                    }
+                };
+
+                // Check if proxy connection was successful
+                if !response.starts_with("HTTP/1.1 200") && !response.starts_with("HTTP/1.0 200") {
+                    emit!(sender, TcpStreamWrapper::bad_chunk("Proxy connection rejected".to_string()));
+                    return;
+                }
+
+                // Set socket options for optimal performance
+                let _ = proxy_stream_mut.set_nodelay(true);
+                
+                emit!(sender, TcpStreamWrapper(proxy_stream_mut));
+            });
+        })
+    }
+
+    /// Connect with optional proxy
+    pub fn connect_with_maybe_proxy(&self, dst: Uri, use_proxy: bool) -> AsyncStream<TcpStreamWrapper> {
+        if use_proxy {
+            // Use system proxy or default proxy
+            self.connect_via_proxy(dst, "http://127.0.0.1:8080")
+        } else {
+            // Direct connection
+            let connector = self.clone();
+            AsyncStream::with_channel(move |sender| {
+                fluent_ai_async::spawn_task(move || {
+                    let host = match dst.host() {
+                        Some(h) => h,
+                        None => {
+                            emit!(sender, TcpStreamWrapper::bad_chunk("URI missing host".to_string()));
+                            return;
+                        }
+                    };
+
+                    let port = dst.port_u16().unwrap_or(443);
+
+                    // DNS resolution with Happy Eyeballs support
+                    let addresses = match std::net::ToSocketAddrs::to_socket_addrs(&(host, port)) {
+                        Ok(addrs) => addrs.collect::<Vec<_>>(),
+                        Err(_) => {
+                            emit!(sender, TcpStreamWrapper::bad_chunk("DNS resolution failed".to_string()));
+                            return;
+                        }
+                    };
+
+                    if addresses.is_empty() {
+                        emit!(sender, TcpStreamWrapper::bad_chunk("No addresses resolved".to_string()));
+                        return;
+                    }
+
+                    // Try connecting to each address (Happy Eyeballs algorithm)
+                    for addr in addresses {
+                        match std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(10)) {
+                            Ok(stream) => {
+                                // Set socket options for optimal performance
+                                let _ = stream.set_nodelay(true);
+                                let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(30)));
+                                let _ = stream.set_write_timeout(Some(std::time::Duration::from_secs(30)));
+                                
+                                emit!(sender, TcpStreamWrapper(stream));
+                                return;
+                            }
+                            Err(_) => continue,
+                        }
+                    }
+
+                    emit!(sender, TcpStreamWrapper::bad_chunk("All connection attempts failed".to_string()));
+                });
+            })
+        }
+    }
+
+    /// Connect with TLS info
+    pub fn connect_with_info(&self, dst: Uri) -> AsyncStream<crate::wrappers::ConnectionWithTlsInfo> {
         let connector = self.clone();
 
         AsyncStream::with_channel(move |sender| {
@@ -543,444 +606,60 @@ impl HttpConnector {
                 let host = match dst.host() {
                     Some(h) => h,
                     None => {
-                        emit!(sender, TcpStreamWrapper::bad_chunk("URI missing host".to_string()));
-                        return;
-                    }
-                };
-                
-                let port = dst.port_u16().unwrap_or_else(|| {
-                    match dst.scheme_str() {
-                        Some("https") => 443,
-                        Some("http") => 80,
-                        _ => 80,
-                    }
-                });
-
-                // Resolve hostname to IP addresses using synchronous resolution
-                let host_port = format!("{}:{}", host, port);
-                let addrs: Vec<SocketAddr> = match host_port.to_socket_addrs() {
-                    Ok(iter) => iter.collect(),
-                    Err(e) => {
-                        handle_error!(e, "DNS resolution");
+                        emit!(sender, crate::wrappers::ConnectionWithTlsInfo::bad_chunk("URI missing host".to_string()));
                         return;
                     }
                 };
 
-                if addrs.is_empty() {
-                    handle_error!("No addresses resolved", "HTTP connection");
+                let port = dst.port_u16().unwrap_or(443);
+
+                // DNS resolution
+                let addresses = match std::net::ToSocketAddrs::to_socket_addrs(&(host, port)) {
+                    Ok(addrs) => addrs.collect::<Vec<_>>(),
+                    Err(_) => {
+                        emit!(sender, crate::wrappers::ConnectionWithTlsInfo::bad_chunk("DNS resolution failed".to_string()));
+                        return;
+                    }
+                };
+
+                if addresses.is_empty() {
+                    emit!(sender, crate::wrappers::ConnectionWithTlsInfo::bad_chunk("No addresses resolved".to_string()));
                     return;
                 }
 
-                // Connect using Happy Eyeballs algorithm
-                for addr in addrs {
-                    match TcpStream::connect(addr) {
+                // Try connecting to each address
+                for addr in addresses {
+                    match std::net::TcpStream::connect(addr) {
                         Ok(stream) => {
-                            // Configure socket
-                            if let Err(_) = stream.set_nodelay(true) {
-                                // Continue even if nodelay fails
-                            }
-                            // Successfully connected - emit a success indicator
-                            // For now, just complete the stream without emitting the actual TcpStream
-                            // since TcpStreamWrapper has trait bound issues
+                            // Set socket options
+                            let _ = stream.set_nodelay(true);
+                            
+                            let conn_info = crate::wrappers::ConnectionWithTlsInfo {
+                                connection: TcpStreamWrapper(stream),
+                                tls_info: TlsInfo::default(),
+                            };
+                            emit!(sender, conn_info);
                             return;
                         }
-                        Err(_) => continue,
-                    }
-                }
-
-                handle_error!("Failed to connect to any address", "HTTP connection");
-            });
-            
-            // Task execution is handled by spawn_task internally
-        })
-    }
-}
-
-impl ConnectorService {
-    #[cfg(feature = "socks")]
-    fn connect_socks(self, dst: Uri, proxy: Intercepted) -> AsyncStream<Conn> {
-        AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Conn, String> {
-                let proxy_uri = proxy.uri();
-                let proxy_host = match proxy_uri.host() {
-                    Some(host) => host,
-                    None => {
-                        return Err("SOCKS proxy missing host".to_string());
-                    }
-                };
-                let proxy_port = proxy_uri.port_u16().unwrap_or(1080);
-
-                // Resolve SOCKS proxy address
-                let proxy_addrs = resolve_host_sync(proxy_host, proxy_port)?;
-                if proxy_addrs.is_empty() {
-                    return Err("No SOCKS proxy addresses resolved".to_string());
-                }
-
-                // Connect to SOCKS proxy
-                let proxy_stream = connect_to_address_list(&proxy_addrs, Some(Duration::from_secs(10)))?;
-                
-                // Perform SOCKS handshake
-                let target_host = match dst.host() {
-                    Some(host) => host,
-                    None => {
-                        return Err("Target URI missing host".to_string());
-                    }
-                };
-                let target_port = dst.port_u16().unwrap_or_else(|| {
-                    match dst.scheme_str() {
-                        Some("https") => 443,
-                        Some("http") => 80,
-                        _ => 80,
-                    }
-                });
-
-                let socks_version = match proxy_uri.scheme_str() {
-                    Some("socks4") | Some("socks4a") => SocksVersion::V4,
-                    Some("socks5") | Some("socks5h") => SocksVersion::V5,
-                    _ => {
-                        return Err("Unsupported SOCKS version".to_string());
-                    }
-                };
-
-                let connected_stream = socks_handshake(proxy_stream, target_host, target_port, socks_version)?;
-
-                let conn = Conn {
-                    inner: Box::new(TcpConnection::new(connected_stream)),
-                    is_proxy: false,
-                    tls_info: None,
-                };
-                Ok(conn)
-            });
-            
-            match task.collect() {
-                Ok(conn) => emit!(sender, conn),
-                Err(e) => handle_error!(e, "SOCKS connection"),
-            }
-        })
-    }
-
-    fn connect_with_maybe_proxy(self, dst: Uri, is_proxy: bool) -> AsyncStream<Conn> {
-        let inner = self.inner.clone();
-        let connect_timeout = self.connect_timeout;
-        let nodelay = self.nodelay;
-        let tls_info = self.tls_info;
-
-        AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || {
-                match &inner {
-                    #[cfg(not(feature = "__tls"))]
-                    Inner::Http(http_connector) => {
-                        // HTTP-only connection
-                        let tcp_stream = match establish_http_connection(http_connector, &dst, connect_timeout) {
-                            Ok(stream) => stream,
-                            Err(e) => {
-                                handle_error!(e, "HTTP connection establishment");
-                                return;
-                            }
-                        };
-                        if let Err(e) = configure_tcp_socket_inline(&tcp_stream, nodelay) {
-                            handle_error!(e, "TCP socket configuration");
-                            return;
+                        Err(_) => {
+                            emit!(sender, crate::wrappers::ConnectionWithTlsInfo::bad_chunk("Connection failed".to_string()));
                         }
-                        
-                        let conn = Conn {
-                            inner: Box::new(TcpConnection::new(tcp_stream)),
-                            is_proxy,
-                            tls_info: None,
-                        };
-                        emit!(sender, conn);
-                    },
-                    #[cfg(feature = "default-tls")]
-                    Inner::DefaultTls(http_connector, tls_connector) => {
-                        // HTTP/HTTPS connection with native-tls
-                        if dst.scheme() == Some(&Scheme::HTTPS) {
-                            let tcp_stream = match establish_http_connection(http_connector, &dst, connect_timeout) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "HTTPS TCP connection");
-                                    return;
-                                }
-                            };
-                            let host = match dst.host() {
-                                Some(host) => host,
-                                None => {
-                                    handle_error!("HTTPS URI missing host", "TLS connection");
-                                    return;
-                                }
-                            };
-                            
-                            // Perform TLS handshake
-                            let tls_stream = match perform_native_tls_handshake(tcp_stream, host, tls_connector.clone()) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "TLS handshake");
-                                    return;
-                                }
-                            };
-                            
-                            let conn = Conn {
-                                inner: Box::new(NativeTlsConnection::new(tls_stream)),
-                                is_proxy,
-                                tls_info: if tls_info { Some(TlsInfo::default()) } else { None },
-                            };
-                            emit!(sender, conn);
-                        } else {
-                            // Plain HTTP
-                            let tcp_stream = match establish_http_connection(http_connector, &dst, connect_timeout) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "HTTP TCP connection");
-                                    return;
-                                }
-                            };
-                            if let Err(e) = configure_tcp_socket_inline(&tcp_stream, nodelay) {
-                                handle_error!(e, "TCP socket configuration");
-                                return;
-                            }
-                            
-                            let conn = Conn {
-                                inner: Box::new(TcpConnection::new(tcp_stream)),
-                                is_proxy,
-                                tls_info: None,
-                            };
-                            emit!(sender, conn);
-                        }
-                    },
-                    #[cfg(feature = "__rustls")]
-                    Inner::RustlsTls { http, tls, .. } => {
-                        // HTTP/HTTPS connection with rustls
-                        if dst.scheme() == Some(&Scheme::HTTPS) {
-                            let tcp_stream = match establish_http_connection(http, &dst, connect_timeout) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "HTTPS TCP connection");
-                                    return;
-                                }
-                            };
-                            let host = match dst.host() {
-                                Some(h) => h,
-                                None => {
-                                    handle_error!("HTTPS URI missing host", "TLS connection");
-                                    return;
-                                }
-                            };
-                            
-                            // Perform TLS handshake with rustls
-                            let tls_stream = match perform_rustls_handshake(tcp_stream, host.to_string(), tls.clone()) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "TLS handshake");
-                                    return;
-                                }
-                            };
-                            
-                            let conn = Conn {
-                                inner: Box::new(RustlsConnection::new(tls_stream)),
-                                is_proxy,
-                                tls_info: if tls_info { Some(TlsInfo::default()) } else { None },
-                            };
-                            emit!(sender, conn);
-                        } else {
-                            // Plain HTTP
-                            let tcp_stream = match establish_http_connection(http, &dst, connect_timeout) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "HTTP TCP connection");
-                                    return;
-                                }
-                            };
-                            if let Err(e) = configure_tcp_socket_inline(&tcp_stream, nodelay) {
-                                handle_error!(e, "TCP socket configuration");
-                                return;
-                            }
-                            
-                            let conn = Conn {
-                                inner: Box::new(TcpConnection::new(tcp_stream)),
-                                is_proxy,
-                                tls_info: None,
-                            };
-                            emit!(sender, conn);
-                        }
-                    },
+                    }
                 }
             });
-            
-            task.collect();
         })
-    }
-
-    fn connect_via_proxy(self, dst: Uri, proxy: Intercepted) -> AsyncStream<Conn> {
-        AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || {
-                let proxy_uri = proxy.uri();
-                
-                #[cfg(feature = "socks")]
-                match proxy_uri.scheme_str() {
-                    Some("socks4") | Some("socks4a") | Some("socks5") | Some("socks5h") => {
-                        let mut socks_stream = self.clone().connect_socks(dst, proxy);
-                        match socks_stream.try_next() {
-                            Some(conn) => {
-                                emit!(sender, conn);
-                                return;
-                            },
-                            None => {
-                                handle_error!("SOCKS connection stream ended without connection", "proxy connection");
-                                return;
-                            }
-                        };
-                    },
-                    _ => {},
-                }
-
-                // HTTP/HTTPS proxy connection
-                let proxy_host = match proxy_uri.host() {
-                    Some(host) => host,
-                    None => {
-                        handle_error!("Proxy URI missing host", "proxy connection");
-                        return;
-                    }
-                };
-                let proxy_port = proxy_uri.port_u16().unwrap_or_else(|| {
-                    match proxy_uri.scheme_str() {
-                        Some("https") => 443,
-                        Some("http") => 80,
-                        _ => 8080,
-                    }
-                });
-
-                // Connect to proxy
-                let proxy_addrs = match resolve_host_sync(proxy_host, proxy_port) {
-                    Ok(addrs) => addrs,
-                    Err(e) => {
-                        handle_error!(e, "proxy DNS resolution");
-                        return;
-                    }
-                };
-                let proxy_stream = match connect_to_address_list(&proxy_addrs, self.connect_timeout) {
-                    Ok(stream) => stream,
-                    Err(e) => {
-                        handle_error!(e, "proxy connection");
-                        return;
-                    }
-                };
-
-                if dst.scheme() == Some(&Scheme::HTTPS) {
-                    // HTTPS through proxy - establish CONNECT tunnel
-                    let tunneled_stream = match establish_connect_tunnel(proxy_stream, &dst, proxy.basic_auth()) {
-                        Ok(stream) => stream,
-                        Err(e) => {
-                            handle_error!(e, "HTTPS tunnel establishment");
-                            return;
-                        }
-                    };
-                    
-                    // Perform TLS handshake over tunnel
-                    let host = match dst.host() {
-                        Some(host) => host,
-                        None => {
-                            handle_error!("HTTPS URI missing host", "proxy TLS connection");
-                            return;
-                        }
-                    };
-                    match &self.inner {
-                        #[cfg(feature = "default-tls")]
-                        Inner::DefaultTls(_, tls_connector) => {
-                            let tls_stream = match perform_native_tls_handshake(tunneled_stream, host, tls_connector.clone()) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "proxy TLS handshake");
-                                    return;
-                                }
-                            };
-                            let conn = Conn {
-                                inner: Box::new(NativeTlsConnection::new(tls_stream)),
-                                is_proxy: true,
-                                tls_info: if self.tls_info { Some(TlsInfo::default()) } else { None },
-                            };
-                            emit!(sender, conn);
-                        },
-                        #[cfg(feature = "__rustls")]
-                        Inner::RustlsTls { tls, .. } => {
-                            let tls_stream = match perform_rustls_handshake(tunneled_stream, host.to_string(), tls.clone()) {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    handle_error!(e, "proxy TLS handshake");
-                                    return;
-                                }
-                            };
-                            let conn = Conn {
-                                inner: Box::new(RustlsConnection::new(tls_stream)),
-                                is_proxy: true,
-                                tls_info: if self.tls_info { Some(TlsInfo::default()) } else { None },
-                            };
-                            emit!(sender, conn);
-                        },
-                        #[cfg(not(feature = "__tls"))]
-                        Inner::Http(_) => {
-                            handle_error!("HTTPS proxy requires TLS support", "proxy connection");
-                            return;
-                        },
-                    }
-                } else {
-                    // HTTP through proxy - direct connection
-                    if let Err(e) = configure_tcp_socket_inline(&proxy_stream, self.nodelay) {
-                        handle_error!(e, "proxy TCP socket configuration");
-                        return;
-                    }
-                    let conn = Conn {
-                        inner: Box::new(TcpConnection::new(proxy_stream)),
-                        is_proxy: true,
-                        tls_info: None,
-                    };
-                    emit!(sender, conn);
-                }
-            });
-            
-            task.collect();
-        })
-    }
-}
-
-// REMOVED: Service trait implementation - replaced with direct connect() method
-// All connection establishment now uses direct AsyncStream<Conn> returns
-
-impl ConnectorService {
-    /// Create a ConnectorService from a hyper HttpConnector
-    /// This bridges the gap between hyper's connector and our AsyncStream architecture
-    pub fn from_http_connector(
-        _http_connector: HttpConnector, 
-        _connect_timeout: Option<Duration>,
-        _nodelay: bool,
-        #[cfg(feature = "__tls")] _tls_info: bool,
-    ) -> Self {
-        // TODO: Implement proper connector conversion when hyper API is clarified
-        // For now, return a basic ConnectorService to avoid compilation errors
-        Self {
-            intercepted: Intercepted::none(),
-            inner: unsafe { std::mem::zeroed() },
-            connect_timeout: None,
-            happy_eyeballs_timeout: Some(std::time::Duration::from_millis(300)),
-            nodelay: true,
-            enforce_http: false,
-            #[cfg(feature = "__tls")]
-            tls_info: false,
-            #[cfg(not(feature = "__tls"))]
-            tls_info: false,
-            #[cfg(feature = "socks")]
-            resolver: DynResolver::new(Arc::new(crate::hyper::dns::gai::GaiResolver::new())),
-        }
     }
     
     /// Direct connection method - replaces Service::call with AsyncStream
     /// RETAINS: All proxy handling, TLS, timeouts, connection pooling functionality
-    /// Returns unwrapped AsyncStream<Conn> per async-stream architecture
-    pub fn connect(&mut self, dst: Uri) -> AsyncStream<Conn> {
+    /// Returns unwrapped AsyncStream<TcpStreamWrapper> per async-stream architecture
+    pub fn connect(&mut self, dst: Uri) -> AsyncStream<TcpStreamWrapper> {
         let connector_service = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let task = spawn_task(move || {
-                let mut connection_stream = if let Some(proxy) = connector_service.intercepted.matching(&dst) {
-                    connector_service.connect_via_proxy(dst, proxy)
+                let mut connection_stream = if let Some(_proxy) = connector_service.intercepted.matching(&dst) {
+                    connector_service.connect_via_proxy(dst, "proxy")
                 } else {
                     connector_service.connect_with_maybe_proxy(dst, false)
                 };
@@ -991,7 +670,7 @@ impl ConnectorService {
                         emit!(sender, conn);
                     },
                     None => {
-                        emit!(sender, Conn::bad_chunk("Connection stream ended without producing connection".to_string()));
+                        emit!(sender, TcpStreamWrapper::bad_chunk("Connection stream ended without producing connection".to_string()));
                     }
                 }
             });
@@ -1004,7 +683,7 @@ impl ConnectorService {
 // AsyncStreamService implementation for ConnectorService
 // This provides 100% tower compatibility with AsyncStream architecture
 impl AsyncStreamService<Uri> for ConnectorService {
-    type Response = Conn;
+    type Response = TcpStreamWrapper;
     type Error = BoxError;
     
     fn is_ready(&mut self) -> bool {
@@ -1012,7 +691,7 @@ impl AsyncStreamService<Uri> for ConnectorService {
         true
     }
     
-    fn call(&mut self, request: Uri) -> AsyncStream<ConnResult<Self::Response>> {
+    fn call(&mut self, request: Uri) -> AsyncStream<ConnResult<TcpStreamWrapper>> {
         // Convert the direct connect() result to the required ConnResult stream format
         let connection_stream = self.connect(request);
         
@@ -1315,18 +994,22 @@ impl ConnectionTrait for RustlsConnection {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
+/// TLS connection information
 pub struct TlsInfo {
+    /// Peer certificate data
     pub peer_certificate: Option<Vec<u8>>,
 }
 
+// Note: MessageChunk implementation for tuple moved to wrappers.rs to avoid orphan rule violation
+
 // Proxy and interception support
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Intercepted {
     proxies: Vec<ProxyConfig>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ProxyConfig {
     uri: Uri,
     basic_auth: Option<String>,

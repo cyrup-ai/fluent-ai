@@ -6,9 +6,13 @@ pub use self::upgrade::Upgraded;
 
 
 
+/// HTTP body handling and streaming
 pub mod body;
+/// HTTP/3 client implementation
 pub mod client;
+/// Response decoding and decompression
 pub mod decoder;
+/// HTTP/3 client core functionality
 pub mod h3_client;
 #[cfg(feature = "multipart")]
 pub mod multipart;

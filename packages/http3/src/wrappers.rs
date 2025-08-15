@@ -447,11 +447,47 @@ impl MessageChunk for ConnWrapper {
     }
 }
 
-impl Default for ConnWrapper {
-    fn default() -> Self {
+// Note: MessageChunk implementation for HttpResponseChunk already exists in response/chunk.rs
+
+/// Wrapper for connection with TLS info to implement MessageChunk
+#[derive(Debug, Clone, Default)]
+pub struct ConnectionWithTlsInfo {
+    pub connection: crate::hyper::connect::TcpStreamWrapper,
+    pub tls_info: crate::hyper::connect::TlsInfo,
+}
+
+impl MessageChunk for ConnectionWithTlsInfo {
+    fn is_error(&self) -> bool {
+        self.connection.is_error()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.connection.error()
+    }
+
+    fn bad_chunk(error: String) -> Self {
         Self {
-            inner: None,
-            error_message: None,
+            connection: crate::hyper::connect::TcpStreamWrapper::bad_chunk(error),
+            tls_info: crate::hyper::connect::TlsInfo::default(),
+        }
+    }
+}
+
+impl
+    From<(
+        crate::hyper::connect::TcpStreamWrapper,
+        crate::hyper::connect::TlsInfo,
+    )> for ConnectionWithTlsInfo
+{
+    fn from(
+        (connection, tls_info): (
+            crate::hyper::connect::TcpStreamWrapper,
+            crate::hyper::connect::TlsInfo,
+        ),
+    ) -> Self {
+        Self {
+            connection,
+            tls_info,
         }
     }
 }

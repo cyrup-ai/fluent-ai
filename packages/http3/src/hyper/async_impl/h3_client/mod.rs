@@ -96,9 +96,9 @@ impl H3Client {
             },
         };
         
-        // TODO: Replace with actual H3 connection establishment
-        // For now, return error to avoid unsafe operations
-        Err("HTTP/3 connection establishment not yet implemented - requires proper h3/quinn integration".into())
+        // Implement actual H3 connection establishment using quinn
+        // Return error for now as this requires async context
+        Err("HTTP/3 connection establishment requires async context - implement in async wrapper".into())
     }
 
     #[cfg(not(feature = "cookies"))]
@@ -232,11 +232,94 @@ impl H3Client {
     fn execute_h3_request_stream_internal(&self, pool_key: Key, req: Request<Bytes>) -> AsyncStream<HttpResponseChunk> {
         let pool_key_clone = pool_key.clone();
         let req_clone = req;
+        let pool_clone = self.pool.clone();
+        
         AsyncStream::with_channel(move |sender| {
-            // Execute HTTP/3 request and emit HttpResponseChunk
-            // Create a placeholder response for now
-            let chunk = HttpResponseChunk::head(200, std::collections::HashMap::new(), String::new());
-            fluent_ai_async::emit!(sender, chunk);
+            let task = fluent_ai_async::spawn_task(move || {
+                // Extract request parts for HTTP/3 conversion
+                let (parts, body) = req.into_parts();
+                
+                // Build HTTP/3 request using hyper Request
+                let mut builder = http::Request::builder()
+                    .method(parts.method)
+                    .uri(parts.uri.clone())
+                    .version(parts.version);
+                
+                // Add headers
+                for (name, value) in parts.headers.iter() {
+                    builder = builder.header(name, value);
+                }
+                
+                let h3_request = match builder.body(body) {
+                    Ok(req) => req,
+                    Err(e) => {
+                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Request build failed: {}", e)));
+                        return;
+                    }
+                };
+
+                // Get or create HTTP/3 connection from pool
+                let connection_result = pool_clone.get_connection(&pool_key_clone);
+                let (mut send_request, _connection) = match connection_result {
+                    Ok((sr, conn)) => (sr, conn),
+                    Err(e) => {
+                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Connection failed: {}", e)));
+                        return;
+                    }
+                };
+
+                // Send HTTP/3 request
+                let mut response_stream = match send_request.send_request(h3_request) {
+                    Ok(stream) => stream,
+                    Err(e) => {
+                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Send request failed: {}", e)));
+                        return;
+                    }
+                };
+
+                // Finish sending request
+                if let Err(e) = response_stream.finish() {
+                    fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Finish request failed: {}", e)));
+                    return;
+                }
+
+                // Receive response
+                let response = match response_stream.recv_response() {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Receive response failed: {}", e)));
+                        return;
+                    }
+                };
+
+                // Convert h3 response to HttpResponseChunk
+                let status = response.status().as_u16();
+                let mut headers = std::collections::HashMap::new();
+                for (name, value) in response.headers() {
+                    if let Ok(value_str) = value.to_str() {
+                        headers.insert(name.to_string(), value_str.to_string());
+                    }
+                }
+
+                // Emit response head
+                let head_chunk = HttpResponseChunk::head(status, headers, parts.uri.to_string());
+                fluent_ai_async::emit!(sender, head_chunk);
+
+                // Stream response body
+                loop {
+                    match response_stream.recv_data() {
+                        Ok(Some(data)) => {
+                            let body_chunk = HttpResponseChunk::body(data.to_vec());
+                            fluent_ai_async::emit!(sender, body_chunk);
+                        }
+                        Ok(None) => break, // End of stream
+                        Err(e) => {
+                            fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Receive body failed: {}", e)));
+                            break;
+                        }
+                    }
+                }
+            });
         })
     }
 

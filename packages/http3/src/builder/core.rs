@@ -7,7 +7,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use cyrup_sugars::prelude::ChunkHandler;
+use fluent_ai_async::prelude::ChunkHandler;
 use http::Method;
 
 use crate::{HttpChunk, HttpClient, HttpError, HttpRequest};

@@ -398,8 +398,8 @@ if_hyper! {
     #[cfg(feature = "multipart")]
     pub use self::async_impl::multipart;
 
-
-    mod async_impl;
+    /// Async implementation of HTTP/3 client functionality
+    pub mod async_impl;
     pub mod connect;
     #[cfg(feature = "cookies")]
     pub mod cookie;

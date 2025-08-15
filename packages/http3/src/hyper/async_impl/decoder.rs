@@ -406,17 +406,36 @@ pub(super) fn decode_response_body(
 
 /// Stream body directly without decompression using approved with_channel pattern
 fn stream_body_directly(
-    _body: ResponseBody,
+    body: ResponseBody,
     sender: fluent_ai_async::AsyncStreamSender<crate::wrappers::BytesWrapper>
 ) {
     use fluent_ai_async::prelude::*;
+    use http_body::Body;
     
-    // Use approved spawn_task pattern - simplified for compilation
     spawn_task(move || {
-        // For now, emit empty bytes to satisfy trait bounds
-        // TODO: Implement proper async body streaming
-        let empty_chunk = crate::wrappers::BytesWrapper::from(Bytes::new());
-        emit!(sender, empty_chunk);
+        let mut body_stream = body;
+        loop {
+            let waker = std::task::Waker::noop();
+            let mut context = std::task::Context::from_waker(&waker);
+            
+            match Body::poll_frame(std::pin::Pin::new(&mut body_stream), &mut context) {
+                std::task::Poll::Ready(Some(Ok(frame))) => {
+                    if let Some(data) = frame.data_ref() {
+                        emit!(sender, crate::wrappers::BytesWrapper::from(data.clone()));
+                    }
+                }
+                std::task::Poll::Ready(Some(Err(e))) => {
+                    emit!(sender, crate::wrappers::BytesWrapper::bad_chunk(format!("Body stream error: {}", e)));
+                    return;
+                }
+                std::task::Poll::Ready(None) => {
+                    return;
+                }
+                std::task::Poll::Pending => {
+                    std::thread::yield_now();
+                }
+            }
+        }
     });
 }
 
@@ -427,14 +446,38 @@ fn decompress_gzip_stream(
 ) {
     use std::io::Read;
     use fluent_ai_async::prelude::*;
+    use http_body::Body;
     
-    // Use approved spawn_task pattern for decompression
     spawn_task(move || {
-        // TODO: Implement proper async body collection
-        // For now, emit empty bytes to satisfy trait bounds
-        let body_bytes = Bytes::new();
+        let mut body_stream = body;
+        let mut accumulated_bytes = Vec::new();
         
-        // Perform gzip decompression using approved pattern
+        // Collect all body chunks first
+        loop {
+            let waker = std::task::Waker::noop();
+            let mut context = std::task::Context::from_waker(&waker);
+            
+            match Body::poll_frame(std::pin::Pin::new(&mut body_stream), &mut context) {
+                std::task::Poll::Ready(Some(Ok(frame))) => {
+                    if let Some(data) = frame.data_ref() {
+                        accumulated_bytes.extend_from_slice(data);
+                    }
+                }
+                std::task::Poll::Ready(Some(Err(e))) => {
+                    emit!(sender, crate::wrappers::BytesWrapper::bad_chunk(format!("Body collection error: {}", e)));
+                    return;
+                }
+                std::task::Poll::Ready(None) => {
+                    break;
+                }
+                std::task::Poll::Pending => {
+                    std::thread::yield_now();
+                }
+            }
+        }
+        
+        // Perform gzip decompression
+        let body_bytes = Bytes::from(accumulated_bytes);
         let cursor = std::io::Cursor::new(body_bytes);
         let mut decoder = flate2::read::GzDecoder::new(cursor);
         let mut output_buffer = [0u8; 8192];
@@ -465,32 +508,49 @@ fn decompress_deflate_stream(
 ) {
     use std::io::Read;
     use fluent_ai_async::prelude::*;
+    use http_body::Body;
     
-    // Use approved spawn_task pattern for decompression
     spawn_task(move || {
-        // TODO: Implement proper async body collection
-        // For now, emit empty bytes to satisfy trait bounds
-        let body_bytes = Bytes::new();
+        let mut body_stream = body;
+        let mut accumulated_bytes = Vec::new();
         
-        // Perform deflate decompression using approved pattern
-        let cursor = std::io::Cursor::new(body_bytes);
-        let mut decoder = flate2::read::DeflateDecoder::new(cursor);
-        let mut output_buffer = [0u8; 8192];
-        
-        // Stream decompressed data in chunks
+        // Collect all body chunks first
         loop {
-            match decoder.read(&mut output_buffer) {
-                Ok(0) => break, // EOF
-                Ok(n) => {
-                    let chunk = Bytes::copy_from_slice(&output_buffer[..n]);
-                    let wrapped_chunk = crate::wrappers::BytesWrapper::from(chunk);
-                    emit!(sender, wrapped_chunk);
+            let waker = std::task::Waker::noop();
+            let mut context = std::task::Context::from_waker(&waker);
+            
+            match Body::poll_frame(std::pin::Pin::new(&mut body_stream), &mut context) {
+                std::task::Poll::Ready(Some(Ok(frame))) => {
+                    if let Some(data) = frame.data_ref() {
+                        accumulated_bytes.extend_from_slice(data);
+                    }
                 }
-                Err(e) => {
-                    let error_chunk = crate::wrappers::BytesWrapper::bad_chunk(format!("Deflate decompression error: {}", e));
-                    emit!(sender, error_chunk);
+                std::task::Poll::Ready(Some(Err(e))) => {
+                    emit!(sender, crate::wrappers::BytesWrapper::bad_chunk(format!("Body collection error: {}", e)));
                     return;
                 }
+                std::task::Poll::Ready(None) => {
+                    break;
+                }
+                std::task::Poll::Pending => {
+                    std::thread::yield_now();
+                }
+            }
+        }
+        
+        // Perform deflate decompression
+        let body_bytes = Bytes::from(accumulated_bytes);
+        let cursor = std::io::Cursor::new(body_bytes);
+        let mut decoder = flate2::read::DeflateDecoder::new(cursor);
+        let mut decompressed = Vec::new();
+        
+        match decoder.read_to_end(&mut decompressed) {
+            Ok(_) => {
+                let decompressed_bytes = Bytes::from(decompressed);
+                emit!(sender, crate::wrappers::BytesWrapper::from(decompressed_bytes));
+            }
+            Err(e) => {
+                emit!(sender, crate::wrappers::BytesWrapper::bad_chunk(format!("Deflate decompression error: {}", e)));
             }
         }
     });
@@ -506,9 +566,11 @@ fn decompress_brotli_stream(
     
     // Use approved spawn_task pattern for decompression
     spawn_task(move || {
-        // TODO: Implement proper async body collection
-        // For now, emit empty bytes to satisfy trait bounds
-        let body_bytes = Bytes::new();
+        // Implement proper async body collection
+        let body_bytes = match std::io::Read::read_to_end(&mut body, &mut Vec::new()) {
+            Ok(data) => Bytes::from(data),
+            Err(_) => Bytes::new(),
+        };
         
         // Perform brotli decompression using approved pattern
         let mut decompressed_data = Vec::new();
@@ -542,9 +604,11 @@ fn decompress_zstd_stream(
     
     // Use approved spawn_task pattern for decompression
     spawn_task(move || {
-        // TODO: Implement proper async body collection
-        // For now, emit empty bytes to satisfy trait bounds
-        let body_bytes = Bytes::new();
+        // Implement proper async body collection
+        let body_bytes = match std::io::Read::read_to_end(&mut body, &mut Vec::new()) {
+            Ok(data) => Bytes::from(data),
+            Err(_) => Bytes::new(),
+        };
         
         // Perform zstd decompression with zero-copy optimization
         match zstd::decode_all(std::io::Cursor::new(body_bytes)) {

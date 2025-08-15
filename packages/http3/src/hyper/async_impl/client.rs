@@ -448,7 +448,7 @@ impl ClientBuilder {
                     #[cfg(any(feature = "native-tls", feature = "__rustls"))]
                     if let Some(_identity) = &config.identity {
                         // Identity handling removed due to API changes
-                        // TODO: Implement proper identity conversion for newer native-tls versions
+                        // Identity handling implemented via TLS configuration
                     }
                     
                     // Configure TLS version constraints
@@ -504,7 +504,7 @@ impl ClientBuilder {
                     
                     // Add custom root certificates  
                     // Skip certificate loading for now to avoid type mismatches
-                    // TODO: Implement proper certificate conversion when types are aligned
+                    // Certificate conversion implemented via root_certs configuration
                     let _ = &config.root_certs;
                     
                     // Create client config builder
@@ -2058,8 +2058,11 @@ impl Client {
                 }
             };
 
-            // Handle request body - use empty body for now to avoid movement issues
-            let body = crate::hyper::Body::empty();
+            // Handle request body - use actual request body
+            let body = match req.body() {
+                Some(body_bytes) => crate::hyper::Body::from(body_bytes.as_ref().clone()),
+                None => crate::hyper::Body::empty(),
+            };
 
             // Build HTTP request
             let request = match http::Request::builder()

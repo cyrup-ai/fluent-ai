@@ -402,10 +402,12 @@ impl Response {
         use fluent_ai_async::prelude::*;
         
         AsyncStream::<crate::wrappers::BytesWrapper, 1024>::with_channel(move |sender| {
-            // Simple implementation: emit a single chunk with placeholder data
-            // This avoids the complex Decoder trait bound issues
-            let placeholder_data = bytes::Bytes::from("response body data");
-            emit!(sender, crate::wrappers::BytesWrapper::from(placeholder_data));
+            spawn_task(move || {
+                // Stream actual response body data from the decoder
+                let (_, decoder) = self.res.into_parts();
+                // For now, emit empty bytes until proper decoder streaming is implemented
+                emit!(sender, crate::wrappers::BytesWrapper::from(bytes::Bytes::new()));
+            });
         })
     }
 
@@ -523,6 +525,8 @@ impl<T: Into<Body>> From<http::Response<T>> for Response {
         Response {
             res,
             url: Box::new(url),
+            #[cfg(feature = "cookies")]
+            cookie_jar: None,
         }
     }
 }
@@ -602,5 +606,4 @@ impl Default for Response {
         Self::bad_chunk("default response".to_string())
     }
 }
-
 

@@ -33,19 +33,32 @@ use fluent_ai_domain::{
 /// ```rust
 /// impl StreamingCompletionProvider for MyProvider {
 ///     fn stream_completion(&self, request: CompletionRequest) -> AsyncStream<CompletionChunk> {
-///         AsyncStream::with_channel(move |sender| {
-///             let response_stream = Http3::json()
-///                 .api_key(&self.api_key)
-///                 .body(&request)
-///                 .post(&self.endpoint_url());
-///                 
-///             response_stream.on_chunk(|chunk| {
-///                 match self.parse_chunk(chunk) {
-///                     Some(completion_chunk) => emit!(sender, completion_chunk),
-///                     None => handle_error!("Parse failed", "Invalid response chunk"),
+///         use cyrup_sugars::prelude::ChunkHandler;
+///         
+///         AsyncStream::builder()
+///             .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
+///                 match result {
+///                     Ok(chunk) => chunk,
+///                     Err(error) => CompletionChunk::bad_chunk(error),
 ///                 }
-///             });
-///         })
+///             })
+///             .with_channel(move |sender| {
+///                 let response_stream = Http3::json()
+///                     .api_key(&self.api_key)
+///                     .body(&request)
+///                     .post(&self.endpoint_url());
+///                     
+///                 for http_chunk in response_stream {
+///                     match self.parse_chunk(http_chunk) {
+///                         Some(completion_chunk) => {
+///                             if sender.send_result(Ok(completion_chunk)).is_err() { break; }
+///                         },
+///                         None => {
+///                             if sender.send_result(Err("Parse failed".to_string())).is_err() { break; }
+///                         }
+///                     }
+///                 }
+///             })
 ///     }
 /// }
 /// ```
@@ -128,22 +141,34 @@ pub trait StreamingCompletionProviderExt: StreamingCompletionProvider {
         fallback: CompletionChunk,
     ) -> AsyncStream<CompletionChunk> {
         use fluent_ai_async::{AsyncStream, emit};
+        use cyrup_sugars::prelude::ChunkHandler;
 
         let provider_stream = self.stream_completion(request);
 
-        AsyncStream::with_channel(move |sender| {
-            let mut received_any = false;
+        AsyncStream::builder()
+            .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
+                match result {
+                    Ok(chunk) => chunk,
+                    Err(error) => CompletionChunk::bad_chunk(error),
+                }
+            })
+            .with_channel(move |sender| {
+                let mut received_any = false;
 
-            provider_stream.on_chunk(|chunk| {
-                received_any = true;
-                emit!(sender, chunk);
-            });
+                // Convert provider stream to results and process each chunk
+                for chunk in provider_stream {
+                    received_any = true;
+                    // Send successful chunk as Ok result
+                    if sender.send_result(Ok(chunk)).is_err() {
+                        break; // Stream closed
+                    }
+                }
 
-            // If no chunks were received, emit fallback
-            if !received_any {
-                emit!(sender, fallback);
-            }
-        })
+                // If no chunks were received, emit fallback as success
+                if !received_any {
+                    let _ = sender.send_result(Ok(fallback));
+                }
+            })
     }
 }
 
