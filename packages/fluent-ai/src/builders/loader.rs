@@ -6,8 +6,10 @@ use std::fmt;
 use std::path::PathBuf;
 use std::marker::PhantomData;
 
+use cyrup_sugars::prelude::*;
 use fluent_ai_domain::loader::{Loader, LoaderImpl};
 use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
+use fluent_ai_domain::context::chunk::DocumentChunk;
 
 /// Loader builder trait - elegant zero-allocation builder pattern
 pub trait LoaderBuilder<T>: Sized 
@@ -106,6 +108,7 @@ struct LoaderBuilderImpl<
     error_handler: Option<F1>,
     result_handler: Option<F2>,
     chunk_handler: Option<F3>,
+    cyrup_chunk_handler: Option<Box<dyn Fn(Result<DocumentChunk, String>) -> DocumentChunk + Send + Sync + 'static>>,
     _marker: PhantomData<T>,
 }
 
@@ -118,6 +121,7 @@ impl LoaderImpl<PathBuf> {
             error_handler: None,
             result_handler: None,
             chunk_handler: None,
+            cyrup_chunk_handler: None,
             _marker: PhantomData,
         }
     }
@@ -158,6 +162,7 @@ where
             error_handler: None,
             result_handler: None,
             chunk_handler: None,
+            cyrup_chunk_handler: None,
             _marker: PhantomData,
         }
     }
@@ -174,6 +179,7 @@ where
             error_handler: Some(handler),
             result_handler: self.result_handler,
             chunk_handler: self.chunk_handler,
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
             _marker: PhantomData,
         }
     }
@@ -190,6 +196,7 @@ where
             error_handler: self.error_handler,
             result_handler: Some(handler),
             chunk_handler: self.chunk_handler,
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
             _marker: PhantomData,
         }
     }
@@ -206,6 +213,7 @@ where
             error_handler: self.error_handler,
             result_handler: self.result_handler,
             chunk_handler: Some(handler),
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
             _marker: PhantomData,
         }
     }
@@ -295,6 +303,21 @@ where
                 }
             }
         })
+    }
+}
+
+impl<F1, F2, F3> ChunkHandler<DocumentChunk, String> for LoaderBuilderImpl<DocumentChunk, F1, F2, F3>
+where
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(ZeroOneOrMany<DocumentChunk>) -> ZeroOneOrMany<DocumentChunk> + Send + 'static,
+    F3: FnMut(ZeroOneOrMany<DocumentChunk>) -> ZeroOneOrMany<DocumentChunk> + Send + 'static,
+{
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<DocumentChunk, String>) -> DocumentChunk + Send + Sync + 'static,
+    {
+        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self
     }
 }
 

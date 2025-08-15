@@ -1,218 +1,269 @@
-# Production Readiness TODO - Comprehensive Codebase Audit
+# HTTP3 Package Production Quality TODO
 
-## CRITICAL NON-PRODUCTION VIOLATIONS
+## CRITICAL PRODUCTION VIOLATIONS
 
-### 1. PLACEHOLDER IMPLEMENTATIONS (HIGH PRIORITY)
+### 1. EXPECT() CALLS - IMMEDIATE FIX REQUIRED
+**Priority: CRITICAL**
 
-#### Domain Package - Core Architecture Placeholders
-**File:** `packages/domain/src/init/mod.rs` (Lines 16-70)
-**Violation:** Multiple placeholder types and incomplete initialization
-**Technical Solution:** 
-- Replace `PlaceholderMemoryManager` with actual `MemoryManager` from memory package
-- Replace `PlaceholderMemoryConfig` with production `MemoryConfig`
-- Implement proper domain initialization with real dependency injection
-- Add comprehensive error handling and validation
-- Use proper async streaming patterns with `AsyncStream<T>`
+Over 200 expect() calls found in src/ files - these will panic in production and must be replaced with proper error handling.
 
-#### Engine Implementation Stubs
-**File:** `packages/domain/src/engine.rs` (Lines 414-417)
-**Violation:** "TODO: Implement actual completion logic with provider clients"
-**Technical Solution:**
-- Implement complete provider client integration
-- Add proper request routing to appropriate providers (OpenAI, Anthropic, etc.)
-- Implement streaming response handling with zero-allocation patterns
-- Add comprehensive error recovery and retry logic
-- Use production-quality connection pooling and rate limiting
+#### Files with expect() violations:
+- `/src/hyper/cookie.rs:89,151` - Cookie parsing expects
+- `/src/hyper/tls.rs:787,829,835,840` - TLS configuration expects  
+- `/src/hyper/wasm/multipart.rs:192,229,346,354,371,376,378,382,392,394,407,413` - Multipart parsing expects
+- `/src/hyper/wasm/body.rs:217,229,234,235,238,240,251,256,257,260,262,274,279,283,286,302,307,311,314` - Body processing expects
+- `/src/hyper/into_url.rs:94,103,113` - URL parsing expects
+- `/src/hyper/wasm/client.rs:386,390,410,416,422,431,435,448,453,461,472,478` - WASM client expects
+- `/src/hyper/error.rs:371,373,670,697` - Error handling expects
+- `/src/hyper/redirect.rs:359,361,369,380,381,399,405,421,422,428` - Redirect handling expects
+- `/src/hyper/util.rs:21` - Utility function expect
+- `/src/hyper/proxy.rs:376,810,811,830,860,864,870,882,894,934,938,939,950,951,958,963,971,981` - Proxy handling expects
+- `/src/hyper/async_impl/client.rs:1605,1616,1775,1793,1836,1878,1914,2451,2455,2457,2464,2468,2470` - Client implementation expects
+- `/src/hyper/async_impl/h3_client/pool.rs:61,68,149,209,398` - HTTP3 pool expects
+- `/src/hyper/async_impl/multipart.rs:684,743,747,750,757,781,785,788,822,825` - Async multipart expects
+- `/src/hyper/response.rs:30,35` - Response handling expects
+- `/src/hyper/async_impl/response.rs:690,719,724,747,751,771,775` - Async response expects
+- `/src/hyper/async_impl/request.rs:622,624,706,718,741,757,766,767,776,796,811,813,825,827,857,875,894,913,927,928,931,933,946,947,950,952,965,967,980,982,990,992,1000,1002,1010,1012,1020,1022,1030,1032,1040,1042,1058,1060,1079,1081,1100,1102,1108,1115,1117,1122,1128,1130,1136,1138,1143,1148,1150,1167,1169` - Async request expects
+- `/src/builder/fluent.rs:61,68` - Builder expects
+- `/src/client/core.rs:102` - Client core expect
+- `/src/json_path/type_system.rs:398,404,417,422,428` - Type system expects
+- `/src/json_path/normalized_paths.rs:512,519,530,533,543,545,547,549,559,568,571` - Path normalization expects
+- `/src/json_path/null_semantics.rs:422,428,434,440,448` - Null handling expects
+- `/src/json_path/core_evaluator.rs:43,1246,1250,1258,1262,1271,1282,1317,1328,1379,1382,1390,1393,1416,1419,1440,1443,1451,1454,1460,1463,1476,1479` - Core evaluator expects
+- `/src/json_path/safe_parsing.rs:473,479,487,515` - Safe parsing expects
 
-#### Agent Chat Placeholders
-**File:** `packages/domain/src/agent/chat.rs` (Lines 95-96, 130-131)
-**Violation:** Placeholder implementations for chat functionality
-**Technical Solution:**
-- Implement complete chat message processing pipeline
-- Add proper conversation state management
-- Implement message validation and sanitization
-- Add streaming response generation with `AsyncStream<T>`
-- Integrate with memory system for context retention
+**Solution:** Replace all expect() calls with proper Result<T, E> error handling using match statements or the ? operator. Create specific error types for each domain (TLS, Cookie, Multipart, etc.) and propagate errors up the call stack.
 
-### 2. "FOR NOW" TEMPORARY IMPLEMENTATIONS (HIGH PRIORITY)
+### 2. UNWRAP() CALLS - IMMEDIATE FIX REQUIRED  
+**Priority: CRITICAL**
 
-#### Model Resolution Temporary Logic
-**File:** `packages/domain/src/model/resolver.rs` (Lines 367-368)
-**Violation:** "For now" model resolution logic
-**Technical Solution:**
-- Implement complete model capability matching algorithm
-- Add proper model validation and compatibility checking
-- Implement dynamic model selection based on request requirements
-- Add fallback strategies for model unavailability
-- Use lock-free concurrent data structures for model registry
+3 unwrap() calls found that will panic in production:
+- `/src/hyper/error.rs:552,564` - Error handling unwraps
+- `/src/hyper/async_impl/h3_client/mod.rs:245` - HTTP3 client unwrap
 
-#### HTTP Authentication Temporary Fixes
-**File:** `packages/domain/src/http/auth.rs` (Lines 671, 777)
-**Violation:** "In a real" authentication scenarios not handled
-**Technical Solution:**
-- Implement complete OAuth2 flow with PKCE
-- Add JWT token validation and refresh logic
-- Implement API key rotation and secure storage
-- Add comprehensive authentication middleware
-- Use zero-allocation token parsing and validation
+**Solution:** Replace with proper error handling using match statements or Result propagation.
 
-### 3. BLOCKING ASYNC VIOLATIONS (CRITICAL)
+### 3. "FOR NOW" TEMPORARY CODE - HIGH PRIORITY
+**Priority: HIGH**
 
-#### Memory Manager Blocking Operations
-**File:** `packages/memory/src/cognitive/manager.rs` (Lines 267, 387, 487, etc.)
-**Violation:** Multiple `block_on` calls violating streams-only architecture
-**Technical Solution:**
-- Convert all blocking operations to `AsyncStream<T>` patterns
-- Implement proper async streaming for cognitive operations
-- Use `AsyncTask` from `fluent_ai_async` for concurrent operations
-- Remove all `tokio::task::block_on` usage
-- Implement lock-free data structures for concurrent access
+17 instances of temporary "for now" implementations:
+- `/src/builder/core.rs:243` - Placeholder implementation
+- `/src/hyper/error.rs:196` - Temporary error handling
+- `/src/hyper/wasm/body.rs:195` - WASM body placeholder
+- `/src/hyper/proxy.rs:757` - Proxy temporary code
+- `/src/lib.rs:234` - Library temporary implementation
+- `/src/hyper/async_impl/upgrade.rs:286` - Upgrade placeholder
+- `/src/hyper/wasm/client.rs:198` - WASM client placeholder
+- `/src/hyper/async_impl/h3_client/pool.rs:282` - Pool temporary code
+- `/src/hyper/async_impl/client.rs:363` - Client temporary implementation
+- `/src/hyper/async_impl/response.rs:782` - Response temporary code
+- `/src/hyper/async_impl/h3_client/connect.rs:277,286` - Connection temporary code
+- `/src/request.rs:158,161` - Request temporary implementations
+- `/src/json_path/core_evaluator.rs:972` - Evaluator temporary code
+- `/src/json_path/functions.rs:436` - Functions temporary code
+- `/src/json_path/filter_parser.rs:244,468` - Filter parser temporary code
 
-#### Provider Client Blocking
-**File:** `packages/provider/src/clients/openai/completion.rs` (Lines 385, 471)
-**Violation:** `block_on` usage in provider clients
-**Technical Solution:**
-- Convert to streaming HTTP3 client patterns
-- Use `Http3::json().body().post().collect_or_else()` patterns
-- Implement proper async streaming for API responses
-- Add connection pooling and request pipelining
-- Use zero-allocation response processing
+**Solution:** Each "for now" implementation needs proper production code with full error handling, optimization, and complete functionality.
 
-### 4. TODO IMPLEMENTATIONS (MEDIUM PRIORITY)
+### 4. TODO COMMENTS - INCOMPLETE IMPLEMENTATIONS
+**Priority: HIGH**
 
-#### Tool System Incomplete
-**File:** `packages/domain/src/tool/core.rs` (Lines 55-107)
-**Violation:** Multiple TODO items for tool execution
-**Technical Solution:**
-- Implement complete tool registry and execution engine
-- Add tool validation and sandboxing
-- Implement streaming tool output processing
-- Add tool composition and chaining capabilities
-- Use zero-allocation tool parameter passing
+13 TODO comments indicating incomplete code:
+- `/src/hyper/mod.rs:293` - Module TODO
+- `/src/hyper/wasm/mod.rs:11` - WASM module TODO
+- `/src/hyper/wasm/request.rs:272` - WASM request TODO
+- `/src/json_path/state_machine.rs:91,95,99,612` - State machine TODOs
+- `/src/json_path/safe_parsing.rs:48` - Safe parsing TODO
+- `/src/json_path/deserializer/processor.rs:32,35,60` - Deserializer TODOs
+- `/src/json_path/deserializer/core.rs:47,51,55,59` - Core deserializer TODOs
 
-#### Memory Operations Incomplete
-**File:** `packages/domain/src/memory/ops.rs` (Lines 209-233)
-**Violation:** Multiple TODO items for memory operations
-**Technical Solution:**
-- Implement complete memory CRUD operations
-- Add transaction support with ACID properties
-- Implement memory compaction and garbage collection
-- Add distributed memory synchronization
-- Use lock-free data structures for concurrent access
+**Solution:** Complete all TODO implementations with full production-ready code.
 
-## LARGE FILE DECOMPOSITION (>300 LINES)
+### 5. "IN A REAL"/"IN PRODUCTION" COMMENTS - NON-PRODUCTION CODE
+**Priority: HIGH**
 
-### 1. Chat Search Module (2963 lines)
-**File:** `packages/domain/src/chat/search.rs`
+6 instances of non-production code comments:
+- `/src/hyper/async_impl/decoder.rs:533` - "In a real" decoder implementation
+- `/src/hyper/error.rs:508` - "In a real" error handling
+- `/src/hyper/async_impl/h3_client/connect.rs:276` - "In a real" connection handling
+- `/src/hyper/async_impl/upgrade.rs:80,282` - "In production" upgrade handling
+- `/src/hyper/async_impl/h3_client/connect.rs:278` - "in production" connection code
+
+**Solution:** Replace with actual production implementations.
+
+### 6. PLACEHOLDER IMPLEMENTATIONS
+**Priority: HIGH**
+
+5 placeholder implementations:
+- `/src/builder/core.rs:243` - Builder placeholder
+- `/src/hyper/wasm/response.rs:181` - WASM response placeholder
+- `/src/hyper/async_impl/h3_client/connect.rs:321` - Connection placeholder
+- `/src/request.rs:158` - Request placeholder
+- `/src/hyper/async_impl/upgrade.rs:286` - Upgrade placeholder
+
+**Solution:** Implement full production functionality for each placeholder.
+
+## LARGE FILE DECOMPOSITION - ARCHITECTURAL VIOLATIONS
+
+### 1. MASSIVE FILES REQUIRING IMMEDIATE DECOMPOSITION
+
+#### `/src/hyper/async_impl/client.rs` - 2480 LINES
+**Priority: CRITICAL**
+
+This file is 8x larger than the 300-line limit and needs immediate decomposition.
+
 **Decomposition Plan:**
-- `search/algorithms.rs` - Search algorithm implementations
-- `search/indexing.rs` - Search index management
-- `search/ranking.rs` - Result ranking and scoring
-- `search/filters.rs` - Search filtering logic
-- `search/cache.rs` - Search result caching
-- `search/streaming.rs` - Streaming search results
-- `search/mod.rs` - Public API and orchestration
+- `client/core.rs` - Core client struct and basic methods (300 lines)
+- `client/builder.rs` - Client builder pattern implementation (250 lines)
+- `client/connection.rs` - Connection management and pooling (400 lines)
+- `client/request_execution.rs` - Request execution logic (350 lines)
+- `client/response_handling.rs` - Response processing (300 lines)
+- `client/middleware.rs` - Middleware chain handling (250 lines)
+- `client/retry.rs` - Retry logic and policies (200 lines)
+- `client/timeout.rs` - Timeout handling (150 lines)
+- `client/tls.rs` - TLS configuration and handling (200 lines)
+- `client/proxy.rs` - Proxy support (200 lines)
+- `client/h3.rs` - HTTP/3 specific functionality (170 lines)
 
-### 2. HTTP Client Implementation (2343 lines)
-**File:** `packages/http3/src/hyper/async_impl/client.rs`
+#### `/src/hyper/connect.rs` - 1743 LINES  
+**Priority: CRITICAL**
+
 **Decomposition Plan:**
-- `client/connection.rs` - Connection management
-- `client/pool.rs` - Connection pooling
-- `client/request.rs` - Request building and sending
-- `client/response.rs` - Response processing
-- `client/retry.rs` - Retry logic and error handling
-- `client/streaming.rs` - Streaming response handling
-- `client/mod.rs` - Public client API
+- `connect/core.rs` - Core connection traits and types (200 lines)
+- `connect/tcp.rs` - TCP connection handling (300 lines)
+- `connect/tls.rs` - TLS connection setup (350 lines)
+- `connect/h3.rs` - HTTP/3 connection handling (300 lines)
+- `connect/proxy.rs` - Proxy connection logic (250 lines)
+- `connect/dns.rs` - DNS resolution integration (200 lines)
+- `connect/pool.rs` - Connection pooling (143 lines)
 
-### 3. Chat Commands Types (2254 lines)
-**File:** `packages/domain/src/chat/commands/types.rs`
+#### `/src/json_path/core_evaluator.rs` - 1486 LINES
+**Priority: CRITICAL**
+
 **Decomposition Plan:**
-- `types/commands.rs` - Command type definitions
-- `types/parameters.rs` - Command parameter types
-- `types/responses.rs` - Command response types
-- `types/errors.rs` - Command error types
-- `types/validation.rs` - Command validation logic
-- `types/serialization.rs` - Serialization/deserialization
-- `types/mod.rs` - Public types API
+- `json_path/evaluator/core.rs` - Core evaluation logic (300 lines)
+- `json_path/evaluator/expressions.rs` - Expression evaluation (300 lines)
+- `json_path/evaluator/filters.rs` - Filter evaluation (250 lines)
+- `json_path/evaluator/functions.rs` - Function evaluation (200 lines)
+- `json_path/evaluator/selectors.rs` - Selector evaluation (250 lines)
+- `json_path/evaluator/comparisons.rs` - Comparison operations (186 lines)
 
-### 4. Chat Realtime System (1967 lines)
-**File:** `packages/domain/src/chat/realtime.rs`
+#### `/src/hyper/async_impl/request.rs` - 1174 LINES
+**Priority: HIGH**
+
 **Decomposition Plan:**
-- `realtime/connection.rs` - WebSocket connection management
-- `realtime/events.rs` - Event type definitions and handling
-- `realtime/streaming.rs` - Real-time message streaming
-- `realtime/presence.rs` - User presence tracking
-- `realtime/rooms.rs` - Chat room management
-- `realtime/auth.rs` - Real-time authentication
-- `realtime/mod.rs` - Public realtime API
+- `request/core.rs` - Core request struct and methods (250 lines)
+- `request/builder.rs` - Request builder pattern (300 lines)
+- `request/body.rs` - Request body handling (200 lines)
+- `request/headers.rs` - Header management (200 lines)
+- `request/multipart.rs` - Multipart form handling (224 lines)
 
-### 5. Embedding Providers (1889 lines)
-**File:** `packages/fluent-ai/src/embedding/providers.rs`
-**Decomposition Plan:**
-- `providers/openai.rs` - OpenAI embedding provider
-- `providers/anthropic.rs` - Anthropic embedding provider
-- `providers/local.rs` - Local embedding models
-- `providers/cache.rs` - Embedding caching layer
-- `providers/batch.rs` - Batch processing logic
-- `providers/streaming.rs` - Streaming embeddings
-- `providers/mod.rs` - Provider registry and API
+### 2. ADDITIONAL LARGE FILES (>300 LINES)
 
-## TESTING EXTRACTION REQUIREMENTS
+#### Files requiring decomposition:
+- `/src/json_path/parser_broken_decomp.rs` - 1069 lines - **REMOVE** (broken decomposition)
+- `/src/hyper/proxy.rs` - 988 lines - Decompose into proxy modules
+- `/src/hyper/tls.rs` - 843 lines - Decompose into TLS modules  
+- `/src/hyper/async_impl/multipart.rs` - 843 lines - Decompose multipart handling
+- `/src/hyper/async_impl/response.rs` - 788 lines - Decompose response handling
+- `/src/json_path/deserializer_old.rs` - 740 lines - **REMOVE** (old implementation)
+- `/src/hyper/error.rs` - 713 lines - Decompose error types
+- `/src/hyper/async_impl/decoder.rs` - 709 lines - Decompose decoder logic
+- `/src/json_path/stream_processor.rs` - 683 lines - Decompose stream processing
+- `/src/hyper/async_impl/body.rs` - 666 lines - Decompose body handling
+- `/src/stream.rs` - 657 lines - Decompose streaming logic
+- `/src/hyper/wasm/request.rs` - 634 lines - Decompose WASM request
+- `/src/json_path/state_machine.rs` - 633 lines - Decompose state machine
+- `/src/json_path/normalized_paths.rs` - 589 lines - Decompose path normalization
+- `/src/json_path/deserializer/core.rs` - 563 lines - Decompose deserializer core
 
-### Inline Tests Found
-**Search Result:** No inline tests found in src/ directories - tests are properly separated in tests/ directories.
+## LEGACY CODE VIOLATIONS
 
-### Nextest Bootstrap Verification
-**Action Required:** Verify nextest is properly configured and all tests pass
-**Commands to run:**
-```bash
-cargo install cargo-nextest
-cargo nextest run --all-features
-```
+### Backward Compatibility Code - REMOVE
+**Priority: MEDIUM**
 
-## LOGGING IMPROVEMENTS
+9 instances of backward compatibility code that should be removed:
+- `/src/common/auth_method.rs:4` - Legacy auth compatibility
+- `/src/common/content_types.rs:4` - Legacy content type compatibility  
+- `/src/builder/mod.rs:38,41` - Legacy builder compatibility
+- `/src/config/mod.rs:12` - Legacy config compatibility
+- `/src/response/mod.rs:12` - Legacy response compatibility
+- `/src/json_path/parser.rs:7` - Legacy parser compatibility
+- `/src/json_path/buffer.rs:440` - Legacy buffer compatibility
+- `/src/json_path/filter.rs:30` - Legacy filter compatibility
+- `/src/json_path/deserializer/mod.rs:14` - Legacy deserializer compatibility
 
-### println!/eprintln! Removal
-**Search Result:** No println!/eprintln! usage found in src/ directories - proper logging already in use.
+**Solution:** Remove all backward compatibility shims and provide clean, modern APIs only.
 
-## IMPLEMENTATION CONSTRAINTS
+## IMPLEMENTATION REQUIREMENTS
 
-### Zero Allocation Requirements
-- All new implementations must use zero-allocation patterns
-- Use `ArrayVec`, `SmallVec`, and stack-allocated data structures
-- Implement lock-free concurrent data structures
-- Use memory pools for frequent allocations
+### Zero-Allocation Constraints
+- Replace all Vec allocations with ArrayVec where possible
+- Use stack-allocated buffers for small data
+- Implement custom allocators for large data structures
+- Use Cow<str> for string handling to avoid unnecessary clones
 
-### Streaming-Only Architecture
-- All async operations must return `AsyncStream<T>` (never `AsyncStream<Result<T, E>>`)
-- Use `AsyncTask` from `fluent_ai_async` for concurrent operations
-- Implement proper error handling within stream closures
-- Use `handle_error!` macro for error processing
+### Lock-Free Architecture  
+- Replace all Mutex/RwLock with atomic operations
+- Use lockless data structures (crossbeam collections)
+- Implement wait-free algorithms for critical paths
+- Use memory ordering optimizations
 
-### Performance Requirements
-- Implement blazing-fast hot paths with inlining
-- Use SIMD optimizations where applicable
-- Implement proper connection pooling and request pipelining
-- Use lock-free data structures for concurrent access
+### Blazing-Fast Performance
+- Inline all hot path functions
+- Use SIMD operations where applicable
+- Implement custom hash functions for performance
+- Use branch prediction hints
+- Optimize memory layout for cache efficiency
 
-### Production Quality Standards
-- No `unwrap()` or `expect()` in src/ code (verified: none found)
-- Comprehensive error handling with meaningful error messages
-- Proper resource cleanup and memory management
-- Complete documentation and examples
+### Production Error Handling
+- Create domain-specific error types
+- Implement error context propagation
+- Use structured error reporting
+- Add error recovery mechanisms
+- Implement graceful degradation
 
-## PRIORITY EXECUTION ORDER
+### Ergonomic APIs
+- Implement builder patterns for complex types
+- Use type-safe configuration
+- Provide fluent interfaces
+- Add comprehensive documentation
+- Include usage examples
 
-1. **CRITICAL:** Fix all placeholder implementations in domain package
-2. **CRITICAL:** Remove all blocking async operations (`block_on`, `spawn_blocking`)
-3. **HIGH:** Implement missing TODO functionality in core systems
-4. **MEDIUM:** Decompose large files into logical modules
-5. **LOW:** Verify test coverage and nextest configuration
+## TESTING EXTRACTION
 
-## QUALITY ASSURANCE STEPS
+### Tests Found in Source Files
+**Priority: MEDIUM**
 
-1. Run `cargo fmt && cargo check --message-format short --quiet` after each change
-2. Verify all tests pass with `cargo nextest run --all-features`
-3. Run performance benchmarks to ensure zero-allocation compliance
-4. Validate streaming architecture with integration tests
-5. Verify production deployment readiness with load testing
+Search for test functions in src/ files and extract to tests/ directory:
+- Extract all #[test] functions to appropriate test files
+- Extract all #[cfg(test)] modules to tests/
+- Remove all test code from src/ files
+- Bootstrap nextest configuration
+- Ensure all tests pass after extraction
+
+## LOGGING CLEANUP
+
+### Replace Debug Prints
+**Priority: LOW**
+
+- Replace all println!() with proper env_logger calls
+- Replace all eprintln!() with error logging
+- Implement structured logging with tracing
+- Add log levels and filtering
+- Remove debug print statements
+
+## COMPLETION CRITERIA
+
+- [ ] Zero expect() calls in src/
+- [ ] Zero unwrap() calls in src/  
+- [ ] Zero "for now" comments
+- [ ] Zero TODO comments
+- [ ] Zero placeholder implementations
+- [ ] All files under 300 lines
+- [ ] Zero backward compatibility code
+- [ ] All tests extracted to tests/
+- [ ] Zero println!/eprintln! in src/
+- [ ] All code follows zero-allocation principles
+- [ ] All code is lock-free
+- [ ] All APIs are ergonomic and production-ready

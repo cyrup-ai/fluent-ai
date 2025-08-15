@@ -8,14 +8,14 @@ use std::fmt;
 use std::{error::Error as StdError, sync::Arc};
 
 use crate::header::{AUTHORIZATION, COOKIE, PROXY_AUTHORIZATION, REFERER, WWW_AUTHENTICATE};
-use http::{HeaderMap, HeaderValue};
-use hyper::StatusCode;
+use http::{HeaderMap, HeaderValue, Uri, StatusCode};
 
 use crate::Url;
 use super::async_impl;
-use tower_http::follow_redirect::policy::{
-    Action as TowerAction, Attempt as TowerAttempt, Policy as TowerPolicy,
-};
+// Implement our own redirect policy types instead of using tower_http
+// This aligns with our pure AsyncStream architecture, no Service traits
+
+
 
 /// A type that controls the policy on how to handle the following of redirects.
 ///
@@ -303,19 +303,23 @@ fn make_referer(next: &Url, previous: &Url) -> Option<HeaderValue> {
     referer.as_str().parse().ok()
 }
 
-impl TowerPolicy<async_impl::body::Body, crate::Error> for TowerRedirectPolicy {
-    fn redirect(&mut self, attempt: &TowerAttempt<'_>) -> Result<TowerAction, crate::Error> {
-        let previous_url =
-            Url::parse(&attempt.previous().to_string()).expect("Previous URL must be valid");
-
-        let next_url = match Url::parse(&attempt.location().to_string()) {
+// Internal redirect handling methods for TowerRedirectPolicy
+impl TowerRedirectPolicy {
+    // Handle redirect attempt
+    pub(crate) fn handle_redirect(&mut self, status: StatusCode, location: &HeaderValue, previous: &Uri) -> Result<ActionKind, crate::Error> {
+        let previous_url = match Url::parse(&previous.to_string()) {
             Ok(url) => url,
             Err(e) => return Err(crate::error::builder(e)),
         };
 
+        let next_url = match location.to_str().ok().and_then(|s| Url::parse(s).ok()) {
+            Some(url) => url,
+            None => return Err(crate::error::builder("Invalid redirect location")),
+        };
+
         self.urls.push(previous_url.clone());
 
-        match self.policy.check(attempt.status(), &next_url, &self.urls) {
+        match self.policy.check(status, &next_url, &self.urls) {
             ActionKind::Follow => {
                 if next_url.scheme() != "http" && next_url.scheme() != "https" {
                     return Err(crate::error::url_bad_scheme(next_url));
@@ -327,29 +331,25 @@ impl TowerPolicy<async_impl::body::Body, crate::Error> for TowerRedirectPolicy {
                         next_url,
                     ));
                 }
-                Ok(TowerAction::Follow)
+                Ok(ActionKind::Follow)
             }
-            ActionKind::Stop => Ok(TowerAction::Stop),
+            ActionKind::Stop => Ok(ActionKind::Stop),
             ActionKind::Error(e) => Err(crate::error::redirect(e, previous_url)),
         }
     }
-
-    fn on_request(&mut self, req: &mut http::Request<async_impl::body::Body>) {
-        if let Ok(next_url) = Url::parse(&req.uri().to_string()) {
-            remove_sensitive_headers(req.headers_mut(), &next_url, &self.urls);
+    
+    // Update headers for redirect request
+    pub(crate) fn update_headers(&mut self, headers: &mut HeaderMap, uri: &Uri) {
+        if let Ok(next_url) = Url::parse(&uri.to_string()) {
+            remove_sensitive_headers(headers, &next_url, &self.urls);
             if self.referer {
                 if let Some(previous_url) = self.urls.last() {
                     if let Some(v) = make_referer(&next_url, previous_url) {
-                        req.headers_mut().insert(REFERER, v);
+                        headers.insert(REFERER, v);
                     }
                 }
             }
-        };
-    }
-
-    // This is must implemented to make 307 and 308 redirects work
-    fn clone_body(&self, body: &async_impl::body::Body) -> Option<async_impl::body::Body> {
-        body.try_clone()
+        }
     }
 }
 

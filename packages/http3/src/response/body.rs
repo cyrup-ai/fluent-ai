@@ -7,7 +7,9 @@ use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 
 use bytes::Bytes;
+use cyrup_sugars::prelude::MessageChunk;
 use fluent_ai_async::AsyncStream;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use serde::de::DeserializeOwned;
 
 use crate::json_path::JsonStreamProcessor;
@@ -178,7 +180,7 @@ impl HttpResponse {
     #[must_use]
     pub fn jsonpath_stream<T>(&self, jsonpath_expr: &str) -> AsyncStream<T>
     where
-        T: DeserializeOwned + Send + 'static,
+        T: DeserializeOwned + MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         let stream_processor = JsonStreamProcessor::<T>::new(jsonpath_expr);
         let response_bytes = Bytes::from(self.body().to_vec());
@@ -219,7 +221,7 @@ impl HttpResponse {
     #[must_use]
     pub fn jsonpath_first<T>(&self, jsonpath_expr: &str) -> Option<T>
     where
-        T: DeserializeOwned + Send + 'static,
+        T: DeserializeOwned + Send + 'static + MessageChunk + FluentMessageChunk + Default,
     {
         self.jsonpath_stream(jsonpath_expr)
             .collect()
@@ -259,7 +261,7 @@ impl HttpResponse {
     #[must_use]
     pub fn jsonpath_collect<T>(&self, jsonpath_expr: &str) -> Vec<T>
     where
-        T: DeserializeOwned + Send + 'static,
+        T: DeserializeOwned + Send + 'static + MessageChunk + FluentMessageChunk + Default,
     {
         self.jsonpath_stream(jsonpath_expr).collect()
     }

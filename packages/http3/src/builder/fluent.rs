@@ -58,14 +58,26 @@ impl DownloadBuilder {
         let mut total_size = None;
 
         // Use blocking file I/O - pure streams, no async
-        let mut file = std::fs::File::create(local_path).expect("Failed to create file");
+        let mut file = std::fs::File::create(local_path).map_err(|e| {
+            crate::Error::FileSystemError {
+                operation: "create".to_string(),
+                path: local_path.to_string(),
+                source: e.into(),
+            }
+        })?;
 
         while let Some(download_chunk) = stream.poll_next() {
             total_size = download_chunk.total_size;
             use std::io::Write;
             let bytes_written = file
                 .write(&download_chunk.data)
-                .expect("Failed to write to file");
+                .map_err(|e| {
+                    crate::Error::FileSystemError {
+                        operation: "write".to_string(),
+                        path: local_path.to_string(),
+                        source: e.into(),
+                    }
+                })?;
             total_written += bytes_written as u64;
             chunk_count += 1;
         }

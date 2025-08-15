@@ -5,6 +5,8 @@
 
 use std::time::Instant;
 
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
 
 use super::{RetryPolicy, RetryStats};
@@ -48,6 +50,66 @@ pub enum RetryResult<T> {
         /// Retry statistics
         stats: RetryStats,
     },
+}
+
+impl<T> MessageChunk for RetryResult<T>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    fn bad_chunk(error: String) -> Self {
+        Self::FinalFailure {
+            error: HttpError::StreamError { message: error },
+            stats: RetryStats::default(),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        matches!(self, Self::Retry { .. } | Self::FinalFailure { .. })
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            Self::Success { .. } => None,
+            Self::Retry { .. } => None, // Avoid lifetime issues with temporary string
+            Self::FinalFailure { .. } => None, // Avoid lifetime issues with temporary string
+        }
+    }
+}
+
+impl<T> FluentMessageChunk for RetryResult<T>
+where
+    T: FluentMessageChunk + Send + Default + 'static,
+{
+    fn bad_chunk(error: String) -> Self {
+        Self::FinalFailure {
+            error: HttpError::StreamError { message: error },
+            stats: RetryStats::default(),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        matches!(self, Self::Retry { .. } | Self::FinalFailure { .. })
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            Self::Success { .. } => None,
+            Self::Retry { .. } => None, // Avoid lifetime issues with temporary string
+            Self::FinalFailure { .. } => None, // Avoid lifetime issues with temporary string
+        }
+    }
+}
+
+impl<T> Default for RetryResult<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self::Success {
+            result: T::default(),
+            stats: RetryStats::default(),
+        }
+    }
 }
 
 /// Retry executor for HTTP operations using AsyncStreams

@@ -36,6 +36,9 @@
 //!     .collect_or_else(|error| Model::default());
 //! ```
 
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+
 pub mod buffer;
 pub mod core_evaluator;
 pub mod deserializer;
@@ -272,7 +275,7 @@ where
     /// Lock-free processing with const-generic capacity for blazing-fast performance.
     pub fn process_chunk(&mut self, chunk: Bytes) -> AsyncStream<T>
     where
-        T: Send + 'static,
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         // Append chunk to internal buffer
         self.buffer.append_chunk(chunk);
@@ -283,7 +286,7 @@ where
             Ok(s) => s,
             Err(_) => {
                 // Invalid UTF-8, return empty stream
-                return AsyncStream::empty();
+                return AsyncStream::builder().empty();
             }
         };
 
@@ -313,7 +316,7 @@ where
             }
             Err(e) => {
                 println!("DEBUG: CoreJsonPathEvaluator creation failed: {:?}", e);
-                return AsyncStream::empty();
+                return AsyncStream::builder().empty();
             }
         };
 
@@ -328,7 +331,7 @@ where
             }
             Err(e) => {
                 println!("DEBUG: CoreJsonPathEvaluator evaluation failed: {:?}", e);
-                return AsyncStream::empty();
+                return AsyncStream::builder().empty();
             }
         };
 
@@ -377,7 +380,7 @@ where
 
     fn fallback_to_streaming_deserializer(&mut self) -> AsyncStream<T>
     where
-        T: Send + 'static,
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         println!("DEBUG: fallback_to_streaming_deserializer called");
 

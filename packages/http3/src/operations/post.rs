@@ -6,7 +6,9 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde_json::Value;
 
 use crate::operations::HttpOperation;
-use crate::{HttpResult, client::HttpClient, request::HttpRequest, stream::HttpStream};
+use crate::{
+    HttpResult, client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream,
+};
 
 /// POST operation implementation with multiple body type support
 #[derive(Clone)]
@@ -50,7 +52,7 @@ impl PostOperation {
     ///
     /// # Returns
     /// `HttpResult<Self>` for method chaining
-    pub fn header(mut self, key: &str, value: &str) -> HttpResult<Self> {
+    pub fn header(mut self, key: &str, value: &str) -> Result<Self, HttpError> {
         let header_name = HeaderName::from_bytes(key.as_bytes())?;
         let header_value = HeaderValue::from_str(value)?;
         self.headers.insert(header_name, header_value);

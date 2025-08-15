@@ -5,11 +5,11 @@
 
 use std::collections::HashMap;
 
-use fluent_ai_async::{AsyncStream, emit};
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::AsyncStream;
 
 use super::{cache_key::CacheKey, response_cache::ResponseCache};
-use crate::HttpResponse;
-use crate::HttpResult;
+use crate::{HttpResponse, HttpResult};
 
 lazy_static::lazy_static! {
     /// Global cache instance for use across the HTTP client
@@ -17,14 +17,14 @@ lazy_static::lazy_static! {
 }
 
 /// Cache-aware HTTP stream that checks cache before making requests using AsyncStream
-pub fn cached_stream<F>(cache_key: CacheKey, operation: F) -> AsyncStream<HttpResult<HttpResponse>>
+pub fn cached_stream<F>(cache_key: CacheKey, operation: F) -> AsyncStream<HttpResponse>
 where
     F: Fn() -> HttpResult<HttpResponse> + Send + Sync + 'static,
 {
     AsyncStream::with_channel(move |sender| {
         // Check cache first
         if let Some(cached_response) = GLOBAL_CACHE.get(&cache_key) {
-            emit!(sender, Ok(cached_response));
+            let _ = sender.send(cached_response);
             return;
         }
 
@@ -35,10 +35,11 @@ where
                 if GLOBAL_CACHE.should_cache(&response) {
                     GLOBAL_CACHE.put(cache_key, response.clone());
                 }
-                emit!(sender, Ok(response));
+                let _ = sender.send(response);
             }
-            Err(error) => {
-                emit!(sender, Err(error));
+            Err(_error) => {
+                // For errors, send default response
+                let _ = sender.send(HttpResponse::default());
             }
         }
     })

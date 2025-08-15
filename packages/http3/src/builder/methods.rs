@@ -3,6 +3,8 @@
 //! Terminal methods for executing HTTP requests (GET, POST, PUT, PATCH, DELETE)
 //! with appropriate request configurations and response streaming.
 
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use http::Method;
 use serde::de::DeserializeOwned;
 
@@ -277,7 +279,7 @@ impl Http3Builder<JsonPathStreaming> {
     #[must_use]
     pub fn get<T>(mut self, url: &str) -> JsonPathStream<T>
     where
-        T: DeserializeOwned + Send + 'static,
+        T: DeserializeOwned + Send + 'static + MessageChunk + FluentMessageChunk + Default,
     {
         self.request = self
             .request
@@ -347,7 +349,7 @@ impl Http3Builder<JsonPathStreaming> {
     #[must_use]
     pub fn post<T>(mut self, url: &str) -> JsonPathStream<T>
     where
-        T: DeserializeOwned + Send + 'static,
+        T: DeserializeOwned + Send + 'static + MessageChunk + FluentMessageChunk + Default,
     {
         self.request = self
             .request

@@ -3,7 +3,7 @@
 use base64::{Engine as _, engine::general_purpose};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
-use crate::HttpResult;
+use crate::{HttpResult, error::HttpError};
 
 /// Authentication provider trait for different auth types
 pub trait AuthProvider {
@@ -31,12 +31,19 @@ impl AuthProvider for BearerToken {
     fn apply_auth(&self, headers: &mut HeaderMap) -> HttpResult<()> {
         if !self.token.is_empty() {
             let auth_header = format!("Bearer {}", self.token);
-            headers.insert(
-                http::header::AUTHORIZATION,
-                HeaderValue::from_str(&auth_header)?,
-            );
+            match HeaderValue::from_str(&auth_header) {
+                Ok(header_value) => {
+                    headers.insert(http::header::AUTHORIZATION, header_value);
+                    HttpResult::Ok(())
+                }
+                Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                    "Invalid bearer token: {}",
+                    e
+                ))),
+            }
+        } else {
+            HttpResult::Ok(())
         }
-        Ok(())
     }
 
     #[inline(always)]
@@ -71,11 +78,28 @@ impl AuthProvider for ApiKey {
     fn apply_auth(&self, headers: &mut HeaderMap) -> HttpResult<()> {
         if let ApiKeyPlacement::Header(header_name) = &self.placement {
             if !self.key.is_empty() {
-                let header_name = HeaderName::from_bytes(header_name.as_bytes())?;
-                headers.insert(header_name, HeaderValue::from_str(&self.key)?);
+                match HeaderName::from_bytes(header_name.as_bytes()) {
+                    Ok(name) => match HeaderValue::from_str(&self.key) {
+                        Ok(value) => {
+                            headers.insert(name, value);
+                            HttpResult::Ok(())
+                        }
+                        Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                            "Invalid API key value: {}",
+                            e
+                        ))),
+                    },
+                    Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                        "Invalid header name: {}",
+                        e
+                    ))),
+                }
+            } else {
+                HttpResult::Ok(())
             }
+        } else {
+            HttpResult::Ok(())
         }
-        Ok(())
     }
 
     #[inline(always)]
@@ -108,12 +132,19 @@ impl AuthProvider for BasicAuth {
             );
             let encoded = general_purpose::STANDARD.encode(credentials.as_bytes());
             let auth_header = format!("Basic {}", encoded);
-            headers.insert(
-                http::header::AUTHORIZATION,
-                HeaderValue::from_str(&auth_header)?,
-            );
+            match HeaderValue::from_str(&auth_header) {
+                Ok(header_value) => {
+                    headers.insert(http::header::AUTHORIZATION, header_value);
+                    HttpResult::Ok(())
+                }
+                Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                    "Invalid basic auth header: {}",
+                    e
+                ))),
+            }
+        } else {
+            HttpResult::Ok(())
         }
-        Ok(())
     }
 
     #[inline(always)]

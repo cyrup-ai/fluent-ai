@@ -8,7 +8,7 @@ use web_sys::{AbortController, AbortSignal};
 
 mod body;
 mod client;
-/// TODO
+/// Multipart form data support for WASM client
 #[cfg(feature = "multipart")]
 pub mod multipart;
 mod request;
@@ -74,7 +74,10 @@ impl AbortGuard {
             Closure::once(move || ctrl.abort_with_reason(&"crate::hyper::errors::TimedOut".into()));
         let timeout = set_timeout(
             abort.as_ref().unchecked_ref::<js_sys::Function>(),
-            timeout.as_millis().try_into().expect("timeout"),
+            match timeout.as_millis().try_into() {
+                Ok(millis) => millis,
+                Err(_) => return, // Skip if timeout conversion fails
+            },
         );
         if let Some((id, _)) = self.timeout.replace((timeout, abort)) {
             clear_timeout(id);

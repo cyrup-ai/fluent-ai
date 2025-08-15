@@ -39,7 +39,12 @@ impl CoreJsonPathEvaluator {
     /// # Example
     /// ```
     /// # use fluent_ai_http3::json_path::CoreJsonPathEvaluator;
-    /// let evaluator = CoreJsonPathEvaluator::new("$.store.book[*].author").unwrap();
+    /// match CoreJsonPathEvaluator::new("$.store.book[*].author") {
+    ///     Ok(evaluator) => {
+    ///         // Use evaluator
+    ///     }
+    ///     Err(e) => eprintln!("Failed to create evaluator: {}", e),
+    /// }
     /// ```
     pub fn new(expression: &str) -> JsonPathResult<Self> {
         // Compile the expression to get the parsed selectors

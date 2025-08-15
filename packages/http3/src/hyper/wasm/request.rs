@@ -269,7 +269,7 @@ impl RequestBuilder {
         self
     }
 
-    /// TODO
+    /// Add multipart form data to the request body
     #[cfg(feature = "multipart")]
     #[cfg_attr(docsrs, doc(cfg(feature = "multipart")))]
     pub fn multipart(mut self, multipart: super::multipart::Form) -> RequestBuilder {

@@ -43,42 +43,42 @@ fn main() {
     let computation_task = spawn_task(|| {
         println!("   ⚙️  Background computation started...");
         std::thread::sleep(std::time::Duration::from_millis(300));
-        
+
         let result = "Computed result: 42";
         println!("   ✅ Computation complete: {}", result);
         result.to_string()
     });
 
     // Collect the result (this blocks until task completes)
-    let result = computation_task.collect();
+    let result = computation_task.collect().expect("Task sender dropped");
     println!("   📊 Task result: {}\n", result);
 
     // PATTERN 2: spawn_stream() for streaming background work
     println!("📋 PATTERN 2: Streaming Task Spawning");
     let task_stream = spawn_stream(move |sender| {
         println!("   ⚙️  Background streaming task started...");
-        
+
         for i in 1..=4 {
             println!("   🔄 Processing task #{}", i);
             std::thread::sleep(std::time::Duration::from_millis(200));
-            
+
             let task_result = TaskResult {
                 task_id: i,
                 result: format!("Task {} completed successfully", i),
                 status: "completed".to_string(),
             };
-            
+
             println!("   ✅ Task #{} done", i);
             emit!(sender, task_result);
         }
-        
+
         println!("   🎯 All streaming tasks complete!");
     });
 
     // Collect all streaming results
     println!("   📊 Collecting streaming results...");
     let all_results: Vec<TaskResult> = task_stream.collect();
-    
+
     println!("\n📈 Final Results:");
     for result in all_results {
         if result.is_error() {
@@ -87,7 +87,7 @@ fn main() {
             println!("   ✅ Task #{}: {}", result.task_id, result.result);
         }
     }
-    
+
     println!("\n💡 Real-World Patterns Demonstrated:");
     println!("   • spawn_task() for single background computations");
     println!("   • spawn_stream() for streaming background work");

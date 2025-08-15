@@ -39,7 +39,7 @@ impl Resolve for HickoryDnsResolver {
                 let resolver_instance = resolver.state.get_or_try_init(new_resolver)?;
                 
                 // Use synchronous polling pattern instead of tokio runtime
-                // Create a minimal future executor using std::task components
+                // Create a zero-allocation future executor using std::task components
                 use std::task::{Context, Poll, Waker};
                 use std::future::Future;
                 use std::pin::Pin;

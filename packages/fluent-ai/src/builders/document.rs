@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 
+use cyrup_sugars::prelude::*;
 use fluent_ai_domain::chunk::DocumentChunk;
 use fluent_ai_domain::{
     AsyncTask, ContentFormat, Document, DocumentMediaType, ZeroOneOrMany,
@@ -109,6 +110,7 @@ struct DocumentBuilderImpl<
     cache_enabled: bool,
     error_handler: Option<F1>,
     chunk_handler: Option<F2>,
+    cyrup_chunk_handler: Option<Box<dyn Fn(Result<DocumentChunk, String>) -> DocumentChunk + Send + Sync + 'static>>,
     _marker: PhantomData<(F1, F2)>,
 }
 
@@ -127,6 +129,7 @@ impl DocumentBuilderImpl {
             cache_enabled: true,
             error_handler: None,
             chunk_handler: None,
+            cyrup_chunk_handler: None,
             _marker: PhantomData,
         }
     }
@@ -486,6 +489,20 @@ where
         });
 
         AsyncStream::new(rx)
+    }
+}
+
+impl<F1, F2> ChunkHandler<DocumentChunk, String> for DocumentBuilderImpl<F1, F2>
+where
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: Fn(DocumentChunk) -> DocumentChunk + Send + Sync + 'static,
+{
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<DocumentChunk, String>) -> DocumentChunk + Send + Sync + 'static,
+    {
+        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self
     }
 }
 

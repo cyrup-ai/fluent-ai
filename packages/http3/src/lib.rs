@@ -155,13 +155,83 @@ pub fn connection_stats() -> ClientStatsSnapshot {
 }
 
 /// Initialize the global HTTP client with custom configuration
-/// Returns stream of initialization status - NO Result wrapping
-pub fn init_global_client(_config: HttpConfig) -> AsyncStream<bool> {
-    use fluent_ai_async::AsyncStream;
-    // Global client is lazily initialized, so we can't change it after creation
-    // This is a design choice to prevent race conditions
-    // Users should create their own client instances if they need custom configuration
-    AsyncStream::with_channel(|sender| {
-        let _ = sender.send(true); // Always succeeds for now
-    })
+pub fn init_global_client(config: HttpConfig) -> Result<(), crate::Error> {
+    // Validate the provided configuration
+    validate_http_config(&config)?;
+
+    // Initialize global client with the provided configuration
+    initialize_global_client_internal(config)
+}
+
+/// Validate HTTP configuration before initialization
+fn validate_http_config(config: &HttpConfig) -> std::result::Result<(), String> {
+    // Validate timeout values
+    if config.timeout.as_secs() == 0 {
+        return Err(crate::error::request("Timeout must be greater than zero"));
+    }
+    if config.timeout.as_secs() > 3600 {
+        return Err(crate::error::request("Timeout must not exceed 1 hour"));
+    }
+
+    // Validate connection timeout
+    if config.connect_timeout.as_secs() == 0 {
+        return Err(crate::error::request(
+            "Connect timeout must be greater than zero",
+        ));
+    }
+    if config.connect_timeout.as_secs() > 300 {
+        return Err(crate::error::request(
+            "Connect timeout must not exceed 5 minutes",
+        ));
+    }
+
+    // Validate pool configuration
+    if config.pool_max_idle_per_host == 0 {
+        return Err("Pool max idle per host must be greater than zero".to_string());
+    }
+    if config.pool_max_idle_per_host > 1000 {
+        return Err("Pool max idle per host must not exceed 1000".to_string());
+    }
+
+    // Validate user agent
+    if config.user_agent.is_empty() {
+        return Err(crate::error::request("User agent cannot be empty"));
+    }
+    if config.user_agent.len() > 1000 {
+        return Err(crate::error::request(
+            "User agent must not exceed 1000 characters",
+        ));
+    }
+
+    Ok(())
+}
+
+/// Internal function to perform the actual global client initialization
+fn initialize_global_client_internal(
+    config: HttpConfig,
+) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use crate::hyper::ClientBuilder;
+
+    // Build a new client with the provided configuration
+    let mut client_builder = ClientBuilder::new();
+
+    // Apply configuration settings
+    client_builder = client_builder.timeout(config.timeout);
+    client_builder = client_builder.connect_timeout(config.connect_timeout);
+    client_builder = client_builder.user_agent(&config.user_agent);
+
+    // Configure TLS if specified
+    #[cfg(feature = "__tls")]
+    {
+        // TLS configuration handled by default settings
+    }
+
+    // Build the client
+    let new_client = client_builder.build()?;
+
+    // Replace the global client using atomic operations for thread safety
+    // This is a one-time initialization operation with proper error handling
+    GLOBAL_CLIENT.store(Arc::new(new_client), std::sync::atomic::Ordering::Release);
+
+    Ok(())
 }

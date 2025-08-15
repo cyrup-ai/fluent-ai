@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bytes::Bytes;
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, handle_error};
 use serde::de::DeserializeOwned;
 
@@ -426,6 +428,7 @@ where
     pub fn process_chunks<I>(mut self, chunks: I) -> AsyncStream<T>
     where
         I: Iterator<Item = HttpChunk> + Send + 'static,
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         AsyncStream::with_channel(move |sender: AsyncStreamSender<T>| {
             for chunk in chunks {
@@ -498,7 +501,10 @@ where
     ///
     /// # Returns
     /// AsyncStream of deserialized objects
-    pub fn process_body(mut self, body_bytes: Bytes) -> AsyncStream<T> {
+    pub fn process_body(mut self, body_bytes: Bytes) -> AsyncStream<T>
+    where
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
+    {
         AsyncStream::with_channel(move |sender: AsyncStreamSender<T>| {
             if let Err(e) = self.process_body_chunk(&sender, body_bytes) {
                 handle_error!(e, "Failed to process response body");
@@ -514,12 +520,16 @@ where
         &mut self,
         sender: &AsyncStreamSender<T>,
         bytes: Bytes,
-    ) -> Result<(), JsonPathError> {
+    ) -> Result<(), JsonPathError>
+    where
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
+    {
         // Process bytes through JSONPath deserializer
-        let objects_iter = self.json_array_stream.process_chunk(bytes);
+        let objects_stream = self.json_array_stream.process_chunk(bytes);
 
-        // Stream objects directly without collecting
-        objects_iter.for_each(|obj| {
+        // Collect objects from stream and process them
+        let objects = objects_stream.collect();
+        for obj in objects {
             self.stats.objects_yielded.fetch_add(1, Ordering::Relaxed);
 
             let mut result = Ok(obj);
@@ -531,16 +541,15 @@ where
 
             match result {
                 Ok(processed_obj) => {
-                    if sender.try_send(processed_obj).is_err() {
-                        log::error!("Failed to send processed object through AsyncStream");
-                        return; // Use return instead of break in closure
-                    }
+                    fluent_ai_async::emit!(sender, processed_obj);
                 }
                 Err(e) => {
                     log::error!("JSONPath processing failed: {:?}", e);
+                    let error_chunk = T::bad_chunk(e.to_string());
+                    fluent_ai_async::emit!(sender, error_chunk);
                 }
             }
-        });
+        }
 
         Ok(())
     }
@@ -557,7 +566,10 @@ where
     ///
     /// AsyncStream of deserialized objects
     #[inline]
-    pub fn process_bytes(&mut self, bytes: Bytes) -> AsyncStream<T> {
+    pub fn process_bytes(&mut self, bytes: Bytes) -> AsyncStream<T>
+    where
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
+    {
         // Process bytes through JSONPath deserializer directly
         self.json_array_stream.process_chunk(bytes)
     }
@@ -571,7 +583,10 @@ where
     ///
     /// # Returns
     /// AsyncStream of deserialized objects from the chunk
-    pub fn process_single_chunk(self, chunk: HttpChunk) -> AsyncStream<T> {
+    pub fn process_single_chunk(self, chunk: HttpChunk) -> AsyncStream<T>
+    where
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
+    {
         match chunk {
             HttpChunk::Body(bytes) => self.process_body(bytes),
             HttpChunk::Error(e) => {
@@ -581,7 +596,7 @@ where
             }
             _ => {
                 // Return empty stream for non-body chunks
-                AsyncStream::empty()
+                AsyncStream::builder().empty()
             }
         }
     }
@@ -617,6 +632,7 @@ where
     where
         I: Iterator<Item = HttpChunk> + Send + 'static,
         F: FnMut(HttpError) + Send + 'static,
+        T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         AsyncStream::with_channel(move |sender: AsyncStreamSender<T>| {
             for chunk in chunks {

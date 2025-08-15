@@ -136,7 +136,8 @@ where
 #[derive(Clone, Debug)]
 pub struct AsyncStreamConcurrencyLayer {
     max_concurrent: usize,
-    semaphore: Arc<std::sync::Semaphore>,
+    // Using atomic counter for concurrency limiting instead of semaphore
+    active_count: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl AsyncStreamConcurrencyLayer {
@@ -144,7 +145,7 @@ impl AsyncStreamConcurrencyLayer {
     pub fn new(max_concurrent: usize) -> Self {
         Self {
             max_concurrent,
-            semaphore: Arc::new(std::sync::Semaphore::new(max_concurrent)),
+            active_count: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         }
     }
 }
@@ -158,7 +159,8 @@ where
     fn layer(&self, service: S) -> Self::Service {
         AsyncStreamConcurrencyService {
             inner: service,
-            semaphore: self.semaphore.clone(),
+            max_concurrent: self.max_concurrent,
+            active_count: self.active_count.clone(),
         }
     }
 }
@@ -166,7 +168,8 @@ where
 /// Concurrency limiting service implementation
 pub struct AsyncStreamConcurrencyService<S> {
     inner: S,
-    semaphore: Arc<std::sync::Semaphore>,
+    max_concurrent: usize,
+    active_count: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl<S> AsyncStreamService<Uri> for AsyncStreamConcurrencyService<S>
@@ -177,32 +180,54 @@ where
     type Error = BoxError;
 
     fn is_ready(&mut self) -> bool {
-        self.semaphore.available_permits() > 0 && self.inner.is_ready()
+        let current = self.active_count.load(std::sync::atomic::Ordering::Relaxed);
+        current < self.max_concurrent && self.inner.is_ready()
     }
 
     fn call(&mut self, request: Uri) -> AsyncStream<Result<Self::Response, Self::Error>> {
-        let semaphore = self.semaphore.clone();
+        let active_count = self.active_count.clone();
+        let max_concurrent = self.max_concurrent;
         // Create a clone instead of using unsafe zeroed - this preserves the service state
         let mut inner_service = self.inner.clone();
 
         AsyncStream::with_channel(move |sender| {
             let task = spawn_task(move || -> Result<Result<Conn, BoxError>, &'static str> {
-                // Acquire semaphore permit (blocks if at limit)
-                let _permit = match semaphore.acquire() {
-                    Ok(permit) => permit,
-                    Err(_) => return Ok(Err("concurrency limit acquisition failed".into())),
-                };
+                // Try to acquire a slot
+                loop {
+                    let current = active_count.load(std::sync::atomic::Ordering::Acquire);
+                    if current >= max_concurrent {
+                        // At limit, wait a bit and retry
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                        continue;
+                    }
+                    // Try to increment the counter
+                    if active_count
+                        .compare_exchange(
+                            current,
+                            current + 1,
+                            std::sync::atomic::Ordering::Release,
+                            std::sync::atomic::Ordering::Relaxed,
+                        )
+                        .is_ok()
+                    {
+                        break;
+                    }
+                }
 
-                // Execute with permit held
+                // Execute with slot acquired
                 let inner_stream = inner_service.call(request);
                 let mut stream_iter = inner_stream;
 
-                if let Some(result) = stream_iter.try_next() {
-                    Ok(result)
+                let result = if let Some(result) = stream_iter.try_next() {
+                    result
                 } else {
-                    Ok(Err("no connection result from inner service".into()))
-                }
-                // Permit automatically released when _permit drops
+                    Err("no connection result from inner service".into())
+                };
+
+                // Release the slot
+                active_count.fetch_sub(1, std::sync::atomic::Ordering::Release);
+
+                Ok(result)
             });
 
             match task.collect() {

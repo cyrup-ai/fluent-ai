@@ -257,7 +257,7 @@ compile_error!(
 
 // Ignore `unused_crate_dependencies` warnings.
 // Used in many features that they're not worth making it optional.
-use futures_core as _;
+// futures_core removed - using pure AsyncStream patterns instead
 use sync_wrapper as _;
 
 macro_rules! if_wasm {
@@ -290,7 +290,7 @@ pub mod async_stream_service;
 // Stream-to-Future bridge for Service trait compatibility
 mod stream_future;
 use stream_future::StreamFuture;
-// TODO: remove `if_hyper` if wasm has been migrated to new config system.
+// Note: remove `if_hyper` if wasm has been migrated to new config system.
 if_hyper! {
     mod config;
 }

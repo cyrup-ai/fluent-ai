@@ -65,7 +65,7 @@ impl TokenManager {
         Ok(Self {
             current_keypair: Arc::new(RwLock::new(keypair)),
             previous_keypair: Arc::new(RwLock::new(None)),
-            revoked_tokens: Arc<new(RwLock::new(HashMap::new()))>,
+            revoked_tokens: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 

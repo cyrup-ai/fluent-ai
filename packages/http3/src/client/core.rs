@@ -98,10 +98,13 @@ impl HttpClient {
     /// use fluent_ai_http3::HttpClient;
     /// use fluent_ai_http3::config::Config;
     ///
-    /// let mut client = HttpClient::with_config(Config::default())
-    ///     .expect("Failed to create HTTP client with default config");
-    /// client.reset_stats();
-    /// assert_eq!(client.stats().request_count(), 0);
+    /// match HttpClient::with_config(Config::default()) {
+    ///     Ok(mut client) => {
+    ///         client.reset_stats();
+    ///         assert_eq!(client.stats().request_count(), 0);
+    ///     }
+    ///     Err(e) => eprintln!("Failed to create HTTP client: {}", e),
+    /// }
     /// ```
     pub fn reset_stats(&mut self) {
         use std::sync::atomic::Ordering;

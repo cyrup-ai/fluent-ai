@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::operations::HttpOperation;
-use crate::{HttpResult, client::HttpClient, request::HttpRequest, stream::HttpStream};
+use crate::{
+    HttpResult, client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream,
+};
 
 /// GET operation implementation with streaming and conditional request support
 #[derive(Clone)]
@@ -71,7 +73,7 @@ impl GetOperation {
     /// # Returns
     /// `Result<Self, HttpError>` for method chaining
     #[must_use]
-    pub fn header(mut self, key: &str, value: &str) -> HttpResult<Self> {
+    pub fn header(mut self, key: &str, value: &str) -> Result<Self, HttpError> {
         let header_name = HeaderName::from_bytes(key.as_bytes())?;
         let header_value = HeaderValue::from_str(value)?;
         self.headers.insert(header_name, header_value);

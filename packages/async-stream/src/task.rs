@@ -34,11 +34,10 @@ where
 
     /// Collect the result (blocking) - replaces .await behavior
     /// This is the primary method for await-like usage
+    /// Returns Result to handle sender drop gracefully
     #[inline]
-    pub fn collect(self) -> T {
-        self.rx
-            .recv()
-            .expect("AsyncTask sender dropped without sending")
+    pub fn collect(self) -> Result<T, crossbeam_channel::RecvError> {
+        self.rx.recv()
     }
 
     /// Non-blocking try to receive result

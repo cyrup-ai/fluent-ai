@@ -149,7 +149,7 @@ impl MessageChunk for VoiceChunk {
     fn bad_chunk(error: String) -> Self {
         VoiceChunk {
             audio_data: vec![],
-            format: AudioFormat::PCM,
+            format: AudioFormat::WAV,
             duration_ms: None,
             sample_rate: None,
             metadata: HashMap::new(),
@@ -371,7 +371,7 @@ impl MessageChunk for SpeechChunk {
     fn bad_chunk(error: String) -> Self {
         SpeechChunk {
             audio_data: vec![],
-            format: AudioFormat::PCM,
+            format: AudioFormat::WAV,
             duration_ms: None,
             sample_rate: None,
             is_final: true,

@@ -9,19 +9,19 @@ pub mod cache;
 
 /// HTTP middleware trait for fluent_ai_http3
 pub trait Middleware: Send + Sync {
-    /// Process request before sending - returns result directly
+    /// Process request before sending - returns HttpResult directly
     fn process_request(&self, request: HttpRequest) -> HttpResult<HttpRequest> {
-        Ok(request)
+        HttpResult::Ok(request)
     }
 
-    /// Process response after receiving - returns result directly  
+    /// Process response after receiving - returns HttpResult directly  
     fn process_response(&self, response: HttpResponse) -> HttpResult<HttpResponse> {
-        Ok(response)
+        HttpResult::Ok(response)
     }
 
-    /// Handle errors - returns result directly
+    /// Handle errors - returns HttpResult directly
     fn handle_error(&self, error: HttpError) -> HttpResult<HttpError> {
-        Ok(error)
+        HttpResult::Ok(error)
     }
 }
 
@@ -53,25 +53,34 @@ impl MiddlewareChain {
     }
 
     /// Process request through all middlewares sequentially
-    pub fn process_request(&self, mut request: HttpRequest) -> HttpResult<HttpRequest> {
+    pub fn process_request(&self, mut request: HttpRequest) -> Result<HttpRequest, HttpError> {
         for middleware in &self.middlewares {
-            request = middleware.process_request(request)?;
+            match middleware.process_request(request) {
+                HttpResult::Ok(req) => request = req,
+                HttpResult::Err(err) => return Err(err),
+            }
         }
         Ok(request)
     }
 
     /// Process response through all middlewares in reverse order
-    pub fn process_response(&self, mut response: HttpResponse) -> HttpResult<HttpResponse> {
+    pub fn process_response(&self, mut response: HttpResponse) -> Result<HttpResponse, HttpError> {
         for middleware in self.middlewares.iter().rev() {
-            response = middleware.process_response(response)?;
+            match middleware.process_response(response) {
+                HttpResult::Ok(resp) => response = resp,
+                HttpResult::Err(err) => return Err(err),
+            }
         }
         Ok(response)
     }
 
     /// Handle error through all middlewares in reverse order
-    pub fn handle_error(&self, mut error: HttpError) -> HttpResult<HttpError> {
+    pub fn handle_error(&self, mut error: HttpError) -> Result<HttpError, HttpError> {
         for middleware in self.middlewares.iter().rev() {
-            error = middleware.handle_error(error)?;
+            match middleware.handle_error(error) {
+                HttpResult::Ok(err) => error = err,
+                HttpResult::Err(err) => return Err(err),
+            }
         }
         Ok(error)
     }
@@ -93,13 +102,16 @@ impl RequestIdMiddleware {
 impl Middleware for RequestIdMiddleware {
     fn process_request(&self, request: HttpRequest) -> HttpResult<HttpRequest> {
         let request_id = fastrand::u64(..).to_string();
-        let request = request.header(
-            http::HeaderName::from_static("x-request-id"),
-            http::HeaderValue::from_str(&request_id).map_err(|e| HttpError::StreamError {
+        match http::HeaderValue::from_str(&request_id) {
+            Ok(header_value) => {
+                let request =
+                    request.header(http::HeaderName::from_static("x-request-id"), header_value);
+                HttpResult::Ok(request)
+            }
+            Err(e) => HttpResult::Err(HttpError::StreamError {
                 message: format!("Invalid request ID: {e}"),
-            })?,
-        );
-        Ok(request)
+            }),
+        }
     }
 }
 
@@ -132,7 +144,7 @@ impl Middleware for LoggingMiddleware {
         if self.enabled {
             println!("HTTP Request: {} {}", request.method(), request.url());
         }
-        Ok(request)
+        HttpResult::Ok(request)
     }
 
     fn process_response(&self, response: HttpResponse) -> HttpResult<HttpResponse> {
@@ -143,7 +155,7 @@ impl Middleware for LoggingMiddleware {
                 response.body().len()
             );
         }
-        Ok(response)
+        HttpResult::Ok(response)
     }
 }
 
@@ -183,14 +195,14 @@ impl Middleware for CompressionMiddleware {
                     http::header::CONTENT_ENCODING,
                     http::HeaderValue::from_static("identity"),
                 );
-            Ok(request)
+            HttpResult::Ok(request)
         } else {
-            Ok(request)
+            HttpResult::Ok(request)
         }
     }
 
     fn process_response(&self, response: HttpResponse) -> HttpResult<HttpResponse> {
         // Response decompression would be handled here in full implementation
-        Ok(response)
+        HttpResult::Ok(response)
     }
 }

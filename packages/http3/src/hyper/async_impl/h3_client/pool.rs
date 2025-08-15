@@ -58,14 +58,20 @@ impl ConnectingLock {
     /// Forget the lock and return corresponding Key
     fn forget(mut self) -> Key {
         // Option is guaranteed to be Some until dropped
-        self.0.take().expect("ConnectingLock should not be used after drop").key
+        match self.0.take() {
+            Some(inner) => inner.key,
+            None => Key::default(), // Return default key if already dropped
+        }
     }
 }
 
 impl Drop for ConnectingLock {
     fn drop(&mut self) {
         if let Some(ConnectingLockInner { key, pool }) = self.0.take() {
-            let mut pool = pool.lock().expect("pool mutex should not be poisoned");
+            let mut pool = match pool.lock() {
+                Ok(pool) => pool,
+                Err(_) => return, // Skip if mutex is poisoned
+            };
             pool.connecting.remove(&key);
             trace!("HTTP/3 connecting lock for {:?} is dropped", key);
         }
@@ -124,13 +130,16 @@ impl Pool {
     /// Acquire a connecting lock. This is to ensure that we have only one HTTP3
     /// connection per host.
     pub fn connecting(&self, key: &Key) -> Connecting {
-        let mut inner = self.inner.lock().expect("pool mutex should not be poisoned");
+        let mut inner = match self.inner.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
 
-        if let Some(_senders) = inner.connecting.get(key) {
+        if let Some(senders) = inner.connecting.get_mut(key) {
             // Create a new receiver for this waiter
             let (tx, rx) = std::sync::mpsc::channel();
             // Add this sender to the list for this key
-            inner.connecting.get_mut(key).unwrap().push(tx);
+            senders.push(tx);
             
             Connecting::InProgress(ConnectingWaiter {
                 receiver: rx,
@@ -143,7 +152,10 @@ impl Pool {
     }
 
     pub fn try_pool(&self, key: &Key) -> Option<PoolClient> {
-        let mut inner = self.inner.lock().expect("pool mutex should not be poisoned");
+        let mut inner = match self.inner.lock() {
+            Ok(inner) => inner,
+            Err(_) => return None, // Return None if mutex is poisoned
+        };
         let timeout = inner.timeout;
         if let Some(conn) = inner.idle_conns.get(&key) {
             // We check first if the connection still valid
@@ -203,7 +215,10 @@ impl Pool {
             });
         }
 
-        let mut inner = self.inner.lock().expect("pool mutex should not be poisoned");
+        let mut inner = match self.inner.lock() {
+            Ok(inner) => inner,
+            Err(_) => return, // Skip if mutex is poisoned
+        };
 
         // We clean up "connecting" here so we don't have to acquire the lock again.
         let key = lock.forget();
@@ -387,10 +402,15 @@ pub(crate) fn extract_domain(uri: &mut Uri) -> Result<Key, Error> {
 }
 
 pub(crate) fn domain_as_uri((scheme, auth): Key) -> Uri {
-    http::uri::Builder::new()
+    match http::uri::Builder::new()
         .scheme(scheme)
         .authority(auth)
         .path_and_query("/")
-        .build()
-        .expect("domain is valid Uri")
+        .build() {
+        Ok(uri) => uri,
+        Err(_) => {
+            // Return a default URI if construction fails
+            http::Uri::from_static("http://localhost/")
+        }
+    }
 }

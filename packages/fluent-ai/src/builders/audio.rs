@@ -3,9 +3,11 @@
 //! All audio construction logic and builder patterns with zero allocation.
 
 use std::collections::HashMap;
+
+use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
 use fluent_ai_domain::AsyncStream;
 use fluent_ai_domain::audio::{Audio, AudioMediaType, ContentFormat};
-use fluent_ai_domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
+use fluent_ai_domain::context::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
 
 /// Audio builder trait - elegant zero-allocation builder pattern
 pub trait AudioBuilder: Sized {
@@ -27,11 +29,7 @@ pub trait AudioBuilder: Sized {
     where
         F: Fn(String) + Send + Sync + 'static;
     
-    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
-    fn on_chunk<F>(self, handler: F) -> impl AudioBuilder
-    where
-        F: FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static;
+
     
     /// Decode audio - EXACT syntax: .decode()
     fn decode(self) -> impl AsyncStream<Item = TranscriptionChunk>;
@@ -43,16 +41,14 @@ pub trait AudioBuilder: Sized {
 /// Hidden implementation struct - zero-allocation builder state with zero Box<dyn> usage
 struct AudioBuilderImpl<
     F1 = fn(String),
-    F2 = fn(TranscriptionChunk) -> TranscriptionChunk,
 > where
     F1: Fn(String) + Send + Sync + 'static,
-    F2: FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static,
 {
     data: String,
     format: Option<ContentFormat>,
     media_type: Option<AudioMediaType>,
     error_handler: Option<F1>,
-    chunk_handler: Option<F2>,
+    cyrup_chunk_handler: Option<Box<dyn Fn(Result<TranscriptionChunk, String>) -> TranscriptionChunk + Send + Sync>>,
 }
 
 impl Audio {
@@ -63,7 +59,7 @@ impl Audio {
             format: Some(ContentFormat::Base64),
             media_type: None,
             error_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
         }
     }
 
@@ -74,7 +70,7 @@ impl Audio {
             format: Some(ContentFormat::Url),
             media_type: None,
             error_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
         }
     }
 
@@ -85,15 +81,14 @@ impl Audio {
             format: Some(ContentFormat::Raw),
             media_type: None,
             error_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
         }
     }
 }
 
-impl<F1, F2> AudioBuilder for AudioBuilderImpl<F1, F2>
+impl<F1> AudioBuilder for AudioBuilderImpl<F1>
 where
     F1: Fn(String) + Send + Sync + 'static,
-    F2: FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static,
 {
     /// Set format - EXACT syntax: .format(ContentFormat::Base64)
     fn format(mut self, format: ContentFormat) -> impl AudioBuilder {
@@ -130,24 +125,10 @@ where
             format: self.format,
             media_type: self.media_type,
             error_handler: Some(handler),
-            chunk_handler: self.chunk_handler,
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
         }
     }
-    
-    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
-    fn on_chunk<F>(self, handler: F) -> impl AudioBuilder
-    where
-        F: FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static,
-    {
-        AudioBuilderImpl {
-            data: self.data,
-            format: self.format,
-            media_type: self.media_type,
-            error_handler: self.error_handler,
-            chunk_handler: Some(handler),
-        }
-    }
+
     
     /// Decode audio - EXACT syntax: .decode()
     fn decode(self) -> impl AsyncStream<Item = TranscriptionChunk> {
@@ -190,5 +171,18 @@ where
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
         fluent_ai_domain::async_task::AsyncStream::new(rx)
+    }
+}
+
+impl<F1> ChunkHandler<TranscriptionChunk, String> for AudioBuilderImpl<F1>
+where
+    F1: Fn(String) + Send + Sync + 'static,
+{
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<TranscriptionChunk, String>) -> TranscriptionChunk + Send + Sync + 'static,
+    {
+        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self
     }
 }

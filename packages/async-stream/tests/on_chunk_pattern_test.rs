@@ -3,7 +3,7 @@
 //! Verifies that the immutable builder pattern works with the on_chunk_pattern macro
 //! for clean Result<T, E> -> T transformations.
 
-use async_stream::{AsyncStream, on_chunk_pattern};
+use fluent_ai_async::{AsyncStream, on_chunk_pattern};
 
 #[derive(Debug, Default, Clone, PartialEq)]
 struct TestData {
@@ -46,28 +46,30 @@ fn test_on_chunk_pattern_matching_with_builder() {
     });
 
     // Create stream using the immutable builder pattern
-    let stream = AsyncStream::<TestData, _, 32>::on_chunk(processor).with_channel(|sender| {
-        // Send some successful values
-        let _ = sender.try_send(TestData {
-            value: 5,
-            processed: false,
-        });
-        let _ = sender.try_send(TestData {
-            value: 10,
-            processed: false,
-        });
+    let stream = AsyncStream::<TestData, 32>::builder()
+        .on_chunk(processor)
+        .with_channel(|sender| {
+            // Send some successful values
+            let _ = sender.try_send(TestData {
+                value: 5,
+                processed: false,
+            });
+            let _ = sender.try_send(TestData {
+                value: 10,
+                processed: false,
+            });
 
-        // Send an error (using send_error method)
-        let _ = sender.send_error(TestError {
-            message: "test error".to_string(),
-        });
+            // Send an error (using send_error method)
+            let _ = sender.send_error(TestError {
+                message: "test error".to_string(),
+            });
 
-        // Send another successful value
-        let _ = sender.try_send(TestData {
-            value: 15,
-            processed: false,
+            // Send another successful value
+            let _ = sender.try_send(TestData {
+                value: 15,
+                processed: false,
+            });
         });
-    });
 
     // Collect results
     let results = stream.collect();
@@ -114,14 +116,16 @@ fn test_on_chunk_pattern_matching_with_builder() {
 
 #[test]
 fn test_builder_empty_stream_with_processor() {
-    let processor = |result: Result<String, impl std::error::Error>| -> String {
+    let processor = |result: Result<String, String>| -> String {
         match result {
             Ok(s) => s.to_uppercase(),
             Err(_) => "ERROR".to_string(),
         }
     };
 
-    let stream = AsyncStream::<String, _, 16>::on_chunk(processor).empty();
+    let stream = AsyncStream::<String, 16>::builder()
+        .on_chunk(processor)
+        .empty();
     let results = stream.collect();
 
     // Empty stream should have no results
@@ -130,14 +134,16 @@ fn test_builder_empty_stream_with_processor() {
 
 #[test]
 fn test_builder_channel_internal_with_processor() {
-    let processor = |result: Result<i32, impl std::error::Error>| -> i32 {
+    let processor = |result: Result<i32, String>| -> i32 {
         match result {
             Ok(n) => n + 100,
             Err(_) => -999,
         }
     };
 
-    let (sender, stream) = AsyncStream::<i32, _, 8>::on_chunk(processor).channel_internal();
+    let (sender, stream) = AsyncStream::<i32, 8>::builder()
+        .on_chunk(processor)
+        .channel();
 
     // Send some values
     let _ = sender.try_send(1);

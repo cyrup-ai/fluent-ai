@@ -5,10 +5,12 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
 use fluent_ai_domain::Models;
 use fluent_ai_domain::agent::Agent;
 use fluent_ai_domain::completion::CompletionModel;
 use fluent_ai_domain::extractor::{Extractor, ExtractorImpl};
+use fluent_ai_domain::http::responses::completion::CompletionChunk;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use serde::de::DeserializeOwned;
 
@@ -35,11 +37,7 @@ where
     where
         F: FnOnce(T) -> T + Send + 'static;
     
-    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
-    fn on_chunk<F>(self, handler: F) -> impl ExtractorBuilder<T>
-    where
-        F: FnMut(T) -> T + Send + 'static;
+
     
     /// Build extractor - EXACT syntax: .build()
     fn build(self) -> impl Extractor<T>;
@@ -61,17 +59,15 @@ struct ExtractorBuilderImpl<
     M: CompletionModel,
     F1 = fn(String),
     F2 = fn(T) -> T,
-    F3 = fn(T) -> T,
 > where
     F1: Fn(String) + Send + Sync + 'static,
     F2: FnOnce(T) -> T + Send + 'static,
-    F3: FnMut(T) -> T + Send + 'static,
 {
     model: M,
     system_prompt: Option<String>,
     error_handler: Option<F1>,
     result_handler: Option<F2>,
-    chunk_handler: Option<F3>,
+    cyrup_chunk_handler: Option<Box<dyn Fn(Result<CompletionChunk, String>) -> CompletionChunk + Send + Sync>>,
     _marker: PhantomData<T>,
 }
 
@@ -83,19 +79,18 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
             system_prompt: None,
             error_handler: None,
             result_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
             _marker: PhantomData,
         }
     }
 }
 
-impl<T, M, F1, F2, F3> ExtractorBuilder<T> for ExtractorBuilderImpl<T, M, F1, F2, F3>
+impl<T, M, F1, F2> ExtractorBuilder<T> for ExtractorBuilderImpl<T, M, F1, F2>
 where
     T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
     M: CompletionModel + 'static,
     F1: Fn(String) + Send + Sync + 'static,
     F2: FnOnce(T) -> T + Send + 'static,
-    F3: FnMut(T) -> T + Send + 'static,
 {
     /// Set system prompt - EXACT syntax: .system_prompt("...")
     fn system_prompt(mut self, prompt: impl Into<String>) -> impl ExtractorBuilder<T> {
@@ -120,7 +115,7 @@ where
             system_prompt: self.system_prompt,
             error_handler: Some(handler),
             result_handler: self.result_handler,
-            chunk_handler: self.chunk_handler,
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
             _marker: PhantomData,
         }
     }
@@ -136,26 +131,11 @@ where
             system_prompt: self.system_prompt,
             error_handler: self.error_handler,
             result_handler: Some(handler),
-            chunk_handler: self.chunk_handler,
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
             _marker: PhantomData,
         }
     }
-    
-    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
-    fn on_chunk<F>(self, handler: F) -> impl ExtractorBuilder<T>
-    where
-        F: FnMut(T) -> T + Send + 'static,
-    {
-        ExtractorBuilderImpl {
-            model: self.model,
-            system_prompt: self.system_prompt,
-            error_handler: self.error_handler,
-            result_handler: self.result_handler,
-            chunk_handler: Some(handler),
-            _marker: PhantomData,
-        }
-    }
+
     
     /// Build extractor - EXACT syntax: .build()
     fn build(self) -> impl Extractor<T> {
@@ -185,5 +165,21 @@ where
         let extractor = self.build();
         let text = text.into();
         extractor.extract_from(&text)
+    }
+}
+
+impl<T, M, F1, F2> ChunkHandler<CompletionChunk, String> for ExtractorBuilderImpl<T, M, F1, F2>
+where
+    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
+    M: CompletionModel + 'static,
+    F1: Fn(String) + Send + Sync + 'static,
+    F2: FnOnce(T) -> T + Send + 'static,
+{
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<CompletionChunk, String>) -> CompletionChunk + Send + Sync + 'static,
+    {
+        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self
     }
 }

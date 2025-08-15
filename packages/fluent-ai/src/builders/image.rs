@@ -3,8 +3,10 @@
 //! All image construction logic and builder patterns with zero allocation.
 
 use std::marker::PhantomData;
+
+use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
 use fluent_ai_domain::AsyncStream;
-use fluent_ai_domain::chunk::ImageChunk;
+use fluent_ai_domain::context::chunk::ImageChunk;
 use fluent_ai_domain::image::{ContentFormat, Image, ImageDetail, ImageMediaType};
 
 /// Image builder trait - elegant zero-allocation builder pattern
@@ -36,11 +38,7 @@ pub trait ImageBuilder: Sized {
     where
         F: Fn(String) + Send + Sync + 'static;
     
-    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
-    fn on_chunk<F>(self, handler: F) -> impl ImageBuilder
-    where
-        F: FnMut(ImageChunk) -> ImageChunk + Send + 'static;
+
     
     /// Load image - EXACT syntax: .load()
     fn load(self) -> impl AsyncStream<Item = ImageChunk>;
@@ -54,17 +52,15 @@ pub trait ImageBuilder: Sized {
 /// Hidden implementation struct - zero-allocation builder state with zero Box<dyn> usage
 struct ImageBuilderImpl<
     F1 = fn(String),
-    F2 = fn(ImageChunk) -> ImageChunk,
 > where
     F1: Fn(String) + Send + Sync + 'static,
-    F2: FnMut(ImageChunk) -> ImageChunk + Send + 'static,
 {
     data: String,
     format: Option<ContentFormat>,
     media_type: Option<ImageMediaType>,
     detail: Option<ImageDetail>,
     error_handler: Option<F1>,
-    chunk_handler: Option<F2>,
+    cyrup_chunk_handler: Option<Box<dyn Fn(Result<ImageChunk, String>) -> ImageChunk + Send + Sync>>,
 }
 
 impl Image {
@@ -76,7 +72,7 @@ impl Image {
             media_type: None,
             detail: None,
             error_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
         }
     }
 
@@ -88,7 +84,7 @@ impl Image {
             media_type: None,
             detail: None,
             error_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
         }
     }
 
@@ -100,15 +96,14 @@ impl Image {
             media_type: None,
             detail: None,
             error_handler: None,
-            chunk_handler: None,
+            cyrup_chunk_handler: None,
         }
     }
 }
 
-impl<F1, F2> ImageBuilder for ImageBuilderImpl<F1, F2>
+impl<F1> ImageBuilder for ImageBuilderImpl<F1>
 where
     F1: Fn(String) + Send + Sync + 'static,
-    F2: FnMut(ImageChunk) -> ImageChunk + Send + 'static,
 {
     /// Set format - EXACT syntax: .format(ContentFormat::Base64)
     fn format(mut self, format: ContentFormat) -> impl ImageBuilder {
@@ -164,25 +159,10 @@ where
             media_type: self.media_type,
             detail: self.detail,
             error_handler: Some(handler),
-            chunk_handler: self.chunk_handler,
+            cyrup_chunk_handler: self.cyrup_chunk_handler,
         }
     }
-    
-    /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
-    /// Zero-allocation: uses generic function pointer instead of Box<dyn>
-    fn on_chunk<F>(self, handler: F) -> impl ImageBuilder
-    where
-        F: FnMut(ImageChunk) -> ImageChunk + Send + 'static,
-    {
-        ImageBuilderImpl {
-            data: self.data,
-            format: self.format,
-            media_type: self.media_type,
-            detail: self.detail,
-            error_handler: self.error_handler,
-            chunk_handler: Some(handler),
-        }
-    }
+
     
     /// Load image - EXACT syntax: .load()
     fn load(self) -> impl AsyncStream<Item = ImageChunk> {
@@ -196,11 +176,11 @@ where
         // Convert image data to bytes and create proper ImageChunk
         let data = image.data.as_bytes().to_vec();
         let format = match image.media_type.unwrap_or(ImageMediaType::PNG) {
-            ImageMediaType::PNG => fluent_ai_domain::chunk::ImageFormat::PNG,
-            ImageMediaType::JPEG => fluent_ai_domain::chunk::ImageFormat::JPEG,
-            ImageMediaType::GIF => fluent_ai_domain::chunk::ImageFormat::GIF,
-            ImageMediaType::WEBP => fluent_ai_domain::chunk::ImageFormat::WebP,
-            ImageMediaType::SVG => fluent_ai_domain::chunk::ImageFormat::PNG, // fallback
+            ImageMediaType::PNG => fluent_ai_domain::context::chunk::ImageFormat::PNG,
+            ImageMediaType::JPEG => fluent_ai_domain::context::chunk::ImageFormat::JPEG,
+            ImageMediaType::GIF => fluent_ai_domain::context::chunk::ImageFormat::GIF,
+            ImageMediaType::WEBP => fluent_ai_domain::context::chunk::ImageFormat::WebP,
+            ImageMediaType::SVG => fluent_ai_domain::context::chunk::ImageFormat::PNG, // fallback
         };
 
         let chunk = ImageChunk {
@@ -222,5 +202,18 @@ where
         // For now, just return the load stream
         // TODO: Implement actual processing
         self.load()
+    }
+}
+
+impl<F1> ChunkHandler<ImageChunk, String> for ImageBuilderImpl<F1>
+where
+    F1: Fn(String) + Send + Sync + 'static,
+{
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<ImageChunk, String>) -> ImageChunk + Send + Sync + 'static,
+    {
+        self.cyrup_chunk_handler = Some(Box::new(handler));
+        self
     }
 }

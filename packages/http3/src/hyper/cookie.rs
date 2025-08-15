@@ -2,7 +2,7 @@
 
 use std::convert::TryInto;
 use std::fmt;
-use std::sync::RwLock;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use crate::header::{HeaderValue, SET_COOKIE};
@@ -29,7 +29,7 @@ pub struct Cookie<'a>(cookie_crate::Cookie<'a>);
 /// manipulate it between requests, you may refer to the
 /// [http3_cookie_store crate](https://crates.io/crates/http3_cookie_store).
 #[derive(Debug, Default)]
-pub struct Jar(RwLock<cookie_store::CookieStore>);
+pub struct Jar(Arc<atomic::Atomic<Option<cookie_store::CookieStore>>>);
 
 // ===== impl Cookie =====
 
@@ -84,9 +84,8 @@ impl<'a> Cookie<'a> {
 
     /// Get the Max-Age information.
     pub fn max_age(&self) -> Option<std::time::Duration> {
-        self.0.max_age().map(|d| {
-            d.try_into()
-                .expect("time::Duration into std::time::Duration")
+        self.0.max_age().and_then(|d| {
+            d.try_into().ok()
         })
     }
 
@@ -148,7 +147,7 @@ impl Jar {
     /// use crate::hyper::{cookie::Jar, Url};
     ///
     /// let cookie = "foo=bar; Domain=yolo.local";
-    /// let url = "https://yolo.local".parse::<Url>().expect("valid URL");
+    /// let url = "https://yolo.local".parse::<Url>()?;
     ///
     /// let jar = Jar::default();
     /// jar.add_cookie_str(cookie, &url);

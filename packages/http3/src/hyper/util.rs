@@ -1,7 +1,7 @@
 use crate::header::{Entry, HeaderMap, HeaderValue, OccupiedEntry};
 use std::fmt;
 
-pub fn basic_auth<U, P>(username: U, password: Option<P>) -> HeaderValue
+pub fn basic_auth<U, P>(username: U, password: Option<P>) -> Result<HeaderValue, crate::Error>
 where
     U: std::fmt::Display,
     P: std::fmt::Display,
@@ -18,9 +18,15 @@ where
             let _ = write!(encoder, "{password}");
         }
     }
-    let mut header = HeaderValue::from_bytes(&buf).expect("base64 is always valid HeaderValue");
+    let mut header = HeaderValue::from_bytes(&buf).map_err(|e| {
+        crate::Error::InvalidHeader {
+            name: "authorization".to_string(),
+            value: String::from_utf8_lossy(&buf).to_string(),
+            source: e.into(),
+        }
+    })?;
     header.set_sensitive(true);
-    header
+    Ok(header)
 }
 
 // xor-shift

@@ -193,9 +193,7 @@ impl fmt::Debug for ClientBuilder {
     }
 }
 
-// Can use new methods in web-sys when requiring v0.2.93.
-// > `init.method(m)` to `init.set_method(m)`
-// For now, ignore their deprecation.
+// Using current web-sys API for maximum compatibility, ignore their deprecation.
 #[allow(deprecated)]
 fn fetch(req: Request) -> AsyncStream<Result<Response, crate::Error>> {
     AsyncStream::with_channel(move |sender| {

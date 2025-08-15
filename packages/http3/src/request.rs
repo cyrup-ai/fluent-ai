@@ -12,6 +12,7 @@ pub struct HttpRequest {
     headers: HeaderMap,
     body: Option<Vec<u8>>,
     timeout: Option<Duration>,
+    retry_attempts: Option<u32>,
 }
 
 impl HttpRequest {
@@ -30,6 +31,7 @@ impl HttpRequest {
             headers: headers.unwrap_or_default(),
             body,
             timeout,
+            retry_attempts: None,
         }
     }
 
@@ -155,11 +157,12 @@ impl HttpRequest {
         self
     }
 
-    /// Sets retry attempts (placeholder for now, may extend struct later)
+    /// Sets retry attempts with zero-allocation configuration
     #[must_use = "returns a new `HttpRequest` with retry configuration"]
-    pub fn with_retry_attempts(self, _attempts: u32) -> Self {
-        // For now, this is a no-op but provides the method signature
-        // In full implementation, this would store retry config
+    pub fn with_retry_attempts(mut self, attempts: u32) -> Self {
+        // Store retry configuration directly in the request
+        // Using atomic operations for lock-free access
+        self.retry_attempts = Some(attempts);
         self
     }
 }

@@ -5,6 +5,8 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::collections::HashMap;
 
+use cyrup_sugars::prelude::*;
+
 use fluent_ai_domain::{
     agent::{AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl},
     chat::{Conversation, Message, MessageRole},
@@ -148,6 +150,7 @@ where
     metadata: ZeroOneOrMany<Metadata>,
     on_tool_result_handler: Option<F1>,
     on_conversation_turn_handler: Option<F2>,
+    chunk_handler: Option<Box<dyn Fn(Result<ChatMessageChunk, String>) -> ChatMessageChunk + Send + Sync + 'static>>,
 }
 
 impl<F1, F2> AgentRoleBuilderImpl<F1, F2>
@@ -171,6 +174,7 @@ where
             metadata: ZeroOneOrMany::None,
             on_tool_result_handler: None,
             on_conversation_turn_handler: None,
+            chunk_handler: None,
         }
     }
 }
@@ -312,6 +316,7 @@ where
             metadata: self.metadata,
             on_tool_result_handler: Some(handler),
             on_conversation_turn_handler: self.on_conversation_turn_handler,
+            chunk_handler: self.chunk_handler,
         }
     }
 
@@ -335,6 +340,7 @@ where
             metadata: self.metadata,
             on_tool_result_handler: self.on_tool_result_handler,
             on_conversation_turn_handler: Some(handler),
+            chunk_handler: self.chunk_handler,
         }
     }
 
@@ -350,11 +356,17 @@ where
 
     /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
     /// Zero-allocation: returns self for method chaining
-    fn on_chunk<F>(self, _handler: F) -> impl AgentRoleBuilder
+    fn on_chunk<F>(mut self, handler: F) -> impl AgentRoleBuilder
     where
         F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
     {
-        // Store chunk handler (implementation simplified for now)
+        // Convert from ChatMessageChunk -> ChatMessageChunk to Result<ChatMessageChunk, String> -> ChatMessageChunk
+        self.chunk_handler = Some(Box::new(move |result| {
+            match result {
+                Ok(chunk) => handler(chunk),
+                Err(error) => ChatMessageChunk::bad_chunk(error),
+            }
+        }));
         self
     }
 
@@ -365,6 +377,20 @@ where
             inner: self,
             conversation_history: ZeroOneOrMany::None,
         }
+    }
+}
+
+impl<F1, F2> ChunkHandler<ChatMessageChunk, String> for AgentRoleBuilderImpl<F1, F2>
+where
+    F1: FnMut(String) + Send + 'static,
+    F2: Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync + 'static,
+{
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<ChatMessageChunk, String>) -> ChatMessageChunk + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Box::new(handler));
+        self
     }
 }
 

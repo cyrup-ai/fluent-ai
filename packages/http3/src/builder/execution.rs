@@ -3,7 +3,9 @@
 //! Pure streams-first execution - NO Futures, NO Result wrapping
 //! All operations return unwrapped AsyncStreams per fluent-ai architecture
 
+use cyrup_sugars::prelude::{ChunkHandler, MessageChunk};
 use fluent_ai_async::AsyncStream;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use serde::de::DeserializeOwned;
 
 use crate::{HttpChunk, HttpStream};
@@ -28,7 +30,7 @@ pub trait HttpStreamExt<T> {
 
 impl<T> HttpStreamExt<T> for HttpStream
 where
-    T: DeserializeOwned + Send + 'static,
+    T: DeserializeOwned + Send + Default + MessageChunk + FluentMessageChunk + 'static,
 {
     fn stream_objects(self) -> AsyncStream<T> {
         AsyncStream::with_channel(move |sender| {
@@ -66,7 +68,7 @@ where
     }
 
     fn first_item(self) -> Option<T> {
-        let mut stream = self.stream_objects();
-        stream.poll_next()
+        let stream = self.stream_objects();
+        stream.collect().into_iter().next()
     }
 }

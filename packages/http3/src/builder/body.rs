@@ -80,6 +80,7 @@ impl Http3Builder<BodyNotSet> {
             state: PhantomData,
             debug_enabled: self.debug_enabled,
             jsonpath_config: self.jsonpath_config,
+            chunk_handler: self.chunk_handler,
         }
     }
 
@@ -121,6 +122,7 @@ impl Http3Builder<BodyNotSet> {
             state: PhantomData,
             debug_enabled: self.debug_enabled,
             jsonpath_config: self.jsonpath_config,
+            chunk_handler: self.chunk_handler,
         }
     }
 
@@ -169,6 +171,7 @@ impl Http3Builder<BodyNotSet> {
             state: PhantomData,
             debug_enabled: builder.debug_enabled,
             jsonpath_config: builder.jsonpath_config,
+            chunk_handler: builder.chunk_handler,
         }
     }
 }

@@ -377,13 +377,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
-        .on_chunk(cyrup_sugars::on_chunk!(|chunk| {
-            Ok => chunk.into(),
-            Err(e) => {
-                let http_error = HttpError::NetworkError { message: e.to_string() };
-                BadChunk::from_err(http_error).into()
+        .on_chunk(|result| match result {
+            Ok(chunk) => {
+                println!("Received chunk: {:?}", chunk);
+                chunk
             }
-        }));
+            Err(e) => {
+                println!("Error occurred: {:?}", e);
+                HttpChunk::bad_chunk(e.to_string())
+            }
+        });
 
     println!("✅ cyrup_sugars on_chunk syntax demonstrated successfully!");
 

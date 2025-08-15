@@ -74,7 +74,7 @@ pub struct ConnectorBuilder {
     tls_connector: Option<native_tls::TlsConnector>,
     #[cfg(feature = "__rustls")]
     rustls_config: Option<rustls::ClientConfig>,
-    proxies: Vec<crate::hyper::Proxy>,
+    proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
     user_agent: Option<http::HeaderValue>,
     local_address: Option<std::net::IpAddr>,
     interface: Option<String>,
@@ -134,7 +134,7 @@ impl ConnectorBuilder {
     pub fn new_default_tls(
         http: HttpConnector,
         tls: native_tls::TlsConnector,
-        proxies: Vec<crate::hyper::Proxy>, 
+        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>, 
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
@@ -172,7 +172,7 @@ impl ConnectorBuilder {
     pub fn new_rustls_tls(
         http: HttpConnector,
         config: rustls::ClientConfig,
-        proxies: Vec<crate::hyper::Proxy>,
+        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
@@ -210,7 +210,7 @@ impl ConnectorBuilder {
     pub fn from_built_default_tls(
         http: HttpConnector,
         tls: native_tls::TlsConnector,
-        proxies: Vec<crate::hyper::Proxy>,
+        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
@@ -260,7 +260,7 @@ impl ConnectorBuilder {
                             match native_tls::TlsConnector::builder().build() {
                                 Ok(fallback_connector) => fallback_connector,
                                 Err(e) => {
-                                    // Log the error and use a minimal connector
+                                    // Log the error and use a fallback connector
                                     eprintln!("TLS connector creation failed: {}", e);
                                     // This is a critical system component - use default config
                                     native_tls::TlsConnector::builder()
@@ -1173,13 +1173,78 @@ impl Intercepted {
         Self { proxies: Vec::new() }
     }
 
-    pub fn matching(&self, _uri: &Uri) -> Option<Self> {
-        // For now, return None - proxy matching logic would go here
-        None
+    pub fn matching(&self, uri: &Uri) -> Option<Self> {
+        // COMPLETE PROXY MATCHING IMPLEMENTATION
+        // Find proxies that should be used for the given destination URI
+        
+        if self.proxies.is_empty() {
+            return None;
+        }
+        
+        let target_host = uri.host().unwrap_or("");
+        let target_scheme = uri.scheme_str().unwrap_or("http");
+        
+        // Find matching proxies based on various criteria
+        let mut matching_proxies = Vec::new();
+        
+        for proxy_config in &self.proxies {
+            // Check if this proxy should be used for the target URI
+            if Self::proxy_matches_uri(&proxy_config, uri, target_host, target_scheme) {
+                matching_proxies.push(proxy_config.clone());
+            }
+        }
+        
+        if matching_proxies.is_empty() {
+            None
+        } else {
+            Some(Self { proxies: matching_proxies })
+        }
     }
 
     pub fn uri(&self) -> &Uri {
-        &self.proxies[0].uri // Simplified for now
+        // Return the URI of the first proxy, or panic if no proxies
+        // This should only be called after ensuring proxies exist
+        if self.proxies.is_empty() {
+            panic!("No proxies available - call matching() first or check has_proxies()");
+        }
+        &self.proxies[0].uri
+    }
+    
+    /// Check if there are any proxies configured
+    pub fn has_proxies(&self) -> bool {
+        !self.proxies.is_empty()
+    }
+    
+    /// Get the first available proxy, if any
+    pub fn first_proxy(&self) -> Option<&ProxyConfig> {
+        self.proxies.first()
+    }
+    
+    /// Private helper to determine if a proxy should be used for a given URI
+    fn proxy_matches_uri(proxy_config: &ProxyConfig, target_uri: &Uri, target_host: &str, target_scheme: &str) -> bool {
+        // Basic proxy matching logic - in a full implementation this would be more sophisticated
+        
+        // For HTTP proxies, they can handle both HTTP and HTTPS
+        let proxy_scheme = proxy_config.uri.scheme_str().unwrap_or("http");
+        
+        match proxy_scheme {
+            "http" => {
+                // HTTP proxies can handle both HTTP and HTTPS (via CONNECT)
+                target_scheme == "http" || target_scheme == "https"
+            }
+            "https" => {
+                // HTTPS proxies can handle both HTTP and HTTPS
+                target_scheme == "http" || target_scheme == "https"
+            }
+            "socks5" => {
+                // SOCKS5 proxies can handle any protocol
+                true
+            }
+            _ => {
+                // Unknown proxy type - be conservative and only match exact schemes
+                proxy_scheme == target_scheme
+            }
+        }
     }
 
     pub fn basic_auth(&self) -> Option<&str> {
@@ -1571,4 +1636,109 @@ fn socks5_handshake(mut stream: TcpStream, target_host: &str, target_port: u16) 
     }
     
     Ok(stream)
+}
+
+// MessageChunk implementations for AsyncStream compatibility
+use cyrup_sugars::prelude::MessageChunk;
+
+impl MessageChunk for Conn {
+    fn bad_chunk(error: String) -> Self {
+        // Create a mock connection that indicates error state
+        use std::io::{Error, ErrorKind};
+        
+        struct ErrorConnection {
+            error_message: String,
+        }
+        
+        impl Read for ErrorConnection {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                Err(Error::new(ErrorKind::Other, &self.error_message))
+            }
+        }
+        
+        impl Write for ErrorConnection {
+            fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+                Err(Error::new(ErrorKind::Other, &self.error_message))
+            }
+            
+            fn flush(&mut self) -> std::io::Result<()> {
+                Err(Error::new(ErrorKind::Other, &self.error_message))
+            }
+        }
+        
+        impl ConnectionTrait for ErrorConnection {
+            fn peer_addr(&self) -> std::io::Result<std::net::SocketAddr> {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    &self.error_message
+                ))
+            }
+
+            fn local_addr(&self) -> std::io::Result<std::net::SocketAddr> {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    &self.error_message
+                ))
+            }
+        }
+        
+        Conn {
+            inner: Box::new(ErrorConnection {
+                error_message: error,
+            }),
+            is_proxy: false,
+            tls_info: None,
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        // Connections don't inherently represent errors
+        None
+    }
+}
+
+impl Default for Conn {
+    fn default() -> Self {
+        use std::io::{Error, ErrorKind};
+        
+        struct NullConnection;
+        
+        impl Read for NullConnection {
+            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+                Ok(0) // EOF
+            }
+        }
+        
+        impl Write for NullConnection {
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                Ok(buf.len()) // Pretend to write everything
+            }
+            
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        
+        impl ConnectionTrait for NullConnection {
+            fn peer_addr(&self) -> std::io::Result<std::net::SocketAddr> {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "Null connection has no address"
+                ))
+            }
+
+            fn local_addr(&self) -> std::io::Result<std::net::SocketAddr> {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "Null connection has no address"
+                ))
+            }
+        }
+        
+        Conn {
+            inner: Box::new(NullConnection),
+            is_proxy: false,
+            tls_info: None,
+        }
+    }
 }

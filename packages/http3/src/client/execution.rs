@@ -71,10 +71,17 @@ impl HttpClient {
             let task = spawn_task(move || {
                 // Execute the stream and get the first response
                 let mut response_stream = client.execute(http3_request);
-                let response = match response_stream.try_next() {
+                let responses: Vec<_> = response_stream.into_iter().collect();
+                let response = match responses.into_iter().next() {
                     Some(response) => response,
                     None => {
-                        return Err("no response received from client execute");
+                        emit!(
+                            sender,
+                            HttpChunk::Error(crate::HttpError::StreamError {
+                                message: "no response received from client execute".to_string()
+                            })
+                        );
+                        return;
                     }
                 };
 
@@ -92,13 +99,10 @@ impl HttpClient {
                     stats.failed_requests.fetch_add(1, Ordering::Relaxed);
                 }
 
-                Ok(HttpChunk::Head(status, headers))
+                emit!(sender, HttpChunk::Head(status, headers));
             });
 
-            match task.collect() {
-                Ok(chunk) => emit!(sender, chunk),
-                Err(e) => handle_error!(e, "request execution"),
-            }
+            task.collect();
         });
 
         HttpStream::new(response_stream)
@@ -142,10 +146,11 @@ impl HttpClient {
 
         let stats = self.stats.clone();
         let download_stream = AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Vec<DownloadChunk>, HttpError> {
+            let task = spawn_task(move || {
                 // Execute the stream and get the first response
                 let mut response_stream = client.execute(http3_request);
-                let response = match response_stream.try_next() {
+                let responses: Vec<_> = response_stream.into_iter().collect();
+                let response = match responses.into_iter().next() {
                     Some(response) => response,
                     None => {
                         // Record failed request and response time for downloads
@@ -154,9 +159,19 @@ impl HttpClient {
                             .total_response_time_nanos
                             .fetch_add(response_time, Ordering::Relaxed);
                         stats.failed_requests.fetch_add(1, Ordering::Relaxed);
-                        return Err(HttpError::NetworkError {
-                            message: "no response received from client execute".to_string(),
-                        });
+                        emit!(
+                            sender,
+                            DownloadChunk {
+                                data: bytes::Bytes::new(),
+                                chunk_number: 0,
+                                total_size: None,
+                                bytes_downloaded: 0,
+                                error_message: Some(
+                                    "no response received from client execute".to_string()
+                                ),
+                            }
+                        );
+                        return;
                     }
                 };
 
@@ -183,13 +198,22 @@ impl HttpClient {
                 let all_bytes = match bytes_collected.first() {
                     Some(bytes) => bytes,
                     None => {
-                        return Err(HttpError::NetworkError {
-                            message: "download body processing: no bytes received".to_string(),
-                        });
+                        emit!(
+                            sender,
+                            DownloadChunk {
+                                data: bytes::Bytes::new(),
+                                chunk_number: 0,
+                                total_size,
+                                bytes_downloaded: 0,
+                                error_message: Some(
+                                    "download body processing: no bytes received".to_string()
+                                ),
+                            }
+                        );
+                        return;
                     }
                 };
 
-                let mut chunks = Vec::new();
                 // Split into chunks for download progress simulation
                 const CHUNK_SIZE: usize = 8192; // 8KB chunks
                 let mut offset = 0;
@@ -211,23 +235,15 @@ impl HttpClient {
                         chunk_number,
                         total_size,
                         bytes_downloaded,
+                        error_message: None,
                     };
-                    chunks.push(chunk);
+                    emit!(sender, chunk);
 
                     offset = end;
                 }
-
-                Ok(chunks)
             });
 
-            match task.collect() {
-                Ok(chunks) => {
-                    for chunk in chunks {
-                        emit!(sender, chunk);
-                    }
-                }
-                Err(e) => handle_error!(e, "download request execution"),
-            }
+            task.collect();
         });
 
         DownloadStream::new(download_stream)

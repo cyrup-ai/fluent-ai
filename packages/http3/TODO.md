@@ -1,43 +1,60 @@
-# HTTP3 Package Compilation Fixes
+# HTTP3 Tokio Cleanup - Final Remaining Items
 
-## STATUS: WORKING - PRIORITY 1 (0 errors, 0 warnings target)
+## Milestone: Complete Remaining Tokio Dependencies
 
-**CRITICAL ERRORS (7 total)**:
-1. **[ERROR]** HTTP3 feature unstable, requires RUSTFLAGS='--cfg http3_unstable' - File: packages/http3/src/hyper/mod.rs:251 - STATUS: PLANNED
-2. **[ERROR]** Unresolved import `crate::into_url` - File: packages/http3/src/hyper/proxy.rs:8 - STATUS: PLANNED  
-3. **[ERROR]** Unresolved import `crate::async_impl` - File: packages/http3/src/hyper/redirect.rs:14 - STATUS: PLANNED
-4. **[ERROR]** Cannot find function `url_invalid_uri` in crate::error - File: packages/http3/src/hyper/into_url.rs:80 - STATUS: PLANNED
-5. **[ERROR]** Failed to resolve `crate::async_impl::body::Body` in trait impl - File: packages/http3/src/hyper/async_impl/client.rs:105 - STATUS: PLANNED
-6. **[ERROR]** Failed to resolve `crate::async_impl::body::Body` in fn call - File: packages/http3/src/hyper/async_impl/client.rs:115 - STATUS: PLANNED  
-7. **[ERROR]** Failed to resolve `crate::util::basic_auth` - File: packages/http3/src/hyper/proxy.rs:806 - STATUS: PLANNED
+### Phase 1: Remove TokioExecutor Usage
 
-**WARNINGS (3 total)**:
-8. **[WARNING]** Unused import: `Error as HyperError` - File: packages/http3/src/error.rs:282 - STATUS: PLANNED
-9. **[WARNING]** warn(unused_crate_dependencies) at crate level - File: packages/http3/src/hyper/mod.rs:4 - STATUS: PLANNED
-10. **[WARNING]** Unexpected `cfg` condition name: `http3_unstable` - File: packages/http3/src/hyper/mod.rs:250 - STATUS: PLANNED
+- [ ] **Replace TokioExecutor with fluent_ai_async executor** (src/hyper/async_impl/client.rs, line 560)
+  - Replace `hyper_util::rt::TokioExecutor::new()` with custom executor using fluent_ai_async spawn_task
+  - Implement executor that bridges hyper's executor trait with fluent_ai_async patterns
+  - Maintain existing connection pooling and TLS functionality
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
----
+- [ ] **QA: Verify TokioExecutor replacement**
+  Act as an Objective QA Rust developer and verify that TokioExecutor has been properly replaced with fluent_ai_async patterns. Confirm that HTTP operations still work correctly and connection pooling is maintained.
 
-# RFC 9535 Compliance Implementation
+### Phase 2: Remove Tokio Features from Dependencies
 
-## STATUS: APPROVED FOR IMPLEMENTATION
+- [ ] **Remove tokio features from hyper-util** (Cargo.toml, line 53)
+  - Use `cargo remove hyper-util` then `cargo add hyper-util --features="http1,http2,client,client-legacy"`
+  - Remove "tokio" from features list
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] **Fix filter parser to accept property chains in filter expressions** - File: `src/json_path/filter_parser.rs`, Lines: Property access parsing logic, Issue: Parser rejecting valid syntax `@.author.length`, Solution: Modify property chain parsing to allow multiple property access levels, Architecture: Ensure FilterExpression::Property supports nested property paths - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+- [ ] **QA: Verify hyper-util tokio feature removal**
+  Act as an Objective QA Rust developer and verify that hyper-util tokio features have been properly removed without breaking HTTP functionality.
 
-- [ ] **Act as an Objective QA Rust developer** - Validate that `$.store.book[?@.author.length]` compiles successfully, verify that the filter parser correctly handles nested property access, confirm no regression in existing filter functionality, test edge cases like `@.a.b.c.d` property chains.
+- [ ] **Remove tokio features from hickory-resolver** (Cargo.toml, line 66)
+  - Use `cargo remove hickory-resolver` then `cargo add hickory-resolver --optional`
+  - Remove "tokio" from features list, use alternative async patterns if needed
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] **Fix null vs missing property semantics in filter evaluation** - File: `src/json_path/core_evaluator.rs`, Lines: Filter evaluation methods around line 250-300, Issue: Not correctly distinguishing null values from missing properties, Solution: Modify filter evaluation to treat `null` as a valid value distinct from missing, Architecture: Ensure FilterEvaluator properly handles JSON null values per RFC 9535 Section 2.6 - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+- [ ] **QA: Verify hickory-resolver tokio feature removal**
+  Act as an Objective QA Rust developer and verify that hickory-resolver tokio features have been properly removed and DNS resolution still works.
 
-- [ ] **Act as an Objective QA Rust developer** - Test that filters like `[?@.metadata != null]` return correct results, verify null values are treated as valid JSON values not missing properties, confirm RFC 9535 Section 2.6 null semantics are correctly implemented, test edge cases with explicit null comparisons.
+- [ ] **Remove tokio features from quinn** (Cargo.toml, line 69)
+  - Use `cargo remove quinn` then `cargo add quinn --features="rustls" --optional`
+  - Remove "runtime-tokio" from features list
+  - Ensure HTTP3/QUIC still works with alternative runtime patterns
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] **Fix recursive descent to include null values per RFC 9535** - File: `src/json_path/core_evaluator.rs`, Lines: Around line 300-350 in descendant segment evaluation methods, Issue: `$..* ` not returning correct count (should be 9 results including nulls), Solution: Modify recursive descent logic to include null values as valid results, Architecture: Ensure descendant segment evaluation follows RFC 9535 Section 2.5.2 exactly - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+- [ ] **QA: Verify quinn tokio feature removal**
+  Act as an Objective QA Rust developer and verify that quinn tokio features have been properly removed and HTTP3/QUIC functionality is maintained.
 
-- [ ] **Act as an Objective QA Rust developer** - Test that `$..* ` returns exactly 9 results as expected, verify null values are included in recursive descent results, confirm descendant segment behavior matches RFC 9535 specification, test various recursive descent patterns with null values.
+- [ ] **Remove tokio features from dev-dependencies hyper-util** (Cargo.toml, line 77)
+  - Update dev-dependencies to remove "tokio" feature from hyper-util
+  - Ensure tests still compile and run correctly
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] **Fix path normalization to meet RFC 9535 Section 2.7 standards** - File: `src/json_path/normalized_paths.rs`, Lines: Around line 100-200 in path normalization logic, Issue: Normalized paths not meeting RFC 9535 canonical form requirements, Solution: Implement RFC-compliant path normalization with proper bracket notation and escaping, Architecture: Ensure NormalizedPath generation follows RFC 9535 Section 2.7 exactly - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+- [ ] **QA: Verify dev-dependencies tokio feature removal**
+  Act as an Objective QA Rust developer and verify that dev-dependencies tokio features have been properly removed and tests still work.
 
-- [ ] **Act as an Objective QA Rust developer** - Test that normalized paths use bracket notation exclusively as per RFC, verify single quotes are used for member names in normalized form, confirm decimal integers for array indices with no leading zeros, test edge cases like special characters and escape sequences.
+### Phase 3: Validation and Testing
 
-- [ ] **Run complete RFC 9535 compliance test suite verification** - Command: `cargo test --test rfc9535_core_requirements_tests`, Expected result: "test result: ok. 13 passed; 0 failed; 0 ignored", Verify all 13 tests pass without any failures or timeouts, Architecture: Ensure complete end-to-end RFC 9535 compliance - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+- [ ] **Verify package compiles without tokio runtime**
+  - Run `cargo check` to ensure no compilation errors
+  - Run `cargo test` to ensure all tests pass
+  - Verify HTTP requests work with existing AsyncStream patterns
+  - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-- [ ] **Act as an Objective QA Rust developer** - Run all RFC compliance tests and confirm 100% pass rate, test additional edge cases beyond the test suite, verify no performance regressions in the crossbeam implementation, confirm the JSONPath implementation is fully RFC 9535 compliant.
+- [ ] **QA: Verify complete tokio elimination**
+  Act as an Objective QA Rust developer and verify that all tokio dependencies have been eliminated and the package works correctly with pure fluent_ai_async patterns.

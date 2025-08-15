@@ -37,14 +37,10 @@ where
     where
         Func: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
     {
-        let (stream, completion) = AsyncStream::channel_with_handler(self.chunk_handler);
-        let sender = AsyncStreamSender {
-            inner: stream.inner,
-        };
+        let (sender, stream) = AsyncStream::channel();
         std::thread::spawn(move || {
             f(sender);
-            // Signal completion when producer function finishes
-            completion.signal_completion();
+            // Completion is signaled automatically when sender is dropped
         });
         stream
     }
@@ -58,29 +54,35 @@ where
 
     /// Create stream and sender pair
     pub fn channel(self) -> (AsyncStreamSender<T, CAP>, AsyncStream<T, CAP>) {
-        let (stream, _completion) = AsyncStream::channel_with_handler(self.chunk_handler);
-        let sender = AsyncStreamSender {
-            inner: stream.inner,
-        };
-        (sender, stream)
+        AsyncStream::channel()
     }
 
     /// Create stream from mpsc receiver
     pub fn from_receiver(self, receiver: mpsc::Receiver<T>) -> AsyncStream<T, CAP> {
-        let (stream, completion) = AsyncStream::channel_with_handler(self.chunk_handler);
-        let sender = AsyncStreamSender {
-            inner: stream.inner,
-        };
+        let (sender, stream) = AsyncStream::channel();
         std::thread::spawn(move || {
             while let Ok(item) = receiver.recv() {
                 if sender.send(item).is_err() {
                     break; // Stream closed
                 }
             }
-            // Signal completion when receiver is done
-            completion.signal_completion();
+            // Completion is signaled automatically when sender is dropped
         });
         stream
+    }
+
+    /// Create stream with dynamic capacity (runtime configurable)
+    pub fn with_dynamic_capacity(self) -> AsyncStream<T, CAP> {
+        let (_sender, stream) = AsyncStream::channel_dynamic();
+        stream
+    }
+
+    /// Create stream with dynamic capacity and channel producer function
+    pub fn with_dynamic_channel<Func>(self, f: Func) -> AsyncStream<T, CAP>
+    where
+        Func: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
+    {
+        AsyncStream::with_dynamic_channel(f)
     }
 }
 

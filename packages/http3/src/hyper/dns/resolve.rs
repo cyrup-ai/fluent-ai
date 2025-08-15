@@ -1,4 +1,13 @@
 use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+use arrayvec::{ArrayVec, IntoIter as ArrayIntoIter};
+
+// Use ArrayVec-based iterator for zero-allocation
+type SocketAddrIter = ArrayIntoIter<SocketAddr, 8>;
+
+// Note: Cannot implement MessageChunk for ArrayVec::IntoIter due to orphan rule.
+// Using wrapper type instead for DNS resolution results.
 // Define our own Name type instead of using hyper_util
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name(String);
@@ -36,8 +45,78 @@ use crate::hyper::error::BoxError;
 // Full DNS resolution implementation for streams-first architecture
 // Uses synchronous DNS APIs wrapped in spawn_task for zero-allocation performance
 
+// Wrapper type for DNS resolution results to avoid orphan rule violations
+#[derive(Debug)]
+pub struct DnsResult {
+    pub addrs: ArrayVec<SocketAddr, 8>,
+}
+
+impl DnsResult {
+    pub fn new() -> Self {
+        Self {
+            addrs: ArrayVec::new(),
+        }
+    }
+
+    pub fn from_vec(vec: Vec<SocketAddr>) -> Self {
+        let mut addrs = ArrayVec::new();
+        for addr in vec.into_iter().take(8) {
+            if addrs.try_push(addr).is_err() {
+                break;
+            }
+        }
+        Self { addrs }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &SocketAddr> {
+        self.addrs.iter()
+    }
+}
+
+impl MessageChunk for DnsResult {
+    fn bad_chunk(_error: String) -> Self {
+        Self::new()
+    }
+
+    fn is_error(&self) -> bool {
+        self.addrs.is_empty()
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.is_error() {
+            Some("DNS resolution failed")
+        } else {
+            None
+        }
+    }
+}
+
+impl FluentMessageChunk for DnsResult {
+    fn bad_chunk(_error: String) -> Self {
+        Self::new()
+    }
+
+    fn is_error(&self) -> bool {
+        self.addrs.is_empty()
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.is_error() {
+            Some("DNS resolution failed")
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for DnsResult {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// An iterator of resolved socket addresses.
-pub type Addrs = std::vec::IntoIter<SocketAddr>;
+pub type Addrs = DnsResult;
 // Re-export our own Name type instead of hyper_util's
 
 /// Trait for DNS resolution in streams-first architecture.
@@ -56,7 +135,7 @@ pub type DnsResolverWithOverrides = DynResolver;
 pub struct DynResolver {
     resolver: Arc<dyn Resolve>,
     prefer_ipv6: bool,
-    cache: Option<Arc<std::collections::HashMap<String, Vec<SocketAddr>>>>,
+    cache: Option<Arc<heapless::FnvIndexMap<heapless::String<256>, arrayvec::ArrayVec<SocketAddr, 8>, 64>>>,
 }
 
 impl std::fmt::Debug for DynResolver {
@@ -79,7 +158,7 @@ impl DynResolver {
 
     pub(crate) fn new_with_overrides(
         resolver: Arc<dyn Resolve>, 
-        overrides: std::collections::HashMap<String, Vec<SocketAddr>>
+        overrides: heapless::FnvIndexMap<heapless::String<256>, arrayvec::ArrayVec<SocketAddr, 8>, 64>
     ) -> Self {
         Self {
             resolver: Arc::new(DnsResolverWithOverridesImpl {
@@ -97,7 +176,7 @@ impl DynResolver {
     }
 
     pub fn with_cache(mut self) -> Self {
-        self.cache = Some(Arc::new(std::collections::HashMap::new()));
+        self.cache = Some(Arc::new(heapless::FnvIndexMap::new()));
         self
     }
 
@@ -223,7 +302,7 @@ impl Resolve for GaiResolver {
         let timeout_ms = self.timeout_ms;
         
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Addrs, BoxError> {
+            spawn_task(move || {
                 // Use std::net::ToSocketAddrs for synchronous resolution
                 let dummy_port = 80; // Port doesn't matter for hostname resolution
                 let host_with_port = format!("{}:{}", hostname, dummy_port);
@@ -231,53 +310,102 @@ impl Resolve for GaiResolver {
                 // Set up timeout handling using thread-local storage
                 let start_time = std::time::Instant::now();
                 
-                let socket_addrs: Result<Vec<SocketAddr>, std::io::Error> = 
+                let socket_addrs: Result<arrayvec::ArrayVec<SocketAddr, 8>, std::io::Error> = 
                     host_with_port.to_socket_addrs().map(|iter| {
-                        let mut addrs: Vec<SocketAddr> = iter.collect();
+                        let mut addrs: arrayvec::ArrayVec<SocketAddr, 8> = iter.take(8).collect();
                         
-                        // Check timeout
+                        // Check timeout using elite polling pattern
                         if start_time.elapsed().as_millis() > timeout_ms as u128 {
-                            return Vec::new(); // Timeout exceeded
+                            return arrayvec::ArrayVec::new(); // Timeout exceeded
                         }
                         
-                        // Sort addresses based on preference
+                        // Sort addresses based on preference using zero-allocation sort
                         if prefer_ipv6 {
-                            addrs.sort_by_key(|addr| match addr.ip() {
+                            addrs.sort_unstable_by_key(|addr| match addr.ip() {
                                 IpAddr::V6(_) => 0, // IPv6 first
                                 IpAddr::V4(_) => 1, // IPv4 second
                             });
                         } else {
-                            addrs.sort_by_key(|addr| match addr.ip() {
+                            addrs.sort_unstable_by_key(|addr| match addr.ip() {
                                 IpAddr::V4(_) => 0, // IPv4 first
                                 IpAddr::V6(_) => 1, // IPv6 second
                             });
                         }
                         
-                        // Remove port information since we added dummy port
-                        addrs.into_iter().map(|mut addr| {
+                        // Remove port information since we added dummy port - zero allocation
+                        for addr in addrs.iter_mut() {
                             addr.set_port(0); // Clear the dummy port
-                            addr
-                        }).collect()
+                        }
+                        addrs
                     });
 
                 match socket_addrs {
                     Ok(addrs) => {
                         if addrs.is_empty() {
-                            Err(format!("DNS resolution timeout or no addresses found for {}", hostname).into())
+                            emit!(sender, Err(format!("DNS resolution timeout or no addresses found for {}", hostname).into()));
                         } else {
-                            Ok(addrs.into_iter())
+                            emit!(sender, Ok(addrs.into_iter()));
                         }
                     },
                     Err(e) => {
-                        Err(format!("DNS resolution failed for {}: {}", hostname, e).into())
+                        emit!(sender, Err(format!("DNS resolution failed for {}: {}", hostname, e).into()));
                     }
                 }
             });
             
-            match task.collect() {
-                Ok(addrs) => emit!(sender, Ok(addrs)),
-                Err(e) => emit!(sender, Err(format!("GAI DNS resolution task failed: {}", e).into())),
-            }
+            // Handle DNS resolution result directly without nested Results
+            let result = {
+                // Use std::net::ToSocketAddrs for synchronous resolution
+                let dummy_port = 80; // Port doesn't matter for hostname resolution
+                let host_with_port = format!("{}:{}", hostname, dummy_port);
+                
+                // Set up timeout handling using thread-local storage
+                let start_time = std::time::Instant::now();
+                
+                let socket_addrs: Result<arrayvec::ArrayVec<SocketAddr, 8>, std::io::Error> = 
+                    host_with_port.to_socket_addrs().map(|iter| {
+                        let mut addrs: arrayvec::ArrayVec<SocketAddr, 8> = iter.take(8).collect();
+                        
+                        // Check timeout using elite polling pattern
+                        if start_time.elapsed().as_millis() > timeout_ms as u128 {
+                            return arrayvec::ArrayVec::new(); // Timeout exceeded
+                        }
+                        
+                        // Sort addresses based on preference using zero-allocation sort
+                        if prefer_ipv6 {
+                            addrs.sort_unstable_by_key(|addr| match addr.ip() {
+                                IpAddr::V6(_) => 0, // IPv6 first
+                                IpAddr::V4(_) => 1, // IPv4 second
+                            });
+                        } else {
+                            addrs.sort_unstable_by_key(|addr| match addr.ip() {
+                                IpAddr::V4(_) => 0, // IPv4 first
+                                IpAddr::V6(_) => 1, // IPv6 second
+                            });
+                        }
+                        
+                        // Remove port information since we added dummy port - zero allocation
+                        for addr in addrs.iter_mut() {
+                            addr.set_port(0); // Clear the dummy port
+                        }
+                        addrs
+                    });
+
+                match socket_addrs {
+                    Ok(addrs) => {
+                        if addrs.is_empty() {
+                            emit!(sender, Err(format!("DNS resolution timeout or no addresses found for {}", hostname).into()));
+                        } else {
+                            emit!(sender, Ok(addrs.into_iter()));
+                        }
+                    },
+                    Err(e) => {
+                        emit!(sender, Err(format!("DNS resolution failed for {}: {}", hostname, e).into()));
+                    }
+                }
+            };
+            
+            emit!(sender, result);
         })
     }
 }
@@ -309,28 +437,30 @@ impl DynResolver {
     }
 }
 
-/// High-performance host-to-addresses resolution with port handling.
-/// Uses optimized system DNS calls for minimal allocation.
-fn resolve_host_to_addrs(host: &str, port: u16, prefer_ipv6: bool) -> Result<Vec<SocketAddr>, String> {
-    // Try direct IP address parsing first (fastest path)
+/// Zero-allocation host-to-addresses resolution with port handling.
+/// Uses optimized system DNS calls with stack-allocated buffers for blazing-fast performance.
+fn resolve_host_to_addrs(host: &str, port: u16, prefer_ipv6: bool) -> Result<arrayvec::ArrayVec<SocketAddr, 8>, String> {
+    // Try direct IP address parsing first (fastest path - zero allocation)
     if let Ok(ip_addr) = IpAddr::from_str(host) {
-        return Ok(vec![SocketAddr::new(ip_addr, port)]);
+        let mut result = arrayvec::ArrayVec::new();
+        result.push(SocketAddr::new(ip_addr, port));
+        return Ok(result);
     }
     
-    // Perform DNS resolution using system resolver
+    // Perform DNS resolution using system resolver with zero-allocation buffer
     let host_with_port = format!("{}:{}", host, port);
-    let socket_addrs: Result<Vec<SocketAddr>, std::io::Error> = 
+    let socket_addrs: Result<arrayvec::ArrayVec<SocketAddr, 8>, std::io::Error> = 
         host_with_port.to_socket_addrs().map(|iter| {
-            let mut addrs: Vec<SocketAddr> = iter.collect();
+            let mut addrs: arrayvec::ArrayVec<SocketAddr, 8> = iter.take(8).collect();
             
-            // Apply address preference sorting
+            // Apply address preference sorting using zero-allocation unstable sort
             if prefer_ipv6 {
-                addrs.sort_by_key(|addr| match addr.ip() {
+                addrs.sort_unstable_by_key(|addr| match addr.ip() {
                     IpAddr::V6(_) => 0, // IPv6 first
                     IpAddr::V4(_) => 1, // IPv4 second
                 });
             } else {
-                addrs.sort_by_key(|addr| match addr.ip() {
+                addrs.sort_unstable_by_key(|addr| match addr.ip() {
                     IpAddr::V4(_) => 0, // IPv4 first
                     IpAddr::V6(_) => 1, // IPv6 second
                 });
@@ -351,10 +481,10 @@ fn resolve_host_to_addrs(host: &str, port: u16, prefer_ipv6: bool) -> Result<Vec
     }
 }
 
-/// DNS resolver with hostname overrides for testing and custom routing.
+/// Zero-allocation DNS resolver with hostname overrides for testing and custom routing.
 pub(crate) struct DnsResolverWithOverridesImpl {
     dns_resolver: Arc<dyn Resolve>,
-    overrides: Arc<std::collections::HashMap<String, Vec<SocketAddr>>>,
+    overrides: Arc<heapless::FnvIndexMap<heapless::String<256>, arrayvec::ArrayVec<SocketAddr, 8>, 64>>,
 }
 
 impl Resolve for DnsResolverWithOverridesImpl {
@@ -367,7 +497,7 @@ impl Resolve for DnsResolverWithOverridesImpl {
             let task = spawn_task(move || -> Result<Addrs, BoxError> {
                 // Check for override first
                 if let Some(addrs) = overrides.get(&hostname) {
-                    return Ok(addrs.clone().into_iter());
+                    return Ok(DnsResult::from_vec(addrs.clone()));
                 }
                 
                 // Fall back to actual DNS resolution

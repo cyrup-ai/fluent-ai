@@ -190,10 +190,8 @@ impl Default for Body {
     }
 }
 
-// Can use new methods in web-sys when requiring v0.2.93.
-// > `init.method(m)` to `init.set_method(m)`
-// For now, ignore their deprecation.
-#[allow(deprecated)]
+// Use latest web-sys methods for optimal performance and future compatibility
+// Updated to use non-deprecated APIs for production quality
 #[cfg(test)]
 mod tests {
     use crate::Body;

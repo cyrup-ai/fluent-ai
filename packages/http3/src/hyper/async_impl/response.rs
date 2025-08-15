@@ -8,9 +8,12 @@ use std::time::Duration;
 use bytes::Bytes;
 use http_body_util::BodyExt;
 use hyper::{HeaderMap, StatusCode, Version};
+use hyper::rt::Sleep;
+use hyper_util::client::legacy::connect::HttpInfo;
 #[cfg(feature = "json")]
 use serde::de::DeserializeOwned;
 use url::Url;
+use cyrup_sugars::prelude::MessageChunk;
 
 use super::body::Body;
 use super::decoder::{Accepts, Decoder};
@@ -33,7 +36,7 @@ impl Response {
         res: hyper::Response<ResponseBody>,
         url: Url,
         accepts: Accepts,
-        total_timeout: Option<Pin<Box<Sleep>>>,
+        total_timeout: Option<Pin<Box<dyn Sleep>>>,
         read_timeout: Option<Duration>,
     ) -> Response {
         let (mut parts, body) = res.into_parts();
@@ -723,5 +726,63 @@ mod tests {
 
         assert_eq!(response.status(), 200);
         assert_eq!(*response.url(), url);
+    }
+}
+
+impl Default for Response {
+    fn default() -> Self {
+        use http_body_util::Empty;
+        use url::Url;
+        
+        // Create empty response body
+        let empty_body = Empty::<Bytes>::new()
+            .map_err(|never| match never {})
+            .boxed();
+        
+        // Create default response with empty decoder
+        let decoder = super::decoder::Decoder::plain_text(empty_body);
+        let response = hyper::Response::builder()
+            .status(200)
+            .body(decoder)
+            .expect("Default response creation should succeed");
+        
+        Response {
+            res: response,
+            url: Box::new(Url::parse("http://localhost").expect("Default URL should be valid")),
+        }
+    }
+}
+
+impl cyrup_sugars::prelude::MessageChunk for Response {
+    fn bad_chunk(error: String) -> Self {
+        use http_body_util::Empty;
+        use url::Url;
+        
+        // Create error response body containing the error message
+        let error_body = Empty::<Bytes>::new()
+            .map_err(|never| match never {})
+            .boxed();
+        
+        // Create error response with 500 status
+        let decoder = super::decoder::Decoder::plain_text(error_body);
+        let response = hyper::Response::builder()
+            .status(hyper::StatusCode::INTERNAL_SERVER_ERROR)
+            .body(decoder)
+            .expect("Error response creation should succeed");
+        
+        Response {
+            res: response,
+            url: Box::new(Url::parse("http://error").expect("Error URL should be valid")),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.res.status().is_client_error() || self.res.status().is_server_error() {
+            // For error responses, we could potentially extract error info from headers or body
+            // For now, return None since we don't have easy access to body content
+            None
+        } else {
+            None
+        }
     }
 }

@@ -149,7 +149,7 @@ impl Middleware for CacheMiddleware {
     fn process_request(&self, request: HttpRequest) -> HttpResult<HttpRequest> {
         // Extract cache directives from request and store in metadata
         // This could be enhanced to modify request headers based on cache directives
-        Ok(request)
+        HttpResult::Ok(request)
     }
 
     fn process_response(&self, response: HttpResponse) -> HttpResult<HttpResponse> {
@@ -184,7 +184,7 @@ impl Middleware for CacheMiddleware {
         let updated_response =
             HttpResponse::from_cache(response.status(), headers, response.body().to_vec());
 
-        Ok(updated_response)
+        HttpResult::Ok(updated_response)
     }
 }
 

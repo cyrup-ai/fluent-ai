@@ -54,6 +54,7 @@ use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use arrayvec::{ArrayString, ArrayVec};
+use cyrup_sugars::prelude::MessageChunk;
 use model_info::DiscoveryProvider as Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -1085,6 +1086,29 @@ impl CompletionChunk {
     #[inline]
     pub fn is_final(&self) -> bool {
         self.finish_reason().is_some() || self.usage.is_some()
+    }
+}
+
+impl MessageChunk for CompletionChunk {
+    fn bad_chunk(error: String) -> Self {
+        CompletionChunk {
+            id: ArrayString::from("error").unwrap_or_default(),
+            object: ArrayString::from("chat.completion.chunk").unwrap_or_default(),
+            model: ArrayString::from("unknown").unwrap_or_default(),
+            created: 0,
+            choices: ArrayVec::new(),
+            usage: None,
+            system_fingerprint: None,
+        }
+    }
+
+    fn error(&self) -> Option<String> {
+        // Check if this chunk represents an error state
+        if self.choices.is_empty() && self.id.as_str() == "error" {
+            Some("Completion chunk error".to_string())
+        } else {
+            None
+        }
     }
 }
 

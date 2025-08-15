@@ -15,9 +15,15 @@ The Array Stream architecture provides zero-allocation, blazing-fast streaming o
 Http3::json()
     .array_stream("$.data[*]")  // JSONPath to stream array elements
     .get("https://api.openai.com/v1/models")
-    .on_chunk(|model| {         // Each model streams individually
-        Ok => model.into(),      // Clean syntax, no macro exposure
-        Err(e) => BadChunk::from_err(e)
+    .on_chunk(|result| match result {    // Each model streams individually with error handling
+        Ok(model) => {
+            println!("Processing model: {:?}", model);
+            model           // Return the model on success
+        },
+        Err(e) => {
+            println!("Model error: {:?}", e);
+            T::bad_chunk(e.to_string())  // Convert error to bad chunk
+        }
     })
 ```
 
@@ -119,9 +125,15 @@ Http3::json()                           // Configure for JSON content
 
 ### 2. Stream Processing
 ```rust
-.on_chunk(|model: Model| {              // Process each array element
-    Ok => model.into(),                 // Success case - clean syntax
-    Err(e) => BadChunk::from_err(e)     // Error case - explicit handling
+.on_chunk(|result| match result {       // Process each array element with error handling
+    Ok(model) => {
+        println!("Model received: {:?}", model);
+        model                           // Success case - return the model
+    },
+    Err(e) => {
+        eprintln!("Model error: {:?}", e);
+        Model::bad_chunk(e.to_string()) // Error case - convert to bad chunk
+    }
 })
 ```
 

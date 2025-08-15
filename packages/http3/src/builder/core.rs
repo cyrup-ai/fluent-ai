@@ -3,11 +3,14 @@
 //! Contains the main Http3Builder struct, state types, and foundational methods
 //! for building HTTP requests with zero allocation and elegant fluent interface.
 
+use std::fmt;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
+use cyrup_sugars::prelude::ChunkHandler;
 use http::Method;
 
-use crate::{HttpClient, HttpRequest};
+use crate::{HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream};
 
 /// Content type enumeration for elegant API
 #[derive(Debug, Clone, Copy)]
@@ -76,7 +79,7 @@ pub struct JsonPathStreaming {
 /// - `BodyNotSet`: Default state, body methods available
 /// - `BodySet`: Body has been set, only execution methods available
 /// - `JsonPathStreaming`: Configured for JSONPath array streaming
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Http3Builder<S = BodyNotSet> {
     /// HTTP client instance for making requests
     pub(crate) client: HttpClient,
@@ -88,6 +91,9 @@ pub struct Http3Builder<S = BodyNotSet> {
     pub(crate) debug_enabled: bool,
     /// JSONPath streaming configuration
     pub(crate) jsonpath_config: Option<JsonPathStreaming>,
+    /// Chunk handler for error handling in streaming
+    pub(crate) chunk_handler:
+        Option<Arc<dyn Fn(Result<HttpChunk, HttpError>) -> HttpChunk + Send + Sync + 'static>>,
 }
 
 impl Http3Builder<BodyNotSet> {
@@ -100,6 +106,7 @@ impl Http3Builder<BodyNotSet> {
             state: PhantomData,
             debug_enabled: false,
             jsonpath_config: None,
+            chunk_handler: None,
         }
     }
 
@@ -149,6 +156,7 @@ impl Http3Builder<BodyNotSet> {
             jsonpath_config: Some(JsonPathStreaming {
                 jsonpath_expr: jsonpath.to_string(),
             }),
+            chunk_handler: self.chunk_handler,
         }
     }
 }
@@ -231,8 +239,7 @@ impl<S> Http3Builder<S> {
     #[must_use]
     pub fn timeout_seconds(mut self, seconds: u64) -> Self {
         let timeout = std::time::Duration::from_secs(seconds);
-        // Store timeout in the request - we'll need to modify HttpRequest to support this
-        // For now, this is a placeholder that compiles
+        // Store timeout in the request configuration with zero allocation
         self.request = self.request.with_timeout(timeout);
         self
     }
@@ -258,5 +265,28 @@ impl<S> Http3Builder<S> {
         // Store retry attempts in the request
         self.request = self.request.with_retry_attempts(attempts);
         self
+    }
+}
+
+/// Implement ChunkHandler trait for Http3Builder to support cyrup_sugars on_chunk pattern
+impl<S> ChunkHandler<HttpChunk, HttpError> for Http3Builder<S> {
+    fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(Result<HttpChunk, HttpError>) -> HttpChunk + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Arc::new(handler));
+        self
+    }
+}
+
+impl<S> fmt::Debug for Http3Builder<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Http3Builder")
+            .field("client", &self.client)
+            .field("request", &self.request)
+            .field("debug_enabled", &self.debug_enabled)
+            .field("jsonpath_config", &self.jsonpath_config)
+            .field("chunk_handler", &self.chunk_handler.is_some())
+            .finish()
     }
 }

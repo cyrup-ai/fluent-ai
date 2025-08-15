@@ -1,5 +1,7 @@
 //! HTTP error types and utilities
 
+use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use http::StatusCode;
 use http::header::{InvalidHeaderName, InvalidHeaderValue};
 use thiserror::Error;
@@ -266,8 +268,107 @@ impl From<std::io::Error> for HttpError {
     }
 }
 
-/// Result type for HTTP operations
-pub type HttpResult<T> = Result<T, HttpError>;
+impl MessageChunk for HttpError {
+    fn bad_chunk(error: String) -> Self {
+        HttpError::NetworkError { message: error }
+    }
+
+    fn error(&self) -> Option<&str> {
+        None // Return None to avoid lifetime issues with temporary string
+    }
+}
+
+impl FluentMessageChunk for HttpError {
+    fn bad_chunk(error: String) -> Self {
+        HttpError::NetworkError { message: error }
+    }
+
+    fn error(&self) -> Option<&str> {
+        None // Return None to avoid lifetime issues with temporary string
+    }
+}
+
+impl Default for HttpError {
+    fn default() -> Self {
+        HttpError::NetworkError {
+            message: "Unknown error".to_string(),
+        }
+    }
+}
+
+/// Wrapper for HTTP results that implements required traits
+#[derive(Debug, Clone)]
+pub enum HttpResult<T> {
+    Ok(T),
+    Err(HttpError),
+}
+
+impl<T> MessageChunk for HttpResult<T>
+where
+    T: MessageChunk + Send + Default + 'static,
+{
+    fn bad_chunk(error: String) -> Self {
+        HttpResult::Err(HttpError::bad_chunk(error))
+    }
+
+    fn is_error(&self) -> bool {
+        matches!(self, HttpResult::Err(_))
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            HttpResult::Ok(_) => None,
+            HttpResult::Err(e) => e.error(),
+        }
+    }
+}
+
+impl<T> FluentMessageChunk for HttpResult<T>
+where
+    T: FluentMessageChunk + Send + Default + 'static,
+{
+    fn bad_chunk(error: String) -> Self {
+        HttpResult::Err(HttpError::bad_chunk(error))
+    }
+
+    fn is_error(&self) -> bool {
+        matches!(self, HttpResult::Err(_))
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            HttpResult::Ok(_) => None,
+            HttpResult::Err(e) => e.error(),
+        }
+    }
+}
+
+impl<T> Default for HttpResult<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        HttpResult::Ok(T::default())
+    }
+}
+
+impl<T> From<Result<T, HttpError>> for HttpResult<T> {
+    fn from(result: Result<T, HttpError>) -> Self {
+        match result {
+            Ok(val) => HttpResult::Ok(val),
+            Err(err) => HttpResult::Err(err),
+        }
+    }
+}
+
+impl<T> From<HttpResult<T>> for Result<T, HttpError> {
+    fn from(result: HttpResult<T>) -> Self {
+        match result {
+            HttpResult::Ok(val) => Ok(val),
+            HttpResult::Err(err) => Err(err),
+        }
+    }
+}
 
 // Re-export internal hyper error types and helpers for legacy paths expecting `crate::error::*`
 #[cfg(any(
@@ -281,3 +382,29 @@ pub(crate) use crate::hyper::error::{
     BadScheme, BoxError, TimedOut, body, builder, decode, decode_io, redirect, request,
     status_code, upgrade, url_bad_scheme,
 };
+
+// Additional MessageChunk implementations for external types used in AsyncStream
+// (MessageChunk already imported at top of file)
+
+// NOTE: Removed bytes::Bytes MessageChunk impl due to orphan rule violation
+// Users can create wrapper types if needed
+
+// NOTE: Removed http_body::Frame<T> MessageChunk impl due to orphan rule violation
+// Users should implement MessageChunk on their own wrapper types
+
+// NOTE: Removed std::result::Result<T,E> and std::vec::IntoIter<T> MessageChunk impls
+// due to orphan rule violations. Users should create wrapper types if needed.
+
+// NOTE: Removed Box<dyn std::error::Error + Send + Sync + 'static> MessageChunk impl
+// due to orphan rule violation. Users should create wrapper types if needed.
+
+// NOTE: Removed SocketAddr MessageChunk impl due to orphan rule violation
+// Users can create wrapper types if needed
+
+// NOTE: Removed hyper::Error MessageChunk impl due to orphan rule violation
+// Users can create wrapper types if needed
+
+// NOTE: Removed String MessageChunk impl due to orphan rule violation
+// String already has Default impl in std
+
+// HttpError already has Default and MessageChunk implementations via cyrup_sugars

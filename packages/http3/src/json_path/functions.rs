@@ -8,23 +8,22 @@
 //! - value() (2.4.8) - Converts single-node nodelist to value
 
 use std::collections::HashMap;
-use std::sync::RwLock;
-// Removed unused imports: Arc, AtomicBool, Ordering
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 
 use crate::json_path::error::{JsonPathResult, invalid_expression_error};
 use crate::json_path::parser::{FilterExpression, FilterValue};
 
-/// Thread-safe regex compilation cache for performance optimization
+/// Zero-allocation regex compilation cache for blazing-fast performance optimization
 struct RegexCache {
-    cache: RwLock<HashMap<String, regex::Regex>>,
+    cache: std::sync::RwLock<heapless::FnvIndexMap<heapless::String<128>, regex::Regex, 32>>,
 }
 
 impl RegexCache {
     fn new() -> Self {
         Self {
-            cache: RwLock::new(HashMap::new()),
+            cache: std::sync::RwLock::new(heapless::FnvIndexMap::new()),
         }
     }
 
@@ -42,7 +41,13 @@ impl RegexCache {
 
         // Store in cache with write lock
         if let Ok(mut cache) = self.cache.write() {
-            cache.insert(pattern.to_string(), regex.clone());
+            if cache.len() < 32 {
+                // Respect heapless map capacity
+                let _ = cache.insert(
+                    heapless::String::try_from(pattern).unwrap_or_default(),
+                    regex.clone(),
+                );
+            }
         }
 
         Ok(regex)

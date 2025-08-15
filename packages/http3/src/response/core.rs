@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
+use cyrup_sugars::prelude::MessageChunk;
 use http::StatusCode;
 
 /// HTTP response structure with zero-allocation design
@@ -130,9 +131,9 @@ impl HttpResponse {
     /// Convert to error if not successful
     pub fn error_for_status(self) -> crate::HttpResult<Self> {
         if self.is_success() {
-            Ok(self)
+            crate::HttpResult::Ok(self)
         } else {
-            Err(crate::HttpError::HttpStatus {
+            crate::HttpResult::Err(crate::HttpError::HttpStatus {
                 status: self.status.as_u16(),
                 message: format!(
                     "HTTP {} {}",
@@ -260,6 +261,38 @@ impl HttpResponse {
             status: StatusCode::GATEWAY_TIMEOUT,
             headers: HashMap::new(),
             body: b"Gateway Timeout".to_vec(),
+        }
+    }
+}
+
+impl MessageChunk for HttpResponse {
+    fn bad_chunk(error: String) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            headers: HashMap::new(),
+            body: error.into_bytes(),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.status.is_client_error() || self.status.is_server_error()
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.status.is_client_error() || self.status.is_server_error() {
+            std::str::from_utf8(&self.body).ok()
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for HttpResponse {
+    fn default() -> Self {
+        Self {
+            status: StatusCode::OK,
+            headers: HashMap::new(),
+            body: Vec::new(),
         }
     }
 }
