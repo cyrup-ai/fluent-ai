@@ -81,7 +81,7 @@
 extern crate doc_comment;
 
 use std::sync::Arc;
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 
 pub mod builder;
 pub mod client;
@@ -134,15 +134,14 @@ pub use crate as http3;
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling
 /// in case the optimized configuration fails to initialize
-static GLOBAL_CLIENT: LazyLock<Arc<HttpClient>> = LazyLock::new(|| Arc::new(HttpClient::default()));
+static GLOBAL_CLIENT: OnceLock<Arc<HttpClient>> = OnceLock::new();
 
 /// Get the global HTTP client instance
-///
 /// This provides a shared, high-performance HTTP client with connection pooling
 /// and QUIC/HTTP3 support. The client is initialized once and reused across
 /// all requests for maximum efficiency.
 pub fn global_client() -> Arc<HttpClient> {
-    GLOBAL_CLIENT.clone()
+    GLOBAL_CLIENT.get_or_init(|| Arc::new(HttpClient::default())).clone()
 }
 
 // Note: Convenience functions removed in favor of modular operations architecture.
@@ -155,7 +154,7 @@ pub fn connection_stats() -> ClientStatsSnapshot {
 }
 
 /// Initialize the global HTTP client with custom configuration
-pub fn init_global_client(config: HttpConfig) -> Result<(), crate::Error> {
+pub fn init_global_client(config: HttpConfig) -> std::result::Result<(), crate::Error> {
     // Validate the provided configuration
     validate_http_config(&config)?;
 
@@ -231,7 +230,8 @@ fn initialize_global_client_internal(
 
     // Replace the global client using atomic operations for thread safety
     // This is a one-time initialization operation with proper error handling
-    GLOBAL_CLIENT.store(Arc::new(new_client), std::sync::atomic::Ordering::Release);
+    // Set the global client - OnceLock allows one-time initialization
+    GLOBAL_CLIENT.set(Arc::new(new_client)).map_err(|_| "Global client already initialized")?;
 
     Ok(())
 }

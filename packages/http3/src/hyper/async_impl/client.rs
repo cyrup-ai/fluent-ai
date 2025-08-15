@@ -363,8 +363,7 @@ impl ClientBuilder {
         // Initialize proxy authentication variables with proper defaults
         let proxies_maybe_http_auth = None;
         let proxies_maybe_http_custom_headers = HashMap::new();
-        Arc::new(proxies)
-
+        
         #[allow(unused)]
         #[cfg(feature = "http3")]
         let mut h3_connector = None;

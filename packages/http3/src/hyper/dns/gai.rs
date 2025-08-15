@@ -1,6 +1,5 @@
-use crate::hyper::dns::resolve::{Addrs, Resolve, Name};
-use crate::hyper::error::BoxError;
-use fluent_ai_async::{AsyncStream, emit, spawn_task};
+use crate::hyper::dns::resolve::{Resolve, Name, DnsResult};
+use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
 
 #[derive(Debug)]
 pub struct GaiResolver {
@@ -20,20 +19,22 @@ impl Default for GaiResolver {
 }
 
 impl Resolve for GaiResolver {
-    fn resolve(&self, name: Name) -> AsyncStream<Result<Addrs, BoxError>> {
+    fn resolve(&self, name: Name) -> AsyncStream<DnsResult> {
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Addrs, BoxError> {
+            spawn_task(move || {
                 // Use synchronous DNS resolution via ToSocketAddrs
                 let host_str = format!("{}", name);
-                std::net::ToSocketAddrs::to_socket_addrs(&host_str.as_str())
-                    .map_err(|err| -> BoxError { Box::new(err) })
-                    .map(|addrs_iter| addrs_iter.collect::<Vec<_>>().into_iter())
+                match std::net::ToSocketAddrs::to_socket_addrs(&host_str.as_str()) {
+                    Ok(addrs_iter) => {
+                        let addrs: arrayvec::ArrayVec<std::net::SocketAddr, 8> = 
+                            addrs_iter.take(8).collect();
+                        emit!(sender, DnsResult { addrs });
+                    },
+                    Err(e) => {
+                        emit!(sender, DnsResult::new()); // Empty result for error case
+                    }
+                }
             });
-            
-            match task.collect() {
-                Ok(addrs) => emit!(sender, Ok(addrs)),
-                Err(e) => emit!(sender, Err(e)),
-            }
         })
     }
 }

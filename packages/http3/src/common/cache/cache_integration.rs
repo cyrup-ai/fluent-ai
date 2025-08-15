@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::AsyncStream;
 
 use super::{cache_key::CacheKey, response_cache::ResponseCache};
@@ -30,14 +30,14 @@ where
 
         // Cache miss - execute operation
         match operation() {
-            Ok(response) => {
+            crate::HttpResult::Ok(response) => {
                 // Check if response should be cached
                 if GLOBAL_CACHE.should_cache(&response) {
                     GLOBAL_CACHE.put(cache_key, response.clone());
                 }
                 let _ = sender.send(response);
             }
-            Err(_error) => {
+            crate::HttpResult::Err(_error) => {
                 // For errors, send default response
                 let _ = sender.send(HttpResponse::default());
             }

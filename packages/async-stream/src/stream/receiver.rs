@@ -58,7 +58,7 @@ where
 
     /// Collect all items from the stream (blocking)
     pub fn collect(self) -> Vec<T> {
-        let mut items = Vec::new();
+        let mut items = Vec::with_capacity(self.len());
         let backoff = Backoff::new();
 
         // Collect all currently available items
@@ -106,7 +106,7 @@ where
     where
         F: FnMut(&T) -> T,
     {
-        let mut items = Vec::new();
+        let mut items = Vec::with_capacity(self.len());
         let backoff = Backoff::new();
 
         // Collect all currently available items

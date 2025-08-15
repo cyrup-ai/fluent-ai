@@ -5,7 +5,7 @@
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use cache_padded::CachePadded;
+use crossbeam_utils::CachePadded;
 
 /// Zero-allocation thread-safe client statistics with cache-padded atomic counters
 ///

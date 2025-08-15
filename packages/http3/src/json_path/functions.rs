@@ -17,13 +17,13 @@ use crate::json_path::parser::{FilterExpression, FilterValue};
 
 /// Zero-allocation regex compilation cache for blazing-fast performance optimization
 struct RegexCache {
-    cache: std::sync::RwLock<heapless::FnvIndexMap<heapless::String<128>, regex::Regex, 32>>,
+    cache: std::sync::RwLock<std::collections::HashMap<String, regex::Regex>>,
 }
 
 impl RegexCache {
     fn new() -> Self {
         Self {
-            cache: std::sync::RwLock::new(heapless::FnvIndexMap::new()),
+            cache: std::sync::RwLock::new(std::collections::HashMap::new()),
         }
     }
 
@@ -42,11 +42,8 @@ impl RegexCache {
         // Store in cache with write lock
         if let Ok(mut cache) = self.cache.write() {
             if cache.len() < 32 {
-                // Respect heapless map capacity
-                let _ = cache.insert(
-                    heapless::String::try_from(pattern).unwrap_or_default(),
-                    regex.clone(),
-                );
+                // Limit cache size for memory efficiency
+                cache.insert(pattern.to_string(), regex.clone());
             }
         }
 

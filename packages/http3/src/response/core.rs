@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
-use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use http::StatusCode;
 
 /// HTTP response structure with zero-allocation design

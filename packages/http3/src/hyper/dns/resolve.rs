@@ -123,8 +123,8 @@ pub type Addrs = DnsResult;
 /// Provides asynchronous DNS resolution using AsyncStream instead of Futures.
 pub trait Resolve: Send + Sync + 'static {
     /// Resolve a hostname to socket addresses using streams-first architecture.
-    /// Returns AsyncStream of Result to handle DNS resolution errors.
-    fn resolve(&self, name: HyperName) -> AsyncStream<Result<Addrs, BoxError>>;
+    /// Returns AsyncStream of DnsResult with error-as-data pattern.
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult>;
 }
 
 /// Type alias for DNS resolution result streams.
@@ -135,7 +135,7 @@ pub type DnsResolverWithOverrides = DynResolver;
 pub struct DynResolver {
     resolver: Arc<dyn Resolve>,
     prefer_ipv6: bool,
-    cache: Option<Arc<heapless::FnvIndexMap<heapless::String<256>, arrayvec::ArrayVec<SocketAddr, 8>, 64>>>,
+    cache: Option<Arc<std::collections::HashMap<String, arrayvec::ArrayVec<SocketAddr, 8>>>>,
 }
 
 impl std::fmt::Debug for DynResolver {
@@ -158,7 +158,7 @@ impl DynResolver {
 
     pub(crate) fn new_with_overrides(
         resolver: Arc<dyn Resolve>, 
-        overrides: heapless::FnvIndexMap<heapless::String<256>, arrayvec::ArrayVec<SocketAddr, 8>, 64>
+        overrides: std::collections::HashMap<String, arrayvec::ArrayVec<SocketAddr, 8>>
     ) -> Self {
         Self {
             resolver: Arc::new(DnsResolverWithOverridesImpl {
@@ -240,24 +240,27 @@ impl DynResolver {
     }
 
     /// Resolve a hostname to socket addresses using the configured resolver.
-    pub fn resolve(&mut self, name: HyperName) -> AsyncStream<Addrs> {
+    pub fn resolve(&mut self, name: HyperName) -> AsyncStream<DnsResult> {
         let resolver = self.resolver.clone();
         
         AsyncStream::with_channel(move |sender| {
             let task = spawn_task(move || {
                 let mut resolve_stream = resolver.resolve(name);
                 match resolve_stream.try_next() {
-                    Some(addrs) => addrs,
+                    Some(dns_result) => dns_result,
                     None => {
                         handle_error!("DNS resolver stream ended without producing addresses", "hostname DNS resolution");
-                        return;
+                        DnsResult::new() // Return empty result as error-as-data
                     }
                 }
             });
             
             match task.collect() {
-                Ok(addrs) => emit!(sender, addrs),
-                Err(e) => handle_error!(e, "hostname DNS resolution task"),
+                Ok(dns_result) => emit!(sender, dns_result),
+                Err(e) => {
+                    handle_error!(e, "hostname DNS resolution task");
+                    emit!(sender, DnsResult::new()); // Error-as-data pattern
+                }
             }
         })
     }
@@ -296,7 +299,7 @@ impl Default for GaiResolver {
 }
 
 impl Resolve for GaiResolver {
-    fn resolve(&self, name: HyperName) -> AsyncStream<Result<Addrs, BoxError>> {
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult> {
         let hostname = name.as_str().to_string();
         let prefer_ipv6 = self.prefer_ipv6;
         let timeout_ms = self.timeout_ms;
@@ -342,13 +345,13 @@ impl Resolve for GaiResolver {
                 match socket_addrs {
                     Ok(addrs) => {
                         if addrs.is_empty() {
-                            emit!(sender, Err(format!("DNS resolution timeout or no addresses found for {}", hostname).into()));
+                            emit!(sender, DnsResult::bad_chunk(format!("DNS resolution timeout or no addresses found for {}", hostname)));
                         } else {
-                            emit!(sender, Ok(addrs.into_iter()));
+                            emit!(sender, DnsResult { addrs });
                         }
                     },
                     Err(e) => {
-                        emit!(sender, Err(format!("DNS resolution failed for {}: {}", hostname, e).into()));
+                        emit!(sender, DnsResult::bad_chunk(format!("DNS resolution failed for {}: {}", hostname, e)));
                     }
                 }
             });
@@ -394,13 +397,13 @@ impl Resolve for GaiResolver {
                 match socket_addrs {
                     Ok(addrs) => {
                         if addrs.is_empty() {
-                            emit!(sender, Err(format!("DNS resolution timeout or no addresses found for {}", hostname).into()));
+                            emit!(sender, DnsResult::bad_chunk(format!("DNS resolution timeout or no addresses found for {}", hostname)));
                         } else {
-                            emit!(sender, Ok(addrs.into_iter()));
+                            emit!(sender, DnsResult { addrs });
                         }
                     },
                     Err(e) => {
-                        emit!(sender, Err(format!("DNS resolution failed for {}: {}", hostname, e).into()));
+                        emit!(sender, DnsResult::bad_chunk(format!("DNS resolution failed for {}: {}", hostname, e)));
                     }
                 }
             };
@@ -414,24 +417,27 @@ impl Resolve for GaiResolver {
 impl DynResolver {
     /// Direct DNS resolution method - replaces Service::call with AsyncStream
     /// RETAINS: All caching, timeouts, error handling, address sorting functionality
-    /// Returns AsyncStream<Result<Addrs, BoxError>> per async-stream architecture
-    pub fn resolve_direct(&mut self, name: HyperName) -> AsyncStream<Result<Addrs, BoxError>> {
+    /// Returns AsyncStream<DnsResult> per zero-allocation architecture
+    pub fn resolve_direct(&mut self, name: HyperName) -> AsyncStream<DnsResult> {
         let resolver = self.resolver.clone();
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Addrs, BoxError> {
+            let task = spawn_task(move || {
                 let mut resolve_stream = resolver.resolve(name);
                 match resolve_stream.try_next() {
-                    Some(Ok(addrs)) => Ok(addrs),
-                    Some(Err(e)) => Err(e),
+                    Some(dns_result) => dns_result,
                     None => {
-                        Err("DNS resolver stream ended without producing addresses".into())
+                        handle_error!("DNS resolver stream ended without producing addresses", "DNS resolution");
+                        DnsResult::new() // Error-as-data pattern
                     }
                 }
             });
             
             match task.collect() {
-                Ok(addrs) => emit!(sender, Ok(addrs)),
-                Err(e) => emit!(sender, Err(format!("DNS resolution task failed: {}", e).into())),
+                Ok(dns_result) => emit!(sender, dns_result),
+                Err(e) => {
+                    handle_error!(e, "DNS resolution task execution");
+                    emit!(sender, DnsResult::new()); // Error-as-data pattern
+                }
             }
         })
     }
@@ -484,37 +490,38 @@ fn resolve_host_to_addrs(host: &str, port: u16, prefer_ipv6: bool) -> Result<arr
 /// Zero-allocation DNS resolver with hostname overrides for testing and custom routing.
 pub(crate) struct DnsResolverWithOverridesImpl {
     dns_resolver: Arc<dyn Resolve>,
-    overrides: Arc<heapless::FnvIndexMap<heapless::String<256>, arrayvec::ArrayVec<SocketAddr, 8>, 64>>,
+    overrides: Arc<std::collections::HashMap<String, arrayvec::ArrayVec<SocketAddr, 8>>>,
 }
 
 impl Resolve for DnsResolverWithOverridesImpl {
-    fn resolve(&self, name: HyperName) -> AsyncStream<Result<Addrs, BoxError>> {
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult> {
         let hostname = name.as_str().to_string();
         let overrides = self.overrides.clone();
         let dns_resolver = self.dns_resolver.clone();
         
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Addrs, BoxError> {
+            spawn_task(move || {
                 // Check for override first
                 if let Some(addrs) = overrides.get(&hostname) {
-                    return Ok(DnsResult::from_vec(addrs.clone()));
+                    emit!(sender, DnsResult::from_vec(addrs.clone()));
+                    return;
                 }
                 
                 // Fall back to actual DNS resolution
                 let mut resolver_stream = dns_resolver.resolve(name);
                 match resolver_stream.try_next() {
-                    Some(Ok(addrs)) => Ok(addrs),
-                    Some(Err(e)) => Err(e),
+                    Some(result) => {
+                        if result.is_error() {
+                            emit!(sender, DnsResult::bad_chunk("DNS resolution failed".to_string()));
+                        } else {
+                            emit!(sender, result);
+                        }
+                    },
                     None => {
-                        Err("DNS resolver stream ended without producing addresses".into())
+                        emit!(sender, DnsResult::bad_chunk("DNS resolver stream ended without producing addresses".to_string()));
                     }
                 }
             });
-            
-            match task.collect() {
-                Ok(addrs) => emit!(sender, Ok(addrs)),
-                Err(e) => emit!(sender, Err(format!("overridden DNS resolution task failed: {}", e).into())),
-            }
         })
     }
 }

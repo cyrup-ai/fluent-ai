@@ -18,6 +18,37 @@ mod matcher {
             Self { patterns }
         }
         
+        pub fn builder() -> MatcherBuilder {
+            MatcherBuilder::new()
+        }
+        
+        pub fn from_system() -> Self {
+            // Read system proxy settings from environment variables
+            let no_proxy = std::env::var("NO_PROXY")
+                .or_else(|_| std::env::var("no_proxy"))
+                .unwrap_or_default();
+            
+            let patterns = if no_proxy.is_empty() {
+                Vec::new()
+            } else {
+                no_proxy.split(',').map(|s| s.trim().to_string()).collect()
+            };
+            
+            Self::new(patterns)
+        }
+        
+        pub fn intercept(&self, uri: &Uri) -> Option<Intercept> {
+            if self.matches(uri) {
+                None // No proxy for matched patterns
+            } else {
+                // Return default HTTP proxy intercept
+                Some(Intercept {
+                    proxy_uri: "http://127.0.0.1:8080".parse().unwrap_or_default(),
+                    via: Via::Http,
+                })
+            }
+        }
+        
         pub fn matches(&self, uri: &Uri) -> bool {
             let host = uri.host().unwrap_or("");
             self.patterns.iter().any(|pattern| {
@@ -33,10 +64,67 @@ mod matcher {
         }
     }
     
+    #[derive(Debug)]
+    pub struct MatcherBuilder {
+        all_patterns: Vec<String>,
+        no_patterns: Vec<String>,
+    }
+    
+    impl MatcherBuilder {
+        pub fn new() -> Self {
+            Self {
+                all_patterns: Vec::new(),
+                no_patterns: Vec::new(),
+            }
+        }
+        
+        pub fn all(mut self, pattern: String) -> Self {
+            self.all_patterns.push(pattern);
+            self
+        }
+        
+        pub fn no(mut self, pattern: &str) -> Self {
+            if !pattern.is_empty() {
+                self.no_patterns.push(pattern.to_string());
+            }
+            self
+        }
+        
+        pub fn http(mut self, url: String) -> Self {
+            self.all_patterns.push(url);
+            self
+        }
+        
+        pub fn https(mut self, url: String) -> Self {
+            self.all_patterns.push(url);
+            self
+        }
+        
+        pub fn build(self) -> Matcher {
+            Matcher::new(self.no_patterns)
+        }
+    }
+    
     #[derive(Debug, Clone)]
     pub struct Intercept {
         pub proxy_uri: Url,
         pub via: Via,
+    }
+    
+    impl Intercept {
+        pub fn uri(&self) -> &Url {
+            &self.proxy_uri
+        }
+        
+        pub fn basic_auth(&self) -> Option<(&str, &str)> {
+            // Extract basic auth from proxy URI if present
+            if let Some(auth) = self.proxy_uri.username() {
+                if !auth.is_empty() {
+                    return Some((auth, self.proxy_uri.password().unwrap_or("")));
+                }
+            }
+            None
+        }
     }
     
     #[derive(Debug, Clone)]

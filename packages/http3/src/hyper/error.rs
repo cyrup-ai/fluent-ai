@@ -379,9 +379,9 @@ pub(crate) fn decode_io(e: io::Error) -> Error {
         match e.into_inner() {
             Some(boxed_error) => match boxed_error.downcast::<Error>() {
                 Ok(error) => *error,
-                Err(_) => Error::new(ErrorKind::Request, Some("Failed to downcast error")),
+                Err(_) => Error::new(Kind::Request, Some("Failed to downcast error")),
             },
-            None => Error::new(ErrorKind::Request, Some("No inner error available")),
+            None => Error::new(Kind::Request, Some("No inner error available")),
         }
     } else {
         decode(e)
@@ -574,6 +574,7 @@ mod tests {
             }
 
             // Redirect errors
+            if let Ok(redirect_url) = url::Url::parse("https://example.com/redirect") {
                 errors.push((
                     super::redirect("too many redirects", redirect_url),
                     "redirect_error",
@@ -724,8 +725,3 @@ mod tests {
             .unwrap_or_else(|e| panic!("Error propagation test failed: {}", e));
     }
 }
-    #[test]
-    fn error_propagation_patterns() {
-        test_helpers::test_error_propagation()
-            .unwrap_or_else(|e| panic!("Error propagation test failed: {}", e));
-    }
