@@ -16,6 +16,6 @@ pub mod decoder;
 pub mod h3_client;
 #[cfg(feature = "multipart")]
 pub mod multipart;
-pub(crate) mod request;
+pub mod request;
 mod response;
 mod upgrade;

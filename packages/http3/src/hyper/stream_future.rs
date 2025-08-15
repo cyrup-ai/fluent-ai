@@ -16,7 +16,7 @@ impl<T: MessageChunk + Default + Send + 'static> StreamCollector<T> {
     pub fn new(stream: AsyncStream<T>) -> Self {
         Self { stream }
     }
-    
+
     /// Collect the stream synchronously using blocking collection
     pub fn collect_sync(self) -> T {
         match self.stream.collect().into_iter().next() {

@@ -178,36 +178,31 @@ impl Response {
         AsyncStream::with_channel(move |sender| {
             if let Some(body) = web_response.body() {
                 let body = wasm_streams::ReadableStream::from_raw(body.unchecked_into());
-                // WASM stream operations placeholder - not fully supported in streams-first
-                fluent_ai_async::handle_error!("WASM stream operations require futures - not supported in streams-first architecture", "WASM bytes stream");
-                        use futures_util::StreamExt;
-                        let mut stream = body.into_stream();
-                        let mut all_bytes = Vec::new();
-                        
-                        while let Some(buf_js) = stream.next().await {
-                            let buffer = Uint8Array::new(
-                                &buf_js
-                                    .map_err(crate::error::wasm)
-                                    .map_err(crate::error::decode)?,
-                            );
-                            let mut bytes = vec![0; buffer.length() as usize];
-                            buffer.copy_to(&mut bytes);
-                            all_bytes.push(Bytes::from(bytes));
-                        }
-                        Ok(all_bytes)
-                    })
-                });
                 
-                match task.collect() {
-                    Ok(bytes_vec) => {
-                        for bytes in bytes_vec {
-                            emit!(sender, bytes);
-                        }
-                    },
-                    Err(e) => handle_error!(e, "WASM bytes stream"),
-                }
+                // Production WASM stream handling using fluent_ai_async patterns
+                spawn_task(move || async move {
+                    use futures_util::StreamExt;
+                    let mut stream = body.into_stream();
+                    
+                    while let Some(buf_js) = stream.next().await {
+                        match buf_js {
+                            Ok(js_value) => {
+                                let buffer = Uint8Array::new(&js_value);
+                                let mut bytes = vec![0; buffer.length() as usize];
+                                buffer.copy_to(&mut bytes);
+                                let chunk = Bytes::from(bytes);
+                                emit!(sender, crate::response::HttpResponseChunk::from_bytes(chunk));
+                            }
+                            Err(js_error) => {
+                                let error_msg = format!("WASM stream read error: {:?}", js_error);
+                                emit!(sender, crate::response::HttpResponseChunk::bad_chunk(error_msg));
+                                return;
+                            }
+                });
+            } else {
+                // No body available - emit empty response chunk
+                emit!(sender, crate::response::HttpResponseChunk::empty());
             }
-            // If there's no body, emit nothing (empty stream)
         })
     }
 

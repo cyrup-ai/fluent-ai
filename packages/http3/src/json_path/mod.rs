@@ -53,20 +53,6 @@ pub mod state_machine;
 pub mod stream_processor;
 pub mod type_system;
 
-/// Debug utilities for testing infinite loop conditions in JSONPath evaluation
-#[cfg(test)]
-pub mod debug_infinite_loop;
-
-#[cfg(test)]
-pub mod debug_at_test;
-
-#[cfg(test)]
-pub mod debug_error_test;
-
-/// Debug utilities for testing and debugging JSONPath parser functionality
-#[cfg(test)]
-pub mod test_parser_debug;
-
 // Decomposed parser modules
 pub mod ast;
 pub mod compiler;
@@ -75,9 +61,6 @@ pub mod filter_parser;
 pub mod selector_parser;
 pub mod tokenizer;
 pub mod tokens;
-
-#[cfg(test)]
-mod debug_test;
 
 use std::marker::PhantomData;
 

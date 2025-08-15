@@ -7,13 +7,18 @@
 mod builder;
 mod client;
 mod config;
+mod debug;
 mod error;
+mod integration;
 mod request;
 mod response;
 mod stream;
 
 // Common module tests
 mod common;
+
+// Hyper integration tests
+mod hyper;
 
 // Middleware module tests
 mod middleware;
@@ -29,13 +34,26 @@ mod json_path;
 /// This test suite mirrors the exact source code module structure in src/:
 ///
 /// **Core HTTP3 Modules**
-/// - builder.rs: HTTP3 builder functionality and fluent API
-/// - client.rs: HTTP3 client implementation
-/// - config.rs: Configuration and settings management
-/// - error.rs: Error types and handling
-/// - request.rs: HTTP request construction and processing
-/// - response.rs: HTTP response handling and parsing
-/// - stream.rs: Streaming functionality
+/// - builder/: HTTP3 builder functionality and fluent API
+///   - core.rs: Core builder tests
+///   - streaming.rs: Streaming builder tests
+/// - client/: HTTP3 client implementation
+///   - core.rs: Client core functionality tests
+/// - config/: Configuration and settings management
+///   - core.rs: Configuration tests
+/// - debug/: Debug and development utilities
+///   - jsonpath_perf.rs: JSONPath performance debugging
+///   - step_zero.rs: Step-by-step debugging tests
+/// - error/: Error types and handling
+///   - core.rs: Error handling tests
+/// - integration/: Integration tests
+///   - h3_real.rs: Real HTTP3 integration tests
+/// - request/: HTTP request construction and processing
+///   - core.rs: Request handling tests
+/// - response/: HTTP response handling and parsing
+///   - core.rs: Response processing tests
+/// - stream/: Streaming functionality
+///   - core.rs: Stream processing tests
 ///
 /// **Common Modules (common/)**
 /// - auth.rs: Authentication functionality
@@ -48,6 +66,7 @@ mod json_path;
 ///
 /// **Middleware Modules (middleware/)**
 /// - cache.rs: Cache middleware implementation
+/// - cache_tests.rs: Additional cache testing functionality
 ///
 /// **Operations Modules (operations/)**
 /// - delete.rs: HTTP DELETE operations
@@ -56,6 +75,12 @@ mod json_path;
 /// - patch.rs: HTTP PATCH operations
 /// - post.rs: HTTP POST operations  
 /// - put.rs: HTTP PUT operations
+///
+/// **Hyper Integration Modules (hyper/)**
+/// - Complete hyper-based HTTP client testing
+/// - Protocol-specific tests (HTTP/1.1, HTTP/2, HTTP/3)
+/// - Authentication, proxies, timeouts, redirects
+/// - WASM compatibility testing
 ///
 /// **JSONPath Modules (json_path/)**
 /// - ast.rs: Abstract syntax tree functionality
@@ -78,6 +103,15 @@ mod json_path;
 ///   - processor.rs: JSON processing logic
 ///   - recursive.rs: Recursive traversal logic
 ///   - streaming.rs: Streaming deserialization
+/// - Additional test files moved from root level:
+///   - buffer_tests.rs: Buffer management tests
+///   - deserializer_tests.rs: Deserialization tests
+///   - error_tests.rs: JSONPath error tests
+///   - parser_tests.rs: Parser functionality tests
+///   - state_machine_tests.rs: State machine tests
+///   - streaming_tests.rs: Streaming functionality tests
+/// - rfc9535/: Complete RFC 9535 JSONPath Standard compliance tests
+///   - All RFC compliance, syntax, function, and feature tests
 ///
 /// ## Test Organization Philosophy
 ///
@@ -108,17 +142,22 @@ mod json_path;
 /// cargo test operations
 /// ```
 ///
-/// ## Migration from RFC-based Organization
+/// ## Migration from Root-level Organization
 ///
-/// The previous RFC-based test organization has been migrated to this modular structure:
-/// - RFC syntax tests → json_path::parser
-/// - RFC function tests → json_path::functions  
-/// - RFC filter tests → json_path::filter
-/// - RFC streaming tests → json_path::deserializer::streaming
-/// - Builder tests → builder
-/// - Middleware cache tests → middleware::cache
+/// The previous flat root-level test organization has been migrated to this modular structure:
+/// - Root-level files → appropriate module directories
+/// - All rfc9535_* files → json_path::rfc9535 module
+/// - json_path_* files → json_path module with descriptive names
+/// - debug_* files → debug module
+/// - integration_* files → integration module
+/// - middleware_* files → middleware module
 ///
-/// This provides better organization while preserving all test coverage.
+/// **Benefits of New Organization:**
+/// - Clear separation of concerns
+/// - Mirror source code structure exactly
+/// - Easier test discovery and maintenance
+/// - Better module isolation and testing
+/// - Complete RFC 9535 compliance in organized structure
 
 #[cfg(test)]
 mod meta_tests {
