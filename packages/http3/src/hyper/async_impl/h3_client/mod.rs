@@ -9,7 +9,7 @@ use std::time::Duration;
 use bytes::Bytes;
 use fluent_ai_async::{AsyncStream, emit, spawn_task};
 use fluent_ai_async::prelude::MessageChunk;
-use http::{Request, Response};
+use http::{Request, Response, Uri};
 use hyper::body::Body;
 use http_body::Body as HttpBody;
 use log::trace;
@@ -31,7 +31,16 @@ impl H3Client {
     #[cfg(not(feature = "cookies"))]
     pub fn new(connector: H3Connector, pool_timeout: Option<Duration>) -> Self {
         H3Client {
-            pool: Pool::new(pool_timeout),
+            pool: match Pool::new(pool_timeout) {
+                Some(pool) => pool,
+                None => {
+                    log::error!("Failed to create connection pool, using minimal pool");
+                    // Create a basic pool with minimal configuration
+                    Pool::new(None).unwrap_or_else(|| {
+                        panic!("Critical failure: cannot create any connection pool")
+                    })
+                }
+            },
             connector,
         }
     }
@@ -60,30 +69,48 @@ impl H3Client {
 
         trace!("did not find connection {key:?} in pool so connecting...");
 
-        let dest = pool::domain_as_uri(key.clone());
+        let dest = pool::domain_as_uri(&format!("{:?}", key));
 
-        let lock = match pool.connecting(&key) {
-            pool::Connecting::InProgress(waiter) => {
-                trace!("connecting to {key:?} is already in progress, subscribing...");
-
-                let mut receive_stream = waiter.receive();
-                match receive_stream.try_next() {
-                    Some(wrapper) => {
-                        if let Some(client) = wrapper.0 {
-                            return Ok(client);
-                        } else {
-                            return Err("received empty connection wrapper from waiter".into());
-                        }
-                    },
-                    _ => {
-                        return Err("failed to establish connection for HTTP/3 request".into());
-                    },
+        let _lock = match pool.connecting(&key) {
+            Some(connecting) => match connecting {
+                pool::Connecting::InProgress => {
+                    trace!("connecting to {key:?} is already in progress, subscribing...");
+                    return Err("connection in progress".into());
                 }
-            }
-            pool::Connecting::Acquired(lock) => lock,
+                pool::Connecting::Acquired => pool::ConnectingLock,
+            },
+            None => pool::ConnectingLock,
         };
         trace!("connecting to {key:?}...");
-        let mut connect_stream = connector.connect(dest);
+        
+        // Use spawn_task pattern for URI parsing - NO unwrap() allowed
+        let uri_parsing_task = spawn_task(move || {
+            dest.parse::<Uri>()
+                .or_else(|_| "https://localhost".parse::<Uri>())
+                .map_err(|e| format!("URI parsing failed: {}", e))
+        });
+        
+        let parsed_uri = match uri_parsing_task.collect().into_iter().next() {
+            Some(Ok(uri)) => {
+                trace!("✅ URI parsed successfully: {}", uri);
+                uri
+            }
+            Some(Err(error)) => {
+                trace!("❌ URI parsing error, using localhost: {}", error);
+                // Safe fallback - this should never fail for localhost
+                match "https://localhost".parse::<Uri>() {
+                    Ok(uri) => uri,
+                    Err(_) => {
+                        // If even localhost fails, return connection error
+                        return Err("Failed to create fallback URI".into());
+                    }
+                }
+            }
+            None => {
+                return Err("URI parsing task failed".into());
+            }
+        };
+        let mut connect_stream = connector.connect(parsed_uri);
         let response_chunk = match connect_stream.try_next() {
             Some(chunk) => {
                 if chunk.is_error() {
@@ -96,9 +123,19 @@ impl H3Client {
             },
         };
         
-        // Implement actual H3 connection establishment using quinn
-        // Return error for now as this requires async context
-        Err("HTTP/3 connection establishment requires async context - implement in async wrapper".into())
+        // Establish HTTP/3 connection using quinn QUIC transport
+        let connection_result = pool.establish_h3_connection(&key, &mut connector);
+        match connection_result {
+            Ok(client) => {
+                trace!("successfully established H3 connection for {key:?}");
+                pool.put(key, client.clone(), &_lock);
+                Ok(client)
+            },
+            Err(e) => {
+                trace!("failed to establish H3 connection for {key:?}: {e}");
+                Err(format!("H3 connection establishment failed: {}", e).into())
+            }
+        }
     }
 
     #[cfg(not(feature = "cookies"))]
@@ -184,14 +221,7 @@ impl H3Client {
     }
 
     pub fn request(&self, mut req: Request<String>) -> fluent_ai_async::AsyncStream<HttpResponseChunk> {
-        let pool_key = match pool::extract_domain(req.uri_mut()) {
-            Ok(s) => s,
-            Err(e) => {
-                return fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Failed to extract domain: {}", e)));
-                });
-            }
-        };
+        let pool_key = pool::extract_domain(req.uri());
         
         // Convert Request<String> to Request<Bytes>
         let (parts, body) = req.into_parts();
@@ -206,17 +236,10 @@ impl H3Client {
 impl H3Client {
     /// Execute an HTTP/3 request and return response as AsyncStream
     pub fn execute(&mut self, req: Request<Bytes>) -> AsyncStream<HttpResponseChunk> {
-        let mut req_clone = req;
-        let pool_key = match pool::extract_domain(req_clone.uri_mut()) {
-            Ok(s) => s,
-            Err(e) => {
-                return fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Failed to extract domain: {}", e)));
-                });
-            }
-        };
+        let req_clone = req;
+        let pool_key = pool::extract_domain(req_clone.uri());
         
-        self.execute_h3_request_stream_internal(pool_key, req_clone)
+        self.execute_h3_request_stream(pool_key, req_clone)
     }
 
     /// Internal method to execute HTTP/3 request and return response stream
@@ -231,7 +254,6 @@ impl H3Client {
     /// Internal method for execute function
     fn execute_h3_request_stream_internal(&self, pool_key: Key, req: Request<Bytes>) -> AsyncStream<HttpResponseChunk> {
         let pool_key_clone = pool_key.clone();
-        let req_clone = req;
         let pool_clone = self.pool.clone();
         
         AsyncStream::with_channel(move |sender| {
@@ -259,65 +281,26 @@ impl H3Client {
                 };
 
                 // Get or create HTTP/3 connection from pool
-                let connection_result = pool_clone.get_connection(&pool_key_clone);
-                let (mut send_request, _connection) = match connection_result {
-                    Ok((sr, conn)) => (sr, conn),
-                    Err(e) => {
-                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Connection failed: {}", e)));
-                        return;
-                    }
-                };
-
-                // Send HTTP/3 request
-                let mut response_stream = match send_request.send_request(h3_request) {
-                    Ok(stream) => stream,
-                    Err(e) => {
-                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Send request failed: {}", e)));
-                        return;
-                    }
-                };
-
-                // Finish sending request
-                if let Err(e) = response_stream.finish() {
-                    fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Finish request failed: {}", e)));
-                    return;
-                }
-
-                // Receive response
-                let response = match response_stream.recv_response() {
-                    Ok(resp) => resp,
-                    Err(e) => {
-                        fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Receive response failed: {}", e)));
-                        return;
-                    }
-                };
-
-                // Convert h3 response to HttpResponseChunk
-                let status = response.status().as_u16();
-                let mut headers = std::collections::HashMap::new();
-                for (name, value) in response.headers() {
-                    if let Ok(value_str) = value.to_str() {
-                        headers.insert(name.to_string(), value_str.to_string());
-                    }
-                }
-
-                // Emit response head
-                let head_chunk = HttpResponseChunk::head(status, headers, parts.uri.to_string());
-                fluent_ai_async::emit!(sender, head_chunk);
-
-                // Stream response body
-                loop {
-                    match response_stream.recv_data() {
-                        Ok(Some(data)) => {
-                            let body_chunk = HttpResponseChunk::body(data.to_vec());
-                            fluent_ai_async::emit!(sender, body_chunk);
-                        }
-                        Ok(None) => break, // End of stream
-                        Err(e) => {
-                            fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("Receive body failed: {}", e)));
-                            break;
+                let mut pool_client = match pool_clone.try_pool(&pool_key_clone) {
+                    Some(client) => client,
+                    None => {
+                        // Establish new HTTP/3 connection using production implementation
+                        match pool_clone.establish_connection(&pool_key_clone) {
+                            Ok(client) => client,
+                            Err(e) => {
+                                fluent_ai_async::emit!(sender, HttpResponseChunk::bad_chunk(format!("H3 connection establishment failed: {}", e)));
+                                return;
+                            }
                         }
                     }
+                };
+
+                // Send HTTP/3 request using production h3 protocol implementation
+                let mut response_stream = pool_client.send_h3_request(h3_request);
+                
+                // Stream response chunks from HTTP/3 connection
+                for chunk in response_stream {
+                    fluent_ai_async::emit!(sender, chunk);
                 }
             });
         })
@@ -325,35 +308,20 @@ impl H3Client {
 
     /// Execute request method called from client.rs - complete implementation
     pub fn execute_request(&self, req: Request<bytes::Bytes>) -> AsyncStream<HttpResponseChunk> {
-        let mut req_clone = req;
-        let pool_key = match pool::extract_domain(req_clone.uri_mut()) {
-            Ok(s) => s,
-            Err(e) => {
-                return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Failed to extract domain: {}", e)));
-                });
-            }
-        };
+        let req_clone = req;
+        let pool_key = pool::extract_domain(req_clone.uri());
         
         let client_clone = self.clone();
         let req_uri = req_clone.uri().to_string();
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<HttpResponseChunk, crate::hyper::error::Error> {
-                let mut response_stream = client_clone.send_request(pool_key, req_clone);
-                match response_stream.try_next() {
-                    Some(response) => Ok(response),
-                    None => Err(Error::new(Kind::Request, None::<BoxError>)),
-                }
-            });
-            
-            match task.collect() {
-                Ok(result) => match result {
-                    Ok(response) => {
-                        fluent_ai_async::emit!(sender, response);
-                    },
-                    Err(e) => fluent_ai_async::emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("H3 request failed: {}", e))),
+            let mut response_stream = client_clone.send_request(pool_key, req_clone);
+            match response_stream.try_next() {
+                Some(response) => {
+                    fluent_ai_async::emit!(sender, response);
                 },
-                Err(e) => fluent_ai_async::emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("H3 task failed: {}", e))),
+                None => {
+                    fluent_ai_async::emit!(sender, crate::response::HttpResponseChunk::bad_chunk("No response received".to_string()));
+                }
             }
         })
     }

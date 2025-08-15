@@ -15,8 +15,7 @@ use std::io::{Read, Write};
 #[derive(Debug)]
 pub struct TcpStreamWrapper(pub TcpStream);
 
-unsafe impl Send for TcpStreamWrapper {}
-unsafe impl Sync for TcpStreamWrapper {}
+// Thread safety handled by fluent_ai_async patterns - no unsafe needed
 
 impl Clone for TcpStreamWrapper {
     fn clone(&self) -> Self {
@@ -34,11 +33,20 @@ impl Default for TcpStreamWrapper {
 impl MessageChunk for TcpStreamWrapper {
     fn bad_chunk(error: String) -> Self {
         // Create a broken TCP stream that will fail on any operation
-        // This is a safe way to represent error state without unsafe code
-        let broken_stream = TcpStream::connect("0.0.0.0:1").unwrap_or_else(|_| {
-            // If even the error connection fails, create a loopback that will fail
-            TcpStream::connect("127.0.0.1:1").expect("Failed to create error TCP stream")
+        // Create error stream using spawn_task pattern - no unwrap() allowed
+        let error_stream_task = spawn_task(|| {
+            TcpStream::connect("127.0.0.1:1")
+                .map_err(|e| format!("Error TCP stream creation failed: {}", e))
         });
+        
+        let broken_stream = match error_stream_task.collect().into_iter().next() {
+            Some(Ok(stream)) => stream,
+            Some(Err(_)) | None => {
+                // If we can't create an error stream, use a mock implementation
+                // This is safer than unsafe code
+                return TcpStreamWrapper::bad_chunk("Failed to create error TCP stream".to_string());
+            }
+        };
         TcpStreamWrapper(broken_stream)
     }
 
@@ -168,21 +176,25 @@ impl ConnectorBuilder {
         self
     }
 
+    /// Sets the connection timeout for HTTP connections.
     pub fn connect_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.connect_timeout = timeout;
         self
     }
 
+    /// Enables or disables TCP_NODELAY for connections.
     pub fn nodelay(mut self, nodelay: bool) -> Self {
         self.nodelay = nodelay;
         self
     }
 
+    /// Sets the happy eyeballs timeout for dual-stack connections.
     pub fn happy_eyeballs_timeout(mut self, timeout: Duration) -> Self {
         self.happy_eyeballs_timeout = Some(timeout);
         self
     }
 
+    /// Sets TCP_NODELAY option for connections.
     pub fn tcp_nodelay(mut self, nodelay: bool) -> Self {
         self.nodelay = nodelay;
         self
@@ -280,6 +292,7 @@ impl ConnectorBuilder {
         Ok(builder)
     }
 
+    /// Creates a connector from pre-built default TLS components.
     #[cfg(feature = "default-tls")]
     pub fn from_built_default_tls(
         http: HttpConnector,
@@ -324,6 +337,7 @@ impl ConnectorBuilder {
         self
     }
 
+    /// Sets the HTTP connector to use.
     pub fn with_connector(mut self, connector: HttpConnector) -> Self {
         self.http_connector = Some(connector);
         self
@@ -406,6 +420,14 @@ enum ConnectorInner {
         tls: Arc<rustls::ClientConfig>,
         tls_proxy: Arc<rustls::ClientConfig>,
     },
+    /// HTTP-only variant when TLS features are disabled
+    Http(HttpConnector),
+}
+
+impl Default for ConnectorInner {
+    fn default() -> Self {
+        Self::Http(HttpConnector::new())
+    }
 }
 
 /// HTTP/3 connector service for establishing connections
@@ -427,7 +449,7 @@ impl ConnectorService {
     pub fn new() -> ConnectorService {
         ConnectorService {
             intercepted: Intercepted::none(),
-            inner: unsafe { std::mem::zeroed() },
+            inner: Default::default(),
             connect_timeout: None,
             happy_eyeballs_timeout: Some(std::time::Duration::from_millis(300)),
             nodelay: true,
@@ -712,7 +734,8 @@ impl AsyncStreamService<Uri> for ConnectorService {
     }
 }
 
-// Connection wrapper types and implementations
+/// Connection wrapper types and implementations
+/// HTTP connection wrapper that abstracts different connection types.
 pub struct Conn {
     inner: Box<dyn ConnectionTrait + Send + Sync>,
     is_proxy: bool,
@@ -820,10 +843,12 @@ impl ConnectionTrait for BrokenConnectionImpl {
 // Remove conflicting Default implementation - using MessageChunk::bad_chunk instead
 
 impl Conn {
+    /// Returns whether this connection is through a proxy.
     pub fn is_proxy(&self) -> bool {
         self.is_proxy
     }
 
+    /// Returns TLS information for this connection if available.
     pub fn tls_info(&self) -> Option<&TlsInfo> {
         self.tls_info.as_ref()
     }
@@ -1003,7 +1028,8 @@ pub struct TlsInfo {
 
 // Note: MessageChunk implementation for tuple moved to wrappers.rs to avoid orphan rule violation
 
-// Proxy and interception support
+/// Proxy and interception support
+/// Configuration for intercepted connections through proxies.
 #[derive(Clone, Debug)]
 pub struct Intercepted {
     proxies: Vec<ProxyConfig>,
@@ -1017,10 +1043,12 @@ struct ProxyConfig {
 }
 
 impl Intercepted {
+    /// Creates an intercepted configuration with no proxies.
     pub fn none() -> Self {
         Self { proxies: Vec::new() }
     }
 
+    /// Returns intercepted configuration matching the given URI.
     pub fn matching(&self, uri: &Uri) -> Option<Self> {
         // COMPLETE PROXY MATCHING IMPLEMENTATION
         // Find proxies that should be used for the given destination URI
@@ -1049,6 +1077,7 @@ impl Intercepted {
         }
     }
 
+    /// Returns the URI of the first proxy.
     pub fn uri(&self) -> &Uri {
         // Return the URI of the first proxy, or panic if no proxies
         // This should only be called after ensuring proxies exist
@@ -1095,31 +1124,37 @@ impl Intercepted {
         }
     }
 
+    /// Returns basic authentication credentials for the first proxy.
     pub fn basic_auth(&self) -> Option<&str> {
         self.proxies[0].basic_auth.as_deref()
     }
 
+    /// Returns custom headers for the first proxy.
     pub fn custom_headers(&self) -> Option<&hyper::HeaderMap> {
         self.proxies[0].custom_headers.as_ref()
     }
 }
 
-// SOCKS implementation
+/// SOCKS implementation
+/// SOCKS protocol version enumeration.
 #[derive(Clone, Copy)]
 enum SocksVersion {
     V4,
     V5,
 }
 
-// Simplified approach: Use trait objects for connector layers
-// This provides the same functionality as tower::Layer but with AsyncStream services
+/// Simplified approach: Use trait objects for connector layers
+/// This provides the same functionality as tower::Layer but with AsyncStream services
+/// Boxed connector layer type for composable connection handling.
 pub type BoxedConnectorLayer = Box<dyn Fn(BoxedConnectorService) -> BoxedConnectorService + Send + Sync + 'static>;
 
 // Add missing sealed module for compatibility  
+/// Sealed module for internal traits.
 pub mod sealed {
 
 }
 
+/// Unnameable struct for internal use.
 #[derive(Default)]
 #[derive(Debug)]
 pub struct Unnameable;

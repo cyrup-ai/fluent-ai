@@ -263,10 +263,19 @@ impl completion::CompletionModel for TogetherCompletionModel {
         request_body.stream = Some(true);
 
         AsyncStream::with_channel(move |sender| {
-            // Use Http3::json() for streaming with SSE handling - NO FUTURES
+            // Use Http3::json() with ChunkHandler for streaming with SSE handling - NO FUTURES
             let mut response_stream = Http3::json()
                 .api_key(&api_key)
                 .body(&request_body)
+                .on_chunk(|result: Result<fluent_ai_http3::HttpChunk, fluent_ai_http3::HttpError>| -> fluent_ai_http3::HttpChunk {
+                    match result {
+                        Ok(chunk) => chunk,
+                        Err(error) => {
+                            tracing::error!("Together HTTP streaming error: {:?}", error);
+                            fluent_ai_http3::HttpChunk::bad_chunk(format!("Together HTTP streaming error: {:?}", error))
+                        }
+                    }
+                })
                 .post(&format!("{}/v1/chat/completions", base_url));
 
             // Process SSE stream using AsyncStream patterns

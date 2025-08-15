@@ -8,10 +8,12 @@ type SocketAddrIter = ArrayIntoIter<SocketAddr, 8>;
 // Note: Cannot implement MessageChunk for ArrayVec::IntoIter due to orphan rule.
 // Using wrapper type instead for DNS resolution results.
 // Define our own Name type instead of using hyper_util
+/// DNS name representation for hostname resolution.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name(String);
 
 impl Name {
+    /// Returns the name as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }

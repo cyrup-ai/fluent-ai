@@ -402,12 +402,10 @@ impl Response {
         use fluent_ai_async::prelude::*;
         
         AsyncStream::<crate::wrappers::BytesWrapper, 1024>::with_channel(move |sender| {
-            spawn_task(move || {
-                // Stream actual response body data from the decoder
-                let (_, decoder) = self.res.into_parts();
-                // For now, emit empty bytes until proper decoder streaming is implemented
-                emit!(sender, crate::wrappers::BytesWrapper::from(bytes::Bytes::new()));
-            });
+            // Temporarily disable decoder streaming due to type mismatches
+            // BoxBody type compatibility and decoder integration disabled
+            // Type compatibility will be restored when hyper versions are aligned
+            fluent_ai_async::emit!(sender, crate::wrappers::BytesWrapper::from(bytes::Bytes::new()));
         })
     }
 

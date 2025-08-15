@@ -226,9 +226,18 @@ impl completion::CompletionModel for XaiCompletionModel {
             let response_stream = Http3::json()
                 .api_key(&client.api_key)
                 .body(&request_body)
+                .on_chunk(|result: Result<fluent_ai_http3::HttpChunk, fluent_ai_http3::HttpError>| -> fluent_ai_http3::HttpChunk {
+                    match result {
+                        Ok(chunk) => chunk,
+                        Err(error) => {
+                            tracing::error!("XAI streaming HTTP error: {:?}", error);
+                            fluent_ai_http3::HttpChunk::bad_chunk(format!("XAI streaming HTTP error: {:?}", error))
+                        }
+                    }
+                })
                 .post("https://api.x.ai/v1/chat/completions");
 
-            // Process chunks using streaming-only patterns
+            // Process chunks using streaming-only patterns with ChunkHandler
             response_stream.on_chunk(|chunk| {
                 match chunk {
                     Ok(chunk_bytes) => {
@@ -344,10 +353,19 @@ impl StreamingCompletionProvider for XaiCompletionModel {
                 }
             };
 
-            // Stream completion using Http3 patterns
+            // Stream completion using Http3 ChunkHandler patterns
             let response_stream = Http3::json()
                 .api_key(&client.api_key)
                 .body(&xai_request)
+                .on_chunk(|result: Result<fluent_ai_http3::HttpChunk, fluent_ai_http3::HttpError>| -> fluent_ai_http3::HttpChunk {
+                    match result {
+                        Ok(chunk) => chunk,
+                        Err(error) => {
+                            tracing::error!("XAI HTTP streaming error: {:?}", error);
+                            fluent_ai_http3::HttpChunk::bad_chunk(format!("XAI HTTP streaming error: {:?}", error))
+                        }
+                    }
+                })
                 .post("https://api.x.ai/v1/chat/completions");
 
             // Process streaming response chunks
@@ -379,9 +397,18 @@ impl StreamingCompletionProvider for XaiCompletionModel {
         AsyncStream::with_channel(move |sender| {
             emit!(sender, ConnectionStatus::Testing);
 
-            // Test connection with simple model list request
+            // Test connection with simple model list request using ChunkHandler
             let response_stream = Http3::json()
                 .api_key(&client.api_key)
+                .on_chunk(|result: Result<fluent_ai_http3::HttpChunk, fluent_ai_http3::HttpError>| -> fluent_ai_http3::HttpChunk {
+                    match result {
+                        Ok(chunk) => chunk,
+                        Err(error) => {
+                            tracing::error!("XAI connection test error: {:?}", error);
+                            fluent_ai_http3::HttpChunk::bad_chunk(format!("XAI connection test error: {:?}", error))
+                        }
+                    }
+                })
                 .get("https://api.x.ai/v1/models");
 
             response_stream.on_chunk(|chunk| match chunk {

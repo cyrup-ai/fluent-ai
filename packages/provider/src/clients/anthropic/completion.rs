@@ -1,13 +1,23 @@
 //! Zero-allocation Anthropic completion with cyrup_sugars typestate builders and fluent_ai_http3
 //!
-//! Blazing-fast streaming completions with elegant ergonomics:
+//! Blazing-fast streaming completions with elegant ChunkHandler pattern:
 //! ```
+//! use cyrup_sugars::ChunkHandler;
+//! 
 //! client.completion_model("claude-3-5-sonnet-20241022")
 //!     .system_prompt("You are helpful")
 //!     .temperature(0.8)
-//!     .on_chunk(|chunk| {
-//!         Ok => log::info!("Chunk: {:?}", chunk),
-//!         Err => log::error!("Error: {:?}", chunk)
+//!     .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
+//!         match result {
+//!             Ok(chunk) => {
+//!                 log::info!("✅ Chunk: {:?}", chunk);
+//!                 chunk
+//!             }
+//!             Err(error) => {
+//!                 log::error!("❌ Error: {:?}", error);
+//!                 CompletionChunk::bad_chunk(error)
+//!             }
+//!         }
 //!     })
 //!     .prompt("Hello world")
 //! ```

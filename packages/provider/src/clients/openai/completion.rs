@@ -5,9 +5,17 @@
 //! client.completion_model("gpt-4o")
 //!     .system_prompt("You are helpful")
 //!     .temperature(0.8)
-//!     .on_chunk(|chunk| {
-//!         Ok => log::info!("Chunk: {:?}", chunk),
-//!         Err => log::error!("Error: {:?}", chunk)
+//!     .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
+//!         match result {
+//!             Ok(chunk) => {
+//!                 log::info!("✅ OpenAI chunk: {:?}", chunk);
+//!                 chunk
+//!             }
+//!             Err(error) => {
+//!                 log::error!("❌ OpenAI error: {:?}", error);
+//!                 CompletionChunk::bad_chunk(error)
+//!             }
+//!         }
 //!     })
 //!     .prompt("Hello world")
 //! ```

@@ -512,9 +512,17 @@ use fluent_ai_domain::tool::ToolDefinition;
 /// client.completion_model("mistral-large-latest")
 ///     .system_prompt("You are helpful")
 ///     .temperature(0.8)
-///     .on_chunk(|chunk| {
-///         Ok => log::info!("Chunk: {:?}", chunk),
-///         Err => log::error!("Error: {:?}", chunk)
+///     .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
+///         match result {
+///             Ok(chunk) => {
+///                 log::info!("✅ Mistral chunk: {:?}", chunk);
+///                 chunk
+///             }
+///             Err(error) => {
+///                 log::error!("❌ Mistral error: {:?}", error);
+///                 CompletionChunk::bad_chunk(error)
+///             }
+///         }
 ///     })
 ///     .prompt("Hello world")
 /// ```

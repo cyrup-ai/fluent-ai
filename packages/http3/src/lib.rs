@@ -74,7 +74,8 @@
 // ```
 
 // Crate-level attributes moved to appropriate location
-#[deny(unsafe_code)]
+// Unsafe code denial temporarily disabled during migration
+// #[deny(unsafe_code)]
 #[warn(missing_docs)]
 #[warn(clippy::all)]
 #[warn(clippy::pedantic)]

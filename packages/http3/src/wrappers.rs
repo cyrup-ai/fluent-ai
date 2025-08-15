@@ -361,10 +361,18 @@ impl<B: Default> MessageChunk for ResponseWrapper<B> {
             .header("content-type", "text/plain")
             .body(B::default())
             .unwrap_or_else(|_| {
-                Response::builder()
+                // Use minimal safe response if even the fallback fails
+                match Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(B::default())
-                    .expect("Failed to create error response")
+                    .body(B::default()) {
+                    Ok(resp) => resp,
+                    Err(_) => {
+                        // Absolute fallback - create response directly without builder
+                        let mut resp = Response::new(B::default());
+                        *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                        resp
+                    }
+                }
             });
         Self(response)
     }

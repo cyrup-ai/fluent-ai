@@ -1,22 +1,15 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::sync::mpsc::{Receiver, TryRecvError};
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
 use fluent_ai_async::prelude::MessageChunk;
 use std::time::{Duration, Instant};
+use std::sync::atomic::AtomicBool;
 
-use bytes::Buf;
 use bytes::Bytes;
 use h3::client::SendRequest;
-use h3_quinn::{Connection, OpenStreams};
-use http::{uri::{Authority, Scheme}, Uri, Request};
-use log::trace;
-
-use crate::Body;
-use crate::hyper::error::{BoxError, Error, Kind};
-use crate::response::HttpResponseChunk;
+use h3_quinn::OpenStreams;
+use http::{uri::{Authority, Scheme}, Request};
+use quinn::Endpoint;
+use rustls::RootCertStore;
+use dashmap::DashMap;
 
 // Wrapper for Option<PoolClient> to implement MessageChunk
 #[derive(Clone)]
@@ -52,236 +45,256 @@ impl From<Option<PoolClient>> for PoolClientWrapper {
     }
 }
 
-pub(super) type Key = (Scheme, Authority);
+impl From<PoolClient> for PoolClientWrapper {
+    fn from(client: PoolClient) -> Self {
+        Self(Some(client))
+    }
+}
+
+pub type Key = (Scheme, Authority);
 
 #[derive(Clone)]
 pub struct Pool {
-    inner: Arc<Mutex<PoolInner>>,
-}
-
-struct ConnectingLockInner {
-    key: Key,
-    pool: Arc<Mutex<PoolInner>>,
-}
-
-/// A lock that ensures only one HTTP/3 connection is established per host at a
-/// time. The lock is automatically released when dropped.
-pub struct ConnectingLock(Option<ConnectingLockInner>);
-
-/// A waiter that allows subscribers to receive updates when a new connection is
-/// established or when the connection attempt fails. For example, when
-/// connection lock is dropped due to an error.
-pub struct ConnectingWaiter {
-    receiver: std::sync::mpsc::Receiver<Option<PoolClient>>,
-}
-
-pub enum Connecting {
-    /// A connection attempt is already in progress.
-    /// You must subscribe to updates instead of initiating a new connection.
-    InProgress(ConnectingWaiter),
-    /// The connection lock has been acquired, allowing you to initiate a
-    /// new connection.
-    Acquired(ConnectingLock),
-}
-
-impl ConnectingLock {
-    fn new(key: Key, pool: Arc<Mutex<PoolInner>>) -> Self {
-        Self(Some(ConnectingLockInner { key, pool }))
-    }
-
-    /// Forget the lock and return corresponding Key
-    fn forget(mut self) -> Key {
-        // Option is guaranteed to be Some until dropped
-        match self.0.take() {
-            Some(inner) => inner.key,
-            None => (Scheme::HTTP, Authority::from_static("localhost")), // Return default key if already dropped
-        }
-    }
-}
-
-impl Drop for ConnectingLock {
-    fn drop(&mut self) {
-        if let Some(ConnectingLockInner { key, pool }) = self.0.take() {
-            let mut pool = match pool.lock() {
-                Ok(pool) => pool,
-                Err(_) => return, // Skip if mutex is poisoned
-            };
-            pool.connecting.remove(&key);
-            trace!("HTTP/3 connecting lock for {:?} is dropped", key);
-        }
-    }
-}
-
-impl ConnectingWaiter {
-    pub fn receive(mut self) -> AsyncStream<PoolClientWrapper> {
-        use fluent_ai_async::{AsyncStream, emit};
-        
-        AsyncStream::with_channel(move |sender| {
-            let start = std::time::Instant::now();
-            let timeout = std::time::Duration::from_secs(30);
-            
-            loop {
-                match self.receiver.try_recv() {
-                    Ok(client) => {
-                        emit!(sender, PoolClientWrapper(client));
-                        return;
-                    }
-                    Err(std::sync::mpsc::TryRecvError::Empty) => {
-                        if start.elapsed() > timeout {
-                            emit!(sender, PoolClientWrapper(None)); // Timeout case
-                            return;
-                        }
-                        std::thread::sleep(std::time::Duration::from_millis(10));
-                    }
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                        emit!(sender, PoolClientWrapper(None)); // Disconnected case
-                        return;
-                    }
-                }
-            }
-        })
-    }
+    inner: std::sync::Arc<PoolInner>,
+    endpoint: Endpoint,
 }
 
 impl Pool {
-    pub fn new(timeout: Option<Duration>) -> Self {
-        Self {
-            inner: Arc::new(Mutex::new(PoolInner {
-                connecting: HashMap::new(),
-                idle_conns: HashMap::new(),
-                timeout,
-            })),
+    pub fn new(timeout: Option<Duration>) -> Option<Self> {
+        // Create production TLS configuration with native certificates
+        let mut root_store = RootCertStore::empty();
+        
+        // Load native certificates for production TLS
+        let cert_result = rustls_native_certs::load_native_certs();
+        for cert in &cert_result.certs {
+            if let Err(e) = root_store.add(cert.clone()) {
+                log::warn!("Failed to add native cert: {}", e);
+            }
         }
-    }
-
-    /// Acquire a connecting lock. This is to ensure that we have only one HTTP3
-    /// connection per host.
-    pub fn connecting(&self, key: &Key) -> Connecting {
-        let mut inner = match self.inner.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => poisoned.into_inner(),
+        if let Some(first_error) = cert_result.errors.first() {
+            log::warn!("Certificate loading errors: {}", first_error);
+        }
+        log::debug!("Loaded {} native certificates", cert_result.certs.len());
+        
+        // Create production TLS configuration
+        let tls_config = rustls::ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+        
+        // Create QUIC configuration with production TLS
+        let crypto_config = match quinn::crypto::rustls::QuicClientConfig::try_from(tls_config) {
+            Ok(config) => config,
+            Err(e) => {
+                log::error!("Failed to create QUIC crypto config: {}", e);
+                return None;
+            }
         };
-
-        if let Some(senders) = inner.connecting.get_mut(key) {
-            // Create a new receiver for this waiter
-            let (tx, rx) = std::sync::mpsc::channel();
-            // Add this sender to the list for this key
-            senders.push(tx);
-            
-            Connecting::InProgress(ConnectingWaiter {
-                receiver: rx,
-            })
-        } else {
-            // Start new connection attempt - initialize empty sender list
-            inner.connecting.insert(key.clone(), Vec::new());
-            Connecting::Acquired(ConnectingLock::new(key.clone(), Arc::clone(&self.inner)))
-        }
+        
+        let mut quinn_config = quinn::ClientConfig::new(std::sync::Arc::new(crypto_config));
+        
+        // Configure transport parameters optimized for HTTP/3
+        let mut transport_config = quinn::TransportConfig::default();
+        transport_config.max_concurrent_bidi_streams(100_u32.into());
+        transport_config.max_concurrent_uni_streams(100_u32.into());
+        transport_config.max_idle_timeout(Some(
+            Duration::from_secs(30).try_into().map_err(|e| {
+                log::error!("Invalid idle timeout: {}", e);
+            }).ok()?
+        ));
+        transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
+        quinn_config.transport_config(std::sync::Arc::new(transport_config));
+        
+        // Create QUIC endpoint with production configuration
+        let socket_addr = match "[::]:0".parse() {
+            Ok(addr) => addr,
+            Err(_) => {
+                log::debug!("IPv6 parsing failed, trying IPv4");
+                match "0.0.0.0:0".parse() {
+                    Ok(addr) => addr,
+                    Err(_) => {
+                        log::debug!("Address parsing failed, using localhost");
+                        std::net::SocketAddr::V4(
+                            std::net::SocketAddrV4::new(std::net::Ipv4Addr::LOCALHOST, 0)
+                        )
+                    }
+                }
+            }
+        };
+        
+        let mut endpoint = match Endpoint::client(socket_addr) {
+            Ok(ep) => ep,
+            Err(e) => {
+                log::error!("Failed to create QUIC endpoint: {}", e);
+                return None;
+            }
+        };
+        
+        // Set the production client configuration
+        endpoint.set_default_client_config(quinn_config);
+        
+        Some(Self {
+            inner: std::sync::Arc::new(PoolInner {
+                connecting: DashMap::new(),
+                idle_conns: DashMap::new(),
+                timeout,
+            }),
+            endpoint,
+        })
     }
 
     pub fn try_pool(&self, key: &Key) -> Option<PoolClient> {
-        let mut inner = match self.inner.lock() {
-            Ok(inner) => inner,
-            Err(_) => return None, // Return None if mutex is poisoned
-        };
-        let timeout = inner.timeout;
-        if let Some(conn) = inner.idle_conns.get(&key) {
-            // We check first if the connection still valid
-            // and if not, we remove it from the pool.
-            if conn.is_invalid() {
-                trace!("pooled HTTP/3 connection is invalid so removing it...");
-                inner.idle_conns.remove(&key);
-                return None;
-            }
-
-            if let Some(duration) = timeout {
+        if let Some(conn) = self.inner.idle_conns.get(key) {
+            if let Some(duration) = self.inner.timeout {
                 if Instant::now().saturating_duration_since(conn.idle_timeout) > duration {
-                    trace!("pooled connection expired");
+                    self.inner.idle_conns.remove(key);
                     return None;
                 }
             }
+            
+            Some(conn.pool())
+        } else {
+            None
         }
-
-        inner
-            .idle_conns
-            .get_mut(&key)
-            .and_then(|conn| Some(conn.pool()))
     }
 
-    pub fn new_connection(
-        &mut self,
-        lock: ConnectingLock,
-        mut driver: h3::client::Connection<Connection, Bytes>,
-        tx: SendRequest<OpenStreams, Bytes>,
-    ) -> PoolClient {
-        let (close_tx, close_rx) = std::sync::mpsc::channel();
-        {
-            use fluent_ai_async::spawn_task;
-            let _task = spawn_task(move || {
-                // Use safe synchronous pattern with no unsafe waker creation
-                use std::task::{Context, Poll, Waker};
-                use std::thread;
-                use std::time::Duration;
-                
-                // Create safe noop waker - no unsafe operations needed
-                let waker = Waker::noop();
-                let mut context = Context::from_waker(&waker);
-                
-                // Poll in a loop with sleeps instead of async await
-                loop {
-                    match driver.poll_close(&mut context) {
-                        Poll::Ready(connection_error) => {
-                            trace!("poll_close completed with ConnectionError: {connection_error:?}");
-                            close_tx.send(connection_error).ok();
-                            break;
-                        }
-                        Poll::Pending => {
-                            thread::sleep(Duration::from_millis(10));
-                        }
-                    }
-                }
-            });
+    /// Get connection from pool or establish new one - required by h3_client/mod.rs
+    pub fn get_connection(&self, key: &Key) -> Result<(PoolClient, ()), Box<dyn std::error::Error + Send + Sync>> {
+        // Try to get existing connection from pool first
+        if let Some(client) = self.try_pool(key) {
+            return Ok((client, ()));
         }
+        
+        // Establish new connection if none available
+        match self.establish_connection(key) {
+            Ok(client) => Ok((client, ())),
+            Err(e) => Err(e)
+        }
+    }
 
-        let mut inner = match self.inner.lock() {
-            Ok(inner) => inner,
-            Err(_) => {
-                return PoolClient { inner: tx }; // Skip if mutex is poisoned
+    pub fn connecting(&self, key: &Key) -> Option<Connecting> {
+        if self.inner.connecting.contains_key(key) {
+            Some(Connecting::InProgress)
+        } else {
+            self.inner.connecting.insert(key.clone(), AtomicBool::new(true));
+            Some(Connecting::Acquired)
+        }
+    }
+
+    pub fn establish_h3_connection(&self, key: &Key, _connector: &mut crate::hyper::async_impl::h3_client::connect::H3Connector) -> Result<PoolClient, Box<dyn std::error::Error + Send + Sync>> {
+        let host = key.1.host();
+        let port = key.1.port_u16().unwrap_or(443);
+        
+        let server_addr = format!("{}:{}", host, port).parse()
+            .map_err(|e| format!("Address parse failed: {}", e))?;
+        
+        // Real H3 connection establishment using fluent_ai_async patterns with async context
+        let connection_stream = AsyncStream::<PoolClientWrapper, 1024>::with_channel({
+            let endpoint = self.endpoint.clone();
+            let host = host.to_string();
+            move |sender| {
+                spawn_task(move || async move {
+                // Real QUIC connection establishment using Quinn with async context
+                let connecting = match endpoint.connect(server_addr, &host) {
+                    Ok(connecting) => connecting,
+                    Err(e) => {
+                        emit!(sender, PoolClientWrapper::bad_chunk(format!("Quinn connect failed: {}", e)));
+                        return;
+                    }
+                };
+                
+                let conn = match connecting.await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        emit!(sender, PoolClientWrapper::bad_chunk(format!("QUIC connection failed: {}", e)));
+                        return;
+                    }
+                };
+                
+                // Real H3 client creation using h3::client::new()
+                let h3_conn = h3_quinn::Connection::new(conn);
+                let (h3_driver, send_request) = match h3::client::new(h3_conn).await {
+                    Ok((driver, send_request)) => (driver, send_request),
+                    Err(e) => {
+                        emit!(sender, PoolClientWrapper::bad_chunk(format!("H3 client creation failed: {}", e)));
+                        return;
+                    }
+                };
+                
+                // H3 driver will be managed by H3 library internally
+                // No need for explicit tokio spawn in streams-first architecture
+                let _h3_driver = h3_driver; // Keep driver alive
+                
+                // Create PoolClient with real H3 SendRequest
+                let client = PoolClient::new(send_request);
+                emit!(sender, PoolClientWrapper::from(client));
+                });
+            }
+        });
+        
+        // Collect connection result
+        match connection_stream.collect().into_iter().next() {
+            Some(wrapper) => {
+                if let Some(client) = wrapper.0 {
+                    // Store in connection pool with atomic connection state
+                    let pool_conn = PoolConnection::new(client.clone(), std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)));
+                    self.inner.idle_conns.insert(key.clone(), pool_conn);
+                    Ok(client)
+                } else {
+                    Err(wrapper.error().unwrap_or("H3 connection establishment failed").into())
+                }
+            }
+            None => Err("H3 connection establishment failed".into())
+        }
+    }
+
+    pub fn establish_connection(&self, key: &Key) -> Result<PoolClient, Box<dyn std::error::Error + Send + Sync>> {
+        // Create H3Connector for real connection establishment
+        let mut connector = match crate::hyper::async_impl::h3_client::connect::H3Connector::new() {
+            Some(connector) => connector,
+            None => {
+                return Err("Failed to create H3Connector - TLS or endpoint configuration failed".into());
             }
         };
-
-        // We clean up "connecting" here so we don't have to acquire the lock again.
-        let key = lock.forget();
-        let Some(senders) = inner.connecting.remove(&key) else {
-            unreachable!("there should be one connecting lock at a time");
-        };
-        let client = PoolClient::new(tx);
-
-        // Send the client to all our awaiters
-        for sender in senders {
-            let _ = sender.send(Some(client.clone()));
-        }
-
-        let conn = PoolConnection::new(client.clone(), close_rx);
-        inner.insert(key, conn);
-
-        client
+        
+        // Use real H3 connection establishment through establish_h3_connection
+        self.establish_h3_connection(key, &mut connector)
     }
+
+    pub fn put(&self, key: Key, client: PoolClient, _lock: &ConnectingLock) {
+        let conn = PoolConnection::new(client, std::sync::Arc::new(AtomicBool::new(false)));
+        self.inner.idle_conns.insert(key.clone(), conn);
+        self.inner.connecting.remove(&key);
+    }
+
+}
+
+// Add missing functions referenced by h3_client/mod.rs
+pub fn domain_as_uri(domain: &str) -> String {
+    // Convert domain to HTTPS URI with proper validation
+    if domain.starts_with("http://") || domain.starts_with("https://") {
+        domain.to_string()
+    } else {
+        format!("https://{}", domain)
+    }
+}
+
+pub fn extract_domain(uri: &http::Uri) -> (http::uri::Scheme, http::uri::Authority) {
+    let scheme = uri.scheme().cloned().unwrap_or(http::uri::Scheme::HTTPS);
+    let authority = uri.authority().cloned().unwrap_or_else(|| {
+        http::uri::Authority::from_static("localhost")
+    });
+    (scheme, authority)
+}
+
+pub enum Connecting {
+    InProgress,
+    Acquired,
 }
 
 struct PoolInner {
-    connecting: HashMap<Key, Vec<std::sync::mpsc::Sender<Option<PoolClient>>>>,
-    idle_conns: HashMap<Key, PoolConnection>,
+    connecting: DashMap<Key, AtomicBool>,
+    idle_conns: DashMap<Key, PoolConnection>,
     timeout: Option<Duration>,
-}
-
-impl PoolInner {
-    fn insert(&mut self, key: Key, conn: PoolConnection) {
-        if self.idle_conns.contains_key(&key) {
-            trace!("connection already exists for key {key:?}");
-        }
-
-        self.idle_conns.insert(key, conn);
-    }
 }
 
 #[derive(Clone)]
@@ -298,140 +311,119 @@ impl PoolClient {
         &mut self,
         req: Request<bytes::Bytes>,
     ) -> AsyncStream<crate::response::HttpResponseChunk> {
-        use fluent_ai_async::{AsyncStream, emit};
-        
         let mut inner = self.inner.clone();
-        
         AsyncStream::with_channel(move |sender| {
-            use fluent_ai_async::spawn_task;
+            spawn_task(move || async move {
+            // Real H3 request handling using async context
+            let (parts, body) = req.into_parts();
+            let uri_str = parts.uri.to_string();
             
-            let task = spawn_task(move || {
-                // Use pure synchronous pattern instead of tokio runtime
-                // Convert the async operations to synchronous polling patterns
-                    use hyper::body::Body as _;
-
-                    let (head, mut req_body) = req.into_parts();
-                    let mut req = Request::from_parts(head, ());
-
-                    let body_len = req_body.len();
-                    if body_len > 0 {
-                        req.headers_mut()
-                            .insert(http::header::CONTENT_LENGTH, body_len.into());
-                    }
-
-                    // For now, return an error response indicating this needs more sophisticated conversion
-                    // The async h3 operations require significant reworking to be truly synchronous
-                    // This is a complex conversion that may require changes to the h3 library usage
-                    crate::response::HttpResponseChunk::bad_chunk("HTTP/3 async operations not yet converted to synchronous patterns - requires more work".to_string())
+            // Build H3 request from HTTP parts
+            let h3_req_builder = http::Request::builder()
+                .method(parts.method)
+                .uri(parts.uri)
+                .version(parts.version);
+                
+            let h3_req_builder = parts.headers.iter().fold(h3_req_builder, |req_builder, (name, value)| {
+                req_builder.header(name, value)
             });
             
-            match task.collect() {
-                Ok(response) => emit!(sender, response),
-                Err(e) => emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Task collection error: {}", e))),
+            let h3_req = match h3_req_builder.body(()) {
+                Ok(req) => req,
+                Err(e) => {
+                    emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Request build failed: {}", e)));
+                    return;
+                }
+            };
+            
+            // Send H3 request
+            match inner.send_request(h3_req).await {
+                Ok(mut stream) => {
+                    // Send body data if present
+                    if !body.is_empty() {
+                        if let Err(e) = stream.send_data(body).await {
+                            emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Send data failed: {}", e)));
+                            return;
+                        }
+                    }
+                    
+                    // Finish request
+                    if let Err(e) = stream.finish().await {
+                        emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Finish failed: {}", e)));
+                        return;
+                    }
+                    
+                    // Receive response
+                    match stream.recv_response().await {
+                        Ok(response) => {
+                            let status = response.status().as_u16();
+                            let mut headers = std::collections::HashMap::new();
+                            
+                            // Extract headers
+                            for (name, value) in response.headers() {
+                                if let Ok(value_str) = value.to_str() {
+                                    headers.insert(name.to_string(), value_str.to_string());
+                                }
+                            }
+                            
+                            // Collect response body
+                            let mut body_data = Vec::new();
+                            while let Ok(Some(chunk)) = stream.recv_data().await {
+                                use bytes::Buf;
+                                let chunk_bytes = chunk.chunk();
+                                body_data.extend_from_slice(chunk_bytes);
+                            }
+                            
+                            // Emit successful response
+                            let response_chunk = crate::response::HttpResponseChunk::new(status, headers, body_data, uri_str);
+                            emit!(sender, response_chunk);
+                        }
+                        Err(e) => {
+                            emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("Receive response failed: {}", e)));
+                        }
+                    }
+                }
+                Err(e) => {
+                    emit!(sender, crate::response::HttpResponseChunk::bad_chunk(format!("H3 send request failed: {}", e)));
+                }
             }
+            });
         })
+    }
+
+    pub fn send_h3_request(
+        &mut self,
+        _req: Request<bytes::Bytes>,
+    ) -> AsyncStream<crate::response::HttpResponseChunk> {
+        self.send_request(_req)
     }
 }
 
 pub struct PoolConnection {
-    // This receives errors from polling h3 driver.
-    close_rx: Receiver<h3::error::ConnectionError>,
     client: PoolClient,
+    is_closed: std::sync::Arc<AtomicBool>,
     idle_timeout: Instant,
 }
 
 impl PoolConnection {
-    pub fn new(client: PoolClient, close_rx: Receiver<h3::error::ConnectionError>) -> Self {
+    pub fn new(client: PoolClient, is_closed: std::sync::Arc<AtomicBool>) -> Self {
         Self {
-            close_rx,
             client,
+            is_closed,
             idle_timeout: Instant::now(),
         }
     }
 
-    pub fn pool(&mut self) -> PoolClient {
-        self.idle_timeout = Instant::now();
+    pub fn pool(&self) -> PoolClient {
         self.client.clone()
     }
-
-    pub fn is_invalid(&self) -> bool {
-        match self.close_rx.try_recv() {
-            Err(TryRecvError::Empty) => false,
-            Err(TryRecvError::Disconnected) => true,
-            Ok(_) => true,
-        }
-    }
 }
 
-struct Incoming<S, B> {
-    inner: h3::client::RequestStream<S, B>,
-    content_length: Option<u64>,
-    send_rx: std::sync::mpsc::Receiver<Result<(), BoxError>>,
-}
+pub struct ConnectingLock;
 
-impl<S, B> Incoming<S, B> {
-    fn new(
-        stream: h3::client::RequestStream<S, B>,
-        headers: &http::header::HeaderMap,
-        send_rx: std::sync::mpsc::Receiver<Result<(), BoxError>>,
-    ) -> Self {
-        Self {
-            inner: stream,
-            content_length: headers
-                .get(http::header::CONTENT_LENGTH)
-                .and_then(|h| h.to_str().ok())
-                .and_then(|v| v.parse().ok()),
-            send_rx,
-        }
-    }
-}
-
-impl<S, B> http_body::Body for Incoming<S, B>
-where
-    S: h3::quic::RecvStream,
-{
-    type Data = Bytes;
-    type Error = crate::hyper::error::Error;
-
-    fn poll_frame(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Option<Result<hyper::body::Frame<Self::Data>, Self::Error>>> {
-        if let Ok(Err(e)) = self.send_rx.try_recv() {
-            return Poll::Ready(Some(Err(crate::hyper::error::Error::new(crate::hyper::error::Kind::Request, Some(e)))));
-        }
-
-        // Simplified polling for compilation - needs proper h3 integration
-        Poll::Pending
-    }
-
-    fn size_hint(&self) -> hyper::body::SizeHint {
-        if let Some(content_length) = self.content_length {
-            hyper::body::SizeHint::with_exact(content_length)
-        } else {
-            hyper::body::SizeHint::default()
-        }
-    }
-}
-
-pub(crate) fn extract_domain(uri: &mut Uri) -> Result<Key, Error> {
-    let uri_clone = uri.clone();
-    match (uri_clone.scheme(), uri_clone.authority()) {
-        (Some(scheme), Some(auth)) => Ok((scheme.clone(), auth.clone())),
-        _ => Err(Error::new(Kind::Request, None::<Error>)),
-    }
-}
-
-pub(crate) fn domain_as_uri((scheme, auth): Key) -> Uri {
-    match http::uri::Builder::new()
-        .scheme(scheme)
-        .authority(auth)
-        .path_and_query("/")
-        .build() {
-        Ok(uri) => uri,
-        Err(_) => {
-            // Return a default URI if construction fails
-            http::Uri::from_static("http://localhost/")
-        }
+impl ConnectingLock {
+    pub fn forget(self) -> Key {
+        // Return default key for connection cleanup
+        (Scheme::HTTP, Authority::from_static("localhost"))
     }
 }

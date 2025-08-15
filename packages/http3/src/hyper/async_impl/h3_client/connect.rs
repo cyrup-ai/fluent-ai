@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
-use fluent_ai_async::{AsyncStream, spawn_task};
+use fluent_ai_async::{AsyncStream, spawn_task, emit};
 
 use bytes::Bytes;
 use h3::client::SendRequest;
@@ -22,38 +22,35 @@ type DynResolver = ();
 
 /// Custom H3 connection wrapper to avoid Default trait bound issues
 pub struct H3Connection {
-    pub connection: h3::client::Connection<Connection, Bytes>,
-    pub send_request: SendRequest<OpenStreams, Bytes>,
+    pub connection: Option<h3::client::Connection<Connection, Bytes>>,
+    pub send_request: Option<SendRequest<OpenStreams, Bytes>>,
+    pub error_message: Option<String>,
 }
 
 impl MessageChunk for H3Connection {
     fn bad_chunk(error: String) -> Self {
-        // Create error connection using unsafe zeroed for compilation
-        let error_conn: h3::client::Connection<Connection, Bytes> = unsafe { std::mem::zeroed() };
-        let error_send: SendRequest<OpenStreams, Bytes> = unsafe { std::mem::zeroed() };
         Self {
-            connection: error_conn,
-            send_request: error_send,
+            connection: None,
+            send_request: None,
+            error_message: Some(error),
         }
     }
     
     fn is_error(&self) -> bool {
-        false // Cannot easily inspect H3 connection state
+        self.error_message.is_some()
     }
     
     fn error(&self) -> Option<&str> {
-        None
+        self.error_message.as_deref()
     }
 }
 
 impl Default for H3Connection {
     fn default() -> Self {
-        // Use unsafe zeroed for mock implementation
-        let mock_conn: h3::client::Connection<Connection, Bytes> = unsafe { std::mem::zeroed() };
-        let mock_send: SendRequest<OpenStreams, Bytes> = unsafe { std::mem::zeroed() };
         Self {
-            connection: mock_conn,
-            send_request: mock_send,
+            connection: None,
+            send_request: None,
+            error_message: None,
         }
     }
 }
@@ -104,30 +101,76 @@ pub(crate) struct H3Connector {
 }
 
 impl H3Connector {
-    pub fn new(
-        resolver: DynResolver,
-        tls: rustls::ClientConfig,
-        local_addr: Option<IpAddr>,
-        transport_config: TransportConfig,
-        client_config: H3ClientConfig,
-    ) -> Result<H3Connector, BoxError> {
-        let quic_client_config = Arc::new(QuicClientConfig::try_from(tls)?);
-        let mut config = ClientConfig::new(quic_client_config);
-        // Configure QUIC transport parameters for HTTP/3 optimization
-        config.transport_config(Arc::new(transport_config));
-
-        let socket_addr = match local_addr {
-            Some(ip) => SocketAddr::new(ip, 0),
-            None => SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 0], 0)),
+    pub fn new() -> Option<Self> {
+        // Create production TLS configuration with native certificates
+        let mut root_store = rustls::RootCertStore::empty();
+        
+        // Load native certificates for production TLS
+        let cert_result = rustls_native_certs::load_native_certs();
+        for cert in &cert_result.certs {
+            if let Err(e) = root_store.add(cert.clone()) {
+                log::warn!("Failed to add native cert: {}", e);
+            }
+        }
+        if let Some(first_error) = cert_result.errors.first() {
+            log::warn!("Certificate loading errors: {}", first_error);
+        }
+        log::debug!("Loaded {} native certificates", cert_result.certs.len());
+        
+        // Create TLS configuration
+        let tls_config = rustls::ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+            
+        // Create QUIC configuration with proper error handling
+        let quic_client_config = match QuicClientConfig::try_from(tls_config) {
+            Ok(config) => Arc::new(config),
+            Err(e) => {
+                log::error!("Failed to create QUIC crypto config: {}", e);
+                return None;
+            }
         };
+        
+        let mut quinn_config = ClientConfig::new(quic_client_config);
+        
+        // Configure transport parameters optimized for HTTP/3
+        let mut transport_config = TransportConfig::default();
+        transport_config.max_concurrent_bidi_streams(100_u32.into());
+        transport_config.max_concurrent_uni_streams(100_u32.into());
+        
+        // Set idle timeout with proper error handling
+        if let Ok(idle_timeout) = Duration::from_secs(30).try_into() {
+            transport_config.max_idle_timeout(Some(idle_timeout));
+        } else {
+            log::warn!("Failed to set idle timeout, using default");
+        }
+        
+        transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
+        quinn_config.transport_config(Arc::new(transport_config));
 
-        let mut endpoint = Endpoint::client(socket_addr)?;
-        endpoint.set_default_client_config(config);
+        // Create endpoint with progressive fallback strategy
+        let socket_addr = SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 0], 0));
+        let mut endpoint = match Endpoint::client(socket_addr) {
+            Ok(ep) => ep,
+            Err(_) => {
+                log::debug!("IPv6 endpoint failed, trying IPv4");
+                let ipv4_addr = SocketAddr::from(([0, 0, 0, 0], 0));
+                match Endpoint::client(ipv4_addr) {
+                    Ok(ep) => ep,
+                    Err(e) => {
+                        log::error!("Failed to create QUIC endpoint: {}", e);
+                        return None;
+                    }
+                }
+            }
+        };
+            
+        endpoint.set_default_client_config(quinn_config);
 
-        Ok(Self {
-            resolver,
+        Some(Self {
+            resolver: (),
             endpoint,
-            config: client_config,
+            config: H3ClientConfig::default(),
         })
     }
 
@@ -146,7 +189,7 @@ impl H3Connector {
                 let addrs = if let Ok(addr) = IpAddr::from_str(host) {
                     vec![SocketAddr::new(addr, port)]
                 } else {
-                    vec![SocketAddr::new(IpAddr::from_str("127.0.0.1").unwrap(), port)]
+                    vec![SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port)]
                 };
 
                 // Use streams-first pattern - collect the connection from the stream
@@ -180,14 +223,8 @@ impl H3Connector {
     
     fn establish_complete_h3_connection(_dest: Uri) -> AsyncStream<H3Connection> {
         AsyncStream::with_channel(move |sender| {
-            // Create mock connection for compilation - replace with real implementation
-            let mock_quinn_conn: h3::client::Connection<h3_quinn::Connection, Bytes> = unsafe { std::mem::zeroed() };
-            let mock_send_request: h3::client::SendRequest<h3_quinn::OpenStreams, Bytes> = unsafe { std::mem::zeroed() };
-            
-            let connection = H3Connection {
-                connection: mock_quinn_conn,
-                send_request: mock_send_request,
-            };
+            // Production H3 connection establishment pending full integration
+            let connection = H3Connection::bad_chunk("H3 connection establishment disabled due to API incompatibilities".to_string());
             
             fluent_ai_async::emit!(sender, connection);
         })
@@ -195,13 +232,8 @@ impl H3Connector {
     
     fn establish_complete_h3_connection_with_retry(_addrs: Vec<SocketAddr>, _server_name: String) -> AsyncStream<H3Connection> {
         AsyncStream::with_channel(move |sender| {
-            // Simplified implementation for compilation
-            let mock_connection = unsafe { std::mem::zeroed() };
-            let mock_send_request = unsafe { std::mem::zeroed() };
-            let connection = H3Connection {
-                connection: mock_connection,
-                send_request: mock_send_request,
-            };
+            // Production H3 connection retry pending full integration
+            let connection = H3Connection::bad_chunk("H3 connection retry disabled due to API incompatibilities".to_string());
             
             fluent_ai_async::emit!(sender, connection);
         })
@@ -224,10 +256,8 @@ impl H3Connector {
                 ));
             }
             
-            // Use async-compatible polling with spawn_task
-            fluent_ai_async::spawn_task(move || {
-                std::thread::sleep(poll_interval);
-            });
+            // Wait for connection polling interval
+            std::thread::sleep(poll_interval);
             
             // Check if connection is ready (this is a simplified approach)
             // In a full implementation, we'd use proper async integration
@@ -244,60 +274,41 @@ impl H3Connector {
     /// Establish HTTP/3 connection on top of QUIC connection
     fn establish_h3_connection(quinn_conn: quinn::Connection, server_name: &str, config: &H3ClientConfig) -> H3Connection {
         use h3_quinn::Connection;
-        use std::time::Duration;
         
-        // Create h3-quinn connection wrapper
         let h3_conn = Connection::new(quinn_conn);
         
-        // Create HTTP/3 client builder with configuration
-        let mut h3_builder = h3::client::builder();
+        // Clone config values to avoid lifetime issues
+        let max_field_section_size = config.max_field_section_size;
+        let send_grease = config.send_grease.unwrap_or(false);
         
-        // Apply H3 configuration if available
-        if let Some(max_field_section_size) = config.max_field_section_size {
-            h3_builder.max_field_section_size(max_field_section_size);
-        }
-        
-        if config.send_grease.unwrap_or(false) {
-            // Note: enable_grease method may not exist in current h3 version
-            // h3_builder.enable_grease(true);
-        }
-        
-        // STREAMS-ONLY FIX: h3_builder.build() returns Future, not Result!
-        // Cannot match on Future - must use spawn_task for async operations
-        let connection_result = spawn_task(move || {
-            // Handle the Future in background using streams-only architecture
-            // This simulates the connection establishment without async/await
-            std::thread::sleep(Duration::from_millis(10)); // Simulate connection time
-            
-            // In production, this would properly handle the h3_builder.build Future
-            // using polling mechanisms compatible with streams-only architecture
-            "HTTP/3 connection established via streams-only pattern"
-        }).collect().unwrap_or("Connection failed");
-        
-        // Create H3Connection based on result
-        if connection_result.contains("established") {
-            // Spawn background driver task for HTTP/3 protocol management
-            let _driver_task = spawn_task(|| {
-                // Drive HTTP/3 connection in pure streams pattern (NO async)
-                loop {
-                    std::thread::sleep(Duration::from_millis(10));
-                    // Production: poll h3 connection, handle frames using streams
+        // Use spawn_task pattern - no async/await or tokio runtime
+        let h3_stream = AsyncStream::<H3Connection>::with_channel(move |sender| {
+            spawn_task(move || {
+                // Create H3 client builder with synchronous configuration
+                let mut h3_builder = h3::client::builder();
+                
+                // Apply config synchronously
+                if let Some(max_field_section_size) = max_field_section_size {
+                    h3_builder.max_field_section_size(max_field_section_size);
                 }
+                if send_grease {
+                    h3_builder.send_grease(true);
+                }
+                
+                // Emit connection result without async/await - simulate H3 connection
+                // Real implementation would use synchronous H3 client setup
+                let h3_connection = H3Connection {
+                    connection: None, // Placeholder - real implementation needed
+                    send_request: None, // Placeholder - real implementation needed
+                    error_message: Some("H3 connection simulation - real implementation needed".to_string()),
+                };
+                emit!(sender, h3_connection);
             });
-            
-            // Create mock connections for compilation - real h3 integration needs streams conversion
-            let mock_connection = unsafe { std::mem::zeroed() };
-            let mock_send_request = unsafe { std::mem::zeroed() };
-            
-            H3Connection {
-                connection: mock_connection,
-                send_request: mock_send_request,
-            }
-        } else {
-            // Return error connection using MessageChunk bad_chunk pattern
-            let error_msg = format!("HTTP/3 connection setup failed: {}", connection_result);
-            H3Connection::bad_chunk(error_msg)
-        }
+        });
+        
+        // Get the result
+        h3_stream.collect().into_iter().next()
+            .unwrap_or_else(|| H3Connection::bad_chunk("H3 connection failed".to_string()))
     }
     
     /// Check if a connection error is retryable

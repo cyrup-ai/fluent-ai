@@ -48,6 +48,8 @@ futures = "0.3.31"
 hyper-util = { version = "0.1", features = ["http1", "http2", "client", "client-legacy"] }
 hickory-resolver = { version = "0.25", optional = true }
 quinn = { version = "0.11", features = ["rustls"], optional = true }
+dashmap = "6.1.0"
+rustls-native-certs = "0.8"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 encoding_rs = { version = "0.8", optional = true }

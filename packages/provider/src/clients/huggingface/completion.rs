@@ -5,9 +5,17 @@
 //! client.completion_model("meta-llama/Meta-Llama-3.1-8B-Instruct")
 //!     .system_prompt("You are helpful")
 //!     .temperature(0.8)
-//!     .on_chunk(|chunk| {
-//!         Ok => log::info!("Chunk: {:?}", chunk),
-//!         Err => log::error!("Error: {:?}", chunk)
+//!     .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
+//!         match result {
+//!             Ok(chunk) => {
+//!                 log::info!("✅ HuggingFace chunk: {:?}", chunk);
+//!                 chunk
+//!             }
+//!             Err(error) => {
+//!                 log::error!("❌ HuggingFace error: {:?}", error);
+//!                 CompletionChunk::bad_chunk(error)
+//!             }
+//!         }
 //!     })
 //!     .prompt("Hello world")
 //! ```
