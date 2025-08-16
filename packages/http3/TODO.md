@@ -1,221 +1,211 @@
-# HTTP3 Package Production Readiness TODO
+# TODO: Extract All Embedded Tests from ./src/ to ./tests/
 
-## Critical Non-Production Code Violations
+## Phase 1: Analysis and Categorization
 
-### 1. PLACEHOLDER IMPLEMENTATIONS (3 violations)
+- [ ] **Task 1.1**: Scan and categorize all 104+ files with embedded tests into three categories:
+  - Dedicated test files in src/ (e.g., src/json_path/functions/function_evaluator/value/tests/*.rs)
+  - Production files with embedded test modules (e.g., src/json_path/compiler.rs, src/lib.rs)  
+  - Test directories within src/ (e.g., src/json_path/core_evaluator/tests/)
+  
+  **Files**: All files identified by `find src -name "*.rs" -exec grep -l "#\[cfg(test)\]" {} \;`
+  **Implementation**: Create comprehensive inventory with file paths and test content analysis
+  **Architecture**: Maintain existing test organization structure in ./tests/
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**File: `/src/hyper/wasm/response.rs:181`**
-- **Violation**: "WASM stream operations placeholder - not fully supported in streams-first"
-- **Issue**: Incomplete WASM streaming implementation with futures dependency
-- **Solution**: Replace with proper AsyncStream<BytesWrapper> implementation using fluent_ai_async patterns. Remove futures_util dependency and implement native streaming body collection.
+- [ ] **QA Task 1.1**: Act as an Objective QA Rust developer and verify that the categorization is complete and accurate. Rate the work performed on completeness of test identification, proper categorization, and zero missed embedded tests.
 
-**File: `/src/hyper/async_impl/h3_client/connect.rs:301-302`**
-- **Violation**: "Placeholder - real implementation needed" for H3 connection and send_request
-- **Issue**: Mock H3 connection with None values instead of real implementation
-- **Solution**: Implement real H3 connection establishment using quinn QUIC client with proper TLS configuration, certificate validation, and h3::client::new() integration.
+- [ ] **Task 1.2**: Analyze import dependencies and module references for each test file to understand what needs to be updated when moving to ./tests/
+  
+  **Files**: Focus on complex test files with extensive imports from parent modules
+  **Implementation**: Map all `use super::*`, `use crate::*`, and relative imports that will break
+  **Architecture**: Plan import transformation strategy (super:: -> crate::module_path::)
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-### 2. NON-PRODUCTION COMMENTS (10 violations)
+- [ ] **QA Task 1.2**: Act as an Objective QA Rust developer and verify that all import dependencies have been properly analyzed. Rate the work on completeness of dependency mapping and accuracy of planned import transformations.
 
-**File: `/src/hyper/error.rs:519`**
-- **Violation**: "In a real scenario, this would come from hyper operations"
-- **Issue**: Mock timeout error instead of real hyper integration
-- **Solution**: Implement proper hyper error mapping with real timeout detection from underlying HTTP operations.
+## Phase 2: Extract Dedicated Test Files
 
-**File: `/src/hyper/async_impl/upgrade.rs:80,280`**
-- **Violation**: "In production: write to underlying TCP/TLS stream"
-- **Issue**: Missing actual I/O implementation for protocol upgrades
-- **Solution**: Implement real bidirectional stream I/O using TcpStream/TlsStream with proper AsyncStream wrapping for WebSocket/HTTP2 upgrades.
+- [ ] **Task 2.1**: Move all dedicated test files from src/json_path/functions/function_evaluator/value/tests/ to tests/json_path/functions/function_evaluator/value/
+  
+  **Files**: 
+  - src/json_path/functions/function_evaluator/value/tests/current_context.rs → tests/json_path/functions/function_evaluator/value/current_context.rs
+  - src/json_path/functions/function_evaluator/value/tests/property_access.rs → tests/json_path/functions/function_evaluator/value/property_access.rs
+  - src/json_path/functions/function_evaluator/value/tests/edge_cases.rs → tests/json_path/functions/function_evaluator/value/edge_cases.rs
+  - src/json_path/functions/function_evaluator/value/tests/argument_validation.rs → tests/json_path/functions/function_evaluator/value/argument_validation.rs
+  - src/json_path/functions/function_evaluator/value/tests/literal_values.rs → tests/json_path/functions/function_evaluator/value/literal_values.rs
+  - src/json_path/functions/function_evaluator/value/tests/type_conversion.rs → tests/json_path/functions/function_evaluator/value/type_conversion.rs
+  
+  **Implementation**: Update all imports from `use super::super::core::evaluate_value_function` to `use fluent_ai_http3::json_path::functions::function_evaluator::value::evaluate_value_function`
+  **Architecture**: Maintain test module structure but update import paths for external crate access
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**File: `/src/hyper/async_impl/body.rs:354,548`**
-- **Violation**: "For now, emit a data frame and complete (real implementation would stream actual body data)"
-- **Issue**: Mock body streaming instead of real HTTP body processing
-- **Solution**: Implement proper HTTP body streaming with chunked transfer encoding, content-length handling, and compression support.
+- [ ] **QA Task 2.1**: Act as an Objective QA Rust developer and verify that all dedicated test files have been moved correctly with proper imports. Rate the work on file movement accuracy, import correctness, and maintained test functionality.
 
-**File: `/src/json_path/core_evaluator.rs:976`**
-- **Violation**: "for now" temporary implementation
-- **Solution**: Complete JSONPath evaluation with full RFC 9535 compliance.
+- [ ] **Task 2.2**: Move all dedicated test files from src/json_path/core_evaluator/tests/ to tests/json_path/core_evaluator/
+  
+  **Files**:
+  - src/json_path/core_evaluator/tests/filter_expressions.rs → tests/json_path/core_evaluator/filter_expressions.rs
+  - src/json_path/core_evaluator/tests/array_operations.rs → tests/json_path/core_evaluator/array_operations.rs
+  - src/json_path/core_evaluator/tests/recursive_descent.rs → tests/json_path/core_evaluator/recursive_descent.rs
+  - src/json_path/core_evaluator/tests/basic_selectors.rs → tests/json_path/core_evaluator/basic_selectors.rs
+  - src/json_path/core_evaluator/tests/rfc_compliance.rs → tests/json_path/core_evaluator/rfc_compliance.rs
+  - src/json_path/core_evaluator/tests/edge_cases_debug.rs → tests/json_path/core_evaluator/edge_cases_debug.rs
+  
+  **Implementation**: Update imports to reference crate root instead of relative paths
+  **Architecture**: Preserve test organization while enabling external crate access
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**File: `/src/json_path/functions.rs:431`**
-- **Violation**: "For now" incomplete function implementation
-- **Solution**: Implement complete JSONPath function library with proper type coercion and error handling.
+- [ ] **QA Task 2.2**: Act as an Objective QA Rust developer and verify that core evaluator test files have been moved correctly. Rate the work on completeness, import accuracy, and preserved test functionality.
 
-**File: `/src/hyper/async_impl/h3_client/connect.rs:267`**
-- **Violation**: "For now, return an error indicating this needs proper async integration"
-- **Solution**: Implement real QUIC connection waiting using quinn's connection establishment with proper timeout handling.
+- [ ] **Task 2.3**: Move all dedicated test files from src/hyper/proxy/tests/ to tests/hyper/proxy/
+  
+  **Files**:
+  - src/hyper/proxy/tests/auth_tests.rs → tests/hyper/proxy/auth_tests.rs
+  - src/hyper/proxy/tests/no_proxy_tests.rs → tests/hyper/proxy/no_proxy_tests.rs
+  - src/hyper/proxy/tests/basic_proxy_tests.rs → tests/hyper/proxy/basic_proxy_tests.rs
+  - src/hyper/proxy/tests/matcher_tests.rs → tests/hyper/proxy/matcher_tests.rs
+  
+  **Implementation**: Update imports for proxy types and functionality
+  **Architecture**: Maintain proxy test organization in ./tests/ structure
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**File: `/src/json_path/filter_parser.rs:244,468`**
-- **Violation**: "For now" incomplete filter parsing
-- **Solution**: Complete filter expression parsing with full operator support and proper precedence handling.
+- [ ] **QA Task 2.3**: Act as an Objective QA Rust developer and verify that proxy test files have been moved correctly. Rate the work on file organization, import updates, and test functionality preservation.
 
-### 3. TODO COMMENTS (15 violations)
+- [ ] **Task 2.4**: Move all dedicated test files from src/hyper/async_impl/request/tests/ to tests/hyper/async_impl/request/
+  
+  **Files**:
+  - src/hyper/async_impl/request/tests/builder_tests.rs → tests/hyper/async_impl/request/builder_tests.rs
+  - src/hyper/async_impl/request/tests/basic_tests.rs → tests/hyper/async_impl/request/basic_tests.rs
+  - src/hyper/async_impl/request/tests/auth_tests.rs → tests/hyper/async_impl/request/auth_tests.rs
+  - src/hyper/async_impl/request/tests/header_tests.rs → tests/hyper/async_impl/request/header_tests.rs
+  - src/hyper/async_impl/request/tests/body_tests.rs → tests/hyper/async_impl/request/body_tests.rs
+  
+  **Implementation**: Update imports for request builder and async implementation types
+  **Architecture**: Preserve async request test structure in ./tests/
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**File: `/src/json_path/safe_parsing.rs:48`**
-- **Violation**: "TODO: Implement proper error recovery"
-- **Solution**: Add comprehensive error recovery with position tracking, syntax error reporting, and partial parse tree reconstruction.
+- [ ] **QA Task 2.4**: Act as an Objective QA Rust developer and verify that async request test files have been moved correctly. Rate the work on import accuracy, test organization, and functionality preservation.
 
-**File: `/src/json_path/state_machine.rs:91,95,99,612`**
-- **Violation**: Multiple "TODO: Handle edge cases" comments
-- **Solution**: Implement complete state machine with all JSONPath syntax edge cases, proper state transitions, and error handling.
+## Phase 3: Extract Embedded Test Modules from Production Files
 
-**File: `/src/json_path/deserializer/processor.rs:32,35,60`**
-- **Violation**: "TODO: Optimize performance" and incomplete implementations
-- **Solution**: Implement zero-allocation deserializer with streaming JSON processing, proper memory management, and performance optimizations.
+- [ ] **Task 3.1**: Extract embedded test module from src/json_path/compiler.rs (lines ~150-200)
+  
+  **Files**: 
+  - Extract from: src/json_path/compiler.rs
+  - Create: tests/json_path/compiler.rs
+  
+  **Implementation**: Remove `#[cfg(test)] mod tests { ... }` from src/json_path/compiler.rs and create standalone test file
+  **Architecture**: Update imports from `use super::*` to `use fluent_ai_http3::json_path::compiler::*`
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**File: `/src/json_path/deserializer/core.rs:47,51,55,59`**
-- **Violation**: Multiple "TODO: Add validation" comments
-- **Solution**: Add comprehensive JSON schema validation, type checking, and constraint enforcement with proper error reporting.
+- [ ] **QA Task 3.1**: Act as an Objective QA Rust developer and verify that compiler test module has been extracted correctly. Rate the work on clean extraction, proper imports, and maintained test functionality.
 
-### 4. DANGEROUS ERROR HANDLING (200+ violations)
+- [ ] **Task 3.2**: Extract embedded test module from src/lib.rs (lines ~200-250)
+  
+  **Files**:
+  - Extract from: src/lib.rs  
+  - Create: tests/lib.rs
+  
+  **Implementation**: Remove embedded test module and create standalone integration test file
+  **Architecture**: Update imports to reference public crate API instead of internal modules
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**Critical expect() Usage (High Priority)**:
-- `/src/hyper/async_impl/request.rs`: 50+ expect() calls (lines 621-1114)
-- `/src/json_path/core_evaluator.rs`: 20+ expect() calls (lines 1250-1483)
-- `/src/hyper/wasm/client.rs`: 12+ expect() calls (lines 384-476)
-- `/src/hyper/proxy.rs`: 16+ expect() calls (lines 543-1198)
+- [ ] **QA Task 3.2**: Act as an Objective QA Rust developer and verify that lib.rs test module has been extracted correctly. Rate the work on proper extraction, import updates, and integration test functionality.
 
-**Solution**: Replace ALL expect() calls with proper Result handling using:
-```rust
-// Replace: value.expect("message")
-// With: value.map_err(|e| ErrorType::new(format!("Context: {}", e)))?
-```
+- [ ] **Task 3.3**: Extract embedded test modules from all remaining production files with #[cfg(test)]
+  
+  **Files**: Process remaining ~90 files identified in the scan, including:
+  - src/json_path/core_evaluator/evaluator.rs
+  - src/hyper/response.rs
+  - src/config/core/mod.rs
+  - src/common/cache/response_cache/core.rs
+  - And all other production files with embedded tests
+  
+  **Implementation**: Systematically extract each embedded test module to corresponding test file in ./tests/
+  **Architecture**: Maintain test organization while updating all imports for external crate access
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**Critical unwrap() Usage**:
-- `/src/hyper/connect.rs:36`: Address parsing unwrap
-- `/src/hyper/proxy.rs:123`: URI parsing unwrap  
-- `/src/hyper/async_impl/h3_client/mod.rs:86`: Authority parsing unwrap
+- [ ] **QA Task 3.3**: Act as an Objective QA Rust developer and verify that all embedded test modules have been extracted correctly. Rate the work on completeness, import accuracy, and zero test functionality loss.
 
-**Solution**: Replace with proper error propagation using Result<T,E> and ? operator.
+## Phase 4: Update Module References and Clean Up
 
-### 5. DEBUG LOGGING VIOLATIONS (150+ violations)
+- [ ] **Task 4.1**: Remove all test directories from src/ after successful extraction
+  
+  **Files**: Remove directories:
+  - src/json_path/functions/function_evaluator/value/tests/
+  - src/json_path/core_evaluator/tests/
+  - src/hyper/proxy/tests/
+  - src/hyper/async_impl/request/tests/
+  - All other test directories within src/
+  
+  **Implementation**: Delete directories only after confirming all tests are successfully moved and working in ./tests/
+  **Architecture**: Clean separation between production code in src/ and test code in tests/
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**Files with println!/eprintln! usage**:
-- `/src/json_path/core_evaluator.rs`: 50+ debug prints
-- `/src/json_path/mod.rs`: 25+ debug prints
-- `/src/json_path/test_parser_debug.rs`: 15+ debug prints
-- `/src/builder/fluent.rs`: 5+ debug prints
-- `/src/hyper/async_impl/multipart.rs`: 5+ debug prints
+- [ ] **QA Task 4.1**: Act as an Objective QA Rust developer and verify that all test directories have been properly removed from src/. Rate the work on clean removal and maintained directory structure.
 
-**Solution**: Replace ALL println!/eprintln! with proper structured logging:
-```rust
-// Replace: println!("Debug: {}", value);
-// With: log::debug!("Context description: {}", value);
-```
+- [ ] **Task 4.2**: Update all mod.rs files in src/ to remove test module declarations
+  
+  **Files**: Update mod.rs files that previously declared test modules:
+  - src/json_path/functions/function_evaluator/value/mod.rs (remove `#[cfg(test)] mod tests;`)
+  - src/json_path/core_evaluator/mod.rs (remove test module references)
+  - All other mod.rs files with test module declarations
+  
+  **Implementation**: Remove only test-related module declarations while preserving all production module declarations
+  **Architecture**: Clean module organization with no test references in production code
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-### 6. LEGACY/BACKWARD COMPATIBILITY (30+ violations)
+- [ ] **QA Task 4.2**: Act as an Objective QA Rust developer and verify that all mod.rs files have been properly updated. Rate the work on accurate test module removal and preserved production module structure.
 
-**Files requiring modernization**:
-- `/src/common/auth_method.rs:1,11`: Legacy authentication patterns
-- `/src/common/content_types.rs:1,8`: Legacy content type handling
-- `/src/hyper/async_impl/client.rs:15,58,342,572-574`: Legacy hyper client patterns
+## Phase 5: Verification and Testing
 
-**Solution**: Remove backward compatibility shims and implement modern patterns using fluent_ai_async exclusively.
+- [ ] **Task 5.1**: Verify no embedded tests remain in src/
+  
+  **Files**: Run verification command: `find src -name "*.rs" -exec grep -l "#\[cfg(test)\]" {} \;`
+  **Implementation**: Command should return empty result, confirming zero embedded tests in src/
+  **Architecture**: Complete separation achieved between production and test code
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-## FILE DECOMPOSITION (42 files >300 lines)
+- [ ] **QA Task 5.1**: Act as an Objective QA Rust developer and verify that zero embedded tests remain in src/. Rate the work on complete test extraction and clean production code separation.
 
-### CRITICAL - Files >1000 lines requiring immediate decomposition:
+- [ ] **Task 5.2**: Run cargo nextest to verify all tests pass in their new locations
+  
+  **Files**: Execute `cargo nextest run` to verify all extracted tests function correctly
+  **Implementation**: All tests must pass with zero failures, confirming successful extraction
+  **Architecture**: Validate that test organization in ./tests/ works correctly with cargo test runner
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**1. `/src/hyper/async_impl/client.rs` (2534 lines)**
-- **Decompose into**:
-  - `client/core.rs` - Core client implementation (400 lines)
-  - `client/builder.rs` - ClientBuilder implementation (300 lines)
-  - `client/config.rs` - Configuration management (200 lines)
-  - `client/tls.rs` - TLS/certificate handling (300 lines)
-  - `client/proxy.rs` - Proxy configuration (250 lines)
-  - `client/middleware.rs` - Middleware integration (200 lines)
-  - `client/execution.rs` - Request execution logic (400 lines)
-  - `client/streaming.rs` - Streaming request/response (300 lines)
-  - `client/error_handling.rs` - Error conversion and handling (184 lines)
+- [ ] **QA Task 5.2**: Act as an Objective QA Rust developer and verify that all tests pass after extraction. Rate the work on test functionality preservation, import correctness, and zero test failures.
 
-**2. `/src/hyper/connect.rs` (1640 lines)**
-- **Decompose into**:
-  - `connect/core.rs` - Core connection logic (300 lines)
-  - `connect/tcp.rs` - TCP connection handling (250 lines)
-  - `connect/tls.rs` - TLS handshake and configuration (300 lines)
-  - `connect/proxy.rs` - Proxy connection logic (200 lines)
-  - `connect/dns.rs` - DNS resolution (150 lines)
-  - `connect/timeout.rs` - Connection timeout handling (100 lines)
-  - `connect/pool.rs` - Connection pooling (200 lines)
-  - `connect/happy_eyeballs.rs` - IPv4/IPv6 dual-stack (140 lines)
+- [ ] **Task 5.3**: Verify cargo build succeeds with clean src/ without embedded tests
+  
+  **Files**: Execute `cargo build` to confirm production code compiles without embedded test modules
+  **Implementation**: Build must succeed, confirming clean separation doesn't break production code
+  **Architecture**: Validate that removing embedded tests doesn't affect production compilation
+  
+  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**3. `/src/json_path/core_evaluator.rs` (1490 lines)**
-- **Decompose into**:
-  - `json_path/evaluator/core.rs` - Core evaluation engine (300 lines)
-  - `json_path/evaluator/expressions.rs` - Expression evaluation (250 lines)
-  - `json_path/evaluator/filters.rs` - Filter processing (200 lines)
-  - `json_path/evaluator/functions.rs` - Function implementations (200 lines)
-  - `json_path/evaluator/operators.rs` - Operator handling (150 lines)
-  - `json_path/evaluator/selectors.rs` - Selector processing (200 lines)
-  - `json_path/evaluator/context.rs` - Evaluation context (90 lines)
-  - `json_path/evaluator/optimization.rs` - Performance optimizations (100 lines)
+- [ ] **QA Task 5.3**: Act as an Objective QA Rust developer and verify that cargo build succeeds with clean src/. Rate the work on production code integrity and successful test separation.
 
-### HIGH PRIORITY - Files 800-1200 lines:
-
-**4. `/src/hyper/proxy.rs` (1205 lines)**
-- **Decompose into**:
-  - `proxy/core.rs` - Core proxy logic (200 lines)
-  - `proxy/http.rs` - HTTP proxy handling (200 lines)
-  - `proxy/socks.rs` - SOCKS proxy implementation (250 lines)
-  - `proxy/auth.rs` - Proxy authentication (150 lines)
-  - `proxy/tunnel.rs` - CONNECT tunnel handling (200 lines)
-  - `proxy/config.rs` - Proxy configuration (105 lines)
-  - `proxy/detection.rs` - Proxy auto-detection (100 lines)
-
-**5. `/src/hyper/async_impl/request.rs` (1173 lines)**
-- **Decompose into**:
-  - `request/core.rs` - Core request building (200 lines)
-  - `request/body.rs` - Request body handling (200 lines)
-  - `request/headers.rs` - Header management (150 lines)
-  - `request/multipart.rs` - Multipart form handling (200 lines)
-  - `request/streaming.rs` - Streaming request body (150 lines)
-  - `request/validation.rs` - Request validation (123 lines)
-  - `request/serialization.rs` - Request serialization (150 lines)
-
-### MEDIUM PRIORITY - Files 600-800 lines:
-
-Continue decomposition for remaining 35 files following similar patterns with logical separation of concerns.
-
-## TESTING EXTRACTION
-
-**Files with embedded tests requiring extraction**:
-- `/src/json_path/debug_at_test.rs` - Extract to `/tests/json_path/debug_at_test.rs`
-- `/src/json_path/debug_execution_test.rs` - Extract to `/tests/json_path/debug_execution_test.rs`
-- `/src/json_path/debug_error_test.rs` - Extract to `/tests/json_path/debug_error_test.rs`
-- `/src/json_path/debug_infinite_loop.rs` - Extract to `/tests/json_path/debug_infinite_loop.rs`
-- `/src/json_path/test_parser_debug.rs` - Extract to `/tests/json_path/test_parser_debug.rs`
-
-**Nextest Bootstrap Required**:
-1. Add nextest configuration in `.config/nextest.toml`
-2. Verify all extracted tests pass with `cargo nextest run`
-3. Remove debug test files from src/ after extraction
-
-## IMPLEMENTATION CONSTRAINTS
-
-**Zero-Allocation Requirements**:
-- Use `ArrayVec`/`SmallVec` for bounded collections
-- Implement streaming with `AsyncStream<T, CAP>` exclusively
-- Use `Arc<str>` for shared string data
-- Avoid `Vec::push()` in hot paths
-
-**No Unsafe Code**:
-- Replace all `unsafe { std::mem::zeroed() }` with proper initialization
-- Use safe alternatives for all pointer operations
-- Implement proper bounds checking
-
-**No Locking**:
-- Use `crossbeam` lock-free data structures
-- Implement atomic operations for shared state
-- Use `Arc` for immutable shared data
-
-**Elegant Ergonomic Code**:
-- Implement builder patterns for complex configurations
-- Use method chaining for fluent APIs
-- Provide comprehensive error context
-- Use `Result<T, E>` for all fallible operations
-
-## QUALITY ASSURANCE STEPS
-
-1. **Compilation**: Achieve zero errors and warnings
-2. **Testing**: All tests pass with `cargo nextest run`
-3. **Performance**: Benchmark critical paths for zero-allocation compliance
-4. **Documentation**: All public APIs have comprehensive docs
-5. **Integration**: Verify compatibility with fluent_ai_async patterns
+## CONSTRAINTS APPLIED TO ALL TASKS:
+- Never use unwrap() in any code
+- Never use expect() in src/* or examples
+- DO USE expect() in ./tests/*
+- DO NOT use unwrap() in ./tests/*
+- Make only minimal, surgical changes required
+- Preserve all existing test functionality
+- Maintain production code integrity
+- Follow Rust ecosystem best practices for test organization
