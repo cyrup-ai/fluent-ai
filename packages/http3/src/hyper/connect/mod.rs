@@ -28,6 +28,10 @@ pub use types::{
     Connector, ConnectorKind, TcpConnection, TcpStreamWrapper, TlsInfo, Unnameable,
 };
 
+// Type aliases for compatibility
+pub type Connect = Connector;
+pub type HttpConnector = Connector;
+
 // Direct connection method implementation for Connector
 impl Connector {
     /// Direct connection method - replaces Service::call with AsyncStream

@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 
 use bytes::Bytes;
+#[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
-use wasm_bindgen::JsValue;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 use super::types::Single;
 

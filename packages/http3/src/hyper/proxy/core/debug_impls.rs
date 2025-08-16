@@ -5,7 +5,6 @@
 
 use std::fmt;
 
-use super::super::url_handling::Custom;
 use super::types::{Extra, Proxy};
 
 impl fmt::Debug for Proxy {
@@ -25,8 +24,3 @@ impl fmt::Debug for Extra {
     }
 }
 
-impl fmt::Debug for Custom {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("_")
-    }
-}

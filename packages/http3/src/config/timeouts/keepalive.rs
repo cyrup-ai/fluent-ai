@@ -3,6 +3,7 @@
 //! Provides builder methods for configuring TCP and HTTP/2 keep-alive settings.
 
 use std::time::Duration;
+
 use super::super::core::HttpConfig;
 
 impl HttpConfig {

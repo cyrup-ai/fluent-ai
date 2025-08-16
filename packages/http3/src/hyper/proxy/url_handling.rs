@@ -235,7 +235,7 @@ pub fn encode_basic_auth(username: &str, password: &str) -> HeaderValue {
 // }
 
 /// Custom proxy function type for dynamic proxy selection
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Custom {
     pub(crate) func: Arc<dyn Fn(&Url) -> Option<crate::Result<Url>> + Send + Sync + 'static>,
     pub(crate) no_proxy: Option<NoProxy>,
@@ -258,11 +258,3 @@ impl Custom {
     }
 }
 
-impl fmt::Debug for Custom {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Custom")
-            .field("func", &"<function>")
-            .field("no_proxy", &self.no_proxy)
-            .finish()
-    }
-}

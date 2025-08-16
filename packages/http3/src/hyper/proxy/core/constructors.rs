@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use super::super::into_url::{IntoUrl, IntoUrlSealed};
+use crate::hyper::into_url::{IntoUrl, IntoUrlSealed};
 use super::super::url_handling::Custom;
 use super::types::{Extra, Intercept, Proxy};
 use crate::Url;

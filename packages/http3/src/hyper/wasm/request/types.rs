@@ -3,10 +3,11 @@ use std::time::Duration;
 use bytes::Bytes;
 use http::Method;
 use url::Url;
-use web_sys::{RequestCache, RequestCredentials};
+#[cfg(target_arch = "wasm32")]
+use web_sys::{Headers, Request as WebRequest, RequestCredentials};
 
 use super::Body;
-use crate::header::HeaderMap;
+use http::header::HeaderMap;
 
 /// A request which can be executed with `Client::execute()`.
 pub struct Request {

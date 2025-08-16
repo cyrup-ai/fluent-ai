@@ -1,26 +1,102 @@
+//! WASM-specific HTTP client implementation
+//!
+//! This module provides WebAssembly-compatible HTTP functionality using the Fetch API.
+//! It's designed to work in browser environments and web workers.
+
 use std::convert::TryInto;
 use std::time::Duration;
 
+#[cfg(target_arch = "wasm32")]
 use js_sys::Function;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::{Closure, wasm_bindgen};
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
+#[cfg(target_arch = "wasm32")]
 use web_sys::{AbortController, AbortSignal};
 
-mod body;
-mod client;
-/// Multipart form data support for WASM client
-#[cfg(feature = "multipart")]
-pub mod multipart;
-mod request;
-mod response;
+#[cfg(target_arch = "wasm32")]
+use std::fmt;
+#[cfg(target_arch = "wasm32")]
+use std::future::Future;
+#[cfg(target_arch = "wasm32")]
+use std::pin::Pin;
+#[cfg(target_arch = "wasm32")]
+use std::task::{Context, Poll};
 
-pub use self::body::Body;
-pub use self::client::{Client, ClientBuilder};
-pub use self::request::{Request, RequestBuilder};
-pub use self::response::Response;
+#[cfg(target_arch = "wasm32")]
+use bytes::Bytes;
+#[cfg(target_arch = "wasm32")]
+use http::{HeaderMap, HeaderName, HeaderValue, Method, Request, Response, StatusCode, Uri};
+#[cfg(target_arch = "wasm32")]
+use serde::{Deserialize, Serialize};
+#[cfg(target_arch = "wasm32")]
+use url::Url;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures::JsFuture;
+
+use crate::hyper::error::{Error, Result};
+
+pub mod body;
+pub mod client;
+pub mod request;
+pub mod response;
+
+// WASM-specific utilities
+#[cfg(target_arch = "wasm32")]
+use js_sys::{Array, Object, Promise, Uint8Array};
+
+/// Handle JavaScript errors in WASM context
+#[cfg(target_arch = "wasm32")]
+pub fn handle_error(error: JsValue) -> Error {
+    if let Some(error_str) = error.as_string() {
+        Error::from(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            error_str,
+        ))
+    } else {
+        Error::from(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Unknown JavaScript error",
+        ))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn handle_error(_error: String) -> Error {
+    Error::from(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "WASM functionality not available on this platform",
+    ))
+}
+
+/// Convert JavaScript Promise to Rust Future
+#[cfg(target_arch = "wasm32")]
+pub fn promise_to_future(promise: Promise) -> impl Future<Output = Result<JsValue>> {
+    async move {
+        wasm_bindgen_futures::JsFuture::from(promise)
+            .await
+            .map_err(handle_error)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn promise_to_future(_promise: ()) -> impl Future<Output = Result<()>> {
+    async move {
+        Err(Error::from(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "WASM functionality not available on this platform",
+        )))
+    }
+}
 
 #[wasm_bindgen]
-extern "C" {
+unsafe extern "C" {
     #[wasm_bindgen(js_name = "setTimeout")]
     fn set_timeout(handler: &Function, timeout: i32) -> JsValue;
 

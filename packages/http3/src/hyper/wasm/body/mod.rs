@@ -18,4 +18,5 @@ pub use conversions::*;
 pub use single_impl::*;
 #[cfg(test)]
 pub use tests::*;
-pub use types::{Body, Inner, Single};
+pub use types::Body;
+pub(crate) use types::{Inner, Single};

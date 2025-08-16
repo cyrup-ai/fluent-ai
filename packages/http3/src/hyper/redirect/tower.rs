@@ -85,7 +85,7 @@ impl TowerRedirectPolicy {
 
     // Update headers for redirect request
     pub(crate) fn update_headers(&mut self, headers: &mut HeaderMap, uri: &Uri) {
-        use crate::header::REFERER;
+        use http::header::REFERER;
 
         if let Ok(next_url) = Url::parse(&uri.to_string()) {
             remove_sensitive_headers(headers, &next_url, &self.urls);

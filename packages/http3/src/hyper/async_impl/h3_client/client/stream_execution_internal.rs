@@ -34,11 +34,15 @@ impl H3Client {
         let headers = req.headers_mut();
 
         // Add HTTP/3 specific headers
-        headers.insert(":protocol", "h3".parse().unwrap());
+        if let Ok(protocol_value) = "h3".parse() {
+            headers.insert(":protocol", protocol_value);
+        }
 
         // Add connection management headers
         if !headers.contains_key("connection") {
-            headers.insert("connection", "keep-alive".parse().unwrap());
+            if let Ok(connection_value) = "keep-alive".parse() {
+                headers.insert("connection", connection_value);
+            }
         }
     }
 

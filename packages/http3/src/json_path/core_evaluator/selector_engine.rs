@@ -212,7 +212,8 @@ mod tests {
     fn test_root_selector() {
         let json = json!({"test": "value"});
         let selector = JsonSelector::Root;
-        let results = SelectorEngine::apply_selector(&json, &selector).unwrap();
+        let results = SelectorEngine::apply_selector(&json, &selector)
+            .expect("Failed to apply root selector");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], json);
     }
@@ -224,7 +225,8 @@ mod tests {
             name: "store".to_string(),
             quoted: false,
         };
-        let results = SelectorEngine::apply_selector(&json, &selector).unwrap();
+        let results = SelectorEngine::apply_selector(&json, &selector)
+            .expect("Failed to apply child selector");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], json!({"name": "test"}));
     }
@@ -233,7 +235,8 @@ mod tests {
     fn test_wildcard_selector() {
         let json = json!({"a": 1, "b": 2, "c": 3});
         let selector = JsonSelector::Wildcard;
-        let results = SelectorEngine::apply_selector(&json, &selector).unwrap();
+        let results = SelectorEngine::apply_selector(&json, &selector)
+            .expect("Failed to apply wildcard selector");
         assert_eq!(results.len(), 3);
         assert!(results.contains(&json!(1)));
         assert!(results.contains(&json!(2)));

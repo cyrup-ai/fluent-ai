@@ -2,8 +2,10 @@ use std::{borrow::Cow, fmt};
 
 /// dox
 use bytes::Bytes;
+#[cfg(target_arch = "wasm32")]
 use js_sys::Uint8Array;
-use wasm_bindgen::JsValue;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "multipart")]
 use super::super::multipart::Form;

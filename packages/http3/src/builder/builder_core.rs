@@ -9,10 +9,9 @@ use std::sync::Arc;
 use fluent_ai_async::prelude::ChunkHandler;
 use http::Method;
 
-use crate::{HttpChunk, HttpClient, HttpError, HttpRequest};
-
 use super::content_type::ContentType;
 use super::state_types::{BodyNotSet, JsonPathStreaming};
+use crate::{HttpChunk, HttpClient, HttpError, HttpRequest};
 
 /// Main Http3 builder for constructing HTTP requests with fluent API
 ///

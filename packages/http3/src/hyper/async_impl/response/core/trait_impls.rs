@@ -7,28 +7,14 @@ use fluent_ai_async::prelude::MessageChunk;
 use super::types::Response;
 
 impl MessageChunk for Response {
-    fn is_chunk(&self) -> bool {
-        false // Response is a complete message, not a chunk
-    }
-
-    fn chunk_type(&self) -> &'static str {
-        "response"
-    }
-
     fn is_error(&self) -> bool {
         self.status().is_client_error() || self.status().is_server_error()
     }
 
-    fn error_message(&self) -> Option<String> {
-        if self.is_error() {
-            Some(format!(
-                "HTTP {} {}",
-                self.status().as_u16(),
-                self.status().canonical_reason().unwrap_or("Unknown")
-            ))
-        } else {
-            None
-        }
+    fn error(&self) -> Option<&str> {
+        // For Response, we don't store error strings directly, 
+        // so we return None and rely on status codes for error detection
+        None
     }
 
     fn bad_chunk(error: String) -> Self {

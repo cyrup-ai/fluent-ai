@@ -61,7 +61,7 @@ mod tests {
     fn test_resolve_ip_address() {
         let result = resolve_host_sync("127.0.0.1", 8080);
         assert!(result.is_ok());
-        let addrs = result.unwrap();
+        let addrs = result.expect("Failed to resolve IP address 127.0.0.1");
         assert_eq!(addrs.len(), 1);
         assert_eq!(addrs[0].port(), 8080);
     }
@@ -70,7 +70,7 @@ mod tests {
     fn test_resolve_ipv6_address() {
         let result = resolve_host_sync("::1", 8080);
         assert!(result.is_ok());
-        let addrs = result.unwrap();
+        let addrs = result.expect("Failed to resolve IPv6 address ::1");
         assert_eq!(addrs.len(), 1);
         assert_eq!(addrs[0].port(), 8080);
     }
@@ -79,7 +79,7 @@ mod tests {
     fn test_resolve_localhost() {
         let result = resolve_host_sync("localhost", 80);
         assert!(result.is_ok());
-        let addrs = result.unwrap();
+        let addrs = result.expect("Failed to resolve localhost");
         assert!(!addrs.is_empty());
     }
 
@@ -87,7 +87,7 @@ mod tests {
     fn test_resolve_invalid_host() {
         let result = resolve_host_sync("invalid.nonexistent.domain.test", 80);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("DNS resolution failed"));
+        assert!(result.expect_err("Expected DNS resolution to fail for invalid host").contains("DNS resolution failed"));
     }
 
     #[test]

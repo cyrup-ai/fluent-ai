@@ -32,13 +32,13 @@ use http::Extensions;
 
 /// This trait is empty and is only used to associate a configuration key type with its
 /// corresponding value type.
-pub(crate) trait RequestConfigValue: Copy + Clone + 'static {
+pub trait RequestConfigValue: Copy + Clone + 'static {
     type Value: Clone + Debug + Send + Sync + 'static;
 }
 
 /// RequestConfig carries a request-scoped configuration value.
 #[derive(Clone, Copy)]
-pub(crate) struct RequestConfig<T: RequestConfigValue>(Option<T::Value>);
+pub struct RequestConfig<T: RequestConfigValue>(Option<T::Value>);
 
 impl<T: RequestConfigValue> Default for RequestConfig<T> {
     fn default() -> Self {

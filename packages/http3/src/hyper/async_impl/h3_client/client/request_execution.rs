@@ -48,11 +48,15 @@ impl H3Client {
 
         // Add default headers if not present
         if !headers.contains_key("user-agent") {
-            headers.insert("user-agent", "fluent-ai-http3/1.0".parse().unwrap());
+            if let Ok(user_agent_value) = "fluent-ai-http3/1.0".parse() {
+                headers.insert("user-agent", user_agent_value);
+            }
         }
 
         if !headers.contains_key("accept") {
-            headers.insert("accept", "*/*".parse().unwrap());
+            if let Ok(accept_value) = "*/*".parse() {
+                headers.insert("accept", accept_value);
+            }
         }
     }
 }

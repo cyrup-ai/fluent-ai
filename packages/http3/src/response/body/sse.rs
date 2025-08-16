@@ -5,6 +5,15 @@
 
 use crate::response::core::HttpResponse;
 
+/// Server-Sent Event structure
+#[derive(Debug, Clone, PartialEq)]
+pub struct SseEvent {
+    pub data: Option<String>,
+    pub event_type: Option<String>,
+    pub id: Option<String>,
+    pub retry: Option<u64>,
+}
+
 impl HttpResponse {
     /// Get Server-Sent Events - returns Vec<SseEvent> directly
     ///
@@ -18,7 +27,7 @@ impl HttpResponse {
 
     /// Parse SSE events according to the Server-Sent Events specification
     /// Handles multi-line data fields, event types, IDs, and retry directives
-    fn parse_sse_events(body: &str) -> Vec<SseEvent> {
+    pub fn parse_sse_events(body: &str) -> Vec<SseEvent> {
         let mut events = Vec::new();
         let mut current_event = SseEvent {
             data: None,
@@ -111,4 +120,9 @@ impl HttpResponse {
 
         events
     }
+}
+
+/// Parse SSE events from a string - standalone function for external use
+pub fn parse_sse_events(body: &str) -> Vec<SseEvent> {
+    HttpResponse::parse_sse_events(body)
 }

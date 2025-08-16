@@ -102,7 +102,8 @@ mod tests {
 
     #[test]
     fn test_proxy_http_creation() {
-        let proxy = Proxy::http("http://proxy.example.com:8080").unwrap();
+        let proxy = Proxy::http("http://proxy.example.com:8080")
+            .expect("Failed to create HTTP proxy");
         match proxy.intercept() {
             ProxyIntercept::Http(url) => {
                 assert_eq!(url.as_str(), "http://proxy.example.com:8080/");
@@ -113,7 +114,8 @@ mod tests {
 
     #[test]
     fn test_proxy_https_creation() {
-        let proxy = Proxy::https("https://proxy.example.com:8080").unwrap();
+        let proxy = Proxy::https("https://proxy.example.com:8080")
+            .expect("Failed to create HTTPS proxy");
         match proxy.intercept() {
             ProxyIntercept::Https(url) => {
                 assert_eq!(url.as_str(), "https://proxy.example.com:8080/");
@@ -124,7 +126,8 @@ mod tests {
 
     #[test]
     fn test_proxy_all_creation() {
-        let proxy = Proxy::all("http://proxy.example.com:8080").unwrap();
+        let proxy = Proxy::all("http://proxy.example.com:8080")
+            .expect("Failed to create All proxy");
         match proxy.intercept() {
             ProxyIntercept::All(url) => {
                 assert_eq!(url.as_str(), "http://proxy.example.com:8080/");

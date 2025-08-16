@@ -3,9 +3,10 @@
 //! Tests that verify function performance with large data sets and stress conditions
 
 use serde_json::json;
+
 use super::super::FunctionEvaluator;
-use crate::json_path::parser::{FilterExpression, FilterValue};
 use super::mock_evaluator::mock_evaluator;
+use crate::json_path::parser::{FilterExpression, FilterValue};
 
 #[cfg(test)]
 mod tests {

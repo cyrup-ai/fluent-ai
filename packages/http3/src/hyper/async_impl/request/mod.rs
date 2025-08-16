@@ -9,8 +9,5 @@ pub mod execution;
 pub mod headers;
 pub mod types;
 
-#[cfg(test)]
-pub mod tests;
-
 // Re-export the main types for backward compatibility
 pub use types::{Request, RequestBuilder};

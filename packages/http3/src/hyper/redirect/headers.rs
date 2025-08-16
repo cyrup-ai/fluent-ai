@@ -6,7 +6,7 @@
 use http::{HeaderMap, HeaderValue};
 
 use crate::Url;
-use crate::header::{AUTHORIZATION, COOKIE, PROXY_AUTHORIZATION, REFERER, WWW_AUTHENTICATE};
+use http::header::{AUTHORIZATION, COOKIE, PROXY_AUTHORIZATION, REFERER, WWW_AUTHENTICATE};
 
 /// Remove sensitive headers when redirecting across different hosts/ports
 pub(crate) fn remove_sensitive_headers(headers: &mut HeaderMap, next: &Url, previous: &[Url]) {

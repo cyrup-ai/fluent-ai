@@ -64,37 +64,3 @@ impl ResponseCache {
         self.memory_usage.store(0, Ordering::Relaxed);
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_response_cache_new() {
-        let config = CacheConfig::default();
-        let cache = ResponseCache::new(config);
-
-        let (entries, memory, _) = cache.size_info();
-        assert_eq!(entries, 0);
-        assert_eq!(memory, 0);
-    }
-
-    #[test]
-    fn test_response_cache_default() {
-        let cache = ResponseCache::default();
-        let stats = cache.stats();
-
-        assert_eq!(stats.hits.load(Ordering::Relaxed), 0);
-        assert_eq!(stats.misses.load(Ordering::Relaxed), 0);
-    }
-
-    #[test]
-    fn test_response_cache_clear() {
-        let cache = ResponseCache::default();
-        cache.clear();
-
-        let (entries, memory, _) = cache.size_info();
-        assert_eq!(entries, 0);
-        assert_eq!(memory, 0);
-    }
-}

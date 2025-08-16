@@ -1,20 +1,45 @@
 //! WASM fetch implementation for HTTP requests
 
 use std::convert::TryInto;
+use std::fmt;
 
-use fluent_ai_async::AsyncStream;
-use js_sys::{JSON, Promise};
+use bytes::Bytes;
+use http::header::{HeaderMap, HeaderName, HeaderValue};
+use http::{Method, Request, Response, StatusCode, Uri, Version};
+use serde::{Deserialize, Serialize};
+use serde_json;
 use url::Url;
-use wasm_bindgen::prelude::{UnwrapThrowExt as _, wasm_bindgen};
 
-use super::{AbortGuard, Request, Response};
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures::JsFuture;
+#[cfg(target_arch = "wasm32")]
+use web_sys::{Headers, RequestInit, RequestMode, Window};
 
+#[cfg(target_arch = "wasm32")]
+use js_sys::{Array, Object, Uint8Array};
+
+use crate::hyper::error::{Error, Result};
+use crate::hyper::response::Response as HttpResponse;
+use crate::hyper::wasm::body::Body;
+use crate::hyper::wasm::request::Request as WasmRequest;
+// ResponseExt not available - removed
+use crate::hyper::wasm::{handle_error, AbortController, AbortSignal};
+
+#[cfg(target_arch = "wasm32")]
+use web_sys::{Request as WebRequest, RequestCredentials, RequestRedirect};
+
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-extern "C" {
+unsafe extern "C" {
     #[wasm_bindgen(js_name = fetch)]
     fn fetch_with_request(input: &web_sys::Request) -> Promise;
 }
 
+#[cfg(target_arch = "wasm32")]
 fn js_fetch(req: &web_sys::Request) -> Promise {
     use wasm_bindgen::{JsCast, JsValue};
     let global = js_sys::global();

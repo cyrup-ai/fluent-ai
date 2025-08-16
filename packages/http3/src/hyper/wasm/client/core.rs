@@ -7,12 +7,14 @@ use std::{fmt, sync::Arc};
 
 use fluent_ai_async::AsyncStream;
 use http::{HeaderMap, Method, header::Entry};
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::UnwrapThrowExt as _;
 
 use super::config::Config;
 use super::fetch::fetch;
-use super::{Request, RequestBuilder, Response};
-use crate::IntoUrl;
+use crate::hyper::wasm::request::{Request, RequestBuilder};
+use crate::hyper::wasm::response::Response;
+use crate::hyper::into_url::IntoUrl;
 
 /// dox
 #[derive(Clone)]
@@ -122,12 +124,23 @@ impl Client {
 
         let future = self.execute_request(request);
         AsyncStream::with_channel(move |sender| {
-            wasm_bindgen_futures::spawn_local(async move {
-                match future.await {
-                    Ok(response) => emit!(sender, response),
-                    Err(e) => handle_error!(crate::HttpError::from(e), "wasm client execute"),
-                }
-            });
+            #[cfg(target_arch = "wasm32")]
+            {
+                wasm_bindgen_futures::spawn_local(async move {
+                    match future.await {
+                        Ok(response) => emit!(sender, response),
+                        Err(e) => handle_error!(crate::HttpError::from(e), "wasm client execute"),
+                    }
+                });
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                // Fallback for non-WASM targets - emit error
+                handle_error!(std::io::Error::new(
+                    std::io::ErrorKind::Unsupported,
+                    "WASM functionality not available on this platform"
+                ), "wasm client not supported");
+            }
         })
     }
 

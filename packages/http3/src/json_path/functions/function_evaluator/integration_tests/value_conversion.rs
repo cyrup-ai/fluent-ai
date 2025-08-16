@@ -3,6 +3,7 @@
 //! Tests that verify proper conversion between JSON values and FilterValue types
 
 use serde_json::json;
+
 use super::super::FunctionEvaluator;
 use crate::json_path::parser::FilterValue;
 

@@ -140,7 +140,7 @@ where
                 if depth > 0 {
                     // Use the expression for actual filter evaluation
                     // For streaming context, we can attempt basic expression validation
-                    use crate::json_path::JsonPathResultExt;
+                    // JsonPathResultExt removed - not available
                     use crate::json_path::filter::FilterEvaluator;
 
                     // Create a minimal JSON context for filter evaluation

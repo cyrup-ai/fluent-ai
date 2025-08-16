@@ -3,17 +3,22 @@ use std::fmt;
 use bytes::Bytes;
 use fluent_ai_async::AsyncStream;
 #[cfg(feature = "stream")]
-use futures_util::stream::{self, StreamExt};
+#[cfg(target_arch = "wasm32")]
+use futures_util::stream::StreamExt;
 use http::{HeaderMap, StatusCode};
-use js_sys::Uint8Array;
-#[cfg(feature = "json")]
+#[cfg(target_arch = "wasm32")]
+use js_sys::{Array, ArrayBuffer, Uint8Array};
 use serde::de::DeserializeOwned;
 use url::Url;
-#[cfg(feature = "stream")]
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
-use wasm_bindgen_futures;
-
-use crate::wasm::AbortGuard;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures::JsFuture;
+#[cfg(target_arch = "wasm32")]
+use web_sys;
+use crate::hyper::wasm::AbortGuard;
 
 /// A Response to a submitted `Request`.
 pub struct Response {

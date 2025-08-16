@@ -14,7 +14,7 @@ use super::super::types::ConnectionTrait;
 
 #[cfg(feature = "default-tls")]
 /// Native TLS connection implementation
-pub(super) struct NativeTlsConnection {
+pub struct NativeTlsConnection {
     pub stream: native_tls::TlsStream<TcpStream>,
 }
 
@@ -64,7 +64,7 @@ impl ConnectionTrait for NativeTlsConnection {
 
 #[cfg(feature = "__rustls")]
 /// Rustls TLS connection implementation
-pub(super) struct RustlsConnection {
+pub struct RustlsConnection {
     pub stream: rustls::StreamOwned<rustls::ClientConnection, TcpStream>,
 }
 

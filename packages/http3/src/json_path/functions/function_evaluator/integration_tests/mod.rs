@@ -4,14 +4,14 @@
 //! function evaluation pipeline, including function dispatch, error handling,
 //! and value conversion across different scenarios.
 
-pub mod mock_evaluator;
-pub mod function_dispatch;
-pub mod error_handling;
-pub mod value_conversion;
 pub mod complex_data;
-pub mod unicode_special;
 pub mod edge_cases;
+pub mod error_handling;
+pub mod function_dispatch;
+pub mod mock_evaluator;
 pub mod performance;
+pub mod unicode_special;
+pub mod value_conversion;
 
 // Re-export test utilities for convenience
 pub use mock_evaluator::mock_evaluator;
@@ -20,11 +20,11 @@ pub use mock_evaluator::mock_evaluator;
 #[cfg(test)]
 mod tests {
     // Import all test modules to ensure they are compiled and run
-    use super::function_dispatch;
-    use super::error_handling;
-    use super::value_conversion;
     use super::complex_data;
-    use super::unicode_special;
     use super::edge_cases;
+    use super::error_handling;
+    use super::function_dispatch;
     use super::performance;
+    use super::unicode_special;
+    use super::value_conversion;
 }

@@ -3,6 +3,7 @@
 //! Provides builder methods for configuring connection pooling and idle connection management.
 
 use std::time::Duration;
+
 use super::super::core::HttpConfig;
 
 impl HttpConfig {

@@ -1,4 +1,5 @@
-use web_sys::{RequestCache, RequestCredentials};
+#[cfg(target_arch = "wasm32")]
+use web_sys::{Headers, Request as WebRequest, RequestInit, RequestMode, RequestCache, RequestCredentials};
 
 use super::RequestBuilder;
 

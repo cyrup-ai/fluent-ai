@@ -1,4 +1,5 @@
-use wasm_bindgen::JsValue;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "multipart")]
 use super::super::multipart::Form;

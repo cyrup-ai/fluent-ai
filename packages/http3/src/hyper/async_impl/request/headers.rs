@@ -1,13 +1,13 @@
 use std::convert::TryFrom;
 
 use super::types::RequestBuilder;
-use crate::header::{HeaderMap, HeaderName, HeaderValue};
+use http::header::{HeaderMap, HeaderName, HeaderValue};
 
 impl RequestBuilder {
     /// Add a set of Headers to the existing ones on this Request.
     ///
     /// The headers will be merged in to any already set.
-    pub fn headers(mut self, headers: crate::header::HeaderMap) -> RequestBuilder {
+    pub fn headers(mut self, headers: http::HeaderMap) -> RequestBuilder {
         if let Ok(ref mut req) = self.request {
             crate::hyper::util::replace_headers(req.headers_mut(), headers);
         }

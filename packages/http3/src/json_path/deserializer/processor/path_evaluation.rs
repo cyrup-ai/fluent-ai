@@ -77,7 +77,7 @@ where
                 if !self.deserializer.object_buffer.is_empty() {
                     if let Ok(json_str) = std::str::from_utf8(&self.deserializer.object_buffer) {
                         if let Ok(context) = serde_json::from_str::<serde_json::Value>(json_str) {
-                            use crate::json_path::JsonPathResultExt;
+                            // JsonPathResultExt removed - not available
                             use crate::json_path::filter::FilterEvaluator;
                             return FilterEvaluator::evaluate_predicate(&context, expression)
                                 .handle_or_default(false);

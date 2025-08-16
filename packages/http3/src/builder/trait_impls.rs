@@ -8,9 +8,8 @@ use std::sync::Arc;
 
 use fluent_ai_async::prelude::ChunkHandler;
 
-use crate::{HttpChunk, HttpError};
-
 use super::builder_core::Http3Builder;
+use crate::{HttpChunk, HttpError};
 
 /// Implement ChunkHandler trait for Http3Builder to support cyrup_sugars on_chunk pattern
 impl<S> ChunkHandler<HttpChunk, HttpError> for Http3Builder<S> {

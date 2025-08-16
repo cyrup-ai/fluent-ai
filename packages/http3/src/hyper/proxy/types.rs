@@ -35,12 +35,14 @@ impl MessageChunk for ProxyUrl {
     fn bad_chunk(error: String) -> Self {
         // Simplified fallback URL creation
         let fallback_url = crate::Url::parse("http://localhost")
-            .unwrap_or_else(|_| crate::Url::parse("http://127.0.0.1")
-                .unwrap_or_else(|_| crate::Url::parse("http://0.0.0.0")
-                    .unwrap_or_else(|_| {
-                        // Last resort - create a basic URL that should always work
-                        crate::Url::parse("http://invalid").unwrap()
-                    })));
+            .or_else(|_| crate::Url::parse("http://127.0.0.1"))
+            .or_else(|_| crate::Url::parse("http://0.0.0.0"))
+            .unwrap_or_else(|_| {
+                // Last resort - create a basic URL that should always work
+                // This should never fail as it's a valid URL
+                crate::Url::parse("http://invalid")
+                    .expect("Basic fallback URL should always parse")
+            });
 
         ProxyUrl {
             url: fallback_url,
@@ -152,7 +154,8 @@ mod tests {
 
     #[test]
     fn test_proxy_url_creation() {
-        let url = crate::Url::parse("http://proxy.example.com:8080").unwrap();
+        let url = crate::Url::parse("http://proxy.example.com:8080")
+            .expect("Test URL should parse correctly");
         let proxy_url = ProxyUrl::new(url.clone());
         assert_eq!(proxy_url.url, url);
         assert!(!proxy_url.is_error());
@@ -167,7 +170,8 @@ mod tests {
 
     #[test]
     fn test_intercept_basic_auth() {
-        let url = crate::Url::parse("http://user:pass@proxy.example.com:8080").unwrap();
+        let url = crate::Url::parse("http://user:pass@proxy.example.com:8080")
+            .expect("Test URL with auth should parse correctly");
         let intercept = Intercept::new(url, Via::Http);
         
         let auth = intercept.basic_auth();
@@ -183,6 +187,6 @@ mod tests {
             .with_headers(headers);
             
         assert!(extra.headers().is_some());
-        assert_eq!(extra.headers().unwrap().len(), 1);
+        assert_eq!(extra.headers().expect("Headers should be present").len(), 1);
     }
 }

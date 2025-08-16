@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use super::super::body::Body;
 use super::types::RequestBuilder;
-use crate::header::{CONTENT_TYPE, HeaderValue};
+use http::header::{CONTENT_TYPE, HeaderValue};
 
 impl RequestBuilder {
     /// Set the request body.
@@ -125,10 +125,11 @@ impl RequestBuilder {
                         req.headers_mut().insert(CONTENT_TYPE, content_type);
                     }
                     if let Some(content_length) = multipart.content_length() {
-                        req.headers_mut().insert(
-                            crate::header::CONTENT_LENGTH,
-                            HeaderValue::from_str(&content_length.to_string()).unwrap(),
-                        );
+                        if let Ok(header_value) = HeaderValue::from_str(&content_length.to_string())
+                        {
+                            req.headers_mut()
+                                .insert(crate::header::CONTENT_LENGTH, header_value);
+                        }
                     }
                     *req.body_mut() = Some(Body::wrap_stream(body));
                 }

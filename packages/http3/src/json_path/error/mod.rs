@@ -2,11 +2,24 @@
 //!
 //! This module provides comprehensive error types and utilities for JSONPath operations
 //! in the HTTP3 streaming framework. It includes error types, constructors, conversions,
-//! and integration tests.
+//! and utilities for error handling.
 
-pub mod constructors;
-pub mod conversions;
-pub mod types;
+mod constructors;
+mod conversions;
+mod types;
+
+// Re-export all error types and utilities
+pub use constructors::*;
+pub use conversions::*;
+pub use types::*;
+
+// Function aliases for backward compatibility
+pub use constructors::{
+    invalid_expression_error,
+    deserialization_error,
+    stream_error,
+    buffer_error,
+};
 
 // Re-export main types for convenience
 pub use conversions::IntoJsonPathError;

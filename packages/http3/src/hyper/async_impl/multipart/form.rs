@@ -138,7 +138,9 @@ impl Form {
     pub fn headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         let content_type = format!("multipart/form-data; boundary={}", self.boundary());
-        headers.insert(CONTENT_TYPE, HeaderValue::from_str(&content_type).unwrap());
+        if let Ok(header_value) = HeaderValue::from_str(&content_type) {
+            headers.insert(CONTENT_TYPE, header_value);
+        }
         headers
     }
 

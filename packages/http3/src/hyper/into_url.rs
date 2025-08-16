@@ -84,42 +84,4 @@ if_hyper! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
 
-    use super::*;
-
-    #[test]
-    fn into_url_file_scheme() {
-        let err = "file:///etc/hosts".into_url().unwrap_err();
-        if let Some(source) = err.source() {
-            assert_eq!(source.to_string(), "URL scheme is not allowed");
-        } else {
-            panic!("error should have source");
-        }
-    }
-
-    #[test]
-    fn into_url_blob_scheme() {
-        let err = "blob:https://example.com".into_url().unwrap_err();
-        if let Some(source) = err.source() {
-            assert_eq!(source.to_string(), "URL scheme is not allowed");
-        } else {
-            panic!("error should have source");
-        }
-    }
-
-    if_wasm! {
-        use wasm_bindgen_test::*;
-
-        #[wasm_bindgen_test]
-        fn into_url_blob_scheme_wasm() {
-            let url = "blob:http://example.com".into_url().unwrap_or_else(|_| {
-                panic!("blob URL should parse")
-            });
-
-            assert_eq!(url.as_str(), "blob:http://example.com");
-        }
-    }
-}

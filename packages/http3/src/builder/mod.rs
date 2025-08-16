@@ -11,9 +11,8 @@ pub mod trait_impls;
 
 // Re-export all public types and traits
 pub use builder_core::Http3Builder;
-pub use content_type::ContentType;
-pub use state_types::{BodyNotSet, BodySet, JsonPathStreaming};
-
 // Import trait implementations to make them available
 use configuration::*;
+pub use content_type::ContentType;
+pub use state_types::{BodyNotSet, BodySet, JsonPathStreaming};
 use trait_impls::*;

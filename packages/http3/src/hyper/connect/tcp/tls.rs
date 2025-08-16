@@ -68,7 +68,7 @@ mod tests {
     fn test_native_tls_connection_creation() {
         // Test that the function signature is correct
         // Actual TLS testing would require a real server
-        let connector = native_tls_crate::TlsConnector::new().unwrap();
+        let connector = native_tls_crate::TlsConnector::new().expect("Failed to create TLS connector");
         
         // This would fail without a real connection, but tests the API
         assert!(true); // Placeholder for API verification

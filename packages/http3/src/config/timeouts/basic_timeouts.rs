@@ -3,6 +3,7 @@
 //! Provides builder methods for configuring request and connection timeouts.
 
 use std::time::Duration;
+
 use super::super::core::HttpConfig;
 
 impl HttpConfig {

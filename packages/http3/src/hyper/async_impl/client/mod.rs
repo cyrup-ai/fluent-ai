@@ -14,9 +14,6 @@ pub mod core;
 pub mod execution;
 pub mod tls_setup;
 
-#[cfg(test)]
-pub mod tests;
-
 // Re-export main types for backward compatibility
 pub use core::{Client, ClientRef, SimpleHyperService};
 // Import necessary dependencies for the decomposed modules

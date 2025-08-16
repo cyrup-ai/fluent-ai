@@ -32,16 +32,16 @@ impl ProxyScheme {
         match self {
             ProxyScheme::Http { host, port, .. } => {
                 format!("http://{}:{}", host, port).parse()
-                    .unwrap_or_else(|_| crate::Url::parse("http://localhost").unwrap())
+                    .unwrap_or_else(|_| crate::Url::parse("http://localhost").expect("Failed to parse fallback HTTP URL"))
             }
             ProxyScheme::Https { host, port, .. } => {
                 format!("https://{}:{}", host, port).parse()
-                    .unwrap_or_else(|_| crate::Url::parse("https://localhost").unwrap())
+                    .unwrap_or_else(|_| crate::Url::parse("https://localhost").expect("Failed to parse fallback HTTPS URL"))
             }
             #[cfg(feature = "socks")]
             ProxyScheme::Socks5 { host, port, .. } => {
                 format!("socks5://{}:{}", host, port).parse()
-                    .unwrap_or_else(|_| crate::Url::parse("socks5://localhost:1080").unwrap())
+                    .unwrap_or_else(|_| crate::Url::parse("socks5://localhost:1080").expect("Failed to parse fallback SOCKS5 URL"))
             }
         }
     }

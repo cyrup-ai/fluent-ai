@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::types::RequestBuilder;
-use crate::header::HeaderValue;
+use http::header::HeaderValue;
 
 impl RequestBuilder {
     /// Enable HTTP basic authentication.

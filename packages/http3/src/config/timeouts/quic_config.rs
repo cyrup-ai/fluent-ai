@@ -3,6 +3,7 @@
 //! Provides builder methods for configuring QUIC connection timeouts and flow control windows.
 
 use std::time::Duration;
+
 use super::super::core::HttpConfig;
 
 impl HttpConfig {

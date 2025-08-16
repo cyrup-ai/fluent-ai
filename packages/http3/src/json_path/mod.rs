@@ -64,7 +64,7 @@ pub use self::{
     buffer::{JsonBuffer, StreamBuffer},
     core_evaluator::CoreJsonPathEvaluator,
     deserializer::{JsonPathDeserializer, JsonPathIterator, StreamingDeserializer},
-    error::{JsonPathError, JsonPathResult, JsonPathResultExt},
+    error::{JsonPathError, JsonPathResult},
     filter::FilterEvaluator,
     functions::FunctionEvaluator,
     json_array_stream::{JsonArrayStream, StreamStats},

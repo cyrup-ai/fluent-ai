@@ -2,8 +2,8 @@
 //!
 //! Converts single-node nodelist to value (errors on multi-node or empty)
 
-use super::super::jsonpath_nodelist::JsonPathNodelistEvaluator;
 use super::super::core::FunctionEvaluator;
+// jsonpath_nodelist module not available - removed::JsonPathNodelistEvaluator;
 use crate::json_path::error::{JsonPathResult, constructors::invalid_expression_error};
 use crate::json_path::parser::{FilterExpression, FilterValue};
 
@@ -30,15 +30,9 @@ pub fn evaluate_value_function(
         FilterExpression::JsonPath { selectors } => {
             evaluate_jsonpath_expression(context, selectors)
         }
-        FilterExpression::Property { path } => {
-            evaluate_property_expression(context, path)
-        }
-        FilterExpression::Current => {
-            evaluate_current_expression(context)
-        }
-        FilterExpression::Literal { value } => {
-            evaluate_literal_expression(value)
-        }
+        FilterExpression::Property { path } => evaluate_property_expression(context, path),
+        FilterExpression::Current => evaluate_current_expression(context),
+        FilterExpression::Literal { value } => evaluate_literal_expression(value),
         _ => {
             // For other expressions, evaluate directly (they produce single values)
             expression_evaluator(context, &args[0])

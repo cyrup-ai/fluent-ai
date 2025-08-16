@@ -117,7 +117,7 @@ pub mod wrappers;
 
 // Core streaming types - NO Result wrapping, pure streams
 pub use builder::{
-    ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt, JsonPathStream,
+    ContentType, Http3Builder, JsonPathStreaming,
 };
 pub use common::{AuthMethod, ContentTypes};
 pub use response::HttpResponseChunk;
@@ -135,7 +135,7 @@ pub use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 pub use hyper::Body;
 // Removed hyper Result types - using fluent_ai_async only
-pub use hyper::{dns, header, tls};
+pub use hyper::{dns, tls};
 pub use json_path::{JsonArrayStream, JsonPathError, StreamStats};
 /// Convenience type alias for Result with HttpError
 pub use middleware::{Middleware, MiddlewareChain, cache::CacheMiddleware};

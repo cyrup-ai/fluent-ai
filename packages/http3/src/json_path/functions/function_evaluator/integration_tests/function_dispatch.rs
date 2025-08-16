@@ -3,9 +3,10 @@
 //! Tests that verify proper function routing and dispatch for all supported functions
 
 use serde_json::json;
+
 use super::super::FunctionEvaluator;
-use crate::json_path::parser::{FilterExpression, FilterValue};
 use super::mock_evaluator::mock_evaluator;
+use crate::json_path::parser::{FilterExpression, FilterValue};
 
 #[cfg(test)]
 mod tests {

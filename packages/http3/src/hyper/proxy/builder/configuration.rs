@@ -102,7 +102,8 @@ mod tests {
 
     fn create_test_proxy() -> Proxy {
         Proxy::new(ProxyIntercept::Http(
-            crate::Url::parse("http://proxy.example.com:8080").unwrap()
+            crate::Url::parse("http://proxy.example.com:8080")
+                .expect("Failed to parse test proxy URL")
         ))
     }
 
@@ -111,8 +112,8 @@ mod tests {
         let proxy = create_test_proxy().basic_auth("user", "pass");
         
         assert!(proxy.extra().auth().is_some());
-        let auth_header = proxy.extra().auth().unwrap();
-        assert!(auth_header.to_str().unwrap().starts_with("Basic "));
+        let auth_header = proxy.extra().auth().expect("Auth header should be present");
+        assert!(auth_header.to_str().expect("Auth header should be valid UTF-8").starts_with("Basic "));
     }
 
     #[test]
@@ -121,7 +122,7 @@ mod tests {
         let proxy = create_test_proxy().custom_http_auth(auth_value.clone());
         
         assert!(proxy.extra().auth().is_some());
-        assert_eq!(proxy.extra().auth().unwrap(), &auth_value);
+        assert_eq!(proxy.extra().auth().expect("Auth header should be present"), &auth_value);
     }
 
     #[test]
@@ -132,7 +133,7 @@ mod tests {
         let proxy = create_test_proxy().custom_headers(headers);
         
         assert!(proxy.extra().headers().is_some());
-        assert_eq!(proxy.extra().headers().unwrap().len(), 1);
+        assert_eq!(proxy.extra().headers().expect("Headers should be present").len(), 1);
     }
 
     #[test]
@@ -146,13 +147,13 @@ mod tests {
     fn test_encode_basic_auth() {
         let header = encode_basic_auth("user", "pass");
         let expected = "Basic dXNlcjpwYXNz"; // base64 of "user:pass"
-        assert_eq!(header.to_str().unwrap(), expected);
+        assert_eq!(header.to_str().expect("Header should be valid UTF-8"), expected);
     }
 
     #[test]
     fn test_encode_basic_auth_invalid_chars() {
         // Test with characters that might cause issues
         let header = encode_basic_auth("user\n", "pass\r");
-        assert!(header.to_str().unwrap().starts_with("Basic "));
+        assert!(header.to_str().expect("Header should be valid UTF-8").starts_with("Basic "));
     }
 }

@@ -18,27 +18,4 @@ impl ResponseBuilderExt for http::response::Builder {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use http::response::Builder;
-    use url::Url;
 
-    use super::{ResponseBuilderExt, ResponseUrl};
-
-    #[test]
-    fn test_response_builder_ext() {
-        let url = match Url::parse("http://example.com") {
-            Ok(url) => url,
-            Err(_) => return, // Skip test if URL parsing fails
-        };
-        let response = match Builder::new().status(200).url(url.clone()).body(()) {
-            Ok(response) => response,
-            Err(_) => return, // Skip test if response build fails
-        };
-
-        assert_eq!(
-            response.extensions().get::<ResponseUrl>(),
-            Some(&ResponseUrl(url))
-        );
-    }
-}

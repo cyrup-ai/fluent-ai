@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_proxy_creation() {
         let proxy = Proxy::new(ProxyIntercept::Http(
-            crate::Url::parse("http://example.com").unwrap()
+            crate::Url::parse("http://example.com").expect("Failed to parse proxy URL")
         ));
         
         assert!(matches!(proxy.intercept(), ProxyIntercept::Http(_)));
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn test_proxy_debug() {
         let proxy = Proxy::new(ProxyIntercept::Http(
-            crate::Url::parse("http://example.com").unwrap()
+            crate::Url::parse("http://example.com").expect("Failed to parse proxy URL for debug test")
         ));
         
         let debug_str = format!("{:?}", proxy);

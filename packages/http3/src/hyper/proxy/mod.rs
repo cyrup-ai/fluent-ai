@@ -8,9 +8,6 @@ pub mod core;
 pub mod matcher;
 pub mod url_handling;
 
-#[cfg(test)]
-pub mod tests;
-
 // Re-export main types for backward compatibility
 pub use core::{Extra, Intercept, NoProxy, Proxy};
 

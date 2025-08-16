@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json;
 
 use super::{Body, Client, Request};
-use crate::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
+use http::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 
 /// A builder to construct the properties of a `Request`.
 pub struct RequestBuilder {

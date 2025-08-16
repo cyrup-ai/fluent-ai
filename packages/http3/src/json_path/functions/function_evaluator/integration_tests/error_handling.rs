@@ -3,6 +3,7 @@
 //! Tests that verify proper error handling for unknown functions and invalid arguments
 
 use serde_json::json;
+
 use super::super::FunctionEvaluator;
 use super::mock_evaluator::mock_evaluator;
 
