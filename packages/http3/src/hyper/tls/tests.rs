@@ -4,17 +4,17 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Certificate, Identity};
     #[cfg(feature = "__rustls")]
     use super::super::CertificateRevocationList;
+    use super::super::{Certificate, Identity};
 
     #[test]
     fn certificate_from_der() {
         // Test DER certificate creation
         let der_cert = include_bytes!("../../../../../../tests/hyper/support/cert.der");
-        
+
         match Certificate::from_der(der_cert) {
-            Ok(_) => (), // Test passes
+            Ok(_) => (),      // Test passes
             Err(_) => return, // Skip test if DER parsing fails
         }
     }
@@ -22,9 +22,9 @@ mod tests {
     #[test]
     fn certificate_from_pem() {
         let pem_cert = b"-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----\n";
-        
+
         match Certificate::from_pem(pem_cert) {
-            Ok(_) => (), // Test passes
+            Ok(_) => (),      // Test passes
             Err(_) => return, // Skip test if PEM parsing fails
         }
     }
@@ -69,7 +69,7 @@ mod tests {
         let pem = b"-----BEGIN X509 CRL-----\n-----END X509 CRL-----\n";
 
         match CertificateRevocationList::from_pem(pem) {
-            Ok(_) => (), // Test passes
+            Ok(_) => (),      // Test passes
             Err(_) => return, // Skip test if CRL parsing fails
         }
     }
@@ -103,9 +103,9 @@ mod tests {
     #[test]
     fn identity_from_pem() {
         let pem_data = b"-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----\n-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n";
-        
+
         match Identity::from_pem(pem_data) {
-            Ok(_) => (), // Test passes
+            Ok(_) => (),      // Test passes
             Err(_) => return, // Skip test if PEM parsing fails
         }
     }
@@ -113,9 +113,9 @@ mod tests {
     #[test]
     fn tls_backend_default() {
         use super::super::TlsBackend;
-        
+
         let backend = TlsBackend::default();
-        
+
         // Should not panic and should return a valid backend
         assert!(!backend.name().is_empty());
     }
@@ -123,12 +123,12 @@ mod tests {
     #[test]
     fn tls_backend_supports_http3() {
         use super::super::TlsBackend;
-        
+
         #[cfg(feature = "__rustls")]
         {
             assert!(TlsBackend::Rustls.supports_http3());
         }
-        
+
         #[cfg(feature = "default-tls")]
         {
             assert!(!TlsBackend::Default.supports_http3());
@@ -138,24 +138,24 @@ mod tests {
     #[test]
     fn tls_config_builder() {
         use super::super::TlsConfigBuilder;
-        
+
         let builder = TlsConfigBuilder::new()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true);
-        
+
         // Should not panic during construction
         #[cfg(feature = "__rustls")]
         {
             match builder.build_rustls() {
-                Ok(_) => (), // Test passes
+                Ok(_) => (),      // Test passes
                 Err(_) => return, // Skip test if build fails
             }
         }
-        
+
         #[cfg(feature = "default-tls")]
         {
             match builder.build_native() {
-                Ok(_) => (), // Test passes
+                Ok(_) => (),      // Test passes
                 Err(_) => return, // Skip test if build fails
             }
         }

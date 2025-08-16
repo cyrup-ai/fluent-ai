@@ -203,22 +203,22 @@ pub fn get_accept_encoding(headers: &HeaderMap) -> Accepts {
         if let Ok(accept_str) = accept_encoding.to_str() {
             // Use stack-allocated lowercase conversion for performance
             let accept_lower = accept_str.to_ascii_lowercase();
-            
+
             #[cfg(feature = "gzip")]
             {
                 accepts.gzip = accept_lower.contains("gzip");
             }
-            
+
             #[cfg(feature = "brotli")]
             {
                 accepts.brotli = accept_lower.contains("br");
             }
-            
+
             #[cfg(feature = "zstd")]
             {
                 accepts.zstd = accept_lower.contains("zstd");
             }
-            
+
             #[cfg(feature = "deflate")]
             {
                 accepts.deflate = accept_lower.contains("deflate");

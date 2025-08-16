@@ -21,7 +21,7 @@ impl DecoderType {
     pub fn from_content_encoding(content_encoding: &str) -> Self {
         // Use byte-level comparison for maximum performance
         let bytes = content_encoding.as_bytes();
-        
+
         match bytes {
             #[cfg(feature = "gzip")]
             b"gzip" | b"GZIP" => DecoderType::Gzip,

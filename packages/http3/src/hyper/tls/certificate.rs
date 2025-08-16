@@ -4,7 +4,7 @@
 
 use std::io::{BufRead, Cursor};
 
-use super::types::{Certificate, Cert};
+use super::types::{Cert, Certificate};
 
 impl Certificate {
     /// Create a `Certificate` from a binary DER encoded certificate

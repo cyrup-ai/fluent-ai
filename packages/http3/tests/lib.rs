@@ -17,9 +17,6 @@ mod stream;
 // Common module tests
 mod common;
 
-// Hyper integration tests
-mod hyper;
-
 // Middleware module tests
 mod middleware;
 

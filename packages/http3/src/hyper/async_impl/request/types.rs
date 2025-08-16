@@ -2,13 +2,14 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
+use http::{Extensions, Request as HttpRequest, Version, request::Parts};
+
 use super::super::body::Body;
 use super::super::client::Client;
 use super::super::response::Response;
-use crate::hyper::config::{RequestConfig, RequestTimeout};
 use crate::header::{HeaderMap, HeaderName, HeaderValue};
+use crate::hyper::config::{RequestConfig, RequestTimeout};
 use crate::{Method, Url};
-use http::{request::Parts, Extensions, Request as HttpRequest, Version};
 
 /// A request which can be executed with `Client::execute()`.
 pub struct Request {
@@ -117,14 +118,13 @@ impl Request {
 
     /// Get the timeout for this request.
     pub fn timeout(&self) -> Option<&Duration> {
-        self.extensions()
-            .get::<RequestTimeout>()
-            .map(|rt| &rt.0)
+        self.extensions().get::<RequestTimeout>().map(|rt| &rt.0)
     }
 
     /// Get a mutable reference to the timeout for this request.
     pub fn timeout_mut(&mut self) -> &mut Option<Duration> {
-        &mut self.extensions_mut()
+        &mut self
+            .extensions_mut()
             .get_mut::<RequestTimeout>()
             .unwrap_or(&mut RequestTimeout(None))
             .0
@@ -167,7 +167,12 @@ impl RequestBuilder {
     }
 
     /// Add a `Header` to this Request with ability to define if `header_value` is sensitive.
-    pub(super) fn header_sensitive<K, V>(mut self, key: K, value: V, sensitive: bool) -> RequestBuilder
+    pub(super) fn header_sensitive<K, V>(
+        mut self,
+        key: K,
+        value: V,
+        sensitive: bool,
+    ) -> RequestBuilder
     where
         HeaderName: TryFrom<K>,
         <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
@@ -187,7 +192,9 @@ impl RequestBuilder {
                         }
                         req.headers_mut().append(key, value);
                     }
-                    Err(_) => error = Some(crate::HttpError::builder("Header value error".to_string())),
+                    Err(_) => {
+                        error = Some(crate::HttpError::builder("Header value error".to_string()))
+                    }
                 },
                 Err(_) => error = Some(crate::HttpError::builder("Header name error".to_string())),
             };

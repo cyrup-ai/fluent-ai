@@ -1,6 +1,7 @@
-use super::types::{Error, Kind};
-use super::helpers::TimedOut;
 use std::io;
+
+use super::helpers::TimedOut;
+use super::types::{Error, Kind};
 
 impl Error {
     /// Returns true if the error is from a type Builder.

@@ -4,8 +4,6 @@ pub use self::request::{Request, RequestBuilder};
 pub use self::response::Response;
 pub use self::upgrade::Upgraded;
 
-
-
 /// HTTP body handling and streaming
 pub mod body;
 /// HTTP/3 client implementation

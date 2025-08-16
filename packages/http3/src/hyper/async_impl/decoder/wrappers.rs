@@ -2,6 +2,7 @@
 //! Zero-allocation, blazing-fast wrapper implementations with fluent_ai_async compliance
 
 use fluent_ai_async::prelude::*;
+
 use super::core::Decoder;
 
 /// MessageChunk wrapper for Decoder to implement Body trait with zero-allocation
@@ -71,10 +72,12 @@ impl http_body::Body for DecoderBodyWrapper {
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
         let this = self.get_mut();
-        
+
         if let Some(ref error_msg) = this.error_message {
-            let error: Box<dyn std::error::Error + Send + Sync> = 
-                Box::new(std::io::Error::new(std::io::ErrorKind::Other, error_msg.clone()));
+            let error: Box<dyn std::error::Error + Send + Sync> = Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                error_msg.clone(),
+            ));
             return std::task::Poll::Ready(Some(Err(error)));
         }
 
@@ -131,19 +134,19 @@ impl DecoderStreamWrapper {
     pub fn new(decoder: Decoder, body: super::ResponseBody) -> Self {
         // Create optimized stream using decoder's decode method
         let stream_data = Some(decoder.decode(body));
-        
+
         Self {
             decoder,
             stream_data,
             error_message: None,
         }
     }
-    
+
     /// Create wrapper with pre-built stream
     #[inline]
     pub(super) fn with_stream(
-        decoder: Decoder, 
-        stream: fluent_ai_async::AsyncStream<crate::wrappers::BytesWrapper>
+        decoder: Decoder,
+        stream: fluent_ai_async::AsyncStream<crate::wrappers::BytesWrapper>,
     ) -> Self {
         Self {
             decoder,
@@ -167,10 +170,12 @@ impl futures::Stream for DecoderStreamWrapper {
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         let this = self.get_mut();
-        
+
         if let Some(ref error_msg) = this.error_message {
-            let error: Box<dyn std::error::Error + Send + Sync> = 
-                Box::new(std::io::Error::new(std::io::ErrorKind::Other, error_msg.clone()));
+            let error: Box<dyn std::error::Error + Send + Sync> = Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                error_msg.clone(),
+            ));
             return std::task::Poll::Ready(Some(Err(error)));
         }
 
@@ -195,10 +200,7 @@ impl futures::Stream for DecoderStreamWrapper {
 
 /// Utility function to create decoder body wrapper from headers and data
 #[inline]
-pub fn create_decoder_body(
-    headers: &http::HeaderMap,
-    data: bytes::Bytes,
-) -> DecoderBodyWrapper {
+pub fn create_decoder_body(headers: &http::HeaderMap, data: bytes::Bytes) -> DecoderBodyWrapper {
     let decoder = Decoder::from_headers(headers);
     DecoderBodyWrapper::with_data(decoder, data)
 }

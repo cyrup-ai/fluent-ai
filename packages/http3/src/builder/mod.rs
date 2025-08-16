@@ -1,46 +1,19 @@
-//! Blazing-fast ergonomic Http3 builder API with zero allocation and elegant fluent interface
-//! Supports streaming HttpChunk/BadHttpChunk responses, Serde integration, and shorthand methods
+//! Http3Builder module with decomposed components
 //!
-//! This module has been decomposed into focused submodules for better maintainability:
-//! - `core`: Core Http3Builder struct and types
-//! - `methods`: HTTP method implementations (GET, POST, PUT, etc.)
-//! - `headers`: Header management and manipulation
-//! - `auth`: Authentication methods (Bearer, Basic, API key)
-//! - `body`: Request body handling (JSON, form, raw)
-//! - `execution`: Request execution and response handling
-//! - `streaming`: JSONPath streaming functionality
-//! - `fluent`: Fluent API extensions and download functionality
+//! Provides the main Http3Builder struct and related types for constructing
+//! HTTP requests with zero allocation and elegant fluent interface.
 
-// Core builder structures and types
-pub mod core;
+pub mod builder_core;
+pub mod configuration;
+pub mod content_type;
+pub mod state_types;
+pub mod trait_impls;
 
-// HTTP method implementations
-pub mod methods;
+// Re-export all public types and traits
+pub use builder_core::Http3Builder;
+pub use content_type::ContentType;
+pub use state_types::{BodyNotSet, BodySet, JsonPathStreaming};
 
-// Header management functionality
-pub mod headers;
-
-// Authentication methods
-pub mod auth;
-
-// Request body handling
-pub mod body;
-
-// Request execution and response handling
-pub mod execution;
-
-// JSONPath streaming functionality
-pub mod streaming;
-
-// Fluent API extensions and download functionality
-pub mod fluent;
-
-// Re-export all main types for backward compatibility
-pub use core::{BodyNotSet, BodySet, ContentType, Http3Builder, JsonPathStreaming};
-
-// Legacy alias for backward compatibility
-pub use Http3Builder as Builder;
-pub use execution::HttpStreamExt;
-pub use fluent::{DownloadBuilder, DownloadProgress};
-pub use headers::header;
-pub use streaming::JsonPathStream;
+// Import trait implementations to make them available
+use configuration::*;
+use trait_impls::*;

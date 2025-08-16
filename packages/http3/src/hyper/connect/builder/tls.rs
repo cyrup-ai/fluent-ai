@@ -1,16 +1,17 @@
 //! TLS configuration methods for ConnectorBuilder
-//! 
+//!
 //! Provides TLS-specific constructors and configuration for both native-tls and rustls.
 
-use super::types::ConnectorBuilder;
 use std::time::Duration;
-use hyper_util::client::legacy::connect::HttpConnector;
-use crate::hyper::error::BoxError;
 
+use hyper_util::client::legacy::connect::HttpConnector;
 #[cfg(feature = "default-tls")]
 use native_tls_crate as native_tls;
 #[cfg(feature = "__rustls")]
 use rustls;
+
+use super::types::ConnectorBuilder;
+use crate::hyper::error::BoxError;
 
 impl ConnectorBuilder {
     /// Create new connector with default TLS
@@ -18,12 +19,12 @@ impl ConnectorBuilder {
     pub fn new_default_tls(
         http: HttpConnector,
         tls: native_tls::TlsConnector,
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>, 
+        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
             target_os = "android",
-            target_os = "fuchsia", 
+            target_os = "fuchsia",
             target_os = "illumos",
             target_os = "ios",
             target_os = "linux",
@@ -50,7 +51,8 @@ impl ConnectorBuilder {
         builder.nodelay = nodelay;
         builder.tls_info = tls_info;
         Ok(builder)
-    }    /// Create new connector with Rustls TLS
+    }
+    /// Create new connector with Rustls TLS
     #[cfg(feature = "__rustls")]
     pub fn new_rustls_tls(
         http: HttpConnector,
@@ -61,7 +63,7 @@ impl ConnectorBuilder {
         #[cfg(any(
             target_os = "android",
             target_os = "fuchsia",
-            target_os = "illumos", 
+            target_os = "illumos",
             target_os = "ios",
             target_os = "linux",
             target_os = "macos",
@@ -87,7 +89,8 @@ impl ConnectorBuilder {
         builder.nodelay = nodelay;
         builder.tls_info = tls_info;
         Ok(builder)
-    }    /// Creates a connector from pre-built default TLS components.
+    }
+    /// Creates a connector from pre-built default TLS components.
     #[cfg(feature = "default-tls")]
     pub fn from_built_default_tls(
         http: HttpConnector,
@@ -133,7 +136,8 @@ impl ConnectorBuilder {
             nodelay,
             tls_info,
         )
-    }    /// Creates a connector from pre-built Rustls TLS components.
+    }
+    /// Creates a connector from pre-built Rustls TLS components.
     #[cfg(feature = "__rustls")]
     pub fn from_built_rustls_tls(
         http: HttpConnector,

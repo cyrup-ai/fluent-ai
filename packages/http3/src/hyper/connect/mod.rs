@@ -1,5 +1,5 @@
 //! HTTP/3 connection management and establishment
-//! 
+//!
 //! This module provides zero-allocation, lock-free connection handling for HTTP/3 clients.
 
 pub mod builder;
@@ -10,22 +10,23 @@ pub mod types;
 
 // Re-export all public types for backward compatibility
 pub use builder::ConnectorBuilder;
-pub use proxy::{Intercepted, ProxyConfig, SocksVersion, SocksAuth, SocksConfig, HttpConnectConfig, ProxyBypass};
+pub use proxy::{
+    HttpConnectConfig, Intercepted, ProxyBypass, ProxyConfig, SocksAuth, SocksConfig, SocksVersion,
+};
 pub use service::ConnectorService;
-pub use tcp::{
-    resolve_host_sync, connect_to_address_list, happy_eyeballs_connect,
-    configure_tcp_socket, configure_tcp_socket_inline, establish_http_connection,
-    establish_connect_tunnel, socks_handshake, socks4_handshake, socks5_handshake,
-};
-pub use types::{
-    Connector, ConnectorKind, BoxedConnectorService, TcpStreamWrapper, Conn, TlsInfo,
-    ConnectionTrait, BrokenConnectionImpl, TcpConnection, BoxedConnectorLayer, Unnameable,
-};
-
 #[cfg(feature = "default-tls")]
 pub use tcp::establish_native_tls_connection;
 #[cfg(feature = "__rustls")]
 pub use tcp::establish_rustls_connection;
+pub use tcp::{
+    configure_tcp_socket, configure_tcp_socket_inline, connect_to_address_list,
+    establish_connect_tunnel, establish_http_connection, happy_eyeballs_connect, resolve_host_sync,
+    socks_handshake, socks4_handshake, socks5_handshake,
+};
+pub use types::{
+    BoxedConnectorLayer, BoxedConnectorService, BrokenConnectionImpl, Conn, ConnectionTrait,
+    Connector, ConnectorKind, TcpConnection, TcpStreamWrapper, TlsInfo, Unnameable,
+};
 
 // Direct connection method implementation for Connector
 impl Connector {

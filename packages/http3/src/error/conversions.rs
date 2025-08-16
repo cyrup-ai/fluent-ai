@@ -1,5 +1,6 @@
-use super::types::HttpError;
 use http::header::{InvalidHeaderName, InvalidHeaderValue};
+
+use super::types::HttpError;
 
 impl From<InvalidHeaderName> for HttpError {
     fn from(error: InvalidHeaderName) -> Self {

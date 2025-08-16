@@ -1,6 +1,7 @@
-use crate::header::{HeaderMap, HeaderName, HeaderValue};
-use super::types::RequestBuilder;
 use std::convert::TryFrom;
+
+use super::types::RequestBuilder;
+use crate::header::{HeaderMap, HeaderName, HeaderValue};
 
 impl RequestBuilder {
     /// Add a set of Headers to the existing ones on this Request.

@@ -47,8 +47,6 @@ impl From<CompletionCoreError> for CompletionError {
     }
 }
 
-
-
 /// Automatic API key discovery using provider's env_api_keys() method
 #[inline(always)]
 pub fn discover_api_key_for_provider<T: CompletionProvider>(provider: &T) -> Option<String> {

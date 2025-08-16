@@ -34,11 +34,15 @@ pub fn upgrade<E: Into<BoxError>>(e: E) -> Error {
 
 // Additional constructors needed by other modules
 pub fn url_invalid_uri(url: crate::Url) -> Error {
-    Error::new(Kind::Builder).with(super::helpers::BadScheme).with_url(url)
+    Error::new(Kind::Builder)
+        .with(super::helpers::BadScheme)
+        .with_url(url)
 }
 
 pub fn url_bad_scheme(url: crate::Url) -> Error {
-    Error::new(Kind::Builder).with(super::helpers::BadScheme).with_url(url)
+    Error::new(Kind::Builder)
+        .with(super::helpers::BadScheme)
+        .with_url(url)
 }
 
 pub fn status_code(
@@ -46,11 +50,10 @@ pub fn status_code(
     status: crate::StatusCode,
     #[cfg(not(target_arch = "wasm32"))] reason: Option<hyper::ext::ReasonPhrase>,
 ) -> Error {
-    Error::new(
-        Kind::Status(
-            status,
-            #[cfg(not(target_arch = "wasm32"))]
-            reason,
-        )
-    ).with_url(url)
+    Error::new(Kind::Status(
+        status,
+        #[cfg(not(target_arch = "wasm32"))]
+        reason,
+    ))
+    .with_url(url)
 }

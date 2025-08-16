@@ -2,23 +2,22 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use http::header::{HeaderMap, PROXY_AUTHORIZATION};
-use http::uri::Scheme;
 use http::Method;
 use http::Uri;
+use http::header::{HeaderMap, PROXY_AUTHORIZATION};
+use http::uri::Scheme;
 
 use super::config::HttpVersionPref;
+use crate::hyper::IntoUrl;
 use crate::hyper::async_impl::decoder::Accepts;
-use crate::hyper::async_impl::request::{Request, RequestBuilder};
-use crate::hyper::config::{RequestConfig, RequestTimeout};
-use crate::hyper::{IntoUrl};
-use crate::hyper::proxy::Matcher as ProxyMatcher;
-use crate::hyper::redirect;
-
-#[cfg(feature = "cookies")]
-use crate::hyper::cookie;
 #[cfg(feature = "http3")]
 use crate::hyper::async_impl::h3_client::H3Client;
+use crate::hyper::async_impl::request::{Request, RequestBuilder};
+use crate::hyper::config::{RequestConfig, RequestTimeout};
+#[cfg(feature = "cookies")]
+use crate::hyper::cookie;
+use crate::hyper::proxy::Matcher as ProxyMatcher;
+use crate::hyper::redirect;
 
 /// An asynchronous `Client` to make Requests with.
 ///
@@ -42,7 +41,10 @@ pub struct Client {
 pub struct SimpleHyperService {
     #[cfg(feature = "cookies")]
     pub(super) cookie_store: Option<Arc<dyn cookie::CookieStore>>,
-    pub(super) hyper: hyper_util::client::legacy::Client<hyper_util::client::legacy::connect::HttpConnector, hyper::body::Incoming>,
+    pub(super) hyper: hyper_util::client::legacy::Client<
+        hyper_util::client::legacy::connect::HttpConnector,
+        hyper::body::Incoming,
+    >,
 }
 
 pub struct ClientRef {

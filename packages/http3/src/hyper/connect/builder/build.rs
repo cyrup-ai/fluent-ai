@@ -1,12 +1,13 @@
 //! Build logic for ConnectorBuilder
-//! 
+//!
 //! Provides the final build method to create configured connectors.
 
-use super::types::ConnectorBuilder;
-use crate::hyper::error::BoxError;
+use hyper_util::client::legacy::connect::HttpConnector;
+
 use super::super::service::ConnectorService;
 use super::super::types::{Connector, ConnectorKind};
-use hyper_util::client::legacy::connect::HttpConnector;
+use super::types::ConnectorBuilder;
+use crate::hyper::error::BoxError;
 
 impl ConnectorBuilder {
     /// Build the connector with configured settings

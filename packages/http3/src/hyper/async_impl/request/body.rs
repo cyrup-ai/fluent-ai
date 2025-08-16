@@ -1,7 +1,8 @@
 use serde::Serialize;
-use crate::header::{HeaderValue, CONTENT_TYPE};
+
 use super::super::body::Body;
 use super::types::RequestBuilder;
+use crate::header::{CONTENT_TYPE, HeaderValue};
 
 impl RequestBuilder {
     /// Set the request body.
@@ -142,8 +143,7 @@ impl RequestBuilder {
 
     /// Send a text body.
     pub fn text<T: Into<String>>(self, text: T) -> RequestBuilder {
-        self.body(text.into())
-            .header(CONTENT_TYPE, "text/plain")
+        self.body(text.into()).header(CONTENT_TYPE, "text/plain")
     }
 
     /// Send raw bytes as body.
@@ -184,11 +184,17 @@ impl RequestBuilder {
                             Some("pdf") => "application/pdf",
                             _ => "application/octet-stream",
                         };
-                        req.headers_mut().insert(CONTENT_TYPE, HeaderValue::from_static(content_type));
+                        req.headers_mut()
+                            .insert(CONTENT_TYPE, HeaderValue::from_static(content_type));
                     }
                     *req.body_mut() = Some(bytes.into());
                 }
-                Err(err) => error = Some(crate::HttpError::builder(format!("Failed to read file: {}", err))),
+                Err(err) => {
+                    error = Some(crate::HttpError::builder(format!(
+                        "Failed to read file: {}",
+                        err
+                    )))
+                }
             }
         }
         if let Some(err) = error {

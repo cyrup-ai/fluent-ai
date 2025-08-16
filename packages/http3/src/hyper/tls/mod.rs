@@ -44,23 +44,22 @@
 //!
 //! [rustls]: https://crates.io/crates/rustls
 
-mod types;
-mod certificate;
-mod identity;
-mod crl;
 mod backend;
+mod certificate;
+mod crl;
+mod identity;
+mod types;
 
 #[cfg(test)]
 mod tests;
 
 // Re-export main types
-pub use types::{Certificate, Identity, TlsBackend, Version, IgnoreHostname};
-
+pub use backend::TlsConfigBuilder;
+pub(crate) use backend::{
+    build_native_tls_connector, build_rustls_config, build_rustls_config_dangerous,
+};
 #[cfg(feature = "__rustls")]
 pub use types::CertificateRevocationList;
-
-pub use backend::TlsConfigBuilder;
-
 // Internal types for module organization
 pub(crate) use types::{Cert, ClientCert, NoVerifier};
-pub(crate) use backend::{build_native_tls_connector, build_rustls_config, build_rustls_config_dangerous};
+pub use types::{Certificate, Identity, IgnoreHostname, TlsBackend, Version};

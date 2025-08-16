@@ -1,17 +1,17 @@
 //! DNS resolution via the [hickory-resolver](https://github.com/hickory-dns/hickory-dns) crate
 
-use hickory_resolver::{
-    config::LookupIpStrategy, lookup_ip::LookupIpIntoIter, ResolveError, AsyncResolver,
-};
-use once_cell::sync::OnceCell;
-
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+use hickory_resolver::{
+    AsyncResolver, ResolveError, config::LookupIpStrategy, lookup_ip::LookupIpIntoIter,
+};
+use once_cell::sync::OnceCell;
+
 use super::{Addrs, Name, Resolve};
 use crate::hyper::error::BoxError;
-use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
 
 /// Wrapper around an `AsyncResolver`, which implements the `Resolve` trait.
 #[derive(Debug, Default, Clone)]
@@ -32,52 +32,64 @@ impl Resolve for HickoryDnsResolver {
     fn resolve(&self, name: Name) -> AsyncStream<Result<Addrs, BoxError>> {
         let resolver = self.clone();
         let hostname = name.as_str().to_string();
-        
+
         AsyncStream::with_channel(move |sender| {
-            let task = spawn_task(move || -> Result<Addrs, hickory_resolver::error::ResolveError> {
-                // Initialize resolver if needed
-                let resolver_instance = resolver.state.get_or_try_init(new_resolver)?;
-                
-                // Use synchronous polling pattern instead of tokio runtime
-                // Create a zero-allocation future executor using std::task components
-                use std::task::{Context, Poll, Waker};
-                use std::future::Future;
-                use std::pin::Pin;
-                
-                // Create a dummy waker for polling
-                let raw_waker = std::task::RawWaker::new(
-                    std::ptr::null(),
-                    &std::task::RawWakerVTable::new(
-                        |_| std::task::RawWaker::new(std::ptr::null(), &std::task::RawWakerVTable::new(|_| panic!(), |_| panic!(), |_| panic!(), |_| panic!())),
-                        |_| {},
-                        |_| {},
-                        |_| {},
-                    )
-                );
-                let waker = unsafe { Waker::from_raw(raw_waker) };
-                let mut context = Context::from_waker(&waker);
-                
-                // Convert async lookup to synchronous polling
-                let mut future = Box::pin(resolver_instance.lookup_ip(hostname.as_str()));
-                
-                // Poll the future until completion with sleep intervals
-                loop {
-                    match future.as_mut().poll(&mut context) {
-                        Poll::Ready(result) => {
-                            let lookup = result?;
-                            let addrs: Addrs = Box::new(SocketAddrs {
-                                iter: lookup.into_iter(),
-                            });
-                            return Ok(addrs);
-                        }
-                        Poll::Pending => {
-                            // Sleep and try again - this is a blocking operation
-                            std::thread::sleep(std::time::Duration::from_millis(10));
+            let task = spawn_task(
+                move || -> Result<Addrs, hickory_resolver::error::ResolveError> {
+                    // Initialize resolver if needed
+                    let resolver_instance = resolver.state.get_or_try_init(new_resolver)?;
+
+                    // Use synchronous polling pattern instead of tokio runtime
+                    // Create a zero-allocation future executor using std::task components
+                    use std::future::Future;
+                    use std::pin::Pin;
+                    use std::task::{Context, Poll, Waker};
+
+                    // Create a dummy waker for polling
+                    let raw_waker = std::task::RawWaker::new(
+                        std::ptr::null(),
+                        &std::task::RawWakerVTable::new(
+                            |_| {
+                                std::task::RawWaker::new(
+                                    std::ptr::null(),
+                                    &std::task::RawWakerVTable::new(
+                                        |_| panic!(),
+                                        |_| panic!(),
+                                        |_| panic!(),
+                                        |_| panic!(),
+                                    ),
+                                )
+                            },
+                            |_| {},
+                            |_| {},
+                            |_| {},
+                        ),
+                    );
+                    let waker = unsafe { Waker::from_raw(raw_waker) };
+                    let mut context = Context::from_waker(&waker);
+
+                    // Convert async lookup to synchronous polling
+                    let mut future = Box::pin(resolver_instance.lookup_ip(hostname.as_str()));
+
+                    // Poll the future until completion with sleep intervals
+                    loop {
+                        match future.as_mut().poll(&mut context) {
+                            Poll::Ready(result) => {
+                                let lookup = result?;
+                                let addrs: Addrs = Box::new(SocketAddrs {
+                                    iter: lookup.into_iter(),
+                                });
+                                return Ok(addrs);
+                            }
+                            Poll::Pending => {
+                                // Sleep and try again - this is a blocking operation
+                                std::thread::sleep(std::time::Duration::from_millis(10));
+                            }
                         }
                     }
-                }
-            });
-            
+                },
+            );
+
             match task.collect() {
                 Ok(addrs) => emit!(sender, Ok(addrs)),
                 Err(e) => handle_error!(e, "hickory DNS lookup"),

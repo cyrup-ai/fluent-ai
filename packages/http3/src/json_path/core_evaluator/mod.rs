@@ -8,7 +8,6 @@ pub use core::CoreJsonPathEvaluator;
 
 pub use array_operations::ArrayOperations;
 pub use filter_support::FilterSupport;
-pub use recursive_descent::RecursiveDescentEngine;
 // Re-export key components for advanced usage
 pub use selector_engine::SelectorEngine;
 pub use timeout_protection::TimeoutProtectedEvaluator;
@@ -17,7 +16,6 @@ pub use timeout_protection::TimeoutProtectedEvaluator;
 mod array_operations;
 mod core;
 mod filter_support;
-mod recursive_descent;
 mod selector_engine;
 mod timeout_protection;
 

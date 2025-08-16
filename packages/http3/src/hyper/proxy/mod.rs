@@ -12,7 +12,8 @@ pub mod url_handling;
 pub mod tests;
 
 // Re-export main types for backward compatibility
-pub use core::{Proxy, NoProxy, Extra, Intercept};
+pub use core::{Extra, Intercept, NoProxy, Proxy};
+
 pub use matcher::Matcher;
 pub use url_handling::Custom;
 

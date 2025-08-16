@@ -3,8 +3,9 @@
 //! Demonstrates .on_chunk() for unwrapping Result<T, E> into T values in streams.
 //! Shows how .on_chunk() runs on each element and unwraps Results into clean stream values.
 
-use fluent_ai_async::prelude::*;
 use std::{thread, time::Duration};
+
+use fluent_ai_async::prelude::*;
 
 #[derive(Debug, Clone, Default)]
 struct LogEntry {
@@ -118,7 +119,10 @@ fn main() {
         .on_chunk(|result: Result<LogEntry, String>| -> LogEntry {
             match result {
                 Ok(entry) => {
-                    println!("✅ LOG on_chunk: Parsed entry - {} {}", entry.level, entry.message);
+                    println!(
+                        "✅ LOG on_chunk: Parsed entry - {} {}",
+                        entry.level, entry.message
+                    );
                     entry
                 }
                 Err(error) => {
@@ -130,10 +134,19 @@ fn main() {
         .with_channel(move |sender| {
             println!("📝 Processing log lines...");
             for (i, line) in log_lines.into_iter().enumerate() {
-                println!("🔍 Processing log line {}: {}", i + 1, 
-                    if line.len() > 50 { format!("{}...", &line[..50]) } else { line.to_string() });
+                println!(
+                    "🔍 Processing log line {}: {}",
+                    i + 1,
+                    if line.len() > 50 {
+                        format!("{}...", &line[..50])
+                    } else {
+                        line.to_string()
+                    }
+                );
                 let parse_result = parse_log_line(line);
-                if sender.send_result(parse_result).is_err() { break; }
+                if sender.send_result(parse_result).is_err() {
+                    break;
+                }
                 thread::sleep(Duration::from_millis(100));
             }
             println!("🏁 Log processing completed");
@@ -146,9 +159,18 @@ fn main() {
     println!("\n📋 Log Processing Summary:");
     for (i, entry) in log_entries.iter().enumerate() {
         if entry.is_error() {
-            println!("  {}. ❌ Parse Error: {}", i + 1, entry.error().unwrap_or("Unknown error"));
+            println!(
+                "  {}. ❌ Parse Error: {}",
+                i + 1,
+                entry.error().unwrap_or("Unknown error")
+            );
         } else {
-            println!("  {}. ✅ Log Entry: {} - {}", i + 1, entry.level, entry.message);
+            println!(
+                "  {}. ✅ Log Entry: {} - {}",
+                i + 1,
+                entry.level,
+                entry.message
+            );
         }
     }
 
@@ -159,7 +181,10 @@ fn main() {
         .on_chunk(|result: Result<ApiResponse, String>| -> ApiResponse {
             match result {
                 Ok(response) => {
-                    println!("✅ API on_chunk: Success - {} {}", response.name, response.status);
+                    println!(
+                        "✅ API on_chunk: Success - {} {}",
+                        response.name, response.status
+                    );
                     response
                 }
                 Err(error) => {
@@ -173,7 +198,9 @@ fn main() {
             for (i, endpoint) in api_endpoints.into_iter().enumerate() {
                 println!("📡 Calling API {}: {}", i + 1, endpoint);
                 let api_result = make_api_call(endpoint);
-                if sender.send_result(api_result).is_err() { break; }
+                if sender.send_result(api_result).is_err() {
+                    break;
+                }
                 thread::sleep(Duration::from_millis(200));
             }
             println!("🏁 API calls completed");
@@ -189,23 +216,41 @@ fn main() {
 
     for (i, response) in responses.iter().enumerate() {
         if response.is_error() {
-            println!("  {}. ❌ Error: {}", i + 1, response.error().unwrap_or("Unknown error"));
+            println!(
+                "  {}. ❌ Error: {}",
+                i + 1,
+                response.error().unwrap_or("Unknown error")
+            );
             failed += 1;
         } else {
-            println!("  {}. ✅ Success: {} - {} ({} data items)", 
-                i + 1, response.name, response.status, response.data.len());
+            println!(
+                "  {}. ✅ Success: {} - {} ({} data items)",
+                i + 1,
+                response.name,
+                response.status,
+                response.data.len()
+            );
             successful += 1;
         }
     }
 
     println!("\n📈 Final Results:");
-    println!("  ✅ Successful operations: {}", successful + log_entries.iter().filter(|e| !e.is_error()).count());
-    println!("  ❌ Failed operations: {}", failed + log_entries.iter().filter(|e| e.is_error()).count());
-    println!("  📊 Total processed: {}", responses.len() + log_entries.len());
+    println!(
+        "  ✅ Successful operations: {}",
+        successful + log_entries.iter().filter(|e| !e.is_error()).count()
+    );
+    println!(
+        "  ❌ Failed operations: {}",
+        failed + log_entries.iter().filter(|e| e.is_error()).count()
+    );
+    println!(
+        "  📊 Total processed: {}",
+        responses.len() + log_entries.len()
+    );
 
     println!("\n💡 Key Pattern: .on_chunk() converts Result<T, E> → T");
     println!("   • Success results become clean T values");
-    println!("   • Error results become T::bad_chunk(error) values"); 
+    println!("   • Error results become T::bad_chunk(error) values");
     println!("   • Stream contains only T values, never Result<T,E>");
     println!("🎉 Comprehensive on_chunk pattern demonstration complete!");
 }

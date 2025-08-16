@@ -1,6 +1,7 @@
 use std::fmt;
-use crate::header::HeaderValue;
+
 use super::types::RequestBuilder;
+use crate::header::HeaderValue;
 
 impl RequestBuilder {
     /// Enable HTTP basic authentication.
@@ -44,7 +45,10 @@ impl RequestBuilder {
     {
         // Note: Digest auth requires challenge-response, so this is a simplified version
         // In practice, digest auth needs server challenge first
-        let auth_string = format!("Digest username=\"{}\", password=\"{}\"", username, password);
+        let auth_string = format!(
+            "Digest username=\"{}\", password=\"{}\"",
+            username, password
+        );
         self.header_sensitive(crate::header::AUTHORIZATION, auth_string, true)
     }
 

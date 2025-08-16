@@ -2,13 +2,12 @@
 //!
 //! Production-quality backend abstraction supporting native-tls and rustls.
 
-use super::types::{TlsBackend, NoVerifier};
-
 #[cfg(feature = "default-tls")]
 use native_tls_crate;
-
 #[cfg(feature = "__rustls")]
 use rustls::{ClientConfig, RootCertStore};
+
+use super::types::{NoVerifier, TlsBackend};
 
 impl TlsBackend {
     /// Get the default TLS backend based on enabled features.
@@ -57,40 +56,35 @@ impl TlsBackend {
 #[cfg(feature = "default-tls")]
 pub(crate) fn build_native_tls_connector() -> crate::Result<native_tls_crate::TlsConnector> {
     let mut builder = native_tls_crate::TlsConnector::builder();
-    
+
     // Configure default settings
     builder.danger_accept_invalid_hostnames(false);
     builder.danger_accept_invalid_certs(false);
-    
+
     builder.build().map_err(crate::error::builder)
 }
 
 #[cfg(feature = "__rustls")]
 pub(crate) fn build_rustls_config() -> crate::Result<ClientConfig> {
     let mut root_store = RootCertStore::empty();
-    
+
     // Add system root certificates
     #[cfg(feature = "rustls-tls-webpki-roots")]
     {
-        root_store.extend(
-            webpki_roots::TLS_SERVER_ROOTS
-                .iter()
-                .cloned()
-        );
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     }
-    
+
     #[cfg(feature = "rustls-tls-native-roots")]
     {
-        let native_certs = rustls_native_certs::load_native_certs()
-            .map_err(|e| crate::HttpError::Tls { 
-                message: format!("failed to load native certs: {}", e) 
+        let native_certs =
+            rustls_native_certs::load_native_certs().map_err(|e| crate::HttpError::Tls {
+                message: format!("failed to load native certs: {}", e),
             })?;
-        
+
         for cert in native_certs {
-            root_store.add(cert)
-                .map_err(|e| crate::HttpError::Tls { 
-                    message: format!("failed to add native cert: {}", e) 
-                })?;
+            root_store.add(cert).map_err(|e| crate::HttpError::Tls {
+                message: format!("failed to add native cert: {}", e),
+            })?;
         }
     }
 
@@ -105,7 +99,7 @@ pub(crate) fn build_rustls_config_dangerous() -> crate::Result<ClientConfig> {
         .dangerous()
         .with_custom_certificate_verifier(std::sync::Arc::new(NoVerifier))
         .with_no_client_auth();
-    
+
     Ok(config)
 }
 
@@ -148,10 +142,10 @@ impl TlsConfigBuilder {
     #[cfg(feature = "default-tls")]
     pub fn build_native(self) -> crate::Result<native_tls_crate::TlsConnector> {
         let mut builder = native_tls_crate::TlsConnector::builder();
-        
+
         builder.danger_accept_invalid_certs(self.accept_invalid_certs);
         builder.danger_accept_invalid_hostnames(self.accept_invalid_hostnames);
-        
+
         builder.build().map_err(crate::error::builder)
     }
 

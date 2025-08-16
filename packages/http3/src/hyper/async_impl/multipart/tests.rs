@@ -1,11 +1,11 @@
 //! Comprehensive tests for multipart/form-data functionality
-//! 
+//!
 //! Production-quality test coverage with zero-allocation streaming patterns.
 
 use std::io::Write;
 
 use bytes::Bytes;
-use fluent_ai_async::{spawn_task, AsyncStream, emit, handle_error};
+use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
 
 use super::types::{Form, Part, PercentEncoding};
 
@@ -20,14 +20,14 @@ mod tests {
         let task = spawn_task(move || -> Result<Vec<u8>, crate::Error> {
             let mut body_stream = form.into_stream();
             let mut output = Vec::new();
-            
+
             while let Some(chunk_result) = body_stream.try_next() {
                 match chunk_result {
                     Ok(chunk) => output.extend_from_slice(&chunk),
                     Err(e) => return Err(e),
                 }
             }
-            
+
             Ok(output)
         });
         let out = match task.collect() {
@@ -46,7 +46,7 @@ mod tests {
                 emit!(sender, Ok::<_, std::io::Error>(Bytes::from(" world")));
             });
             match task.collect() {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => handle_error!(e, "test stream"),
             }
         });
@@ -63,14 +63,14 @@ mod tests {
         let task = spawn_task(move || -> Result<Vec<u8>, crate::Error> {
             let mut body_stream = form.into_stream();
             let mut output = Vec::new();
-            
+
             while let Some(chunk_result) = body_stream.try_next() {
                 match chunk_result {
                     Ok(chunk) => output.extend_from_slice(&chunk),
                     Err(e) => return Err(e),
                 }
             }
-            
+
             Ok(output)
         });
         let out = match task.collect() {
@@ -97,13 +97,13 @@ mod tests {
         // Setup an arbitrary data stream
         let stream_data = b"just some stream data";
         let stream_len = stream_data.len();
-        
+
         // Convert test data to AsyncStream using spawn_task+emit! pattern
         let chunks: Vec<Result<Bytes, std::io::Error>> = stream_data
             .chunks(3)
             .map(|c| Ok::<_, std::io::Error>(Bytes::from(c)))
             .collect();
-        
+
         let the_stream = AsyncStream::with_channel(move |sender| {
             let task = spawn_task(move || {
                 for chunk in chunks {
@@ -111,7 +111,7 @@ mod tests {
                 }
             });
             match task.collect() {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => handle_error!(e, "test stream iteration"),
             }
         });
@@ -119,7 +119,8 @@ mod tests {
         let bytes_data = b"some bytes data".to_vec();
         let bytes_len = bytes_data.len();
 
-        let stream_part = Part::stream_with_length(crate::Body::stream(the_stream), stream_len as u64);
+        let stream_part =
+            Part::stream_with_length(crate::Body::stream(the_stream), stream_len as u64);
         let body_part = Part::bytes(bytes_data);
 
         // A simple check to make sure we get the configured body length
@@ -155,10 +156,10 @@ mod tests {
     fn form_content_type() {
         let form = Form::new();
         let headers = form.headers();
-        
+
         let content_type = headers.get("content-type").unwrap();
         let content_type_str = content_type.to_str().unwrap();
-        
+
         assert!(content_type_str.starts_with("multipart/form-data; boundary="));
         assert!(content_type_str.contains(&form.boundary()));
     }
@@ -193,10 +194,10 @@ mod tests {
     fn form_boundary_generation() {
         let form1 = Form::new();
         let form2 = Form::new();
-        
+
         // Boundaries should be different for different forms
         assert_ne!(form1.boundary(), form2.boundary());
-        
+
         // Boundary should be reasonable length
         assert!(form1.boundary().len() > 10);
     }
@@ -204,12 +205,12 @@ mod tests {
     #[test]
     fn percent_encoding_variants() {
         let mut form = Form::new();
-        
+
         // Test different encoding options
         form = form.percent_encode_path_segment();
         form = form.percent_encode_attr_chars();
         form = form.percent_encode_noop();
-        
+
         // Should not panic and should maintain form structure
         assert!(!form.boundary().is_empty());
     }

@@ -3,7 +3,7 @@
 //! Blazing-fast streaming completions with elegant ChunkHandler pattern:
 //! ```
 //! use cyrup_sugars::ChunkHandler;
-//! 
+//!
 //! client.completion_model("claude-3-5-sonnet-20241022")
 //!     .system_prompt("You are helpful")
 //!     .temperature(0.8)
@@ -84,7 +84,9 @@ pub struct AnthropicCompletionBuilder {
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
-    chunk_handler: Option<Box<dyn Fn(Result<CompletionChunk, CompletionError>) -> CompletionChunk + Send + Sync>>,
+    chunk_handler: Option<
+        Box<dyn Fn(Result<CompletionChunk, CompletionError>) -> CompletionChunk + Send + Sync>,
+    >,
     // Prompt caching configuration
     prompt_caching_enabled: bool,
     auto_cache_large_content: bool,

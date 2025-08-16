@@ -15,11 +15,12 @@ pub(super) mod types;
 pub(super) mod wrappers;
 
 // Re-export all public types for backward compatibility
-pub use accepts::{get_accept_encoding, Accepts};
 pub use core::Decoder;
+
+pub use accepts::{Accepts, get_accept_encoding};
 pub use types::DecoderType;
 pub use wrappers::{
-    create_decoder_body, create_decoder_stream, DecoderBodyWrapper, DecoderStreamWrapper,
+    DecoderBodyWrapper, DecoderStreamWrapper, create_decoder_body, create_decoder_stream,
 };
 
 // Import ResponseBody type for module consistency

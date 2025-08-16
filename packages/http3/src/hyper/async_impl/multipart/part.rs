@@ -1,5 +1,5 @@
 //! Part implementation for multipart/form-data fields
-//! 
+//!
 //! Zero-allocation part creation with comprehensive file handling and metadata management.
 
 use std::borrow::Cow;
@@ -9,9 +9,9 @@ use std::path::Path;
 use bytes::Bytes;
 use mime_guess::Mime;
 
-use crate::hyper::async_impl::Body;
-use crate::header::{HeaderMap, HeaderName, HeaderValue};
 use super::types::{Part, PartMetadata, PartProps};
+use crate::header::{HeaderMap, HeaderName, HeaderValue};
+use crate::hyper::async_impl::Body;
 
 impl Part {
     /// Makes a text field.
@@ -32,13 +32,13 @@ impl Part {
         T: AsRef<Path>,
     {
         let path = path.as_ref();
-        let file_name = path.file_name().and_then(|filename| {
-            Some(Cow::Owned(filename.to_string_lossy().into_owned()))
-        });
+        let file_name = path
+            .file_name()
+            .and_then(|filename| Some(Cow::Owned(filename.to_string_lossy().into_owned())));
         let ext = path.extension().and_then(|ext| ext.to_str());
         let mime = mime_guess::from_ext(ext.unwrap_or("")).first_or_octet_stream();
         let body = Body::from_file(path)?;
-        
+
         let mut part = Part::new(body, None);
         part.meta.file_name = file_name;
         part.meta.mime = Some(mime);
@@ -104,7 +104,8 @@ impl Part {
         if let Some(len) = self.body_length {
             Ok(len)
         } else {
-            self.value.content_length()
+            self.value
+                .content_length()
                 .ok_or_else(|| crate::Error::from("cannot determine part length"))
         }
     }

@@ -1,4 +1,5 @@
 use std::time::Duration;
+
 use super::super::response::Response;
 use super::types::{Request, RequestBuilder};
 
@@ -53,11 +54,11 @@ impl RequestBuilder {
     /// ```
     pub fn send(self) -> fluent_ai_async::AsyncStream<Response> {
         use fluent_ai_async::prelude::*;
-        
+
         AsyncStream::with_channel(move |sender| {
             let request = self.request;
             let client = self.client;
-            
+
             // Use approved pattern from with_channel_pattern.rs example
             std::thread::spawn(move || {
                 let req = match request {
@@ -69,10 +70,10 @@ impl RequestBuilder {
                         return;
                     }
                 };
-                
+
                 // Implement actual HTTP request execution using streaming
                 let response_stream = client.execute(req);
-                
+
                 // Forward the response stream chunks
                 for chunk in response_stream {
                     // Create a simple response from the chunk data
@@ -125,14 +126,14 @@ impl RequestBuilder {
     /// This will consume the entire response stream and return a single Response.
     pub fn fetch(self) -> fluent_ai_async::AsyncStream<Response> {
         use fluent_ai_async::prelude::*;
-        
+
         let response_stream = self.send();
-        
+
         AsyncStream::with_channel(move |sender| {
             std::thread::spawn(move || {
                 // Collect all chunks from the response stream
                 let collected_response = response_stream.collect();
-                
+
                 // For now, just emit the first response
                 // In a full implementation, this would aggregate all chunks
                 if let Some(response) = collected_response.first() {
@@ -146,16 +147,19 @@ impl RequestBuilder {
     }
 
     /// Execute the request with a custom error handler.
-    pub fn send_with_error_handler<F>(self, error_handler: F) -> fluent_ai_async::AsyncStream<Response>
+    pub fn send_with_error_handler<F>(
+        self,
+        error_handler: F,
+    ) -> fluent_ai_async::AsyncStream<Response>
     where
         F: Fn(crate::HttpError) -> Response + Send + 'static,
     {
         use fluent_ai_async::prelude::*;
-        
+
         AsyncStream::with_channel(move |sender| {
             let request = self.request;
             let client = self.client;
-            
+
             std::thread::spawn(move || {
                 let req = match request {
                     Ok(req) => req,
@@ -165,10 +169,10 @@ impl RequestBuilder {
                         return;
                     }
                 };
-                
+
                 // Execute request with custom error handling
                 let response_stream = client.execute(req);
-                
+
                 for chunk in response_stream {
                     emit!(sender, chunk);
                 }

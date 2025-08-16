@@ -31,10 +31,7 @@ pub enum Kind {
 impl Error {
     pub(super) fn new(kind: Kind) -> Error {
         Error {
-            inner: Box::new(Inner {
-                kind,
-                source: None,
-            }),
+            inner: Box::new(Inner { kind, source: None }),
         }
     }
 

@@ -1,5 +1,5 @@
 //! Core types and traits for multipart/form-data handling
-//! 
+//!
 //! Zero-allocation, production-quality multipart implementation with comprehensive error handling.
 
 use std::borrow::Cow;
@@ -9,8 +9,8 @@ use bytes::Bytes;
 use mime_guess::Mime;
 use percent_encoding::{self, AsciiSet, NON_ALPHANUMERIC};
 
-use crate::hyper::async_impl::Body;
 use crate::header::HeaderMap;
+use crate::hyper::async_impl::Body;
 
 /// An async multipart/form-data request.
 pub struct Form {

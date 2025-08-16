@@ -63,14 +63,17 @@ impl CertificateRevocationList {
         let mut reader = std::io::BufReader::new(&mut cursor);
         let mut crls = Vec::new();
 
-        for result in rustls::pki_types::CertificateRevocationListDer::pem_reader_iter(&mut reader) {
+        for result in rustls::pki_types::CertificateRevocationListDer::pem_reader_iter(&mut reader)
+        {
             match result {
                 Ok(crl) => crls.push(CertificateRevocationList {
                     inner: crl.into_owned(),
                 }),
-                Err(e) => return Err(crate::HttpError::Tls { 
-                    message: format!("invalid CRL encoding: {}", e) 
-                }),
+                Err(e) => {
+                    return Err(crate::HttpError::Tls {
+                        message: format!("invalid CRL encoding: {}", e),
+                    });
+                }
             }
         }
 
@@ -89,4 +92,3 @@ impl CertificateRevocationList {
         false // A CertificateRevocationList always contains one CRL
     }
 }
-

@@ -6,10 +6,9 @@ use std::io::BufRead;
 
 #[cfg(feature = "__rustls")]
 use rustls::{
-    client::danger::HandshakeSignatureValid, client::danger::ServerCertVerified,
-    client::danger::ServerCertVerifier,
     DigitallySignedStruct, Error as TLSError, SignatureScheme,
-    pki_types::ServerName, pki_types::UnixTime,
+    client::danger::HandshakeSignatureValid, client::danger::ServerCertVerified,
+    client::danger::ServerCertVerifier, pki_types::ServerName, pki_types::UnixTime,
 };
 
 /// A TLS certificate.
@@ -114,7 +113,9 @@ impl Clone for ClientCert {
             Self::Pkcs12(i) => Self::Pkcs12(i.clone()),
             #[cfg(feature = "__rustls")]
             ClientCert::Pem { key: _, certs } => ClientCert::Pem {
-                key: rustls::pki_types::PrivateKeyDer::Pkcs8(rustls::pki_types::PrivatePkcs8KeyDer::from(vec![])),
+                key: rustls::pki_types::PrivateKeyDer::Pkcs8(
+                    rustls::pki_types::PrivatePkcs8KeyDer::from(vec![]),
+                ),
                 certs: certs.clone(),
             },
             #[cfg_attr(
@@ -125,10 +126,6 @@ impl Clone for ClientCert {
         }
     }
 }
-
-
-
-
 
 #[cfg(feature = "__rustls")]
 #[derive(Debug)]
@@ -190,7 +187,11 @@ impl Certificate {
         for result in rustls::pki_types::CertificateDer::pem_reader_iter(reader) {
             match result {
                 Ok(cert) => certs.push(cert.as_ref().to_vec()),
-                Err(e) => return Err(crate::HttpError::Tls { message: format!("invalid certificate encoding: {}", e) }),
+                Err(e) => {
+                    return Err(crate::HttpError::Tls {
+                        message: format!("invalid certificate encoding: {}", e),
+                    });
+                }
             }
         }
         Ok(certs)

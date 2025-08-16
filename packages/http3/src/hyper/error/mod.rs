@@ -1,12 +1,14 @@
-pub mod types;
-pub mod constructors;
 pub mod classification;
+pub mod constructors;
 pub mod helpers;
+pub mod types;
 
 // Re-export main types and functions for backward compatibility
-pub use types::{Error, Result, Kind, Inner};
 pub use constructors::*;
-pub use helpers::{TimedOut, BadScheme, ConnectionClosed, OperationCanceled, IncompleteMessage, UnexpectedMessage};
+pub use helpers::{
+    BadScheme, ConnectionClosed, IncompleteMessage, OperationCanceled, TimedOut, UnexpectedMessage,
+};
+pub use types::{Error, Inner, Kind, Result};
 
 // Re-export internal types needed by other modules
 pub(crate) type BoxError = Box<dyn std::error::Error + Send + Sync>;

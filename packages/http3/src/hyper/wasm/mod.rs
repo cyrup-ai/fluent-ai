@@ -2,7 +2,7 @@ use std::convert::TryInto;
 use std::time::Duration;
 
 use js_sys::Function;
-use wasm_bindgen::prelude::{wasm_bindgen, Closure};
+use wasm_bindgen::prelude::{Closure, wasm_bindgen};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{AbortController, AbortSignal};
 
@@ -28,7 +28,9 @@ extern "C" {
     fn clear_timeout(handle: JsValue) -> JsValue;
 }
 
-fn promise<T>(promise: js_sys::Promise) -> fluent_ai_async::AsyncStream<Result<T, crate::error::BoxError>>
+fn promise<T>(
+    promise: js_sys::Promise,
+) -> fluent_ai_async::AsyncStream<Result<T, crate::error::BoxError>>
 where
     T: JsCast,
 {
@@ -40,7 +42,9 @@ where
             match JsFuture::from(promise).await {
                 Ok(js_val) => match js_val.dyn_into::<T>() {
                     Ok(result) => emit!(sender, Ok(result)),
-                    Err(_js_val) => emit!(sender, Err("promise resolved to unexpected type".into())),
+                    Err(_js_val) => {
+                        emit!(sender, Err("promise resolved to unexpected type".into()))
+                    }
                 },
                 Err(e) => emit!(sender, Err(crate::error::wasm(e))),
             }

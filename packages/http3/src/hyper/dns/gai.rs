@@ -1,5 +1,6 @@
-use crate::hyper::dns::resolve::{Resolve, Name, DnsResult};
 use fluent_ai_async::{AsyncStream, emit, spawn_task};
+
+use crate::hyper::dns::resolve::{DnsResult, Name, Resolve};
 
 #[derive(Debug)]
 pub struct GaiResolver {
@@ -26,10 +27,10 @@ impl Resolve for GaiResolver {
                 let host_str = format!("{}", name);
                 match std::net::ToSocketAddrs::to_socket_addrs(&host_str.as_str()) {
                     Ok(addrs_iter) => {
-                        let addrs: arrayvec::ArrayVec<std::net::SocketAddr, 8> = 
+                        let addrs: arrayvec::ArrayVec<std::net::SocketAddr, 8> =
                             addrs_iter.take(8).collect();
                         emit!(sender, DnsResult { addrs });
-                    },
+                    }
                     Err(_e) => {
                         emit!(sender, DnsResult::new()); // Empty result for error case
                     }

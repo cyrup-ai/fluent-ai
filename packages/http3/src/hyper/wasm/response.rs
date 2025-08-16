@@ -1,22 +1,19 @@
 use std::fmt;
 
 use bytes::Bytes;
+use fluent_ai_async::AsyncStream;
+#[cfg(feature = "stream")]
+use futures_util::stream::{self, StreamExt};
 use http::{HeaderMap, StatusCode};
 use js_sys::Uint8Array;
+#[cfg(feature = "json")]
+use serde::de::DeserializeOwned;
 use url::Url;
-use fluent_ai_async::AsyncStream;
+#[cfg(feature = "stream")]
+use wasm_bindgen::JsCast;
 use wasm_bindgen_futures;
 
 use crate::wasm::AbortGuard;
-
-#[cfg(feature = "stream")]
-use wasm_bindgen::JsCast;
-
-#[cfg(feature = "stream")]
-use futures_util::stream::{self, StreamExt};
-
-#[cfg(feature = "json")]
-use serde::de::DeserializeOwned;
 
 /// A Response to a submitted `Request`.
 pub struct Response {
@@ -80,13 +77,12 @@ impl Response {
         &self.url
     }
 
-    /* It might not be possible to detect this in JS?
-    /// Get the HTTP `Version` of this `Response`.
-    #[inline]
-    pub fn version(&self) -> Version {
-        self.http.version()
-    }
-    */
+    // It might not be possible to detect this in JS?
+    // Get the HTTP `Version` of this `Response`.
+    // #[inline]
+    // pub fn version(&self) -> Version {
+    // self.http.version()
+    // }
 
     /// Try to deserialize the response body as JSON.
     #[cfg(feature = "json")]
@@ -96,20 +92,18 @@ impl Response {
             wasm_bindgen_futures::spawn_local(async move {
                 let web_response = self.http.into_body();
                 let result = match web_response.array_buffer() {
-                    Ok(promise) => {
-                        match wasm_bindgen_futures::JsFuture::from(promise).await {
-                            Ok(js_value) => {
-                                let array_buffer = js_sys::ArrayBuffer::from(js_value);
-                                let uint8_array = js_sys::Uint8Array::new(&array_buffer);
-                                let mut bytes_vec = vec![0; uint8_array.length() as usize];
-                                uint8_array.copy_to(&mut bytes_vec);
-                                match serde_json::from_slice(&bytes_vec) {
-                                    Ok(parsed) => Ok(parsed),
-                                    Err(e) => Err(crate::error::decode(e)),
-                                }
-                            },
-                            Err(js_error) => Err(crate::error::wasm(js_error)),
+                    Ok(promise) => match wasm_bindgen_futures::JsFuture::from(promise).await {
+                        Ok(js_value) => {
+                            let array_buffer = js_sys::ArrayBuffer::from(js_value);
+                            let uint8_array = js_sys::Uint8Array::new(&array_buffer);
+                            let mut bytes_vec = vec![0; uint8_array.length() as usize];
+                            uint8_array.copy_to(&mut bytes_vec);
+                            match serde_json::from_slice(&bytes_vec) {
+                                Ok(parsed) => Ok(parsed),
+                                Err(e) => Err(crate::error::decode(e)),
+                            }
                         }
+                        Err(js_error) => Err(crate::error::wasm(js_error)),
                     },
                     Err(js_error) => Err(crate::error::wasm(js_error)),
                 };
@@ -124,16 +118,12 @@ impl Response {
             wasm_bindgen_futures::spawn_local(async move {
                 let web_response = self.http.into_body();
                 let result = match web_response.text() {
-                    Ok(promise) => {
-                        match wasm_bindgen_futures::JsFuture::from(promise).await {
-                            Ok(js_value) => {
-                                match js_value.as_string() {
-                                    Some(text) => Ok(text),
-                                    None => Err(crate::error::decode("Response text is not a string")),
-                                }
-                            },
-                            Err(js_error) => Err(crate::error::wasm(js_error)),
-                        }
+                    Ok(promise) => match wasm_bindgen_futures::JsFuture::from(promise).await {
+                        Ok(js_value) => match js_value.as_string() {
+                            Some(text) => Ok(text),
+                            None => Err(crate::error::decode("Response text is not a string")),
+                        },
+                        Err(js_error) => Err(crate::error::wasm(js_error)),
                     },
                     Err(js_error) => Err(crate::error::wasm(js_error)),
                 };
@@ -148,17 +138,15 @@ impl Response {
             wasm_bindgen_futures::spawn_local(async move {
                 let web_response = self.http.into_body();
                 let result = match web_response.array_buffer() {
-                    Ok(promise) => {
-                        match wasm_bindgen_futures::JsFuture::from(promise).await {
-                            Ok(js_value) => {
-                                let array_buffer = js_sys::ArrayBuffer::from(js_value);
-                                let uint8_array = js_sys::Uint8Array::new(&array_buffer);
-                                let mut bytes_vec = vec![0; uint8_array.length() as usize];
-                                uint8_array.copy_to(&mut bytes_vec);
-                                Ok(Bytes::from(bytes_vec))
-                            },
-                            Err(js_error) => Err(crate::error::wasm(js_error)),
+                    Ok(promise) => match wasm_bindgen_futures::JsFuture::from(promise).await {
+                        Ok(js_value) => {
+                            let array_buffer = js_sys::ArrayBuffer::from(js_value);
+                            let uint8_array = js_sys::Uint8Array::new(&array_buffer);
+                            let mut bytes_vec = vec![0; uint8_array.length() as usize];
+                            uint8_array.copy_to(&mut bytes_vec);
+                            Ok(Bytes::from(bytes_vec))
                         }
+                        Err(js_error) => Err(crate::error::wasm(js_error)),
                     },
                     Err(js_error) => Err(crate::error::wasm(js_error)),
                 };
@@ -178,12 +166,12 @@ impl Response {
         AsyncStream::with_channel(move |sender| {
             if let Some(body) = web_response.body() {
                 let body = wasm_streams::ReadableStream::from_raw(body.unchecked_into());
-                
+
                 // Production WASM stream handling using fluent_ai_async patterns
                 spawn_task(move || async move {
                     use futures_util::StreamExt;
                     let mut stream = body.into_stream();
-                    
+
                     while let Some(buf_js) = stream.next().await {
                         match buf_js {
                             Ok(js_value) => {
@@ -191,13 +179,21 @@ impl Response {
                                 let mut bytes = vec![0; buffer.length() as usize];
                                 buffer.copy_to(&mut bytes);
                                 let chunk = Bytes::from(bytes);
-                                emit!(sender, crate::response::HttpResponseChunk::from_bytes(chunk));
+                                emit!(
+                                    sender,
+                                    crate::response::HttpResponseChunk::from_bytes(chunk)
+                                );
                             }
                             Err(js_error) => {
                                 let error_msg = format!("WASM stream read error: {:?}", js_error);
-                                emit!(sender, crate::response::HttpResponseChunk::bad_chunk(error_msg));
+                                emit!(
+                                    sender,
+                                    crate::response::HttpResponseChunk::bad_chunk(error_msg)
+                                );
                                 return;
                             }
+                        }
+                    }
                 });
             } else {
                 // No body available - emit empty response chunk

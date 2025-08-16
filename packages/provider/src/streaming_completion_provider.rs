@@ -140,18 +140,20 @@ pub trait StreamingCompletionProviderExt: StreamingCompletionProvider {
         request: CompletionRequest,
         fallback: CompletionChunk,
     ) -> AsyncStream<CompletionChunk> {
-        use fluent_ai_async::{AsyncStream, emit};
         use cyrup_sugars::prelude::ChunkHandler;
+        use fluent_ai_async::{AsyncStream, emit};
 
         let provider_stream = self.stream_completion(request);
 
         AsyncStream::builder()
-            .on_chunk(|result: Result<CompletionChunk, String>| -> CompletionChunk {
-                match result {
-                    Ok(chunk) => chunk,
-                    Err(error) => CompletionChunk::bad_chunk(error),
-                }
-            })
+            .on_chunk(
+                |result: Result<CompletionChunk, String>| -> CompletionChunk {
+                    match result {
+                        Ok(chunk) => chunk,
+                        Err(error) => CompletionChunk::bad_chunk(error),
+                    }
+                },
+            )
             .with_channel(move |sender| {
                 let mut received_any = false;
 

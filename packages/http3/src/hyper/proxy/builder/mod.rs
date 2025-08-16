@@ -1,0 +1,68 @@
+//! Proxy builder modules
+//!
+//! Decomposed proxy builder implementation with logical separation of concerns:
+//!
+//! - `types`: Core Proxy struct and ProxyIntercept enum definitions
+//! - `constructors`: Static methods for creating proxy configurations
+//! - `configuration`: Instance methods for auth, headers, and no-proxy settings
+//!
+//! All modules maintain production-quality error handling and comprehensive tests.
+
+pub mod types;
+pub mod constructors;
+pub mod configuration;
+
+// Re-export the main type for backward compatibility
+pub use types::{Proxy, ProxyIntercept};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use http::{HeaderMap, header::HeaderValue};
+
+    #[test]
+    fn test_module_integration() {
+        // Test that all modules are properly integrated
+        let proxy = Proxy::http("http://proxy.example.com:8080").unwrap();
+        
+        // Test type access
+        assert!(matches!(proxy.intercept(), ProxyIntercept::Http(_)));
+        
+        // Test configuration chaining
+        let configured_proxy = proxy
+            .basic_auth("user", "pass")
+            .no_proxy("localhost");
+        
+        assert!(configured_proxy.extra().auth().is_some());
+        assert!(configured_proxy.no_proxy().is_some());
+    }
+
+    #[test]
+    fn test_all_constructor_types() {
+        // Test all constructor methods work
+        let http_proxy = Proxy::http("http://proxy.example.com").unwrap();
+        let https_proxy = Proxy::https("https://proxy.example.com").unwrap();
+        let all_proxy = Proxy::all("http://proxy.example.com").unwrap();
+        let custom_proxy = Proxy::custom(|_| Some("http://custom.proxy"));
+
+        assert!(matches!(http_proxy.intercept(), ProxyIntercept::Http(_)));
+        assert!(matches!(https_proxy.intercept(), ProxyIntercept::Https(_)));
+        assert!(matches!(all_proxy.intercept(), ProxyIntercept::All(_)));
+        assert!(matches!(custom_proxy.intercept(), ProxyIntercept::Custom(_)));
+    }
+
+    #[test]
+    fn test_configuration_chaining() {
+        let mut headers = HeaderMap::new();
+        headers.insert("X-Test", HeaderValue::from_static("value"));
+
+        let proxy = Proxy::http("http://proxy.example.com").unwrap()
+            .basic_auth("user", "pass")
+            .custom_headers(headers)
+            .no_proxy("localhost,*.internal");
+
+        assert!(proxy.extra().auth().is_some());
+        assert!(proxy.extra().headers().is_some());
+        assert!(proxy.no_proxy().is_some());
+    }
+}

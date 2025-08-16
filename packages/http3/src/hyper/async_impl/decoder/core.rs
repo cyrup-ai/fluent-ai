@@ -2,11 +2,11 @@
 //! Blazing-fast response body decoding using fluent_ai_async patterns
 
 use bytes::Bytes;
-use http::HeaderMap;
 use fluent_ai_async::prelude::*;
+use http::HeaderMap;
 
-use super::types::DecoderType;
 use super::ResponseBody;
+use super::types::DecoderType;
 
 /// Core decoder for HTTP response body decompression
 #[derive(Debug)]
@@ -21,44 +21,44 @@ impl Decoder {
         let content_encoding = headers
             .get("content-encoding")
             .and_then(|v| v.to_str().ok());
-        
+
         let decoder_type = content_encoding
             .map(DecoderType::from_content_encoding)
             .unwrap_or(DecoderType::Identity);
-            
+
         Decoder { decoder_type }
     }
-    
+
     /// Create empty decoder (no decompression) with const optimization
     #[inline]
-    pub(super) const fn empty() -> Self {
+    pub const fn empty() -> Self {
         Decoder {
             decoder_type: DecoderType::Identity,
         }
     }
-    
+
     /// Detect decoder type from optional content encoding with fast path
     #[inline]
-    pub(super) fn detect(content_encoding: Option<&str>) -> Self {
+    pub fn detect(content_encoding: Option<&str>) -> Self {
         let decoder_type = content_encoding
             .map(DecoderType::from_content_encoding)
             .unwrap_or(DecoderType::Identity);
-            
+
         Decoder { decoder_type }
     }
-    
+
     /// Get the decoder type for inspection
     #[inline]
     pub(super) const fn decoder_type(&self) -> DecoderType {
         self.decoder_type
     }
-    
+
     /// Check if decompression is needed
     #[inline]
     pub(super) const fn needs_decompression(&self) -> bool {
         self.decoder_type.needs_decompression()
     }
-    
+
     /// Decode response body into stream with zero-allocation hot path
     pub(super) fn decode(
         &self,
@@ -72,29 +72,21 @@ impl Decoder {
                 })
             }
             #[cfg(feature = "gzip")]
-            DecoderType::Gzip => {
-                fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                    super::compression::decompress_gzip_stream(body, sender);
-                })
-            }
+            DecoderType::Gzip => fluent_ai_async::AsyncStream::with_channel(move |sender| {
+                super::compression::decompress_gzip_stream(body, sender);
+            }),
             #[cfg(feature = "brotli")]
-            DecoderType::Brotli => {
-                fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                    super::compression::decompress_brotli_stream(body, sender);
-                })
-            }
+            DecoderType::Brotli => fluent_ai_async::AsyncStream::with_channel(move |sender| {
+                super::compression::decompress_brotli_stream(body, sender);
+            }),
             #[cfg(feature = "zstd")]
-            DecoderType::Zstd => {
-                fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                    super::compression::decompress_zstd_stream(body, sender);
-                })
-            }
+            DecoderType::Zstd => fluent_ai_async::AsyncStream::with_channel(move |sender| {
+                super::compression::decompress_zstd_stream(body, sender);
+            }),
             #[cfg(feature = "deflate")]
-            DecoderType::Deflate => {
-                fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                    super::compression::decompress_deflate_stream(body, sender);
-                })
-            }
+            DecoderType::Deflate => fluent_ai_async::AsyncStream::with_channel(move |sender| {
+                super::compression::decompress_deflate_stream(body, sender);
+            }),
             #[allow(unreachable_patterns)]
             _ => {
                 // Fallback for disabled features - treat as identity
@@ -104,7 +96,7 @@ impl Decoder {
             }
         }
     }
-    
+
     /// Stream body directly without decompression (hot path optimization)
     #[inline]
     fn stream_body_direct(
@@ -113,15 +105,15 @@ impl Decoder {
         sender: fluent_ai_async::AsyncStreamSender<crate::wrappers::BytesWrapper>,
     ) {
         use http_body::Body;
-        
+
         // Spawn task for async body processing with elite polling
         fluent_ai_async::spawn_task(move || {
             let mut chunk_count = 0u32;
-            
+
             loop {
                 let waker = std::task::Waker::noop();
                 let mut context = std::task::Context::from_waker(&waker);
-                
+
                 match Body::poll_frame(std::pin::Pin::new(&mut body), &mut context) {
                     std::task::Poll::Ready(Some(Ok(frame))) => {
                         if let Some(data) = frame.data_ref() {
@@ -132,9 +124,10 @@ impl Decoder {
                         }
                     }
                     std::task::Poll::Ready(Some(Err(e))) => {
-                        let error_chunk = crate::wrappers::BytesWrapper::bad_chunk(
-                            format!("Body streaming error: {}", e)
-                        );
+                        let error_chunk = crate::wrappers::BytesWrapper::bad_chunk(format!(
+                            "Body streaming error: {}",
+                            e
+                        ));
                         emit!(sender, error_chunk);
                         return;
                     }
@@ -147,7 +140,7 @@ impl Decoder {
                         std::thread::yield_now();
                     }
                 }
-                
+
                 // Prevent infinite tight loops
                 if chunk_count > 10000 {
                     std::thread::sleep(std::time::Duration::from_nanos(100));
@@ -155,7 +148,7 @@ impl Decoder {
             }
         });
     }
-    
+
     /// Decode response body with pre-allocated buffer optimization
     pub(super) fn decode_with_hint(
         &self,
@@ -165,7 +158,7 @@ impl Decoder {
         let estimated_size = size_hint.unwrap_or(8192);
         let compression_ratio = self.decoder_type.compression_ratio_estimate();
         let _expected_output_size = (estimated_size as f32 * compression_ratio) as usize;
-        
+
         // Use standard decode method - buffer optimization handled in compression modules
         self.decode(body)
     }

@@ -1,5 +1,5 @@
 //! Form implementation for multipart/form-data handling
-//! 
+//!
 //! Provides zero-allocation streaming form construction with production-quality error handling.
 
 use std::borrow::Cow;
@@ -7,9 +7,9 @@ use std::borrow::Cow;
 use bytes::Bytes;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, emit, handle_error, spawn_task};
 
+use super::types::{Form, FormParts, Part, PartMetadata, PercentEncoding, gen_boundary};
+use crate::header::{CONTENT_TYPE, HeaderMap, HeaderValue};
 use crate::hyper::async_impl::Body;
-use crate::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
-use super::types::{Form, Part, FormParts, PartMetadata, PercentEncoding, gen_boundary};
 
 impl Form {
     /// Creates a new Form without any content.
@@ -76,7 +76,7 @@ impl Form {
                 self.stream_form(sender);
             });
             match task.collect() {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => handle_error!(e, "form streaming"),
             }
         })
@@ -84,20 +84,23 @@ impl Form {
 
     fn stream_form(&self, sender: AsyncStreamSender<Result<Bytes, crate::Error>, 16>) {
         let boundary = &self.inner.boundary;
-        
+
         for (field_name, field) in &self.inner.fields {
             // Send field boundary
             let boundary_bytes = format!("\r\n--{}\r\n", boundary);
             emit!(sender, Ok(Bytes::from(boundary_bytes)));
 
             // Send field headers
-            let headers = self.inner.percent_encoding.encode_headers(field_name, &field.meta);
+            let headers = self
+                .inner
+                .percent_encoding
+                .encode_headers(field_name, &field.meta);
             emit!(sender, Ok(Bytes::from(headers)));
             emit!(sender, Ok(Bytes::from("\r\n\r\n")));
 
             // Send field body
             match self.stream_field_body(field, &sender) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
                     emit!(sender, Err(e));
                     return;
@@ -110,7 +113,11 @@ impl Form {
         emit!(sender, Ok(Bytes::from(final_boundary)));
     }
 
-    fn stream_field_body(&self, field: &Part, sender: &AsyncStreamSender<Result<Bytes, crate::Error>, 16>) -> crate::Result<()> {
+    fn stream_field_body(
+        &self,
+        field: &Part,
+        sender: &AsyncStreamSender<Result<Bytes, crate::Error>, 16>,
+    ) -> crate::Result<()> {
         // For now, we'll use a simplified approach
         // In a full implementation, this would stream the field.value (Body)
         // This is a placeholder that maintains the streaming pattern
@@ -118,7 +125,7 @@ impl Form {
             Some(bytes) => {
                 emit!(sender, Ok(bytes.clone()));
                 Ok(())
-            },
+            }
             None => {
                 // Handle streaming body case
                 // This would require integration with the Body streaming implementation
@@ -172,7 +179,9 @@ impl FormParts<Part> {
             length += 2 + 2 + boundary.len() as u64 + 2;
 
             // Headers
-            let headers = self.percent_encoding.encode_headers(field_name, &field.meta);
+            let headers = self
+                .percent_encoding
+                .encode_headers(field_name, &field.meta);
             length += headers.len() as u64;
 
             // Header/body separator: \r\n\r\n
