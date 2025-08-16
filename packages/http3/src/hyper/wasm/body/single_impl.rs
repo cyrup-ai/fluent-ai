@@ -5,6 +5,8 @@ use bytes::Bytes;
 use js_sys::Uint8Array;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
 
 use super::types::Single;
 
@@ -16,6 +18,7 @@ impl Single {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub(crate) fn to_js_value(&self) -> JsValue {
         match self {
             Single::Bytes(bytes) => {

@@ -1,164 +1,131 @@
-# HTTP3 Test Extraction and Compilation Fix Plan
-
-## Milestone 1: Fix Critical Module Import Errors (173 compilation errors)
-
-### Phase 1A: Fix Core Module Re-exports in src/hyper/mod.rs
-
-- [ ] **Fix missing re-exports in src/hyper/mod.rs lines 21-23**: Add proper re-exports for `Certificate`, `Identity`, `IntoUrl`, `Proxy` types that are being imported by other modules. Examine existing re-export structure and add missing items without breaking existing functionality.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on fixing re-exports in src/hyper/mod.rs. Verify all missing imports are resolved, no new compilation errors introduced, and existing functionality preserved.
-
-- [ ] **Fix config module re-export in src/hyper/mod.rs**: Add `pub mod config;` and proper re-exports for config types being imported by client modules. Check lines referencing `crate::hyper::config` in compilation errors.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on config module re-exports. Verify config types are properly accessible and no circular dependencies created.
-
-### Phase 1B: Fix IntoUrl Module Structure
-
-- [ ] **Create proper IntoUrl re-export in src/hyper/mod.rs**: Add `pub use into_url::IntoUrl;` to expose IntoUrl trait that's being imported by multiple modules. Check src/hyper/into_url.rs exists and contains IntoUrl trait.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on IntoUrl re-export. Verify IntoUrl trait is accessible from crate::hyper::IntoUrl path and resolves import errors.
-
-### Phase 1C: Fix TLS Module Re-exports
-
-- [ ] **Fix Certificate and Identity re-exports in src/hyper/mod.rs**: Add proper re-exports for TLS types from tls module. Check src/hyper/tls/mod.rs for Certificate and Identity types and create appropriate re-exports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on TLS re-exports. Verify Certificate and Identity types are accessible and TLS functionality preserved.
-
-### Phase 1D: Fix Proxy Module Re-exports
-
-- [ ] **Fix Proxy type re-export in src/hyper/mod.rs**: Add `pub use proxy::Proxy;` to expose Proxy type being imported by client modules. Verify proxy module structure and types.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on Proxy re-export. Verify Proxy type is accessible and proxy functionality preserved.
-
-### Phase 1E: Fix Connect Module Issues
-
-- [ ] **Fix private re-export errors in src/hyper/connect/service/mod.rs lines 17,19**: Remove or fix private re-exports of `NativeTlsConnection` and `RustlsConnection`. Make types public if needed or remove invalid re-exports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on connect service re-exports. Verify no private items are being re-exported and module compiles correctly.
-
-- [ ] **Fix missing Connect and HttpConnector re-exports in src/hyper/mod.rs line 21**: Add proper re-exports for connect types or remove invalid imports. Check src/hyper/connect/mod.rs for available types.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on Connect re-exports. Verify connect functionality is properly exposed and accessible.
-
-### Phase 1F: Fix JSON Path Error Module Issues
-
-- [ ] **Fix missing error constructors in src/json_path/error/constructors/mod.rs**: Add proper re-exports for `invalid_expression_error`, `buffer_error`, `stream_error` functions that are being imported throughout the codebase.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on error constructor re-exports. Verify all error functions are accessible and error handling preserved.
-
-- [ ] **Fix missing deserialization_error in src/json_path/error/mod.rs**: Add proper re-export for deserialization_error function being imported by filter/core.rs.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on deserialization_error re-export. Verify error function is accessible and deserialization functionality preserved.
-
-### Phase 1G: Fix Response Module Issues
-
-- [ ] **Fix missing response re-export in src/hyper/async_impl/response/conversions.rs line 25**: Fix import `crate::hyper::response` by adding proper response module re-export in src/hyper/mod.rs.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on response module re-export. Verify response functionality is accessible and conversions work correctly.
-
-- [ ] **Fix missing error trait implementation in src/hyper/async_impl/response/core/trait_impls.rs line 9**: Implement missing `error` method for trait implementation to resolve compilation error.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on trait implementation. Verify trait is properly implemented and no missing methods remain.
-
-### Phase 1H: Fix WASM Module Dependencies
-
-- [ ] **Add conditional WASM dependencies to Cargo.toml**: Add wasm-bindgen, js-sys, web-sys, wasm-bindgen-futures dependencies with proper target conditions for wasm32 architecture.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on WASM dependencies. Verify WASM code compiles correctly and dependencies are properly configured.
-
-### Phase 1I: Fix Conflicting Debug Implementation
-
-- [ ] **Fix conflicting Debug trait implementation in src/hyper/proxy/url_handling.rs line 261**: Remove duplicate Debug implementation for `url_handling::Custom` type to resolve trait conflict.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on Debug trait conflict. Verify no conflicting implementations remain and type still has Debug capability.
-
-## Milestone 2: Complete Surgical Test Extraction (89 remaining files)
-
-### Phase 2A: Extract Remaining Embedded Test Modules
-
-- [ ] **Extract tests from src/hyper/connect/tcp/dns.rs lines 56-end**: Move embedded test module to tests/hyper/connect/tcp/dns.rs with proper imports and module structure.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on dns.rs test extraction. Verify tests are properly extracted, imports work, and original functionality preserved.
-
-- [ ] **Extract tests from src/hyper/connect/tcp/tls.rs lines 62-end**: Move embedded test module to tests/hyper/connect/tcp/tls.rs with proper imports and module structure.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on tls.rs test extraction. Verify tests are properly extracted, imports work, and TLS functionality preserved.
-
-- [ ] **Extract tests from src/hyper/connect/types/tcp_impl.rs lines 130-end**: Move embedded test module to tests/hyper/connect/types/tcp_impl.rs with proper imports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on tcp_impl.rs test extraction. Verify tests are properly extracted and TCP functionality preserved.
-
-### Phase 2B: Extract JSON Path Test Modules
-
-- [ ] **Extract tests from src/json_path/functions/function_evaluator/length.rs lines 62-end**: Move embedded test module to tests/json_path/functions/function_evaluator/length.rs with proper imports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on length.rs test extraction. Verify tests are properly extracted and length function preserved.
-
-- [ ] **Extract tests from src/json_path/core_evaluator/mod.rs lines 151-end**: Move embedded test module to tests/json_path/core_evaluator/mod.rs with proper imports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on core_evaluator mod.rs test extraction. Verify tests are properly extracted and evaluator functionality preserved.
-
-### Phase 2C: Extract Remaining Cache and Response Tests
-
-- [ ] **Extract tests from src/common/cache/response_cache/mod.rs lines 21-end**: Move embedded test module to tests/common/cache/response_cache/mod.rs with proper imports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on response_cache mod.rs test extraction. Verify tests are properly extracted and cache functionality preserved.
-
-- [ ] **Extract tests from src/response/body/mod.rs lines 35-end**: Move embedded test module to tests/response/body/mod.rs with proper imports.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the work performed on response body test extraction. Verify tests are properly extracted and response body functionality preserved.
-
-## Milestone 3: Verification and Quality Assurance
-
-### Phase 3A: Compilation Verification
-
-- [ ] **Run cargo fmt && cargo check --message-format short --quiet**: Verify zero compilation errors and zero warnings after all fixes.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the compilation verification. Verify codebase compiles cleanly with no errors or warnings.
-
-### Phase 3B: Test Execution Verification
-
-- [ ] **Run cargo nextest run**: Verify all tests pass in their new locations with proper imports and functionality.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the test execution verification. Verify all tests pass and functionality is preserved.
-
-### Phase 3C: Final Cleanup and Verification
-
-- [ ] **Verify no test code remains in src/ directory**: Run `find src -name "*.rs" -exec grep -l "#\[cfg(test)\]" {} \;` and confirm zero results.
-  DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-- [ ] **Act as an Objective QA Rust developer**: Rate the final cleanup verification. Verify complete test extraction with no test code remaining in src/ and all tests properly located in tests/.
-
-## Architecture Notes
-
-**Module Structure**: Maintain existing module hierarchy in tests/ mirroring src/ structure for intuitive navigation and import resolution.
-
-**Import Strategy**: Use absolute imports from crate root (e.g., `use fluent_ai_http3::hyper::Client`) in test files to ensure proper module resolution.
-
-**Dependency Management**: Preserve all existing functionality while ensuring clean separation between production code (src/) and test code (tests/).
-
-**Error Handling**: Never use unwrap() or expect() in src/ or examples/. Use expect() in tests/ for clear test failure messages. Never use unwrap() anywhere.
-
-**WASM Compatibility**: Ensure WASM-specific code compiles correctly with proper conditional compilation and dependencies.
+# HTTP3 Package - Error and Warning Fixes
+
+**Current Status**: 139 errors, 186 warnings
+**Target**: 0 errors, 0 warnings
+
+## COMPILATION ERRORS (139 total)
+
+### Missing Dependencies/Crates
+1. Fix unresolved import `futures_util` in wasm/response.rs:177
+2. Fix unresolved import `wasm_bindgen_futures` in wasm/mod.rs:114
+3. Fix unresolved import `web_sys` in wasm/client/fetch.rs:64
+4. Fix unresolved import `js_sys` in wasm/response.rs:102
+5. Fix unresolved import `wasm_streams` in wasm/response.rs:173
+
+### Missing Module Exports
+6. Fix unresolved import `super::super::matcher::Matcher_` in proxy/core/matcher_integration.rs:11
+7. Fix unresolved imports `super::Body`, `super::Client` in wasm/request/builder_core.rs:9
+8. Fix unresolved imports `super::Client`, `super::Response` in wasm/request/builder_execution.rs:3
+9. Fix unresolved import `super::Body` in wasm/request/conversions.rs:8
+10. Fix unresolved import `super::Body` in wasm/request/types.rs:9
+11. Fix unresolved import `crate::hyper::response::Response` in wasm/client/fetch.rs:26
+12. Fix unresolved imports `crate::hyper::wasm::AbortController`, `crate::hyper::wasm::AbortSignal` in wasm/client/fetch.rs:30
+
+### Missing Macros
+13. Fix cannot find macro `if_hyper` in into_url.rs:79
+14. Fix cannot find macro `emit` in wasm/response.rs:187
+15. Fix cannot find macro `emit` in wasm/response.rs:194
+16. Fix cannot find macro `emit` in wasm/response.rs:205
+
+### Missing Attributes
+17. Fix cannot find attribute `wasm_bindgen` in wasm/mod.rs:98
+18. Fix cannot find attribute `wasm_bindgen` in wasm/mod.rs:100
+19. Fix cannot find attribute `wasm_bindgen` in wasm/mod.rs:103
+
+### Module Resolution Issues
+20. Fix failed to resolve `hyper::util` in async_impl/request/auth.rs:26
+21. Fix failed to resolve `hyper::util` in async_impl/request/headers.rs:12
+22. Fix failed to resolve `crate::util` in wasm/request/builder_core.rs:128
+23. Fix failed to resolve `crate::util` in wasm/request/builder_core.rs:198
+24. Fix failed to resolve `super::string_counting` in json_path/functions/function_evaluator/core.rs:25
+25. Fix failed to resolve `super::string_counting` in json_path/functions/function_evaluator/core.rs:31
+26. Fix failed to resolve `super::value_conversion` in json_path/functions/function_evaluator/core.rs:41
+
+### Pattern Matching Issues
+27. Fix expected tuple struct but found unit variant `TlsBackend::BuiltRustls` in async_impl/client/tls_setup.rs:167
+
+### Missing Traits
+28. Fix cannot find trait `IntoHeaderValue` in async_impl/response/core/static_constructors.rs:81
+
+### Type Issues
+29. Fix cannot find type `JsValue` in wasm/body/body_impl.rs:21
+30. Fix cannot find type `JsValue` in wasm/body/single_impl.rs:19
+31. Fix cannot find type `Uint8Array` in wasm/body/single_impl.rs:23
+32. Fix cannot find type `AsyncStream` in wasm/client/fetch.rs:60
+33. Fix type alias takes 1 generic argument but 2 supplied in wasm/mod.rs:109
+34. Fix missing generics for struct `http::Request` in wasm/client/fetch.rs:60
+
+### Missing Values/Functions
+35. Fix cannot find value `wasm` in `crate::error` in wasm/client/fetch.rs:69
+36. Fix cannot find value `wasm` in `crate::error` in wasm/client/fetch.rs:78
+37. Fix cannot find function `js_fetch` in wasm/client/fetch.rs:113
+
+### Unresolved Imports (Multiple instances)
+38-139. Fix remaining 102 unresolved import errors across various modules
+
+## WARNINGS (186 total)
+
+### Unused Imports
+140. Remove unused import `BufRead` in tls/certificate.rs:5
+141. Remove unused imports `build_native_tls_connector`, `build_rustls_config_dangerous`, `build_rustls_config` in tls/mod.rs:59
+142. Remove unused imports `Cert`, `ClientCert` in tls/mod.rs:64
+143. Remove unused import `Single` in wasm/body/body_impl.rs:6
+144. Remove unused import `std::borrow::Cow` in wasm/body/conversions.rs:1
+145. Remove unused import `std::borrow::Cow` in wasm/body/single_impl.rs:1
+146. Remove unused import `bytes::Bytes` in wasm/body/single_impl.rs:3
+147. Remove unused import `body_impl::*` in wasm/body/mod.rs:16
+148. Remove unused import `conversions::*` in wasm/body/mod.rs:17
+149. Remove unused import `single_impl::*` in wasm/body/mod.rs:18
+150. Remove unused imports `Inner`, `Single` in wasm/body/mod.rs:22
+151. Remove unused import `emit` in wasm/client/core.rs:123
+152. Remove unused import `std::convert::TryInto` in wasm/client/fetch.rs:3
+153. Remove unused import `std::fmt` in wasm/client/fetch.rs:4
+154. Remove unused import `bytes::Bytes` in wasm/client/fetch.rs:6
+155. Remove unused imports `HeaderMap`, `HeaderName`, `HeaderValue` in wasm/client/fetch.rs:7
+156. Remove unused imports `Method`, `StatusCode`, `Uri`, `Version` in wasm/client/fetch.rs:8
+157. Remove unused imports `Deserialize`, `Serialize` in wasm/client/fetch.rs:9
+158. Remove unused import `Error` in wasm/client/fetch.rs:25
+159. Remove unused import `crate::hyper::wasm::body::Body` in wasm/client/fetch.rs:27
+160. Remove unused import `crate::hyper::wasm::request::Request as WasmRequest` in wasm/client/fetch.rs:28
+161. Remove unused import `handle_error` in wasm/client/fetch.rs:30
+162. Remove unused import `HeaderMap` in wasm/request/builder_core.rs:10
+163. Remove unused import `bytes::Bytes` in wasm/request/types.rs:3
+164. Remove unused import `builder_core::*` in wasm/request/mod.rs:9
+165. Remove unused import `builder_execution::*` in wasm/request/mod.rs:10
+166. Remove unused import `builder_fetch::*` in wasm/request/mod.rs:11
+167. Remove unused import `conversions::*` in wasm/request/mod.rs:12
+168. Remove unused import `handle_error` in wasm/response.rs:166
+169. Remove unused import `handle_error` in wasm/mod.rs:113
+170. Remove unused imports `BufMut`, `Buf` in json_path/buffer/capacity.rs:7
+171. Remove unused imports `BufferStats`, `CapacityStats` in json_path/buffer/core.rs:11
+172. Remove unused import `crate::json_path::error::JsonPathError` in json_path/core_evaluator/timeout_evaluation.rs:10
+173. Remove unused import `core::*` in json_path/error/constructors/mod.rs:12
+174. Remove unused import `helpers::*` in json_path/error/constructors/mod.rs:13
+175. Remove unused import `std_conversions::*` in json_path/error/conversions/mod.rs:13
+176. Remove unused import `std::fmt` in json_path/error/types/core.rs:3
+177. Remove unused import `constructors::*` in json_path/error/mod.rs:12
+178. Remove unused import `conversions::*` in json_path/error/mod.rs:13
+179. Remove unused import `types::*` in json_path/error/mod.rs:14
+180. Remove unused import `ComparisonOp` in json_path/filter/core.rs:14
+181. Remove unused import `JsonSelector` in json_path/state_machine/engine.rs:13
+182. Remove unused import `std::sync::atomic::Ordering` in json_path/stream_processor/core.rs:1
+183. Remove unused imports `SystemTime`, `UNIX_EPOCH` in json_path/stream_processor/core.rs:2
+184. Remove unused import `core::*` in json_path/stream_processor/mod.rs:8
+185. Remove unused import `error_recovery::*` in json_path/stream_processor/mod.rs:11
+186. Remove unused import `processing::*` in json_path/stream_processor/mod.rs:12
+187. Remove unused import `stats::*` in json_path/stream_processor/mod.rs:13
+188. Remove unused import `filter_parser::FilterParser` in json_path/selector_parser/core.rs:11
+
+## PRIORITY ORDER
+1. Fix missing dependencies (WASM-related crates)
+2. Fix module exports and re-exports 
+3. Fix missing macros and attributes
+4. Fix type and trait issues
+5. Clean up unused imports
+
+## CONSTRAINTS
+- NO mocking, faking, or simplifying
+- Research each issue thoroughly before fixing
+- Maintain production quality standards
+- Use Desktop Commander for all operations
+- Test end-user functionality after fixes

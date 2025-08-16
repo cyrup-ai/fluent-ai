@@ -1,4 +1,5 @@
 #[cfg(target_arch = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 use web_sys::{Headers, Request as WebRequest, RequestInit, RequestMode, RequestCache, RequestCredentials};
 
 use super::RequestBuilder;
@@ -30,8 +31,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials
     pub fn fetch_credentials_same_origin(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.credentials = Some(RequestCredentials::SameOrigin);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.credentials = Some(RequestCredentials::SameOrigin);
+            }
         }
         self
     }
@@ -46,8 +50,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials
     pub fn fetch_credentials_include(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.credentials = Some(RequestCredentials::Include);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.credentials = Some(RequestCredentials::Include);
+            }
         }
         self
     }
@@ -62,8 +69,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials
     pub fn fetch_credentials_omit(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.credentials = Some(RequestCredentials::Omit);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.credentials = Some(RequestCredentials::Omit);
+            }
         }
         self
     }
@@ -78,8 +88,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/cache
     pub fn fetch_cache_default(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.cache = Some(RequestCache::Default);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.cache = Some(RequestCache::Default);
+            }
         }
         self
     }
@@ -94,8 +107,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/cache
     pub fn fetch_cache_no_store(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.cache = Some(RequestCache::NoStore);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.cache = Some(RequestCache::NoStore);
+            }
         }
         self
     }
@@ -110,8 +126,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/cache
     pub fn fetch_cache_reload(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.cache = Some(RequestCache::Reload);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.cache = Some(RequestCache::Reload);
+            }
         }
         self
     }
@@ -126,8 +145,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/cache
     pub fn fetch_cache_no_cache(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.cache = Some(RequestCache::NoCache);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.cache = Some(RequestCache::NoCache);
+            }
         }
         self
     }
@@ -142,8 +164,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/cache
     pub fn fetch_cache_force_cache(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.cache = Some(RequestCache::ForceCache);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.cache = Some(RequestCache::ForceCache);
+            }
         }
         self
     }
@@ -158,8 +183,11 @@ impl RequestBuilder {
     ///
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Request/cache
     pub fn fetch_cache_only_if_cached(mut self) -> RequestBuilder {
-        if let Ok(ref mut req) = self.request {
-            req.cache = Some(RequestCache::OnlyIfCached);
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(ref mut req) = self.request {
+                req.cache = Some(RequestCache::OnlyIfCached);
+            }
         }
         self
     }

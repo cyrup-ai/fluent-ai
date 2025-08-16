@@ -1,9 +1,8 @@
 use std::fmt;
 
 use bytes::Bytes;
-use fluent_ai_async::AsyncStream;
-#[cfg(feature = "stream")]
-#[cfg(target_arch = "wasm32")]
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
+#[cfg(all(feature = "stream", target_arch = "wasm32"))]
 use futures_util::stream::StreamExt;
 use http::{HeaderMap, StatusCode};
 #[cfg(target_arch = "wasm32")]
@@ -105,12 +104,12 @@ impl Response {
                             uint8_array.copy_to(&mut bytes_vec);
                             match serde_json::from_slice(&bytes_vec) {
                                 Ok(parsed) => Ok(parsed),
-                                Err(e) => Err(crate::error::decode(e)),
+                                Err(e) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("Decode error: {:?}", e)))),
                             }
                         }
-                        Err(js_error) => Err(crate::error::wasm(js_error)),
+                        Err(js_error) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", js_error)))),
                     },
-                    Err(js_error) => Err(crate::error::wasm(js_error)),
+                    Err(js_error) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", js_error)))),
                 };
                 fluent_ai_async::emit!(sender, result);
             });
@@ -126,11 +125,11 @@ impl Response {
                     Ok(promise) => match wasm_bindgen_futures::JsFuture::from(promise).await {
                         Ok(js_value) => match js_value.as_string() {
                             Some(text) => Ok(text),
-                            None => Err(crate::error::decode("Response text is not a string")),
+                            None => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::InvalidData, "Response text is not a string"))),
                         },
-                        Err(js_error) => Err(crate::error::wasm(js_error)),
+                        Err(js_error) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", js_error)))),
                     },
-                    Err(js_error) => Err(crate::error::wasm(js_error)),
+                    Err(js_error) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", js_error)))),
                 };
                 fluent_ai_async::emit!(sender, result);
             });
@@ -151,9 +150,9 @@ impl Response {
                             uint8_array.copy_to(&mut bytes_vec);
                             Ok(Bytes::from(bytes_vec))
                         }
-                        Err(js_error) => Err(crate::error::wasm(js_error)),
+                        Err(js_error) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", js_error)))),
                     },
-                    Err(js_error) => Err(crate::error::wasm(js_error)),
+                    Err(js_error) => Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", js_error)))),
                 };
                 fluent_ai_async::emit!(sender, result);
             });
@@ -180,10 +179,16 @@ impl Response {
                     while let Some(buf_js) = stream.next().await {
                         match buf_js {
                             Ok(js_value) => {
-                                let buffer = Uint8Array::new(&js_value);
-                                let mut bytes = vec![0; buffer.length() as usize];
-                                buffer.copy_to(&mut bytes);
-                                let chunk = Bytes::from(bytes);
+                                #[cfg(target_arch = "wasm32")]
+                                let chunk = {
+                                    use js_sys::Uint8Array;
+                                    let buffer = Uint8Array::new(&js_value);
+                                    let mut bytes = vec![0; buffer.length() as usize];
+                                    buffer.copy_to(&mut bytes);
+                                    Bytes::from(bytes)
+                                };
+                                #[cfg(not(target_arch = "wasm32"))]
+                                let chunk = Bytes::new();
                                 emit!(
                                     sender,
                                     crate::response::HttpResponseChunk::from_bytes(chunk)
@@ -213,7 +218,7 @@ impl Response {
     pub fn error_for_status(self) -> crate::Result<Self> {
         let status = self.status();
         if status.is_client_error() || status.is_server_error() {
-            Err(crate::error::status_code(*self.url, status))
+            Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("HTTP status code error: {}", status))))
         } else {
             Ok(self)
         }
@@ -223,7 +228,7 @@ impl Response {
     pub fn error_for_status_ref(&self) -> crate::Result<&Self> {
         let status = self.status();
         if status.is_client_error() || status.is_server_error() {
-            Err(crate::error::status_code(*self.url.clone(), status))
+            Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("HTTP status code error: {}", status))))
         } else {
             Ok(self)
         }

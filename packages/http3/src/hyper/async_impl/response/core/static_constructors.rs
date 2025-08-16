@@ -2,7 +2,7 @@
 //!
 //! This module contains static factory methods for creating common response types.
 
-use hyper::{HeaderMap, StatusCode, Version};
+use http::{HeaderMap, HeaderValue, StatusCode, Version};
 use url::Url;
 
 use super::types::Response;
@@ -77,10 +77,11 @@ impl ResponseBuilder {
 
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
-        K: hyper::header::IntoHeaderName,
-        V: hyper::header::IntoHeaderValue,
+        K: http::header::IntoHeaderName,
+        V: TryInto<HeaderValue>,
+        V::Error: Into<http::Error>,
     {
-        self.headers.insert(key, value.into_header_value().unwrap());
+        self.headers.insert(key, value.try_into().unwrap());
         self
     }
 

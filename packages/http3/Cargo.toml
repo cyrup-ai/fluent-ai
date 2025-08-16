@@ -45,11 +45,17 @@ crossbeam-utils = "0.8.21"
 cache-padded = "1.3.0"
 atomic = "0.6.1"
 futures = "0.3.31"
+futures-util = { version = "0.3.31", default-features = false, features = ["std", "alloc"] }
 hyper-util = { version = "0.1", features = ["http1", "http2", "client", "client-legacy"] }
 hickory-resolver = { version = "0.25", optional = true }
 quinn = { version = "0.11", features = ["rustls"], optional = true }
 dashmap = "6.1.0"
 rustls-native-certs = "0.8"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3.77"
+web-sys = { version = "0.3", features = ["AbortController", "AbortSignal", "Request", "Response", "Headers", "console", "Window", "RequestInit", "RequestMode", "RequestCredentials", "RequestCache"] }
+wasm-streams = "0.4"
+wasm-bindgen = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 encoding_rs = { version = "0.8", optional = true }
@@ -86,7 +92,7 @@ flate2 = "1.1.2"
 brotli_crate = { package = "brotli", version = "8.0.1" }
 zstd_crate = { package = "zstd", version = "0.13.3" }
 doc-comment = "0.3"
-# futures-util = { version = "0.3.31", default-features = false, features = ["std", "alloc"] }
+futures-util = { version = "0.3.31", default-features = false, features = ["std", "alloc"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3.77"
@@ -119,6 +125,13 @@ features = [
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-bindgen-test = "0.3"
+
+[target.wasm32-unknown-unknown.dependencies]
+js-sys = "0.3.77"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+wasm-streams = "0.4"
+web-sys = { version = "0.3", features = ["AbortController", "AbortSignal", "Request", "Response", "Headers", "console", "Window"] }
 
 [dev-dependencies]
 env_logger = "0.11.8"

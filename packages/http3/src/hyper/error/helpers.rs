@@ -1,5 +1,6 @@
 use std::fmt;
 use std::time::Duration;
+use super::types::{Error, Kind};
 
 /// A marker type to indicate that a connection timed out.
 #[derive(Debug)]
@@ -72,6 +73,22 @@ impl fmt::Display for UnexpectedMessage {
 }
 
 impl std::error::Error for UnexpectedMessage {}
+
+/// Create a WASM-specific error
+#[cfg(target_arch = "wasm32")]
+pub fn wasm<E: std::fmt::Debug>(js_error: E) -> Error {
+    Error::new(Kind::Request, Some(format!("WASM error: {:?}", js_error)))
+}
+
+/// Create a decode error
+pub fn decode<E: std::fmt::Debug>(decode_error: E) -> Error {
+    Error::new(Kind::Decode, Some(format!("Decode error: {:?}", decode_error)))
+}
+
+/// Create a status code error
+pub fn status_code(status: u16) -> Error {
+    Error::new(Kind::Request, Some(format!("HTTP status code error: {}", status)))
+}
 
 /// Helper function to create a timeout duration from milliseconds.
 pub fn timeout_from_millis(millis: u64) -> Duration {

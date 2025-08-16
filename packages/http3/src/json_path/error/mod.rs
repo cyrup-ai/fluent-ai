@@ -4,7 +4,7 @@
 //! in the HTTP3 streaming framework. It includes error types, constructors, conversions,
 //! and utilities for error handling.
 
-mod constructors;
+pub mod constructors;
 mod conversions;
 mod types;
 
@@ -19,6 +19,7 @@ pub use constructors::{
     deserialization_error,
     stream_error,
     buffer_error,
+    json_parse_error,
 };
 
 // Re-export main types for convenience

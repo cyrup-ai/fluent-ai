@@ -49,7 +49,7 @@ impl Default for TcpStreamWrapper {
 /// Wrapper for Upgraded to implement MessageChunk
 #[derive(Debug)]
 pub struct UpgradedWrapper {
-    pub upgraded: Option<crate::hyper::Upgraded>,
+    pub upgraded: Option<crate::hyper::async_impl::upgrade::Upgraded>,
     pub error_message: Option<String>,
 }
 
@@ -72,8 +72,8 @@ impl Default for UpgradedWrapper {
     }
 }
 
-impl From<crate::hyper::Upgraded> for UpgradedWrapper {
-    fn from(upgraded: crate::hyper::Upgraded) -> Self {
+impl From<crate::hyper::async_impl::upgrade::Upgraded> for UpgradedWrapper {
+    fn from(upgraded: crate::hyper::async_impl::upgrade::Upgraded) -> Self {
         UpgradedWrapper {
             upgraded: Some(upgraded),
             error_message: None,

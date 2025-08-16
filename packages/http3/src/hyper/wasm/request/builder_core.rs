@@ -21,8 +21,8 @@ impl RequestBuilder {
     }
 
     /// Assemble a builder starting from an existing `Client` and a `Request`.
-    pub fn from_parts(client: crate::Client, request: crate::Request) -> crate::RequestBuilder {
-        crate::RequestBuilder {
+    pub fn from_parts(client: crate::hyper::Client, request: crate::hyper::Request) -> crate::hyper::RequestBuilder {
+        crate::hyper::RequestBuilder {
             client,
             request: crate::Result::Ok(request),
         }
@@ -126,7 +126,7 @@ impl RequestBuilder {
         P: fmt::Display,
     {
         let header_value = crate::util::basic_auth(username, password);
-        self.header(crate::header::AUTHORIZATION, header_value)
+        self.header(http::header::AUTHORIZATION, header_value)
     }
 
     /// Enable HTTP bearer authentication.
@@ -135,7 +135,7 @@ impl RequestBuilder {
         T: fmt::Display,
     {
         let header_value = format!("Bearer {token}");
-        self.header(crate::header::AUTHORIZATION, header_value)
+        self.header(http::header::AUTHORIZATION, header_value)
     }
 
     /// Set the request body.
@@ -193,7 +193,7 @@ impl RequestBuilder {
     /// Add a set of Headers to the existing ones on this Request.
     ///
     /// The headers will be merged in to any already set.
-    pub fn headers(mut self, headers: crate::header::HeaderMap) -> RequestBuilder {
+    pub fn headers(mut self, headers: http::HeaderMap) -> RequestBuilder {
         if let Ok(ref mut req) = self.request {
             crate::util::replace_headers(req.headers_mut(), headers);
         }

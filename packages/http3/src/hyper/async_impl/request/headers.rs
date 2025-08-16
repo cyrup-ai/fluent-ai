@@ -9,7 +9,7 @@ impl RequestBuilder {
     /// The headers will be merged in to any already set.
     pub fn headers(mut self, headers: http::HeaderMap) -> RequestBuilder {
         if let Ok(ref mut req) = self.request {
-            crate::hyper::util::replace_headers(req.headers_mut(), headers);
+            crate::util::replace_headers(req.headers_mut(), headers);
         }
         self
     }
@@ -20,7 +20,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::USER_AGENT, value)
+        self.header(http::header::USER_AGENT, value)
     }
 
     /// Set the `Accept` header to be used by this request.
@@ -29,7 +29,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::ACCEPT, value)
+        self.header(http::header::ACCEPT, value)
     }
 
     /// Set the `Accept-Encoding` header to be used by this request.
@@ -38,7 +38,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::ACCEPT_ENCODING, value)
+        self.header(http::header::ACCEPT_ENCODING, value)
     }
 
     /// Set the `Content-Type` header to be used by this request.
@@ -47,12 +47,12 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::CONTENT_TYPE, value)
+        self.header(http::header::CONTENT_TYPE, value)
     }
 
     /// Set the `Content-Length` header to be used by this request.
     pub fn content_length(self, len: u64) -> RequestBuilder {
-        self.header(crate::header::CONTENT_LENGTH, len.to_string())
+        self.header(http::header::CONTENT_LENGTH, len.to_string())
     }
 
     /// Set the `Cache-Control` header to be used by this request.
@@ -61,7 +61,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::CACHE_CONTROL, value)
+        self.header(http::header::CACHE_CONTROL, value)
     }
 
     /// Set the `If-None-Match` header to be used by this request.
@@ -70,7 +70,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::IF_NONE_MATCH, value)
+        self.header(http::header::IF_NONE_MATCH, value)
     }
 
     /// Set the `If-Modified-Since` header to be used by this request.
@@ -79,7 +79,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::IF_MODIFIED_SINCE, value)
+        self.header(http::header::IF_MODIFIED_SINCE, value)
     }
 
     /// Set the `Range` header to be used by this request.
@@ -88,7 +88,7 @@ impl RequestBuilder {
         HeaderValue: TryFrom<V>,
         <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
-        self.header(crate::header::RANGE, value)
+        self.header(http::header::RANGE, value)
     }
 
     /// Set a custom header to be used by this request.

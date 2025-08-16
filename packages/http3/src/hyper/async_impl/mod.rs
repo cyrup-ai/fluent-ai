@@ -16,4 +16,4 @@ pub mod h3_client;
 pub mod multipart;
 pub mod request;
 mod response;
-mod upgrade;
+pub mod upgrade;

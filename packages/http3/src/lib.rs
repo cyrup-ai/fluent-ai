@@ -108,6 +108,7 @@ pub mod error;
 pub mod hyper;
 pub mod json_path;
 pub mod middleware;
+pub mod util;
 // mod bytes_impl; // Removed due to orphan rule violations - use BytesWrapper instead
 pub mod operations;
 pub mod request;

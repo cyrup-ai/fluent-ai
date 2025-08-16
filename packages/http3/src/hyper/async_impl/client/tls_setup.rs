@@ -164,7 +164,7 @@ pub(super) fn setup_tls_connector(
             }
 
             #[cfg(feature = "__rustls")]
-            TlsBackend::BuiltRustls(tls_config) => {
+            TlsBackend::BuiltRustls => {
                 // Use pre-configured Rustls config
             }
 

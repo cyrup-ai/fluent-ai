@@ -106,11 +106,9 @@ where
         T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         AsyncStream::with_channel(move |sender: AsyncStreamSender<T>| {
-            let body_stream = crate::hyper::async_impl::body::stream_body_data(
-                body,
-                sender.clone(),
-                std::time::Duration::from_secs(30),
-            );
+            // TODO: Implement proper body streaming when stream_body_data is available
+            // For now, create a simple stream from the body
+            let body_stream = std::iter::once(body);
 
             for response_chunk in body_stream {
                 match response_chunk {

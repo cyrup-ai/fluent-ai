@@ -37,3 +37,6 @@ pub use redirect::{Action, Attempt, Policy};
 // Response types are re-exported from async_impl module
 // Re-export TLS types
 pub use tls::{Certificate, Identity, TlsBackend, Version};
+// Re-export WASM types
+#[cfg(target_arch = "wasm32")]
+pub use wasm::{AbortController, AbortSignal};

@@ -1,4 +1,5 @@
-use crate::header::{Entry, HeaderMap, HeaderValue, OccupiedEntry};
+use http::{HeaderMap, HeaderValue};
+use http::header::{Entry, OccupiedEntry};
 use std::fmt;
 
 pub fn basic_auth<U, P>(username: U, password: Option<P>) -> Result<HeaderValue, crate::Error>
@@ -19,7 +20,7 @@ where
         }
     }
     let mut header = HeaderValue::from_bytes(&buf).map_err(|_e| {
-        crate::HttpError::InvalidHeader {
+        crate::error::HttpError::InvalidHeader {
             name: "authorization".to_string(),
             message: format!("Invalid authorization header: {}", String::from_utf8_lossy(&buf)),
             value: Some(String::from_utf8_lossy(&buf).to_string()),

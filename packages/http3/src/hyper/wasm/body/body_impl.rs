@@ -1,5 +1,7 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
 
 #[cfg(feature = "multipart")]
 use super::super::multipart::Form;
@@ -18,6 +20,7 @@ impl Body {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub(crate) fn to_js_value(&self) -> crate::Result<JsValue> {
         match &self.inner {
             Inner::Single(single) => Ok(single.to_js_value()),

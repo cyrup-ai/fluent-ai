@@ -1,5 +1,15 @@
 use url::Url;
 
+/// Conditional compilation macro for hyper-specific code
+macro_rules! if_hyper {
+    ($($item:item)*) => {
+        $(
+            #[cfg(not(target_arch = "wasm32"))]
+            $item
+        )*
+    };
+}
+
 /// A trait to try to convert some type into a `Url`.
 ///
 /// This trait is "sealed", such that only types within http3 can

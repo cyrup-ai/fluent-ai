@@ -46,3 +46,11 @@ pub fn buffer_error(
 ) -> JsonPathError {
     JsonPathError::buffer_error(operation, requested_size, available_capacity)
 }
+
+pub fn json_parse_error(
+    message: impl Into<String>,
+    position: usize,
+    context: impl Into<String>,
+) -> JsonPathError {
+    JsonPathError::json_parse_error(message, position, context)
+}

@@ -44,7 +44,7 @@ impl Response {
             // Get headers before moving self
             let content_type = self
                 .headers()
-                .get(crate::hyper::header::CONTENT_TYPE)
+                .get(http::header::CONTENT_TYPE)
                 .and_then(|value| value.to_str().ok())
                 .and_then(|value| value.parse::<mime::Mime>().ok());
 
@@ -152,7 +152,7 @@ impl Response {
         AsyncStream::with_channel(move |sender| {
             let content_type = self
                 .headers()
-                .get(crate::hyper::header::CONTENT_TYPE)
+                .get(http::header::CONTENT_TYPE)
                 .and_then(|value| value.to_str().ok())
                 .and_then(|value| value.parse::<mime::Mime>().ok());
             let encoding_name = content_type

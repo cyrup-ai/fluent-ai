@@ -13,7 +13,35 @@ use wasm_bindgen::prelude::{Closure, wasm_bindgen};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures::{JsFuture, spawn_local};
+#[cfg(target_arch = "wasm32")]
 use web_sys::{AbortController, AbortSignal};
+
+// WASM utility functions
+#[cfg(target_arch = "wasm32")]
+fn js_fetch(request: web_sys::Request) -> js_sys::Promise {
+    web_sys::window().unwrap().fetch_with_request(&request)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn set_timeout(callback: &js_sys::Function, delay: i32) -> i32 {
+    web_sys::window().unwrap().set_timeout_with_callback_and_timeout_and_arguments_0(callback, delay).unwrap()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn clear_timeout(id: i32) {
+    web_sys::window().unwrap().clear_timeout_with_handle(id);
+}
+
+// Re-export WASM types from web-sys
+#[cfg(target_arch = "wasm32")]
+pub use web_sys::{AbortController, AbortSignal};
+
+// For non-WASM targets, provide stub types
+#[cfg(not(target_arch = "wasm32"))]
+pub struct AbortController;
+#[cfg(not(target_arch = "wasm32"))]
+pub struct AbortSignal;
 
 #[cfg(target_arch = "wasm32")]
 use std::fmt;
@@ -35,6 +63,8 @@ use url::Url;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
@@ -95,6 +125,7 @@ pub fn promise_to_future(_promise: ()) -> impl Future<Output = Result<()>> {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 unsafe extern "C" {
     #[wasm_bindgen(js_name = "setTimeout")]
@@ -106,39 +137,47 @@ unsafe extern "C" {
 
 fn promise<T>(
     promise: js_sys::Promise,
-) -> fluent_ai_async::AsyncStream<Result<T, crate::error::BoxError>>
+) -> fluent_ai_async::AsyncStream<T>
 where
     T: JsCast,
 {
-    use fluent_ai_async::{AsyncStream, emit, handle_error};
-    use wasm_bindgen_futures::JsFuture;
+    use fluent_ai_async::{AsyncStream, emit};
+
 
     AsyncStream::with_channel(move |sender| {
-        wasm_bindgen_futures::spawn_local(async move {
-            match JsFuture::from(promise).await {
-                Ok(js_val) => match js_val.dyn_into::<T>() {
+        #[cfg(target_arch = "wasm32")]
+        {
+            use wasm_bindgen_futures::{spawn_local, JsFuture};
+            spawn_local(async move {
+                match JsFuture::from(promise).await {
+                Ok(js_val) => match wasm_bindgen::JsCast::dyn_into::<T>(js_val) {
                     Ok(result) => emit!(sender, Ok(result)),
                     Err(_js_val) => {
                         emit!(sender, Err("promise resolved to unexpected type".into()))
                     }
                 },
-                Err(e) => emit!(sender, Err(crate::error::wasm(e))),
+                Err(e) => emit!(sender, Err(crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", e))))),
             }
-        });
+            });
+        }
     })
 }
 
 /// A guard that cancels a fetch request when dropped.
+#[cfg(target_arch = "wasm32")]
 struct AbortGuard {
     ctrl: AbortController,
     timeout: Option<(JsValue, Closure<dyn FnMut()>)>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+struct AbortGuard;
+
 impl AbortGuard {
     fn new() -> crate::Result<Self> {
         Ok(AbortGuard {
             ctrl: AbortController::new()
-                .map_err(crate::error::wasm)
+                .map_err(|e| crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", e))))
                 .map_err(crate::error::builder)?,
             timeout: None,
         })
@@ -148,6 +187,7 @@ impl AbortGuard {
         self.ctrl.signal()
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn timeout(&mut self, timeout: Duration) {
         let ctrl = self.ctrl.clone();
         let abort =
@@ -169,7 +209,8 @@ impl Drop for AbortGuard {
     fn drop(&mut self) {
         self.ctrl.abort();
         if let Some((id, _)) = self.timeout.take() {
-            clear_timeout(id);
+            #[cfg(target_arch = "wasm32")]
+            clear_timeout(id.as_f64().unwrap() as i32);
         }
     }
 }

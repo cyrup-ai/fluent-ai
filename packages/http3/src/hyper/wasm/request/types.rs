@@ -17,7 +17,9 @@ pub struct Request {
     pub(super) body: Option<Body>,
     pub(super) timeout: Option<Duration>,
     pub(super) cors: bool,
+    #[cfg(target_arch = "wasm32")]
     pub(super) credentials: Option<RequestCredentials>,
+    #[cfg(target_arch = "wasm32")]
     pub(super) cache: Option<RequestCache>,
 }
 

@@ -7,7 +7,11 @@ pub mod types;
 pub use constructors::*;
 pub use helpers::{
     BadScheme, ConnectionClosed, IncompleteMessage, OperationCanceled, TimedOut, UnexpectedMessage,
+    decode, status_code,
 };
+
+#[cfg(target_arch = "wasm32")]
+pub use helpers::wasm;
 pub use types::{Error, Inner, Kind, Result};
 
 // Re-export internal types needed by other modules

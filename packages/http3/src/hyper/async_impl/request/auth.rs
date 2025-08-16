@@ -23,9 +23,9 @@ impl RequestBuilder {
         U: fmt::Display,
         P: fmt::Display,
     {
-        let header_value = crate::hyper::util::basic_auth(username, password)
+        let header_value = crate::util::basic_auth(username, password)
             .unwrap_or_else(|_| HeaderValue::from_static(""));
-        self.header_sensitive(crate::header::AUTHORIZATION, header_value, true)
+        self.header_sensitive(http::header::AUTHORIZATION, header_value, true)
     }
 
     /// Enable HTTP bearer authentication.
@@ -34,7 +34,7 @@ impl RequestBuilder {
         T: fmt::Display,
     {
         let header_value = format!("Bearer {token}");
-        self.header_sensitive(crate::header::AUTHORIZATION, header_value, true)
+        self.header_sensitive(http::header::AUTHORIZATION, header_value, true)
     }
 
     /// Enable HTTP digest authentication.
@@ -49,7 +49,7 @@ impl RequestBuilder {
             "Digest username=\"{}\", password=\"{}\"",
             username, password
         );
-        self.header_sensitive(crate::header::AUTHORIZATION, auth_string, true)
+        self.header_sensitive(http::header::AUTHORIZATION, auth_string, true)
     }
 
     /// Set a custom Authorization header.
@@ -57,7 +57,7 @@ impl RequestBuilder {
     where
         T: fmt::Display,
     {
-        self.header_sensitive(crate::header::AUTHORIZATION, value.to_string(), true)
+        self.header_sensitive(http::header::AUTHORIZATION, value.to_string(), true)
     }
 
     /// Set an API key header (commonly X-API-Key).
@@ -99,7 +99,7 @@ impl RequestBuilder {
         T: fmt::Display,
     {
         let auth_header = format!("AWS4-HMAC-SHA256 {}", signature);
-        self.header_sensitive(crate::header::AUTHORIZATION, auth_header, true)
+        self.header_sensitive(http::header::AUTHORIZATION, auth_header, true)
     }
 
     /// Set custom authentication scheme.
@@ -109,6 +109,6 @@ impl RequestBuilder {
         T: fmt::Display,
     {
         let auth_header = format!("{} {}", scheme, credentials);
-        self.header_sensitive(crate::header::AUTHORIZATION, auth_header, true)
+        self.header_sensitive(http::header::AUTHORIZATION, auth_header, true)
     }
 }
