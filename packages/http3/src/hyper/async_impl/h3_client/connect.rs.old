@@ -1,7 +1,0 @@
-//! H3 client connection module
-//!
-//! Re-exports from decomposed submodules for HTTP/3 connection establishment.
-
-pub use self::connect::*;
-
-mod connect;

@@ -1,7 +1,0 @@
-//! Core proxy types and configuration
-//!
-//! Re-exports from decomposed submodules for HTTP proxy configuration.
-
-pub use self::core::*;
-
-mod core;
