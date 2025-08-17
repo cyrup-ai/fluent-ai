@@ -19,10 +19,4 @@ pub fn body<E: std::fmt::Display>(e: E) -> HttpError {
 }
 
 // Re-export internal hyper error types and helpers for legacy paths expecting `crate::error::*`
-#[cfg(any(
-    feature = "gzip",
-    feature = "zstd",
-    feature = "brotli",
-    feature = "deflate",
-))]
 pub(crate) use crate::hyper::error::BadScheme;

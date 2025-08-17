@@ -34,7 +34,6 @@ impl HttpClient {
         // Compression configuration
         builder = builder.gzip(config.gzip).deflate(config.deflate);
 
-        #[cfg(feature = "brotli")]
         {
             builder = builder.brotli(config.brotli);
         }
@@ -58,12 +57,9 @@ impl HttpClient {
 
         // Note: Advanced QUIC configuration methods require the 'http3_unstable' feature
         // which is not enabled by default. For full HTTP/3 optimization, enable this feature.
-        #[cfg(feature = "http3_unstable")]
         {
             Self::configure_advanced_quic(builder, config);
         }
-
-        #[cfg(not(feature = "http3_unstable"))]
         {
             // Basic HTTP/3 is enabled but advanced QUIC optimizations are not available
             // without the http3_unstable feature. HTTP/3 will still provide significant
@@ -78,7 +74,6 @@ impl HttpClient {
     ///
     /// Applies detailed QUIC configuration for maximum performance including
     /// congestion control, window sizes, and protocol-specific optimizations.
-    #[cfg(feature = "http3_unstable")]
     #[inline]
     fn configure_advanced_quic(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
         // Configure QUIC connection parameters when unstable features are enabled

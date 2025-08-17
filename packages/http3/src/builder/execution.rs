@@ -1,11 +1,11 @@
 //! Pure streams-first execution - NO Futures, NO Result wrapping
 //! All operations return unwrapped AsyncStreams per fluent-ai architecture
 
-use cyrup_sugars::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
 use serde::de::DeserializeOwned;
 
-use crate::{error::HttpError, types::HttpResponseChunk};
+use crate::{error::HttpError, streaming::chunks::HttpChunk};
 
 /// Execution context for HTTP requests
 pub struct ExecutionContext {

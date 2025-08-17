@@ -19,6 +19,15 @@
 //!
 //! ## Usage
 
+#![feature(impl_trait_in_assoc_type)]
+#![feature(impl_trait_in_fn_trait_return)]
+#[deny(unsafe_code)]
+#[warn(clippy::all)]
+#[warn(clippy::pedantic)]
+#[cfg(test)]
+#[macro_use]
+extern crate doc_comment;
+
 // Removed orphan rule violation - MessageChunk implementations moved to appropriate modules
 // ### Basic HTTP Requests
 //
@@ -73,18 +82,6 @@
 // }
 // ```
 
-// Crate-level attributes moved to appropriate location
-// Unsafe code denial temporarily disabled during migration
-// #[deny(unsafe_code)]
-#[warn(missing_docs)]
-#[warn(clippy::all)]
-#[warn(clippy::pedantic)]
-#[allow(clippy::missing_errors_doc)]
-#[allow(clippy::missing_panics_doc)]
-#[cfg(test)]
-#[macro_use]
-extern crate doc_comment;
-
 use std::sync::Arc;
 use std::sync::OnceLock;
 
@@ -99,71 +96,61 @@ pub type Result<T> = HttpResult<T>;
 
 // Import MessageChunk for trait implementations
 
+pub mod auth;
 pub mod builder;
+pub mod cache;
 pub mod client;
-pub mod common;
 pub mod config;
+pub mod cookie;
+pub mod crypto;
 pub mod error;
-// ELIMINATED: All hyper middleware - direct fluent_ai_async streaming only
-pub mod json_path;
+pub mod http;
+pub mod jsonpath;
 pub mod middleware;
-pub mod streaming;
-pub mod util;
-// mod bytes_impl; // Removed due to orphan rule violations - use BytesWrapper instead
 pub mod operations;
-pub mod request;
-pub mod response;
-pub mod stream;
-pub mod wrappers;
-
-// New foundational modules for fluent_ai_async integration
-pub mod async_impl;
-pub mod types;
+pub mod protocols;
+pub mod retry;
+pub mod streaming;
+pub mod telemetry;
 
 // Quiche QUIC integration modules - synchronous streaming implementation
-pub use async_impl::client::quiche_client::{
-    QuicheHttp3Client, process_readable_streams, read_stream_data, receive_packets,
-    write_stream_data,
-};
-pub use async_impl::client::quiche_connection::QuicheConnection;
-// Core streaming types - NO Result wrapping, pure streams
-pub use async_impl::{
-    ConnectionConfig, ConnectionManager, ConnectionPoolStats, ConnectionState,
-    DefaultConnectionManager, HttpConnection, HttpConnectionPool, HttpStreamingResponse,
-    HttpStreamingResponseBuilder,
-};
+pub use auth::AuthMethod;
+pub use builder::ContentTypes;
 pub use builder::fluent::DownloadBuilder;
 pub use builder::{ContentType, Http3Builder, JsonPathStreaming};
-pub use common::{AuthMethod, ContentTypes};
-pub use stream::{
-    BadChunk, DownloadChunk, DownloadStream, HttpChunk, HttpStream, JsonStream, SseEvent, SseStream,
-};
-pub use streaming::{
-    FrameChunk, H2Connection, H2Frame, H2Stream, H3Connection, H3Frame, H3Stream,
-    StreamingPipeline, StreamingRequest, StreamingResponse, TransportConnection, TransportManager,
-    TransportType,
-};
-pub use types::quiche_chunks::{
+pub use protocols::quiche::{
     QuicheConnectionChunk, QuichePacketChunk, QuicheReadableChunk, QuicheStreamChunk,
     QuicheWriteResult,
 };
 // New foundational types for fluent_ai_async integration
-pub use types::{HttpResponseChunk, headers_from_iter, merge_headers};
-pub use wrappers::{BoxBodyWrapper, BytesWrapper, FrameWrapper, SocketAddrListWrapper};
+// Re-export HttpChunk from streaming chunks
+pub use streaming::chunks::HttpChunk;
+pub use streaming::stream::{
+    BadChunk, DownloadChunk, DownloadStream, HttpChunk, HttpStream, JsonStream, SseEvent, SseStream,
+};
+pub use streaming::*;
+pub use streaming::{
+    FrameChunk, H2Frame, H3Frame, StreamingPipeline, StreamingRequest, StreamingResponse,
+};
 
 /// Ergonomic type alias for `Http3Builder` - streams-first architecture
 pub type Http3 = Http3Builder;
-pub use client::{ClientStats, ClientStatsSnapshot, HttpClient};
+pub use client::HttpClient;
 pub use config::HttpConfig;
 // Import core async stream types
 pub use fluent_ai_async::{AsyncStream, AsyncStreamSender};
-pub use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+pub use http::HttpRequest;
+// Re-export types module for internal use
+pub mod types;
+
+// Import HTTP types from external http crate (not streaming::http module)
+pub use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Version};
 // ELIMINATED: All hyper middleware - direct fluent_ai_async streaming only
-pub use json_path::{JsonArrayStream, JsonPathError, StreamStats};
+pub use jsonpath::{JsonArrayStream, JsonPathError, StreamStats};
 /// Convenience type alias for Result with HttpError
 pub use middleware::{CacheMiddleware, Middleware, MiddlewareChain};
-pub use request::HttpRequest;
-pub use response::HttpResponse;
+pub use streaming::response::HttpResponse;
+pub use telemetry::{ClientStats, ClientStatsSnapshot};
 pub use url::Url;
 
 // Internal alias: many modules migrated from a http3-like API still reference `crate::hyper::...` paths.

@@ -3,7 +3,10 @@
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::operations::HttpOperation;
-use crate::{client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream};
+use crate::{
+    client::HttpClient, error::HttpError, http::request::HttpRequest,
+    streaming::stream::streams::HttpStream,
+};
 
 /// DELETE operation implementation with conditional deletion support
 #[derive(Clone)]

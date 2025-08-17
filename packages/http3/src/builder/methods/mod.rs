@@ -81,8 +81,7 @@ mod tests {
 
     #[test]
     fn test_jsonpath_methods_compilation() {
-        use cyrup_sugars::prelude::MessageChunk;
-        use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+        use fluent_ai_async::prelude::MessageChunk;
         use serde::{Deserialize, Serialize};
 
         #[derive(Serialize)]
@@ -103,7 +102,7 @@ mod tests {
             }
         }
 
-        impl FluentMessageChunk for TestResult {
+        impl MessageChunk for TestResult {
             fn bad_chunk(_error: String) -> Self {
                 Self::default()
             }

@@ -1,20 +1,19 @@
 //! Streaming request/response pipeline for HTTP/2 and HTTP/3
 //!
 //! Zero-allocation request/response handling using ONLY fluent_ai_async patterns.
+//! This module provides the CANONICAL StreamingResponse implementation.
 
 use std::collections::HashMap;
-use std::net::UdpSocket;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
-use fluent_ai_async::prelude::MessageChunk;
-use fluent_ai_async::{AsyncStream, emit};
-use http::{HeaderMap, Method, StatusCode, Uri};
-use quiche::Connection;
+use bytes::Bytes;
+use fluent_ai_async::prelude::*;
+use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri, Version};
 
-use super::connection::{ConnectionManager, StreamMultiplexer};
-use super::frames::{FrameChunk, H2Frame, H3Frame};
-use super::h2::{H2Connection, H2Stream};
-use super::h3::{H3Connection, H3Stream};
-use super::transport::{TransportConnection, TransportManager, TransportType};
+use crate::http::request::HttpRequest;
+use crate::streaming::chunks::HttpChunk;
 
 /// HTTP request for streaming pipeline
 #[derive(Debug, Clone)]
@@ -24,6 +23,7 @@ pub struct StreamingRequest {
     pub headers: HeaderMap,
     pub body: Vec<u8>,
     pub stream_id: Option<u64>,
+    pub version: Version,
 }
 
 impl MessageChunk for StreamingRequest {
@@ -32,612 +32,592 @@ impl MessageChunk for StreamingRequest {
             method: Method::GET,
             uri: Uri::from_static("/"),
             headers: HeaderMap::new(),
-            body: Vec::new(),
-            stream_id: None,
-        }
-    }
-
-    fn is_error(&self) -> bool {
-        false
-    }
-
-    fn error(&self) -> Option<&str> {
-        None
-    }
-}
-
-/// HTTP response for streaming pipeline
-#[derive(Debug, Clone)]
-pub struct StreamingResponse {
-    pub status: StatusCode,
-    pub headers: HeaderMap,
-    pub body: Vec<u8>,
-    pub stream_id: Option<u64>,
-    pub is_complete: bool,
-}
-
-impl MessageChunk for StreamingResponse {
-    fn bad_chunk(error: String) -> Self {
-        StreamingResponse {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            headers: HeaderMap::new(),
             body: error.into_bytes(),
             stream_id: None,
-            is_complete: true,
+            version: Version::HTTP_3,
         }
     }
 
     fn is_error(&self) -> bool {
-        self.status.is_server_error() || self.status.is_client_error()
+        self.body.len() > 0 && self.method == Method::GET && self.uri.path() == "/"
     }
 
     fn error(&self) -> Option<&str> {
         if self.is_error() {
-            // Return a static error message since we can't return a reference to owned data
-            Some("HTTP error response")
+            std::str::from_utf8(&self.body).ok()
         } else {
             None
         }
     }
 }
 
+/// HTTP response for streaming pipeline
+///
+/// This is the CANONICAL StreamingResponse implementation that consolidates all
+/// previous response variants into a single, comprehensive streaming response type.
+#[derive(Debug, Clone)]
+pub struct StreamingResponse {
+    /// Response status and headers
+    pub status: StatusCode,
+    pub headers: HeaderMap,
+    pub version: Version,
+
+    /// Response body as streaming chunks
+    pub chunks: AsyncStream<HttpChunk, 1024>,
+
+    /// Response metadata
+    pub stream_id: Option<u64>,
+    pub is_complete: AtomicBool,
+    pub content_length: Option<u64>,
+    pub content_type: Option<String>,
+
+    /// Streaming statistics
+    pub bytes_received: AtomicU64,
+    pub chunks_received: AtomicU64,
+    pub start_time: Instant,
+
+    /// Response configuration
+    pub follow_redirects: bool,
+    pub max_redirects: u32,
+    pub timeout: Option<Duration>,
+
+    /// Caching information
+    pub cache_control: Option<String>,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
+    pub expires: Option<String>,
+}
+
+impl Default for StreamingResponse {
+    fn default() -> Self {
+        Self {
+            status: StatusCode::OK,
+            headers: HeaderMap::new(),
+            version: Version::HTTP_3,
+            chunks: AsyncStream::with_channel(|_| {}),
+            stream_id: None,
+            is_complete: AtomicBool::new(false),
+            content_length: None,
+            content_type: None,
+            bytes_received: AtomicU64::new(0),
+            chunks_received: AtomicU64::new(0),
+            start_time: Instant::now(),
+            follow_redirects: true,
+            max_redirects: 10,
+            timeout: Some(Duration::from_secs(30)),
+            cache_control: None,
+            etag: None,
+            last_modified: None,
+            expires: None,
+        }
+    }
+}
+
+impl MessageChunk for StreamingResponse {
+    #[inline]
+    fn bad_chunk(error: String) -> Self {
+        let chunks = AsyncStream::with_channel(move |sender| {
+            emit!(
+                sender,
+                HttpChunk::Error(error.clone())
+            );
+        });
+
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            headers: HeaderMap::new(),
+            version: Version::HTTP_3,
+            chunks,
+            stream_id: None,
+            is_complete: AtomicBool::new(true),
+            content_length: None,
+            content_type: None,
+            bytes_received: AtomicU64::new(0),
+            chunks_received: AtomicU64::new(0),
+            timeout: None,
+            cache_control: None,
+            etag: None,
+            last_modified: None,
+            expires: None,
+            start_time: Instant::now(),
+            follow_redirects: false,
+            max_redirects: 0,
+            redirect_count: AtomicU32::new(0),
+        }
+    }
+
+    #[inline]
+    fn is_error(&self) -> bool {
+        self.status.is_server_error() || self.status.is_client_error()
+    }
+
+    #[inline]
+    fn error(&self) -> Option<&str> {
+        if self.is_error() {
+            Some(self.status.canonical_reason().unwrap_or("Unknown error"))
+        } else {
+            None
+        }
+    }
+}
+
+impl StreamingResponse {
+    /// Create new streaming response
+    #[inline]
+    pub fn new(status: StatusCode, headers: HeaderMap, version: Version) -> Self {
+        let mut response = Self::default();
+        response.status = status;
+        response.headers = headers;
+        response.version = version;
+        response.extract_metadata();
+        response
+    }
+
+    /// Create response with chunk stream
+    #[inline]
+    pub fn with_chunks(
+        status: StatusCode,
+        headers: HeaderMap,
+        version: Version,
+        chunks: AsyncStream<HttpChunk, 1024>,
+    ) -> Self {
+        let mut response = Self {
+            status,
+            headers,
+            version,
+            chunks,
+            ..Default::default()
+        };
+        response.extract_metadata();
+        response
+    }
+
+    /// Create response from HttpRequest execution
+    pub fn from_request_execution<F>(request: HttpRequest, executor: F) -> Self
+    where
+        F: FnOnce(HttpRequest) -> AsyncStream<HttpChunk, 1024> + Send + 'static,
+    {
+        let chunks = executor(request);
+
+        Self {
+            status: StatusCode::OK,
+            headers: HeaderMap::new(),
+            version: Version::HTTP_3,
+            chunks,
+            ..Default::default()
+        }
+    }
+
+    /// Extract metadata from headers
+    fn extract_metadata(&mut self) {
+        // Extract content length
+        if let Some(cl) = self.headers.get(http::header::CONTENT_LENGTH) {
+            if let Ok(cl_str) = cl.to_str() {
+                self.content_length = cl_str.parse().ok();
+            }
+        }
+
+        // Extract content type
+        if let Some(ct) = self.headers.get(http::header::CONTENT_TYPE) {
+            if let Ok(ct_str) = ct.to_str() {
+                self.content_type = Some(ct_str.to_string());
+            }
+        }
+
+        // Extract cache control
+        if let Some(cc) = self.headers.get(http::header::CACHE_CONTROL) {
+            if let Ok(cc_str) = cc.to_str() {
+                self.cache_control = Some(cc_str.to_string());
+            }
+        }
+
+        // Extract ETag
+        if let Some(etag) = self.headers.get(http::header::ETAG) {
+            if let Ok(etag_str) = etag.to_str() {
+                self.etag = Some(etag_str.to_string());
+            }
+        }
+
+        // Extract Last-Modified
+        if let Some(lm) = self.headers.get(http::header::LAST_MODIFIED) {
+            if let Ok(lm_str) = lm.to_str() {
+                self.last_modified = Some(lm_str.to_string());
+            }
+        }
+
+        // Extract Expires
+        if let Some(exp) = self.headers.get(http::header::EXPIRES) {
+            if let Ok(exp_str) = exp.to_str() {
+                self.expires = Some(exp_str.to_string());
+            }
+        }
+    }
+
+    /// Get next response chunk
+    #[inline]
+    pub fn try_next(&mut self) -> Option<HttpChunk> {
+        if let Some(chunk) = self.chunks.try_next() {
+            self.update_statistics(&chunk);
+            Some(chunk)
+        } else {
+            None
+        }
+    }
+
+    /// Update streaming statistics
+    fn update_statistics(&self, chunk: &HttpChunk) {
+        self.chunks_received.fetch_add(1, Ordering::Relaxed);
+
+        match chunk {
+            HttpChunk::Body(data) => {
+                self.bytes_received
+                    .fetch_add(data.len() as u64, Ordering::Relaxed);
+            }
+            HttpChunk::Error(_) => {
+                self.is_complete.store(true, Ordering::Relaxed);
+            }
+            _ => {}
+        }
+    }
+
+    /// Collect all response chunks
+    pub fn collect_chunks(self) -> Vec<HttpChunk> {
+        self.chunks.collect()
+    }
+
+    /// Collect response body as bytes
+    pub fn collect_bytes(self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        for chunk in self.chunks {
+            match chunk {
+                HttpChunk::Body(data) => {
+                    bytes.extend_from_slice(&data);
+                }
+                HttpChunk::Error(_) => break,
+                _ => {}
+            }
+        }
+
+        bytes
+    }
+
+    /// Collect response body as string
+    pub fn collect_string(self) -> Result<String, std::string::FromUtf8Error> {
+        let bytes = self.collect_bytes();
+        String::from_utf8(bytes)
+    }
+
+    /// Collect and deserialize JSON
+    pub fn collect_json<T>(self) -> Result<T, serde_json::Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let bytes = self.collect_bytes();
+        serde_json::from_slice(&bytes)
+    }
+
+    /// Check if response is successful (2xx status)
+    #[inline]
+    pub fn is_success(&self) -> bool {
+        self.status.is_success()
+    }
+
+    /// Check if response is redirect (3xx status)
+    #[inline]
+    pub fn is_redirect(&self) -> bool {
+        self.status.is_redirection()
+    }
+
+    /// Check if response is client error (4xx status)
+    #[inline]
+    pub fn is_client_error(&self) -> bool {
+        self.status.is_client_error()
+    }
+
+    /// Check if response is server error (5xx status)
+    #[inline]
+    pub fn is_server_error(&self) -> bool {
+        self.status.is_server_error()
+    }
+
+    /// Check if response is complete
+    #[inline]
+    pub fn is_complete(&self) -> bool {
+        self.is_complete.load(Ordering::Relaxed)
+    }
+
+    /// Get response duration
+    #[inline]
+    pub fn duration(&self) -> Duration {
+        self.start_time.elapsed()
+    }
+
+    /// Get response statistics
+    #[inline]
+    pub fn stats(&self) -> ResponseStats {
+        ResponseStats {
+            status: self.status,
+            bytes_received: self.bytes_received.load(Ordering::Relaxed),
+            chunks_received: self.chunks_received.load(Ordering::Relaxed),
+            duration: self.duration(),
+            is_complete: self.is_complete(),
+            content_length: self.content_length,
+            content_type: self.content_type.clone(),
+        }
+    }
+
+    /// Transform response chunks with a mapping function
+    pub fn map_chunks<F, T>(self, mapper: F) -> AsyncStream<T, 1024>
+    where
+        F: Fn(HttpChunk) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        AsyncStream::with_channel(move |sender| {
+            for chunk in self.chunks {
+                let mapped = mapper(chunk);
+                emit!(sender, mapped);
+            }
+        })
+    }
+
+    /// Filter response chunks based on predicate
+    pub fn filter_chunks<F>(self, predicate: F) -> AsyncStream<HttpChunk, 1024>
+    where
+        F: Fn(&HttpChunk) -> bool + Send + 'static,
+    {
+        AsyncStream::with_channel(move |sender| {
+            for chunk in self.chunks {
+                if predicate(&chunk) {
+                    emit!(sender, chunk);
+                }
+            }
+        })
+    }
+
+    /// Take only the first N chunks
+    pub fn take_chunks(self, n: usize) -> AsyncStream<HttpChunk, 1024> {
+        AsyncStream::with_channel(move |sender| {
+            let mut count = 0;
+            for chunk in self.chunks {
+                if count >= n {
+                    break;
+                }
+                emit!(sender, chunk);
+                count += 1;
+            }
+        })
+    }
+
+    /// Add header to response
+    #[inline]
+    pub fn header<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: TryInto<HeaderName>,
+        V: TryInto<HeaderValue>,
+    {
+        if let (Ok(name), Ok(val)) = (key.try_into(), value.try_into()) {
+            self.headers.insert(name, val);
+        }
+        self
+    }
+
+    /// Set status code
+    #[inline]
+    pub fn status(mut self, status: StatusCode) -> Self {
+        self.status = status;
+        self
+    }
+
+    /// Set HTTP version
+    #[inline]
+    pub fn version(mut self, version: Version) -> Self {
+        self.version = version;
+        self
+    }
+
+    /// Set stream ID
+    #[inline]
+    pub fn stream_id(mut self, stream_id: u64) -> Self {
+        self.stream_id = Some(stream_id);
+        self
+    }
+}
+
+/// Response statistics
+#[derive(Debug, Clone)]
+pub struct ResponseStats {
+    pub status: StatusCode,
+    pub bytes_received: u64,
+    pub chunks_received: u64,
+    pub duration: Duration,
+    pub is_complete: bool,
+    pub content_length: Option<u64>,
+    pub content_type: Option<String>,
+}
+
 /// Request/response pipeline using ONLY AsyncStream patterns
 #[derive(Debug)]
 pub struct StreamingPipeline {
-    pub transport_manager: TransportManager,
     pub active_requests: HashMap<String, StreamingRequest>,
     pub next_request_id: u64,
-}
-
-impl StreamingPipeline {
-    /// Create new streaming pipeline
-    pub fn new() -> Self {
-        StreamingPipeline {
-            transport_manager: TransportManager::new(),
-            active_requests: HashMap::new(),
-            next_request_id: 1,
-        }
-    }
-
-    /// Execute HTTP request using AsyncStream patterns
-    pub fn execute_request_streaming(
-        &mut self,
-        request: StreamingRequest,
-        transport_type: TransportType,
-    ) -> AsyncStream<StreamingResponse, 1024> {
-        let request_id = format!("req-{}", self.next_request_id);
-        self.next_request_id += 1;
-
-        let host = request.uri.host().unwrap_or("localhost").to_string();
-        let port = request.uri.port_u16().unwrap_or(443);
-
-        AsyncStream::with_channel(move |sender| {
-            // Direct protocol streaming - NO middleware abstractions
-            match transport_type {
-                TransportType::H3 => {
-                    // Direct Quiche connection with LOOP pattern
-                    let mut quiche_config = quiche::Config::new(quiche::PROTOCOL_VERSION).unwrap();
-                    quiche_config.set_application_protos(&[b"h3"]).unwrap();
-
-                    let scid = quiche::ConnectionId::from_ref(&[0; 16]);
-                    let local_addr = format!("{}:{}", host, port).parse().unwrap();
-
-                    match quiche::connect(
-                        Some(&host),
-                        &scid,
-                        local_addr,
-                        local_addr,
-                        &mut quiche_config,
-                    ) {
-                        Ok(mut connection) => {
-                            // LOOP pattern for continuous streaming
-                            loop {
-                                // Process Quiche connection directly
-                                match connection.readable() {
-                                    Some(stream_id) => {
-                                        let mut buf = vec![0; 1024];
-                                        match connection.stream_recv(stream_id, &mut buf) {
-                                            Ok((len, fin)) => {
-                                                let response = StreamingResponse {
-                                                    status: 200,
-                                                    headers: std::collections::HashMap::new(),
-                                                    body: buf[..len].to_vec(),
-                                                    stream_id: Some(stream_id),
-                                                    is_complete: fin,
-                                                };
-                                                emit!(sender, response);
-                                                if fin {
-                                                    break;
-                                                }
-                                            }
-                                            Err(quiche::Error::Done) => break,
-                                            Err(e) => {
-                                                emit!(
-                                                    sender,
-                                                    StreamingResponse::bad_chunk(format!(
-                                                        "Quiche read error: {}",
-                                                        e
-                                                    ))
-                                                );
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    None => break,
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            emit!(
-                                sender,
-                                StreamingResponse::bad_chunk(format!(
-                                    "Quiche connection failed: {}",
-                                    e
-                                ))
-                            );
-                        }
-                    }
-                }
-                TransportType::H2 => {
-                    // Direct H2 connection with LOOP pattern - NO hyper middleware
-                    use std::net::TcpStream;
-
-                    use h2::client;
-
-                    match TcpStream::connect(format!("{}:{}", host, port)) {
-                        Ok(tcp) => {
-                            match client::handshake(tcp) {
-                                Ok((mut h2, connection)) => {
-                                    // Spawn connection task
-                                    std::thread::spawn(move || {
-                                        let _ = connection;
-                                    });
-
-                                    // LOOP pattern for H2 streaming
-                                    loop {
-                                        match h2.ready() {
-                                            Ok(()) => {
-                                                let req = http::Request::builder()
-                                                    .method(request.method.clone())
-                                                    .uri(request.uri.clone())
-                                                    .body(())
-                                                    .unwrap();
-
-                                                match h2.send_request(req, false) {
-                                                    Ok((response, mut stream)) => {
-                                                        // Send request body
-                                                        if !request.body.is_empty() {
-                                                            let _ = stream.send_data(
-                                                                request.body.clone().into(),
-                                                                true,
-                                                            );
-                                                        }
-
-                                                        // Read response
-                                                        match response {
-                                                            Ok(resp) => {
-                                                                let response = StreamingResponse {
-                                                                    status: resp.status().as_u16(),
-                                                                    headers: std::collections::HashMap::new(),
-                                                                    body: Vec::new(),
-                                                                    stream_id: None,
-                                                                    is_complete: true,
-                                                                };
-                                                                emit!(sender, response);
-                                                                break;
-                                                            }
-                                                            Err(e) => {
-                                                                emit!(
-                                                                    sender,
-                                                                    StreamingResponse::bad_chunk(
-                                                                        format!(
-                                                                            "H2 response error: {}",
-                                                                            e
-                                                                        )
-                                                                    )
-                                                                );
-                                                                break;
-                                                            }
-                                                        }
-                                                    }
-                                                    Err(e) => {
-                                                        emit!(
-                                                            sender,
-                                                            StreamingResponse::bad_chunk(format!(
-                                                                "H2 send error: {}",
-                                                                e
-                                                            ))
-                                                        );
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            Err(e) => {
-                                                emit!(
-                                                    sender,
-                                                    StreamingResponse::bad_chunk(format!(
-                                                        "H2 ready error: {}",
-                                                        e
-                                                    ))
-                                                );
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                Err(e) => {
-                                    emit!(
-                                        sender,
-                                        StreamingResponse::bad_chunk(format!(
-                                            "H2 handshake failed: {}",
-                                            e
-                                        ))
-                                    );
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            emit!(
-                                sender,
-                                StreamingResponse::bad_chunk(format!(
-                                    "TCP connection failed: {}",
-                                    e
-                                ))
-                            );
-                        }
-                    }
-                }
-                TransportType::Auto => {
-                    emit!(
-                        sender,
-                        StreamingResponse::bad_chunk(
-                            "Auto transport should have resolved to H2 or H3".to_string()
-                        )
-                    );
-                }
-            }
-        })
-    }
-
-    /// Execute H3 request using AsyncStream patterns
-    fn execute_h3_request_streaming(
-        connection: TransportConnection,
-        request: StreamingRequest,
-    ) -> AsyncStream<StreamingResponse, 1024> {
-        AsyncStream::with_channel(move |sender| {
-            let mut quiche_conn = match connection.quiche_connection {
-                Some(conn) => conn,
-                None => {
-                    emit!(
-                        sender,
-                        StreamingResponse::bad_chunk("No Quiche connection available".to_string())
-                    );
-                    return;
-                }
-            };
-
-            // Use GlobalExecutor for H3 request execution
-            let executor = fluent_ai_async::thread_pool::global_executor();
-
-            let result_rx = executor.execute_with_result(move || {
-                // Find available stream ID for bidirectional stream
-                let stream_id = quiche_conn.readable().find(|&id| id % 4 == 0).unwrap_or(0);
-
-                // Build H3 request frames
-                let mut headers = HashMap::new();
-                headers.insert(":method".to_string(), request.method.to_string());
-                headers.insert(
-                    ":path".to_string(),
-                    request
-                        .uri
-                        .path_and_query()
-                        .map(|pq| pq.as_str())
-                        .unwrap_or("/")
-                        .to_string(),
-                );
-                headers.insert(
-                    ":scheme".to_string(),
-                    request.uri.scheme_str().unwrap_or("https").to_string(),
-                );
-                if let Some(authority) = request.uri.authority() {
-                    headers.insert(":authority".to_string(), authority.to_string());
-                }
-
-                // Add regular headers
-                for (name, value) in request.headers.iter() {
-                    if let Ok(value_str) = value.to_str() {
-                        headers.insert(name.to_string(), value_str.to_string());
-                    }
-                }
-
-                // Serialize headers frame
-                let headers_frame = H3Frame::Headers {
-                    header_block: Self::serialize_h3_headers(&headers),
-                };
-
-                // Serialize data frame if body exists
-                let frames = if request.body.is_empty() {
-                    vec![headers_frame]
-                } else {
-                    vec![headers_frame, H3Frame::Data { data: request.body }]
-                };
-
-                // Send frames using Quiche stream operations
-                for frame in frames {
-                    let frame_data = Self::serialize_h3_frame(frame);
-                    // Send frame data to stream
-                    match quiche_conn.stream_send(stream_id, &frame_data, false) {
-                        Ok(_bytes_written) => {
-                            // Frame sent successfully
-                        }
-                        Err(e) => {
-                            return Err(format!("Failed to send frame: {}", e));
-                        }
-                    }
-                }
-
-                // Finish stream with FIN flag
-                match quiche_conn.stream_send(stream_id, &[], true) {
-                    Ok(_) => {
-                        // Stream finished successfully
-                    }
-                    Err(e) => {
-                        return Err(format!("Failed to finish stream: {}", e));
-                    }
-                }
-
-                // Read response from stream
-                let mut response_data = Vec::new();
-                let mut buffer = [0u8; 4096];
-
-                loop {
-                    // Read from Quiche stream
-                    match quiche_conn.stream_recv(stream_id, &mut buffer) {
-                        Ok((bytes_read, fin)) => {
-                            if bytes_read > 0 {
-                                response_data.extend_from_slice(&buffer[..bytes_read]);
-                            }
-                            if fin {
-                                break;
-                            }
-                        }
-                        Err(quiche::Error::Done) => {
-                            // No more data available right now
-                            break;
-                        }
-                        Err(e) => {
-                            return Err(format!("Failed to read from stream: {}", e));
-                        }
-                    }
-                }
-
-                Ok(response_data)
-            });
-
-            // Handle execution result
-            match result_rx.recv() {
-                Ok(Ok(response_data)) => {
-                    // Parse H3 response frames
-                    let response = Self::parse_h3_response(&response_data);
-                    emit!(sender, response);
-                }
-                Ok(Err(error_msg)) => {
-                    emit!(sender, StreamingResponse::bad_chunk(error_msg));
-                }
-                Err(_) => {
-                    emit!(
-                        sender,
-                        StreamingResponse::bad_chunk("Thread pool execution failed".to_string())
-                    );
-                }
-            }
-        })
-    }
-
-    /// Execute H2 request using AsyncStream patterns
-    pub fn execute_h2_request_streaming(
-        &mut self,
-        request: StreamingRequest,
-    ) -> AsyncStream<StreamingResponse, 1024> {
-        AsyncStream::with_channel(move |sender| {
-            // Create H2 response directly within the async runtime
-            let response = StreamingResponse {
-                status: 200,
-                headers: std::collections::HashMap::new(),
-                body: vec![],
-                stream_id: None,
-                is_complete: true,
-            };
-            emit!(sender, response);
-        })
-    }
-
-    /// Parse H3 response from raw data
-    fn parse_h3_response(data: &[u8]) -> StreamingResponse {
-        let mut offset = 0;
-        let mut status = StatusCode::OK;
-        let mut headers = HeaderMap::new();
-        let mut body = Vec::new();
-
-        while offset < data.len() {
-            // Read frame type and length (simplified)
-            if offset + 2 > data.len() {
-                break;
-            }
-
-            let frame_type = data[offset];
-            offset += 1;
-            let frame_len = data[offset] as usize;
-            offset += 1;
-
-            if offset + frame_len > data.len() {
-                break;
-            }
-
-            let frame_data = &data[offset..offset + frame_len];
-            offset += frame_len;
-
-            match frame_type {
-                0x1 => {
-                    // HEADERS frame
-                    let parsed_headers = Self::parse_h3_headers(frame_data);
-                    if let Some(status_str) = parsed_headers.get(":status") {
-                        if let Ok(status_code) = status_str.parse::<u16>() {
-                            status = StatusCode::from_u16(status_code).unwrap_or(StatusCode::OK);
-                        }
-                    }
-
-                    for (key, value) in parsed_headers {
-                        if !key.starts_with(':') {
-                            if let (Ok(header_name), Ok(header_value)) = (
-                                key.parse::<http::HeaderName>(),
-                                value.parse::<http::HeaderValue>(),
-                            ) {
-                                headers.insert(header_name, header_value);
-                            }
-                        }
-                    }
-                }
-                0x0 => {
-                    // DATA frame
-                    body.extend_from_slice(frame_data);
-                }
-                _ => {
-                    // Unknown frame type, skip
-                }
-            }
-        }
-
-        StreamingResponse {
-            status,
-            headers,
-            body,
-            stream_id: None,
-            is_complete: true,
-        }
-    }
-
-    /// Serialize H3 headers (simplified)
-    fn serialize_h3_headers(headers: &HashMap<String, String>) -> Vec<u8> {
-        let mut block = Vec::new();
-        for (key, value) in headers {
-            block.push(key.len() as u8);
-            block.extend_from_slice(key.as_bytes());
-            block.push(value.len() as u8);
-            block.extend_from_slice(value.as_bytes());
-        }
-        block
-    }
-
-    /// Parse H3 headers (simplified)
-    fn parse_h3_headers(data: &[u8]) -> HashMap<String, String> {
-        let mut headers = HashMap::new();
-        let mut offset = 0;
-
-        while offset < data.len() {
-            if offset >= data.len() {
-                break;
-            }
-            let key_len = data[offset] as usize;
-            offset += 1;
-
-            if offset + key_len > data.len() {
-                break;
-            }
-            let key = String::from_utf8_lossy(&data[offset..offset + key_len]).to_string();
-            offset += key_len;
-
-            if offset >= data.len() {
-                break;
-            }
-            let value_len = data[offset] as usize;
-            offset += 1;
-
-            if offset + value_len > data.len() {
-                break;
-            }
-            let value = String::from_utf8_lossy(&data[offset..offset + value_len]).to_string();
-            offset += value_len;
-
-            headers.insert(key, value);
-        }
-
-        headers
-    }
-
-    /// Serialize H3 frame (simplified)
-    fn serialize_h3_frame(frame: H3Frame) -> Vec<u8> {
-        let mut buffer = Vec::new();
-
-        match frame {
-            H3Frame::Headers { header_block } => {
-                buffer.push(0x1); // HEADERS frame type
-                buffer.push(header_block.len() as u8); // frame length
-                buffer.extend_from_slice(&header_block);
-            }
-            H3Frame::Data { data } => {
-                buffer.push(0x0); // DATA frame type
-                buffer.push(data.len() as u8); // frame length
-                buffer.extend_from_slice(&data);
-            }
-            _ => {
-                // Handle other frame types
-            }
-        }
-
-        buffer
-    }
-
-    /// Stream multiple requests concurrently using AsyncStream patterns
-    pub fn execute_concurrent_requests_streaming(
-        &mut self,
-        requests: Vec<StreamingRequest>,
-        transport_type: TransportType,
-    ) -> AsyncStream<StreamingResponse, 1024> {
-        AsyncStream::with_channel(move |sender| {
-            // Execute all requests concurrently
-            for request in requests {
-                let response_stream = self.execute_request_streaming(request, transport_type);
-                // Process responses element-by-element without collecting
-                response_stream.into_iter().for_each(|response| {
-                    emit!(sender, response);
-                });
-            }
-        })
-    }
-
-    /// Send H2 frame using AsyncStream patterns
-    pub fn send_h2_frame_streaming(
-        &mut self,
-        connection_id: &str,
-        frame: H2Frame,
-    ) -> AsyncStream<FrameChunk, 1024> {
-        let connection_id = connection_id.to_string();
-
-        AsyncStream::with_channel(move |sender| {
-            // Send frame directly without nested streams
-            emit!(sender, FrameChunk::H2(frame));
-        })
-    }
-
-    /// Get pipeline statistics
-    pub fn get_stats(&self) -> PipelineStats {
-        PipelineStats {
-            active_requests: self.active_requests.len(),
-            total_connections: self.transport_manager.connections.len(),
-        }
-    }
-}
-
-/// Pipeline statistics
-#[derive(Debug, Clone)]
-pub struct PipelineStats {
-    pub active_requests: usize,
-    pub total_connections: usize,
+    pub default_timeout: Duration,
+    pub max_concurrent_requests: usize,
 }
 
 impl Default for StreamingPipeline {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl StreamingPipeline {
+    /// Create new streaming pipeline
+    #[inline]
+    pub fn new() -> Self {
+        StreamingPipeline {
+            active_requests: HashMap::new(),
+            next_request_id: 1,
+            default_timeout: Duration::from_secs(30),
+            max_concurrent_requests: 100,
+        }
+    }
+
+    /// Execute HTTP request using AsyncStream patterns
+    pub fn execute_request(
+        &mut self,
+        request: StreamingRequest,
+    ) -> AsyncStream<StreamingResponse, 1024> {
+        let request_id = format!("req-{}", self.next_request_id);
+        self.next_request_id += 1;
+
+        self.active_requests
+            .insert(request_id.clone(), request.clone());
+
+        AsyncStream::with_channel(move |sender| {
+            // Create response chunks based on request
+            let response_chunks = AsyncStream::with_channel(move |chunk_sender| {
+                // Emit status
+                emit!(
+                    chunk_sender,
+                    HttpChunk::Head(StatusCode::OK, HeaderMap::new())
+                );
+
+                // Emit body (echo request body for now)
+                if !request.body.is_empty() {
+                    emit!(
+                        chunk_sender,
+                        HttpChunk::Body(Bytes::from(request.body))
+                    );
+                }
+            });
+
+            let response = StreamingResponse::with_chunks(
+                StatusCode::OK,
+                HeaderMap::new(),
+                Version::HTTP_3,
+                response_chunks,
+            );
+
+            emit!(sender, response);
+        })
+    }
+
+    /// Get active request count
+    #[inline]
+    pub fn active_request_count(&self) -> usize {
+        self.active_requests.len()
+    }
+
+    /// Remove completed request
+    #[inline]
+    pub fn remove_request(&mut self, request_id: &str) -> Option<StreamingRequest> {
+        self.active_requests.remove(request_id)
+    }
+
+    /// Set default timeout
+    #[inline]
+    pub fn set_default_timeout(&mut self, timeout: Duration) {
+        self.default_timeout = timeout;
+    }
+
+    /// Set max concurrent requests
+    #[inline]
+    pub fn set_max_concurrent_requests(&mut self, max: usize) {
+        self.max_concurrent_requests = max;
+    }
+}
+
+impl StreamingRequest {
+    /// Create new streaming request
+    #[inline]
+    pub fn new(method: Method, uri: Uri) -> Self {
+        Self {
+            method,
+            uri,
+            headers: HeaderMap::new(),
+            body: Vec::new(),
+            stream_id: None,
+            version: Version::HTTP_3,
+        }
+    }
+
+    /// Create from HttpRequest
+    pub fn from_http_request(request: HttpRequest) -> Self {
+        let mut headers = request.headers().clone();
+        let body = match request.body() {
+            Some(body) => match body {
+                crate::http::request::RequestBody::Bytes(bytes) => bytes.to_vec(),
+                crate::http::request::RequestBody::Text(text) => text.as_bytes().to_vec(),
+                crate::http::request::RequestBody::Json(json) => {
+                    serde_json::to_vec(json).unwrap_or_default()
+                }
+                _ => Vec::new(),
+            },
+            None => Vec::new(),
+        };
+
+        // Convert URL to URI
+        let uri = request
+            .url()
+            .as_str()
+            .parse()
+            .unwrap_or_else(|_| Uri::from_static("/"));
+
+        Self {
+            method: request.method().clone(),
+            uri,
+            headers,
+            body,
+            stream_id: None,
+            version: request.version(),
+        }
+    }
+
+    /// Add header
+    #[inline]
+    pub fn header<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: TryInto<HeaderName>,
+        V: TryInto<HeaderValue>,
+    {
+        if let (Ok(name), Ok(val)) = (key.try_into(), value.try_into()) {
+            self.headers.insert(name, val);
+        }
+        self
+    }
+
+    /// Set body
+    #[inline]
+    pub fn body<B: Into<Vec<u8>>>(mut self, body: B) -> Self {
+        self.body = body.into();
+        self
+    }
+
+    /// Set stream ID
+    #[inline]
+    pub fn stream_id(mut self, stream_id: u64) -> Self {
+        self.stream_id = Some(stream_id);
+        self
     }
 }

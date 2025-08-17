@@ -4,7 +4,10 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde_json::Value;
 
 use crate::operations::HttpOperation;
-use crate::{client::HttpClient, error::HttpError, request::HttpRequest, stream::HttpStream};
+use crate::{
+    client::HttpClient, error::HttpError, http::request::HttpRequest,
+    streaming::stream::streams::HttpStream,
+};
 
 /// PATCH operation implementation supporting multiple patch formats
 #[derive(Clone)]

@@ -1,74 +1,120 @@
-# HTTP3 Package - Fix All Errors and Warnings
+# HTTP3 Library QUICHE-Only Implementation Plan
 
-## Current Status: 32 ERRORS + 255 WARNINGS = 287 TOTAL ISSUES
+## Phase 1: Dependency Cleanup
 
-## CRITICAL ERRORS (32 items) - Must fix first
+### 1. Remove Quinn Dependencies from Cargo.toml
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/Cargo.toml` (lines 60-65)
+- **Action**: Remove h3 = "0.0.4" and h3-quinn = "0.0.4" dependencies
+- **Keep**: quiche = { version = "0.24.5", features = ["boringssl-vendored"] }
+- **Architecture**: Ensure only QUICHE remains for HTTP/3 functionality
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### Duplicate Function Definitions (6 errors)
-1. Fix duplicate `format_cookie` in util/cookies.rs
-2. Fix duplicate `parse_cookie` in util/cookies.rs  
-3. Fix duplicate `validate_cookie` in util/cookies.rs
-4. Fix duplicate `parse_headers` in util/header_utils.rs
-5. Fix duplicate `format_headers` in util/header_utils.rs
-6. Fix duplicate `validate_header` in util/header_utils.rs
+### 2. QA: Verify Quinn Dependency Removal
+- **Action**: Act as an Objective QA Rust developer and verify that ALL Quinn dependencies have been completely removed from Cargo.toml
+- **Validation**: Run `cargo tree | grep -i quinn` to confirm zero Quinn dependencies
+- **Compliance**: Ensure only QUICHE remains for HTTP/3 functionality
 
-### Duplicate Import Definitions (2 errors)
-7. Fix duplicate `AbortController` import in hyper/wasm/mod.rs
-8. Fix duplicate `AbortSignal` import in hyper/wasm/mod.rs
+## Phase 2: Source Code Quinn Elimination
 
-### Missing Module Imports (8 errors)
-9. Add missing `FluentBuilder` to builder/fluent.rs
-10. Add missing body types: `BodyKind`, `BodyWrapper`, `BytesBody`, `StreamBody` to hyper/async_impl/body/types.rs
-11. Add missing `Pool` type to hyper/async_impl/h3_client/pool.rs
-12. Add missing resolver types: `DynResolver`, `StdResolver` to hyper/async_impl/h3_client/connect/types.rs
-13. Add missing connect types: `BoxError`, `PoolClient` to hyper/async_impl/h3_client/connect/types.rs
-14. Add missing wrapper types: `VecWrapper` to wrappers/collections.rs
-15. Add missing `HeaderWrapper` to wrappers/http.rs
-16. Add missing network wrappers: `DnsWrapper`, `SocketAddrWrapper` to wrappers/network.rs
-17. Add missing `StreamWrapper` to wrappers/stream.rs
-18. Add missing `cache` module to middleware/
+### 3. Remove h3_quinn Imports from H3 Connection Module
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/src/protocols/h3/connection.rs` (lines 13, 19, 40, 46)
+- **Action**: Replace `use h3_quinn::*` imports with `use quiche::*` equivalents
+- **Architecture**: Update H3Connection struct to use quiche::Connection instead of Quinn types
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### Missing Constants and Variables (4 errors)
-19. Add missing `STANDARD` constant in builder/auth.rs (base64 engine)
-20. Fix missing `recv_stream` variable in hyper/async_impl/h3_client/pool.rs
-21. Add missing `HttpStream` type in builder/execution.rs
-22. Add missing `VarInt` type imports (4 locations)
+### 4. QA: Verify H3 Connection Quinn Removal
+- **Action**: Act as an Objective QA Rust developer and verify that ALL h3_quinn references have been replaced with quiche equivalents in connection.rs
+- **Validation**: Search for any remaining "h3_quinn" or "quinn" references in the file
+- **Compliance**: Ensure all HTTP/3 connection logic uses QUICHE exclusively
 
-### Missing Traits and Types (4 errors)
-23. Add missing `DeserializeOwned` trait import in builder/execution.rs
-24. Add missing `MessageChunk` trait imports (2 locations in builder/streaming.rs)
-25. Fix ambiguous `IntoJsonPathError` in json_path/error/mod.rs
-26. Fix function vs module confusion in basic_auth usage
+### 5. Audit and Replace Quinn References in H3 Protocol Directory
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/src/protocols/h3/` (all files)
+- **Action**: Search and replace all Quinn stream types with quiche stream equivalents
+- **Architecture**: Update streaming logic to use quiche APIs instead of Quinn
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-## WARNINGS (255 items) - Fix after errors resolved
+### 6. QA: Verify H3 Protocol Directory Quinn Elimination
+- **Action**: Act as an Objective QA Rust developer and verify that ALL Quinn references have been eliminated from the h3 protocol directory
+- **Validation**: Run `grep -r "quinn\|h3_quinn" src/protocols/h3/` to confirm zero matches
+- **Compliance**: Ensure all HTTP/3 protocol handling uses QUICHE exclusively
 
-### Unused Imports by Category
-27. Fix 45 unused imports in builder/ modules
-28. Fix 89 unused imports in hyper/async_impl/ modules  
-29. Fix 34 unused imports in hyper/wasm/ modules
-30. Fix 67 unused imports in json_path/ modules
-31. Fix 12 unused imports in streaming/ modules
-32. Fix 8 unused imports in async_impl/ modules
+### 7. Search and Replace Quinn References Codebase-Wide
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/src/` (all files)
+- **Action**: Use `grep -r "h3_quinn\|quinn" src/` to find all remaining Quinn references
+- **Architecture**: Replace with appropriate QUICHE equivalents maintaining fluent_ai_async patterns
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### Implementation Tasks (from unused imports analysis)
-33. Implement missing functionality in builder/auth.rs (Cow, Bytes, Serialize usage)
-34. Implement missing functionality in hyper body system
-35. Implement missing functionality in client configuration
-36. Implement missing functionality in JSON path processing
-37. Implement missing functionality in streaming pipeline
-38. Implement missing functionality in async client connections
+### 8. QA: Verify Codebase-Wide Quinn Elimination
+- **Action**: Act as an Objective QA Rust developer and verify that ALL Quinn references have been eliminated from the entire codebase
+- **Validation**: Run comprehensive search `grep -r "quinn\|h3_quinn" src/` and confirm zero matches
+- **Compliance**: Ensure entire codebase uses QUICHE exclusively for HTTP/3
 
-## Success Criteria
-- ✅ 0 compilation errors
-- ✅ 0 warnings  
-- ✅ All functionality properly implemented (no mocks/stubs)
-- ✅ Code passes `cargo check` cleanly
-- ✅ Production-quality implementation
+## Phase 3: QUICHE Implementation Verification
 
-## Work Strategy
-1. Fix duplicate definitions first (blocking compilation)
-2. Add all missing types and modules
-3. Resolve import resolution errors
-4. Implement missing functionality indicated by unused imports
-5. Clean up truly unused imports only after thorough analysis
-6. Verify each fix with incremental `cargo check` runs
+### 9. Update QUICHE Stream Types and Implementations
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/src/protocols/quiche/streaming.rs` (lines 141, 146, 242, 260)
+- **Action**: Implement missing QuicheStream type and ensure proper QUICHE stream handling
+- **Architecture**: Ensure compatibility with fluent_ai_async::AsyncStream patterns
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 10. QA: Verify QUICHE Stream Implementation
+- **Action**: Act as an Objective QA Rust developer and verify that QUICHE stream implementations are complete and functional
+- **Validation**: Ensure QuicheStream type exists and all stream operations compile successfully
+- **Compliance**: Verify compatibility with fluent_ai_async streaming architecture
+
+### 11. Fix QUICHE Connection Lifecycle Management
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/src/protocols/quiche/` (all connection files)
+- **Action**: Ensure QUICHE connection establishment, maintenance, and cleanup follow proper patterns
+- **Architecture**: Implement QUICHE-specific async patterns compatible with tokio runtime
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 12. QA: Verify QUICHE Connection Lifecycle
+- **Action**: Act as an Objective QA Rust developer and verify that QUICHE connection lifecycle management is properly implemented
+- **Validation**: Test connection establishment, data transfer, and cleanup operations
+- **Compliance**: Ensure proper async patterns and error handling without unwrap() or expect()
+
+## Phase 4: Compilation Error Resolution
+
+### 13. Fix HttpResponseChunk Type References
+- **File**: Multiple files with HttpResponseChunk references
+- **Action**: Replace all HttpResponseChunk references with HttpChunk throughout codebase
+- **Architecture**: Ensure consistent chunk type usage across all modules
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 14. QA: Verify HttpChunk Type Consistency
+- **Action**: Act as an Objective QA Rust developer and verify that ALL HttpResponseChunk references have been replaced with HttpChunk
+- **Validation**: Search codebase for any remaining HttpResponseChunk references
+- **Compliance**: Ensure consistent chunk type usage across all streaming operations
+
+### 15. Resolve QUICHE-Tokio Integration Issues
+- **File**: `/Volumes/samsung_t9/fluent-ai/packages/http3/src/protocols/h2/connection.rs` (lines 13, 19)
+- **Action**: Fix tokio import issues and ensure proper async runtime integration with QUICHE
+- **Architecture**: Maintain fluent_ai_async patterns while ensuring tokio compatibility
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 16. QA: Verify QUICHE-Tokio Integration
+- **Action**: Act as an Objective QA Rust developer and verify that QUICHE integrates properly with tokio runtime
+- **Validation**: Ensure all async operations compile and function correctly
+- **Compliance**: Verify no blocking operations and proper async/await usage
+
+## Phase 5: Testing and Validation
+
+### 17. Run Compilation Check and Fix Remaining Errors
+- **Action**: Execute `cargo check --message-format short --quiet` and systematically fix remaining compilation errors
+- **Architecture**: Ensure zero compilation errors with QUICHE-only implementation
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 18. QA: Verify Zero Compilation Errors
+- **Action**: Act as an Objective QA Rust developer and verify that the codebase compiles successfully with zero errors
+- **Validation**: Run `cargo check --message-format short --quiet` and confirm exit code 0
+- **Compliance**: Ensure all QUICHE implementations compile without warnings or errors
+
+### 19. Execute Test Suite with QUICHE-Only Implementation
+- **Action**: Run `cargo nextest run` to verify all tests pass with QUICHE-only HTTP/3
+- **Architecture**: Ensure all HTTP/3 functionality works through QUICHE exclusively
+- **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 20. QA: Verify Test Suite Success
+- **Action**: Act as an Objective QA Rust developer and verify that ALL tests pass with QUICHE-only implementation
+- **Validation**: Confirm zero test failures and proper HTTP/3 functionality
+- **Compliance**: Ensure no Quinn-related test code remains and all functionality works through QUICHE

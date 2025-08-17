@@ -4,7 +4,7 @@
 use fluent_ai_async::AsyncStream;
 use fluent_ai_async::emit;
 use fluent_ai_async::prelude::MessageChunk;
-use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use serde::de::DeserializeOwned;
 
 use crate::{HttpChunk, HttpError, HttpStream};

@@ -1,112 +1,132 @@
-//! Zero-allocation client statistics tracking with cache-padded atomic counters
-//!
-//! Provides blazing-fast thread-safe statistics collection for HTTP client operations
-//! using zero-allocation lock-free atomic operations with optimal CPU cache utilization.
+//! Client statistics and performance metrics
 
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
-use crossbeam_utils::CachePadded;
-
-/// Zero-allocation thread-safe client statistics with cache-padded atomic counters
-///
-/// Eliminates all heap allocations by using cache-padded atomic counters directly.
-/// Each counter is cache-padded to prevent false sharing and maximize performance.
-/// All operations are lock-free with optimal CPU cache line utilization.
+/// HTTP client statistics and metrics
 #[derive(Debug, Default)]
 pub struct ClientStats {
-    /// Total number of HTTP requests made - cache padded for optimal performance
-    pub request_count: CachePadded<AtomicUsize>,
-    /// Total number of connections established - cache padded for optimal performance  
-    pub connection_count: CachePadded<AtomicUsize>,
-    /// Total bytes sent in request bodies - cache padded for optimal performance
-    pub total_bytes_sent: CachePadded<AtomicU64>,
-    /// Total bytes received in response bodies - cache padded for optimal performance
-    pub total_bytes_received: CachePadded<AtomicU64>,
-    /// Total response time across all requests in nanoseconds - cache padded for optimal performance
-    pub total_response_time_nanos: CachePadded<AtomicU64>,
-    /// Number of successful requests (2xx status codes) - cache padded for optimal performance
-    pub successful_requests: CachePadded<AtomicUsize>,
-    /// Number of failed requests (4xx/5xx status codes or network errors) - cache padded for optimal performance
-    pub failed_requests: CachePadded<AtomicUsize>,
-    /// Number of cache hits - cache padded for optimal performance
-    pub cache_hits: CachePadded<AtomicUsize>,
-    /// Number of cache misses - cache padded for optimal performance
-    pub cache_misses: CachePadded<AtomicUsize>,
-}
-
-impl Clone for ClientStats {
-    fn clone(&self) -> Self {
-        Self {
-            request_count: CachePadded::new(AtomicUsize::new(
-                self.request_count.load(Ordering::Relaxed),
-            )),
-            connection_count: CachePadded::new(AtomicUsize::new(
-                self.connection_count.load(Ordering::Relaxed),
-            )),
-            total_bytes_sent: CachePadded::new(AtomicU64::new(
-                self.total_bytes_sent.load(Ordering::Relaxed),
-            )),
-            total_bytes_received: CachePadded::new(AtomicU64::new(
-                self.total_bytes_received.load(Ordering::Relaxed),
-            )),
-            total_response_time_nanos: CachePadded::new(AtomicU64::new(
-                self.total_response_time_nanos.load(Ordering::Relaxed),
-            )),
-            successful_requests: CachePadded::new(AtomicUsize::new(
-                self.successful_requests.load(Ordering::Relaxed),
-            )),
-            failed_requests: CachePadded::new(AtomicUsize::new(
-                self.failed_requests.load(Ordering::Relaxed),
-            )),
-            cache_hits: CachePadded::new(AtomicUsize::new(self.cache_hits.load(Ordering::Relaxed))),
-            cache_misses: CachePadded::new(AtomicUsize::new(
-                self.cache_misses.load(Ordering::Relaxed),
-            )),
-        }
-    }
-}
-
-/// Immutable snapshot of client statistics at a point in time
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClientStatsSnapshot {
-    /// Total number of HTTP requests made
-    pub request_count: usize,
-    /// Total number of connections established
-    pub connection_count: usize,
-    /// Total bytes sent in request bodies
-    pub total_bytes_sent: u64,
-    /// Total bytes received in response bodies
-    pub total_bytes_received: u64,
-    /// Total response time across all requests in nanoseconds
-    pub total_response_time_nanos: u64,
-    /// Number of successful requests (2xx status codes)
-    pub successful_requests: usize,
-    /// Number of failed requests (4xx/5xx status codes or network errors)
-    pub failed_requests: usize,
-    /// Number of cache hits
-    pub cache_hits: usize,
-    /// Number of cache misses
-    pub cache_misses: usize,
+    /// Total number of requests made
+    pub requests_total: AtomicU64,
+    /// Number of successful requests (2xx status)
+    pub requests_successful: AtomicU64,
+    /// Number of failed requests (4xx/5xx status)
+    pub requests_failed: AtomicU64,
+    /// Total bytes sent
+    pub bytes_sent: AtomicU64,
+    /// Total bytes received
+    pub bytes_received: AtomicU64,
+    /// Number of active connections
+    pub connections_active: AtomicU64,
+    /// Total connection attempts
+    pub connections_total: AtomicU64,
+    /// Number of connection failures
+    pub connections_failed: AtomicU64,
+    /// Client creation time
+    pub created_at: Instant,
 }
 
 impl ClientStats {
-    /// Create a zero-allocation snapshot of the current statistics.
-    ///
-    /// All values are read atomically using relaxed ordering for blazing-fast performance
-    /// while ensuring consistent point-in-time values across all cache-padded metrics.
-    /// Uses elite polling patterns for optimal CPU cache utilization.
-    #[inline]
-    pub fn snapshot(&self) -> ClientStatsSnapshot {
-        ClientStatsSnapshot {
-            request_count: self.request_count.load(Ordering::Relaxed),
-            connection_count: self.connection_count.load(Ordering::Relaxed),
-            total_bytes_sent: self.total_bytes_sent.load(Ordering::Relaxed),
-            total_bytes_received: self.total_bytes_received.load(Ordering::Relaxed),
-            total_response_time_nanos: self.total_response_time_nanos.load(Ordering::Relaxed),
-            successful_requests: self.successful_requests.load(Ordering::Relaxed),
-            failed_requests: self.failed_requests.load(Ordering::Relaxed),
-            cache_hits: self.cache_hits.load(Ordering::Relaxed),
-            cache_misses: self.cache_misses.load(Ordering::Relaxed),
+    /// Create new client statistics
+    pub fn new() -> Self {
+        Self {
+            requests_total: AtomicU64::new(0),
+            requests_successful: AtomicU64::new(0),
+            requests_failed: AtomicU64::new(0),
+            bytes_sent: AtomicU64::new(0),
+            bytes_received: AtomicU64::new(0),
+            connections_active: AtomicU64::new(0),
+            connections_total: AtomicU64::new(0),
+            connections_failed: AtomicU64::new(0),
+            created_at: Instant::now(),
         }
     }
+
+    /// Record a request
+    pub fn record_request(&self) {
+        self.requests_total.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record a successful request
+    pub fn record_success(&self) {
+        self.requests_successful.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record a failed request
+    pub fn record_failure(&self) {
+        self.requests_failed.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record bytes sent
+    pub fn record_bytes_sent(&self, bytes: u64) {
+        self.bytes_sent.fetch_add(bytes, Ordering::Relaxed);
+    }
+
+    /// Record bytes received
+    pub fn record_bytes_received(&self, bytes: u64) {
+        self.bytes_received.fetch_add(bytes, Ordering::Relaxed);
+    }
+
+    /// Record new connection
+    pub fn record_connection(&self) {
+        self.connections_total.fetch_add(1, Ordering::Relaxed);
+        self.connections_active.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Record connection closed
+    pub fn record_connection_closed(&self) {
+        self.connections_active.fetch_sub(1, Ordering::Relaxed);
+    }
+
+    /// Record connection failure
+    pub fn record_connection_failure(&self) {
+        self.connections_failed.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Get success ratio
+    pub fn success_ratio(&self) -> f64 {
+        let total = self.requests_total.load(Ordering::Relaxed);
+        if total == 0 {
+            0.0
+        } else {
+            let successful = self.requests_successful.load(Ordering::Relaxed);
+            successful as f64 / total as f64
+        }
+    }
+
+    /// Get client age
+    pub fn age(&self) -> Duration {
+        self.created_at.elapsed()
+    }
+
+    /// Create a snapshot of current statistics
+    pub fn snapshot(&self) -> ClientStatsSnapshot {
+        ClientStatsSnapshot {
+            requests_total: self.requests_total.load(Ordering::Relaxed),
+            requests_successful: self.requests_successful.load(Ordering::Relaxed),
+            requests_failed: self.requests_failed.load(Ordering::Relaxed),
+            bytes_sent: self.bytes_sent.load(Ordering::Relaxed),
+            bytes_received: self.bytes_received.load(Ordering::Relaxed),
+            connections_active: self.connections_active.load(Ordering::Relaxed),
+            connections_total: self.connections_total.load(Ordering::Relaxed),
+            connections_failed: self.connections_failed.load(Ordering::Relaxed),
+            success_ratio: self.success_ratio(),
+            age: self.age(),
+        }
+    }
+}
+
+/// Snapshot of client statistics at a point in time
+#[derive(Debug, Clone)]
+pub struct ClientStatsSnapshot {
+    pub requests_total: u64,
+    pub requests_successful: u64,
+    pub requests_failed: u64,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+    pub connections_active: u64,
+    pub connections_total: u64,
+    pub connections_failed: u64,
+    pub success_ratio: f64,
+    pub age: Duration,
 }

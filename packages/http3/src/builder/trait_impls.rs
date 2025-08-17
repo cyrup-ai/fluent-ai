@@ -59,7 +59,7 @@ impl<S> RequestBuilderExt for Http3Builder<S> {
     }
 }
 
-/// Implement ChunkHandler trait for Http3Builder to support cyrup_sugars on_chunk pattern
+/// Implement ChunkHandler trait for Http3Builder to support fluent_ai_async on_chunk pattern
 impl<S> ChunkHandler<HttpChunk, HttpError> for Http3Builder<S> {
     #[inline]
     fn on_chunk<F>(self, handler: F) -> Self

@@ -2,8 +2,7 @@
 //! GET and POST operations for the JsonPathStreaming builder state that return
 //! streams of deserialized objects matching JSONPath expressions.
 
-use cyrup_sugars::prelude::MessageChunk;
-use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+use fluent_ai_async::prelude::MessageChunk;
 use http::Method;
 use serde::de::DeserializeOwned;
 
@@ -13,13 +12,11 @@ use crate::builder::streaming::JsonPathStream;
 /// Trait for HTTP methods that support JSONPath streaming
 pub trait JsonPathMethods {
     /// Execute a GET request with JSONPath streaming
-    fn get<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
-        self,
-        url: &str,
-    ) -> JsonPathStream<T>;
+    fn get<T: DeserializeOwned + MessageChunk + MessageChunk>(self, url: &str)
+    -> JsonPathStream<T>;
 
     /// Execute a POST request with JSONPath streaming
-    fn post<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+    fn post<T: DeserializeOwned + MessageChunk + MessageChunk>(
         self,
         url: &str,
     ) -> JsonPathStream<T>;
@@ -33,7 +30,7 @@ pub struct JsonPathPostMethod;
 
 impl JsonPathMethods for Http3Builder<JsonPathStreaming> {
     #[inline]
-    fn get<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+    fn get<T: DeserializeOwned + MessageChunk + MessageChunk>(
         self,
         url: &str,
     ) -> JsonPathStream<T> {
@@ -41,7 +38,7 @@ impl JsonPathMethods for Http3Builder<JsonPathStreaming> {
     }
 
     #[inline]
-    fn post<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+    fn post<T: DeserializeOwned + MessageChunk + MessageChunk>(
         self,
         url: &str,
     ) -> JsonPathStream<T> {
@@ -79,7 +76,7 @@ impl Http3Builder<JsonPathStreaming> {
     ///     .get::<User>("https://api.example.com/data");
     /// ```
     #[inline]
-    pub fn get<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+    pub fn get<T: DeserializeOwned + MessageChunk + MessageChunk>(
         mut self,
         url: &str,
     ) -> JsonPathStream<T> {
@@ -117,7 +114,7 @@ impl Http3Builder<JsonPathStreaming> {
     /// # Type Parameters
     /// * `T` - Type to deserialize each matching JSON object into
     #[inline]
-    pub fn post<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+    pub fn post<T: DeserializeOwned + MessageChunk + MessageChunk>(
         mut self,
         url: &str,
     ) -> JsonPathStream<T> {
@@ -146,7 +143,7 @@ impl Http3Builder<JsonPathStreaming> {
 
     /// Internal method to execute JSONPath request with specified HTTP method
     #[inline]
-    fn execute_jsonpath_with_method<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+    fn execute_jsonpath_with_method<T: DeserializeOwned + MessageChunk + MessageChunk>(
         mut self,
         method: Method,
         url: &str,

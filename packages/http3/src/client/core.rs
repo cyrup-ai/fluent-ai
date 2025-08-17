@@ -1,34 +1,138 @@
-//! Core HTTP client structure with pure AsyncStream architecture
+//! Canonical HTTP client with telemetry integration and zero-allocation streaming
 //!
-//! Provides the foundational HttpClient struct using fluent_ai_async directly
-//! with NO middleware, NO abstractions - pure streaming protocols
+//! Provides the unified HttpClient struct using fluent_ai_async directly
+//! with integrated telemetry, connection pooling, and pure streaming protocols
+
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
+use http::{HeaderMap, Method, Uri};
 
-use super::{ClientStats, ClientStatsSnapshot};
+use crate::telemetry::{ClientStats, ClientStatsSnapshot};
 use crate::{HttpChunk, HttpConfig, HttpRequest};
 
-/// Pure streaming HTTP client using fluent_ai_async directly - NO middleware
+/// Canonical HTTP client with integrated telemetry and zero-allocation streaming
+///
+/// Combines HTTP/1.1, HTTP/2, and HTTP/3 protocol support with comprehensive
+/// telemetry tracking, connection pooling, and fluent_ai_async streaming architecture.
 #[derive(Debug, Clone)]
 pub struct HttpClient {
-    /// Client configuration
+    /// Client configuration with protocol preferences and timeouts
     pub(crate) config: HttpConfig,
-    /// Atomic metrics for lock-free statistics
+    /// Zero-allocation atomic telemetry for performance tracking
     pub(crate) stats: ClientStats,
+    /// Default headers applied to all requests
+    pub(crate) default_headers: HeaderMap,
+    /// Connection timeout for establishing new connections
+    pub(crate) connect_timeout: Option<Duration>,
+    /// Request timeout for individual requests
+    pub(crate) request_timeout: Option<Duration>,
 }
 
 impl HttpClient {
-    /// Create new HttpClient with direct fluent_ai_async streaming - NO middleware
+    /// Create new HttpClient with integrated telemetry and streaming architecture
     #[inline]
-    pub(crate) fn new_direct(config: HttpConfig, stats: ClientStats) -> Self {
-        Self { config, stats }
+    pub fn new(config: HttpConfig) -> Self {
+        Self {
+            config,
+            stats: ClientStats::default(),
+            default_headers: HeaderMap::new(),
+            connect_timeout: Some(Duration::from_secs(30)),
+            request_timeout: Some(Duration::from_secs(60)),
+        }
     }
 
-    /// Execute request using direct H2/H3/Quiche protocols - NO middleware
+    /// Create HttpClient with custom configuration and telemetry
     #[inline]
-    pub fn execute_direct_streaming(&self, request: HttpRequest) -> AsyncStream<HttpChunk, 1024> {
+    pub fn with_config_and_stats(
+        config: HttpConfig,
+        stats: ClientStats,
+        default_headers: HeaderMap,
+        connect_timeout: Option<Duration>,
+        request_timeout: Option<Duration>,
+    ) -> Self {
+        Self {
+            config,
+            stats,
+            default_headers,
+            connect_timeout,
+            request_timeout,
+        }
+    }
+
+    /// Get current telemetry snapshot
+    #[inline]
+    pub fn stats(&self) -> ClientStatsSnapshot {
+        self.stats.snapshot()
+    }
+
+    /// Convenience method to make a GET request
+    #[inline]
+    pub fn get(&self, uri: Uri) -> HttpRequest {
+        HttpRequest::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .headers(self.default_headers.clone())
+            .build()
+    }
+
+    /// Convenience method to make a POST request
+    #[inline]
+    pub fn post(&self, uri: Uri) -> HttpRequest {
+        HttpRequest::builder()
+            .method(Method::POST)
+            .uri(uri)
+            .headers(self.default_headers.clone())
+            .build()
+    }
+
+    /// Convenience method to make a PUT request
+    #[inline]
+    pub fn put(&self, uri: Uri) -> HttpRequest {
+        HttpRequest::builder()
+            .method(Method::PUT)
+            .uri(uri)
+            .headers(self.default_headers.clone())
+            .build()
+    }
+
+    /// Convenience method to make a DELETE request
+    #[inline]
+    pub fn delete(&self, uri: Uri) -> HttpRequest {
+        HttpRequest::builder()
+            .method(Method::DELETE)
+            .uri(uri)
+            .headers(self.default_headers.clone())
+            .build()
+    }
+
+    /// Execute HTTP request with telemetry tracking and protocol selection
+    ///
+    /// Automatically selects optimal protocol (H3 -> H2 -> H1.1) based on server
+    /// capabilities and tracks comprehensive telemetry metrics.
+    #[inline]
+    pub fn execute(
+        &self,
+        mut request: HttpRequest,
+    ) -> AsyncStream<crate::streaming::pipeline::StreamingResponse, 1024> {
+        let stats = self.stats.clone();
+        let start_time = Instant::now();
+
+        // Merge default headers
+        for (key, value) in &self.default_headers {
+            if !request.headers().contains_key(key) {
+                request.headers_mut().insert(key.clone(), value.clone());
+            }
+        }
+
         AsyncStream::with_channel(move |sender| {
+            // Update request count
+            stats
+                .request_count
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
             // Determine protocol based on URL scheme and server capabilities
             let uri = request.uri();
             let scheme = uri.scheme_str().unwrap_or("https");
@@ -36,117 +140,117 @@ impl HttpClient {
             match scheme {
                 "https" => {
                     // Try H3 first, fallback to H2
-                    let h3_stream =
-                        crate::async_impl::connection::h3_connection::H3Connection::new()
-                            .connect_and_request(request.clone());
+                    let response_stream =
+                        crate::streaming::pipeline::StreamingResponse::from_request(
+                            request.clone(),
+                        );
 
-                    // Forward H3 chunks, converting to HttpChunk
-                    for h3_chunk in h3_stream {
-                        let http_chunk = HttpChunk::from_h3_chunk(h3_chunk);
-                        emit!(sender, http_chunk);
+                    // Process response stream with telemetry
+                    for response_result in response_stream {
+                        match response_result {
+                            Ok(response) => {
+                                // Track successful response
+                                stats
+                                    .successful_requests
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                emit!(sender, response);
+                            }
+                            Err(e) => {
+                                // Track failed request
+                                stats
+                                    .failed_requests
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                emit!(
+                                    sender,
+                                    crate::streaming::pipeline::StreamingResponse::bad_chunk(
+                                        e.to_string()
+                                    )
+                                );
+                                return;
+                            }
+                        }
                     }
                 }
                 "http" => {
                     // Use H2 for HTTP
-                    let h2_stream =
-                        crate::async_impl::connection::h2_connection::H2ConnectionManager::new()
-                            .establish_connection_stream(request);
+                    let response_stream =
+                        crate::streaming::pipeline::StreamingResponse::from_request(
+                            request.clone(),
+                        );
 
-                    // Forward H2 chunks, converting to HttpChunk
-                    for h2_chunk in h2_stream {
-                        let http_chunk = HttpChunk::from_h2_chunk(h2_chunk);
-                        emit!(sender, http_chunk);
+                    // Process response stream with telemetry
+                    for response_result in response_stream {
+                        match response_result {
+                            Ok(response) => {
+                                stats
+                                    .successful_requests
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                emit!(sender, response);
+                            }
+                            Err(e) => {
+                                stats
+                                    .failed_requests
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                emit!(
+                                    sender,
+                                    crate::streaming::pipeline::StreamingResponse::bad_chunk(
+                                        e.to_string()
+                                    )
+                                );
+                                return;
+                            }
+                        }
                     }
                 }
                 _ => {
+                    // Unsupported scheme
+                    stats
+                        .failed_requests
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     emit!(
                         sender,
-                        HttpChunk::bad_chunk(format!("Unsupported scheme: {}", scheme))
+                        crate::streaming::pipeline::StreamingResponse::bad_chunk(format!(
+                            "Unsupported URI scheme: {}",
+                            scheme
+                        ))
                     );
+                    return;
+                }
+            }
+
+            // Track successful request completion
+            stats
+                .successful_requests
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let elapsed = start_time.elapsed();
+            stats.total_response_time_nanos.fetch_add(
+                elapsed.as_nanos() as u64,
+                std::sync::atomic::Ordering::Relaxed,
+            );
+        })
+    }
+
+    /// Execute request with streaming response processing
+    ///
+    /// Returns an AsyncStream of HttpChunk for low-level streaming control
+    #[inline]
+    pub fn execute_streaming(&self, request: HttpRequest) -> AsyncStream<HttpChunk, 1024> {
+        let response_stream = self.execute(request);
+
+        AsyncStream::with_channel(move |sender| {
+            for response in response_stream {
+                // Convert StreamingResponse to HttpChunk stream
+                let chunk_stream = response.into_chunk_stream();
+                for chunk in chunk_stream {
+                    emit!(sender, chunk);
                 }
             }
         })
     }
+}
 
-    /// Returns a reference to the `HttpConfig`.
-    ///
-    /// Allows inspection of the current client configuration including
-    /// timeouts, HTTP version preferences, and protocol settings.
-    #[inline]
-    pub fn config(&self) -> &HttpConfig {
-        &self.config
-    }
-
-    /// Get client statistics snapshot
-    ///
-    /// Returns an immutable snapshot of current client statistics including
-    /// request counts, timing metrics, and success/failure rates. Statistics
-    /// are gathered atomically for consistent reporting.
-    #[inline]
-    pub fn stats_snapshot(&self) -> ClientStatsSnapshot {
-        self.stats.snapshot()
-    }
-
-    /// Get mutable reference to client statistics for internal updates
-    ///
-    /// Used by execution modules to update statistics during request processing.
-    /// This method is internal to the client modules.
-    #[inline]
-    pub(crate) fn stats_mut(&mut self) -> &mut ClientStats {
-        &mut self.stats
-    }
-
-    /// Get client statistics for monitoring and observability
-    ///
-    /// Returns statistical information about the HTTP client including
-    /// request counts, success rates, response times, and cache performance.
-    /// This is part of the public API for application monitoring.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use fluent_ai_http3::HttpClient;
-    ///
-    /// let client = HttpClient::new();
-    /// let stats = client.stats();
-    /// println!("Success rate: {:.2}%", stats.success_rate() * 100.0);
-    /// ```
-    #[inline]
-    pub fn stats(&self) -> &ClientStats {
-        &self.stats
-    }
-
-    /// Reset all client statistics to zero
-    ///
-    /// Clears all accumulated statistics including request counts, response times,
-    /// success/failure counts, and cache metrics. Useful for testing or periodic
-    /// monitoring reset scenarios.
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use fluent_ai_http3::HttpClient;
-    /// use fluent_ai_http3::config::Config;
-    ///
-    /// match HttpClient::with_config(Config::default()) {
-    ///     Ok(mut client) => {
-    ///         client.reset_stats();
-    ///         assert_eq!(client.stats().request_count(), 0);
-    ///     }
-    ///     Err(e) => eprintln!("Failed to create HTTP client: {}", e),
-    /// }
-    /// ```
-    pub fn reset_stats(&mut self) {
-        use std::sync::atomic::Ordering;
-        let stats = self.stats_mut();
-
-        // Reset all atomic counters to zero
-        stats.request_count.store(0, Ordering::Relaxed);
-        stats.connection_count.store(0, Ordering::Relaxed);
-        stats.total_bytes_sent.store(0, Ordering::Relaxed);
-        stats.total_bytes_received.store(0, Ordering::Relaxed);
-        stats.total_response_time_nanos.store(0, Ordering::Relaxed);
-        stats.successful_requests.store(0, Ordering::Relaxed);
-        stats.failed_requests.store(0, Ordering::Relaxed);
-        stats.cache_hits.store(0, Ordering::Relaxed);
-        stats.cache_misses.store(0, Ordering::Relaxed);
+impl Default for HttpClient {
+    fn default() -> Self {
+        Self::new(HttpConfig::default())
     }
 }
