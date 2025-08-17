@@ -7,6 +7,9 @@ use serde_json::Value as JsonValue;
 
 use super::property_access::PropertyAccessResult;
 
+/// Array access utilities
+pub struct ArrayAccess;
+
 /// Array access with proper null vs missing distinction
 ///
 /// Handles array index access while maintaining null vs missing semantics.

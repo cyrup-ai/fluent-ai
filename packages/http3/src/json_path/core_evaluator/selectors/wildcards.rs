@@ -4,6 +4,7 @@
 //! with performance limits and owned/reference-based result collection.
 
 use serde_json::Value;
+
 use super::super::evaluator::CoreJsonPathEvaluator;
 
 /// Apply wildcard selector with result limit for performance - owned version

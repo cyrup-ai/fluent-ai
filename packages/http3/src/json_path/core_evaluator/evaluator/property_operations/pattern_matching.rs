@@ -4,14 +4,12 @@
 //! enabling flexible property discovery in JSON structures.
 
 use serde_json::Value;
+
 use super::core::PropertyOperations;
 
 impl PropertyOperations {
     /// Find all properties matching a pattern
-    pub fn find_properties_matching(
-        json: &Value,
-        pattern: &str,
-    ) -> Vec<(String, Value)> {
+    pub fn find_properties_matching(json: &Value, pattern: &str) -> Vec<(String, Value)> {
         let mut results = Vec::new();
         Self::find_properties_matching_impl(json, pattern, "", &mut results);
         results
@@ -65,7 +63,7 @@ impl PropertyOperations {
         if pattern == "*" {
             return true;
         }
-        
+
         if pattern.contains('*') {
             // Simple wildcard matching
             let parts: Vec<&str> = pattern.split('*').collect();
@@ -75,7 +73,7 @@ impl PropertyOperations {
                 return text.starts_with(prefix) && text.ends_with(suffix);
             }
         }
-        
+
         text == pattern
     }
 }

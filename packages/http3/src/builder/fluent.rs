@@ -7,6 +7,27 @@
 
 use crate::DownloadStream;
 
+/// Main fluent builder for HTTP requests
+///
+/// Provides a fluent interface for building and executing HTTP requests
+/// with method chaining and configuration options.
+pub struct FluentBuilder {
+    // Implementation will be added as needed
+}
+
+impl FluentBuilder {
+    /// Create a new fluent builder
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for FluentBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Builder for download-specific operations
 ///
 /// Provides a fluent interface for configuring and executing file downloads
@@ -62,7 +83,7 @@ impl DownloadBuilder {
             crate::Error::io(format!("Failed to create file {}: {}", local_path, e))
         })?;
 
-        while let Some(download_chunk) = stream.poll_next() {
+        for download_chunk in stream {
             total_size = download_chunk.total_size;
             use std::io::Write;
             let bytes_written = file.write(&download_chunk.data).map_err(|e| {

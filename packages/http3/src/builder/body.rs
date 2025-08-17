@@ -1,5 +1,3 @@
-//! Request body handling functionality
-//!
 //! Provides methods for setting request bodies with automatic serialization
 //! for JSON, form-urlencoded, and other content types.
 
@@ -8,6 +6,25 @@ use std::marker::PhantomData;
 use serde::Serialize;
 
 use crate::builder::core::{BodyNotSet, BodySet, Http3Builder};
+
+/// Trait for body building operations
+pub trait BodyBuilder {
+    /// Set the request body with automatic serialization
+    fn body<T: Serialize>(self, body: &T) -> Http3Builder<BodySet>;
+}
+
+/// JSON body implementation
+pub struct JsonBody;
+
+/// Text body implementation
+pub struct TextBody;
+
+impl BodyBuilder for Http3Builder<BodyNotSet> {
+    #[inline]
+    fn body<T: Serialize>(self, body: &T) -> Http3Builder<BodySet> {
+        self.serialize_body(body)
+    }
+}
 
 impl Http3Builder<BodyNotSet> {
     /// Set the request body with automatic serialization
@@ -31,22 +48,89 @@ impl Http3Builder<BodyNotSet> {
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
-    /// struct User {
+    /// struct CreateUser {
     ///     name: String,
     ///     email: String,
     /// }
     ///
-    /// let user = User {
-    ///     name: "John Doe".to_string(),
-    ///     email: "john@example.com".to_string(),
+    /// let user = CreateUser {
+    ///     name: "Alice".to_string(),
+    ///     email: "alice@example.com".to_string(),
     /// };
     ///
     /// let response = Http3Builder::json()
     ///     .body(&user)
     ///     .post("https://api.example.com/users");
     /// ```
-    #[must_use]
+    #[inline]
     pub fn body<T: Serialize>(self, body: &T) -> Http3Builder<BodySet> {
+        self.serialize_body(body)
+    }
+
+    /// Set raw text body
+    ///
+    /// Sets the request body to the provided text string without serialization.
+    ///
+    /// # Arguments
+    /// * `text` - The text content to set as request body
+    ///
+    /// # Returns
+    /// `Http3Builder<BodySet>` for chaining to terminal methods
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::Http3Builder;
+    ///
+    /// let response = Http3Builder::new()
+    ///     .header("Content-Type", "text/plain")
+    ///     .text_body("Hello, World!")
+    ///     .post("https://api.example.com/echo");
+    /// ```
+    #[inline]
+    pub fn text_body(mut self, text: &str) -> Http3Builder<BodySet> {
+        let body_bytes = text.as_bytes().to_vec();
+        *self.request.body_mut() = Some(body_bytes);
+
+        if self.debug_enabled {
+            log::debug!("HTTP3 Builder: Set text body ({} bytes)", text.len());
+        }
+
+        Http3Builder {
+            client: self.client,
+            request: self.request,
+            debug_enabled: self.debug_enabled,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Set raw bytes body
+    ///
+    /// Sets the request body to the provided byte array without any processing.
+    ///
+    /// # Arguments
+    /// * `bytes` - The byte data to set as request body
+    ///
+    /// # Returns
+    /// `Http3Builder<BodySet>` for chaining to terminal methods
+    #[inline]
+    pub fn bytes_body(mut self, bytes: Vec<u8>) -> Http3Builder<BodySet> {
+        if self.debug_enabled {
+            log::debug!("HTTP3 Builder: Set bytes body ({} bytes)", bytes.len());
+        }
+
+        *self.request.body_mut() = Some(bytes);
+
+        Http3Builder {
+            client: self.client,
+            request: self.request,
+            debug_enabled: self.debug_enabled,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Internal method to serialize body based on content type
+    #[inline]
+    fn serialize_body<T: Serialize>(mut self, body: &T) -> Http3Builder<BodySet> {
         let content_type = self
             .request
             .headers()
@@ -54,124 +138,41 @@ impl Http3Builder<BodyNotSet> {
             .and_then(|v| v.to_str().ok())
             .unwrap_or("application/json");
 
-        let body_bytes = if content_type.contains("application/x-www-form-urlencoded") {
-            // Serialize as form-urlencoded
-            serde_urlencoded::to_string(body)
-                .map(std::string::String::into_bytes)
-                .unwrap_or_default()
-        } else {
-            // Default to JSON serialization
-            serde_json::to_vec(body).unwrap_or_default()
+        let serialized_body = match content_type {
+            "application/x-www-form-urlencoded" => match serde_urlencoded::to_string(body) {
+                Ok(form_data) => form_data.into_bytes(),
+                Err(e) => {
+                    log::error!("Failed to serialize form data: {}", e);
+                    Vec::new()
+                }
+            },
+            _ => {
+                // Default to JSON serialization
+                match serde_json::to_vec(body) {
+                    Ok(json_data) => json_data,
+                    Err(e) => {
+                        log::error!("Failed to serialize JSON: {}", e);
+                        Vec::new()
+                    }
+                }
+            }
         };
 
         if self.debug_enabled {
             log::debug!(
-                "HTTP3 Builder: Set request body ({} bytes, content-type: {})",
-                body_bytes.len(),
-                content_type
+                "HTTP3 Builder: Serialized body as {} ({} bytes)",
+                content_type,
+                serialized_body.len()
             );
         }
 
-        let request = self.request.set_body(body_bytes);
+        *self.request.body_mut() = Some(serialized_body);
 
         Http3Builder {
             client: self.client,
-            request,
-            state: PhantomData,
+            request: self.request,
             debug_enabled: self.debug_enabled,
-            jsonpath_config: self.jsonpath_config,
-            chunk_handler: self.chunk_handler,
-        }
-    }
-
-    /// Set raw bytes as request body
-    ///
-    /// Sets the request body directly as raw bytes without any serialization.
-    /// Useful for binary data, pre-serialized content, or custom formats.
-    ///
-    /// # Arguments
-    /// * `bytes` - Raw bytes to set as request body
-    ///
-    /// # Returns
-    /// `Http3Builder<BodySet>` for chaining to terminal methods
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
-    ///
-    /// let raw_data = b"custom binary data";
-    /// let response = Http3Builder::new(&client)
-    ///     .content_type(ContentType::ApplicationOctetStream)
-    ///     .raw_body(raw_data.to_vec())
-    ///     .post("https://api.example.com/upload");
-    /// ```
-    #[must_use]
-    pub fn raw_body(self, bytes: Vec<u8>) -> Http3Builder<BodySet> {
-        if self.debug_enabled {
-            log::debug!(
-                "HTTP3 Builder: Set raw request body ({} bytes)",
-                bytes.len()
-            );
-        }
-
-        let request = self.request.set_body(bytes);
-
-        Http3Builder {
-            client: self.client,
-            request,
-            state: PhantomData,
-            debug_enabled: self.debug_enabled,
-            jsonpath_config: self.jsonpath_config,
-            chunk_handler: self.chunk_handler,
-        }
-    }
-
-    /// Set text content as request body
-    ///
-    /// Sets the request body as UTF-8 encoded text. Automatically sets
-    /// Content-Type to text/plain if not already set.
-    ///
-    /// # Arguments
-    /// * `text` - Text content to set as request body
-    ///
-    /// # Returns
-    /// `Http3Builder<BodySet>` for chaining to terminal methods
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
-    ///
-    /// let response = Http3Builder::new(&client)
-    ///     .text_body("Hello, World!")
-    ///     .post("https://api.example.com/messages");
-    /// ```
-    #[must_use]
-    pub fn text_body(self, text: &str) -> Http3Builder<BodySet> {
-        use crate::builder::core::ContentType;
-
-        if self.debug_enabled {
-            log::debug!(
-                "HTTP3 Builder: Set text request body ({} chars)",
-                text.len()
-            );
-        }
-
-        // Set content type to text/plain if not already set
-        let builder = if self.request.headers().get("content-type").is_none() {
-            self.content_type(ContentType::TextPlain)
-        } else {
-            self
-        };
-
-        let request = builder.request.set_body(text.as_bytes().to_vec());
-
-        Http3Builder {
-            client: builder.client,
-            request,
-            state: PhantomData,
-            debug_enabled: builder.debug_enabled,
-            jsonpath_config: builder.jsonpath_config,
-            chunk_handler: builder.chunk_handler,
+            _phantom: PhantomData,
         }
     }
 }

@@ -7,6 +7,9 @@ use serde_json::Value as JsonValue;
 
 use super::property_access::PropertyAccessResult;
 
+/// Conversion utilities for null vs missing semantics
+pub struct Conversion;
+
 /// Convert PropertyAccessResult to Option<JsonValue> for compatibility
 ///
 /// Used when interacting with existing code that expects Option<JsonValue>.

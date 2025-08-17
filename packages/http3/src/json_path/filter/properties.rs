@@ -4,9 +4,10 @@
 //! and handling missing vs null property semantics in filter contexts.
 
 use std::collections::HashSet;
+
+use super::core::MISSING_PROPERTY_CONTEXT;
 use crate::json_path::error::JsonPathResult;
 use crate::json_path::parser::FilterValue;
-use super::core::MISSING_PROPERTY_CONTEXT;
 
 /// Check if property path exists and is truthy in filter context
 /// This is the correct semantics for [?@.property] filters  
@@ -52,7 +53,7 @@ pub(super) fn property_exists_and_truthy(
     }
 
     // Property exists - check if it's truthy
-    let result = super::is_truthy(&super::conversions::json_value_to_filter_value(current));
+    let result = super::core::is_truthy(&super::conversions::json_value_to_filter_value(current));
     println!("DEBUG: Property path exists, is_truthy result={}", result);
     Ok(result)
 }

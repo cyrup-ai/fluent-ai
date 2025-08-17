@@ -4,6 +4,7 @@
 //! and evaluating filter expressions to produce values.
 
 use std::collections::HashSet;
+
 use crate::json_path::error::{JsonPathResult, deserialization_error};
 use crate::json_path::functions::FunctionEvaluator;
 use crate::json_path::parser::{FilterExpression, FilterValue};
@@ -51,10 +52,14 @@ pub fn evaluate_expression_with_context(
     match expr {
         FilterExpression::Current => Ok(json_value_to_filter_value(context)),
         FilterExpression::Property { path } => {
-            super::properties::resolve_property_path_with_context(context, path, existing_properties)
+            super::properties::resolve_property_path_with_context(
+                context,
+                path,
+                existing_properties,
+            )
         }
         FilterExpression::JsonPath { selectors } => {
-            super::evaluate_jsonpath_selectors(context, selectors)
+            super::core::evaluate_jsonpath_selectors(context, selectors)
         }
         FilterExpression::Literal { value } => Ok(value.clone()),
         FilterExpression::Function { name, args } => {

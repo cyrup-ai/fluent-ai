@@ -8,6 +8,9 @@ use serde_json::Value as JsonValue;
 use super::property_access::{PropertyAccessResult, access_property_path};
 use crate::json_path::error::{JsonPathResult, invalid_expression_error};
 
+/// Comparison utilities for null vs missing semantics
+pub struct Comparison;
+
 /// Check if a value should be considered "present" for filter evaluation
 ///
 /// According to RFC 9535, null values are present but missing values are not.

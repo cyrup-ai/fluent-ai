@@ -4,17 +4,17 @@
 //! logical components for better maintainability and organization.
 
 pub mod core_types;
-pub mod timeout_handler;
+pub mod descendant_operations;
 pub mod evaluation_engine;
 pub mod property_operations;
-pub mod descendant_operations;
+pub mod timeout_handler;
 
 // Re-export main types for convenience
 pub use core_types::{CoreJsonPathEvaluator, JsonPathResult};
-pub use timeout_handler::{TimeoutHandler, TimeoutConfig};
+pub use descendant_operations::DescendantOperations;
 pub use evaluation_engine::EvaluationEngine;
 pub use property_operations::PropertyOperations;
-pub use descendant_operations::DescendantOperations;
+pub use timeout_handler::{TimeoutConfig, TimeoutHandler};
 
 // Main evaluator implementation combining all components
 impl CoreJsonPathEvaluator {
@@ -36,8 +36,9 @@ impl CoreJsonPathEvaluator {
 
 #[cfg(test)]
 mod integration_tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_evaluator_integration() {
@@ -60,7 +61,7 @@ mod integration_tests {
     fn test_timeout_integration() {
         let evaluator = CoreJsonPathEvaluator::new("$.simple").unwrap();
         let json = json!({"simple": "value"});
-        
+
         let config = TimeoutConfig {
             timeout_duration: std::time::Duration::from_millis(100),
             log_timeouts: false,
@@ -76,7 +77,9 @@ mod integration_tests {
         let evaluator = CoreJsonPathEvaluator::new("$.test").unwrap();
         let json = json!({"nested": {"prop": "value"}});
 
-        let results = evaluator.evaluate_property_path(&json, "nested.prop").unwrap();
+        let results = evaluator
+            .evaluate_property_path(&json, "nested.prop")
+            .unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], json!("value"));
 
@@ -98,7 +101,7 @@ mod integration_tests {
 
         let mut results = Vec::new();
         DescendantOperations::collect_all_descendants_owned(&json, &mut results);
-        
+
         // Should collect all nested values
         assert!(!results.is_empty());
         assert!(results.iter().any(|v| v == &json!("Book 1")));
@@ -172,7 +175,7 @@ mod integration_tests {
     fn test_complexity_estimation_integration() {
         let evaluator = CoreJsonPathEvaluator::new("$..book[*].title").unwrap();
         let complexity = EvaluationEngine::estimate_evaluation_complexity(evaluator.selectors());
-        
+
         // Should be high complexity due to recursive descent and wildcard
         assert!(complexity > 50);
     }

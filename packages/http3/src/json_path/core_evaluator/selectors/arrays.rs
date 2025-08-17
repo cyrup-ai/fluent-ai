@@ -4,10 +4,70 @@
 //! negative indexing, from_end indexing, and slice operations with step.
 
 use serde_json::Value;
-use crate::json_path::error::JsonPathError;
+
 use super::super::evaluator::CoreJsonPathEvaluator;
+use crate::json_path::error::JsonPathError;
 
 type JsonPathResult<T> = Result<T, JsonPathError>;
+
+/// Apply slice selector to array with proper bounds checking
+pub fn apply_slice_to_array(
+    array: &Value,
+    start: Option<i64>,
+    end: Option<i64>,
+    step: Option<i64>,
+) -> JsonPathResult<Vec<Value>> {
+    match array {
+        Value::Array(arr) => {
+            let len = arr.len() as i64;
+            let step = step.unwrap_or(1);
+
+            if step == 0 {
+                return Err(JsonPathError::invalid_expression(
+                    "slice",
+                    "step cannot be zero",
+                    None,
+                ));
+            }
+
+            let mut results = Vec::new();
+
+            // Handle slice bounds
+            let start_idx = start.unwrap_or(if step > 0 { 0 } else { len - 1 });
+            let end_idx = end.unwrap_or(if step > 0 { len } else { -1 });
+
+            // Normalize negative indices
+            let start_norm = if start_idx < 0 {
+                len + start_idx
+            } else {
+                start_idx
+            };
+            let end_norm = if end_idx < 0 { len + end_idx } else { end_idx };
+
+            // Apply slice with step
+            if step > 0 {
+                let mut i = start_norm;
+                while i < end_norm && i < len {
+                    if i >= 0 {
+                        results.push(arr[i as usize].clone());
+                    }
+                    i += step;
+                }
+            } else {
+                let mut i = start_norm;
+                while i > end_norm && i >= 0 {
+                    if i < len {
+                        results.push(arr[i as usize].clone());
+                    }
+                    i += step;
+                }
+            }
+
+            Ok(results)
+        }
+        _ => Ok(Vec::new()),
+    }
+}
 
 /// Apply index selector for owned results
 pub fn apply_index_selector_owned(

@@ -33,7 +33,7 @@ where
     ///
     /// Uses zero-copy techniques where possible and pre-allocated buffers to minimize allocations.
     /// Lock-free processing with const-generic capacity for blazing-fast performance.
-    pub fn process_chunk(&mut self, chunk: Bytes) -> AsyncStream<T>
+    pub fn process_chunk(&mut self, chunk: Bytes) -> AsyncStream<T, 1024>
     where
         T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
@@ -138,7 +138,7 @@ where
         })
     }
 
-    pub(super) fn fallback_to_streaming_deserializer(&mut self) -> AsyncStream<T>
+    pub(super) fn fallback_to_streaming_deserializer(&mut self) -> AsyncStream<T, 1024>
     where
         T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {

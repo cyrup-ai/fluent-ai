@@ -4,9 +4,10 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::core::PropertyOperations;
-    use super::super::super::core_types::CoreJsonPathEvaluator;
     use serde_json::json;
+
+    use super::super::super::core_types::CoreJsonPathEvaluator;
+    use super::super::core::PropertyOperations;
 
     #[test]
     fn test_evaluate_property_path_simple() {
@@ -130,7 +131,9 @@ mod tests {
         assert!(PropertyOperations::has_property_recursive(&json, "target"));
         assert!(PropertyOperations::has_property_recursive(&json, "level1"));
         assert!(PropertyOperations::has_property_recursive(&json, "level2"));
-        assert!(!PropertyOperations::has_property_recursive(&json, "missing"));
+        assert!(!PropertyOperations::has_property_recursive(
+            &json, "missing"
+        ));
     }
 
     #[test]
@@ -152,19 +155,13 @@ mod tests {
     #[test]
     fn test_get_property_or_default() {
         let json = json!({"existing": "value"});
-        
-        let existing = PropertyOperations::get_property_or_default(
-            &json,
-            "existing",
-            json!("default")
-        );
+
+        let existing =
+            PropertyOperations::get_property_or_default(&json, "existing", json!("default"));
         assert_eq!(existing, json!("value"));
 
-        let missing = PropertyOperations::get_property_or_default(
-            &json,
-            "missing",
-            json!("default")
-        );
+        let missing =
+            PropertyOperations::get_property_or_default(&json, "missing", json!("default"));
         assert_eq!(missing, json!("default"));
     }
 
@@ -172,7 +169,7 @@ mod tests {
     fn test_evaluator_property_operations() {
         let evaluator = CoreJsonPathEvaluator::new("$.test").unwrap();
         let json = json!({"a": {"b": "value"}});
-        
+
         let results = evaluator.evaluate_property_path(&json, "a.b").unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], json!("value"));

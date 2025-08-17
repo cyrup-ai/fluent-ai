@@ -4,9 +4,10 @@
 //! and selector application with RFC 9535 compliance.
 
 use serde_json::Value;
-use crate::json_path::parser::{JsonPathParser, JsonSelector};
+
 use super::core_types::{CoreJsonPathEvaluator, JsonPathResult};
 use super::descendant_operations::DescendantOperations;
+use crate::json_path::parser::{JsonPathParser, JsonSelector};
 
 /// Main evaluation engine for JSONPath expressions
 pub struct EvaluationEngine;
@@ -109,27 +110,29 @@ impl EvaluationEngine {
         json: &Value,
     ) -> JsonPathResult<Vec<Vec<Value>>> {
         let mut results = Vec::new();
-        
+
         for expression in expressions {
             let evaluator = CoreJsonPathEvaluator::new(expression)?;
             let result = Self::evaluate_expression(&evaluator, json)?;
             results.push(result);
         }
-        
+
         Ok(results)
     }
 
     /// Check if evaluation would be expensive
     pub fn is_expensive_evaluation(selectors: &[JsonSelector]) -> bool {
         use crate::json_path::core_evaluator::selector_engine::SelectorEngine;
-        
-        selectors.iter().any(|s| SelectorEngine::is_expensive_selector(s))
+
+        selectors
+            .iter()
+            .any(|s| SelectorEngine::is_expensive_selector(s))
     }
 
     /// Estimate total evaluation complexity
     pub fn estimate_evaluation_complexity(selectors: &[JsonSelector]) -> u32 {
         use crate::json_path::core_evaluator::selector_engine::SelectorEngine;
-        
+
         selectors
             .iter()
             .map(|s| SelectorEngine::selector_complexity(s))
@@ -139,14 +142,15 @@ impl EvaluationEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_simple_evaluation() {
         let evaluator = CoreJsonPathEvaluator::new("$.test").unwrap();
         let json = json!({"test": "value"});
-        
+
         let results = EvaluationEngine::evaluate_expression(&evaluator, &json).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], json!("value"));
@@ -163,7 +167,7 @@ mod tests {
                 ]
             }
         });
-        
+
         let results = EvaluationEngine::evaluate_expression(&evaluator, &json).unwrap();
         assert_eq!(results.len(), 1);
         assert!(results[0].is_array());
@@ -178,7 +182,7 @@ mod tests {
                 "bicycle": {}
             }
         });
-        
+
         let results = EvaluationEngine::evaluate_expression(&evaluator, &json).unwrap();
         assert_eq!(results.len(), 2);
     }
@@ -194,7 +198,7 @@ mod tests {
                 ]
             }
         });
-        
+
         let results = EvaluationEngine::evaluate_expression(&evaluator, &json).unwrap();
         assert_eq!(results.len(), 2);
         assert_eq!(results[0], json!("Book 1"));
@@ -205,7 +209,7 @@ mod tests {
     fn test_empty_results() {
         let evaluator = CoreJsonPathEvaluator::new("$.nonexistent").unwrap();
         let json = json!({"test": "value"});
-        
+
         let results = EvaluationEngine::evaluate_expression(&evaluator, &json).unwrap();
         assert!(results.is_empty());
     }
@@ -214,7 +218,7 @@ mod tests {
     fn test_evaluate_multiple() {
         let expressions = vec!["$.a", "$.b", "$.c"];
         let json = json!({"a": 1, "b": 2, "c": 3});
-        
+
         let results = EvaluationEngine::evaluate_multiple(&expressions, &json).unwrap();
         assert_eq!(results.len(), 3);
         assert_eq!(results[0], vec![json!(1)]);
@@ -225,10 +229,14 @@ mod tests {
     #[test]
     fn test_is_expensive_evaluation() {
         let simple_selectors = vec![JsonSelector::Root];
-        assert!(!EvaluationEngine::is_expensive_evaluation(&simple_selectors));
-        
+        assert!(!EvaluationEngine::is_expensive_evaluation(
+            &simple_selectors
+        ));
+
         let expensive_selectors = vec![JsonSelector::RecursiveDescent];
-        assert!(EvaluationEngine::is_expensive_evaluation(&expensive_selectors));
+        assert!(EvaluationEngine::is_expensive_evaluation(
+            &expensive_selectors
+        ));
     }
 
     #[test]
@@ -236,7 +244,7 @@ mod tests {
         let simple_selectors = vec![JsonSelector::Root];
         let complexity = EvaluationEngine::estimate_evaluation_complexity(&simple_selectors);
         assert_eq!(complexity, 1);
-        
+
         let complex_selectors = vec![JsonSelector::RecursiveDescent, JsonSelector::Wildcard];
         let complexity = EvaluationEngine::estimate_evaluation_complexity(&complex_selectors);
         assert_eq!(complexity, 60); // 50 + 10
@@ -259,7 +267,7 @@ mod tests {
                 ]
             }
         });
-        
+
         let results = EvaluationEngine::evaluate_expression(&evaluator, &json).unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], json!("First Book"));

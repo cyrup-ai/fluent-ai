@@ -4,9 +4,10 @@
 //! including Root, Child, RecursiveDescent, and Union selectors.
 
 use serde_json::Value;
+
+use super::super::evaluator::CoreJsonPathEvaluator;
 use crate::json_path::error::JsonPathError;
 use crate::json_path::parser::{FilterExpression, JsonSelector};
-use super::super::evaluator::CoreJsonPathEvaluator;
 
 type JsonPathResult<T> = Result<T, JsonPathError>;
 
@@ -50,7 +51,8 @@ impl CoreJsonPathEvaluator {
             JsonSelector::Slice { start, end, step } => {
                 use super::arrays;
                 if let Value::Array(arr) = value {
-                    let slice_results = arrays::apply_slice_to_array(self, arr, *start, *end, *step)?;
+                    let slice_results =
+                        arrays::apply_slice_to_array(self, arr, *start, *end, *step)?;
                     results.extend(slice_results);
                 }
             }
@@ -87,7 +89,12 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Apply child selector to a node - handles object property access
-    pub fn apply_child_selector<'a>(&self, node: &'a Value, name: &str, results: &mut Vec<&'a Value>) {
+    pub fn apply_child_selector<'a>(
+        &self,
+        node: &'a Value,
+        name: &str,
+        results: &mut Vec<&'a Value>,
+    ) {
         if let Value::Object(obj) = node {
             if let Some(value) = obj.get(name) {
                 results.push(value);

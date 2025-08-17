@@ -9,22 +9,11 @@ mod conversions;
 mod types;
 
 // Re-export all error types and utilities
-pub use constructors::*;
-pub use conversions::*;
-pub use types::*;
-
-// Function aliases for backward compatibility
 pub use constructors::{
-    invalid_expression_error,
-    deserialization_error,
-    stream_error,
-    buffer_error,
-    json_parse_error,
+    buffer_error, deserialization_error, invalid_expression_error, json_parse_error, stream_error,
 };
-
-// Re-export main types for convenience
-pub use conversions::IntoJsonPathError;
-pub use types::{JsonPathError, JsonPathResult};
+// pub use conversions::{FromIo, FromSerde}; // These types don't exist
+pub use types::{ErrorKind, JsonPathError, JsonPathResult};
 
 #[cfg(test)]
 mod integration_tests {

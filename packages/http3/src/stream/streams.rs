@@ -8,14 +8,14 @@ use super::chunks::{BadChunk, DownloadChunk, HttpChunk, SseEvent};
 
 /// Pure AsyncStream of HTTP response chunks - NO Result wrapping
 pub struct HttpStream {
-    inner: AsyncStream<HttpChunk>,
+    inner: AsyncStream<HttpChunk, 1024>,
     chunk_handler:
         Option<Box<dyn Fn(Result<HttpChunk, crate::HttpError>) -> HttpChunk + Send + Sync>>,
 }
 
 impl HttpStream {
     /// Create new HttpStream from AsyncStream
-    pub fn new(stream: AsyncStream<HttpChunk>) -> Self {
+    pub fn new(stream: AsyncStream<HttpChunk, 1024>) -> Self {
         Self {
             inner: stream,
             chunk_handler: None,
@@ -39,9 +39,9 @@ impl HttpStream {
     }
 
     /// Collect all chunks as bytes
-    pub fn collect_bytes(mut self) -> Vec<u8> {
+    pub fn collect_bytes(self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        while let Some(chunk) = self.poll_next() {
+        for chunk in self {
             if let HttpChunk::Body(chunk_bytes) = chunk {
                 bytes.extend_from_slice(&chunk_bytes);
             }
@@ -135,7 +135,7 @@ impl ChunkHandler<HttpChunk, crate::HttpError> for HttpStream {
 
 /// Pure AsyncStream of download chunks - NO Result wrapping
 pub struct DownloadStream {
-    inner: AsyncStream<DownloadChunk>,
+    inner: AsyncStream<DownloadChunk, 1024>,
     chunk_handler:
         Option<Box<dyn Fn(Result<DownloadChunk, crate::HttpError>) -> DownloadChunk + Send + Sync>>,
 }
@@ -143,7 +143,7 @@ pub struct DownloadStream {
 impl DownloadStream {
     /// Create new download stream
     #[must_use]
-    pub fn new(stream: AsyncStream<DownloadChunk>) -> Self {
+    pub fn new(stream: AsyncStream<DownloadChunk, 1024>) -> Self {
         Self {
             inner: stream,
             chunk_handler: None,
@@ -184,10 +184,10 @@ impl ChunkHandler<DownloadChunk, crate::HttpError> for DownloadStream {
 }
 
 /// Pure AsyncStream of text lines - NO Result wrapping
-pub type LinesStream = AsyncStream<String>;
+pub type LinesStream = AsyncStream<String, 1024>;
 
 /// Pure AsyncStream of Server-Sent Events - NO Result wrapping  
-pub type SseStream = AsyncStream<SseEvent>;
+pub type SseStream = AsyncStream<SseEvent, 1024>;
 
 /// Pure AsyncStream of JSON objects - NO Result wrapping
-pub type JsonStream = AsyncStream<serde_json::Value>;
+pub type JsonStream = AsyncStream<serde_json::Value, 1024>;

@@ -3,6 +3,7 @@
 //! Defines the main CoreJsonPathEvaluator struct and associated types.
 
 use serde_json::Value;
+
 use crate::json_path::error::JsonPathError;
 use crate::json_path::parser::{JsonPathParser, JsonSelector};
 

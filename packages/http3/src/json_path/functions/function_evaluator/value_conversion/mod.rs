@@ -3,6 +3,7 @@
 //! Provides type conversion operations for JSONPath expressions.
 
 use serde_json::Value;
+
 use crate::json_path::error::JsonPathResult;
 
 /// Convert a JSON value to string
@@ -22,7 +23,9 @@ pub fn to_number_value(value: &Value) -> JsonPathResult<Value> {
         Value::Number(n) => Ok(Value::Number(n.clone())),
         Value::String(s) => {
             if let Ok(num) = s.parse::<f64>() {
-                Ok(Value::Number(serde_json::Number::from_f64(num).unwrap_or(serde_json::Number::from(0))))
+                Ok(Value::Number(
+                    serde_json::Number::from_f64(num).unwrap_or(serde_json::Number::from(0)),
+                ))
             } else {
                 Ok(Value::Number(serde_json::Number::from(0)))
             }
@@ -46,10 +49,7 @@ pub fn to_boolean_value(value: &Value) -> JsonPathResult<Value> {
 }
 
 /// Evaluate value conversion functions
-pub fn evaluate_value_function(
-    function_name: &str,
-    args: &[Value],
-) -> JsonPathResult<Value> {
+pub fn evaluate_value_function(function_name: &str, args: &[Value]) -> JsonPathResult<Value> {
     match function_name {
         "to_string" => {
             if args.len() != 1 {

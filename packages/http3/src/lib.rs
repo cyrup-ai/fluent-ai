@@ -104,10 +104,10 @@ pub mod client;
 pub mod common;
 pub mod config;
 pub mod error;
-/// Async task primitives for streaming-first architecture
-pub mod hyper;
+// ELIMINATED: All hyper middleware - direct fluent_ai_async streaming only
 pub mod json_path;
 pub mod middleware;
+pub mod streaming;
 pub mod util;
 // mod bytes_impl; // Removed due to orphan rule violations - use BytesWrapper instead
 pub mod operations;
@@ -116,16 +116,40 @@ pub mod response;
 pub mod stream;
 pub mod wrappers;
 
-// Core streaming types - NO Result wrapping, pure streams
-pub use builder::{
-    ContentType, Http3Builder, JsonPathStreaming,
+// New foundational modules for fluent_ai_async integration
+pub mod async_impl;
+pub mod types;
+
+// Quiche QUIC integration modules - synchronous streaming implementation
+pub use async_impl::client::quiche_client::{
+    QuicheHttp3Client, process_readable_streams, read_stream_data, receive_packets,
+    write_stream_data,
 };
+pub use async_impl::client::quiche_connection::QuicheConnection;
+// Core streaming types - NO Result wrapping, pure streams
+pub use async_impl::{
+    ConnectionConfig, ConnectionManager, ConnectionPoolStats, ConnectionState,
+    DefaultConnectionManager, HttpConnection, HttpConnectionPool, HttpStreamingResponse,
+    HttpStreamingResponseBuilder,
+};
+pub use builder::fluent::DownloadBuilder;
+pub use builder::{ContentType, Http3Builder, JsonPathStreaming};
 pub use common::{AuthMethod, ContentTypes};
-pub use response::HttpResponseChunk;
 pub use stream::{
     BadChunk, DownloadChunk, DownloadStream, HttpChunk, HttpStream, JsonStream, SseEvent, SseStream,
 };
-pub use wrappers::{BoxBodyWrapper, BytesWrapper, FrameWrapper, ResultWrapper};
+pub use streaming::{
+    FrameChunk, H2Connection, H2Frame, H2Stream, H3Connection, H3Frame, H3Stream,
+    StreamingPipeline, StreamingRequest, StreamingResponse, TransportConnection, TransportManager,
+    TransportType,
+};
+pub use types::quiche_chunks::{
+    QuicheConnectionChunk, QuichePacketChunk, QuicheReadableChunk, QuicheStreamChunk,
+    QuicheWriteResult,
+};
+// New foundational types for fluent_ai_async integration
+pub use types::{HttpResponseChunk, headers_from_iter, merge_headers};
+pub use wrappers::{BoxBodyWrapper, BytesWrapper, FrameWrapper, SocketAddrListWrapper};
 
 /// Ergonomic type alias for `Http3Builder` - streams-first architecture
 pub type Http3 = Http3Builder;
@@ -134,12 +158,10 @@ pub use config::HttpConfig;
 // Import core async stream types
 pub use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 pub use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
-pub use hyper::Body;
-// Removed hyper Result types - using fluent_ai_async only
-pub use hyper::{dns, tls};
+// ELIMINATED: All hyper middleware - direct fluent_ai_async streaming only
 pub use json_path::{JsonArrayStream, JsonPathError, StreamStats};
 /// Convenience type alias for Result with HttpError
-pub use middleware::{Middleware, MiddlewareChain, cache::CacheMiddleware};
+pub use middleware::{CacheMiddleware, Middleware, MiddlewareChain};
 pub use request::HttpRequest;
 pub use response::HttpResponse;
 pub use url::Url;
@@ -234,29 +256,12 @@ fn validate_http_config(config: &HttpConfig) -> std::result::Result<(), String> 
 fn initialize_global_client_internal(
     config: HttpConfig,
 ) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    use crate::hyper::ClientBuilder;
+    // ELIMINATED: hyper ClientBuilder - using direct fluent_ai_async streaming
 
-    // Build a new client with the provided configuration
-    let mut client_builder = ClientBuilder::new();
-
-    // Apply configuration settings
-    client_builder = client_builder.timeout(config.timeout);
-    client_builder = client_builder.connect_timeout(config.connect_timeout);
-    client_builder = client_builder.user_agent(&config.user_agent);
-
-    // Configure TLS if specified
-    #[cfg(feature = "__tls")]
-    {
-        // TLS configuration handled by default settings
-    }
-
-    // Build the client
-    let hyper_client = client_builder.build()?;
+    // Build client with pure AsyncStream architecture - NO middleware
     let stats = crate::client::ClientStats::default();
-    let new_client = crate::client::HttpClient::new(hyper_client, config, stats);
+    let new_client = crate::client::HttpClient::new_direct(config, stats);
 
-    // Replace the global client using atomic operations for thread safety
-    // This is a one-time initialization operation with proper error handling
     // Set the global client - OnceLock allows one-time initialization
     GLOBAL_CLIENT
         .set(Arc::new(new_client))

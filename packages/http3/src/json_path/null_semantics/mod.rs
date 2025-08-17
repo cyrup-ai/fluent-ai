@@ -13,6 +13,7 @@ use serde_json::Value as JsonValue;
 mod array_access;
 mod comparison;
 mod conversion;
+mod core;
 mod property_access;
 
 #[cfg(test)]

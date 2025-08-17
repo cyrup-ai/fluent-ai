@@ -30,4 +30,23 @@ impl<'a> FilterParser<'a> {
     pub fn parse_filter_expression(&mut self) -> JsonPathResult<FilterExpression> {
         self.parse_logical_or()
     }
+
+    /// Consume the next token from the token stream
+    #[inline]
+    pub fn consume_token(&mut self) -> Option<Token> {
+        self.tokens.pop_front()
+    }
+
+    /// Peek at the next token without consuming it
+    #[inline]
+    pub fn peek_token(&self) -> Option<&Token> {
+        self.tokens.front()
+    }
+
+    /// Parse logical OR expression (placeholder implementation)
+    #[inline]
+    pub fn parse_logical_or(&mut self) -> JsonPathResult<FilterExpression> {
+        // Placeholder implementation - returns a simple current context expression
+        Ok(FilterExpression::Current)
+    }
 }

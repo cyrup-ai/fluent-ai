@@ -63,7 +63,7 @@ impl HttpResponse {
     ///     .collect();
     /// ```
     #[must_use]
-    pub fn jsonpath_stream<T>(&self, jsonpath_expr: &str) -> AsyncStream<T>
+    pub fn jsonpath_stream<T>(&self, jsonpath_expr: &str) -> AsyncStream<T, 1024>
     where
         T: DeserializeOwned + MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {

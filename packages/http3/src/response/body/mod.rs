@@ -27,7 +27,7 @@ impl HttpResponse {
     /// Returns empty `Vec` if not an SSE response
     #[must_use]
     pub fn sse(&self) -> Vec<SseEvent> {
-        let body = String::from_utf8_lossy(self.body());
+        let body = String::from_utf8_lossy(&self.body);
         parse_sse_events(&body)
     }
 }

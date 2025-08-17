@@ -7,7 +7,10 @@
 //! - Function calls (length(), count(), match(), search(), value())
 
 mod comparison;
+mod comparisons;
+mod conversions;
 mod core;
+mod properties;
 mod property;
 mod selectors;
 mod utils;

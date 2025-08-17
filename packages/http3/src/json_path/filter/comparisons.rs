@@ -4,9 +4,10 @@
 //! missing vs null semantics and context-aware comparisons.
 
 use std::collections::HashSet;
+
+use super::core::MISSING_PROPERTY_CONTEXT;
 use crate::json_path::error::JsonPathResult;
 use crate::json_path::parser::{ComparisonOp, FilterValue};
-use super::core::MISSING_PROPERTY_CONTEXT;
 
 /// Compare two filter values using the specified operator
 #[inline]

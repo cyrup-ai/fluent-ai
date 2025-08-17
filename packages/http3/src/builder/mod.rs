@@ -3,16 +3,29 @@
 //! Provides the main Http3Builder struct and related types for constructing
 //! HTTP requests with zero allocation and elegant fluent interface.
 
+pub mod auth;
+pub mod body;
 pub mod builder_core;
 pub mod configuration;
 pub mod content_type;
+pub mod execution;
+pub mod fluent;
+pub mod headers;
+pub mod methods;
 pub mod state_types;
+pub mod streaming;
 pub mod trait_impls;
 
+// Re-export builder_core as core for backward compatibility
 // Re-export all public types and traits
-pub use builder_core::Http3Builder;
-// Import trait implementations to make them available
-use configuration::*;
-pub use content_type::ContentType;
-pub use state_types::{BodyNotSet, BodySet, JsonPathStreaming};
-use trait_impls::*;
+pub use auth::{AuthMethod, BasicAuth, BearerAuth};
+pub use body::{BodyBuilder, JsonBody, TextBody};
+pub use builder_core as core;
+pub use builder_core::{BodyNotSet, BodySet, ContentType, Http3Builder, JsonPathStreaming};
+pub use configuration::{BuilderConfig, RequestConfig};
+pub use execution::{ExecutionContext, RequestExecution};
+pub use fluent::{DownloadBuilder, FluentBuilder};
+pub use headers::{HeaderBuilder, HeaderConfig};
+pub use methods::{BodyMethods, JsonPathMethods, NoBodyMethods};
+pub use streaming::{StreamConfig, StreamingBuilder};
+pub use trait_impls::{BuilderExt, RequestBuilderExt};

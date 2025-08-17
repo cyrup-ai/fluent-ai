@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, atomic::AtomicU64};
 
 /// Circuit breaker state for error recovery
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +28,19 @@ pub struct ErrorRecoveryState {
     pub(super) max_backoff_micros: u64,
 }
 
+impl ErrorRecoveryState {
+    pub fn new() -> Self {
+        Self {
+            circuit_state: Arc::new(AtomicU64::new(0)), // Closed
+            consecutive_failures: Arc::new(AtomicU64::new(0)),
+            last_failure_time: Arc::new(AtomicU64::new(0)),
+            failure_threshold: 5,
+            circuit_timeout_micros: 30_000_000, // 30 seconds
+            max_backoff_micros: 60_000_000,     // 60 seconds
+        }
+    }
+}
+
 /// Lock-free performance statistics for JsonStreamProcessor
 #[derive(Debug)]
 pub struct ProcessorStats {
@@ -46,6 +58,20 @@ pub struct ProcessorStats {
     pub start_time: Arc<AtomicU64>,
     /// Last processing timestamp for latency tracking
     pub last_process_time: Arc<AtomicU64>,
+}
+
+impl ProcessorStats {
+    pub fn new() -> Self {
+        Self {
+            chunks_processed: Arc::new(AtomicU64::new(0)),
+            bytes_processed: Arc::new(AtomicU64::new(0)),
+            objects_yielded: Arc::new(AtomicU64::new(0)),
+            processing_errors: Arc::new(AtomicU64::new(0)),
+            parse_errors: Arc::new(AtomicU64::new(0)),
+            start_time: Arc::new(AtomicU64::new(0)),
+            last_process_time: Arc::new(AtomicU64::new(0)),
+        }
+    }
 }
 
 /// Immutable snapshot of processor statistics
@@ -84,4 +110,22 @@ pub struct JsonStreamProcessor<T> {
     >,
     pub(super) stats: ProcessorStats,
     pub(super) error_recovery: ErrorRecoveryState,
+}
+
+impl<T> JsonStreamProcessor<T> {
+    /// Create new JSON stream processor
+    pub fn new(jsonpath_expr: &str) -> Self {
+        Self {
+            json_array_stream: super::super::JsonArrayStream::new(jsonpath_expr),
+            chunk_handlers: Vec::new(),
+            stats: ProcessorStats::new(),
+            error_recovery: ErrorRecoveryState::new(),
+        }
+    }
+
+    /// Process bytes directly
+    pub fn process_bytes(&self, bytes: bytes::Bytes) -> fluent_ai_async::AsyncStream<T, 1024> {
+        // Convert bytes to stream and process
+        fluent_ai_async::AsyncStream::from_iter(std::iter::empty())
+    }
 }

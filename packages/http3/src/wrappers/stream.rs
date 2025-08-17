@@ -3,6 +3,30 @@
 
 use fluent_ai_async::prelude::MessageChunk;
 
+/// Wrapper for streaming operations
+#[derive(Debug, Clone, Default)]
+pub struct StreamWrapper<T> {
+    pub data: Option<T>,
+    pub error_message: Option<String>,
+}
+
+impl<T> MessageChunk for StreamWrapper<T> {
+    fn bad_chunk(error: String) -> Self {
+        Self {
+            data: None,
+            error_message: Some(error),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
 /// Wrapper for HTTP chunks
 #[derive(Debug, Clone)]
 pub struct HttpChunkWrapper {

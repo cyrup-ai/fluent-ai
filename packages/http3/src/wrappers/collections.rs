@@ -5,43 +5,6 @@ use std::ops::{Deref, DerefMut};
 
 use fluent_ai_async::prelude::MessageChunk;
 
-/// Wrapper for Result types to implement MessageChunk + Default  
-#[derive(Debug, Clone)]
-pub struct ResultWrapper<T, E>(pub Result<T, E>);
-
-impl<T, E> Default for ResultWrapper<T, E>
-where
-    T: Default,
-    E: Default,
-{
-    fn default() -> Self {
-        Self(Ok(T::default()))
-    }
-}
-
-impl<T, E> MessageChunk for ResultWrapper<T, E>
-where
-    T: Clone,
-    E: std::fmt::Display,
-{
-    fn bad_chunk(_error_message: String) -> Self {
-        // This requires concrete error type - will be implemented per use case
-        panic!("ResultWrapper::bad_chunk requires concrete error type")
-    }
-
-    fn is_error(&self) -> bool {
-        self.0.is_err()
-    }
-
-    fn error(&self) -> Option<&str> {
-        if self.is_error() {
-            Some("Result contains error")
-        } else {
-            None
-        }
-    }
-}
-
 /// Wrapper for Vec<SocketAddr> to implement MessageChunk
 #[derive(Debug, Clone, Default)]
 pub struct SocketAddrListWrapper(pub Vec<std::net::SocketAddr>);
@@ -169,6 +132,49 @@ impl<T> Deref for OptionWrapper<T> {
 }
 
 impl<T> DerefMut for OptionWrapper<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// Wrapper for Vec<T> to implement MessageChunk
+#[derive(Debug, Clone, Default)]
+pub struct VecWrapper<T>(pub Vec<T>);
+
+impl<T> MessageChunk for VecWrapper<T> {
+    fn bad_chunk(_error: String) -> Self {
+        Self(Vec::new())
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.0.is_empty() {
+            Some("Empty vector")
+        } else {
+            None
+        }
+    }
+}
+
+impl<T> From<Vec<T>> for VecWrapper<T> {
+    fn from(vec: Vec<T>) -> Self {
+        Self(vec)
+    }
+}
+
+impl<T> From<VecWrapper<T>> for Vec<T> {
+    fn from(wrapper: VecWrapper<T>) -> Self {
+        wrapper.0
+    }
+}
+
+impl<T> Deref for VecWrapper<T> {
+    type Target = Vec<T>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for VecWrapper<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

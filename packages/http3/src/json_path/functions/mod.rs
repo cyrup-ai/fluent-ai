@@ -15,6 +15,7 @@
 pub mod function_evaluator;
 pub mod jsonpath_nodelist;
 pub mod regex_cache;
+pub mod types;
 
 // Re-export all public types to maintain API compatibility
 pub use function_evaluator::FunctionEvaluator;

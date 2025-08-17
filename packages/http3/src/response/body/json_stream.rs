@@ -101,7 +101,7 @@ impl HttpResponse {
     pub fn json<T: serde::de::DeserializeOwned>(&self) -> Option<JsonStream<T>> {
         // Only provide JSON parsing for JSON content types
         if self.is_json_content() {
-            Some(JsonStream::new(self.body().to_vec()))
+            Some(JsonStream::new(self.body.to_vec()))
         } else {
             None
         }

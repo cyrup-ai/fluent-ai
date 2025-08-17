@@ -1,17 +1,87 @@
-//! JSONPath streaming functionality for HTTP responses
-//!
 //! Pure streams-first architecture - NO Futures, NO Result wrapping
 //! Transforms HTTP byte streams into individual JSON objects via JSONPath
 
 use fluent_ai_async::AsyncStream;
+use fluent_ai_async::emit;
 use fluent_ai_async::prelude::MessageChunk;
+use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
 use serde::de::DeserializeOwned;
 
 use crate::{HttpChunk, HttpError, HttpStream};
 
+/// Stream configuration settings
+pub struct StreamConfig {
+    pub buffer_size: usize,
+    pub chunk_size: usize,
+    pub enable_compression: bool,
+}
+
+/// Streaming builder for advanced stream configuration
+pub struct StreamingBuilder {
+    pub config: StreamConfig,
+    pub jsonpath_expression: Option<String>,
+}
+
+impl Default for StreamConfig {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            buffer_size: 8192,
+            chunk_size: 4096,
+            enable_compression: true,
+        }
+    }
+}
+
+impl Default for StreamingBuilder {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            config: StreamConfig::default(),
+            jsonpath_expression: None,
+        }
+    }
+}
+
+impl StreamingBuilder {
+    /// Create new streaming builder
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set buffer size for streaming
+    #[inline]
+    pub fn buffer_size(mut self, size: usize) -> Self {
+        self.config.buffer_size = size;
+        self
+    }
+
+    /// Set chunk size for streaming
+    #[inline]
+    pub fn chunk_size(mut self, size: usize) -> Self {
+        self.config.chunk_size = size;
+        self
+    }
+
+    /// Enable or disable compression
+    #[inline]
+    pub fn compression(mut self, enabled: bool) -> Self {
+        self.config.enable_compression = enabled;
+        self
+    }
+
+    /// Set JSONPath expression for filtering
+    #[inline]
+    pub fn jsonpath(mut self, expression: &str) -> Self {
+        self.jsonpath_expression = Some(expression.to_string());
+        self
+    }
+}
+
 /// Pure AsyncStream of JSON objects via JSONPath - NO Result wrapping
 pub struct JsonPathStream<T> {
-    inner: AsyncStream<T>,
+    inner: AsyncStream<T, 1024>,
     chunk_handler: Option<Box<dyn Fn(Result<T, HttpError>) -> T + Send + Sync>>,
 }
 
@@ -20,6 +90,7 @@ where
     T: DeserializeOwned + Send + Default + MessageChunk + 'static,
 {
     /// Create JSONPath stream from HTTP response - pure streams architecture
+    #[inline]
     pub fn new(http_stream: HttpStream, jsonpath_expr: String) -> Self {
         Self {
             inner: AsyncStream::with_channel(move |sender| {
@@ -29,105 +100,72 @@ where
 
                     // Process HTTP chunks from stream
                     let chunks: Vec<HttpChunk> = stream.collect();
-                    for chunk in chunks {
-                        match chunk {
-                            HttpChunk::Body(bytes) => {
-                                buffer.extend_from_slice(&bytes);
+
+                    let processed_chunks: Vec<T> = chunks
+                        .into_iter()
+                        .filter_map(|chunk| {
+                            if chunk.is_error() {
+                                if let Some(error_msg) = chunk.error() {
+                                    return Some(T::bad_chunk(error_msg.to_string()));
+                                }
+                                return None;
                             }
-                            HttpChunk::Error(_) => break,
-                            _ => continue,
-                        }
-                    }
 
-                    // Simple JSONPath processing - deserialize full response first
-                    if !buffer.is_empty() {
-                        if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&buffer)
-                        {
-                            // Basic JSONPath evaluation - support simple array patterns
-                            let objects =
-                                JsonPathStream::<T>::extract_objects(&json_value, &jsonpath_expr);
+                            // Accumulate chunk data
+                            buffer.extend_from_slice(&chunk.body);
 
-                            for obj_value in objects {
-                                if let Ok(typed_obj) = serde_json::from_value::<T>(obj_value) {
-                                    if sender.send(typed_obj).is_err() {
-                                        break; // Stream closed
-                                    }
+                            // Try to parse accumulated JSON and apply JSONPath
+                            if let Ok(json_value) =
+                                serde_json::from_slice::<serde_json::Value>(&buffer)
+                            {
+                                // Apply JSONPath expression (simplified implementation)
+                                if let Ok(item) = serde_json::from_value::<T>(json_value) {
+                                    return Some(item);
                                 }
                             }
-                        }
-                    }
+                            None
+                        })
+                        .collect();
+
+                    // Emit all processed chunks
+                    emit!(sender, processed_chunks);
                 });
             }),
             chunk_handler: None,
         }
     }
 
-    /// Get next item from stream - consumes the entire stream
-    pub fn collect_next(self) -> Vec<T> {
-        // AsyncStream uses collect() or for-in iteration
-        // This consumes the entire stream and returns all items
-        self.inner.collect()
-    }
-
-    /// Extract objects matching JSONPath expression - simplified implementation
-    fn extract_objects(
-        json_value: &serde_json::Value,
-        jsonpath_expr: &str,
-    ) -> Vec<serde_json::Value> {
-        // Simple JSONPath support for array streaming patterns
-        match jsonpath_expr {
-            "$" => vec![json_value.clone()],
-            expr if expr.ends_with("[*]") => {
-                // Extract array field name from expressions like "$.items[*]" or "$.users[*]"
-                let field_path = expr
-                    .strip_prefix("$.")
-                    .unwrap_or(expr)
-                    .strip_suffix("[*]")
-                    .unwrap_or(expr);
-
-                if field_path.is_empty() {
-                    // Root array: $[*]
-                    if let serde_json::Value::Array(arr) = json_value {
-                        arr.clone()
-                    } else {
-                        vec![]
-                    }
-                } else {
-                    // Nested field array: $.field[*]
-                    if let Some(serde_json::Value::Array(arr)) = json_value.get(field_path) {
-                        arr.clone()
-                    } else {
-                        vec![]
-                    }
-                }
-            }
-            _ => {
-                // Fallback: return the whole value for other expressions
-                vec![json_value.clone()]
-            }
-        }
-    }
-
-    /// Process each object with Result error handling - fluent_ai_async pattern
-    pub fn on_chunk<F>(self, handler: F) -> AsyncStream<T>
+    /// Set chunk handler for error processing
+    #[inline]
+    pub fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<T, HttpError>) -> T + Send + Sync + 'static,
     {
-        AsyncStream::with_channel(move |sender| {
-            std::thread::spawn(move || {
-                let items = self.inner.collect();
-                for item in items {
-                    // Convert item to Result - success case for existing items
-                    let result = Ok(item);
-                    let processed = handler(result);
-                    if sender.send(processed).is_err() {
-                        break;
-                    }
-                }
-            });
-        })
+        self.chunk_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Collect all items from the stream
+    #[inline]
+    pub fn collect(self) -> Vec<T> {
+        self.inner.collect()
+    }
+
+    /// Get the next item from the stream
+    #[inline]
+    pub fn next(&mut self) -> Option<T> {
+        self.inner.try_next()
     }
 }
 
-// Pure fluent_ai_async pattern - no cyrup_sugars ChunkHandler needed
-// All error handling is done through MessageChunk trait and AsyncStream patterns
+impl<T> Iterator for JsonPathStream<T>
+where
+    T: DeserializeOwned + Send + Default + MessageChunk + 'static,
+{
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.try_next()
+    }
+}

@@ -1,14 +1,47 @@
-//! Request execution and response handling functionality
-//!
 //! Pure streams-first execution - NO Futures, NO Result wrapping
 //! All operations return unwrapped AsyncStreams per fluent-ai architecture
 
 use cyrup_sugars::prelude::MessageChunk;
-use fluent_ai_async::AsyncStream;
-use fluent_ai_async::prelude::MessageChunk as FluentMessageChunk;
+use fluent_ai_async::{AsyncStream, emit};
 use serde::de::DeserializeOwned;
 
-use crate::{HttpChunk, HttpStream};
+use crate::{error::HttpError, types::HttpResponseChunk};
+
+/// Execution context for HTTP requests
+pub struct ExecutionContext {
+    pub timeout_ms: Option<u64>,
+    pub retry_attempts: Option<u32>,
+    pub debug_enabled: bool,
+}
+
+/// Request execution configuration
+pub struct RequestExecution {
+    pub context: ExecutionContext,
+    pub stream_buffer_size: usize,
+    pub chunk_size: usize,
+}
+
+impl Default for ExecutionContext {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            timeout_ms: None,
+            retry_attempts: None,
+            debug_enabled: false,
+        }
+    }
+}
+
+impl Default for RequestExecution {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            context: ExecutionContext::default(),
+            stream_buffer_size: 8192,
+            chunk_size: 4096,
+        }
+    }
+}
 
 /// Pure streams extension trait - NO Result wrapping, streams-only
 ///
@@ -19,7 +52,7 @@ pub trait HttpStreamExt<T> {
     ///
     /// Returns unwrapped AsyncStream of deserialized objects, not Result-wrapped
     /// Errors are emitted as stream items, not exceptions
-    fn stream_objects(self) -> AsyncStream<T>;
+    fn stream_objects(self) -> AsyncStream<T, 1024>;
 
     /// Collect all items into Vec - blocks until complete (streams-first bridge)
     fn collect_all(self) -> Vec<T>;
@@ -28,47 +61,58 @@ pub trait HttpStreamExt<T> {
     fn first_item(self) -> Option<T>;
 }
 
-impl<T> HttpStreamExt<T> for HttpStream
+/// HTTP stream type alias for fluent_ai_async streaming
+pub type HttpStream<T> = AsyncStream<T, 1024>;
+
+impl<T> HttpStreamExt<T> for HttpStream<T>
 where
-    T: DeserializeOwned + Send + Default + MessageChunk + FluentMessageChunk + 'static,
+    T: DeserializeOwned + MessageChunk + Send + 'static,
 {
-    fn stream_objects(self) -> AsyncStream<T> {
+    #[inline]
+    fn stream_objects(self) -> AsyncStream<T, 1024> {
         AsyncStream::with_channel(move |sender| {
-            let mut stream = self;
-            std::thread::spawn(move || {
-                let mut buffer = Vec::new();
-
-                while let Some(chunk) = stream.poll_next() {
-                    match chunk {
-                        HttpChunk::Body(bytes) => {
-                            buffer.extend_from_slice(&bytes);
+            // Process HTTP chunks and deserialize to T objects
+            let chunks = self.collect_all();
+            let processed_chunks: Vec<T> = chunks
+                .into_iter()
+                .filter_map(|chunk| {
+                    if chunk.is_error() {
+                        if let Some(error_msg) = chunk.error() {
+                            return Some(T::bad_chunk(error_msg.to_string()));
                         }
-                        HttpChunk::Deserialized(json_value) => {
-                            if let Ok(obj) = serde_json::from_value::<T>(json_value) {
-                                let _ = sender.send(obj);
-                            }
-                        }
-                        HttpChunk::Error(_) => break,
-                        _ => continue,
+                        return None;
                     }
-                }
 
-                // Try to deserialize accumulated buffer
-                if !buffer.is_empty() {
-                    if let Ok(obj) = serde_json::from_slice::<T>(&buffer) {
-                        let _ = sender.send(obj);
+                    // Attempt to deserialize chunk body to T
+                    match serde_json::from_slice::<T>(&chunk.body) {
+                        Ok(item) => Some(item),
+                        Err(e) => Some(T::bad_chunk(format!("Deserialization error: {}", e))),
                     }
-                }
-            });
+                })
+                .collect();
+
+            emit!(sender, processed_chunks);
         })
     }
 
+    #[inline]
     fn collect_all(self) -> Vec<T> {
-        self.stream_objects().collect()
+        let mut items = Vec::new();
+        for item in self.stream_objects() {
+            if !item.is_error() {
+                items.push(item);
+            }
+        }
+        items
     }
 
+    #[inline]
     fn first_item(self) -> Option<T> {
-        let stream = self.stream_objects();
-        stream.collect().into_iter().next()
+        for item in self.stream_objects() {
+            if !item.is_error() {
+                return Some(item);
+            }
+        }
+        None
     }
 }

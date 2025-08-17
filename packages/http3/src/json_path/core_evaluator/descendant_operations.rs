@@ -4,8 +4,8 @@
 
 use serde_json::Value;
 
-use crate::json_path::parser::JsonSelector;
 use super::core_evaluator::{CoreJsonPathEvaluator, JsonPathResult};
+use crate::json_path::parser::JsonSelector;
 
 impl CoreJsonPathEvaluator {
     /// Collect all descendant values from a JSON structure
@@ -38,7 +38,11 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Apply a selector to all descendants of a value
-    pub fn apply_selector_to_descendants(&self, json: &Value, selector: &JsonSelector) -> JsonPathResult<Vec<Value>> {
+    pub fn apply_selector_to_descendants(
+        &self,
+        json: &Value,
+        selector: &JsonSelector,
+    ) -> JsonPathResult<Vec<Value>> {
         let descendants = self.collect_descendants(json);
         let mut results = Vec::new();
 
@@ -51,7 +55,11 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Apply multiple selectors recursively to descendants
-    pub fn apply_selectors_recursively(&self, json: &Value, selectors: &[JsonSelector]) -> JsonPathResult<Vec<Value>> {
+    pub fn apply_selectors_recursively(
+        &self,
+        json: &Value,
+        selectors: &[JsonSelector],
+    ) -> JsonPathResult<Vec<Value>> {
         if selectors.is_empty() {
             return Ok(vec![json.clone()]);
         }

@@ -8,7 +8,11 @@ use super::core_evaluator::{CoreJsonPathEvaluator, JsonPathResult};
 
 impl CoreJsonPathEvaluator {
     /// Apply filter expression to a value
-    pub(crate) fn apply_filter_expression(&self, value: &Value, filter_expr: &str) -> JsonPathResult<Vec<Value>> {
+    pub(crate) fn apply_filter_expression(
+        &self,
+        value: &Value,
+        filter_expr: &str,
+    ) -> JsonPathResult<Vec<Value>> {
         // Simple filter implementation for basic expressions
         match value {
             Value::Array(arr) => {
@@ -34,7 +38,12 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Evaluate filter expression on array item
-    fn evaluate_filter_on_item(&self, item: &Value, filter_expr: &str, index: usize) -> JsonPathResult<bool> {
+    fn evaluate_filter_on_item(
+        &self,
+        item: &Value,
+        filter_expr: &str,
+        index: usize,
+    ) -> JsonPathResult<bool> {
         // Basic filter evaluation - can be extended for more complex expressions
         if filter_expr.contains("@.") {
             // Property-based filter
@@ -48,7 +57,7 @@ impl CoreJsonPathEvaluator {
             if parts.len() == 2 {
                 let left = parts[0].trim();
                 let right = parts[1].trim().trim_matches('"').trim_matches('\'');
-                
+
                 if left == "@" {
                     // Compare entire item
                     return Ok(item.as_str().map_or(false, |s| s == right));
@@ -63,13 +72,18 @@ impl CoreJsonPathEvaluator {
                 }
             }
         }
-        
+
         // Default: no match
         Ok(false)
     }
 
     /// Evaluate filter expression on object item
-    fn evaluate_filter_on_object_item(&self, item: &Value, filter_expr: &str, key: &str) -> JsonPathResult<bool> {
+    fn evaluate_filter_on_object_item(
+        &self,
+        item: &Value,
+        filter_expr: &str,
+        key: &str,
+    ) -> JsonPathResult<bool> {
         // Similar to array item evaluation but with key context
         self.evaluate_filter_on_item(item, filter_expr, 0) // Use 0 as placeholder index
     }

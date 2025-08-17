@@ -9,11 +9,9 @@ pub use core::FunctionEvaluator;
 // Module declarations
 pub mod core;
 pub mod count;
+pub mod integration_tests;
 pub mod length;
 pub mod regex_functions;
 pub mod string_counting;
 pub mod value;
 pub mod value_conversion;
-
-#[cfg(test)]
-mod integration_tests;

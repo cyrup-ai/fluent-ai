@@ -14,7 +14,7 @@ use super::{HttpRetryExecutor, RetryPolicy};
 #[inline]
 pub fn with_retry<F, T>(operation: F) -> HttpRetryExecutor<F, T>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     HttpRetryExecutor::new(operation, RetryPolicy::default())
@@ -24,9 +24,9 @@ where
 ///
 /// Convenience wrapper that applies the default retry policy (3 attempts,
 /// exponential backoff) to the given operation. Suitable for most HTTP operations.
-pub fn execute_with_default_retry<F, T>(operation: F) -> AsyncStream<T>
+pub fn execute_with_default_retry<F, T>(operation: F) -> AsyncStream<T, 1024>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     let executor = HttpRetryExecutor::new(operation, RetryPolicy::default());
@@ -37,9 +37,9 @@ where
 ///
 /// Uses the aggressive retry policy (5 attempts, faster backoff) for
 /// critical operations that must succeed and can tolerate retry overhead.
-pub fn execute_with_aggressive_retry<F, T>(operation: F) -> AsyncStream<T>
+pub fn execute_with_aggressive_retry<F, T>(operation: F) -> AsyncStream<T, 1024>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     let executor = HttpRetryExecutor::new(operation, RetryPolicy::aggressive());
@@ -50,9 +50,9 @@ where
 ///
 /// Uses the conservative retry policy (2 attempts, longer delays) for
 /// non-critical operations that should minimize resource consumption.
-pub fn execute_with_conservative_retry<F, T>(operation: F) -> AsyncStream<T>
+pub fn execute_with_conservative_retry<F, T>(operation: F) -> AsyncStream<T, 1024>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     let executor = HttpRetryExecutor::new(operation, RetryPolicy::conservative());
@@ -63,9 +63,9 @@ where
 ///
 /// Uses the no-retry policy (single attempt) for operations that should
 /// fail fast without consuming additional resources.
-pub fn execute_without_retry<F, T>(operation: F) -> AsyncStream<T>
+pub fn execute_without_retry<F, T>(operation: F) -> AsyncStream<T, 1024>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     let executor = HttpRetryExecutor::new(operation, RetryPolicy::no_retry());

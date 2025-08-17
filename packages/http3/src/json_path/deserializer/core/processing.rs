@@ -33,7 +33,9 @@ where
         byte: u8,
     ) -> crate::json_path::error::JsonPathResult<super::super::processor::JsonProcessResult> {
         match byte {
-            b' ' | b'\t' | b'\n' | b'\r' => Ok(super::super::processor::JsonProcessResult::Continue), /* Skip whitespace */
+            b' ' | b'\t' | b'\n' | b'\r' => {
+                Ok(super::super::processor::JsonProcessResult::Continue)
+            } // Skip whitespace
             b'{' => {
                 let expression = self.path_expression.as_string();
                 if expression.starts_with("$.") && expression.ends_with("[*]") {
@@ -72,7 +74,9 @@ where
         byte: u8,
     ) -> crate::json_path::error::JsonPathResult<super::super::processor::JsonProcessResult> {
         match byte {
-            b' ' | b'\t' | b'\n' | b'\r' => Ok(super::super::processor::JsonProcessResult::Continue),
+            b' ' | b'\t' | b'\n' | b'\r' => {
+                Ok(super::super::processor::JsonProcessResult::Continue)
+            }
             b'"' => {
                 // Potential property name - need to check if it matches our target
                 if self.target_property.is_some() {
@@ -164,7 +168,9 @@ where
         byte: u8,
     ) -> crate::json_path::error::JsonPathResult<super::super::processor::JsonProcessResult> {
         match byte {
-            b' ' | b'\t' | b'\n' | b'\r' => Ok(super::super::processor::JsonProcessResult::Continue),
+            b' ' | b'\t' | b'\n' | b'\r' => {
+                Ok(super::super::processor::JsonProcessResult::Continue)
+            }
             b'{' => {
                 if self.in_target_array && self.matches_current_path() {
                     self.object_buffer.clear();

@@ -8,6 +8,49 @@ use fluent_ai_async::prelude::MessageChunk;
 use http::Response;
 use http_body::Frame;
 
+/// Wrapper for HTTP headers to implement MessageChunk
+#[derive(Debug, Clone, Default)]
+pub struct HeaderWrapper(pub http::HeaderMap);
+
+impl MessageChunk for HeaderWrapper {
+    fn bad_chunk(_error: String) -> Self {
+        Self(http::HeaderMap::new())
+    }
+
+    fn error(&self) -> Option<&str> {
+        if self.0.is_empty() {
+            Some("Empty header map")
+        } else {
+            None
+        }
+    }
+}
+
+impl From<http::HeaderMap> for HeaderWrapper {
+    fn from(headers: http::HeaderMap) -> Self {
+        Self(headers)
+    }
+}
+
+impl From<HeaderWrapper> for http::HeaderMap {
+    fn from(wrapper: HeaderWrapper) -> Self {
+        wrapper.0
+    }
+}
+
+impl Deref for HeaderWrapper {
+    type Target = http::HeaderMap;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for HeaderWrapper {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Wrapper for http_body::Frame<Bytes> to implement MessageChunk + Default
 #[derive(Debug)]
 pub struct FrameWrapper(pub Frame<Bytes>);

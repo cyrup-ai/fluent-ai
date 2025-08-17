@@ -1,10 +1,11 @@
 //! Core NullSemantics struct and main operations
 
 use serde_json::Value as JsonValue;
-use super::property_access::{PropertyAccessResult, PropertyAccess};
+
 use super::array_access::ArrayAccess;
 use super::comparison::Comparison;
 use super::conversion::Conversion;
+use super::property_access::{PropertyAccess, PropertyAccessResult};
 use crate::json_path::error::{JsonPathResult, invalid_expression_error};
 
 /// Utilities for handling RFC 9535 null vs missing value semantics

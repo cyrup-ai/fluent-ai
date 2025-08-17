@@ -5,6 +5,9 @@
 
 use serde_json::Value as JsonValue;
 
+/// Property access utilities for null vs missing semantics
+pub struct PropertyAccess;
+
 /// Represents the result of a property access that distinguishes between
 /// null values and missing properties according to RFC 9535 Section 2.6
 #[derive(Debug, Clone, PartialEq)]

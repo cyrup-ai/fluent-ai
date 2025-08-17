@@ -4,10 +4,11 @@
 //! for both owned and reference-based result collection.
 
 use serde_json::Value;
+
+use super::super::evaluator::CoreJsonPathEvaluator;
 use crate::json_path::error::JsonPathError;
 use crate::json_path::filter::FilterEvaluator;
 use crate::json_path::parser::FilterExpression;
-use super::super::evaluator::CoreJsonPathEvaluator;
 
 type JsonPathResult<T> = Result<T, JsonPathError>;
 

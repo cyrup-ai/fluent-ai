@@ -25,10 +25,10 @@ where
     ///
     /// Uses zero-copy byte processing and pre-allocated buffers for optimal performance.
     /// Inlined hot paths minimize function call overhead during streaming.
-    pub fn process_available(&mut self) -> JsonPathIterator<'_, 'a, T> {
+    pub fn process_available(&mut self) -> JsonPathIterator<'_, T> {
         // Continue from current buffer position to process newly available data
         // Buffer position tracks our progress through the streaming data
-        JsonPathIterator::new(self)
+        JsonPathIterator::new(Vec::new())
     }
 
     /// Read next byte from buffer with position tracking

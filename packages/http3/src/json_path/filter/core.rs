@@ -10,6 +10,30 @@ use super::property::PropertyResolver;
 use super::selectors::SelectorEvaluator;
 use super::utils::FilterUtils;
 use crate::json_path::error::{JsonPathResult, deserialization_error};
+
+/// Missing property context constant for filter evaluation
+pub const MISSING_PROPERTY_CONTEXT: &str = "__MISSING_PROPERTY__";
+
+/// Check if a value is truthy for filter evaluation
+pub fn is_truthy(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Null => false,
+        serde_json::Value::Bool(b) => *b,
+        serde_json::Value::Number(n) => n.as_f64().unwrap_or(0.0) != 0.0,
+        serde_json::Value::String(s) => !s.is_empty(),
+        serde_json::Value::Array(arr) => !arr.is_empty(),
+        serde_json::Value::Object(obj) => !obj.is_empty(),
+    }
+}
+
+/// Evaluate JSONPath selectors for filter expressions
+pub fn evaluate_jsonpath_selectors(
+    context: &serde_json::Value,
+    selectors: &[crate::json_path::ast::JsonSelector],
+) -> JsonPathResult<Vec<serde_json::Value>> {
+    // Placeholder implementation - would integrate with main selector evaluation
+    Ok(vec![context.clone()])
+}
 use crate::json_path::functions::FunctionEvaluator;
 use crate::json_path::parser::{ComparisonOp, FilterExpression, FilterValue, LogicalOp};
 

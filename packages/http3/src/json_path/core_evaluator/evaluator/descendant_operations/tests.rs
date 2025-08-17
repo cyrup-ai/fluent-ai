@@ -3,8 +3,9 @@
 //! Contains all test cases for descendant traversal, collection, filtering,
 //! and analysis operations with RFC 9535 compliance verification.
 
-use super::*;
 use serde_json::json;
+
+use super::*;
 
 #[test]
 fn test_collect_all_descendants_owned() {
@@ -17,7 +18,7 @@ fn test_collect_all_descendants_owned() {
 
     let mut results = Vec::new();
     DescendantOperations::collect_all_descendants_owned(&json, &mut results);
-    
+
     // Should collect: {"b": "value1", "c": ["value2", "value3"]}, "value1", ["value2", "value3"], "value2", "value3"
     assert_eq!(results.len(), 5);
     assert!(results.contains(&json!({"b": "value1", "c": ["value2", "value3"]})));
@@ -39,7 +40,7 @@ fn test_collect_descendants_at_depth() {
 
     let mut results = Vec::new();
     DescendantOperations::collect_descendants_at_depth(&json, 2, 0, &mut results);
-    
+
     assert_eq!(results.len(), 1);
     assert_eq!(results[0], json!({"level3": "target"}));
 }
@@ -87,7 +88,7 @@ fn test_collect_descendants_with_paths() {
 
     let mut results = Vec::new();
     DescendantOperations::collect_descendants_with_paths(&json, String::new(), &mut results);
-    
+
     assert_eq!(results.len(), 4);
     assert!(results.iter().any(|(path, _)| path == "a"));
     assert!(results.iter().any(|(path, _)| path == "a.b"));
@@ -107,7 +108,7 @@ fn test_filter_descendants() {
 
     let mut results = Vec::new();
     DescendantOperations::filter_descendants(&json, |v| v.is_number(), &mut results);
-    
+
     assert_eq!(results.len(), 5); // 1, 2, 3, 4, 5
     assert!(results.contains(&json!(1)));
     assert!(results.contains(&json!(2)));
@@ -129,7 +130,7 @@ fn test_collect_leaf_values() {
 
     let mut results = Vec::new();
     DescendantOperations::collect_leaf_values(&json, &mut results);
-    
+
     assert_eq!(results.len(), 3);
     assert!(results.contains(&json!("leaf1")));
     assert!(results.contains(&json!("leaf2")));
@@ -138,7 +139,9 @@ fn test_collect_leaf_values() {
 
 #[test]
 fn test_has_descendants() {
-    assert!(DescendantOperations::has_descendants(&json!({"a": "value"})));
+    assert!(DescendantOperations::has_descendants(
+        &json!({"a": "value"})
+    ));
     assert!(DescendantOperations::has_descendants(&json!(["value"])));
     assert!(!DescendantOperations::has_descendants(&json!({})));
     assert!(!DescendantOperations::has_descendants(&json!([])));

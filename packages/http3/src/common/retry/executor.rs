@@ -5,7 +5,7 @@ use super::RetryPolicy;
 /// Retry executor for HTTP operations using pure AsyncStreams
 pub struct HttpRetryExecutor<F, T>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     operation: std::sync::Arc<F>,
@@ -14,7 +14,7 @@ where
 
 impl<F, T> HttpRetryExecutor<F, T>
 where
-    F: Fn() -> AsyncStream<T> + Send + Sync + 'static,
+    F: Fn() -> AsyncStream<T, 1024> + Send + Sync + 'static,
     T: MessageChunk + Send + Default + 'static,
 {
     /// Create new retry executor for HTTP operation
@@ -26,7 +26,7 @@ where
     }
 
     /// Execute operation with retry logic using pure streaming patterns
-    pub fn execute_with_retry(&self) -> AsyncStream<T> {
+    pub fn execute_with_retry(&self) -> AsyncStream<T, 1024> {
         let operation = std::sync::Arc::clone(&self.operation);
         let policy = self.policy.clone();
 

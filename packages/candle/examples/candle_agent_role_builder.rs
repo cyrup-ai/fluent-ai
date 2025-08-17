@@ -8,7 +8,6 @@
 // Note: Providers are available in src/providers but not re-exported at root level yet
 use std::io::{self, Write};
 
-
 use fluent_ai_candle::builders::agent_role::CandleMcpServerBuilder;
 use fluent_ai_candle::prelude::*;
 
@@ -53,11 +52,11 @@ fn candle_agent_role_example() -> AsyncStream<CandleMessageChunk> {
             chunk
         })
         .into_agent() // CandleAgent Now
-        .conversation_history(
-            CandleMessageRole::User => "What time is it in Paris, France",
-            CandleMessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
-            CandleMessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
-        )
+        .conversation_history([
+            (CandleMessageRole::User, "What time is it in Paris, France"),
+            (CandleMessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
+            (CandleMessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
+        ])
         .chat(|conversation| {
             let user_input = conversation.latest_user_message();
 
@@ -156,11 +155,11 @@ fn candle_agent_simple_example() -> AsyncStream<CandleMessageChunk> {
             chunk
         })
         .into_agent() // CandleAgent Now
-        .conversation_history(
-            CandleMessageRole::User => "What time is it in Paris, France",
-            CandleMessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
-            CandleMessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
-        );
+        .conversation_history([
+            (CandleMessageRole::User, "What time is it in Paris, France"),
+            (CandleMessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
+            (CandleMessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
+        ]);
     let stream = CandleFluentAi::agent_role("simple")
         .model(CandleModels::KimiK2)
         .temperature(0.7)

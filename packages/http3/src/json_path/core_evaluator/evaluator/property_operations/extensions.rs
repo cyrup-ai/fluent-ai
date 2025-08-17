@@ -3,6 +3,7 @@
 //! Extends CoreJsonPathEvaluator with property operation methods.
 
 use serde_json::Value;
+
 use super::super::core_types::{CoreJsonPathEvaluator, JsonPathResult};
 use super::core::PropertyOperations;
 

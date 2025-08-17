@@ -1,10 +1,11 @@
 //! Array operations for JSONPath evaluation
-//! 
+//!
 //! Specialized array handling: access, slicing, union selectors with zero-allocation patterns.
 
 use serde_json::Value;
-use crate::json_path::error::JsonPathError;
+
 use super::evaluator::CoreJsonPathEvaluator;
+use crate::json_path::error::JsonPathError;
 
 type JsonPathResult<T> = Result<T, JsonPathError>;
 
@@ -64,7 +65,11 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Apply array selector with comprehensive pattern matching
-    pub fn apply_array_selector(&self, arr: &[Value], selector: &str) -> JsonPathResult<Vec<Value>> {
+    pub fn apply_array_selector(
+        &self,
+        arr: &[Value],
+        selector: &str,
+    ) -> JsonPathResult<Vec<Value>> {
         if selector == "*" {
             // Wildcard - return all elements
             Ok(arr.to_vec())
@@ -100,7 +105,11 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Apply slice selector with colon notation (start:end:step)
-    pub fn apply_slice_selector(&self, arr: &[Value], selector: &str) -> JsonPathResult<Vec<Value>> {
+    pub fn apply_slice_selector(
+        &self,
+        arr: &[Value],
+        selector: &str,
+    ) -> JsonPathResult<Vec<Value>> {
         let parts: Vec<&str> = selector.split(':').collect();
         if parts.len() < 2 {
             return Ok(vec![]);
@@ -136,7 +145,11 @@ impl CoreJsonPathEvaluator {
     }
 
     /// Apply union selector with comma-separated indices
-    pub fn apply_union_selector(&self, arr: &[Value], selector: &str) -> JsonPathResult<Vec<Value>> {
+    pub fn apply_union_selector(
+        &self,
+        arr: &[Value],
+        selector: &str,
+    ) -> JsonPathResult<Vec<Value>> {
         let indices: Vec<&str> = selector.split(',').collect();
         let mut results = Vec::new();
 

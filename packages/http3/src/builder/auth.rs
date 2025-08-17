@@ -1,14 +1,57 @@
-//! Authentication methods for HTTP requests
-//!
 //! Provides convenient methods for setting authentication headers including
 //! API keys, basic authentication, and bearer token authentication.
 
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
-use http::HeaderValue;
+use std::borrow::Cow;
 
-use crate::builder::core::Http3Builder;
-use crate::builder::headers::header;
+use base64::Engine;
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use bytes::Bytes;
+use serde::Serialize;
+
+use crate::builder::Http3Builder;
+
+/// Trait for authentication methods
+pub trait AuthMethod {
+    /// Set API key authentication header
+    fn api_key(self, key: &str) -> Self;
+
+    /// Set bearer token authentication header
+    fn bearer_auth(self, token: &str) -> Self;
+
+    /// Set basic authentication header
+    fn basic_auth(self, username: &str, password: Option<&str>) -> Self;
+}
+
+/// Bearer authentication implementation
+pub struct BearerAuth;
+
+/// Basic authentication implementation
+pub struct BasicAuth;
+
+impl<S> AuthMethod for Http3Builder<S> {
+    #[inline]
+    fn api_key(self, key: &str) -> Self {
+        self.header("X-API-Key", key)
+    }
+
+    #[inline]
+    fn bearer_auth(self, token: &str) -> Self {
+        let auth_value = format!("Bearer {}", token);
+        self.header("Authorization", &auth_value)
+    }
+
+    #[inline]
+    fn basic_auth(self, username: &str, password: Option<&str>) -> Self {
+        let credentials = match password {
+            Some(pwd) => format!("{}:{}", username, pwd),
+            None => format!("{}:", username),
+        };
+
+        let encoded = STANDARD.encode(credentials.as_bytes());
+        let auth_value = format!("Basic {}", encoded);
+        self.header("Authorization", &auth_value)
+    }
+}
 
 impl<S> Http3Builder<S> {
     /// Set API key authentication header
@@ -29,67 +72,17 @@ impl<S> Http3Builder<S> {
     ///     .api_key("your-api-key-here")
     ///     .get("https://api.example.com/protected");
     /// ```
-    #[must_use]
+    #[inline]
     pub fn api_key(self, key: &str) -> Self {
-        use std::str::FromStr;
-        match HeaderValue::from_str(key) {
-            Ok(header_value) => {
-                use http::HeaderName;
-                match HeaderName::from_str(header::X_API_KEY) {
-                    Ok(name) => self.header(name, header_value),
-                    Err(_) => self,
-                }
-            }
-            Err(_) => self, // Skip invalid header value
-        }
-    }
-
-    /// Set basic authentication header
-    ///
-    /// Creates a Basic Authentication header using the provided username and password.
-    /// The credentials are automatically base64 encoded as required by the HTTP specification.
-    ///
-    /// # Arguments
-    /// * `auth_config` - Authentication configuration using [("user", "password")] syntax
-    ///
-    /// # Returns
-    /// `Self` for method chaining
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
-    /// use hashbrown::HashMap;
-    ///
-    /// let auth = HashMap::from([("username", "password")]);
-    /// let response = Http3Builder::json()
-    ///     .basic_auth(auth)
-    ///     .get("https://api.example.com/protected");
-    /// ```
-    #[must_use]
-    pub fn basic_auth(
-        self,
-        auth_config: impl Into<hashbrown::HashMap<&'static str, &'static str>>,
-    ) -> Self {
-        let auth_config = auth_config.into();
-        if let Some((user, pass)) = auth_config.into_iter().next() {
-            let auth_string = format!("{user}:{pass}");
-            let encoded = STANDARD.encode(auth_string);
-            let header_value = format!("Basic {encoded}");
-            return match HeaderValue::from_str(&header_value) {
-                Ok(value) => self.header(header::AUTHORIZATION, value),
-                Err(_) => self, // Skip invalid header value
-            };
-        }
-        self
+        self.header("X-API-Key", key)
     }
 
     /// Set bearer token authentication header
     ///
-    /// Creates a Bearer token authentication header for OAuth2 and similar token-based
-    /// authentication schemes.
+    /// Adds an `Authorization: Bearer <token>` header.
     ///
     /// # Arguments
-    /// * `token` - The bearer token to use for authentication
+    /// * `token` - The bearer token value
     ///
     /// # Returns
     /// `Self` for method chaining
@@ -99,15 +92,44 @@ impl<S> Http3Builder<S> {
     /// use fluent_ai_http3::Http3Builder;
     ///
     /// let response = Http3Builder::json()
-    ///     .bearer_auth("your-oauth-token-here")
+    ///     .bearer_auth("your-bearer-token")
     ///     .get("https://api.example.com/protected");
     /// ```
-    #[must_use]
+    #[inline]
     pub fn bearer_auth(self, token: &str) -> Self {
-        let header_value = format!("Bearer {token}");
-        match HeaderValue::from_str(&header_value) {
-            Ok(value) => self.header(header::AUTHORIZATION, value),
-            Err(_) => self, // Skip invalid header value
-        }
+        let auth_value = format!("Bearer {}", token);
+        self.header("Authorization", &auth_value)
+    }
+
+    /// Set basic authentication header
+    ///
+    /// Adds an `Authorization: Basic <credentials>` header where credentials
+    /// are base64-encoded username:password.
+    ///
+    /// # Arguments
+    /// * `username` - The username for basic auth
+    /// * `password` - Optional password (if None, only username is used)
+    ///
+    /// # Returns
+    /// `Self` for method chaining
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use fluent_ai_http3::Http3Builder;
+    ///
+    /// let response = Http3Builder::json()
+    ///     .basic_auth("username", Some("password"))
+    ///     .get("https://api.example.com/protected");
+    /// ```
+    #[inline]
+    pub fn basic_auth(self, username: &str, password: Option<&str>) -> Self {
+        let credentials = match password {
+            Some(pwd) => format!("{}:{}", username, pwd),
+            None => format!("{}:", username),
+        };
+
+        let encoded = STANDARD.encode(credentials.as_bytes());
+        let auth_value = format!("Basic {}", encoded);
+        self.header("Authorization", &auth_value)
     }
 }

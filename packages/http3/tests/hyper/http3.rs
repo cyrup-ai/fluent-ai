@@ -70,9 +70,9 @@ async fn http3_test_failed_connection() {
         .unwrap()
         .source()
         .unwrap()
-        .downcast_ref::<quinn::ConnectionError>()
+        .downcast_ref::<quiche::Error>()
         .unwrap();
-    assert_eq!(*err, quinn::ConnectionError::TimedOut);
+    assert_eq!(*err, quiche::Error::Done);
 
     let err = client
         .get(&url)
@@ -86,9 +86,9 @@ async fn http3_test_failed_connection() {
         .unwrap()
         .source()
         .unwrap()
-        .downcast_ref::<quinn::ConnectionError>()
+        .downcast_ref::<quiche::Error>()
         .unwrap();
-    assert_eq!(*err, quinn::ConnectionError::TimedOut);
+    assert_eq!(*err, quiche::Error::Done);
 
     let server = server::Http3::new()
         .with_addr(addr)

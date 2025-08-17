@@ -1,5 +1,3 @@
-//! JSONPath streaming HTTP methods
-//!
 //! This module contains terminal methods for HTTP requests with JSONPath streaming:
 //! GET and POST operations for the JsonPathStreaming builder state that return
 //! streams of deserialized objects matching JSONPath expressions.
@@ -11,6 +9,45 @@ use serde::de::DeserializeOwned;
 
 use crate::builder::core::{Http3Builder, JsonPathStreaming};
 use crate::builder::streaming::JsonPathStream;
+
+/// Trait for HTTP methods that support JSONPath streaming
+pub trait JsonPathMethods {
+    /// Execute a GET request with JSONPath streaming
+    fn get<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        self,
+        url: &str,
+    ) -> JsonPathStream<T>;
+
+    /// Execute a POST request with JSONPath streaming
+    fn post<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        self,
+        url: &str,
+    ) -> JsonPathStream<T>;
+}
+
+/// GET method implementation for JSONPath streaming
+pub struct JsonPathGetMethod;
+
+/// POST method implementation for JSONPath streaming
+pub struct JsonPathPostMethod;
+
+impl JsonPathMethods for Http3Builder<JsonPathStreaming> {
+    #[inline]
+    fn get<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        self,
+        url: &str,
+    ) -> JsonPathStream<T> {
+        self.execute_jsonpath_with_method::<T>(Method::GET, url)
+    }
+
+    #[inline]
+    fn post<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        self,
+        url: &str,
+    ) -> JsonPathStream<T> {
+        self.execute_jsonpath_with_method::<T>(Method::POST, url)
+    }
+}
 
 impl Http3Builder<JsonPathStreaming> {
     /// Execute a GET request with JSONPath streaming
@@ -29,7 +66,7 @@ impl Http3Builder<JsonPathStreaming> {
     ///
     /// # Examples
     /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
+    /// use fluent_ai_http3::Http3;
     /// use serde::Deserialize;
     ///
     /// #[derive(Deserialize)]
@@ -38,49 +75,38 @@ impl Http3Builder<JsonPathStreaming> {
     ///     name: String,
     /// }
     ///
-    /// let stream = Http3Builder::json()
-    ///     .array_stream("$.users[*]")
-    ///     .get::<User>("https://api.example.com/users");
-    ///
-    /// for user in stream.collect() {
-    ///     println!("User: {}", user.name);
-    /// }
+    /// let users_stream = Http3::jsonpath("$.users[*]")
+    ///     .get::<User>("https://api.example.com/data");
     /// ```
-    #[must_use]
-    pub fn get<T>(mut self, url: &str) -> JsonPathStream<T>
-    where
-        T: DeserializeOwned + Send + 'static + MessageChunk + FluentMessageChunk + Default,
-    {
-        self.request = self
-            .request
-            .set_method(Method::GET)
-            .set_url(url.to_string());
+    #[inline]
+    pub fn get<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        mut self,
+        url: &str,
+    ) -> JsonPathStream<T> {
+        *self.request.method_mut() = Method::GET;
+        *self.request.uri_mut() = url.parse().unwrap_or_else(|_| {
+            log::error!("Invalid URL: {}", url);
+            "http://invalid".parse().unwrap()
+        });
 
         if self.debug_enabled {
-            log::debug!("HTTP3 Builder: JSONPath GET {url}");
-            if let Some(config) = &self.jsonpath_config {
-                log::debug!(
-                    "HTTP3 Builder: JSONPath expression: {}",
-                    config.jsonpath_expr
-                );
-            }
+            log::debug!(
+                "HTTP3 Builder: GET {} (JSONPath: {})",
+                url,
+                self.jsonpath_expression
+            );
         }
 
-        let http_stream = self.client.execute_streaming(self.request);
-        let jsonpath_expr = if let Some(config) = self.jsonpath_config {
-            config.jsonpath_expr
-        } else {
-            log::error!("JsonPathStreaming state missing jsonpath_config, using default");
-            "$".to_string()
-        };
-
-        JsonPathStream::new(http_stream, jsonpath_expr)
+        JsonPathStream::new(
+            self.client.execute_streaming(self.request),
+            self.jsonpath_expression,
+        )
     }
 
     /// Execute a POST request with JSONPath streaming
     ///
-    /// Sends a POST request and returns a stream that yields individual JSON objects
-    /// matching the configured JSONPath expression.
+    /// Returns a specialized stream that yields individual JSON objects matching
+    /// the configured JSONPath expression instead of raw HTTP chunks.
     ///
     /// # Arguments
     /// * `url` - The URL to send the POST request to
@@ -90,63 +116,62 @@ impl Http3Builder<JsonPathStreaming> {
     ///
     /// # Type Parameters
     /// * `T` - Type to deserialize each matching JSON object into
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use fluent_ai_http3::Http3Builder;
-    /// use serde::{Deserialize, Serialize};
-    ///
-    /// #[derive(Serialize)]
-    /// struct Query {
-    ///     filter: String,
-    /// }
-    ///
-    /// #[derive(Deserialize)]
-    /// struct Result {
-    ///     id: u64,
-    ///     title: String,
-    /// }
-    ///
-    /// let query = Query {
-    ///     filter: "active".to_string(),
-    /// };
-    ///
-    /// let stream = Http3Builder::json()
-    ///     .body(&query)
-    ///     .array_stream("$.results[*]")
-    ///     .post::<Result>("https://api.example.com/search");
-    /// ```
-    #[must_use]
-    pub fn post<T>(mut self, url: &str) -> JsonPathStream<T>
-    where
-        T: DeserializeOwned + Send + 'static + MessageChunk + FluentMessageChunk + Default,
-    {
-        self.request = self
-            .request
-            .set_method(Method::POST)
-            .set_url(url.to_string());
+    #[inline]
+    pub fn post<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        mut self,
+        url: &str,
+    ) -> JsonPathStream<T> {
+        *self.request.method_mut() = Method::POST;
+        *self.request.uri_mut() = url.parse().unwrap_or_else(|_| {
+            log::error!("Invalid URL: {}", url);
+            "http://invalid".parse().unwrap()
+        });
 
         if self.debug_enabled {
-            log::debug!("HTTP3 Builder: JSONPath POST {url}");
-            if let Some(config) = &self.jsonpath_config {
-                log::debug!(
-                    "HTTP3 Builder: JSONPath expression: {}",
-                    config.jsonpath_expr
-                );
-            }
+            log::debug!(
+                "HTTP3 Builder: POST {} (JSONPath: {})",
+                url,
+                self.jsonpath_expression
+            );
             if let Some(body) = self.request.body() {
                 log::debug!("HTTP3 Builder: Request body size: {} bytes", body.len());
             }
         }
 
-        let http_stream = self.client.execute_streaming(self.request);
-        let jsonpath_expr = if let Some(config) = self.jsonpath_config {
-            config.jsonpath_expr
-        } else {
-            log::error!("JsonPathStreaming state missing jsonpath_config, using default");
-            "$".to_string()
-        };
+        JsonPathStream::new(
+            self.client.execute_streaming(self.request),
+            self.jsonpath_expression,
+        )
+    }
 
-        JsonPathStream::new(http_stream, jsonpath_expr)
+    /// Internal method to execute JSONPath request with specified HTTP method
+    #[inline]
+    fn execute_jsonpath_with_method<T: DeserializeOwned + MessageChunk + FluentMessageChunk>(
+        mut self,
+        method: Method,
+        url: &str,
+    ) -> JsonPathStream<T> {
+        *self.request.method_mut() = method;
+        *self.request.uri_mut() = url.parse().unwrap_or_else(|_| {
+            log::error!("Invalid URL: {}", url);
+            "http://invalid".parse().unwrap()
+        });
+
+        if self.debug_enabled {
+            log::debug!(
+                "HTTP3 Builder: {} {} (JSONPath: {})",
+                method,
+                url,
+                self.jsonpath_expression
+            );
+            if let Some(body) = self.request.body() {
+                log::debug!("HTTP3 Builder: Request body size: {} bytes", body.len());
+            }
+        }
+
+        JsonPathStream::new(
+            self.client.execute_streaming(self.request),
+            self.jsonpath_expression,
+        )
     }
 }

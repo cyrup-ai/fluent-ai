@@ -1,16 +1,17 @@
-//! Core Http3Builder struct and foundational methods
+//! Core Http3Builder with pure AsyncStream architecture - NO Futures
 //!
-//! Contains the main Http3Builder struct definition and basic construction methods
-//! for building HTTP requests with zero allocation and elegant fluent interface.
+//! ALL methods return AsyncStream<T, CAP> directly from fluent_ai_async
+//! NO middleware, NO abstractions - pure streaming protocols
 
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use fluent_ai_async::prelude::ChunkHandler;
+use fluent_ai_async::prelude::MessageChunk;
+use fluent_ai_async::{AsyncStream, emit};
 use http::Method;
 
-use super::content_type::ContentType;
-use super::state_types::{BodyNotSet, JsonPathStreaming};
+pub use super::content_type::ContentType;
+pub use super::state_types::{BodyNotSet, BodySet, JsonPathStreaming};
 use crate::{HttpChunk, HttpClient, HttpError, HttpRequest};
 
 /// Main Http3 builder for constructing HTTP requests with fluent API

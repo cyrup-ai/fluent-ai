@@ -3,10 +3,12 @@
 //! Handles property path evaluation and recursive property finding operations.
 
 mod core;
-mod recursive;
 mod extensions;
+mod pattern_matching;
+mod recursive;
 #[cfg(test)]
 mod tests;
+mod utilities;
 
 // Re-export the main struct for public API compatibility
 pub use core::PropertyOperations;

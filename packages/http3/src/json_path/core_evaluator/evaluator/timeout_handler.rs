@@ -6,7 +6,9 @@
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+
 use serde_json::Value;
+
 use super::core_types::{CoreJsonPathEvaluator, JsonPathResult};
 
 /// Configuration for timeout handling
@@ -103,10 +105,10 @@ impl TimeoutHandler {
     /// Internal evaluation method (static to avoid self reference in thread)
     fn evaluate_internal(expression: &str, json: &Value) -> JsonPathResult<Vec<Value>> {
         use super::evaluation_engine::EvaluationEngine;
-        
+
         // Create temporary evaluator instance for method calls
         let temp_evaluator = CoreJsonPathEvaluator::create_temp_evaluator(expression)?;
-        
+
         // Delegate to evaluation engine
         EvaluationEngine::evaluate_expression(&temp_evaluator, json)
     }
@@ -118,27 +120,27 @@ impl TimeoutHandler {
         expression.contains("*") ||   // Wildcard
         expression.contains("[?") ||  // Filters
         expression.contains("[:") ||  // Slices
-        expression.matches('[').count() > 3  // Deep nesting
+        expression.matches('[').count() > 3 // Deep nesting
     }
 
     /// Estimate evaluation complexity
     pub fn estimate_complexity(expression: &str) -> u32 {
         let mut complexity = 1;
-        
+
         // Add complexity for expensive operations
-        complexity += expression.matches("..").count() as u32 * 50;  // Recursive descent
-        complexity += expression.matches("*").count() as u32 * 10;   // Wildcard
-        complexity += expression.matches("[?").count() as u32 * 20;  // Filters
-        complexity += expression.matches("[:").count() as u32 * 5;   // Slices
-        complexity += expression.matches('[').count() as u32 * 2;    // Array access
-        
+        complexity += expression.matches("..").count() as u32 * 50; // Recursive descent
+        complexity += expression.matches("*").count() as u32 * 10; // Wildcard
+        complexity += expression.matches("[?").count() as u32 * 20; // Filters
+        complexity += expression.matches("[:").count() as u32 * 5; // Slices
+        complexity += expression.matches('[').count() as u32 * 2; // Array access
+
         complexity
     }
 
     /// Get recommended timeout for expression
     pub fn recommended_timeout(expression: &str) -> Duration {
         let complexity = Self::estimate_complexity(expression);
-        
+
         match complexity {
             0..=10 => Duration::from_millis(100),
             11..=50 => Duration::from_millis(500),
@@ -150,8 +152,9 @@ impl TimeoutHandler {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_timeout_config_default() {
@@ -174,10 +177,12 @@ mod tests {
     fn test_is_potentially_slow() {
         assert!(TimeoutHandler::is_potentially_slow("$..book"));
         assert!(TimeoutHandler::is_potentially_slow("$.store.*"));
-        assert!(TimeoutHandler::is_potentially_slow("$.store.book[?(@.price < 10)]"));
+        assert!(TimeoutHandler::is_potentially_slow(
+            "$.store.book[?(@.price < 10)]"
+        ));
         assert!(TimeoutHandler::is_potentially_slow("$.store.book[1:3]"));
         assert!(TimeoutHandler::is_potentially_slow("$.a[0].b[1].c[2].d[3]"));
-        
+
         assert!(!TimeoutHandler::is_potentially_slow("$.store.book"));
         assert!(!TimeoutHandler::is_potentially_slow("$.simple"));
     }
@@ -187,7 +192,10 @@ mod tests {
         assert_eq!(TimeoutHandler::estimate_complexity("$.simple"), 1);
         assert_eq!(TimeoutHandler::estimate_complexity("$..book"), 51); // 1 + 50
         assert_eq!(TimeoutHandler::estimate_complexity("$.store.*"), 11); // 1 + 10
-        assert_eq!(TimeoutHandler::estimate_complexity("$.book[?(@.price)]"), 23); // 1 + 20 + 2
+        assert_eq!(
+            TimeoutHandler::estimate_complexity("$.book[?(@.price)]"),
+            23
+        ); // 1 + 20 + 2
         assert_eq!(TimeoutHandler::estimate_complexity("$.book[1:3]"), 8); // 1 + 5 + 2
     }
 
@@ -215,7 +223,7 @@ mod tests {
     fn test_timeout_handler_simple_evaluation() {
         let evaluator = CoreJsonPathEvaluator::new("$.test").unwrap();
         let json = json!({"test": "value"});
-        
+
         let result = TimeoutHandler::evaluate_with_timeout(&evaluator, &json, None);
         assert!(result.is_ok());
     }
@@ -224,12 +232,12 @@ mod tests {
     fn test_timeout_handler_with_custom_config() {
         let evaluator = CoreJsonPathEvaluator::new("$.test").unwrap();
         let json = json!({"test": "value"});
-        
+
         let config = TimeoutConfig {
             timeout_duration: Duration::from_millis(100),
             log_timeouts: false,
         };
-        
+
         let result = TimeoutHandler::evaluate_with_timeout(&evaluator, &json, Some(config));
         assert!(result.is_ok());
     }

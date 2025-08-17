@@ -14,4 +14,6 @@ pub mod headers;
 pub use core::HttpResponse;
 
 pub use body::{JsonStream, SseEvent};
-pub use chunk::{HttpDownloadChunk, HttpRequestChunk, HttpResponseChunk};
+pub use chunk::{HttpDownloadChunk, HttpRequestChunk};
+
+pub use crate::types::HttpResponseChunk;

@@ -9,7 +9,7 @@ impl HttpResponse {
     /// Get header value by name (case-insensitive)
     #[must_use]
     pub fn header(&self, key: &str) -> Option<&String> {
-        self.headers().get(key)
+        &self.headers.get(key)
     }
 
     /// Get `Content-Type` header value

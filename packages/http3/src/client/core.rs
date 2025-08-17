@@ -1,16 +1,17 @@
-//! Core HTTP client structure and basic functionality
+//! Core HTTP client structure with pure AsyncStream architecture
 //!
-//! Provides the foundational HttpClient struct with essential accessor methods
-//! and basic functionality for HTTP operations.
+//! Provides the foundational HttpClient struct using fluent_ai_async directly
+//! with NO middleware, NO abstractions - pure streaming protocols
+
+use fluent_ai_async::prelude::MessageChunk;
+use fluent_ai_async::{AsyncStream, emit};
 
 use super::{ClientStats, ClientStatsSnapshot};
-use crate::HttpConfig;
+use crate::{HttpChunk, HttpConfig, HttpRequest};
 
-/// Lightweight HTTP client that orchestrates specialized operation modules
+/// Pure streaming HTTP client using fluent_ai_async directly - NO middleware
 #[derive(Debug, Clone)]
 pub struct HttpClient {
-    /// Underlying HTTP client (delegated to operation modules)
-    pub(crate) inner: crate::hyper::Client,
     /// Client configuration
     pub(crate) config: HttpConfig,
     /// Atomic metrics for lock-free statistics
@@ -18,26 +19,53 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
-    /// Create new HttpClient with provided components
-    ///
-    /// This is an internal constructor used by the configuration module.
-    /// External users should use `HttpClient::with_config()` or `HttpClient::default()`.
+    /// Create new HttpClient with direct fluent_ai_async streaming - NO middleware
     #[inline]
-    pub(crate) fn new(inner: crate::hyper::Client, config: HttpConfig, stats: ClientStats) -> Self {
-        Self {
-            inner,
-            config,
-            stats,
-        }
+    pub(crate) fn new_direct(config: HttpConfig, stats: ClientStats) -> Self {
+        Self { config, stats }
     }
 
-    /// Returns a reference to the inner `crate::hyper::Client`.
-    ///
-    /// Provides access to the underlying HTTP client for advanced operations
-    /// that require direct http3 functionality.
+    /// Execute request using direct H2/H3/Quiche protocols - NO middleware
     #[inline]
-    pub fn inner(&self) -> &crate::hyper::Client {
-        &self.inner
+    pub fn execute_direct_streaming(&self, request: HttpRequest) -> AsyncStream<HttpChunk, 1024> {
+        AsyncStream::with_channel(move |sender| {
+            // Determine protocol based on URL scheme and server capabilities
+            let uri = request.uri();
+            let scheme = uri.scheme_str().unwrap_or("https");
+
+            match scheme {
+                "https" => {
+                    // Try H3 first, fallback to H2
+                    let h3_stream =
+                        crate::async_impl::connection::h3_connection::H3Connection::new()
+                            .connect_and_request(request.clone());
+
+                    // Forward H3 chunks, converting to HttpChunk
+                    for h3_chunk in h3_stream {
+                        let http_chunk = HttpChunk::from_h3_chunk(h3_chunk);
+                        emit!(sender, http_chunk);
+                    }
+                }
+                "http" => {
+                    // Use H2 for HTTP
+                    let h2_stream =
+                        crate::async_impl::connection::h2_connection::H2ConnectionManager::new()
+                            .establish_connection_stream(request);
+
+                    // Forward H2 chunks, converting to HttpChunk
+                    for h2_chunk in h2_stream {
+                        let http_chunk = HttpChunk::from_h2_chunk(h2_chunk);
+                        emit!(sender, http_chunk);
+                    }
+                }
+                _ => {
+                    emit!(
+                        sender,
+                        HttpChunk::bad_chunk(format!("Unsupported scheme: {}", scheme))
+                    );
+                }
+            }
+        })
     }
 
     /// Returns a reference to the `HttpConfig`.

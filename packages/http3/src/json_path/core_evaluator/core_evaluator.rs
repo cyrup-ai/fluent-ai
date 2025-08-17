@@ -3,6 +3,7 @@
 //! Contains the main CoreJsonPathEvaluator struct definition and basic construction methods.
 
 use serde_json::Value;
+
 use crate::json_path::error::JsonPathError;
 use crate::json_path::parser::{JsonPathParser, JsonSelector};
 

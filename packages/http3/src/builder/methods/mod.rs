@@ -15,9 +15,9 @@ pub mod jsonpath_methods;
 pub mod no_body_methods;
 
 // Re-export all method implementations for backward compatibility
-pub use body_methods::*;
-pub use jsonpath_methods::*;
-pub use no_body_methods::*;
+pub use body_methods::{BodyMethods, PatchMethod, PostMethod, PutMethod};
+pub use jsonpath_methods::{JsonPathGetMethod, JsonPathMethods, JsonPathPostMethod};
+pub use no_body_methods::{DeleteMethod, DownloadMethod, GetMethod, NoBodyMethods};
 
 #[cfg(test)]
 mod tests {
@@ -28,7 +28,7 @@ mod tests {
     use crate::client::HttpClient;
 
     fn create_test_client() -> Arc<HttpClient> {
-        Arc::new(HttpClient::new())
+        Arc::new(HttpClient::default())
     }
 
     #[test]

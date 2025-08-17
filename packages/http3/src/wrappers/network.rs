@@ -5,6 +5,54 @@ use std::net::TcpStream;
 
 use fluent_ai_async::prelude::MessageChunk;
 
+/// Wrapper for DNS resolution results
+#[derive(Debug, Clone, Default)]
+pub struct DnsWrapper {
+    pub addresses: Vec<std::net::SocketAddr>,
+    pub error_message: Option<String>,
+}
+
+impl MessageChunk for DnsWrapper {
+    fn bad_chunk(error: String) -> Self {
+        Self {
+            addresses: Vec::new(),
+            error_message: Some(error),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
+/// Wrapper for socket addresses to implement MessageChunk
+#[derive(Debug, Clone, Default)]
+pub struct SocketAddrWrapper {
+    pub address: Option<std::net::SocketAddr>,
+    pub error_message: Option<String>,
+}
+
+impl MessageChunk for SocketAddrWrapper {
+    fn bad_chunk(error: String) -> Self {
+        Self {
+            address: None,
+            error_message: Some(error),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
 /// Wrapper for TcpStream to implement MessageChunk
 #[derive(Debug)]
 pub struct TcpStreamWrapper {
@@ -154,48 +202,6 @@ impl
             connection,
             tls_info,
         }
-    }
-}
-
-/// Wrapper for ConnResult to implement MessageChunk
-#[derive(Debug, Clone)]
-pub struct ConnResultWrapper<T> {
-    pub result: crate::hyper::async_stream_service::ConnResult<T>,
-}
-
-impl<T> MessageChunk for ConnResultWrapper<T> {
-    fn bad_chunk(error: String) -> Self {
-        Self {
-            result: crate::hyper::async_stream_service::ConnResult::Error(error),
-        }
-    }
-
-    fn is_error(&self) -> bool {
-        matches!(
-            self.result,
-            crate::hyper::async_stream_service::ConnResult::Error(_)
-                | crate::hyper::async_stream_service::ConnResult::Timeout
-        )
-    }
-
-    fn error(&self) -> Option<&str> {
-        match &self.result {
-            crate::hyper::async_stream_service::ConnResult::Error(msg) => Some(msg),
-            crate::hyper::async_stream_service::ConnResult::Timeout => Some("Connection timeout"),
-            _ => None,
-        }
-    }
-}
-
-impl<T> Default for ConnResultWrapper<T> {
-    fn default() -> Self {
-        Self::bad_chunk("Default ConnResult".to_string())
-    }
-}
-
-impl<T> From<crate::hyper::async_stream_service::ConnResult<T>> for ConnResultWrapper<T> {
-    fn from(result: crate::hyper::async_stream_service::ConnResult<T>) -> Self {
-        Self { result }
     }
 }
 

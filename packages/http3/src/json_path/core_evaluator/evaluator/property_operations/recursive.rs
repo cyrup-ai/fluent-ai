@@ -15,11 +15,7 @@ impl PropertyOperations {
     }
 
     /// Internal implementation for recursive property finding
-    fn find_property_recursive_impl(
-        json: &Value,
-        property: &str,
-        results: &mut Vec<Value>,
-    ) {
+    fn find_property_recursive_impl(json: &Value, property: &str, results: &mut Vec<Value>) {
         match json {
             Value::Object(obj) => {
                 // Check if this object has the property
@@ -44,10 +40,7 @@ impl PropertyOperations {
     }
 
     /// Find all properties matching a pattern
-    pub fn find_properties_matching(
-        json: &Value,
-        pattern: &str,
-    ) -> Vec<(String, Value)> {
+    pub fn find_properties_matching(json: &Value, pattern: &str) -> Vec<(String, Value)> {
         let mut results = Vec::new();
         Self::find_properties_matching_impl(json, pattern, "", &mut results);
         results
@@ -101,7 +94,7 @@ impl PropertyOperations {
         if pattern == "*" {
             return true;
         }
-        
+
         if pattern.contains('*') {
             // Simple wildcard matching
             let parts: Vec<&str> = pattern.split('*').collect();
@@ -111,7 +104,7 @@ impl PropertyOperations {
                 return text.starts_with(prefix) && text.ends_with(suffix);
             }
         }
-        
+
         text == pattern
     }
 
@@ -132,7 +125,8 @@ impl PropertyOperations {
             }
             Value::Array(arr) => {
                 // Check recursively in all array elements
-                arr.iter().any(|value| Self::has_property_recursive(value, property))
+                arr.iter()
+                    .any(|value| Self::has_property_recursive(value, property))
             }
             _ => false,
         }

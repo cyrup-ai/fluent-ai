@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 }
 
 /// Cache-aware HTTP stream that checks cache before making requests using AsyncStream
-pub fn cached_stream<F>(cache_key: CacheKey, operation: F) -> AsyncStream<HttpResponse>
+pub fn cached_stream<F>(cache_key: CacheKey, operation: F) -> AsyncStream<HttpResponse, 1024>
 where
     F: Fn() -> HttpResult<HttpResponse> + Send + Sync + 'static,
 {

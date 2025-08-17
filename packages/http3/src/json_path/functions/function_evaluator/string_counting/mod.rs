@@ -3,6 +3,7 @@
 //! Provides string length and count operations for JSONPath expressions.
 
 use serde_json::Value;
+
 use crate::json_path::error::JsonPathResult;
 
 /// Evaluate length function on a JSON value

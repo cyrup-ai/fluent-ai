@@ -41,7 +41,7 @@ where
     }
 
     /// Process HTTP chunks into deserialized objects stream
-    pub fn process_chunks<I>(mut self, chunks: I) -> AsyncStream<T>
+    pub fn process_chunks<I>(mut self, chunks: I) -> AsyncStream<T, 1024>
     where
         I: Iterator<Item = HttpChunk> + Send + 'static,
         T: MessageChunk + FluentMessageChunk + Default + Send + 'static,
@@ -99,7 +99,7 @@ where
     }
 
     /// Process HTTP response body into streaming objects
-    pub fn process_body<B>(mut self, body: B) -> AsyncStream<T>
+    pub fn process_body<B>(mut self, body: B) -> AsyncStream<T, 1024>
     where
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static + Unpin,
         B::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send + Sync + 'static,

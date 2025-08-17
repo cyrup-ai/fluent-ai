@@ -4,8 +4,9 @@
 //! for JSONPath processing with RFC 9535 compliance.
 
 use serde_json::Value;
-use crate::json_path::parser::JsonSelector;
+
 use super::super::core_types::JsonPathResult;
+use crate::json_path::parser::JsonSelector;
 
 /// Operations for handling descendant traversal in JSONPath expressions
 pub struct DescendantOperations;
@@ -19,7 +20,7 @@ impl DescendantOperations {
     ) -> JsonPathResult<()> {
         // Apply selectors to current node
         let mut current_results = vec![node.clone()];
-        
+
         for selector in remaining_selectors {
             let mut next_results = Vec::new();
             for current_value in &current_results {
@@ -28,7 +29,7 @@ impl DescendantOperations {
             }
             current_results = next_results;
         }
-        
+
         results.extend(current_results);
 
         // Recursively apply to descendants

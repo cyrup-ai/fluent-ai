@@ -3,13 +3,17 @@
 //! Contains methods for applying individual selectors to JSON values.
 
 use serde_json::Value;
-use crate::json_path::parser::JsonSelector;
 
 use super::core_evaluator::{CoreJsonPathEvaluator, JsonPathResult};
+use crate::json_path::parser::JsonSelector;
 
 impl CoreJsonPathEvaluator {
     /// Apply a single selector to a JSON value
-    pub fn apply_selector_to_value(&self, value: &Value, selector: &JsonSelector) -> JsonPathResult<Vec<Value>> {
+    pub fn apply_selector_to_value(
+        &self,
+        value: &Value,
+        selector: &JsonSelector,
+    ) -> JsonPathResult<Vec<Value>> {
         match selector {
             JsonSelector::Root => {
                 // Root selector - return the value as-is
@@ -39,7 +43,7 @@ impl CoreJsonPathEvaluator {
                         } else {
                             *index
                         };
-                        
+
                         if actual_index >= 0 && (actual_index as usize) < arr.len() {
                             Ok(vec![arr[actual_index as usize].clone()])
                         } else {
@@ -55,12 +59,12 @@ impl CoreJsonPathEvaluator {
                     Value::Array(arr) => {
                         let len = arr.len() as i64;
                         let mut results = Vec::new();
-                        
+
                         // Normalize slice parameters
                         let start_idx = start.unwrap_or(0);
                         let end_idx = end.unwrap_or(len);
                         let step_size = step.unwrap_or(1);
-                        
+
                         if step_size == 0 {
                             return Err(crate::json_path::error::invalid_expression_error(
                                 &self.expression,
@@ -68,16 +72,17 @@ impl CoreJsonPathEvaluator {
                                 None,
                             ));
                         }
-                        
+
                         let mut current = start_idx;
-                        while (step_size > 0 && current < end_idx && current < len) ||
-                              (step_size < 0 && current > end_idx && current >= 0) {
+                        while (step_size > 0 && current < end_idx && current < len)
+                            || (step_size < 0 && current > end_idx && current >= 0)
+                        {
                             if current >= 0 && (current as usize) < arr.len() {
                                 results.push(arr[current as usize].clone());
                             }
                             current += step_size;
                         }
-                        
+
                         Ok(results)
                     }
                     _ => Ok(vec![]), // Non-arrays don't support slicing
@@ -86,12 +91,8 @@ impl CoreJsonPathEvaluator {
             JsonSelector::Wildcard => {
                 // Wildcard selector - return all values
                 match value {
-                    Value::Object(obj) => {
-                        Ok(obj.values().cloned().collect())
-                    }
-                    Value::Array(arr) => {
-                        Ok(arr.clone())
-                    }
+                    Value::Object(obj) => Ok(obj.values().cloned().collect()),
+                    Value::Array(arr) => Ok(arr.clone()),
                     _ => Ok(vec![]), // Primitives have no children
                 }
             }

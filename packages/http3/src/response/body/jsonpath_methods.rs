@@ -44,15 +44,15 @@ impl HttpResponse {
     ///     .collect();
     /// ```
     #[must_use]
-    pub fn jsonpath_stream<T>(&self, jsonpath_expr: &str) -> AsyncStream<T>
+    pub fn jsonpath_stream<T>(&self, jsonpath_expr: &str) -> AsyncStream<T, 1024>
     where
         T: DeserializeOwned + MessageChunk + FluentMessageChunk + Default + Send + 'static,
     {
         let stream_processor = JsonStreamProcessor::<T>::new(jsonpath_expr);
-        let response_bytes = Bytes::from(self.body().to_vec());
+        let response_bytes = Bytes::copy_from_slice(&self.body);
 
         // Process the entire response body through JSONPath filtering
-        stream_processor.process_body(response_bytes)
+        stream_processor.process_bytes(response_bytes)
     }
 
     /// Extract the first object matching a JSONPath expression

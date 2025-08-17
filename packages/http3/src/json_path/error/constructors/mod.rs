@@ -10,6 +10,7 @@ mod tests;
 
 // Re-export all constructor functions for public API compatibility
 pub use core::*;
+
 pub use helpers::*;
 
 use super::types::JsonPathError;

@@ -23,12 +23,22 @@ impl DescendantOperations {
             match node {
                 Value::Object(obj) => {
                     for value in obj.values() {
-                        Self::collect_descendants_at_depth(value, target_depth, current_depth + 1, results);
+                        Self::collect_descendants_at_depth(
+                            value,
+                            target_depth,
+                            current_depth + 1,
+                            results,
+                        );
                     }
                 }
                 Value::Array(arr) => {
                     for value in arr {
-                        Self::collect_descendants_at_depth(value, target_depth, current_depth + 1, results);
+                        Self::collect_descendants_at_depth(
+                            value,
+                            target_depth,
+                            current_depth + 1,
+                            results,
+                        );
                     }
                 }
                 _ => {}

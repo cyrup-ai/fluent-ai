@@ -7,10 +7,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
-use crate::json_path::error::JsonPathError;
-use crate::json_path::parser::{JsonPathParser, JsonSelector};
 
 use super::core_evaluator::{CoreJsonPathEvaluator, JsonPathResult};
+use crate::json_path::error::JsonPathError;
+use crate::json_path::parser::{JsonPathParser, JsonSelector};
 
 impl CoreJsonPathEvaluator {
     /// Evaluate with timeout protection to prevent excessive processing time
