@@ -9,17 +9,22 @@ use fluent_ai_async::prelude::*;
 
 use super::h2::{H2Connection, H2Stream};
 use super::h3::{H3Connection, H3Stream};
-use crate::streaming::chunks::{FrameChunk, H2Frame, H3Frame};
+use crate::protocols::frames::{FrameChunk, H2Frame, H3Frame};
 
 /// Unified connection type for H2/H3 protocols
 ///
 /// This is the CANONICAL Connection implementation that consolidates
 /// all protocol-specific connection handling into a single type.
-#[derive(Debug)]
 pub enum Connection {
     H2(H2Connection),
     H3(H3Connection),
     Error(String),
+}
+
+impl Default for Connection {
+    fn default() -> Self {
+        Connection::new_h2(true)
+    }
 }
 
 impl MessageChunk for Connection {
@@ -40,16 +45,54 @@ impl MessageChunk for Connection {
 }
 
 impl Connection {
-    /// Create new H2 connection
+    /// Create new H2 connection with real network addresses
     #[inline]
-    pub fn new_h2(is_client: bool) -> Self {
-        Connection::H2(H2Connection::new(is_client))
+    pub fn new_h2_with_addr(local_addr: std::net::SocketAddr, remote_addr: std::net::SocketAddr) -> Self {
+        Connection::H2(H2Connection::new())
     }
 
-    /// Create new H3 connection
+    /// Create new H3 connection with real network addresses
     #[inline]
+    pub fn new_h3_with_addr(local_addr: std::net::SocketAddr, remote_addr: std::net::SocketAddr) -> Self {
+        let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION).unwrap();
+        config.set_application_protos(&[b"h3"]).unwrap();
+        config.set_max_idle_timeout(30000);
+        config.set_max_recv_udp_payload_size(1350);
+        config.set_max_send_udp_payload_size(1350);
+        config.set_initial_max_data(10_000_000);
+        config.set_initial_max_stream_data_bidi_local(1_000_000);
+        config.set_initial_max_stream_data_bidi_remote(1_000_000);
+        config.set_initial_max_streams_bidi(100);
+        config.set_initial_max_streams_uni(100);
+        config.set_disable_active_migration(true);
+        
+        let scid = quiche::ConnectionId::from_ref(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+        let conn = quiche::connect(None, &scid, local_addr, remote_addr, &mut config).unwrap();
+        
+        Connection::H3(H3Connection::new(
+            conn,
+            crate::protocols::core::TimeoutConfig::default(),
+        ))
+    }
+
+    /// Create new H2 connection (deprecated - use new_h2_with_addr)
+    #[inline]
+    #[deprecated(note = "Use new_h2_with_addr for real network connections")]
+    pub fn new_h2(is_client: bool) -> Self {
+        Self::new_h2_with_addr(
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1:0".parse().unwrap()
+        )
+    }
+
+    /// Create new H3 connection (deprecated - use new_h3_with_addr)
+    #[inline]
+    #[deprecated(note = "Use new_h3_with_addr for real network connections")]
     pub fn new_h3(is_client: bool) -> Self {
-        Connection::H3(H3Connection::new(is_client))
+        Self::new_h3_with_addr(
+            "127.0.0.1:0".parse().unwrap(),
+            "127.0.0.1:0".parse().unwrap()
+        )
     }
 
     /// Check if connection is H2
@@ -137,7 +180,6 @@ impl Connection {
 /// Connection manager using ONLY AsyncStream patterns
 ///
 /// This is the CANONICAL ConnectionManager that handles all protocol connections.
-#[derive(Debug)]
 pub struct ConnectionManager {
     connections: HashMap<String, Connection>,
     next_connection_id: u64,
@@ -172,7 +214,8 @@ impl ConnectionManager {
     pub fn create_h2_connection(&mut self, is_client: bool) -> AsyncStream<Connection, 1024> {
         let connection_id = self.next_id();
         let connection = Connection::new_h2(is_client);
-        self.connections.insert(connection_id, connection.clone());
+        let connection_for_storage = Connection::new_h2(is_client);
+        self.connections.insert(connection_id, connection_for_storage);
 
         AsyncStream::with_channel(move |sender| {
             emit!(sender, connection);
@@ -183,7 +226,8 @@ impl ConnectionManager {
     pub fn create_h3_connection(&mut self, is_client: bool) -> AsyncStream<Connection, 1024> {
         let connection_id = self.next_id();
         let connection = Connection::new_h3(is_client);
-        self.connections.insert(connection_id, connection.clone());
+        let connection_for_storage = Connection::new_h3(is_client);
+        self.connections.insert(connection_id, connection_for_storage);
 
         AsyncStream::with_channel(move |sender| {
             emit!(sender, connection);

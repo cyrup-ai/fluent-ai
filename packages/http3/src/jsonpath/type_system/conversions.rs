@@ -181,31 +181,4 @@ impl TypeSystem {
             }
         }
     }
-
-    /// Convert JSON value to logical type using test expression conversion
-    ///
-    /// RFC 9535: ValueType to LogicalType conversion uses the "truthiness" rules:
-    /// - false and null are false
-    /// - Numbers: zero is false, all others are true  
-    /// - Strings: empty string is false, all others are true
-    /// - Arrays and objects: always true (even if empty)
-    #[inline]
-    fn value_to_logical(value: &serde_json::Value) -> bool {
-        match value {
-            serde_json::Value::Null => false,
-            serde_json::Value::Bool(b) => *b,
-            serde_json::Value::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    i != 0
-                } else if let Some(f) = n.as_f64() {
-                    f != 0.0 && !f.is_nan()
-                } else {
-                    false
-                }
-            }
-            serde_json::Value::String(s) => !s.is_empty(),
-            serde_json::Value::Array(_) => true, // Always true, even if empty
-            serde_json::Value::Object(_) => true, // Always true, even if empty
-        }
-    }
 }

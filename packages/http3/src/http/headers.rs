@@ -8,6 +8,8 @@ use thiserror::Error;
 #[derive(Debug, Clone, Default)]
 pub struct HeaderManager {
     headers: HeaderMap,
+    /// Internal error state for deferred error handling
+    error: Option<String>,
 }
 
 impl HeaderManager {
@@ -15,38 +17,70 @@ impl HeaderManager {
     pub fn new() -> Self {
         HeaderManager {
             headers: HeaderMap::new(),
+            error: None,
         }
     }
 
     /// Sets a header, consuming the manager and returning a new one.
     pub fn set(mut self, key: HeaderName, value: HeaderValue) -> Self {
+        // If there's already an error, preserve it
+        if self.error.is_some() {
+            return self;
+        }
         self.headers.insert(key, value);
         self
     }
 
     /// Sets the Content-Type header.
-    pub fn content_type(self, content_type: &str) -> Result<Self, HeaderError> {
-        let value = HeaderValue::from_str(content_type)?;
-        Ok(self.set(header::CONTENT_TYPE, value))
+    pub fn content_type(self, content_type: &str) -> Self {
+        match HeaderValue::from_str(content_type) {
+            Ok(value) => self.set(header::CONTENT_TYPE, value),
+            Err(e) => Self {
+                headers: self.headers,
+                error: Some(format!("Invalid Content-Type header: {}", e)),
+            },
+        }
     }
 
     /// Sets the Authorization header with a bearer token.
-    pub fn bearer_token(self, token: &str) -> Result<Self, HeaderError> {
-        let value = HeaderValue::from_str(&format!("Bearer {}", token))?;
-        Ok(self.set(header::AUTHORIZATION, value))
+    pub fn bearer_token(self, token: &str) -> Self {
+        let auth_header = format!("Bearer {}", token);
+        match HeaderValue::from_str(&auth_header) {
+            Ok(value) => self.set(header::AUTHORIZATION, value),
+            Err(e) => Self {
+                headers: self.headers,
+                error: Some(format!("Invalid bearer token: {}", e)),
+            },
+        }
     }
 
     /// Sets basic authentication.
-    pub fn basic_auth(self, user: &str, pass: Option<&str>) -> Result<Self, HeaderError> {
+    pub fn basic_auth(self, user: &str, pass: Option<&str>) -> Self {
         let credentials = format!("{}:{}", user, pass.unwrap_or_default());
         let encoded = general_purpose::STANDARD.encode(credentials);
-        let value = HeaderValue::from_str(&format!("Basic {}", encoded))?;
-        Ok(self.set(header::AUTHORIZATION, value))
+        let auth_header = format!("Basic {}", encoded);
+        match HeaderValue::from_str(&auth_header) {
+            Ok(value) => self.set(header::AUTHORIZATION, value),
+            Err(e) => Self {
+                headers: self.headers,
+                error: Some(format!("Invalid basic auth credentials: {}", e)),
+            },
+        }
     }
 
     /// Returns the underlying `HeaderMap`.
     pub fn build(self) -> HeaderMap {
         self.headers
+    }
+
+    /// Check if there were any header validation errors
+    pub fn has_error(&self) -> bool {
+        self.error.is_some()
+    }
+
+    /// Get the error message if any
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
     }
 }
 
@@ -124,23 +158,15 @@ pub fn validate_header(name: &str, value: &str) -> Result<(), crate::error::Http
 /// Create header value from string
 #[inline]
 pub fn create_header_value(value: &str) -> Result<HeaderValue, crate::error::HttpError> {
-    HeaderValue::from_str(value).map_err(|e| crate::error::HttpError::InvalidHeader {
-        message: e.to_string(),
-        name: "unknown".to_string(),
-        value: Some(value.to_string()),
-        error_source: None,
-    })
+    HeaderValue::from_str(value)
+        .map_err(|e| crate::error::invalid_header(format!("Invalid header value: {}", e)))
 }
 
 /// Create header name from string
 #[inline]
 pub fn create_header_name(name: &str) -> Result<HeaderName, crate::error::HttpError> {
-    HeaderName::from_bytes(name.as_bytes()).map_err(|e| crate::error::HttpError::InvalidHeader {
-        message: e.to_string(),
-        name: name.to_string(),
-        value: None,
-        error_source: None,
-    })
+    HeaderName::from_bytes(name.as_bytes())
+        .map_err(|e| crate::error::invalid_header(format!("Invalid header name: {}", e)))
 }
 
 /// Merge header maps with conflict resolution

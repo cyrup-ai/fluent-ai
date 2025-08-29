@@ -11,7 +11,7 @@ use native_tls_crate as native_tls;
 #[cfg(feature = "__rustls")]
 use rustls;
 
-use crate::hyper::error::BoxError;
+use crate::error::BoxError;
 
 /// Builder for HTTP/3 connectors with configuration options
 #[derive(Clone, Debug)]
@@ -27,7 +27,7 @@ pub struct ConnectorBuilder {
     pub(super) tls_connector: Option<native_tls::TlsConnector>,
     #[cfg(feature = "__rustls")]
     pub(super) rustls_config: Option<rustls::ClientConfig>,
-    pub(super) proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+    pub(super) proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
     pub(super) user_agent: Option<http::HeaderValue>,
     pub(super) local_address: Option<std::net::IpAddr>,
     pub(super) interface: Option<String>,

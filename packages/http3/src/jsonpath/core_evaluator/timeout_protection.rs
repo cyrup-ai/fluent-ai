@@ -31,13 +31,14 @@ impl TimeoutProtectedEvaluator {
         let start_time = Instant::now();
 
         let (tx, rx) = mpsc::channel();
-        let expression = expression.to_string();
+        let expression_str = expression.to_string();
+        let expression_str_for_error = expression_str.clone(); // Clone for error message
         let json_clone = json.clone();
 
         // Spawn evaluation in separate thread
         let handle = thread::spawn(move || {
             log::debug!("Starting JSONPath evaluation in timeout thread");
-            let result = Self::evaluate_internal(&expression, &json_clone);
+            let result = Self::evaluate_internal(&expression_str, &json_clone);
             log::debug!("JSONPath evaluation completed in thread");
             let _ = tx.send(result); // Ignore send errors if receiver dropped
         });
@@ -58,14 +59,18 @@ impl TimeoutProtectedEvaluator {
                     "JSONPath evaluation timed out after {:?} - likely deep nesting issue",
                     elapsed
                 );
-                Err(JsonPathError::InvalidExpression(format!(
-                    "Expression '{}' timed out after {}ms",
-                    expression, timeout_ms
-                )))
+                Err(JsonPathError::new(
+                    crate::jsonpath::error::ErrorKind::ProcessingError,
+                    format!(
+                        "Expression '{}' timed out after {}ms",
+                        expression_str_for_error, timeout_ms
+                    ),
+                ))
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => {
                 log::error!("JSONPath evaluation thread disconnected unexpectedly");
-                Err(JsonPathError::InvalidExpression(
+                Err(JsonPathError::new(
+                    crate::jsonpath::error::ErrorKind::ProcessingError,
                     "Evaluation thread disconnected".to_string(),
                 ))
             }
@@ -117,7 +122,6 @@ impl TimeoutProtectedEvaluator {
         selector: &crate::jsonpath::parser::JsonSelector,
     ) -> JsonPathResult<Vec<Value>> {
         use super::selector_engine::SelectorEngine;
-        use crate::jsonpath::parser::JsonSelector;
 
         SelectorEngine::apply_selector(value, selector)
     }

@@ -44,7 +44,9 @@ mod tests {
             .expect("could not create JS request");
         let text_promise = js_req.text().expect("could not get text promise");
         let text = crate::wasm::promise::<JsValue>(text_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get request body as text");
 
         assert_eq!(text.as_string().expect("text is not a string"), body_value);
@@ -67,7 +69,9 @@ mod tests {
             .expect("could not create JS request");
         let text_promise = js_req.text().expect("could not get text promise");
         let text = crate::wasm::promise::<JsValue>(text_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get request body as text");
 
         assert_eq!(text.as_string().expect("text is not a string"), body_value);
@@ -93,7 +97,9 @@ mod tests {
             .array_buffer()
             .expect("could not get array_buffer promise");
         let array_buffer = crate::wasm::promise::<JsValue>(array_buffer_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get request body as array buffer");
 
         let v = Uint8Array::new(&array_buffer).to_vec();
@@ -121,7 +127,9 @@ mod tests {
             .array_buffer()
             .expect("could not get array_buffer promise");
         let array_buffer = crate::wasm::promise::<JsValue>(array_buffer_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get request body as array buffer");
 
         let v = Uint8Array::new(&array_buffer).to_vec();

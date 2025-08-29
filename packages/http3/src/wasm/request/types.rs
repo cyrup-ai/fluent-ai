@@ -52,6 +52,9 @@ pub struct WasmRequest {
     pub cache: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
     pub mode: Option<String>,
+    
+    /// Error message for MessageChunk implementation
+    pub error_message: Option<String>,
 }
 
 impl WasmRequest {
@@ -84,41 +87,42 @@ impl WasmRequest {
             cache: None,
             #[cfg(not(target_arch = "wasm32"))]
             mode: None,
+            error_message: None,
         }
     }
 
     /// Create WASM request from method and URL
     #[inline]
     pub fn from_parts(method: Method, url: Url) -> Self {
-        Self::new(HttpRequest::new(method, url))
+        Self::new(HttpRequest::new(method, url, None, None, None))
     }
 
     /// Create GET request
     #[inline]
     pub fn get<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
         let url = url.try_into()?;
-        Ok(Self::new(HttpRequest::new(Method::GET, url)))
+        Ok(Self::new(HttpRequest::new(Method::GET, url, None, None, None)))
     }
 
     /// Create POST request
     #[inline]
     pub fn post<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
         let url = url.try_into()?;
-        Ok(Self::new(HttpRequest::new(Method::POST, url)))
+        Ok(Self::new(HttpRequest::new(Method::POST, url, None, None, None)))
     }
 
     /// Create PUT request
     #[inline]
     pub fn put<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
         let url = url.try_into()?;
-        Ok(Self::new(HttpRequest::new(Method::PUT, url)))
+        Ok(Self::new(HttpRequest::new(Method::PUT, url, None, None, None)))
     }
 
     /// Create DELETE request
     #[inline]
     pub fn delete<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
         let url = url.try_into()?;
-        Ok(Self::new(HttpRequest::new(Method::DELETE, url)))
+        Ok(Self::new(HttpRequest::new(Method::DELETE, url, None, None, None)))
     }
 
     // Delegate core HTTP methods to inner HttpRequest
@@ -521,7 +525,7 @@ impl WasmRequestBuilder {
         let method = self.method.ok_or("Method is required")?;
         let url = self.url.ok_or("URL is required")?;
 
-        let mut http_request = HttpRequest::new(method, url).headers(self.headers);
+        let mut http_request = HttpRequest::new(method, url, None, None, None).headers(self.headers);
 
         if let Some(body) = self.body {
             match body {
@@ -560,3 +564,64 @@ impl WasmRequestBuilder {
         Ok(wasm_request)
     }
 }
+
+// Implement MessageChunk for WasmRequest to support fluent-ai streams-first architecture
+impl MessageChunk for WasmRequest {
+    fn bad_chunk(error: String) -> Self {
+        // Create error request with safe URL construction
+        let error_url = match Url::parse("https://localhost") {
+            Ok(url) => url,
+            Err(_) => match Url::parse("https://127.0.0.1") {
+                Ok(url) => url,
+                Err(_) => match Url::parse("about:blank") {
+                    Ok(url) => url,
+                    Err(_) => {
+                        // If all URL parsing fails, create default and return early
+                        let mut default_req = WasmRequest::default();
+                        if let Some(ref mut inner_error) = default_req.inner.error {
+                            *inner_error = error;
+                        } else {
+                            default_req.inner.error = Some(error);
+                        }
+                        return default_req;
+                    }
+                }
+            }
+        };
+        let mut inner = HttpRequest::new(Method::GET, error_url, None, None, None);
+        inner.error = Some(error);
+        WasmRequest {
+            inner,
+            #[cfg(target_arch = "wasm32")]
+            credentials: None,
+            #[cfg(target_arch = "wasm32")]
+            cache: None,
+            #[cfg(target_arch = "wasm32")]
+            mode: None,
+            #[cfg(target_arch = "wasm32")]
+            integrity: None,
+            #[cfg(target_arch = "wasm32")]
+            referrer: None,
+            #[cfg(target_arch = "wasm32")]
+            referrer_policy: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            credentials: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            cache: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            mode: None,
+            error_message: Some(error),
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
+/// Type alias for WASM Request - enables pure streaming architecture
+pub type Request = WasmRequest;

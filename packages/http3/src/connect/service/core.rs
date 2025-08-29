@@ -13,7 +13,7 @@ use native_tls_crate as native_tls;
 use rustls;
 
 use super::super::proxy::Intercepted;
-use crate::hyper::error::BoxError;
+use crate::error::BoxError;
 
 /// Core connector service with zero-allocation streaming
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ impl ConnectorService {
         http: HttpConnector,
         #[cfg(feature = "default-tls")] tls: Option<native_tls::TlsConnector>,
         #[cfg(feature = "__rustls")] rustls_config: Option<rustls::ClientConfig>,
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+        proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         interface: Option<String>,

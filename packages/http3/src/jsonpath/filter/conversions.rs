@@ -59,7 +59,7 @@ pub fn evaluate_expression_with_context(
             )
         }
         FilterExpression::JsonPath { selectors } => {
-            super::core::evaluate_jsonpath_selectors(context, selectors)
+            super::selectors::SelectorEvaluator::evaluate_jsonpath_selectors(context, selectors)
         }
         FilterExpression::Literal { value } => Ok(value.clone()),
         FilterExpression::Function { name, args } => {

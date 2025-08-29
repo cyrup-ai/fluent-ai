@@ -48,14 +48,14 @@ mod tests {
 
     #[test]
     fn test_name_creation() {
-        let name = Name::from_static("example.com");
+        let name = Name::from("example.com");
         assert_eq!(name.as_str(), "example.com");
     }
 
     #[test]
     fn test_hyper_name_conversion() {
-        let name = Name::from_static("test.example.com");
-        let hyper_name: HyperName = name.into();
+        let name = Name::from("test.example.com");
+        let hyper_name: HyperName = name;
         assert_eq!(hyper_name.as_str(), "test.example.com");
     }
 

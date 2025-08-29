@@ -5,7 +5,7 @@
 
 use serde_json::Value;
 
-use crate::jsonpath::error::{JsonPathError, JsonPathResult};
+use crate::jsonpath::error::JsonPathResult;
 
 /// Iterator for JSONPath deserialization results
 pub struct JsonPathIterator<'a, T> {

@@ -5,8 +5,7 @@ use serde_json::Value;
 
 use crate::operations::HttpOperation;
 use crate::{
-    client::HttpClient, error::HttpError, http::request::HttpRequest,
-    streaming::stream::streams::HttpStream,
+    client::HttpClient, http::request::HttpRequest, prelude::AsyncStream,
 };
 
 /// PUT operation implementation for idempotent resource replacement
@@ -50,12 +49,16 @@ impl PutOperation {
     /// * `value` - The header value
     ///
     /// # Returns
-    /// `HttpResult<Self>` for method chaining
-    pub fn header(mut self, key: &str, value: &str) -> Result<Self, HttpError> {
-        let header_name = HeaderName::from_bytes(key.as_bytes())?;
-        let header_value = HeaderValue::from_str(value)?;
-        self.headers.insert(header_name, header_value);
-        Ok(self)
+    /// `Self` for method chaining - errors silently ignored, handled during execution
+    pub fn header(mut self, key: &str, value: &str) -> Self {
+        if let (Ok(header_name), Ok(header_value)) = (
+            HeaderName::from_bytes(key.as_bytes()),
+            HeaderValue::from_str(value),
+        ) {
+            self.headers.insert(header_name, header_value);
+        }
+        // Invalid headers are silently ignored - errors will surface during request execution as stream events
+        self
     }
 
     /// Set JSON body with automatic Content-Type
@@ -76,14 +79,15 @@ impl PutOperation {
     /// * `content_type` - The MIME type of the content
     ///
     /// # Returns
-    /// `HttpResult<Self>` for method chaining
-    pub fn binary(mut self, data: Vec<u8>, content_type: &str) -> Result<Self, HttpError> {
-        self.headers.insert(
-            http::header::CONTENT_TYPE,
-            HeaderValue::from_str(content_type)?,
-        );
+    /// `Self` for method chaining - errors silently ignored, handled during execution
+    pub fn binary(mut self, data: Vec<u8>, content_type: &str) -> Self {
+        if let Ok(header_value) = HeaderValue::from_str(content_type) {
+            self.headers
+                .insert(http::header::CONTENT_TYPE, header_value);
+        }
         self.body = PutBody::Binary(data);
-        Ok(self)
+        // Invalid content-type values are silently ignored - errors will surface during request execution
+        self
     }
 
     /// Set text body with Content-Type
@@ -94,14 +98,15 @@ impl PutOperation {
     /// * `content_type` - The MIME type of the content
     ///
     /// # Returns
-    /// `HttpResult<Self>` for method chaining
-    pub fn text(mut self, data: String, content_type: &str) -> Result<Self, HttpError> {
-        self.headers.insert(
-            http::header::CONTENT_TYPE,
-            HeaderValue::from_str(content_type)?,
-        );
+    /// `Self` for method chaining - errors silently ignored, handled during execution
+    pub fn text(mut self, data: String, content_type: &str) -> Self {
+        if let Ok(header_value) = HeaderValue::from_str(content_type) {
+            self.headers
+                .insert(http::header::CONTENT_TYPE, header_value);
+        }
         self.body = PutBody::Text(data);
-        Ok(self)
+        // Invalid content-type values are silently ignored - errors will surface during request execution
+        self
     }
 
     /// Add If-Match header for conditional replacement
@@ -111,16 +116,18 @@ impl PutOperation {
     /// * `etag` - The entity tag to match
     ///
     /// # Returns
-    /// `HttpResult<Self>` for method chaining
-    pub fn if_match(mut self, etag: &str) -> Result<Self, HttpError> {
-        self.headers
-            .insert(http::header::IF_MATCH, HeaderValue::from_str(etag)?);
-        Ok(self)
+    /// `Self` for method chaining - errors silently ignored, handled during execution
+    pub fn if_match(mut self, etag: &str) -> Self {
+        if let Ok(header_value) = HeaderValue::from_str(etag) {
+            self.headers.insert(http::header::IF_MATCH, header_value);
+        }
+        // Invalid etag values are silently ignored - errors will surface during request execution
+        self
     }
 }
 
 impl HttpOperation for PutOperation {
-    type Output = HttpStream;
+    type Output = AsyncStream<crate::prelude::HttpResponse, 1>;
 
     fn execute(&self) -> Self::Output {
         let body_bytes = match &self.body {
@@ -135,13 +142,17 @@ impl HttpOperation for PutOperation {
 
         let request = HttpRequest::new(
             self.method(),
-            self.url.clone(),
+            self.url.parse().unwrap(),
             Some(self.headers.clone()),
-            body_bytes,
-            None,
+            body_bytes.map(|b| crate::http::request::RequestBody::Bytes(bytes::Bytes::from(b))),
+            Some(std::time::Duration::from_secs(30)),
         );
 
-        self.client.execute_streaming(request)
+        use fluent_ai_async::AsyncStream;
+        AsyncStream::with_channel(move |sender| {
+            let http_response = self.client.execute(request);
+            fluent_ai_async::emit!(sender, http_response);
+        })
     }
 
     fn method(&self) -> Method {

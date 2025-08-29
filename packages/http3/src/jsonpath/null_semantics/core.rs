@@ -80,7 +80,7 @@ impl NullSemantics {
     /// between null values and missing properties.
     #[inline]
     pub fn evaluate_existence_filter(context: &JsonValue, property_path: &[String]) -> bool {
-        Comparison::evaluate_existence_filter(context, property_path)
+        Comparison::evaluate_existence_filter(context, property_path).unwrap_or(false)
     }
 
     /// Comparison with null vs missing distinction

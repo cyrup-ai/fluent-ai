@@ -19,7 +19,7 @@ impl Body {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn to_js_value(&self) -> crate::Result<JsValue> {
+    pub(crate) fn to_js_value(&self) -> std::result::Result<JsValue, crate::HttpError> {
         match &self.inner {
             Inner::Single(single) => Ok(single.to_js_value()),
             Inner::MultipartForm(form) => {

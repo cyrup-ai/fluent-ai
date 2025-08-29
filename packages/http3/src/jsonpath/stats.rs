@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 /// Statistics for JSONPath stream processing
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct JsonPathStats {
     /// Number of JSON objects processed
     pub objects_processed: AtomicU64,

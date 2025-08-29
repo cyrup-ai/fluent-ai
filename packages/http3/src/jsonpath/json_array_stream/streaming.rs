@@ -46,7 +46,9 @@ where
             Ok(s) => s,
             Err(_) => {
                 // Invalid UTF-8, return empty stream
-                return AsyncStream::builder().empty();
+                return AsyncStream::with_channel(|_sender| {
+                    // Empty stream - no chunks to emit
+                });
             }
         };
 
@@ -76,7 +78,9 @@ where
             }
             Err(e) => {
                 println!("DEBUG: CoreJsonPathEvaluator creation failed: {:?}", e);
-                return AsyncStream::builder().empty();
+                return AsyncStream::with_channel(|_sender| {
+                    // Empty stream - no chunks to emit
+                });
             }
         };
 
@@ -91,7 +95,9 @@ where
             }
             Err(e) => {
                 println!("DEBUG: CoreJsonPathEvaluator evaluation failed: {:?}", e);
-                return AsyncStream::builder().empty();
+                return AsyncStream::with_channel(|_sender| {
+                    // Empty stream - no chunks to emit
+                });
             }
         };
 

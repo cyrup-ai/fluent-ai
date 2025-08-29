@@ -35,6 +35,8 @@ regex = "1.11.1"
 libc = "0.2.174"
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", package = "cyrup_sugars", features = ["all"] }
 futures-executor = "0.3.31" # Pure AsyncStream architecture
+tokio = { version = "1.47.1", features = ["fs", "rt", "macros", "net"] }
+tokio-rustls = "0.26.2"
 sync_wrapper = { version = "1.0", features = ["futures"] }
 mime_guess = { version = "2.0", default-features = false }
 arrayvec = "0.7.6"
@@ -64,6 +66,26 @@ hyper-tls = { version = "0.6", optional = true }
 native-tls-crate = { version = "0.2", optional = true, package = "native-tls" }
 quiche = { version = "0.24.5", features = ["boringssl-vendored"] }
 uuid = "1.18.0"
+webpki-roots = "1"
+
+# Elite TLS dependencies aligned with cryypt
+anyhow = "1.0"
+ring = "0.17"
+x509-cert = { version = "0.2.5", features = ["builder", "pem", "sct"] }
+x509-parser = "0.17.0"
+x509-ocsp = "0.2.1"
+der = { version = "0.7.10", features = ["alloc", "derive", "flagset", "oid", "pem", "real", "std"] }
+zeroize = { version = "1.8", features = ["derive"] }
+rcgen = { version = "0.14.3", features = ["pem", "x509-parser"] }
+hex = "0.4"
+webpki = "0.22"
+rand = "0.8"
+pem = "3.0"
+rustls-pemfile = "2.1"
+hostname = "0.4"
+const-oid = "0.9"
+spki = "0.7"
+oid = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 encoding_rs = { version = "0.8" }
@@ -78,14 +100,14 @@ rustls = { version = "0.23", optional = true, default-features = false, features
 webpki-roots = { version = "1", optional = true }
 rustls-native-certs = { version = "0.8", optional = true }
 h2 = "0.4.7"
-tokio = { version = "1.42.0", features = ["rt", "net", "io-util", "time"] }
+
 cookie_crate = { version = "0.18.1", package = "cookie" }
 cookie_store = { version = "0.22.0" }
 hickory-resolver = { version = "0.25" }
-h3 = { version = "0.0.8" }
 flate2 = { version = "1.1.2" }
 brotli_crate = { package = "brotli", version = "8.0.1" }
 zstd_crate = { package = "zstd", version = "0.13.3" }
+keyring = "3.6.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 env_logger = "0.11.8"

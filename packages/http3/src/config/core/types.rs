@@ -37,6 +37,12 @@ pub struct HttpConfig {
     /// HTTP/2 max frame size
     pub http2_max_frame_size: Option<u32>,
 
+    /// Enable gzip compression
+    pub gzip_enabled: bool,
+
+    /// Enable brotli compression
+    pub brotli_enabled: bool,
+
     /// Use native root certificates
     pub use_native_certs: bool,
 

@@ -11,7 +11,9 @@ use fluent_ai_async::prelude::*;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, Version};
 use url::Url;
 
-use crate::streaming::chunks::HttpChunk;
+use crate::prelude::*;
+use crate::protocols::core::HttpMethod;
+
 
 /// HTTP request structure with comprehensive functionality
 ///
@@ -26,6 +28,9 @@ pub struct HttpRequest {
     timeout: Option<Duration>,
     retry_attempts: Option<u32>,
     version: Version,
+
+    /// Stream ID for HTTP/2 and HTTP/3 multiplexing
+    pub stream_id: Option<u64>,
 
     /// Request configuration
     pub cors: bool,
@@ -47,10 +52,12 @@ pub struct HttpRequest {
     /// Protocol-specific options
     pub h2_prior_knowledge: bool,
     pub h3_alt_svc: bool,
+
+    /// Internal error state for deferred error handling
+    error: Option<String>,
 }
 
 /// Request body types
-#[derive(Debug, Clone)]
 pub enum RequestBody {
     /// Raw bytes
     Bytes(Bytes),
@@ -64,6 +71,62 @@ pub enum RequestBody {
     Multipart(Vec<MultipartField>),
     /// Streaming body
     Stream(AsyncStream<HttpChunk, 1024>),
+}
+
+impl std::fmt::Debug for RequestBody {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RequestBody::Bytes(bytes) => f
+                .debug_tuple("Bytes")
+                .field(&format!("{} bytes", bytes.len()))
+                .finish(),
+            RequestBody::Text(text) => f
+                .debug_tuple("Text")
+                .field(&format!("{} chars", text.len()))
+                .finish(),
+            RequestBody::Json(value) => f.debug_tuple("Json").field(value).finish(),
+            RequestBody::Form(form) => f.debug_tuple("Form").field(form).finish(),
+            RequestBody::Multipart(fields) => f
+                .debug_tuple("Multipart")
+                .field(&format!("{} fields", fields.len()))
+                .finish(),
+            RequestBody::Stream(_) => f.debug_tuple("Stream").field(&"<AsyncStream>").finish(),
+        }
+    }
+}
+
+impl Clone for RequestBody {
+    fn clone(&self) -> Self {
+        match self {
+            RequestBody::Bytes(bytes) => RequestBody::Bytes(bytes.clone()),
+            RequestBody::Text(text) => RequestBody::Text(text.clone()),
+            RequestBody::Json(value) => RequestBody::Json(value.clone()),
+            RequestBody::Form(form) => RequestBody::Form(form.clone()),
+            RequestBody::Multipart(fields) => RequestBody::Multipart(fields.clone()),
+            RequestBody::Stream(_) => panic!("Cannot clone streaming body"),
+        }
+    }
+}
+
+impl RequestBody {
+    /// Get the length of the body in bytes
+    pub fn len(&self) -> usize {
+        match self {
+            RequestBody::Bytes(bytes) => bytes.len(),
+            RequestBody::Text(text) => text.len(),
+            RequestBody::Json(json) => serde_json::to_vec(json).map(|v| v.len()).unwrap_or(0),
+            RequestBody::Form(form) => serde_urlencoded::to_string(form)
+                .map(|s| s.len())
+                .unwrap_or(0),
+            RequestBody::Multipart(_) => 0, // TODO: Calculate multipart size
+            RequestBody::Stream(_) => 0,    // Streaming body size is unknown
+        }
+    }
+
+    /// Check if the body is empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// Multipart form field
@@ -91,18 +154,115 @@ pub enum RequestAuth {
     Custom(HeaderMap),
 }
 
+/// HTTP request builder that implements the HttpRequestBuilder trait
+#[derive(Debug, Clone)]
+pub struct HttpRequestBuilder {
+    method: HttpMethod,
+    uri: Option<String>,
+    headers: HeaderMap,
+    body: Option<Bytes>,
+}
+
+impl HttpRequestBuilder {
+    /// Create a new request builder
+    pub fn new() -> Self {
+        Self {
+            method: HttpMethod::Get,
+            uri: None,
+            headers: HeaderMap::new(),
+            body: None,
+        }
+    }
+
+    /// Set the HTTP method
+    pub fn method(mut self, method: Method) -> Self {
+        self.method = match method {
+            Method::GET => HttpMethod::Get,
+            Method::POST => HttpMethod::Post,
+            Method::PUT => HttpMethod::Put,
+            Method::DELETE => HttpMethod::Delete,
+            Method::PATCH => HttpMethod::Patch,
+            Method::HEAD => HttpMethod::Head,
+            Method::OPTIONS => HttpMethod::Options,
+            Method::TRACE => HttpMethod::Trace,
+            Method::CONNECT => HttpMethod::Connect,
+            _ => HttpMethod::Get, // Default fallback
+        };
+        self
+    }
+
+    /// Set the URI
+    pub fn uri<U: Into<String>>(mut self, uri: U) -> Self {
+        self.uri = Some(uri.into());
+        self
+    }
+
+    /// Set headers
+    pub fn headers(mut self, headers: HeaderMap) -> Self {
+        self.headers = headers;
+        self
+    }
+
+    /// Build the final HttpRequest
+    pub fn build(self) -> HttpRequest {
+        let url = match self.uri {
+            Some(uri_str) => uri_str
+                .parse()
+                .unwrap_or_else(|_| "http://localhost".parse().unwrap()),
+            None => "http://localhost".parse().unwrap(),
+        };
+
+        let method = match self.method {
+            HttpMethod::Get => Method::GET,
+            HttpMethod::Post => Method::POST,
+            HttpMethod::Put => Method::PUT,
+            HttpMethod::Delete => Method::DELETE,
+            HttpMethod::Patch => Method::PATCH,
+            HttpMethod::Head => Method::HEAD,
+            HttpMethod::Options => Method::OPTIONS,
+            HttpMethod::Trace => Method::TRACE,
+            HttpMethod::Connect => Method::CONNECT,
+        };
+
+        HttpRequest::new(method, url, Some(self.headers), None, None)
+    }
+}
+
+impl Default for HttpRequestBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 impl HttpRequest {
+    /// Create a new request builder
+    #[inline]
+    pub fn builder() -> HttpRequestBuilder {
+        HttpRequestBuilder::default()
+    }
+
     /// Creates a new `HttpRequest`
     #[inline]
-    pub fn new(method: Method, url: Url) -> Self {
+    pub fn new(
+        method: Method,
+        url: Url,
+        headers: Option<HeaderMap>,
+        body: Option<RequestBody>,
+        timeout: Option<Duration>,
+    ) -> Self {
         Self {
             method,
             url,
-            headers: HeaderMap::new(),
-            body: None,
-            timeout: Some(Duration::from_secs(30)),
+            headers: match headers {
+                Some(h) => h,
+                None => HeaderMap::new(),
+            },
+            body,
+            timeout: timeout.or_else(|| Some(Duration::from_secs(30))),
             retry_attempts: Some(3),
             version: Version::HTTP_3,
+            stream_id: None,
             cors: true,
             follow_redirects: true,
             max_redirects: 10,
@@ -114,56 +274,142 @@ impl HttpRequest {
             referer: None,
             h2_prior_knowledge: false,
             h3_alt_svc: true,
+            error: None,
         }
     }
 
     /// Create GET request
     #[inline]
-    pub fn get<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::GET, url))
+    pub fn get<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::GET, parsed_url, None, None, None),
+            Err(_) => {
+                // Create a request with error state - use dummy URL
+                let mut request = Self::new(
+                    Method::GET,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     /// Create POST request
     #[inline]
-    pub fn post<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::POST, url))
+    pub fn post<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::POST, parsed_url, None, None, None),
+            Err(_) => {
+                let mut request = Self::new(
+                    Method::POST,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     /// Create PUT request
     #[inline]
-    pub fn put<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::PUT, url))
+    pub fn put<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::PUT, parsed_url, None, None, None),
+            Err(_) => {
+                let mut request = Self::new(
+                    Method::PUT,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     /// Create DELETE request
     #[inline]
-    pub fn delete<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::DELETE, url))
+    pub fn delete<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::DELETE, parsed_url, None, None, None),
+            Err(_) => {
+                let mut request = Self::new(
+                    Method::DELETE,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     /// Create PATCH request
     #[inline]
-    pub fn patch<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::PATCH, url))
+    pub fn patch<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::PATCH, parsed_url, None, None, None),
+            Err(_) => {
+                let mut request = Self::new(
+                    Method::PATCH,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     /// Create HEAD request
     #[inline]
-    pub fn head<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::HEAD, url))
+    pub fn head<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::HEAD, parsed_url, None, None, None),
+            Err(_) => {
+                let mut request = Self::new(
+                    Method::HEAD,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     /// Create OPTIONS request
     #[inline]
-    pub fn options<U: TryInto<Url>>(url: U) -> Result<Self, U::Error> {
-        let url = url.try_into()?;
-        Ok(Self::new(Method::OPTIONS, url))
+    pub fn options<U: TryInto<Url>>(url: U) -> Self {
+        match url.try_into() {
+            Ok(parsed_url) => Self::new(Method::OPTIONS, parsed_url, None, None, None),
+            Err(_) => {
+                let mut request = Self::new(
+                    Method::OPTIONS,
+                    "http://invalid".parse().unwrap(),
+                    None,
+                    None,
+                    None,
+                );
+                request.error = Some("Invalid URL provided".to_string());
+                request
+            }
+        }
     }
 
     // Getters
@@ -178,6 +424,12 @@ impl HttpRequest {
     #[inline]
     pub fn url(&self) -> &Url {
         &self.url
+    }
+
+    /// Get the URI as a string (alias for URL compatibility)
+    #[inline]
+    pub fn uri(&self) -> String {
+        self.url.to_string()
     }
 
     /// Get the headers
@@ -204,6 +456,13 @@ impl HttpRequest {
         self.timeout
     }
 
+    /// Set the stream ID for HTTP/2 and HTTP/3 multiplexing
+    #[inline]
+    pub fn with_stream_id(mut self, stream_id: u64) -> Self {
+        self.stream_id = Some(stream_id);
+        self
+    }
+
     /// Get retry attempts
     #[inline]
     pub fn retry_attempts(&self) -> Option<u32> {
@@ -220,21 +479,21 @@ impl HttpRequest {
 
     /// Set the HTTP method
     #[inline]
-    pub fn method(mut self, method: Method) -> Self {
+    pub fn with_method(mut self, method: Method) -> Self {
         self.method = method;
         self
     }
 
     /// Set the URL
     #[inline]
-    pub fn url(mut self, url: Url) -> Self {
+    pub fn with_url(mut self, url: Url) -> Self {
         self.url = url;
         self
     }
 
     /// Set HTTP version
     #[inline]
-    pub fn version(mut self, version: Version) -> Self {
+    pub fn with_version(mut self, version: Version) -> Self {
         self.version = version;
         self
     }
@@ -254,7 +513,7 @@ impl HttpRequest {
 
     /// Extend headers
     #[inline]
-    pub fn headers(mut self, headers: HeaderMap) -> Self {
+    pub fn with_headers(mut self, headers: HeaderMap) -> Self {
         self.headers.extend(headers);
         self
     }
@@ -275,14 +534,21 @@ impl HttpRequest {
 
     /// Set body as JSON
     #[inline]
-    pub fn json<T: serde::Serialize>(mut self, json: &T) -> Result<Self, serde_json::Error> {
-        let value = serde_json::to_value(json)?;
-        self.body = Some(RequestBody::Json(value));
-        self.headers.insert(
-            http::header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
-        Ok(self)
+    pub fn json<T: serde::Serialize>(mut self, json: &T) -> Self {
+        match serde_json::to_value(json) {
+            Ok(value) => {
+                self.body = Some(RequestBody::Json(value));
+                self.headers.insert(
+                    http::header::CONTENT_TYPE,
+                    HeaderValue::from_static("application/json"),
+                );
+                self
+            }
+            Err(e) => {
+                self.error = Some(format!("JSON serialization failed: {}", e));
+                self
+            }
+        }
     }
 
     /// Set body as form data
@@ -313,14 +579,14 @@ impl HttpRequest {
 
     /// Set timeout
     #[inline]
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
     /// Set retry attempts
     #[inline]
-    pub fn retry_attempts(mut self, attempts: u32) -> Self {
+    pub fn with_retry_attempts(mut self, attempts: u32) -> Self {
         self.retry_attempts = Some(attempts);
         self
     }
@@ -424,6 +690,16 @@ impl HttpRequest {
         self
     }
 
+    /// Add query parameters with builder pattern - alias for query method
+    #[inline]
+    pub fn with_query_params<K, V>(self, params: &[(K, V)]) -> Self
+    where
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        self.query(params)
+    }
+
     /// Enable HTTP/2 prior knowledge
     #[inline]
     pub fn h2_prior_knowledge(mut self, enable: bool) -> Self {
@@ -460,110 +736,14 @@ impl HttpRequest {
         }
     }
 
-    /// Apply authentication to headers
-    pub fn apply_auth(&mut self) {
-        if let Some(auth) = &self.auth {
-            match auth {
-                RequestAuth::Basic { username, password } => {
-                    let credentials = base64::encode(format!("{}:{}", username, password));
-                    if let Ok(value) = HeaderValue::from_str(&format!("Basic {}", credentials)) {
-                        self.headers.insert(http::header::AUTHORIZATION, value);
-                    }
-                }
-                RequestAuth::Bearer(token) => {
-                    if let Ok(value) = HeaderValue::from_str(&format!("Bearer {}", token)) {
-                        self.headers.insert(http::header::AUTHORIZATION, value);
-                    }
-                }
-                RequestAuth::ApiKey { key, value } => {
-                    if let (Ok(header_name), Ok(header_value)) = (
-                        HeaderName::from_bytes(key.as_bytes()),
-                        HeaderValue::from_str(value),
-                    ) {
-                        self.headers.insert(header_name, header_value);
-                    }
-                }
-                RequestAuth::Custom(auth_headers) => {
-                    self.headers.extend(auth_headers.clone());
-                }
-            }
-        }
-
-        // Apply user agent
-        if let Some(user_agent) = &self.user_agent {
-            if let Ok(value) = HeaderValue::from_str(user_agent) {
-                self.headers.insert(http::header::USER_AGENT, value);
-            }
-        }
-
-        // Apply referer
-        if let Some(referer) = &self.referer {
-            if let Ok(value) = HeaderValue::from_str(referer) {
-                self.headers.insert(http::header::REFERER, value);
-            }
-        }
+    /// Check if there were any request building errors
+    pub fn has_error(&self) -> bool {
+        self.error.is_some()
     }
 
-    /// Convert to streaming chunks
-    pub fn to_chunks(self) -> AsyncStream<HttpChunk, 1024> {
-        AsyncStream::with_channel(move |sender| {
-            // Emit request line
-            emit!(
-                sender,
-                HttpChunk::RequestLine {
-                    method: self.method.clone(),
-                    uri: self.url.to_string(),
-                    version: self.version,
-                }
-            );
-
-            // Emit headers
-            for (name, value) in &self.headers {
-                emit!(
-                    sender,
-                    HttpChunk::Header {
-                        name: name.clone(),
-                        value: value.clone(),
-                    }
-                );
-            }
-
-            // Emit body if present
-            if let Some(body) = self.body {
-                match body {
-                    RequestBody::Bytes(bytes) => {
-                        emit!(sender, HttpChunk::Body(bytes));
-                    }
-                    RequestBody::Text(text) => {
-                        emit!(sender, HttpChunk::Body(text.into_bytes().into()));
-                    }
-                    RequestBody::Json(json) => {
-                        if let Ok(bytes) = serde_json::to_vec(&json) {
-                            emit!(sender, HttpChunk::Body(bytes.into()));
-                        }
-                    }
-                    RequestBody::Form(form) => {
-                        if let Ok(encoded) = serde_urlencoded::to_string(&form) {
-                            emit!(sender, HttpChunk::Body(encoded.into_bytes().into()));
-                        }
-                    }
-                    RequestBody::Stream(stream) => {
-                        for chunk in stream {
-                            emit!(sender, chunk);
-                        }
-                    }
-                    RequestBody::Multipart(_fields) => {
-                        // TODO: Implement multipart encoding
-                        emit!(
-                            sender,
-                            HttpChunk::Error("Multipart encoding not yet implemented".to_string())
-                        );
-                    }
-                }
-            }
-
-            emit!(sender, HttpChunk::Complete);
-        })
+    /// Get the error message if any
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
     }
 }
 

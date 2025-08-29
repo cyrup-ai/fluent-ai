@@ -9,4 +9,3 @@ pub mod filters;
 pub mod wildcards;
 
 // Re-export core functionality
-pub use core::*;

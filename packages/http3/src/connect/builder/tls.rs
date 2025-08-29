@@ -11,7 +11,7 @@ use native_tls_crate as native_tls;
 use rustls;
 
 use super::types::ConnectorBuilder;
-use crate::hyper::error::BoxError;
+use crate::error::BoxError;
 
 impl ConnectorBuilder {
     /// Create new connector with default TLS
@@ -19,7 +19,7 @@ impl ConnectorBuilder {
     pub fn new_default_tls(
         http: HttpConnector,
         tls: native_tls::TlsConnector,
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+        proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
@@ -57,7 +57,7 @@ impl ConnectorBuilder {
     pub fn new_rustls_tls(
         http: HttpConnector,
         config: rustls::ClientConfig,
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+        proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
@@ -95,7 +95,7 @@ impl ConnectorBuilder {
     pub fn from_built_default_tls(
         http: HttpConnector,
         tls: native_tls::TlsConnector,
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+        proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(
@@ -142,7 +142,7 @@ impl ConnectorBuilder {
     pub fn from_built_rustls_tls(
         http: HttpConnector,
         config: rustls::ClientConfig,
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+        proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
         user_agent: Option<http::HeaderValue>,
         local_address: Option<std::net::IpAddr>,
         #[cfg(any(

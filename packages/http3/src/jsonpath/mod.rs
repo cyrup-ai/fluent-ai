@@ -62,7 +62,7 @@ pub mod tokenizer;
 pub mod tokens;
 
 pub use self::{
-    buffer::{JsonBuffer, StreamBuffer},
+    buffer::StreamBuffer,
     core_evaluator::CoreJsonPathEvaluator,
     deserializer::{JsonPathDeserializer, JsonPathIterator, StreamingDeserializer},
     error::{JsonPathError, JsonPathResult},
@@ -92,6 +92,8 @@ pub use self::{
     state_machine::{JsonStreamState, StreamStateMachine},
     stream_processor::JsonStreamProcessor,
 };
+// Re-export JsonBuffer from telemetry for backward compatibility
+pub use crate::telemetry::jsonpath::JsonBuffer;
 
 #[cfg(test)]
 mod tests {

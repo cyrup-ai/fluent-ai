@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt;
 
 /// JSON Path processing error types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
     /// Invalid JSON syntax
     InvalidJson,
@@ -16,6 +16,8 @@ pub enum ErrorKind {
     IoError,
     /// Serialization/deserialization error
     SerdeError,
+    /// Deserialization error
+    Deserialization,
     /// Generic processing error
     ProcessingError,
 }
@@ -61,5 +63,9 @@ impl JsonPathError {
 
     pub fn processing_error(msg: impl Into<String>) -> Self {
         Self::new(ErrorKind::ProcessingError, msg.into())
+    }
+
+    pub fn invalid_index(msg: impl Into<String>) -> Self {
+        Self::new(ErrorKind::InvalidPath, msg.into())
     }
 }

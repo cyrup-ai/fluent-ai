@@ -7,7 +7,7 @@ use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
 use http::Uri;
 
-use crate::hyper::error::BoxError;
+use crate::error::BoxError;
 
 /// Configuration for intercepted connections through proxies.
 #[derive(Clone, Debug)]
@@ -32,7 +32,7 @@ impl Intercepted {
 
     /// Create intercepted configuration from proxy list
     pub fn from_proxies(
-        proxies: arrayvec::ArrayVec<crate::hyper::Proxy, 4>,
+        proxies: arrayvec::ArrayVec<crate::proxy::Proxy, 4>,
     ) -> Result<Self, BoxError> {
         let mut proxy_configs = Vec::new();
 

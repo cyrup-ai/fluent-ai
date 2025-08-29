@@ -8,7 +8,6 @@ use std::collections::VecDeque;
 use crate::jsonpath::{
     ast::JsonSelector,
     error::{JsonPathResult, invalid_expression_error},
-    filter_parser::FilterParser,
     tokens::Token,
 };
 

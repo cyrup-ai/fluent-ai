@@ -1,0 +1,200 @@
+    Checking fluent_ai_http3 v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/http3)
+error[E0252]: the name `parse_certificate_from_pem` is defined multiple times
+  --> packages/http3/src/tls/certificate/mod.rs:20:5
+   |
+18 | pub use parser::parse_certificate_from_pem;
+   |         ---------------------------------- previous import of the value `parse_certificate_from_pem` here
+19 | pub use parsing::{
+20 |     parse_certificate_from_pem, validate_basic_constraints, validate_certificate_time,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `parse_certificate_from_pem` reimported here
+   |
+   = note: `parse_certificate_from_pem` must be defined only once in the value namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+20 |     parse_certificate_from_pem as other_parse_certificate_from_pem, validate_basic_constraints, validate_certificate_time,
+   |                                +++++++++++++++++++++++++++++++++++
+
+error[E0252]: the name `HashMap` is defined multiple times
+ --> packages/http3/src/tls/builder/authority.rs:6:5
+  |
+3 | use std::collections::HashMap;
+  |     ------------------------- previous import of the type `HashMap` here
+...
+6 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `HashMap` reimported here
+  |
+  = note: `HashMap` must be defined only once in the type namespace of this module
+
+warning: ambiguous glob re-exports
+ --> packages/http3/src/auth/mod.rs:6:9
+  |
+6 | pub use auth::*;
+  |         ^^^^^^^ the name `BasicAuth` in the type namespace is first re-exported here
+7 | pub use basic_auth::*;
+  |         ------------- but the name `BasicAuth` in the type namespace is also re-exported here
+  |
+  = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: unused import: `std::time::Duration`
+ --> packages/http3/src/builder/builder_core.rs:8:5
+  |
+8 | use std::time::Duration;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `HeaderMap` and `Version`
+  --> packages/http3/src/builder/builder_core.rs:11:12
+   |
+11 | use http::{HeaderMap, Method, Version};
+   |            ^^^^^^^^^          ^^^^^^^
+
+warning: unused import: `crate::protocols::quiche::QuichePacketChunk as DownloadChunk`
+  --> packages/http3/src/builder/fluent.rs:11:5
+   |
+11 | use crate::protocols::quiche::QuichePacketChunk as DownloadChunk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::builder::execution::HttpStream`
+  --> packages/http3/src/builder/fluent.rs:13:5
+   |
+13 | use crate::builder::execution::HttpStream;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::builder::execution::HttpStream`
+ --> packages/http3/src/builder/methods/body_methods.rs:9:5
+  |
+9 | use crate::builder::execution::HttpStream;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::protocols::quiche::QuicheConnectionChunk`
+ --> packages/http3/src/builder/streaming.rs:8:5
+  |
+8 | use crate::protocols::quiche::QuicheConnectionChunk;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `HttpStatus`
+  --> packages/http3/src/cache/response_cache/operations.rs:50:64
+   |
+50 |         use crate::http::response::{HttpBodyChunk, HttpHeader, HttpStatus};
+   |                                                                ^^^^^^^^^^
+
+warning: unused import: `crate::error::HttpError`
+  --> packages/http3/src/client/core.rs:11:5
+   |
+11 | use crate::error::HttpError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `HttpResponse`
+  --> packages/http3/src/client/core.rs:12:32
+   |
+12 | use crate::http::{HttpRequest, HttpResponse};
+   |                                ^^^^^^^^^^^^
+
+warning: unused import: `QuicheConnectionChunk`
+ --> packages/http3/src/client/execution.rs:9:32
+  |
+9 | use crate::protocols::quiche::{QuicheConnectionChunk, QuichePacketChunk as DownloadChunk};
+  |                                ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::time::Duration`
+ --> packages/http3/src/connect/builder/tls.rs:5:5
+  |
+5 | use std::time::Duration;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `http::Uri`
+ --> packages/http3/src/connect/builder/types.rs:7:5
+  |
+7 | use http::Uri;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::error::BoxError`
+  --> packages/http3/src/connect/builder/types.rs:14:5
+   |
+14 | use crate::error::BoxError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `fluent_ai_async::prelude::MessageChunk`
+ --> packages/http3/src/connect/proxy/intercepted.rs:6:5
+  |
+6 | use fluent_ai_async::prelude::MessageChunk;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `AsyncStream`, `emit`, `handle_error`, and `spawn_task`
+ --> packages/http3/src/connect/proxy/intercepted.rs:7:23
+  |
+7 | use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+  |                       ^^^^^^^^^^^  ^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `http::Uri`
+ --> packages/http3/src/connect/service/core.rs:8:5
+  |
+8 | use http::Uri;
+  |     ^^^^^^^^^
+
+warning: unused import: `SocketAddr`
+ --> packages/http3/src/connect/service/direct.rs:6:27
+  |
+6 | use std::net::{TcpStream, SocketAddr};
+  |                           ^^^^^^^^^^
+
+warning: unused import: `crate::prelude::*`
+ --> packages/http3/src/http/conversions.rs:7:5
+  |
+7 | use crate::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::prelude::*`
+ --> packages/http3/src/http/into_url.rs:3:5
+  |
+3 | use crate::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::protocols::quiche::QuicheConnectionChunk`
+  --> packages/http3/src/http/request.rs:16:5
+   |
+16 | use crate::protocols::quiche::QuicheConnectionChunk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::jsonpath::parser::FilterExpression`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/complex_data.rs:5:5
+  |
+5 | use crate::jsonpath::parser::FilterExpression;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/edge_cases.rs:5:5
+  |
+5 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FilterExpression` and `FilterValue`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/edge_cases.rs:6:31
+  |
+6 | use crate::jsonpath::parser::{FilterExpression, FilterValue};
+  |                               ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/error_handling.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::FunctionEvaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/error_handling.rs:7:5
+  |
+7 | use super::super::FunctionEvaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/error_handling.rs:8:5
+  |
+8 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/function_dispatch.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^

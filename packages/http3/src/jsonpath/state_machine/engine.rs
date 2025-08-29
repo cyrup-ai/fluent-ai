@@ -10,7 +10,7 @@ use super::types::{
 };
 use crate::jsonpath::{
     error::{JsonPathError, stream_error},
-    parser::{JsonPathExpression, JsonSelector},
+    parser::JsonPathExpression,
 };
 
 impl StreamStateMachine {

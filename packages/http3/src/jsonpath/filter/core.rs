@@ -35,7 +35,7 @@ pub fn evaluate_jsonpath_selectors(
     Ok(vec![context.clone()])
 }
 use crate::jsonpath::functions::FunctionEvaluator;
-use crate::jsonpath::parser::{ComparisonOp, FilterExpression, FilterValue, LogicalOp};
+use crate::jsonpath::parser::{FilterExpression, FilterValue, LogicalOp};
 
 /// Filter Expression Evaluator
 pub struct FilterEvaluator;

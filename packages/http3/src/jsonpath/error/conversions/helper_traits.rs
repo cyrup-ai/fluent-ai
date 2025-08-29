@@ -48,10 +48,10 @@ where
             let mut error = e.into();
 
             // Add context information if it's a stream error
-            if let JsonPathError::StreamError { state, .. } = &mut error {
-                if state == "io_operation" {
-                    *state = context.to_string();
-                }
+            if error.kind == super::super::types::ErrorKind::ProcessingError
+                && error.message.contains("io_operation")
+            {
+                error.message = format!("{}: {}", context, error.message);
             }
 
             error

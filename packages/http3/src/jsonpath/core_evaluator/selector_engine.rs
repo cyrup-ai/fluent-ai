@@ -4,12 +4,12 @@
 
 use serde_json::Value;
 
+use super::super::error::JsonPathError;
+use super::super::parser::{FilterExpression, JsonSelector};
 use super::array_operations::ArrayOperations;
+use super::core_evaluator::CoreJsonPathEvaluator;
 use super::filter_support::FilterSupport;
-use super::recursive_descent::RecursiveDescentEngine;
-use crate::jsonpath::error::JsonPathError;
-use crate::jsonpath::filter::FilterEvaluator;
-use crate::jsonpath::parser::{FilterExpression, JsonSelector};
+use crate::jsonpath::FilterEvaluator;
 
 type JsonPathResult<T> = Result<T, JsonPathError>;
 
@@ -35,7 +35,9 @@ impl SelectorEngine {
             }
             JsonSelector::RecursiveDescent => {
                 // Collect all descendants
-                RecursiveDescentEngine::collect_all_descendants_owned(value, &mut results);
+                let evaluator = CoreJsonPathEvaluator::new("$..").unwrap();
+                let descendants = evaluator.collect_descendants(value);
+                results.extend(descendants);
             }
             JsonSelector::Index { index, from_end } => {
                 if let Value::Array(arr) = value {
@@ -45,7 +47,8 @@ impl SelectorEngine {
             }
             JsonSelector::Slice { start, end, step } => {
                 if let Value::Array(arr) = value {
-                    let slice_results = ArrayOperations::apply_slice(arr, start, end, *step)?;
+                    let slice_results =
+                        ArrayOperations::apply_slice(arr, *start, *end, step.unwrap_or(1))?;
                     results.extend(slice_results);
                 }
             }

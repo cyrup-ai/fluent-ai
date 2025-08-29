@@ -37,7 +37,7 @@ impl WasmClient {
     /// Create WASM client with existing configuration
     pub(super) fn new_with_config(config: Config) -> Self {
         let http_config = HttpConfig::default();
-        let http_client = HttpClient::new(http_config);
+        let http_client = HttpClient::with_config(http_config);
         
         Self {
             http_client,
@@ -135,8 +135,8 @@ impl WasmClient {
         
         AsyncStream::with_channel(move |sender| {
             for streaming_response in response_stream {
-                // Wrap StreamingResponse with WASM capabilities
-                let wasm_response = WasmResponse::from_streaming_response(streaming_response);
+                // Wrap HttpResponse with WASM capabilities
+                let wasm_response = WasmResponse::from_http_response(streaming_response);
                 emit!(sender, wasm_response);
             }
         })

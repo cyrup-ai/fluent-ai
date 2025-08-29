@@ -3,14 +3,33 @@
 //! Handles direct connection establishment with zero-allocation streaming,
 //! DNS resolution, and connection timeout management.
 
-use std::net::TcpStream;
+use std::net::{TcpStream, SocketAddr};
 
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit, spawn_task};
 use http::Uri;
 
-use super::super::types::TcpStreamWrapper;
+use super::super::chunks::TcpConnectionChunk;
 use super::core::ConnectorService;
+
+/// Extract local and remote addresses from stream and emit connection event
+/// Preserves connection attempt ordering for IPv4/IPv6 happy eyeballs logic
+pub(super) fn emit_stream_connection(
+    stream: TcpStream,
+    sender: &fluent_ai_async::AsyncStreamSender<TcpConnectionChunk>,
+) -> Result<(), String> {
+    let local_addr = stream.local_addr()
+        .map_err(|e| format!("Failed to get local address: {}", e))?;
+    let remote_addr = stream.peer_addr()
+        .map_err(|e| format!("Failed to get remote address: {}", e))?;
+    
+    // Wrap TcpStream in ConnectionTrait implementation
+    let conn_trait: Box<dyn crate::connect::types::ConnectionTrait + Send> = 
+        Box::new(crate::connect::types::TcpConnection::from(stream));
+    
+    emit!(sender, TcpConnectionChunk::connected(local_addr, remote_addr, Some(conn_trait)));
+    Ok(())
+}
 
 impl ConnectorService {
     /// Connect with optional proxy handling
@@ -18,7 +37,7 @@ impl ConnectorService {
         &self,
         dst: Uri,
         via_proxy: bool,
-    ) -> AsyncStream<TcpStreamWrapper> {
+    ) -> AsyncStream<TcpConnectionChunk, 1024> {
         let connector_service = self.clone();
         let destination = dst.clone();
 
@@ -29,7 +48,7 @@ impl ConnectorService {
                     None => {
                         emit!(
                             sender,
-                            TcpStreamWrapper::bad_chunk("URI missing host".to_string())
+                            TcpConnectionChunk::bad_chunk("URI missing host".to_string())
                         );
                         return;
                     }
@@ -50,7 +69,7 @@ impl ConnectorService {
                     Err(e) => {
                         emit!(
                             sender,
-                            TcpStreamWrapper::bad_chunk(format!("DNS resolution failed: {}", e))
+                            TcpConnectionChunk::bad_chunk(format!("DNS resolution failed: {}", e))
                         );
                         return;
                     }
@@ -59,7 +78,7 @@ impl ConnectorService {
                 if addresses.is_empty() {
                     emit!(
                         sender,
-                        TcpStreamWrapper::bad_chunk("No addresses resolved".to_string())
+                        TcpConnectionChunk::bad_chunk("No addresses resolved".to_string())
                     );
                     return;
                 }
@@ -75,7 +94,11 @@ impl ConnectorService {
                                         let _ = stream.set_nodelay(true);
                                     }
 
-                                    emit!(sender, TcpStreamWrapper(stream));
+                                    // Extract addresses and emit connection event
+                                    if let Err(error) = emit_stream_connection(stream, &sender) {
+                                        emit!(sender, TcpConnectionChunk::bad_chunk(error));
+                                        return;
+                                    }
                                     return;
                                 }
                                 Err(_) => continue,
@@ -87,7 +110,11 @@ impl ConnectorService {
                                     let _ = stream.set_nodelay(true);
                                 }
 
-                                emit!(sender, TcpStreamWrapper(stream));
+                                // Extract addresses and emit connection event
+                                if let Err(error) = emit_stream_connection(stream, &sender) {
+                                    emit!(sender, TcpConnectionChunk::bad_chunk(error));
+                                    return;
+                                }
                                 return;
                             }
                             Err(_) => continue,
@@ -97,7 +124,7 @@ impl ConnectorService {
 
                 emit!(
                     sender,
-                    TcpStreamWrapper::bad_chunk("Failed to connect to any address".to_string())
+                    TcpConnectionChunk::bad_chunk("Failed to connect to any address".to_string())
                 );
             });
         })

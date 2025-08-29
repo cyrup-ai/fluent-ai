@@ -5,11 +5,11 @@ use serde::de::DeserializeOwned;
 
 use super::super::JsonPathError;
 use super::types::JsonStreamProcessor;
-use crate::HttpError;
+use crate::prelude::*;
 
 impl<T> JsonStreamProcessor<T>
 where
-    T: DeserializeOwned + Send + 'static,
+    T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
 {
     /// Process individual body chunk through JSONPath deserialization
     pub(super) fn process_body_chunk<S>(
@@ -22,9 +22,10 @@ where
         T: Into<S>,
     {
         // Check circuit breaker before processing
-        let (should_allow, _circuit_state) = self.error_recovery.should_allow_request();
+        let should_allow = self.error_recovery.should_allow_request();
         if !should_allow {
-            return Err(JsonPathError::Processing(
+            return Err(JsonPathError::new(
+                crate::jsonpath::error::ErrorKind::ProcessingError,
                 "Circuit breaker open - failing fast".to_string(),
             ));
         }
@@ -36,11 +37,12 @@ where
         }
 
         // Process chunk through JSONPath stream
-        let objects_stream = self.json_array_stream.process_chunk(bytes)?;
+        let objects_stream = self.json_array_stream.process_chunk(bytes);
 
         // Apply chunk handlers and emit objects
         for object_result in objects_stream {
-            let mut processed_result = object_result;
+            let mut processed_result: Result<T, crate::jsonpath::error::JsonPathError> =
+                Ok(object_result);
 
             // Apply all registered chunk handlers
             for handler in &mut self.chunk_handlers {
@@ -51,7 +53,10 @@ where
                 Ok(object) => {
                     self.stats.record_object_yield();
                     let converted_object: S = object.into();
-                    emit!(sender, converted_object);
+                    if let Err(_) = sender.send(converted_object) {
+                        // Channel closed, stop processing
+                        break;
+                    }
                 }
                 Err(e) => {
                     self.stats.record_parse_error();
@@ -70,13 +75,12 @@ where
         self.error_recovery.record_failure();
 
         // Check if we should attempt recovery
-        let (should_allow, circuit_state) = self.error_recovery.should_allow_request();
+        let should_allow = self.error_recovery.should_allow_request();
+        let circuit_state = self.error_recovery.get_current_state();
 
         if !should_allow {
-            handle_error!(
-                format!("Circuit breaker {:?} - error: {}", circuit_state, error),
-                "stream processing"
-            );
+            // Log circuit breaker activation
+            eprintln!("Circuit breaker {:?} - error: {}", circuit_state, error);
             return Err(error);
         }
 
@@ -87,10 +91,7 @@ where
         }
 
         // Log error for monitoring
-        handle_error!(
-            format!("Processing error with recovery: {}", error),
-            "json stream processor"
-        );
+        eprintln!("Processing error with recovery: {}", error);
 
         Err(error)
     }
@@ -107,7 +108,6 @@ where
 
     /// Check if processor is healthy for new requests
     pub fn is_healthy(&self) -> bool {
-        let (should_allow, _) = self.error_recovery.should_allow_request();
-        should_allow
+        self.error_recovery.should_allow_request()
     }
 }

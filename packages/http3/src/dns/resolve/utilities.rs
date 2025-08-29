@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
-use fluent_ai_async::AsyncStream;
+use fluent_ai_async::{AsyncStream, spawn_task};
 
 use super::traits::Resolve;
 use super::types::{DnsResult, HyperName};
@@ -19,7 +19,7 @@ pub struct DnsResolverWithOverridesImpl {
 }
 
 impl Resolve for DnsResolverWithOverridesImpl {
-    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult> {
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult, 1024> {
         let hostname = name.as_str().to_string();
         let overrides = self.overrides.clone();
         let dns_resolver = self.dns_resolver.clone();
@@ -37,17 +37,12 @@ impl Resolve for DnsResolverWithOverridesImpl {
             }
 
             // Fall back to underlying DNS resolver
-            let resolve_stream = dns_resolver.resolve(HyperName::from_static(&hostname));
-            match resolve_stream.try_next() {
-                Some(dns_result) => fluent_ai_async::emit!(sender, dns_result),
-                None => {
-                    fluent_ai_async::handle_error!(
-                        "DNS resolver with overrides stream ended",
-                        "DNS resolution with overrides"
-                    );
-                    fluent_ai_async::emit!(sender, DnsResult::new()); // Return empty result as error-as-data
+            let resolve_stream = dns_resolver.resolve(HyperName::from(hostname));
+            spawn_task(move || {
+                for dns_result in resolve_stream {
+                    fluent_ai_async::emit!(sender, dns_result);
                 }
-            }
+            });
         })
     }
 }

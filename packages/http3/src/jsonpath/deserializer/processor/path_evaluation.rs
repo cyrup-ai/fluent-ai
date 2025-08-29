@@ -1,95 +1,73 @@
-//! JSONPath expression evaluation logic
+//! JSONPath expression evaluation during streaming
 //!
-//! Contains the core logic for evaluating JSONPath expressions against the current
-//! parsing position, including selector matching and path validation.
+//! Provides path matching and navigation logic for JSONPath expressions
+//! during incremental JSON parsing.
 
-use serde::de::DeserializeOwned;
+use crate::jsonpath::{ast::JsonSelector, error::JsonPathResult, expression::JsonPathExpression};
 
-use super::super::iterator::JsonPathIterator;
+/// Result of path evaluation step
+#[derive(Debug, Clone, PartialEq)]
+pub enum PathEvaluationResult {
+    /// Path matches current location - continue processing
+    Match,
+    /// Path doesn't match - skip current branch
+    NoMatch,
+    /// Need more data to determine match
+    Pending,
+    /// Reached target location - start extracting
+    TargetReached,
+}
 
-impl<'iter, 'data, T> JsonPathIterator<'iter, 'data, T>
-where
-    T: DeserializeOwned,
-{
-    /// Check if current position matches JSONPath expression
-    #[inline]
-    pub(super) fn matches_current_path(&self) -> bool {
-        self.evaluate_jsonpath_at_current_position()
+/// Evaluate current JSON path against JSONPath expression
+pub fn evaluate_path_step(
+    expression: &JsonPathExpression,
+    current_path: &[String],
+    property_name: Option<&str>,
+    is_array: bool,
+    array_index: Option<usize>,
+) -> JsonPathResult<PathEvaluationResult> {
+    // Simplified path evaluation - would need full JSONPath implementation
+    // For now, just basic property matching
+
+    if expression.selectors().is_empty() {
+        return Ok(PathEvaluationResult::Match);
     }
 
-    /// Evaluate JSONPath expression at current parsing position
-    #[inline]
-    pub(super) fn evaluate_jsonpath_at_current_position(&self) -> bool {
-        if self.deserializer.in_recursive_descent {
-            // Evaluate recursive descent match using the implemented logic
-            self.evaluate_recursive_descent_match()
-        } else {
-            // Check if we should enter recursive descent mode
-            if self.should_enter_recursive_descent() {
-                // Note: We need a mutable reference to enter recursive descent mode
-                // This will be handled by the caller that has mutable access
-                false
-            } else {
-                self.evaluate_selector_match()
-            }
-        }
+    // Check if we're at the right depth
+    if current_path.len() >= expression.selectors().len() {
+        return Ok(PathEvaluationResult::TargetReached);
     }
 
-    /// Evaluate current selector considering array indices and slice notation
-    #[inline]
-    pub(super) fn evaluate_selector_match(&self) -> bool {
-        // Get the current selector from the path expression
-        let selectors = self.deserializer.path_expression.selectors();
-        let selector_index = self
-            .deserializer
-            .current_selector_index
-            .min(selectors.len().saturating_sub(1));
+    let current_selector = &expression.selectors()[current_path.len()];
 
-        if selector_index >= selectors.len() {
-            return false;
-        }
-
-        let current_selector = &selectors[selector_index];
-        self.evaluate_single_selector(current_selector)
-    }
-
-    /// Evaluate a single selector against current streaming context
-    #[inline]
-    pub(super) fn evaluate_single_selector(
-        &self,
-        selector: &crate::jsonpath::parser::JsonSelector,
-    ) -> bool {
-        use crate::jsonpath::parser::JsonSelector;
-
-        match selector {
-            JsonSelector::Root => self.deserializer.current_depth == 0,
-            JsonSelector::Child { .. } => self.deserializer.current_depth > 0,
-            JsonSelector::RecursiveDescent => true, // Always matches
-            JsonSelector::Wildcard => self.deserializer.current_depth > 0,
-            JsonSelector::Index { index, from_end } => {
-                self.evaluate_index_selector(*index, *from_end)
-            }
-            JsonSelector::Slice { start, end, step } => {
-                self.evaluate_slice_selector(*start, *end, *step)
-            }
-            JsonSelector::Filter { expression } => {
-                // Evaluate the filter expression against the current JSON context
-                if !self.deserializer.object_buffer.is_empty() {
-                    if let Ok(json_str) = std::str::from_utf8(&self.deserializer.object_buffer) {
-                        if let Ok(context) = serde_json::from_str::<serde_json::Value>(json_str) {
-                            // JsonPathResultExt removed - not available
-                            use crate::jsonpath::filter::FilterEvaluator;
-                            return FilterEvaluator::evaluate_predicate(&context, expression)
-                                .handle_or_default(false);
-                        }
-                    }
+    match current_selector {
+        JsonSelector::Child { name, .. } => {
+            if let Some(prop) = property_name {
+                if prop == name {
+                    Ok(PathEvaluationResult::Match)
+                } else {
+                    Ok(PathEvaluationResult::NoMatch)
                 }
-                false
-            }
-            JsonSelector::Union { selectors } => {
-                // Union matches if any selector matches
-                selectors.iter().any(|s| self.evaluate_single_selector(s))
+            } else {
+                Ok(PathEvaluationResult::Pending)
             }
         }
+        JsonSelector::Wildcard => Ok(PathEvaluationResult::Match),
+        JsonSelector::Index { .. } => {
+            if is_array {
+                Ok(PathEvaluationResult::Match)
+            } else {
+                Ok(PathEvaluationResult::NoMatch)
+            }
+        }
+        _ => {
+            // Default case for other selector types
+            Ok(PathEvaluationResult::Match)
+        }
     }
+}
+
+/// Check if current location matches the target pattern
+pub fn is_target_location(expression: &JsonPathExpression, current_path: &[String]) -> bool {
+    current_path.len() == expression.selectors().len().saturating_sub(1)
 }

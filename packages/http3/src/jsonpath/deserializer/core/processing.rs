@@ -13,7 +13,7 @@ where
 {
     /// Process single JSON byte and update parsing state
     #[inline]
-    pub(super) fn process_json_byte(
+    pub fn process_json_byte(
         &mut self,
         byte: u8,
     ) -> crate::jsonpath::error::JsonPathResult<super::super::processor::JsonProcessResult> {

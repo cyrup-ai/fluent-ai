@@ -10,7 +10,7 @@ use fluent_ai_async::{AsyncStream, emit};
 use http::{HeaderMap, Method, Uri};
 
 /// H2 response chunk for streaming
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct H2Chunk {
     pub status: u16,
     pub headers: HashMap<String, String>,
@@ -65,8 +65,10 @@ pub fn execute_h2_request(
                 }
             };
 
-            // Perform H2 handshake
-            match h2::client::handshake(tcp) {
+            // Perform H2 handshake - use simple blocking approach with futures executor
+            use futures::executor::block_on;
+            
+            match block_on(h2::client::handshake(tcp)) {
                 Ok((mut h2, connection)) => {
                     // Spawn connection task
                     std::thread::spawn(move || {
@@ -75,15 +77,16 @@ pub fn execute_h2_request(
 
                     // LOOP pattern for H2 streaming
                     loop {
-                        match h2.ready() {
-                            Ok(()) => {
+                        match block_on(h2.ready()) {
+                            Ok(ready_h2) => {
+                                // Use the ready h2 client
                                 let req = http::Request::builder()
                                     .method(method.clone())
                                     .uri(uri.clone())
                                     .body(())
                                     .unwrap();
 
-                                match h2.send_request(req, false) {
+                                match ready_h2.send_request(req, false) {
                                     Ok((response_future, mut stream)) => {
                                         // Send request body
                                         if !body.is_empty() {
@@ -91,7 +94,7 @@ pub fn execute_h2_request(
                                         }
 
                                         // Read response (blocking)
-                                        match response_future {
+                                        match block_on(response_future) {
                                             Ok(resp) => {
                                                 let chunk = H2Chunk {
                                                     status: resp.status().as_u16(),

@@ -2,23 +2,31 @@
 
 use url::Url;
 
-use crate::error::HttpResult;
-
 /// Validate URL string format and accessibility
 #[inline]
-pub fn validate_url(url_str: &str) -> HttpResult<()> {
-    Url::parse(url_str)
-        .map(|_| ())
-        .map_err(|e| crate::error::HttpError::InvalidUrl {
-            message: format!("URL validation failed: {}", e),
-        })
+pub fn validate_url(url_str: &str) -> Result<(), crate::error::HttpError> {
+    Url::parse(url_str).map(|_| ()).map_err(|e| {
+        let inner = crate::error::types::Inner {
+            kind: crate::error::types::Kind::Request,
+            source: None,
+        };
+        crate::error::types::Error {
+            inner: Box::new(inner),
+        }
+    })
 }
 
 /// Normalize URL by removing fragments and sorting query parameters
 #[inline]
-pub fn normalize_url(url_str: &str) -> HttpResult<String> {
-    let mut url = Url::parse(url_str).map_err(|e| crate::error::HttpError::InvalidUrl {
-        message: format!("URL parsing failed: {}", e),
+pub fn normalize_url(url_str: &str) -> Result<String, crate::error::HttpError> {
+    let mut url = Url::parse(url_str).map_err(|e| {
+        let inner = crate::error::types::Inner {
+            kind: crate::error::types::Kind::Request,
+            source: None,
+        };
+        crate::error::types::Error {
+            inner: Box::new(inner),
+        }
     })?;
 
     // Remove fragment
@@ -40,9 +48,15 @@ pub fn normalize_url(url_str: &str) -> HttpResult<String> {
 
 /// Parse and validate URL string
 #[inline]
-pub fn parse_url(url_str: &str) -> HttpResult<Url> {
-    Url::parse(url_str).map_err(|e| crate::error::HttpError::InvalidUrl {
-        message: e.to_string(),
+pub fn parse_url(url_str: &str) -> Result<Url, crate::error::HttpError> {
+    Url::parse(url_str).map_err(|e| {
+        let inner = crate::error::types::Inner {
+            kind: crate::error::types::Kind::Request,
+            source: None,
+        };
+        crate::error::types::Error {
+            inner: Box::new(inner),
+        }
     })
 }
 
@@ -70,9 +84,19 @@ pub fn extract_port(url: &Url) -> u16 {
 
 /// Build URL with path and query parameters
 #[inline]
-pub fn build_url(base: &str, path: &str, params: &[(&str, &str)]) -> HttpResult<String> {
-    let mut url = Url::parse(base).map_err(|e| crate::error::HttpError::InvalidUrl {
-        message: format!("Base URL parsing failed: {}", e),
+pub fn build_url(
+    base: &str,
+    path: &str,
+    params: &[(&str, &str)],
+) -> Result<String, crate::error::HttpError> {
+    let mut url = Url::parse(base).map_err(|e| {
+        let inner = crate::error::types::Inner {
+            kind: crate::error::types::Kind::Request,
+            source: None,
+        };
+        crate::error::types::Error {
+            inner: Box::new(inner),
+        }
     })?;
 
     url.set_path(path);

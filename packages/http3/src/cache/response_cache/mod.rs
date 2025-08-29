@@ -24,7 +24,7 @@ mod tests {
 
     use super::super::{cache_config::CacheConfig, cache_key::CacheKey};
     use super::*;
-    use crate::HttpResponse;
+    use crate::prelude::*;
 
     fn create_test_response() -> HttpResponse {
         Response::builder()

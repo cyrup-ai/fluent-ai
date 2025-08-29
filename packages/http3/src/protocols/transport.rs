@@ -12,7 +12,7 @@ use quiche::{Config, Connection as QuicheConnection};
 use super::connection::{Connection, ConnectionManager};
 use super::h2::{H2Connection, H2Stream};
 use super::h3::{H3Connection, H3Stream};
-use crate::streaming::chunks::{FrameChunk, H2Frame, H3Frame};
+use crate::protocols::frames::{FrameChunk, H2Frame, H3Frame};
 
 /// Transport type for connection negotiation
 #[derive(Debug, Clone, Copy, PartialEq)]

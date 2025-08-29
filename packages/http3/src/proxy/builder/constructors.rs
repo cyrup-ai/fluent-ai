@@ -15,14 +15,14 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::http("http://my.prox")?)
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(crate::proxy::Proxy::http("http://my.prox")?)
     ///     .build()?;
     /// # Ok(())
     /// # }
     /// # fn main() {}
     /// ```
-    pub fn http<U: IntoProxy>(proxy_scheme: U) -> crate::Result<Proxy> {
+    pub fn http<U: IntoProxy>(proxy_scheme: U) -> std::result::Result<Proxy, crate::HttpError> {
         Ok(Proxy::new(ProxyIntercept::Http(proxy_scheme.into_proxy()?)))
     }
 
@@ -33,14 +33,14 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::https("https://example.prox:4545")?)
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(crate::proxy::Proxy::https("https://example.prox:4545")?)
     ///     .build()?;
     /// # Ok(())
     /// # }
     /// # fn main() {}
     /// ```
-    pub fn https<U: IntoProxy>(proxy_scheme: U) -> crate::Result<Proxy> {
+    pub fn https<U: IntoProxy>(proxy_scheme: U) -> std::result::Result<Proxy, crate::HttpError> {
         Ok(Proxy::new(ProxyIntercept::Https(proxy_scheme.into_proxy()?)))
     }
 
@@ -54,14 +54,14 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::all("http://pro.xy")?)
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(crate::proxy::Proxy::all("http://pro.xy")?)
     ///     .build()?;
     /// # Ok(())
     /// # }
     /// # fn main() {}
     /// ```
-    pub fn all<U: IntoProxy>(proxy_scheme: U) -> crate::Result<Proxy> {
+    pub fn all<U: IntoProxy>(proxy_scheme: U) -> std::result::Result<Proxy, crate::HttpError> {
         Ok(Proxy::new(ProxyIntercept::All(proxy_scheme.into_proxy()?)))
     }
 
@@ -72,9 +72,9 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let target = crate::hyper::Url::parse("https://my.prox")?;
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::custom(move |url| {
+    /// let target = crate::error::HttpError::parse("https://my.prox")?;
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(crate::proxy::Proxy::custom(move |url| {
     ///         if url.host_str() == Some("hyper.rs") {
     ///             Some(target.clone())
     ///         } else {

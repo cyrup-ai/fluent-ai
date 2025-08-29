@@ -25,6 +25,56 @@ impl<'a> FilterParser<'a> {
         }
     }
 
+    /// Parse comparison operator from tokens
+    #[inline]
+    pub fn parse_comparison_operator(&mut self) -> Option<String> {
+        match self.tokens.front() {
+            Some(Token::Equal) => {
+                self.tokens.pop_front();
+                Some("==".to_string())
+            }
+            Some(Token::NotEqual) => {
+                self.tokens.pop_front();
+                Some("!=".to_string())
+            }
+            Some(Token::Less) => {
+                self.tokens.pop_front();
+                Some("<".to_string())
+            }
+            Some(Token::LessEq) => {
+                self.tokens.pop_front();
+                Some("<=".to_string())
+            }
+            Some(Token::Greater) => {
+                self.tokens.pop_front();
+                Some(">".to_string())
+            }
+            Some(Token::GreaterEq) => {
+                self.tokens.pop_front();
+                Some(">=".to_string())
+            }
+            _ => None,
+        }
+    }
+
+    /// Expect a specific token and consume it
+    #[inline]
+    pub fn expect_token(&mut self, expected: Token) -> JsonPathResult<()> {
+        match self.tokens.pop_front() {
+            Some(token) if std::mem::discriminant(&token) == std::mem::discriminant(&expected) => {
+                Ok(())
+            }
+            Some(token) => Err(crate::jsonpath::error::JsonPathError::new(
+                crate::jsonpath::error::ErrorKind::InvalidPath,
+                format!("Expected {:?}, found {:?}", expected, token),
+            )),
+            None => Err(crate::jsonpath::error::JsonPathError::new(
+                crate::jsonpath::error::ErrorKind::InvalidPath,
+                format!("Expected {:?}, but reached end of input", expected),
+            )),
+        }
+    }
+
     /// Parse complete filter expression
     #[inline]
     pub fn parse_filter_expression(&mut self) -> JsonPathResult<FilterExpression> {
@@ -43,10 +93,5 @@ impl<'a> FilterParser<'a> {
         self.tokens.front()
     }
 
-    /// Parse logical OR expression (placeholder implementation)
-    #[inline]
-    pub fn parse_logical_or(&mut self) -> JsonPathResult<FilterExpression> {
-        // Placeholder implementation - returns a simple current context expression
-        Ok(FilterExpression::Current)
-    }
+    // parse_logical_or implementation is in expressions.rs
 }

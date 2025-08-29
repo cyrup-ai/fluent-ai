@@ -62,7 +62,7 @@ impl H2FrameProcessor {
             match Pin::new(&mut recv_stream).poll_data(&mut cx) {
                 Poll::Ready(Some(Ok(chunk))) => {
                     // Got data chunk, store it in queue
-                    if data_chunks.push(chunk).is_err() {
+                    if data_chunks.push(chunk.clone()).is_err() {
                         // Queue is full, drop oldest chunk
                         let _ = data_chunks.pop();
                         let _ = data_chunks.push(chunk);

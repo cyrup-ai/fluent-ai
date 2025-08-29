@@ -18,7 +18,7 @@ pub use connection::{BrokenConnectionImpl, Conn, ConnectionTrait, TlsInfo};
 pub use connector::{
     BoxedConnectorLayer, BoxedConnectorService, Connector, ConnectorKind, Unnameable,
 };
-pub use tcp_impl::{TcpConnection, TcpStreamWrapper};
+pub use tcp_impl::{BrokenStream, TcpConnection, TcpStreamWrapper};
 
 #[cfg(test)]
 mod tests {

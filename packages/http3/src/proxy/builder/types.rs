@@ -19,7 +19,7 @@ use super::super::{
 ///
 /// ```rust
 /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-/// let proxy = crate::hyper::Proxy::http("https://secure.example")?;
+/// let proxy = crate::proxy::Proxy::http("https://secure.example")?;
 /// # Ok(())
 /// # }
 /// ```
@@ -36,7 +36,7 @@ use super::super::{
 /// By enabling the `"socks"` feature it is possible to use a socks proxy:
 /// ```rust
 /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-/// let proxy = crate::hyper::Proxy::http("socks5://192.168.1.1:9000")?;
+/// let proxy = crate::proxy::Proxy::http("socks5://192.168.1.1:9000")?;
 /// # Ok(())
 /// # }
 /// ```

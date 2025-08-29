@@ -49,12 +49,26 @@ impl<'a> FilterParser<'a> {
     pub(super) fn parse_comparison(&mut self) -> JsonPathResult<FilterExpression> {
         let left = self.parse_primary()?;
 
-        if let Some(op) = self.parse_comparison_operator() {
+        if let Some(op_str) = self.parse_comparison_operator() {
             self.consume_token();
             let right = self.parse_primary()?;
+            let operator = match op_str.as_str() {
+                "==" => crate::jsonpath::ast::ComparisonOp::Equal,
+                "!=" => crate::jsonpath::ast::ComparisonOp::NotEqual,
+                "<" => crate::jsonpath::ast::ComparisonOp::Less,
+                "<=" => crate::jsonpath::ast::ComparisonOp::LessEq,
+                ">" => crate::jsonpath::ast::ComparisonOp::Greater,
+                ">=" => crate::jsonpath::ast::ComparisonOp::GreaterEq,
+                _ => {
+                    return Err(crate::jsonpath::error::JsonPathError::new(
+                        crate::jsonpath::error::ErrorKind::InvalidPath,
+                        format!("Unknown comparison operator: {}", op_str),
+                    ));
+                }
+            };
             Ok(FilterExpression::Comparison {
                 left: Box::new(left),
-                operator: op,
+                operator,
                 right: Box::new(right),
             })
         } else {
@@ -154,26 +168,7 @@ impl<'a> FilterParser<'a> {
         }
     }
 
-    /// Parse function arguments (comma-separated filter expressions)
-    pub(super) fn parse_function_arguments(&mut self) -> JsonPathResult<Vec<FilterExpression>> {
-        let mut args = Vec::new();
-
-        // Handle empty argument list
-        if matches!(self.peek_token(), Some(Token::RightParen)) {
-            return Ok(args);
-        }
-
-        // Parse first argument
-        args.push(self.parse_logical_or()?);
-
-        // Parse remaining arguments
-        while matches!(self.peek_token(), Some(Token::Comma)) {
-            self.consume_token(); // consume comma
-            args.push(self.parse_logical_or()?);
-        }
-
-        Ok(args)
-    }
+    // parse_function_arguments implementation is in functions.rs
 
     /// Parse JSONPath expression starting with $ or @
     fn parse_root_jsonpath(&mut self) -> JsonPathResult<FilterExpression> {

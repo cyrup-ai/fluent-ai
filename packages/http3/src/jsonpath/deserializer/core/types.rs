@@ -25,41 +25,41 @@ pub enum DeserializerState {
 /// Supports full JSONPath specification including recursive descent (..) operators.
 pub struct JsonPathDeserializer<'a, T> {
     /// JSONPath expression for navigation and filtering
-    pub(super) path_expression: &'a JsonPathExpression,
+    pub path_expression: &'a JsonPathExpression,
     /// Streaming buffer for efficient byte processing
-    pub(super) buffer: &'a mut StreamBuffer,
+    pub buffer: &'a mut StreamBuffer,
     /// Current parsing state
-    pub(super) state: DeserializerState,
+    pub state: DeserializerState,
     /// Current parsing depth in JSON structure
-    pub(super) current_depth: usize,
+    pub current_depth: usize,
     /// Whether we've reached the target array location
-    pub(super) in_target_array: bool,
+    pub in_target_array: bool,
     /// Current object nesting level within target array
-    pub(super) object_nesting: usize,
+    pub object_nesting: usize,
     /// Buffer for accumulating complete JSON objects
-    pub(super) object_buffer: Vec<u8>,
+    pub object_buffer: Vec<u8>,
     /// Current selector index being evaluated in the JSONPath expression
     /// TODO: Part of streaming JSONPath evaluation state - implement usage in new architecture
     #[allow(dead_code)]
-    pub(super) current_selector_index: usize,
+    pub current_selector_index: usize,
     /// Whether we're currently in recursive descent mode
     /// TODO: Part of ".." operator implementation - integrate with new evaluator
     #[allow(dead_code)]
-    pub(super) in_recursive_descent: bool,
+    pub in_recursive_descent: bool,
     /// Stack of depth levels where recursive descent should continue searching
     /// TODO: Used for complex recursive descent patterns - implement in new architecture
     #[allow(dead_code)]
-    pub(super) recursive_descent_stack: Vec<usize>,
+    pub recursive_descent_stack: Vec<usize>,
     /// Path breadcrumbs for backtracking during recursive descent
     /// TODO: Navigation state for complex JSONPath expressions - integrate with new evaluator
     #[allow(dead_code)]
-    pub(super) path_breadcrumbs: Vec<String>,
+    pub path_breadcrumbs: Vec<String>,
     /// Current array index for slice and index evaluation
-    pub(super) current_array_index: i64,
+    pub current_array_index: i64,
     /// Array index stack for nested array processing
-    pub(super) array_index_stack: Vec<i64>,
+    pub array_index_stack: Vec<i64>,
     /// Current position in the buffer for consistent reading
-    pub(super) buffer_position: usize,
+    pub buffer_position: usize,
     /// Target property name for $.property[*] patterns
     pub(super) target_property: Option<String>,
     /// Whether we're currently inside the target property

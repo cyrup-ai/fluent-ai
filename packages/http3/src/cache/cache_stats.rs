@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 /// Statistics for HTTP response caching
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CacheStats {
     /// Number of cache hits
     pub hits: AtomicU64,
@@ -16,6 +16,8 @@ pub struct CacheStats {
     pub bytes_stored: AtomicU64,
     /// Number of entries in cache
     pub entries: AtomicU64,
+    /// Number of cache validations
+    pub validations: AtomicU64,
     /// Cache creation time
     pub created_at: Instant,
 }
@@ -29,6 +31,7 @@ impl CacheStats {
             evictions: AtomicU64::new(0),
             bytes_stored: AtomicU64::new(0),
             entries: AtomicU64::new(0),
+            validations: AtomicU64::new(0),
             created_at: Instant::now(),
         }
     }
@@ -73,5 +76,19 @@ impl CacheStats {
     /// Get cache age
     pub fn age(&self) -> Duration {
         self.created_at.elapsed()
+    }
+}
+
+impl Default for CacheStats {
+    fn default() -> Self {
+        Self {
+            hits: AtomicU64::new(0),
+            misses: AtomicU64::new(0),
+            evictions: AtomicU64::new(0),
+            bytes_stored: AtomicU64::new(0),
+            entries: AtomicU64::new(0),
+            validations: AtomicU64::new(0),
+            created_at: Instant::now(),
+        }
     }
 }

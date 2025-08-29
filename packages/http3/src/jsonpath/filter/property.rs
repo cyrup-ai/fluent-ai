@@ -12,7 +12,7 @@ use crate::jsonpath::parser::FilterValue;
 
 // Shared thread-local storage for missing property context
 thread_local! {
-    static MISSING_PROPERTY_CONTEXT: RefCell<Option<(String, bool)>> = RefCell::new(None);
+    pub static MISSING_PROPERTY_CONTEXT: RefCell<Option<(String, bool)>> = RefCell::new(None);
 }
 
 /// Property resolution utilities

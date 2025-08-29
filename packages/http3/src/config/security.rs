@@ -3,7 +3,8 @@
 //! Provides builder methods for configuring security settings including
 //! HTTPS enforcement, TLS options, and cryptographic preferences.
 
-use super::core::{HttpConfig, RetryPolicy};
+use super::core::HttpConfig;
+use super::core::retry::RetryPolicy;
 
 impl HttpConfig {
     /// Enable or disable HTTPS-only mode

@@ -8,7 +8,7 @@ where
 {
     /// Deserialize current object from buffer
     #[inline]
-    pub(super) fn deserialize_current_object(
+    pub fn deserialize_current_object(
         &mut self,
     ) -> crate::jsonpath::error::JsonPathResult<Option<T>> {
         if self.object_buffer.is_empty() {

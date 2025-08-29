@@ -7,7 +7,8 @@ use fluent_ai_async::{AsyncStream, emit};
 use std::net::{SocketAddr, IpAddr};
 use std::thread;
 
-use super::types::{Resolve, DnsResult, HyperName};
+use super::traits::Resolve;
+use super::types::{DnsResult, HyperName};
 
 /// High-performance synchronous DNS resolver using system getaddrinfo.
 /// Zero-allocation design with optimized address sorting.
@@ -42,7 +43,7 @@ impl Default for GaiResolver {
 }
 
 impl Resolve for GaiResolver {
-    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult> {
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult, 1024> {
         use std::net::ToSocketAddrs;
         
         let hostname = name.as_str().to_string();

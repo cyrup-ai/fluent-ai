@@ -24,11 +24,12 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+    use crate::HttpConfig;
     use crate::builder::core::Http3Builder;
-    use crate::client::HttpClient;
+    use crate::client::core::HttpClient;
 
     fn create_test_client() -> Arc<HttpClient> {
-        Arc::new(HttpClient::default())
+        Arc::new(HttpClient::with_config(HttpConfig::default()))
     }
 
     #[test]

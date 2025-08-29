@@ -4,7 +4,7 @@
 //! memory usage while avoiding frequent reallocations. Includes hysteresis
 //! to prevent size thrashing and adaptive growth patterns.
 
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::BytesMut;
 
 /// Intelligent buffer capacity management
 ///

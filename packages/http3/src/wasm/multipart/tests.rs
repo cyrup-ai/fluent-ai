@@ -58,7 +58,9 @@ mod tests {
         let form_data_promise = js_req.form_data().expect("could not get form_data promise");
 
         let form_data = crate::wasm::promise::<FormData>(form_data_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get body as form data");
 
         // check text part
@@ -68,7 +70,9 @@ mod tests {
 
         let text_promise = text_file.text();
         let text = crate::wasm::promise::<JsValue>(text_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get text body as text");
         assert_eq!(
             text.as_string().expect("text is not a string"),
@@ -89,7 +93,9 @@ mod tests {
 
         let binary_array_buffer_promise = binary_file.array_buffer();
         let array_buffer = crate::wasm::promise::<JsValue>(binary_array_buffer_promise)
-            .collect_one()
+            .collect()
+            .into_iter()
+            .find(|v| !v.is_error())
             .expect("could not get request body as array buffer");
 
         let binary = Uint8Array::new(&array_buffer).to_vec();

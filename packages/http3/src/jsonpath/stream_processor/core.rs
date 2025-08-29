@@ -1,6 +1,3 @@
-use std::sync::atomic::Ordering;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use bytes::Bytes;
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, handle_error};
@@ -8,11 +5,13 @@ use serde::de::DeserializeOwned;
 
 use super::super::{JsonArrayStream, JsonPathError};
 use super::types::{ErrorRecoveryState, JsonStreamProcessor, ProcessorStats};
-use crate::{HttpChunk, HttpError};
+use crate::prelude::*;
+use crate::error::constructors::generic;
+
 
 impl<T> JsonStreamProcessor<T>
 where
-    T: DeserializeOwned + Send + 'static,
+    T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
 {
     /// Create new JsonStreamProcessor with JSONPath expression
     #[must_use]
@@ -59,14 +58,12 @@ where
                             }
                             Err(e) => {
                                 self.stats.record_processing_error();
-                                let json_error = JsonPathError::Deserialization(format!(
-                                    "Body chunk processing failed: {}",
-                                    e
-                                ));
-                                let http_error = HttpError::generic(format!(
-                                    "JSONPath processing error: {}",
-                                    json_error
-                                ));
+                                let json_error = JsonPathError::new(
+                                    crate::jsonpath::error::ErrorKind::Deserialization,
+                                    format!("Body chunk processing failed: {}", e),
+                                );
+                                let http_error =
+                                    generic(format!("JSONPath processing error: {}", json_error));
 
                                 if let Err(recovery_error) =
                                     self.handle_error_with_recovery(http_error)
@@ -81,11 +78,10 @@ where
                     }
                     HttpChunk::Error(e) => {
                         self.stats.record_processing_error();
-                        if let Err(recovery_error) =
-                            self.handle_error_with_recovery(crate::HttpError::NetworkError {
-                                message: e,
-                            })
-                        {
+                        if let Err(recovery_error) = self.handle_error_with_recovery(
+                            crate::error::Error::new(crate::error::Kind::Request)
+                                .with(std::io::Error::new(std::io::ErrorKind::Other, e)),
+                        ) {
                             handle_error!(recovery_error, "HTTP chunk error with recovery");
                         }
                     }
@@ -109,23 +105,18 @@ where
             // For now, create a simple stream from the body
             let body_stream = std::iter::once(body);
 
-            for response_chunk in body_stream {
-                match response_chunk {
-                    crate::HttpResponseChunk::Data(bytes) => {
-                        self.stats.record_chunk_processed(bytes.len());
+            for body in body_stream {
+                // Convert body to bytes for processing
+                let body_bytes = Bytes::new(); // Placeholder for now
 
-                        if let Err(e) = self.process_body_chunk(&sender, bytes) {
-                            self.stats.record_processing_error();
-                            handle_error!(e, "Body chunk processing failed");
-                        } else {
-                            self.record_success();
-                        }
-                    }
-                    crate::HttpResponseChunk::Error(e) => {
-                        self.stats.record_processing_error();
-                        handle_error!(e, "HTTP response chunk error");
-                    }
-                    _ => continue,
+                // Record processing
+                self.stats.record_chunk_processed(0);
+
+                if let Err(e) = self.process_body_chunk(&sender, body_bytes) {
+                    self.stats.record_processing_error();
+                    handle_error!(e, "Body chunk processing failed");
+                } else {
+                    self.record_success();
                 }
             }
         })

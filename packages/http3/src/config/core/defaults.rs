@@ -18,6 +18,8 @@ impl Default for HttpConfig {
             tcp_keepalive: Some(Duration::from_secs(60)),
             tcp_nodelay: true,
             http2_adaptive_window: true,
+            gzip_enabled: true,
+            brotli_enabled: true,
             http2_max_frame_size: Some(1 << 20), // 1MB
             use_native_certs: true,
             https_only: false,

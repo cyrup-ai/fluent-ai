@@ -39,6 +39,79 @@ impl ErrorRecoveryState {
             max_backoff_micros: 60_000_000,     // 60 seconds
         }
     }
+
+    /// Record a successful operation
+    pub fn record_success(&self) {
+        use std::sync::atomic::Ordering;
+        self.consecutive_failures.store(0, Ordering::Relaxed);
+        self.circuit_state.store(0, Ordering::Relaxed); // Closed
+    }
+
+    /// Check if a request should be allowed
+    pub fn should_allow_request(&self) -> bool {
+        use std::sync::atomic::Ordering;
+        let state = self.circuit_state.load(Ordering::Relaxed);
+
+        match state {
+            0 => true, // Closed - allow all requests
+            1 => {
+                // Open - check if timeout has passed
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_micros() as u64;
+                let last_failure = self.last_failure_time.load(Ordering::Relaxed);
+
+                if now.saturating_sub(last_failure) > self.circuit_timeout_micros {
+                    // Transition to half-open
+                    self.circuit_state.store(2, Ordering::Relaxed);
+                    true
+                } else {
+                    false
+                }
+            }
+            2 => true,  // HalfOpen - allow limited requests
+            _ => false, // Unknown state - be conservative
+        }
+    }
+
+    /// Record a failure
+    pub fn record_failure(&self) {
+        use std::sync::atomic::Ordering;
+        let failures = self.consecutive_failures.fetch_add(1, Ordering::Relaxed) + 1;
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
+        self.last_failure_time.store(now, Ordering::Relaxed);
+
+        if failures >= self.failure_threshold {
+            self.circuit_state.store(1, Ordering::Relaxed); // Open
+        }
+    }
+
+    /// Get backoff delay in microseconds
+    pub fn get_backoff_delay_micros(&self) -> u64 {
+        use std::sync::atomic::Ordering;
+        let failures = self.consecutive_failures.load(Ordering::Relaxed);
+
+        // Exponential backoff: base_delay * 2^failures, capped at max_backoff
+        let base_delay_micros = 1_000_000; // 1 second
+        let delay = base_delay_micros * (1u64 << failures.min(10)); // Cap at 2^10 to prevent overflow
+        delay.min(self.max_backoff_micros)
+    }
+
+    /// Get current circuit breaker state
+    pub fn get_current_state(&self) -> CircuitState {
+        use std::sync::atomic::Ordering;
+        match self.circuit_state.load(Ordering::Relaxed) {
+            0 => CircuitState::Closed,
+            1 => CircuitState::Open,
+            2 => CircuitState::HalfOpen,
+            _ => CircuitState::Closed, // Default to closed for unknown states
+        }
+    }
 }
 
 /// Lock-free performance statistics for JsonStreamProcessor
@@ -60,19 +133,7 @@ pub struct ProcessorStats {
     pub last_process_time: Arc<AtomicU64>,
 }
 
-impl ProcessorStats {
-    pub fn new() -> Self {
-        Self {
-            chunks_processed: Arc::new(AtomicU64::new(0)),
-            bytes_processed: Arc::new(AtomicU64::new(0)),
-            objects_yielded: Arc::new(AtomicU64::new(0)),
-            processing_errors: Arc::new(AtomicU64::new(0)),
-            parse_errors: Arc::new(AtomicU64::new(0)),
-            start_time: Arc::new(AtomicU64::new(0)),
-            last_process_time: Arc::new(AtomicU64::new(0)),
-        }
-    }
-}
+// ProcessorStats::new() implementation is in crate::telemetry::jsonpath::stream
 
 /// Immutable snapshot of processor statistics
 #[derive(Debug, Clone, Copy)]
@@ -98,7 +159,10 @@ pub struct ProcessorStatsSnapshot {
 }
 
 /// High-performance HTTP chunk processor for JSONPath streaming
-pub struct JsonStreamProcessor<T> {
+pub struct JsonStreamProcessor<T>
+where
+    T: fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
+{
     pub(super) json_array_stream: super::super::JsonArrayStream<T>,
     pub(super) chunk_handlers: Vec<
         Box<
@@ -112,20 +176,4 @@ pub struct JsonStreamProcessor<T> {
     pub(super) error_recovery: ErrorRecoveryState,
 }
 
-impl<T> JsonStreamProcessor<T> {
-    /// Create new JSON stream processor
-    pub fn new(jsonpath_expr: &str) -> Self {
-        Self {
-            json_array_stream: super::super::JsonArrayStream::new(jsonpath_expr),
-            chunk_handlers: Vec::new(),
-            stats: ProcessorStats::new(),
-            error_recovery: ErrorRecoveryState::new(),
-        }
-    }
-
-    /// Process bytes directly
-    pub fn process_bytes(&self, bytes: bytes::Bytes) -> fluent_ai_async::AsyncStream<T, 1024> {
-        // Convert bytes to stream and process
-        fluent_ai_async::AsyncStream::from_iter(std::iter::empty())
-    }
-}
+// JsonStreamProcessor implementations are in stream_processor/core.rs

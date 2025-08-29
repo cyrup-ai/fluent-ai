@@ -15,7 +15,7 @@ impl JsonPathExpression {
     pub fn complexity_metrics(&self) -> ComplexityMetrics {
         let mut metrics = ComplexityMetrics::new();
 
-        for selector in &self.selectors() {
+        for selector in self.selectors() {
             metrics.total_selector_count = metrics.total_selector_count.saturating_add(1);
 
             match selector {

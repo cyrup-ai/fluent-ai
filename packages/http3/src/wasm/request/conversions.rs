@@ -38,7 +38,7 @@ where
 {
     type Error = crate::Error;
 
-    fn try_from(req: HttpRequest<T>) -> crate::Result<Self> {
+    fn try_from(req: HttpRequest<T>) -> std::result::Result<Self, crate::Error> {
         let (parts, body) = req.into_parts();
         let Parts {
             method,
@@ -63,7 +63,7 @@ where
 impl TryFrom<Request> for HttpRequest<Body> {
     type Error = crate::Error;
 
-    fn try_from(req: Request) -> crate::Result<Self> {
+    fn try_from(req: Request) -> std::result::Result<Self, crate::Error> {
         let Request {
             method,
             url,

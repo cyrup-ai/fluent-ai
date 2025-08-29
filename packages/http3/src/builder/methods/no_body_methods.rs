@@ -4,17 +4,22 @@
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
 use http::Method;
+use url::Url;
 
-use crate::builder::core::{BodyNotSet, Http3Builder};
-use crate::{DownloadBuilder, HttpChunk};
-
+use crate::prelude::*;
+use crate::builder::fluent::DownloadBuilder;
+use crate::builder::core::{Http3Builder, BodyNotSet};
 /// Trait for HTTP methods that don't require a body - pure AsyncStream
 pub trait NoBodyMethods {
     /// Execute a GET request - returns AsyncStream directly
-    fn get(self, url: &str) -> AsyncStream<HttpChunk, 1024>;
+    fn get<T>(self, url: &str) -> AsyncStream<T, 1024>
+    where
+        T: serde::de::DeserializeOwned + MessageChunk + Default + Send + 'static;
 
     /// Execute a DELETE request - returns AsyncStream directly
-    fn delete(self, url: &str) -> AsyncStream<HttpChunk, 1024>;
+    fn delete<T>(self, url: &str) -> AsyncStream<T, 1024>
+    where
+        T: serde::de::DeserializeOwned + MessageChunk + Default + Send + 'static;
 
     /// Create a download builder for file downloads
     fn download_file(self, url: &str) -> DownloadBuilder;
@@ -31,18 +36,69 @@ pub struct DownloadMethod;
 
 impl NoBodyMethods for Http3Builder<BodyNotSet> {
     #[inline]
-    fn get(self, url: &str) -> AsyncStream<HttpChunk, 1024> {
-        self.execute_with_method(Method::GET, url)
+    fn get<T>(self, url: &str) -> AsyncStream<T, 1024>
+    where
+        T: serde::de::DeserializeOwned + MessageChunk + Default + Send + 'static,
+    {
+        let request = self.request
+            .with_method(Method::GET)
+            .with_url(Url::parse(url).unwrap_or_else(|_| {
+                log::error!("Invalid URL: {}", url);
+                Url::parse("http://invalid").unwrap()
+            }));
+        
+        // Execute request using canonical method and apply real-time deserialization
+        let http_response = self.client.execute(request);
+        
+        // Transform HttpBodyChunk stream to typed stream with real-time deserialization
+        AsyncStream::with_channel(move |sender| {
+            for body_chunk in http_response.body_stream {
+                // Real-time JSON deserialization of each chunk
+                let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
+                    Ok(obj) => obj,
+                    Err(_) => T::bad_chunk("JSON deserialization failed".to_string())
+                };
+                
+                fluent_ai_async::emit!(sender, deserialized_obj);
+            }
+        })
     }
 
     #[inline]
-    fn delete(self, url: &str) -> AsyncStream<HttpChunk, 1024> {
-        self.execute_with_method(Method::DELETE, url)
+    fn delete<T>(self, url: &str) -> AsyncStream<T, 1024>
+    where
+        T: serde::de::DeserializeOwned + MessageChunk + Default + Send + 'static,
+    {
+        let request = self.request
+            .with_method(Method::DELETE)
+            .with_url(Url::parse(url).unwrap_or_else(|_| {
+                log::error!("Invalid URL: {}", url);
+                Url::parse("http://invalid").unwrap()
+            }));
+        
+        // Execute request using canonical method and apply real-time deserialization
+        let http_response = self.client.execute(request);
+        
+        // Transform HttpBodyChunk stream to typed stream with real-time deserialization
+        AsyncStream::with_channel(move |sender| {
+            for body_chunk in http_response.body_stream {
+                // Real-time JSON deserialization of each chunk
+                let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
+                    Ok(obj) => obj,
+                    Err(_) => T::bad_chunk("JSON deserialization failed".to_string())
+                };
+                
+                fluent_ai_async::emit!(sender, deserialized_obj);
+            }
+        })
     }
 
     #[inline]
     fn download_file(self, url: &str) -> DownloadBuilder {
-        DownloadBuilder::new(self.client, url)
+        // For downloads, we need to use the client's download_file method
+        let request = self.request.with_url(Url::parse(url).unwrap());
+        let download_stream = self.client.download_file(request);
+        DownloadBuilder::new(download_stream)
     }
 }
 
@@ -95,40 +151,46 @@ impl Http3Builder<BodyNotSet> {
             log::debug!("HTTP3 Builder: Download {}", url);
         }
 
-        DownloadBuilder::new(self.client, url)
+        // For downloads, we need to use the client's download_file method
+        let request = self.request.with_url(Url::parse(url).unwrap());
+        let download_stream = self.client.download_file(request);
+        DownloadBuilder::new(download_stream)
     }
 
     /// Internal method to execute request with specified HTTP method - pure AsyncStream
     #[inline]
     fn execute_with_method(self, method: Method, url: &str) -> AsyncStream<HttpChunk, 1024> {
+        let url_owned = url.to_string();
         AsyncStream::with_channel(move |sender| {
             // Parse URL and validate
-            let uri = match url.parse() {
+            let uri = match url_owned.parse() {
                 Ok(uri) => uri,
                 Err(e) => {
                     emit!(
                         sender,
-                        HttpChunk::bad_chunk(format!("Invalid URL {}: {}", url, e))
+                        HttpChunk::bad_chunk(format!("Invalid URL {}: {}", url_owned, e))
                     );
                     return;
                 }
             };
 
             // Create request with method and URL
+            let method_str = method.to_string();
             let mut request = self.request;
-            *request.method_mut() = method;
-            *request.uri_mut() = uri;
+            request = request.with_method(method);
+            request = request.with_url(uri);
 
             if self.debug_enabled {
-                log::debug!("HTTP3 Builder: {} {}", method, url);
+                log::debug!("HTTP3 Builder: {} {}", method_str, url_owned);
             }
 
-            // Execute using direct H2/H3/Quiche protocols - NO middleware
-            let protocol_stream = self.client.execute_direct_streaming(request);
+            // Execute using canonical method and extract chunks from HttpResponse
+            let http_response = self.client.execute(request);
 
-            // Forward all chunks from protocol stream
-            for chunk in protocol_stream {
-                emit!(sender, chunk);
+            // Forward all chunks from HttpResponse body stream
+            for body_chunk in http_response.body_stream {
+                let http_chunk = HttpChunk::from(body_chunk);
+                emit!(sender, http_chunk);
             }
         })
     }

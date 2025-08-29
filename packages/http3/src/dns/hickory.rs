@@ -12,8 +12,8 @@ use hickory_resolver::{
 };
 use once_cell::sync::OnceCell;
 
-use super::{Addrs, Name, Resolve};
-use crate::error::HttpError;
+use super::{Addrs, Name, Resolve, DnsResult};
+use crate::prelude::*;
 
 /// Iterator wrapper for hickory DNS results
 pub struct SocketAddrs {
@@ -43,7 +43,7 @@ struct SocketAddrs {
 struct HickoryDnsSystemConfError(ResolveError);
 
 impl Resolve for HickoryDnsResolver {
-    fn resolve(&self, name: Name) -> AsyncStream<Result<Addrs, HttpError>, 1024> {
+    fn resolve(&self, name: Name) -> AsyncStream<DnsResult, 1024> {
         let resolver = self.clone();
         let hostname = name.as_str().to_string();
 
@@ -53,7 +53,8 @@ impl Resolve for HickoryDnsResolver {
                 let resolver_instance = match resolver.state.get_or_try_init(new_resolver) {
                     Ok(resolver) => resolver,
                     Err(e) => {
-                        emit!(sender, Err(HttpError::DnsError(format!("Failed to initialize resolver: {}", e))));
+                        let error_msg = format!("Failed to initialize resolver: {}", e);
+                        emit!(sender, DnsResult::bad_chunk(error_msg));
                         return;
                     }
                 };
@@ -61,13 +62,15 @@ impl Resolve for HickoryDnsResolver {
                 // Perform synchronous DNS lookup
                 match resolver_instance.lookup_ip(hostname.as_str()) {
                     Ok(lookup) => {
-                        let addrs: Addrs = Box::new(SocketAddrs {
-                            iter: lookup.into_iter(),
-                        });
-                        emit!(sender, Ok(addrs));
+                        let socket_addrs: Vec<SocketAddr> = lookup.into_iter()
+                            .map(|ip_addr| SocketAddr::new(ip_addr, 0))
+                            .collect();
+                        let dns_result = DnsResult::from_vec(socket_addrs);
+                        emit!(sender, dns_result);
                     }
                     Err(e) => {
-                        emit!(sender, Err(HttpError::DnsError(format!("DNS lookup failed: {}", e))));
+                        let error_msg = format!("DNS lookup failed: {}", e);
+                        emit!(sender, DnsResult::bad_chunk(error_msg));
                     }
                 }
             });

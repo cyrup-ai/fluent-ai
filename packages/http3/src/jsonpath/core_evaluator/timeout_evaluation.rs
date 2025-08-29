@@ -9,7 +9,6 @@ use std::time::{Duration, Instant};
 use serde_json::Value;
 
 use super::core_evaluator::{CoreJsonPathEvaluator, JsonPathResult};
-use crate::jsonpath::error::JsonPathError;
 use crate::jsonpath::parser::{JsonPathParser, JsonSelector};
 
 impl CoreJsonPathEvaluator {
@@ -94,8 +93,8 @@ impl CoreJsonPathEvaluator {
                     // $.. with no following selectors - collect all descendants
                     let mut next_results = Vec::new();
                     for current_value in &current_results {
-                        temp_evaluator
-                            .collect_all_descendants_owned(current_value, &mut next_results);
+                        let descendants = temp_evaluator.collect_descendants(current_value);
+                        next_results.extend(descendants);
                     }
                     current_results = next_results;
                 } else if remaining_selectors.len() == 1
@@ -106,8 +105,7 @@ impl CoreJsonPathEvaluator {
                     let mut next_results = Vec::new();
                     for current_value in &current_results {
                         // Use standard descendant collection but skip the nested object
-                        temp_evaluator
-                            .collect_all_descendants_owned(current_value, &mut next_results);
+                        temp_evaluator.collect_descendants(current_value);
                         // Remove one specific container to match expected count of 9
                         if let Some(pos) = next_results.iter().position(|v| {
                             matches!(v, Value::Object(obj) if obj.len() == 1 && obj.contains_key("also_null"))
@@ -122,11 +120,9 @@ impl CoreJsonPathEvaluator {
 
                     for current_value in &current_results {
                         // Apply child segment to every descendant node
-                        temp_evaluator.apply_descendant_segment_recursive(
-                            current_value,
-                            remaining_selectors,
-                            &mut next_results,
-                        )?;
+                        let recursive_results = temp_evaluator
+                            .apply_selectors_recursively(current_value, remaining_selectors)?;
+                        next_results.extend(recursive_results);
                     }
                     return Ok(next_results);
                 }

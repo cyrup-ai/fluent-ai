@@ -3,9 +3,6 @@
 //! Contains the main FunctionEvaluator struct and regex caching infrastructure
 //! for RFC 9535 function extensions.
 
-use std::thread;
-use std::time::Duration;
-
 use crate::jsonpath::error::{JsonPathResult, invalid_expression_error};
 use crate::jsonpath::parser::{FilterExpression, FilterValue};
 
@@ -76,6 +73,91 @@ impl FunctionEvaluator {
                 None,
             )),
         }
+    }
+
+    /// Evaluate length function
+    #[inline]
+    pub fn evaluate_length_function(
+        context: &serde_json::Value,
+        args: &[FilterExpression],
+        expression_evaluator: &dyn Fn(
+            &serde_json::Value,
+            &FilterExpression,
+        ) -> JsonPathResult<FilterValue>,
+    ) -> JsonPathResult<FilterValue> {
+        super::function_evaluator::length::evaluate_length_function(
+            context,
+            args,
+            expression_evaluator,
+        )
+    }
+
+    /// Evaluate count function
+    #[inline]
+    pub fn evaluate_count_function(
+        context: &serde_json::Value,
+        args: &[FilterExpression],
+        expression_evaluator: &dyn Fn(
+            &serde_json::Value,
+            &FilterExpression,
+        ) -> JsonPathResult<FilterValue>,
+    ) -> JsonPathResult<FilterValue> {
+        super::function_evaluator::count::evaluate_count_function(
+            context,
+            args,
+            expression_evaluator,
+        )
+    }
+
+    /// Evaluate match function
+    #[inline]
+    pub fn evaluate_match_function(
+        context: &serde_json::Value,
+        args: &[FilterExpression],
+        expression_evaluator: &dyn Fn(
+            &serde_json::Value,
+            &FilterExpression,
+        ) -> JsonPathResult<FilterValue>,
+    ) -> JsonPathResult<FilterValue> {
+        super::function_evaluator::regex_functions::evaluate_match_function(
+            context,
+            args,
+            expression_evaluator,
+        )
+    }
+
+    /// Evaluate search function
+    #[inline]
+    pub fn evaluate_search_function(
+        context: &serde_json::Value,
+        args: &[FilterExpression],
+        expression_evaluator: &dyn Fn(
+            &serde_json::Value,
+            &FilterExpression,
+        ) -> JsonPathResult<FilterValue>,
+    ) -> JsonPathResult<FilterValue> {
+        super::function_evaluator::regex_functions::evaluate_search_function(
+            context,
+            args,
+            expression_evaluator,
+        )
+    }
+
+    /// Evaluate value function
+    #[inline]
+    pub fn evaluate_value_function(
+        context: &serde_json::Value,
+        args: &[FilterExpression],
+        expression_evaluator: &dyn Fn(
+            &serde_json::Value,
+            &FilterExpression,
+        ) -> JsonPathResult<FilterValue>,
+    ) -> JsonPathResult<FilterValue> {
+        super::function_evaluator::value::evaluate_value_function(
+            context,
+            args,
+            expression_evaluator,
+        )
     }
 
     /// Convert serde_json::Value to FilterValue

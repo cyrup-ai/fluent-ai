@@ -5,7 +5,7 @@
 
 use std::collections::HashSet;
 
-use super::core::MISSING_PROPERTY_CONTEXT;
+use super::property::MISSING_PROPERTY_CONTEXT;
 use crate::jsonpath::error::JsonPathResult;
 use crate::jsonpath::parser::{ComparisonOp, FilterValue};
 

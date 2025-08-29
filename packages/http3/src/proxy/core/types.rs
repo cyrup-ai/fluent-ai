@@ -21,7 +21,7 @@ use crate::Url;
 ///
 /// ```rust
 /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-/// let proxy = crate::hyper::Proxy::http("https://secure.example")?;
+/// let proxy = crate::client::HttpClientProxy::http("https://secure.example")?;
 /// # Ok(())
 /// # }
 /// ```
@@ -38,7 +38,7 @@ use crate::Url;
 /// By enabling the `"socks"` feature it is possible to use a socks proxy:
 /// ```rust
 /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-/// let proxy = crate::hyper::Proxy::http("socks5://192.168.1.1:9000")?;
+/// let proxy = crate::client::HttpClientProxy::http("socks5://192.168.1.1:9000")?;
 /// # Ok(())
 /// # }
 /// ```

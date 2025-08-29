@@ -19,4 +19,4 @@ pub fn body<E: std::fmt::Display>(e: E) -> HttpError {
 }
 
 // Re-export internal hyper error types and helpers for legacy paths expecting `crate::error::*`
-pub(crate) use crate::hyper::error::BadScheme;
+pub(crate) use crate::error::helpers::BadScheme;

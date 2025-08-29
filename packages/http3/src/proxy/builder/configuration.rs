@@ -15,7 +15,7 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let proxy = crate::hyper::Proxy::https("http://localhost:1234")?
+    /// let proxy = crate::proxy::Proxy::https("http://localhost:1234")?
     ///     .basic_auth("Aladdin", "open sesame");
     /// # Ok(())
     /// # }
@@ -33,7 +33,7 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let proxy = crate::hyper::Proxy::https("http://localhost:1234")?
+    /// let proxy = crate::proxy::Proxy::https("http://localhost:1234")?
     ///     .custom_http_auth(http::header::HeaderValue::from_static("Bearer token123"));
     /// # Ok(())
     /// # }
@@ -54,7 +54,7 @@ impl Proxy {
     /// let mut headers = http::HeaderMap::new();
     /// headers.insert("X-Custom", http::header::HeaderValue::from_static("value"));
     /// 
-    /// let proxy = crate::hyper::Proxy::https("http://localhost:1234")?
+    /// let proxy = crate::proxy::Proxy::https("http://localhost:1234")?
     ///     .custom_headers(headers);
     /// # Ok(())
     /// # }
@@ -72,7 +72,7 @@ impl Proxy {
     /// ```
     /// # extern crate http3;
     /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let proxy = crate::hyper::Proxy::https("http://localhost:1234")?
+    /// let proxy = crate::proxy::Proxy::https("http://localhost:1234")?
     ///     .no_proxy("localhost,*.internal");
     /// # Ok(())
     /// # }

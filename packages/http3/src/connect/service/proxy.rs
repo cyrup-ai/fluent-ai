@@ -9,12 +9,12 @@ use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit, spawn_task};
 use http::Uri;
 
-use super::super::types::TcpStreamWrapper;
+use super::super::chunks::TcpConnectionChunk;
 use super::core::ConnectorService;
 
 impl ConnectorService {
     /// Connect via proxy with full SOCKS and HTTP CONNECT support
-    pub fn connect_via_proxy(&self, dst: Uri, proxy_scheme: &str) -> AsyncStream<TcpStreamWrapper> {
+    pub fn connect_via_proxy(&self, dst: Uri, proxy_scheme: &str) -> AsyncStream<TcpConnectionChunk, 1024> {
         let connector_service = self.clone();
         let destination = dst.clone();
         let scheme = proxy_scheme.to_string();
@@ -26,7 +26,7 @@ impl ConnectorService {
                     None => {
                         emit!(
                             sender,
-                            TcpStreamWrapper::bad_chunk(
+                            TcpConnectionChunk::bad_chunk(
                                 "No proxy configuration available".to_string()
                             )
                         );
@@ -40,7 +40,7 @@ impl ConnectorService {
                     None => {
                         emit!(
                             sender,
-                            TcpStreamWrapper::bad_chunk("Proxy URI missing host".to_string())
+                            TcpConnectionChunk::bad_chunk("Proxy URI missing host".to_string())
                         );
                         return;
                     }
@@ -62,7 +62,7 @@ impl ConnectorService {
                     Err(e) => {
                         emit!(
                             sender,
-                            TcpStreamWrapper::bad_chunk(format!("Proxy connection failed: {}", e))
+                            TcpConnectionChunk::bad_chunk(format!("Proxy connection failed: {}", e))
                         );
                         return;
                     }
@@ -81,7 +81,7 @@ impl ConnectorService {
                             Err(e) => {
                                 emit!(
                                     sender,
-                                    TcpStreamWrapper::bad_chunk(format!(
+                                    TcpConnectionChunk::bad_chunk(format!(
                                         "CONNECT tunnel failed: {}",
                                         e
                                     ))
@@ -104,7 +104,7 @@ impl ConnectorService {
                             Err(e) => {
                                 emit!(
                                     sender,
-                                    TcpStreamWrapper::bad_chunk(format!(
+                                    TcpConnectionChunk::bad_chunk(format!(
                                         "SOCKS5 handshake failed: {}",
                                         e
                                     ))
@@ -116,7 +116,7 @@ impl ConnectorService {
                     _ => {
                         emit!(
                             sender,
-                            TcpStreamWrapper::bad_chunk(format!(
+                            TcpConnectionChunk::bad_chunk(format!(
                                 "Unsupported proxy scheme: {}",
                                 scheme
                             ))
@@ -130,7 +130,11 @@ impl ConnectorService {
                     let _ = final_stream.set_nodelay(true);
                 }
 
-                emit!(sender, TcpStreamWrapper(final_stream));
+                // Extract addresses and emit connection event
+                if let Err(error) = super::direct::emit_stream_connection(final_stream, &sender) {
+                    emit!(sender, TcpConnectionChunk::bad_chunk(error));
+                    return;
+                }
             });
         })
     }

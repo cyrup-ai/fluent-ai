@@ -8,6 +8,63 @@ use serde_json::Value as JsonValue;
 /// Property access utilities for null vs missing semantics
 pub struct PropertyAccess;
 
+impl PropertyAccess {
+    /// Access a single property with null vs missing distinction
+    #[inline]
+    pub fn access_property(object: &JsonValue, property_name: &str) -> PropertyAccessResult {
+        match object {
+            JsonValue::Object(map) => match map.get(property_name) {
+                Some(JsonValue::Null) => PropertyAccessResult::NullValue,
+                Some(value) => PropertyAccessResult::Value(value.clone()),
+                None => PropertyAccessResult::Missing,
+            },
+            _ => PropertyAccessResult::Missing,
+        }
+    }
+
+    /// Access a property path with null vs missing distinction
+    #[inline]
+    pub fn access_property_path(object: &JsonValue, path: &[String]) -> PropertyAccessResult {
+        // Inline implementation of property path access
+        let mut current = object;
+
+        for (index, property) in path.iter().enumerate() {
+            match current {
+                JsonValue::Object(obj) => {
+                    match obj.get(property) {
+                        Some(JsonValue::Null) => {
+                            // If this is the final property in the path, return null
+                            if index == path.len() - 1 {
+                                return PropertyAccessResult::NullValue;
+                            } else {
+                                // Cannot traverse through null to access deeper properties
+                                return PropertyAccessResult::Missing;
+                            }
+                        }
+                        Some(value) => {
+                            current = value;
+                        }
+                        None => {
+                            // Property missing at this level
+                            return PropertyAccessResult::Missing;
+                        }
+                    }
+                }
+                _ => {
+                    // Current value is not an object, cannot access properties
+                    return PropertyAccessResult::Missing;
+                }
+            }
+        }
+
+        // If we've traversed the entire path, return the final value
+        match current {
+            JsonValue::Null => PropertyAccessResult::NullValue,
+            value => PropertyAccessResult::Value(value.clone()),
+        }
+    }
+}
+
 /// Represents the result of a property access that distinguishes between
 /// null values and missing properties according to RFC 9535 Section 2.6
 #[derive(Debug, Clone, PartialEq)]

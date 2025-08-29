@@ -4,6 +4,5 @@ pub mod basic_auth;
 pub mod builder;
 
 pub use auth::*;
-pub use auth_method::*;
 pub use basic_auth::*;
 pub use builder::*;

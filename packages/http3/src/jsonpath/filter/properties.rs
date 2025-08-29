@@ -5,7 +5,7 @@
 
 use std::collections::HashSet;
 
-use super::core::MISSING_PROPERTY_CONTEXT;
+use super::property::MISSING_PROPERTY_CONTEXT;
 use crate::jsonpath::error::JsonPathResult;
 use crate::jsonpath::parser::FilterValue;
 
@@ -53,7 +53,8 @@ pub(super) fn property_exists_and_truthy(
     }
 
     // Property exists - check if it's truthy
-    let result = super::core::is_truthy(&super::conversions::json_value_to_filter_value(current));
+    let filter_value = super::conversions::json_value_to_filter_value(current);
+    let result = super::core::is_truthy(current);
     println!("DEBUG: Property path exists, is_truthy result={}", result);
     Ok(result)
 }

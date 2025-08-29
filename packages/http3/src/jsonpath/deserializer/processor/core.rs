@@ -66,28 +66,6 @@ where
         }
     }
 
-    /// Check if current position matches JSONPath root object selector
-    #[inline]
-    pub(super) fn matches_root_object_path(&self) -> bool {
-        // Check if the root selector matches object access
-        match self.deserializer.path_expression.root_selector() {
-            Some(crate::jsonpath::parser::JsonSelector::Child { .. }) => true,
-            Some(crate::jsonpath::parser::JsonSelector::Filter { .. }) => true,
-            _ => false,
-        }
-    }
-
-    /// Check if current position matches JSONPath root array selector
-    #[inline]
-    pub(super) fn matches_root_array_path(&self) -> bool {
-        matches!(
-            self.deserializer.path_expression.root_selector(),
-            Some(crate::jsonpath::parser::JsonSelector::Wildcard)
-                | Some(crate::jsonpath::parser::JsonSelector::Index { .. })
-                | Some(crate::jsonpath::parser::JsonSelector::Slice { .. })
-        )
-    }
-
     /// Skip over JSON string content including escaped characters
     pub(super) fn skip_string_content(&mut self) -> JsonPathResult<()> {
         let mut escaped = false;

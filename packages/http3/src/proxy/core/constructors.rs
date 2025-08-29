@@ -5,10 +5,11 @@
 
 use std::sync::Arc;
 
-use crate::http::{IntoUrl, IntoUrlSealed};
 use super::super::url_handling::Custom;
-use super::types::{Extra, Intercept, Proxy};
 use crate::Url;
+use crate::http::into_url::IntoUrlSealed;
+use crate::proxy::core::{Extra, Intercept, Proxy};
+use crate::{HttpRequest, HttpResponse};
 
 impl Proxy {
     /// Proxy **all** traffic to the passed URL.
@@ -16,13 +17,15 @@ impl Proxy {
     /// # Example
     ///
     /// ```
-    /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::all("http://my.prox")?);
+    /// # fn run() -> Result<(), crate::error::HttpError> {
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(Proxy::all("http://my.prox")?);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn all<U: IntoUrlSealed>(proxy_url: U) -> crate::Result<Proxy> {
+    pub fn all<U: IntoUrlSealed>(
+        proxy_url: U,
+    ) -> std::result::Result<Proxy, crate::error::HttpError> {
         Ok(Proxy::new(Intercept::All(proxy_url.into_url()?)))
     }
 
@@ -31,13 +34,15 @@ impl Proxy {
     /// # Example
     ///
     /// ```
-    /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::http("http://my.prox")?);
+    /// # fn run() -> Result<(), crate::error::HttpError> {
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(Proxy::http("http://my.prox")?);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn http<U: IntoUrlSealed>(proxy_url: U) -> crate::Result<Proxy> {
+    pub fn http<U: IntoUrlSealed>(
+        proxy_url: U,
+    ) -> std::result::Result<Proxy, crate::error::HttpError> {
         Ok(Proxy::new(Intercept::Http(proxy_url.into_url()?)))
     }
 
@@ -46,13 +51,15 @@ impl Proxy {
     /// # Example
     ///
     /// ```
-    /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::https("http://my.prox")?);
+    /// # fn run() -> Result<(), crate::error::HttpError> {
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(Proxy::https("http://my.prox")?);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn https<U: IntoUrlSealed>(proxy_url: U) -> crate::Result<Proxy> {
+    pub fn https<U: IntoUrlSealed>(
+        proxy_url: U,
+    ) -> std::result::Result<Proxy, crate::error::HttpError> {
         Ok(Proxy::new(Intercept::Https(proxy_url.into_url()?)))
     }
 
@@ -61,10 +68,10 @@ impl Proxy {
     /// # Example
     ///
     /// ```
-    /// # fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// # fn run() -> Result<(), Box<dyn crate::error::HttpError>> {
     /// let target = "https://my.prox";
-    /// let client = crate::hyper::Client::builder()
-    ///     .proxy(crate::hyper::Proxy::custom(move |url| {
+    /// let client = crate::client::core::ClientBuilder()
+    ///     .proxy(Proxy::custom(move |url| {
     ///         if url.host_str() == Some("hyper.rs") {
     ///             target.parse().ok()
     ///         } else {

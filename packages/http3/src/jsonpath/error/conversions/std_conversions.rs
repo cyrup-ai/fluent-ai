@@ -11,18 +11,17 @@ impl From<serde_json::Error> for JsonPathError {
         let message = error.to_string();
 
         // Try to extract line/column information if available
-        if let Some(line) = error.line() {
+        if let line = error.line() {
             let offset = line.saturating_sub(1) * 80; // Rough estimate
             let context = format!("line {}, column {}", line, error.column());
 
-            JsonPathError::JsonParseError {
-                message,
-                offset,
-                context,
-            }
+            JsonPathError::new(
+                super::super::types::ErrorKind::InvalidJson,
+                format!("{} ({})", message, context),
+            )
         } else {
             // Fallback to simple deserialization error
-            JsonPathError::Deserialization(message)
+            JsonPathError::new(super::super::types::ErrorKind::SerdeError, message)
         }
     }
 }
@@ -30,36 +29,34 @@ impl From<serde_json::Error> for JsonPathError {
 /// Conversion from std::io::Error to JsonPathError
 impl From<std::io::Error> for JsonPathError {
     fn from(error: std::io::Error) -> Self {
-        JsonPathError::StreamError {
-            message: error.to_string(),
-            state: "io_operation".to_string(),
-            recoverable: matches!(
-                error.kind(),
-                std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock
-            ),
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::IoError,
+            format!("IO operation error: {}", error.to_string()),
+        )
     }
 }
 
 /// Conversion from std::fmt::Error to JsonPathError
 impl From<std::fmt::Error> for JsonPathError {
     fn from(error: std::fmt::Error) -> Self {
-        JsonPathError::StreamError {
-            message: error.to_string(),
-            state: "formatting".to_string(),
-            recoverable: false,
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::ProcessingError,
+            format!("Formatting error: {}", error.to_string()),
+        )
     }
 }
 
 /// Conversion from std::str::Utf8Error to JsonPathError
 impl From<std::str::Utf8Error> for JsonPathError {
     fn from(error: std::str::Utf8Error) -> Self {
-        JsonPathError::JsonParseError {
-            message: format!("invalid UTF-8 sequence: {}", error),
-            offset: error.valid_up_to(),
-            context: "UTF-8 validation".to_string(),
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::InvalidJson,
+            format!(
+                "invalid UTF-8 sequence: {} at offset {}",
+                error,
+                error.valid_up_to()
+            ),
+        )
     }
 }
 
@@ -67,32 +64,33 @@ impl From<std::str::Utf8Error> for JsonPathError {
 impl From<std::string::FromUtf8Error> for JsonPathError {
     fn from(error: std::string::FromUtf8Error) -> Self {
         let utf8_error = error.utf8_error();
-        JsonPathError::JsonParseError {
-            message: format!("invalid UTF-8 in string conversion: {}", utf8_error),
-            offset: utf8_error.valid_up_to(),
-            context: "string conversion".to_string(),
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::InvalidJson,
+            format!(
+                "invalid UTF-8 in string conversion: {} at offset {}",
+                utf8_error,
+                utf8_error.valid_up_to()
+            ),
+        )
     }
 }
 
 /// Conversion from std::num::ParseIntError to JsonPathError
 impl From<std::num::ParseIntError> for JsonPathError {
     fn from(error: std::num::ParseIntError) -> Self {
-        JsonPathError::DeserializationError {
-            message: error.to_string(),
-            json_fragment: "number".to_string(),
-            target_type: "integer",
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::SerdeError,
+            format!("Parse integer error: {}", error.to_string()),
+        )
     }
 }
 
 /// Conversion from std::num::ParseFloatError to JsonPathError
 impl From<std::num::ParseFloatError> for JsonPathError {
     fn from(error: std::num::ParseFloatError) -> Self {
-        JsonPathError::DeserializationError {
-            message: error.to_string(),
-            json_fragment: "number".to_string(),
-            target_type: "float",
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::SerdeError,
+            format!("Parse float error: {}", error.to_string()),
+        )
     }
 }

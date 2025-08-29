@@ -22,14 +22,10 @@ impl FunctionEvaluator {
         ) -> JsonPathResult<FilterValue>,
     ) -> JsonPathResult<FilterValue> {
         match name {
-            "length" => super::string_counting::evaluate_length_function(
-                context,
-                args,
-                expression_evaluator,
-            ),
-            "count" => {
-                super::string_counting::evaluate_count_function(context, args, expression_evaluator)
+            "length" => {
+                super::length::evaluate_length_function(context, args, expression_evaluator)
             }
+            "count" => super::count::evaluate_count_function(context, args, expression_evaluator),
             "match" => {
                 super::regex_functions::evaluate_match_function(context, args, expression_evaluator)
             }
@@ -38,11 +34,7 @@ impl FunctionEvaluator {
                 args,
                 expression_evaluator,
             ),
-            "value" => super::value_conversion::evaluate_value_function(
-                context,
-                args,
-                expression_evaluator,
-            ),
+            "value" => super::value::evaluate_value_function(context, args, expression_evaluator),
             _ => Err(invalid_expression_error(
                 "",
                 &format!("unknown function: {}", name),

@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::types::{ProcessorStats, ProcessorStatsSnapshot};
+use crate::jsonpath::stream_processor::types::{ProcessorStats, ProcessorStatsSnapshot};
 
 impl ProcessorStats {
     /// Create new processor statistics tracker

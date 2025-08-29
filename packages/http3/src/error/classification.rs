@@ -1,3 +1,4 @@
+use std::error::Error as StdError;
 use std::io;
 
 use super::helpers::TimedOut;

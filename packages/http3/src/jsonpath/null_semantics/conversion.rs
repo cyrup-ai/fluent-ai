@@ -10,6 +10,26 @@ use super::property_access::PropertyAccessResult;
 /// Conversion utilities for null vs missing semantics
 pub struct Conversion;
 
+impl Conversion {
+    /// Convert PropertyAccessResult to Option<JsonValue>
+    #[inline]
+    pub fn to_option(result: &PropertyAccessResult) -> Option<JsonValue> {
+        to_option(result)
+    }
+
+    /// Convert PropertyAccessResult to JsonValue with missing marker
+    #[inline]
+    pub fn to_json_with_missing_marker(result: &PropertyAccessResult) -> JsonValue {
+        to_json_with_missing_marker(result)
+    }
+
+    /// Check if a JsonValue is a missing marker
+    #[inline]
+    pub fn is_missing_marker(value: &JsonValue) -> bool {
+        is_missing_marker(value)
+    }
+}
+
 /// Convert PropertyAccessResult to Option<JsonValue> for compatibility
 ///
 /// Used when interacting with existing code that expects Option<JsonValue>.

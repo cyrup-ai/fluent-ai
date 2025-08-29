@@ -5,11 +5,8 @@
 
 use bytes::{Bytes, BytesMut};
 
-use super::{
-    capacity::CapacityManager,
-    reader::BufferReader,
-    stats::{BufferStats, CapacityStats},
-};
+use super::{capacity::CapacityManager, reader::BufferReader};
+// Removed unused imports
 
 /// Zero-allocation streaming buffer with efficient chunk management
 ///
@@ -66,7 +63,7 @@ impl StreamBuffer {
         self.total_processed += chunk.len() as u64;
 
         // Check if we need to grow the buffer
-        if self.buffer.remaining_mut() < chunk.len() {
+        if self.buffer.capacity() - self.buffer.len() < chunk.len() {
             self.capacity_manager
                 .ensure_capacity(&mut self.buffer, chunk.len());
         }

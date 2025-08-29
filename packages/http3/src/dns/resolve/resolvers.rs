@@ -7,7 +7,7 @@ use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::thread;
 
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
 
 use super::traits::Resolve;
 use super::types::{DnsResult, HyperName};
@@ -123,41 +123,31 @@ impl DynResolver {
     }
 
     /// Resolve a hostname to socket addresses using the configured resolver.
-    pub fn resolve(&mut self, name: HyperName) -> AsyncStream<DnsResult> {
+    pub fn resolve(&mut self, name: HyperName) -> AsyncStream<DnsResult, 1024> {
         let resolver = self.resolver.clone();
 
         AsyncStream::with_channel(move |sender| {
             let resolve_stream = resolver.resolve(name);
-            match resolve_stream.try_next() {
-                Some(dns_result) => emit!(sender, dns_result),
-                None => {
-                    handle_error!(
-                        "DNS resolver stream ended without producing addresses",
-                        "hostname DNS resolution"
-                    );
-                    emit!(sender, DnsResult::new()); // Return empty result as error-as-data
+            spawn_task(move || {
+                for dns_result in resolve_stream {
+                    emit!(sender, dns_result);
                 }
-            }
+            });
         })
     }
 
     /// Direct DNS resolution method - replaces Service::call with AsyncStream
     /// RETAINS: All caching, timeouts, error handling, address sorting functionality
     /// Returns AsyncStream<DnsResult> per zero-allocation architecture
-    pub fn resolve_direct(&mut self, name: HyperName) -> AsyncStream<DnsResult> {
+    pub fn resolve_direct(&mut self, name: HyperName) -> AsyncStream<DnsResult, 1024> {
         let resolver = self.resolver.clone();
         AsyncStream::with_channel(move |sender| {
             let resolve_stream = resolver.resolve(name);
-            match resolve_stream.try_next() {
-                Some(dns_result) => emit!(sender, dns_result),
-                None => {
-                    handle_error!(
-                        "DNS resolver stream ended without producing addresses",
-                        "DNS resolution"
-                    );
-                    emit!(sender, DnsResult::new()); // Return empty result as error-as-data
+            spawn_task(move || {
+                for dns_result in resolve_stream {
+                    emit!(sender, dns_result);
                 }
-            }
+            });
         })
     }
 }
@@ -195,7 +185,7 @@ impl Default for GaiResolver {
 }
 
 impl Resolve for GaiResolver {
-    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult> {
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult, 1024> {
         let hostname = name.as_str().to_string();
         let prefer_ipv6 = self.prefer_ipv6;
         let timeout_ms = self.timeout_ms;

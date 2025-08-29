@@ -15,7 +15,6 @@ pub use types::{Error, Inner, Kind, Result};
 
 // Type aliases for compatibility with existing codebase
 pub type HttpError = Error;
-pub type HttpResult<T> = Result<T>;
 
 // Re-export internal types needed by other modules
 pub(crate) type BoxError = Box<dyn std::error::Error + Send + Sync>;

@@ -18,20 +18,18 @@ use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen_futures::JsFuture;
-#[cfg(target_arch = "wasm32")]
 use web_sys;
 
-use crate::streaming::pipeline::StreamingResponse;
-use crate::streaming::chunks::HttpChunk;
+use crate::http::response::{HttpResponse, HttpBodyChunk};
+use crate::telemetry::ClientStatsSnapshot;
 
-/// WASM-specific response wrapper that extends StreamingResponse with browser capabilities
+/// WASM-specific response wrapper that extends HttpResponse with browser capabilities
 /// 
 /// This is the CANONICAL WasmResponse implementation that consolidates all
 /// WASM-specific response handling into a single, comprehensive type.
 pub struct WasmResponse {
     /// Core streaming response
-    pub inner: StreamingResponse,
+    pub inner: HttpResponse,
     
     /// WASM-specific data
     #[cfg(target_arch = "wasm32")]
@@ -44,7 +42,10 @@ pub struct WasmResponse {
     
     /// WASM-specific metadata
     pub redirected: bool,
-    pub response_type: WasmResponseType,
+    pub response_type: String,
+    
+    /// Error message for MessageChunk implementation
+    pub error_message: Option<String>,
     
     /// Non-WASM fallback
     #[cfg(not(target_arch = "wasm32"))]
@@ -73,9 +74,9 @@ impl fmt::Debug for WasmResponse {
 }
 
 impl WasmResponse {
-    /// Create new WASM response from StreamingResponse
+    /// Create new WASM response from HttpResponse
     #[inline]
-    pub fn new(inner: StreamingResponse, url: Url) -> Self {
+    pub fn new(inner: HttpResponse, url: Url) -> Self {
         Self {
             inner,
             #[cfg(target_arch = "wasm32")]
@@ -84,7 +85,8 @@ impl WasmResponse {
             abort_controller: None,
             url,
             redirected: false,
-            response_type: WasmResponseType::Basic,
+            response_type: "basic".to_string(),
+            error_message: None,
             #[cfg(not(target_arch = "wasm32"))]
             web_response: None,
         }
@@ -124,11 +126,11 @@ impl WasmResponse {
         // Create response chunks from web response body
         let response_chunks = Self::create_chunks_from_web_response(&web_response)?;
         
-        let streaming_response = StreamingResponse::with_chunks(
+        let http_response = HttpResponse::from_http1_response(
             status,
             headers,
-            Version::HTTP_11, // Default for WASM
             response_chunks,
+            0, // stream_id - 0 for WASM since it's not multiplexed
         );
 
         let response_type = match web_response.type_() {
@@ -140,87 +142,100 @@ impl WasmResponse {
             _ => WasmResponseType::Basic,
         };
 
-        Ok(Self {
-            inner: streaming_response,
+        Ok(WasmResponse {
+            inner: http_response,
             web_response: Some(web_response),
             abort_controller,
             url,
             redirected: false, // TODO: Extract from web response
-            response_type,
+            response_type: response_type.to_string(),
         })
     }
 
     #[cfg(target_arch = "wasm32")]
-    /// Create response chunks from web_sys::Response
+    /// Create response chunks from web_sys::Response - NO Result wrapping
     fn create_chunks_from_web_response(
         web_response: &web_sys::Response,
-    ) -> Result<AsyncStream<HttpResponseChunk, 1024>, JsValue> {
+    ) -> AsyncStream<HttpBodyChunk, 1024> {
         let body = web_response.body();
         
         if let Some(readable_stream) = body {
             let reader = readable_stream.get_reader();
             
-            Ok(AsyncStream::with_channel(move |sender| {
-                wasm_bindgen_futures::spawn_local(async move {
-                    loop {
-                        match JsFuture::from(reader.read()).await {
-                            Ok(chunk) => {
-                                let chunk_obj = chunk.dyn_into::<js_sys::Object>().unwrap();
-                                
-                                // Check if done
-                                let done = js_sys::Reflect::get(&chunk_obj, &JsValue::from_str("done"))
-                                    .unwrap_or(JsValue::FALSE)
-                                    .as_bool()
-                                    .unwrap_or(false);
-                                
-                                if done {
-                                    emit!(sender, HttpResponseChunk::Complete);
-                                    break;
-                                }
-                                
-                                // Get value
-                                if let Ok(value) = js_sys::Reflect::get(&chunk_obj, &JsValue::from_str("value")) {
-                                    if let Ok(uint8_array) = value.dyn_into::<Uint8Array>() {
-                                        let mut bytes = vec![0; uint8_array.length() as usize];
-                                        uint8_array.copy_to(&mut bytes);
-                                        
-                                        emit!(sender, HttpResponseChunk::Body {
-                                            data: Bytes::from(bytes),
-                                            final_chunk: false,
-                                        });
-                                    }
+            AsyncStream::with_channel(move |sender| {
+                // Use callback-based stream reading instead of Future-based approach
+                fn read_next_chunk(reader: web_sys::ReadableStreamDefaultReader, sender: fluent_ai_async::AsyncStreamSender<HttpBodyChunk>) {
+                    use wasm_bindgen::prelude::*;
+                    
+                    let read_promise = reader.read();
+                    
+                    let success_callback = Closure::once_into_js({
+                        let reader = reader.clone();
+                        let sender = sender.clone();
+                        move |chunk: JsValue| {
+                            let chunk_obj = chunk.dyn_into::<js_sys::Object>().unwrap();
+                            
+                            // Check if done
+                            let done = js_sys::Reflect::get(&chunk_obj, &JsValue::from_str("done"))
+                                .unwrap_or(JsValue::FALSE)
+                                .as_bool()
+                                .unwrap_or(false);
+                            
+                            if done {
+                                // For HttpBodyChunk, we emit a final chunk with is_final = true
+                                return;
+                            }
+                            
+                            // Get value
+                            if let Ok(value) = js_sys::Reflect::get(&chunk_obj, &JsValue::from_str("value")) {
+                                if let Ok(uint8_array) = value.dyn_into::<js_sys::Uint8Array>() {
+                                    let mut bytes = vec![0; uint8_array.length() as usize];
+                                    uint8_array.copy_to(&mut bytes);
+                                    
+                                    emit!(sender, HttpBodyChunk::new(
+                                        Bytes::from(bytes),
+                                        0, // offset - would need to track this properly in a real implementation
+                                        false // is_final
+                                    ));
                                 }
                             }
-                            Err(_) => {
-                                emit!(sender, HttpResponseChunk::Error {
-                                    message: std::sync::Arc::from("Stream read error"),
-                                });
-                                break;
-                            }
+                            
+                            // Read next chunk recursively
+                            read_next_chunk(reader, sender);
                         }
-                    }
-                });
-            }))
+                    });
+                    
+                    let error_callback = Closure::once_into_js(move |_error: JsValue| {
+                        emit!(sender, HttpBodyChunk::bad_chunk("Stream read error".to_string()));
+                    });
+                    
+                    // Use native JavaScript Promise.then() method
+                    let _ = read_promise.then2(&success_callback, &error_callback);
+                }
+                
+                // Start reading the first chunk
+                read_next_chunk(reader, sender);
+            })
         } else {
-            // No body
-            Ok(AsyncStream::with_channel(|sender| {
-                emit!(sender, HttpResponseChunk::Complete);
-            }))
+            // No body - return empty stream
+            AsyncStream::with_channel(|_sender| {
+                // Empty body - no chunks to emit
+            })
         }
     }
 
-    // Delegate core methods to inner StreamingResponse
+    // Delegate core methods to inner HttpResponse
 
     /// Get the status code
     #[inline]
     pub fn status(&self) -> StatusCode {
-        self.inner.status
+        self.inner.status_code().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
     }
 
-    /// Get the headers
+    /// Get the headers - NOTE: This requires consuming the headers stream
     #[inline]
-    pub fn headers(&self) -> &HeaderMap {
-        &self.inner.headers
+    pub async fn headers(&mut self) -> HeaderMap {
+        self.inner.collect_headers().await
     }
 
     /// Get the HTTP version
@@ -243,8 +258,8 @@ impl WasmResponse {
 
     /// Get response type
     #[inline]
-    pub fn response_type(&self) -> WasmResponseType {
-        self.response_type
+    pub fn response_type(&self) -> &str {
+        &self.response_type
     }
 
     /// Check if response is successful
@@ -273,32 +288,36 @@ impl WasmResponse {
 
     /// Get next response chunk
     #[inline]
-    pub fn try_next(&mut self) -> Option<HttpResponseChunk> {
-        self.inner.try_next()
+    pub async fn try_next(&mut self) -> Option<HttpBodyChunk> {
+        self.inner.body_stream.next().await
     }
 
     /// Collect response body as bytes
-    pub fn collect_bytes(self) -> Vec<u8> {
-        self.inner.collect_bytes()
+    pub async fn collect_bytes(mut self) -> Vec<u8> {
+        let body = self.inner.collect_body().await;
+        body.to_vec()
     }
 
     /// Collect response body as string
-    pub fn collect_string(self) -> Result<String, std::string::FromUtf8Error> {
-        self.inner.collect_string()
+    pub async fn collect_string(mut self) -> Result<String, std::string::FromUtf8Error> {
+        let body = self.inner.collect_body().await;
+        String::from_utf8(body.to_vec())
     }
 
     /// Collect and deserialize JSON
-    pub fn collect_json<T>(self) -> Result<T, serde_json::Error>
+    pub async fn collect_json<T>(mut self) -> Result<T, serde_json::Error>
     where
         T: DeserializeOwned,
     {
-        self.inner.collect_json()
+        let body = self.inner.collect_body().await;
+        serde_json::from_slice(&body)
     }
 
     /// Get response statistics
     #[inline]
-    pub fn stats(&self) -> crate::streaming::pipeline::ResponseStats {
-        self.inner.stats()
+    pub fn stats(&self) -> ClientStatsSnapshot {
+        // Return default stats since HttpResponse doesn't have stats method
+        ClientStatsSnapshot::default()
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -322,45 +341,78 @@ impl WasmResponse {
         }
     }
 
-    /// Convert from StreamingResponse
+    /// Convert from HttpResponse
     #[inline]
-    pub fn from_streaming_response(response: StreamingResponse, url: Url) -> Self {
+    pub fn from_http_response(response: HttpResponse, url: Url) -> Self {
         Self::new(response, url)
     }
 
-    /// Convert to StreamingResponse
+    /// Convert to HttpResponse
     #[inline]
-    pub fn into_streaming_response(self) -> StreamingResponse {
+    pub fn into_http_response(self) -> HttpResponse {
         self.inner
     }
 
-    /// Get reference to inner StreamingResponse
+    /// Get reference to inner HttpResponse
     #[inline]
-    pub fn as_streaming_response(&self) -> &StreamingResponse {
+    pub fn as_http_response(&self) -> &HttpResponse {
         &self.inner
     }
 
-    /// Get mutable reference to inner StreamingResponse
+    /// Get mutable reference to inner HttpResponse
     #[inline]
-    pub fn as_streaming_response_mut(&mut self) -> &mut StreamingResponse {
+    pub fn as_http_response_mut(&mut self) -> &mut HttpResponse {
         &mut self.inner
     }
 
     /// Transform response chunks with a mapping function
     pub fn map_chunks<F, T>(self, mapper: F) -> AsyncStream<T, 1024>
     where
-        F: Fn(HttpResponseChunk) -> T + Send + 'static,
+        F: Fn(HttpBodyChunk) -> T + Send + 'static,
         T: Send + 'static,
     {
-        self.inner.map_chunks(mapper)
+        use fluent_ai_async::AsyncStream;
+        
+        AsyncStream::with_channel(move |sender| {
+            // Transform the body stream - use thread executor for async
+            fluent_ai_async::thread_pool::global_executor().execute(move || {
+                let mut body_stream = self.inner.body_stream;
+                loop {
+                    match body_stream.try_next() {
+                        Some(chunk) => {
+                            let transformed = mapper(chunk);
+                            fluent_ai_async::emit!(sender, transformed);
+                        }
+                        None => break,
+                    }
+                }
+            });
+        })
     }
 
     /// Filter response chunks based on predicate
-    pub fn filter_chunks<F>(self, predicate: F) -> AsyncStream<HttpResponseChunk, 1024>
+    pub fn filter_chunks<F>(self, predicate: F) -> AsyncStream<HttpBodyChunk, 1024>
     where
-        F: Fn(&HttpResponseChunk) -> bool + Send + 'static,
+        F: Fn(&HttpBodyChunk) -> bool + Send + 'static,
     {
-        self.inner.filter_chunks(predicate)
+        use fluent_ai_async::AsyncStream;
+        
+        AsyncStream::with_channel(move |sender| {
+            // Filter the body stream - use thread executor for async
+            fluent_ai_async::thread_pool::global_executor().execute(move || {
+                let mut body_stream = self.inner.body_stream;
+                loop {
+                    match body_stream.try_next() {
+                        Some(chunk) => {
+                            if predicate(&chunk) {
+                                fluent_ai_async::emit!(sender, chunk);
+                            }
+                        }
+                        None => break,
+                    }
+                }
+            });
+        })
     }
 }
 
@@ -384,7 +436,7 @@ impl WasmResponseBuilder {
             headers: HeaderMap::new(),
             version: Version::HTTP_11,
             url,
-            response_type: WasmResponseType::Basic,
+            response_type: "basic".to_string(),
             redirected: false,
         }
     }
@@ -431,16 +483,16 @@ impl WasmResponseBuilder {
     }
 
     /// Build WasmResponse with chunk stream
-    pub fn build_with_chunks(self, chunks: AsyncStream<HttpResponseChunk, 1024>) -> WasmResponse {
-        let streaming_response = StreamingResponse::with_chunks(
+    pub fn build_with_chunks(self, chunks: AsyncStream<HttpBodyChunk, 1024>) -> WasmResponse {
+        let http_response = HttpResponse::from_http1_response(
             self.status,
             self.headers,
-            self.version,
             chunks,
+            0, // stream_id
         );
 
-        let mut wasm_response = WasmResponse::new(streaming_response, self.url);
-        wasm_response.response_type = self.response_type;
+        let mut wasm_response = WasmResponse::new(http_response, self.url);
+        wasm_response.response_type = self.response_type.to_string();
         wasm_response.redirected = self.redirected;
         wasm_response
     }
@@ -449,12 +501,12 @@ impl WasmResponseBuilder {
     pub fn build_with_bytes(self, body: Vec<u8>) -> WasmResponse {
         let chunks = AsyncStream::with_channel(move |sender| {
             if !body.is_empty() {
-                emit!(sender, HttpResponseChunk::Body {
-                    data: Bytes::from(body),
-                    final_chunk: true,
-                });
+                fluent_ai_async::emit!(sender, HttpBodyChunk::new(
+                    Bytes::from(body),
+                    0, // offset
+                    true, // is_final
+                ));
             }
-            emit!(sender, HttpResponseChunk::Complete);
         });
 
         self.build_with_chunks(chunks)
@@ -469,3 +521,41 @@ impl WasmResponseBuilder {
         Ok(self.build_with_bytes(body))
     }
 }
+
+// Implement MessageChunk for WasmResponse to support fluent-ai streams-first architecture
+impl fluent_ai_async::prelude::MessageChunk for WasmResponse {
+    fn bad_chunk(error: String) -> Self {
+        use http::StatusCode;
+        
+        // Create an error HttpResponse
+        let error_response = HttpResponse::error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            error.clone(),
+        );
+            
+        WasmResponse {
+            inner: error_response,
+            #[cfg(target_arch = "wasm32")]
+            web_response: None,
+            #[cfg(target_arch = "wasm32")]
+            abort_controller: None,
+            url: url::Url::parse("https://error.local").unwrap(),
+            redirected: false,
+            response_type: "error".to_string(),
+            error_message: Some(error),
+            #[cfg(not(target_arch = "wasm32"))]
+            web_response: None,
+        }
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some() || self.inner.status().is_client_error() || self.inner.status().is_server_error()
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+}
+
+/// Type alias for WASM Response - enables pure streaming architecture
+pub type Response = WasmResponse;

@@ -13,7 +13,7 @@ use wasm_bindgen::prelude::{Closure, wasm_bindgen};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen_futures::{JsFuture, spawn_local};
+// Removed JsFuture and spawn_local - using AsyncStream only
 #[cfg(target_arch = "wasm32")]
 use web_sys::{AbortController, AbortSignal};
 
@@ -57,7 +57,7 @@ use url::Url;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::JsFuture;
+// Removed JsFuture - using AsyncStream only
 use js_sys::Promise;
 use fluent_ai_async::prelude::MessageChunk;
 
@@ -77,11 +77,69 @@ impl MessageChunk for JsValue {
         }
         None
     }
+
+    fn is_error(&self) -> bool {
+        if let Some(s) = self.as_string() {
+            s.starts_with("ERROR: ")
+        } else {
+            false
+        }
+    }
 }
 
 impl Default for JsValue {
     fn default() -> Self {
         JsValue::NULL
+    }
+}
+
+// MessageChunk implementation for FormData
+#[cfg(target_arch = "wasm32")]
+impl MessageChunk for web_sys::FormData {
+    fn bad_chunk(error: String) -> Self {
+        let form_data = web_sys::FormData::new().unwrap_or_else(|_| {
+            // Fallback if FormData::new() fails
+            panic!("Failed to create FormData for error chunk: {}", error)
+        });
+        let _ = form_data.append_with_str("error", &error);
+        form_data
+    }
+
+    fn error(&self) -> Option<&str> {
+        // FormData doesn't have a direct way to check for errors
+        // We check if it has an "error" field
+        if let Ok(error_value) = self.get("error").as_string().ok_or("") {
+            if !error_value.is_empty() {
+                // This is a static string that we can't return a reference to
+                // Return None since we can't provide a &str reference
+                return None;
+            }
+        }
+        None
+    }
+
+    fn is_error(&self) -> bool {
+        // Check if FormData has an "error" field
+        if let Ok(error_value) = self.get("error").as_string().ok_or("") {
+            !error_value.is_empty()
+        } else {
+            false
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl MessageChunk for () {
+    fn bad_chunk(_error: String) -> Self {
+        ()
+    }
+
+    fn error(&self) -> Option<&str> {
+        None
+    }
+
+    fn is_error(&self) -> bool {
+        false
     }
 }
 
@@ -118,19 +176,24 @@ pub fn handle_error(_error: String) -> Error {
     ))
 }
 
-/// Convert JavaScript Promise to AsyncStream
+/// Convert JavaScript Promise to AsyncStream using callback pattern
 #[cfg(target_arch = "wasm32")]
 pub fn promise_to_stream(promise: Promise) -> fluent_ai_async::AsyncStream<JsValue, 1024> {
     use fluent_ai_async::{AsyncStream, emit};
-    use wasm_bindgen_futures::{spawn_local, JsFuture};
+    use wasm_bindgen::prelude::*;
     
     AsyncStream::with_channel(move |sender| {
-        spawn_local(async move {
-            match JsFuture::from(promise).await {
-                Ok(js_val) => emit!(sender, js_val),
-                Err(e) => emit!(sender, JsValue::bad_chunk(handle_error(e).to_string())),
-            }
+        // Use JavaScript Promise.then() instead of Future-based approach
+        let success_callback = Closure::once_into_js(move |js_val: JsValue| {
+            emit!(sender, js_val);
         });
+        
+        let error_callback = Closure::once_into_js(move |error: JsValue| {
+            emit!(sender, JsValue::bad_chunk(format!("Promise error: {:?}", error)));
+        });
+        
+        // Use native JavaScript Promise.then() method
+        let _ = promise.then2(&success_callback, &error_callback);
     })
 }
 
@@ -157,40 +220,37 @@ unsafe extern "C" {
 
 fn promise<T>(
     promise: js_sys::Promise,
-) -> fluent_ai_async::AsyncStream<Result<T, crate::Error>, 1024>
+) -> fluent_ai_async::AsyncStream<T, 1024>
 where
-    T: JsCast,
+    T: JsCast + MessageChunk,
 {
     use fluent_ai_async::{AsyncStream, emit};
 
     AsyncStream::with_channel(move |sender| {
         #[cfg(target_arch = "wasm32")]
         {
-            use wasm_bindgen_futures::{spawn_local, JsFuture};
-            spawn_local(async move {
-                match JsFuture::from(promise).await {
-                    Ok(js_val) => match wasm_bindgen::JsCast::dyn_into::<T>(js_val) {
-                        Ok(result) => emit!(sender, Ok(result)),
-                        Err(_js_val) => {
-                            emit!(sender, Err(crate::Error::from(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                "promise resolved to unexpected type"
-                            ))))
-                        }
-                    },
-                    Err(e) => emit!(sender, Err(crate::Error::from(std::io::Error::new(
-                        std::io::ErrorKind::Other, 
-                        format!("WASM error: {:?}", e)
-                    )))),
+            use wasm_bindgen::prelude::*;
+            
+            // Use JavaScript Promise.then() instead of Future-based approach
+            let success_callback = Closure::once_into_js(move |js_val: JsValue| {
+                match wasm_bindgen::JsCast::dyn_into::<T>(js_val) {
+                    Ok(result) => emit!(sender, result),
+                    Err(_js_val) => {
+                        emit!(sender, T::bad_chunk("promise resolved to unexpected type".to_string()))
+                    }
                 }
             });
+            
+            let error_callback = Closure::once_into_js(move |error: JsValue| {
+                emit!(sender, T::bad_chunk(format!("WASM error: {:?}", error)))
+            });
+            
+            // Use native JavaScript Promise.then() method
+            let _ = promise.then2(&success_callback, &error_callback);
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            emit!(sender, Err(crate::Error::from(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "WASM functionality not available on this platform"
-            ))));
+            emit!(sender, T::bad_chunk("WASM functionality not available on this platform".to_string()));
         }
     })
 }
@@ -206,11 +266,11 @@ struct AbortGuard {
 struct AbortGuard;
 
 impl AbortGuard {
-    fn new() -> crate::Result<Self> {
+    fn new() -> std::result::Result<Self, crate::HttpError> {
         Ok(AbortGuard {
             ctrl: AbortController::new()
                 .map_err(|e| crate::Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", e))))
-                .map_err(crate::error::builder)?,
+                .map_err(crate::client::core::ClientBuilder)?,
             timeout: None,
         })
     }
@@ -223,7 +283,7 @@ impl AbortGuard {
     fn timeout(&mut self, timeout: Duration) {
         let ctrl = self.ctrl.clone();
         let abort =
-            Closure::once(move || ctrl.abort_with_reason(&"crate::hyper::errors::TimedOut".into()));
+            Closure::once(move || ctrl.abort_with_reason(&"crate::client::HttpClient::errors::TimedOut".into()));
         let timeout = set_timeout(
             abort.as_ref().unchecked_ref::<js_sys::Function>(),
             match timeout.as_millis().try_into() {

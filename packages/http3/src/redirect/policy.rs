@@ -58,9 +58,9 @@ impl Policy {
     /// # Example
     ///
     /// ```rust
-    /// # use crate::hyper::{Error, redirect};
+    /// # use crate::{HttpError, redirect};
     /// #
-    /// # fn run() -> Result<(), Error> {
+    /// # fn run() -> Result<(), HttpError> {
     /// let custom = redirect::Policy::custom(|attempt| {
     ///     if attempt.previous().len() > 5 {
     ///         attempt.error("too many redirects")
@@ -71,7 +71,7 @@ impl Policy {
     ///         attempt.follow()
     ///     }
     /// });
-    /// let client = crate::hyper::Client::builder()
+    /// let client = crate::HttpClient::new()
     ///     .redirect(custom)
     ///     .build()?;
     /// # Ok(())
@@ -98,9 +98,9 @@ impl Policy {
     /// # Example
     ///
     /// ```rust
-    /// # use crate::hyper::{Error, redirect};
+    /// # use crate::{HttpError, redirect};
     /// #
-    /// # fn run() -> Result<(), Error> {
+    /// # fn run() -> Result<(), HttpError> {
     /// let custom = redirect::Policy::custom(|attempt| {
     ///     eprintln!("{}, Location: {:?}", attempt.status(), attempt.url());
     ///     redirect::Policy::default().redirect(attempt)

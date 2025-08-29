@@ -51,7 +51,7 @@ impl ArrayOperations {
         step: i64,
     ) -> JsonPathResult<Vec<Value>> {
         if step == 0 {
-            return Err(JsonPathError::InvalidIndex(
+            return Err(JsonPathError::invalid_index(
                 "Step cannot be zero".to_string(),
             ));
         }

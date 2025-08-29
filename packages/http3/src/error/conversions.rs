@@ -24,37 +24,7 @@ impl From<InvalidHeaderValue> for HttpError {
     }
 }
 
-impl From<crate::hyper::Error> for HttpError {
-    fn from(error: crate::hyper::Error) -> Self {
-        if error.is_timeout() {
-            HttpError::Timeout {
-                message: error.to_string(),
-            }
-        } else if error.is_status() {
-            HttpError::HttpStatus {
-                status: error.status().map_or(0, |s| s.as_u16()),
-                message: error.to_string(),
-                body: "".to_string(),
-            }
-        } else if error.is_connect() {
-            HttpError::Connection {
-                message: error.to_string(),
-            }
-        } else if error.is_request() {
-            HttpError::ClientError {
-                message: error.to_string(),
-            }
-        } else if error.is_decode() {
-            HttpError::DeserializationError {
-                message: error.to_string(),
-            }
-        } else {
-            HttpError::NetworkError {
-                message: error.to_string(),
-            }
-        }
-    }
-}
+// Removed hyper::Error conversion - no longer needed in fluent_ai_async architecture
 
 #[cfg(feature = "__rustls")]
 impl From<rustls::Error> for HttpError {

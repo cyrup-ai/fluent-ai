@@ -6,15 +6,18 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::task::{Context, Poll};
 
+use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
 use h2::{client, server};
 
-use crate::types::{HttpVersion, TimeoutConfig}::h2_chunks::{H2ConnectionChunk, H2DataChunk, H2RequestChunk, H2SendResult};
+use super::chunks::{H2ConnectionChunk, H2DataChunk, H2RequestChunk, H2SendResult};
+use crate::protocols::core::{HttpVersion, TimeoutConfig};
 
 /// H2 Connection Manager with direct poll-based primitives only
 ///
 /// Provides simple H2 connection management using only the patterns
 /// specified in the task requirements.
+#[derive(Debug)]
 pub struct H2ConnectionManager {
     is_connected: AtomicBool,
     connection_id: AtomicU64,
@@ -53,8 +56,10 @@ impl H2ConnectionManager {
         AsyncStream::<H2ConnectionChunk, 1024>::with_channel(move |sender| {
             let mut context = polling_context;
 
-            // Use h2's handshake with direct polling - NO Future-based APIs
-            match h2::client::Builder::new().handshake(io) {
+            // Use h2's handshake with futures executor - simpler approach
+            use futures::executor::block_on;
+            
+            match block_on(h2::client::Builder::new().handshake(io)) {
                 Ok((send_request, connection)) => {
                     is_connected.store(true, Ordering::SeqCst);
                     emit!(sender, H2ConnectionChunk::ready());
@@ -231,11 +236,28 @@ impl H2ConnectionManager {
     pub fn bytes_received(&self) -> u64 {
         self.bytes_received.load(Ordering::Acquire)
     }
+
+    /// Check if connection has encountered an error
+    #[inline]
+    pub fn is_error(&self) -> bool {
+        !self.is_connected()
+    }
 }
 
 impl Default for H2ConnectionManager {
     #[inline]
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Clone for H2ConnectionManager {
+    fn clone(&self) -> Self {
+        Self {
+            is_connected: AtomicBool::new(self.is_connected.load(std::sync::atomic::Ordering::Relaxed)),
+            connection_id: AtomicU64::new(self.connection_id.load(std::sync::atomic::Ordering::Relaxed)),
+            bytes_sent: AtomicU64::new(self.bytes_sent.load(std::sync::atomic::Ordering::Relaxed)),
+            bytes_received: AtomicU64::new(self.bytes_received.load(std::sync::atomic::Ordering::Relaxed)),
+        }
     }
 }

@@ -3,6 +3,7 @@
 //! This module provides zero-allocation, lock-free connection handling for HTTP/3 clients.
 
 pub mod builder;
+pub mod chunks;
 pub mod proxy;
 pub mod service;
 pub mod tcp;
@@ -10,6 +11,7 @@ pub mod types;
 
 // Re-export all public types for backward compatibility
 pub use builder::ConnectorBuilder;
+pub use chunks::TcpConnectionChunk;
 pub use proxy::{
     HttpConnectConfig, Intercepted, ProxyBypass, ProxyConfig, SocksAuth, SocksConfig, SocksVersion,
 };
@@ -36,8 +38,8 @@ pub type HttpConnector = Connector;
 impl Connector {
     /// Direct connection method - replaces Service::call with AsyncStream
     /// RETAINS: All proxy handling, TLS, timeouts, connection pooling functionality
-    /// Returns unwrapped AsyncStream<TcpStreamWrapper> per async-stream architecture
-    pub fn connect(&mut self, dst: http::Uri) -> fluent_ai_async::AsyncStream<TcpStreamWrapper> {
+    /// Returns unwrapped AsyncStream<TcpConnectionChunk> per async-stream architecture
+    pub fn connect(&mut self, dst: http::Uri) -> fluent_ai_async::AsyncStream<TcpConnectionChunk> {
         match &mut self.inner {
             types::ConnectorKind::WithLayers(s) => s.connect(dst),
             #[cfg(feature = "__tls")]

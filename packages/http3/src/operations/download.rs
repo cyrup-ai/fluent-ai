@@ -3,8 +3,8 @@
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::{
-    client::HttpClient, error::HttpError, http::request::HttpRequest, operations::HttpOperation,
-    streaming::stream::streams::DownloadStream,
+    client::HttpClient, http::request::HttpRequest, operations::HttpOperation,
+    client::execution::DownloadStream,
 };
 
 /// Download operation with progress tracking and resume capability
@@ -29,11 +29,15 @@ impl DownloadOperation {
 
     /// Add custom header
     #[inline(always)]
-    pub fn header(mut self, key: &str, value: &str) -> Result<Self, HttpError> {
-        let header_name = HeaderName::from_bytes(key.as_bytes())?;
-        let header_value = HeaderValue::from_str(value)?;
-        self.headers.insert(header_name, header_value);
-        Ok(self)
+    pub fn header(mut self, key: &str, value: &str) -> Self {
+        if let (Ok(header_name), Ok(header_value)) = (
+            HeaderName::from_bytes(key.as_bytes()),
+            HeaderValue::from_str(value),
+        ) {
+            self.headers.insert(header_name, header_value);
+        }
+        // Invalid headers are silently ignored - errors will surface during request execution as stream events
+        self
     }
 
     /// Set headers from a HeaderMap
@@ -62,10 +66,10 @@ impl DownloadOperation {
 
         let request = HttpRequest::new(
             self.method(),
-            self.url.clone(),
-            Some(self.headers),
+            self.url.parse().unwrap(),
+            Some(self.headers.clone()),
             None,
-            None,
+            Some(std::time::Duration::from_secs(30)),
         );
         self.client.download_file(request)
     }

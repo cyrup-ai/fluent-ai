@@ -10,6 +10,14 @@ use super::property_access::PropertyAccessResult;
 /// Array access utilities
 pub struct ArrayAccess;
 
+impl ArrayAccess {
+    /// Access array index with null vs missing distinction
+    #[inline]
+    pub fn access_array_index(array: &JsonValue, index: i64) -> PropertyAccessResult {
+        access_array_index(array, index)
+    }
+}
+
 /// Array access with proper null vs missing distinction
 ///
 /// Handles array index access while maintaining null vs missing semantics.

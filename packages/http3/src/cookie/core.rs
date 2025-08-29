@@ -2,7 +2,7 @@
 
 use std::convert::TryInto;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use bytes::Bytes;
@@ -18,7 +18,7 @@ pub trait CookieStore: Send + Sync {
 }
 
 /// A single HTTP cookie.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Cookie<'a>(cookie_crate::Cookie<'a>);
 
 impl<'a> MessageChunk for Cookie<'a> {
@@ -34,6 +34,10 @@ impl<'a> MessageChunk for Cookie<'a> {
         } else {
             None
         }
+    }
+
+    fn is_error(&self) -> bool {
+        self.0.name() == "ERROR"
     }
 }
 
@@ -54,7 +58,7 @@ impl<'a> Default for Cookie<'a> {
 /// manipulate it between requests, you may refer to the
 /// [http3_cookie_store crate](https://crates.io/crates/http3_cookie_store).
 #[derive(Debug, Default)]
-pub struct Jar(Arc<atomic::Atomic<Option<cookie_store::CookieStore>>>);
+pub struct Jar(Arc<RwLock<Option<cookie_store::CookieStore>>>);
 
 // ===== impl Cookie =====
 
@@ -141,7 +145,11 @@ pub(crate) fn extract_response_cookies<'a>(
     headers
         .get_all(SET_COOKIE)
         .iter()
-        .map(|value| Cookie::parse(value))
+        .filter_map(|value| value.to_str().ok())
+        .map(|value_str| match cookie_crate::Cookie::parse(value_str) {
+            Ok(cookie) => Ok(Cookie(cookie)),
+            Err(e) => Err(CookieParseError(e)),
+        })
 }
 
 /// Error representing a parse failure of a 'Set-Cookie' header.
@@ -169,7 +177,7 @@ impl Jar {
     /// # Example
     ///
     /// ```
-    /// use crate::hyper::{cookie::Jar, Url};
+    /// use crate::{cookie::Jar, Url};
     ///
     /// let cookie = "foo=bar; Domain=yolo.local";
     /// let url = "https://yolo.local".parse::<Url>()?;
@@ -184,29 +192,50 @@ impl Jar {
             .ok()
             .map(|c| c.into_owned())
             .into_iter();
-        if let Ok(mut store) = self.0.write() {
-            store.store_response_cookies(cookies, url);
+        if let Ok(mut store_guard) = self.0.write() {
+            if let Some(ref mut store) = store_guard.as_mut() {
+                store.store_response_cookies(cookies, url);
+            }
         }
+    }
+}
+
+impl Clone for Jar {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
     }
 }
 
 impl CookieStore for Jar {
     fn set_cookies(&self, cookie_headers: &mut dyn Iterator<Item = &HeaderValue>, url: &url::Url) {
-        let iter =
-            cookie_headers.filter_map(|val| Cookie::parse(val).map(|c| c.0.into_owned()).ok());
+        let cookies: Vec<_> = cookie_headers
+            .filter_map(|val| {
+                cookie_crate::Cookie::parse(val.to_str().unwrap_or(""))
+                    .map(|c| c.into_owned())
+                    .ok()
+            })
+            .collect();
 
-        if let Ok(mut store) = self.0.write() {
-            store.store_response_cookies(iter, url);
+        if let Ok(mut store_guard) = self.0.write() {
+            if let Some(ref mut store) = store_guard.as_mut() {
+                store.store_response_cookies(cookies.into_iter(), url);
+            }
         }
     }
 
     fn cookies(&self, url: &url::Url) -> Option<HeaderValue> {
         let s = match self.0.read() {
-            Ok(store) => store
-                .get_request_values(url)
-                .map(|(name, value)| format!("{name}={value}"))
-                .collect::<Vec<_>>()
-                .join("; "),
+            Ok(store_guard) => {
+                if let Some(ref store) = store_guard.as_ref() {
+                    store
+                        .get_request_values(url)
+                        .map(|(name, value)| format!("{name}={value}"))
+                        .collect::<Vec<_>>()
+                        .join("; ")
+                } else {
+                    return None;
+                }
+            }
             Err(_) => return None,
         };
 

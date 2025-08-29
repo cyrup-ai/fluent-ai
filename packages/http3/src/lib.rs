@@ -85,22 +85,13 @@ extern crate doc_comment;
 use std::sync::Arc;
 use std::sync::OnceLock;
 
-// Re-export core error types for crate-wide usage
-pub use crate::error::{HttpError, HttpResult};
-
-/// Crate-level Error type alias for compatibility
-pub type Error = HttpError;
-
-/// Crate-level Result type alias for compatibility  
-pub type Result<T> = HttpResult<T>;
-
-// Import MessageChunk for trait implementations
-
+// Core modules
 pub mod auth;
 pub mod builder;
 pub mod cache;
 pub mod client;
 pub mod config;
+pub mod connect;
 pub mod cookie;
 pub mod crypto;
 pub mod error;
@@ -109,55 +100,21 @@ pub mod jsonpath;
 pub mod middleware;
 pub mod operations;
 pub mod protocols;
+pub mod proxy;
 pub mod retry;
-pub mod streaming;
+pub mod security;
 pub mod telemetry;
+pub mod tls;
 
-// Quiche QUIC integration modules - synchronous streaming implementation
-pub use auth::AuthMethod;
-pub use builder::ContentTypes;
-pub use builder::fluent::DownloadBuilder;
-pub use builder::{ContentType, Http3Builder, JsonPathStreaming};
-pub use protocols::quiche::{
-    QuicheConnectionChunk, QuichePacketChunk, QuicheReadableChunk, QuicheStreamChunk,
-    QuicheWriteResult,
-};
-// New foundational types for fluent_ai_async integration
-// Re-export HttpChunk from streaming chunks
-pub use streaming::chunks::HttpChunk;
-pub use streaming::stream::{
-    BadChunk, DownloadChunk, DownloadStream, HttpChunk, HttpStream, JsonStream, SseEvent, SseStream,
-};
-pub use streaming::*;
-pub use streaming::{
-    FrameChunk, H2Frame, H3Frame, StreamingPipeline, StreamingRequest, StreamingResponse,
-};
 
-/// Ergonomic type alias for `Http3Builder` - streams-first architecture
-pub type Http3 = Http3Builder;
-pub use client::HttpClient;
-pub use config::HttpConfig;
-// Import core async stream types
-pub use fluent_ai_async::{AsyncStream, AsyncStreamSender};
-pub use http::HttpRequest;
-// Re-export types module for internal use
-pub mod types;
+// Prelude with canonical types
+pub mod prelude;
 
-// Import HTTP types from external http crate (not streaming::http module)
-pub use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Version};
-// ELIMINATED: All hyper middleware - direct fluent_ai_async streaming only
-pub use jsonpath::{JsonArrayStream, JsonPathError, StreamStats};
-/// Convenience type alias for Result with HttpError
-pub use middleware::{CacheMiddleware, Middleware, MiddlewareChain};
-pub use streaming::response::HttpResponse;
-pub use telemetry::{ClientStats, ClientStatsSnapshot};
-pub use url::Url;
+// Essential public API - only what end users actually need
+pub use crate::prelude::*;
 
-// Internal alias: many modules migrated from a http3-like API still reference `crate::hyper::...` paths.
-// To make those resolve within this crate, we alias the crate root as `http3`.
-// Note: Integration tests must still import `fluent_ai_http3` explicitly; this alias only affects paths
-// resolved inside this crate.
-pub use crate as http3;
+// Builder convenience alias - this is genuinely ergonomic
+pub type Http3 = builder::Http3Builder;
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling
@@ -184,11 +141,16 @@ pub fn connection_stats() -> ClientStatsSnapshot {
 }
 
 /// Initialize the global HTTP client with custom configuration
-/// Returns Result following standard Rust patterns for initialization
-pub fn init_global_client(
-    config: HttpConfig,
-) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    validate_and_init_client(config)
+/// Per fluent-ai architecture: NO Result returns, graceful error handling with fallback
+pub fn init_global_client(config: HttpConfig) {
+    if let Err(e) = validate_and_init_client(config) {
+        // Log error and continue with default client - library code should never panic
+        tracing::error!(
+            "Failed to initialize HTTP client with custom config: {}, using default client",
+            e
+        );
+        // Default client is already initialized via global_client() - graceful degradation
+    }
 }
 
 /// Internal validation and initialization
@@ -246,7 +208,7 @@ fn initialize_global_client_internal(
     // ELIMINATED: hyper ClientBuilder - using direct fluent_ai_async streaming
 
     // Build client with pure AsyncStream architecture - NO middleware
-    let stats = crate::client::ClientStats::default();
+    let stats = crate::telemetry::client_stats::ClientStats::default();
     let new_client = crate::client::HttpClient::new_direct(config, stats);
 
     // Set the global client - OnceLock allows one-time initialization

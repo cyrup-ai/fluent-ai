@@ -2,9 +2,6 @@
 //!
 //! Tests that verify proper handling of edge cases like empty values, null values, and boundary conditions
 
-use serde_json::json;
-
-use super::super::FunctionEvaluator;
 use super::mock_evaluator::mock_evaluator;
 use crate::jsonpath::parser::{FilterExpression, FilterValue};
 

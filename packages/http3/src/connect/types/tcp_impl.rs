@@ -12,7 +12,16 @@ use super::connection::ConnectionTrait;
 
 /// Wrapper for TcpStream to implement MessageChunk safely
 #[derive(Debug)]
-pub struct TcpStreamWrapper(pub TcpStream);
+pub enum TcpStreamWrapper {
+    Connected(TcpStream),
+    Error(BrokenStream),
+}
+
+/// Mock stream that always returns connection errors
+#[derive(Debug)]
+pub struct BrokenStream {
+    error: String,
+}
 
 impl Clone for TcpStreamWrapper {
     fn clone(&self) -> Self {
@@ -27,58 +36,83 @@ impl Default for TcpStreamWrapper {
     }
 }
 
+impl BrokenStream {
+    pub fn new(error: String) -> Self {
+        Self { error }
+    }
+}
+
+impl Read for BrokenStream {
+    fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotConnected,
+            self.error.clone(),
+        ))
+    }
+}
+
+impl Write for BrokenStream {
+    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotConnected,
+            self.error.clone(),
+        ))
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotConnected,
+            self.error.clone(),
+        ))
+    }
+}
+
+impl TcpStreamWrapper {
+    pub fn new(stream: TcpStream) -> Self {
+        Self::Connected(stream)
+    }
+}
+
 impl MessageChunk for TcpStreamWrapper {
     fn bad_chunk(error: String) -> Self {
-        // Create a broken TCP stream that will fail on any operation
-        // Use a mock implementation that's safer than unsafe code
-        struct BrokenStream {
-            error: String,
-        }
-
-        impl Read for BrokenStream {
-            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::NotConnected,
-                    self.error.clone(),
-                ))
-            }
-        }
-
-        impl Write for BrokenStream {
-            fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::NotConnected,
-                    self.error.clone(),
-                ))
-            }
-
-            fn flush(&mut self) -> std::io::Result<()> {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::NotConnected,
-                    self.error.clone(),
-                ))
-            }
-        }
-
-        // Create a mock TcpStream using a local loopback that will fail
-        match TcpStream::connect("127.0.0.1:1") {
-            Ok(stream) => TcpStreamWrapper(stream),
-            Err(_) => {
-                // If we can't even create a failing stream, create a placeholder
-                // This is a fallback that should rarely be used
-                TcpStreamWrapper::bad_chunk("Failed to create error TCP stream".to_string())
-            }
-        }
+        // Clean solution: return Error variant with BrokenStream
+        Self::Error(BrokenStream::new(error))
     }
 
     fn is_error(&self) -> bool {
-        // TCP streams don't have inherent error state, so return false
-        false
+        matches!(self, TcpStreamWrapper::Error(_))
     }
 
     fn error(&self) -> Option<&str> {
-        // TCP streams don't carry error messages
-        None
+        match self {
+            TcpStreamWrapper::Error(broken) => Some(&broken.error),
+            TcpStreamWrapper::Connected(_) => None,
+        }
+    }
+}
+
+impl Read for TcpStreamWrapper {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            TcpStreamWrapper::Connected(stream) => stream.read(buf),
+            TcpStreamWrapper::Error(broken) => broken.read(buf),
+        }
+    }
+}
+
+impl Write for TcpStreamWrapper {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match self {
+            TcpStreamWrapper::Connected(stream) => stream.write(buf),
+            TcpStreamWrapper::Error(broken) => broken.write(buf),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match self {
+            TcpStreamWrapper::Connected(stream) => stream.flush(),
+            TcpStreamWrapper::Error(broken) => broken.flush(),
+        }
     }
 }
 
@@ -127,6 +161,12 @@ impl ConnectionTrait for TcpConnection {
     }
 }
 
+impl From<TcpStream> for TcpConnection {
+    fn from(stream: TcpStream) -> Self {
+        Self::new(stream)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,8 +174,8 @@ mod tests {
     #[test]
     fn test_tcp_stream_wrapper_bad_chunk() {
         let wrapper = TcpStreamWrapper::bad_chunk("test error".to_string());
-        assert!(!wrapper.is_error()); // TCP streams don't have inherent error state
-        assert!(wrapper.error().is_none()); // TCP streams don't carry error messages
+        assert!(wrapper.is_error()); // Error variant should report as error
+        assert_eq!(wrapper.error(), Some("test error")); // Should carry error message
     }
 
     #[test]

@@ -126,11 +126,11 @@ impl From<fluent_ai_http3::BadChunk> for BinaryResponse {
     }
 }
 
-// Handler for test server that logs received payload and headers
-async fn handle_post(
+// Handler for test server that logs received payload and headers - NO async
+fn handle_post(
     headers: HeaderMap,
     Json(payload): Json<SerdeRequestType>,
-) -> Result<ResponseJson<Vec<SerdeResponseType>>, StatusCode> {
+) -> ResponseJson<Vec<SerdeResponseType>> {
     println!("🚀 Server received payload: {:#?}", payload);
     println!("📋 Server received headers:");
     for (name, value) in headers.iter() {
@@ -148,22 +148,27 @@ async fn handle_post(
     };
 
     println!("📤 Server responding with: {:#?}", response);
-    Ok(ResponseJson(vec![response]))
+    ResponseJson(vec![response])
 }
 
-// Handler for CSV download
-async fn handle_csv_download() -> Result<Response<String>, StatusCode> {
+// Handler for CSV download - NO async
+fn handle_csv_download() -> Response<String> {
     let csv_data = "name,age,city\nJohn,30,NYC\nJane,25,LA\nBob,35,Chicago";
 
-    Ok(Response::builder()
+    Response::builder()
         .header("content-type", "text/csv")
         .header("content-disposition", "attachment; filename=\"test.csv\"")
         .body(csv_data.to_string())
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
+        .unwrap_or_else(|_| {
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body("Error building response".to_string())
+                .unwrap()
+        })
 }
 
 // PUT handler for JSON content - JsonRequest -> JsonResponse
-async fn handle_put_json(
+fn handle_put_json(
     headers: HeaderMap,
     Json(payload): Json<JsonRequest>,
 ) -> Result<ResponseJson<Vec<JsonResponse>>, StatusCode> {
@@ -193,7 +198,7 @@ async fn handle_put_json(
 }
 
 // PUT handler for form-urlencoded content - FormRequest -> FormResponse
-async fn handle_put_form(
+fn handle_put_form(
     headers: HeaderMap,
     Form(params): Form<HashMap<String, String>>,
 ) -> Result<ResponseJson<Vec<FormResponse>>, StatusCode> {
@@ -227,7 +232,7 @@ async fn handle_put_form(
 }
 
 // PUT handler for binary/text content - BinaryRequest -> BinaryResponse
-async fn handle_put_binary(
+fn handle_put_binary(
     headers: HeaderMap,
     Json(payload): Json<BinaryRequest>,
 ) -> Result<ResponseJson<Vec<BinaryResponse>>, StatusCode> {
@@ -297,12 +302,12 @@ async fn requestbin_logger(
     Ok(response)
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize env_logger for http3's native debug logging
     std::env::set_var("RUST_LOG", "http3=debug,hyper=debug,fluent_ai_http3=debug");
     env_logger::init();
     println!("✨ Enabled http3's native HTTP debug logging");
+
     // Start local test server on random port with requestbin logging
     let app = Router::new()
         .route("/test", post(handle_post))
@@ -311,18 +316,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/put/binary", put(handle_put_binary))
         .route("/download/file.csv", get(handle_csv_download))
         .layer(middleware::from_fn(requestbin_logger));
-    let listener = TcpListener::bind("127.0.0.1:0").await?;
-    let local_addr = listener.local_addr()?;
 
-    println!("🌍 Test server starting on {}", local_addr);
+    // Use thread-based runtime for server infrastructure
+    let rt = tokio::runtime::Runtime::new()?;
+    let (local_addr, _server_handle) = rt.block_on(async {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let local_addr = listener.local_addr()?;
 
-    // Spawn server in background
-    tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
-    });
+        println!("🌍 Test server starting on {}", local_addr);
 
-    // Give server time to start
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        // Spawn server in background thread
+        let server_handle = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        // Give server time to start
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        Ok::<(std::net::SocketAddr, tokio::task::JoinHandle<()>), Box<dyn std::error::Error>>((
+            local_addr,
+            server_handle,
+        ))
+    })?;
 
     // Create test request
     let request = SerdeRequestType {
@@ -373,7 +388,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧪 Testing cyrup_sugars on_chunk beautiful syntax...");
 
     // Note: This demonstrates the beautiful syntax but uses collect_one_or_else for practical results
-    let _stream_with_error_handling: cyrup_sugars::AsyncStream<HttpChunk> = Http3::json()
+    let _stream_with_error_handling: fluent_ai_async::AsyncStream<HttpChunk, 1024> = Http3::json()
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
@@ -407,7 +422,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .headers([("x-api-key", "abc123")])
         .download_file(&csv_url)
         .save("/tmp/some.csv")
-        .await; // polymorphic path for download specific semantics
+        .collect(); // fluent-ai AsyncStream collection pattern
 
     println!("📥 Download result: {:?}", download_result);
 
@@ -468,7 +483,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📤 PUT Binary Response: {:#?}", binary_response);
 
     // Give the server a moment to process all requests
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     println!("\n✅ All PUT endpoint tests completed successfully!");
     println!("🎯 HTTP3 builder example completed!");

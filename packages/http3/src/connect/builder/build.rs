@@ -7,7 +7,7 @@ use hyper_util::client::legacy::connect::HttpConnector;
 use super::super::service::ConnectorService;
 use super::super::types::{Connector, ConnectorKind};
 use super::types::ConnectorBuilder;
-use crate::hyper::error::BoxError;
+use crate::error::BoxError;
 
 impl ConnectorBuilder {
     /// Build the connector with configured settings

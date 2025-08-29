@@ -1,5 +1,8 @@
 use url::Url;
 
+use crate::prelude::*;
+use crate::error::constructors::url;
+
 /// Conditional compilation macro for hyper-specific code
 macro_rules! if_hyper {
     ($($item:item)*) => {
@@ -24,13 +27,13 @@ impl<'a> IntoUrl for &'a String {}
 pub trait IntoUrlSealed {
     // Besides parsing as a valid `Url`, the `Url` must be a valid
     // `http::Uri`, in that it makes sense to use in a network request.
-    fn into_url(self) -> crate::Result<Url>;
+    fn into_url(self) -> std::result::Result<Url, crate::HttpError>;
 
     fn as_str(&self) -> &str;
 }
 
 impl IntoUrlSealed for Url {
-    fn into_url(self) -> crate::Result<Url> {
+    fn into_url(self) -> std::result::Result<Url, crate::HttpError> {
         // With blob url the `self.has_host()` check is always false, so we
         // remove the `blob:` scheme and check again if the url is valid.
         #[cfg(target_arch = "wasm32")]
@@ -44,10 +47,7 @@ impl IntoUrlSealed for Url {
         if self.has_host() {
             Ok(self)
         } else {
-            Err(crate::HttpError::url(format!(
-                "Bad scheme in URL: {}",
-                self
-            )))
+            Err(url(format!("Bad scheme in URL: {}", self)))
         }
     }
 
@@ -57,7 +57,7 @@ impl IntoUrlSealed for Url {
 }
 
 impl<'a> IntoUrlSealed for &'a str {
-    fn into_url(self) -> crate::Result<Url> {
+    fn into_url(self) -> std::result::Result<Url, crate::HttpError> {
         Url::parse(self).map_err(crate::error::builder)?.into_url()
     }
 
@@ -67,7 +67,7 @@ impl<'a> IntoUrlSealed for &'a str {
 }
 
 impl<'a> IntoUrlSealed for &'a String {
-    fn into_url(self) -> crate::Result<Url> {
+    fn into_url(self) -> std::result::Result<Url, crate::HttpError> {
         (&**self).into_url()
     }
 
@@ -77,7 +77,7 @@ impl<'a> IntoUrlSealed for &'a String {
 }
 
 impl IntoUrlSealed for String {
-    fn into_url(self) -> crate::Result<Url> {
+    fn into_url(self) -> std::result::Result<Url, crate::HttpError> {
         (&*self).into_url()
     }
 
@@ -87,9 +87,15 @@ impl IntoUrlSealed for String {
 }
 
 if_hyper! {
-    pub(crate) fn try_uri(url: &Url) -> crate::Result<http::Uri> {
+    pub(crate) fn try_uri(url: &Url) -> std::result::Result<http::Uri, crate::HttpError> {
         url.as_str()
             .parse()
-            .map_err(|_| crate::HttpError::url(format!("Invalid URI: {}", url)))
+            .map_err(|_| {
+                let inner = crate::error::types::Inner {
+                    kind: crate::error::types::Kind::Request,
+                    source: None,
+                };
+                crate::HttpError { inner: Box::new(inner) }
+            })
     }
 }

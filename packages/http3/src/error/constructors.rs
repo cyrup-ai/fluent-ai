@@ -57,3 +57,72 @@ pub fn status_code(
     ))
     .with_url(url)
 }
+
+// Additional error constructors needed by the codebase
+pub fn configuration<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Builder).with(e.into())
+}
+
+pub fn invalid_header<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn invalid_url<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Builder).with(e.into())
+}
+
+pub fn url<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Builder).with(e.into())
+}
+
+pub fn deserialization_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Decode).with(e.into())
+}
+
+pub fn network_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn timeout<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn http_status<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn tls_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn serialization_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn invalid_response<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn client_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn url_parse_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Builder).with(e.into())
+}
+
+pub fn download_interrupted<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn invalid_content_length<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn chunk_processing_error<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}
+
+pub fn generic<E: Into<BoxError>>(e: E) -> Error {
+    Error::new(Kind::Request).with(e.into())
+}

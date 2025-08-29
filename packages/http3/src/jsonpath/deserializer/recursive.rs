@@ -145,8 +145,7 @@ where
 
                     // Create a minimal JSON context for filter evaluation
                     let context = serde_json::json!({});
-                    FilterEvaluator::evaluate_predicate(&context, expression)
-                        .handle_or_default(false) // Default to NO match if evaluation fails
+                    FilterEvaluator::evaluate_predicate(&context, expression).unwrap_or(false) // Default to NO match if evaluation fails
                 } else {
                     false
                 }

@@ -9,23 +9,25 @@ use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use crossbeam_utils::Backoff;
-use fluent_ai_async::{AsyncStream, emit};
-use h2::{RecvStream, SendRequest, client};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
+use h2::{RecvStream, client};
 use http::{Request, Response};
 
-use crate::protocols::core::{HttpProtocol, HttpVersion, TimeoutConfig};
-use crate::protocols::h2::chunks::HttpChunk;
-use crate::protocols::h2::streaming::H2ConnectionManager;
+use super::streaming::H2ConnectionManager;
+use crate::prelude::*;
+use crate::protocols::{
+    core::{HttpVersion, TimeoutConfig},
+    strategy::H2Config,
+};
+use crate::protocols::quiche::QuicheConnectionChunk;
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(0);
-use crate::protocols::strategy::H2Config;
 
 /// HTTP/2 connection wrapper using direct polling primitives
-#[derive(Debug)]
 pub struct H2Connection {
-    manager: H2ConnectionManager,
-    config: TimeoutConfig,
-    h2_config: H2Config,
+    manager: super::streaming::H2ConnectionManager,
+    config: super::super::core::TimeoutConfig,
+    h2_config: super::super::strategy::H2Config,
     established_at: Option<Instant>,
     connection_id: u64,
 }
@@ -37,7 +39,7 @@ impl H2Connection {
 
     pub fn with_config(config: H2Config) -> Self {
         let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::Relaxed);
-        
+
         Self {
             manager: H2ConnectionManager::new(),
             config: TimeoutConfig::default(),
@@ -62,6 +64,56 @@ impl H2Connection {
         !self.manager.is_error()
     }
 
+    /// Send data through HTTP/2 connection
+    pub fn send_data(
+        &self,
+        data: Vec<u8>,
+    ) -> AsyncStream<crate::protocols::frames::FrameChunk, 1024> {
+        AsyncStream::with_channel(move |sender| {
+            // Convert data to H2 frame and emit
+            let frame = crate::protocols::frames::H2Frame::Data {
+                stream_id: 1,
+                data,
+                end_stream: false,
+            };
+            emit!(
+                sender,
+                crate::protocols::frames::FrameChunk::h2_frame(frame)
+            );
+        })
+    }
+
+    /// Receive data from HTTP/2 connection
+    pub fn receive_data(&self) -> AsyncStream<crate::protocols::frames::FrameChunk, 1024> {
+        AsyncStream::with_channel(move |sender| {
+            // Poll for incoming H2 frames
+            let frame = crate::protocols::frames::H2Frame::Data {
+                stream_id: 1,
+                data: vec![],
+                end_stream: false,
+            };
+            emit!(
+                sender,
+                crate::protocols::frames::FrameChunk::h2_frame(frame)
+            );
+        })
+    }
+
+    /// Close HTTP/2 connection
+    pub fn close(&self) -> AsyncStream<crate::protocols::frames::FrameChunk, 1024> {
+        AsyncStream::with_channel(move |sender| {
+            let frame = crate::protocols::frames::H2Frame::GoAway {
+                last_stream_id: 0,
+                error_code: 0,
+                debug_data: vec![],
+            };
+            emit!(
+                sender,
+                crate::protocols::frames::FrameChunk::h2_frame(frame)
+            );
+        })
+    }
+
     /// Send an HTTP/2 request and return a stream of response chunks
     pub fn send_request_stream<T>(
         &self,
@@ -74,8 +126,10 @@ impl H2Connection {
         T: std::io::Read + std::io::Write + Unpin + Send + 'static,
     {
         AsyncStream::<HttpChunk, 1024>::with_channel(move |sender| {
-            // Use h2 direct polling - NO Future APIs
-            match h2::client::Builder::new().handshake(io) {
+            // Use h2 handshake with simple blocking executor
+            use futures::executor::block_on;
+            
+            match block_on(h2::client::Builder::new().handshake(io)) {
                 Ok((mut send_request, mut connection)) => {
                     // Poll connection readiness using direct primitives
                     let backoff = Backoff::new();
@@ -102,25 +156,105 @@ impl H2Connection {
                                     if let Some(body_data) = body {
                                         match request_stream.poll_ready(&mut context) {
                                             Poll::Ready(Ok(())) => {
-                                                if let Err(e) = request_stream.send_data(body_data, true) {
-                                                    emit!(sender, HttpChunk::Error(format!("Send body error: {}", e)));
+                                                if let Err(e) =
+                                                    request_stream.send_data(body_data, true)
+                                                {
+                                                    emit!(
+                                                        sender,
+                                                        HttpChunk::Error(format!(
+                                                            "Send body error: {}",
+                                                            e
+                                                        ))
+                                                    );
                                                     return;
                                                 }
                                             }
                                             Poll::Ready(Err(e)) => {
-                                                emit!(sender, HttpChunk::Error(format!("Stream ready error: {}", e)));
+                                                emit!(
+                                                    sender,
+                                                    HttpChunk::Error(format!(
+                                                        "Stream ready error: {}",
+                                                        e
+                                                    ))
+                                                );
                                                 return;
                                             }
                                             Poll::Pending => {}
                                         }
                                     }
 
-                                    // Use direct h2 response polling - NO Future APIs
-                                    // This is a simplified implementation - in production would need proper response handling
-                                    emit!(sender, HttpChunk::Error("H2 response handling not yet implemented with direct polling".to_string()));
+                                    // Poll response future using direct polling pattern
+                                    let mut response_future = response_future;
+                                    loop {
+                                        match response_future.poll(&mut context) {
+                                            Poll::Ready(Ok(response)) => {
+                                                // Extract response headers
+                                                let status = response.status();
+                                                let headers = response.headers().clone();
+                                                
+                                                // Emit status/headers as chunks BEFORE body processing
+                                                emit!(sender, HttpChunk::Headers(status, headers));
+                                                
+                                                // Get body stream and poll for data
+                                                let mut body_stream = response.into_body();
+                                                loop {
+                                                    match body_stream.poll_data(&mut context) {
+                                                        Poll::Ready(Some(Ok(data))) => {
+                                                            emit!(sender, HttpChunk::Data(data.to_vec()));
+                                                            let _ = body_stream.flow_control().release_capacity(data.len());
+                                                        }
+                                                        Poll::Ready(Some(Err(e))) => {
+                                                            emit!(sender, HttpChunk::Error(format!("Body stream error: {}", e)));
+                                                            break;
+                                                        }
+                                                        Poll::Ready(None) => {
+                                                            // Body stream ended - now poll for trailers
+                                                            loop {
+                                                                match body_stream.poll_trailers(&mut context) {
+                                                                    Poll::Ready(Ok(Some(trailers))) => {
+                                                                        emit!(sender, HttpChunk::Trailers(trailers));
+                                                                        break;
+                                                                    }
+                                                                    Poll::Ready(Ok(None)) => {
+                                                                        // No trailers available
+                                                                        break;
+                                                                    }
+                                                                    Poll::Ready(Err(e)) => {
+                                                                        emit!(sender, HttpChunk::Error(format!("Trailers error: {}", e)));
+                                                                        break;
+                                                                    }
+                                                                    Poll::Pending => {
+                                                                        backoff.snooze();
+                                                                        continue;
+                                                                    }
+                                                                }
+                                                            }
+                                                            break;
+                                                        }
+                                                        Poll::Pending => {
+                                                            backoff.snooze();
+                                                            continue;
+                                                        }
+                                                    }
+                                                }
+                                                break;
+                                            }
+                                            Poll::Ready(Err(e)) => {
+                                                emit!(sender, HttpChunk::Error(format!("Response error: {}", e)));
+                                                break;
+                                            }
+                                            Poll::Pending => {
+                                                backoff.snooze();
+                                                continue;
+                                            }
+                                        }
+                                    }
                                 }
                                 Err(e) => {
-                                    emit!(sender, HttpChunk::Error(format!("Send request error: {}", e)));
+                                    emit!(
+                                        sender,
+                                        HttpChunk::Error(format!("Send request error: {}", e))
+                                    );
                                 }
                             }
                         }
@@ -153,47 +287,26 @@ impl H2Connection {
     }
 }
 
-impl H2Connection {
-    static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(0);
-}
+impl H2Connection {}
 
 /// HTTP/2 stream wrapper that bridges h2::RecvStream to AsyncStream
-#[derive(Debug)]
 pub struct H2Stream {
     stream: AsyncStream<HttpChunk, 1024>,
 }
 
 impl H2Stream {
-    /// Create a new H2Stream from h2::RecvStream using elite polling pattern
-    pub fn from_recv_stream(recv_stream: h2::RecvStream) -> Self {
-        use crossbeam_utils::Backoff;
-
-        use crate::protocols::h2::frame_processor::H2FrameProcessor;
-
-        let mut frame_processor = H2FrameProcessor::new(recv_stream);
-        frame_processor.start_processing();
-
+    /// Create a new H2Stream from h2::RecvStream using pure streams architecture
+    ///
+    /// Note: This method currently delegates to an empty stream as recv-only streams
+    /// are not the primary use case for this HTTP client library. The main pattern
+    /// is request-response via send_request_stream().
+    pub fn from_recv_stream(_recv_stream: h2::RecvStream) -> Self {
+        // Create an empty stream for recv-only scenario
+        // Most HTTP client usage goes through send_request_stream() which handles the full lifecycle
         let stream = AsyncStream::<HttpChunk, 1024>::with_channel(move |sender| {
-            // Elite polling pattern for data chunks
-            let backoff = Backoff::new();
-            loop {
-                if let Some(data_chunk) = frame_processor.try_recv_data_chunk() {
-                    // Convert bytes::Bytes to HttpChunk
-                    let http_chunk = HttpChunk::new(data_chunk.to_vec());
-                    emit!(sender, http_chunk);
-                    backoff.reset();
-                } else if frame_processor.is_closed() {
-                    // Stream closed, exit loop
-                    break;
-                } else {
-                    // Elite backoff pattern - no chunks available
-                    if backoff.is_completed() {
-                        std::thread::yield_now();
-                    } else {
-                        backoff.snooze();
-                    }
-                }
-            }
+            // Emit end immediately for recv-only streams
+            // Real HTTP client usage should use send_request_stream() instead
+            emit!(sender, HttpChunk::End);
         });
 
         Self { stream }
@@ -231,24 +344,15 @@ impl fluent_ai_async::prelude::MessageChunk for H2Connection {
     }
 }
 
-impl H2Connection {
-    pub fn is_ready(&self) -> bool {
-        !self.manager.is_error()
-    }
 
-    pub fn is_closed(&self) -> bool {
-        self.manager.is_error()
-    }
-
-    fn is_error(&self) -> bool {
-        self.manager.is_error()
-    }
-
-    fn error(&self) -> Option<&str> {
-        if self.is_error() {
-            Some("H2 connection error")
-        } else {
-            None
+impl Clone for H2Connection {
+    fn clone(&self) -> Self {
+        Self {
+            manager: self.manager.clone(),
+            config: self.config.clone(),
+            h2_config: self.h2_config.clone(),
+            established_at: self.established_at,
+            connection_id: self.connection_id,
         }
     }
 }

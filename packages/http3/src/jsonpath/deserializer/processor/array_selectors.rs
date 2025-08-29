@@ -1,72 +1,66 @@
-//! Array selector evaluation logic
+//! Array selector processing for JSONPath expressions
 //!
-//! Contains specialized logic for evaluating array index and slice selectors
-//! against the current array position during streaming JSON processing.
+//! Handles array index evaluation, slicing, and filtering operations
+//! during streaming JSON processing.
 
-use serde::de::DeserializeOwned;
+/// Array selector evaluation result
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArraySelectorResult {
+    /// Match found at specific index
+    Match(usize),
+    /// No match for current element
+    NoMatch,
+    /// Continue processing (wildcard or range)
+    Continue,
+}
 
-use super::super::iterator::JsonPathIterator;
-
-impl<'iter, 'data, T> JsonPathIterator<'iter, 'data, T>
-where
-    T: DeserializeOwned,
-{
-    /// Evaluate array index selector against current array position
-    #[inline]
-    pub(super) fn evaluate_index_selector(&self, index: i64, from_end: bool) -> bool {
-        if !self.deserializer.in_target_array {
-            return false;
+/// Process array selector against current index
+pub fn evaluate_array_selector(
+    selector: &str,
+    current_index: usize,
+    array_length: Option<usize>,
+) -> ArraySelectorResult {
+    match selector {
+        "*" => ArraySelectorResult::Continue,
+        "-1" => {
+            if let Some(len) = array_length {
+                if current_index == len.saturating_sub(1) {
+                    ArraySelectorResult::Match(current_index)
+                } else {
+                    ArraySelectorResult::NoMatch
+                }
+            } else {
+                ArraySelectorResult::Continue
+            }
         }
-
-        let current_idx = self.deserializer.current_array_index;
-
-        if from_end || index < 0 {
-            // Negative indices require knowing array length, which we don't have in streaming
-            // For streaming context, we skip negative index matching
-            false
-        } else {
-            current_idx == index
+        index_str => {
+            if let Ok(target_index) = index_str.parse::<usize>() {
+                if current_index == target_index {
+                    ArraySelectorResult::Match(current_index)
+                } else {
+                    ArraySelectorResult::NoMatch
+                }
+            } else {
+                ArraySelectorResult::NoMatch
+            }
         }
     }
+}
 
-    /// Evaluate array slice selector against current array position
-    #[inline]
-    pub(super) fn evaluate_slice_selector(
-        &self,
-        start: Option<i64>,
-        end: Option<i64>,
-        step: Option<i64>,
-    ) -> bool {
-        if !self.deserializer.in_target_array {
-            return false;
+/// Check if array index matches slice expression (e.g., "1:3", "::2")
+pub fn matches_slice(slice_expr: &str, current_index: usize, array_length: Option<usize>) -> bool {
+    // Basic slice implementation - can be expanded for full slice syntax
+    if slice_expr.contains(':') {
+        let parts: Vec<&str> = slice_expr.split(':').collect();
+        match parts.len() {
+            2 => {
+                let start = parts[0].parse::<usize>().unwrap_or(0);
+                let end = parts[1].parse::<usize>().unwrap_or(usize::MAX);
+                current_index >= start && current_index < end
+            }
+            _ => false,
         }
-
-        let current_idx = self.deserializer.current_array_index;
-        let step = step.unwrap_or(1);
-
-        // Handle step size
-        if step <= 0 {
-            return false; // Invalid step
-        }
-
-        // Check start boundary
-        let start_idx = match start {
-            Some(s) if s >= 0 => s,
-            Some(_) => return false, // Negative start not supported in streaming
-            None => 0,               // Default start
-        };
-
-        // Check end boundary (None means no upper limit in streaming context)
-        let within_end = match end {
-            Some(e) if e >= 0 => current_idx < e,
-            Some(_) => false, // Negative end not supported in streaming
-            None => true,     // No upper limit
-        };
-
-        // Check if current index is within slice bounds and matches step
-        let within_start = current_idx >= start_idx;
-        let matches_step = (current_idx - start_idx) % step == 0;
-
-        within_start && within_end && matches_step
+    } else {
+        false
     }
 }

@@ -3,7 +3,7 @@
 //! Provides the core connector types for establishing HTTP/3 connections
 //! with support for different TLS configurations and service layers.
 
-use crate::hyper::connect::service::ConnectorService;
+use crate::connect::service::ConnectorService;
 
 /// HTTP/3 connection provider with zero-allocation streaming
 #[derive(Clone, Debug)]

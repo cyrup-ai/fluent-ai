@@ -24,10 +24,10 @@ where
             let mut error = e.into();
 
             // Add context information if it's a stream error
-            if let JsonPathError::StreamError { state, .. } = &mut error {
-                if state == "io_operation" {
-                    *state = context.to_string();
-                }
+            if error.kind == super::super::types::ErrorKind::ProcessingError
+                && error.message.contains("io_operation")
+            {
+                error.message = format!("{}: {}", context, error.message);
             }
 
             error
@@ -50,22 +50,22 @@ impl JsonPathError {
         json_fragment: &str,
         target_type: &'static str,
     ) -> Self {
-        JsonPathError::DeserializationError {
-            message: error.to_string(),
-            json_fragment: json_fragment.to_string(),
-            target_type,
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::SerdeError,
+            format!(
+                "Deserialization error: {} for fragment '{}' to type {}",
+                error.to_string(),
+                json_fragment,
+                target_type
+            ),
+        )
     }
 
     /// Creates a JsonPathError from an IO error with stream context
     pub fn from_io_with_context(error: std::io::Error, state: &str) -> Self {
-        JsonPathError::StreamError {
-            message: error.to_string(),
-            state: state.to_string(),
-            recoverable: matches!(
-                error.kind(),
-                std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock
-            ),
-        }
+        JsonPathError::new(
+            super::super::types::ErrorKind::IoError,
+            format!("IO error in state '{}': {}", state, error.to_string()),
+        )
     }
 }

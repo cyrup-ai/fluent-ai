@@ -5,7 +5,8 @@
 
 use std::time::Duration;
 
-use super::core::{ConnectionReuse, HttpConfig, RetryPolicy, RetryableError};
+use super::core::HttpConfig;
+use super::core::retry::{ConnectionReuse, RetryPolicy, RetryableError};
 
 impl HttpConfig {
     /// Create a new configuration optimized for AI providers
@@ -47,6 +48,8 @@ impl HttpConfig {
             gzip: true,
             brotli: true,
             deflate: true,
+            gzip_enabled: true,
+            brotli_enabled: true,
             user_agent: "fluent-ai-http3/0.1.0 (AI-optimized QUIC/HTTP3+rustls)".to_string(),
             http3_enabled: true,
             pool_size: 20,

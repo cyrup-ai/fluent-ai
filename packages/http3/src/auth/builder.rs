@@ -1,12 +1,8 @@
 //! Provides convenient methods for setting authentication headers including
 //! API keys, basic authentication, and bearer token authentication.
 
-use std::borrow::Cow;
-
 use base64::Engine;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use bytes::Bytes;
-use serde::Serialize;
 
 use crate::builder::Http3Builder;
 

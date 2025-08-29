@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use fastrand::Rng;
 
-use crate::HttpError;
+use crate::prelude::*;
 
 /// Retry policy configuration - all durations in milliseconds for zero allocation
 #[derive(Debug, Clone)]

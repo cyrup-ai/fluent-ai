@@ -11,6 +11,26 @@ use crate::jsonpath::error::{JsonPathResult, invalid_expression_error};
 /// Comparison utilities for null vs missing semantics
 pub struct Comparison;
 
+impl Comparison {
+    /// Evaluate existence filter with null vs missing distinction
+    #[inline]
+    pub fn evaluate_existence_filter(
+        context: &JsonValue,
+        property_path: &[String],
+    ) -> JsonPathResult<bool> {
+        Ok(evaluate_existence_filter(context, property_path))
+    }
+
+    /// Compare values with null semantics
+    #[inline]
+    pub fn compare_with_null_semantics(
+        left: &PropertyAccessResult,
+        right: &PropertyAccessResult,
+    ) -> JsonPathResult<bool> {
+        compare_with_null_semantics(left, right)
+    }
+}
+
 /// Check if a value should be considered "present" for filter evaluation
 ///
 /// According to RFC 9535, null values are present but missing values are not.

@@ -102,7 +102,7 @@ where
                             // JsonPathResultExt removed - not available
                             use crate::jsonpath::filter::FilterEvaluator;
                             return FilterEvaluator::evaluate_predicate(&context, expression)
-                                .handle_or_default(false);
+                                .unwrap_or(false);
                         }
                     }
                 }

@@ -19,7 +19,7 @@ impl CoreJsonPathEvaluator {
                 // Root selector - return the value as-is
                 Ok(vec![value.clone()])
             }
-            JsonSelector::Property(name) => {
+            JsonSelector::Child { name, .. } => {
                 // Property access - get named property from object
                 match value {
                     Value::Object(obj) => {
@@ -32,12 +32,12 @@ impl CoreJsonPathEvaluator {
                     _ => Ok(vec![]), // Non-objects don't have properties
                 }
             }
-            JsonSelector::Index(index) => {
+            JsonSelector::Index { index, from_end } => {
                 // Array index access
                 match value {
                     Value::Array(arr) => {
                         let len = arr.len() as i64;
-                        let actual_index = if *index < 0 {
+                        let actual_index = if index < &0 {
                             // Negative indexing from end
                             len + index
                         } else {
@@ -98,15 +98,14 @@ impl CoreJsonPathEvaluator {
             }
             JsonSelector::RecursiveDescent => {
                 // This should be handled at a higher level
-                let mut results = Vec::new();
-                self.collect_all_descendants_owned(value, &mut results);
+                let results = self.collect_descendants(value);
                 Ok(results)
             }
-            JsonSelector::Filter(filter_expr) => {
+            JsonSelector::Filter { expression } => {
                 // Filter expression - apply filter to current context
-                self.apply_filter_expression(value, filter_expr)
+                self.apply_filter_expression(value, &format!("{:?}", expression))
             }
-            JsonSelector::Union(selectors) => {
+            JsonSelector::Union { selectors } => {
                 // Union of multiple selectors
                 let mut results = Vec::new();
                 for sub_selector in selectors {

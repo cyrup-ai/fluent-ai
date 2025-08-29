@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 /// HTTP client statistics and metrics
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ClientStats {
     /// Total number of requests made
     pub requests_total: AtomicU64,

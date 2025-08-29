@@ -34,4 +34,4 @@ pub struct CapacityStats {
 }
 
 /// Legacy alias for backward compatibility
-pub type JsonBuffer = super::StreamBuffer;
+pub type JsonBuffer = crate::jsonpath::buffer::StreamBuffer;

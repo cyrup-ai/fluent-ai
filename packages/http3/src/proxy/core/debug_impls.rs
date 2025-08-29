@@ -23,4 +23,3 @@ impl fmt::Debug for Extra {
             .finish()
     }
 }
-

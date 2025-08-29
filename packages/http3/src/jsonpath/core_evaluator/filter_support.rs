@@ -124,8 +124,6 @@ impl FilterSupport {
 
     /// Compare two values for filter operations
     pub fn compare_values(left: &Value, right: &Value) -> Option<std::cmp::Ordering> {
-        use std::cmp::Ordering;
-
         match (left, right) {
             (Value::Number(a), Value::Number(b)) => {
                 let a_f64 = a.as_f64()?;

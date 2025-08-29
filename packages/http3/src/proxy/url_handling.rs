@@ -71,6 +71,10 @@ impl MessageChunk for ProxyUrl {
     fn error(&self) -> Option<&str> {
         self.error_message.as_deref()
     }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
 }
 
 /// Set username and password for proxy URL authentication
@@ -184,7 +188,7 @@ pub fn encode_basic_auth(username: &str, password: &str) -> HeaderValue {
 //
 // Supported schemes: HTTP, HTTPS, (SOCKS4, SOCKS5, SOCKS5H if `socks` feature is enabled).
 // Production-ready proxy URL parsing with comprehensive error handling
-// fn parse(url: Url) -> crate::Result<Self> {
+// fn parse(url: Url) -> std::result::Result<Self> {
 // use url::Position;
 //
 // Resolve URL to a host and port
@@ -224,14 +228,22 @@ pub fn encode_basic_auth(username: &str, password: &str) -> HeaderValue {
 /// Custom proxy function type for dynamic proxy selection
 #[derive(Clone, Debug)]
 pub struct Custom {
-    pub(crate) func: Arc<dyn Fn(&Url) -> Option<crate::Result<Url>> + Send + Sync + 'static>,
+    pub(crate) func: Arc<
+        dyn Fn(&Url) -> Option<std::result::Result<Url, Box<dyn std::error::Error + Send + Sync>>>
+            + Send
+            + Sync
+            + 'static,
+    >,
     pub(crate) no_proxy: Option<NoProxy>,
 }
 
 impl Custom {
     pub fn new<F>(func: F) -> Self
     where
-        F: Fn(&Url) -> Option<crate::Result<Url>> + Send + Sync + 'static,
+        F: Fn(&Url) -> Option<std::result::Result<Url, Box<dyn std::error::Error + Send + Sync>>>
+            + Send
+            + Sync
+            + 'static,
     {
         Self {
             func: Arc::new(func),
@@ -244,4 +256,3 @@ impl Custom {
         self
     }
 }
-

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use crate::protocols::core::{HttpMethod, HttpRequestBuilder};
 use crate::protocols::h2::H2Connection;
-use crate::streaming::stream::chunks::HttpChunk;
+use crate::protocols::quiche::QuicheConnectionChunk;
 
 /// HTTP/2 request builder with fluent interface
 pub struct H2RequestBuilder {

@@ -11,19 +11,19 @@ use http::header::{CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 /// A builder to construct the properties of a `Request`.
 pub struct RequestBuilder {
     pub(super) client: Client,
-    pub(super) request: crate::Result<Request>,
+    pub(super) request: std::result::Result<Request, crate::HttpError>,
 }
 
 impl RequestBuilder {
-    pub(super) fn new(client: Client, request: crate::Result<Request>) -> RequestBuilder {
+    pub(super) fn new(client: Client, request: std::result::Result<Request, crate::HttpError>) -> RequestBuilder {
         RequestBuilder { client, request }
     }
 
     /// Assemble a builder starting from an existing `Client` and a `Request`.
-    pub fn from_parts(client: crate::hyper::Client, request: crate::hyper::Request) -> crate::hyper::RequestBuilder {
-        crate::hyper::RequestBuilder {
+    pub fn from_parts(client: crate::wasm::client::Client, request: crate::wasm::request::Request) -> crate::wasm::request::RequestBuilder {
+        crate::wasm::request::RequestBuilder {
             client,
-            request: crate::Result::Ok(request),
+            request: std::result::Result::Ok(request),
         }
     }
 

@@ -86,7 +86,7 @@ mod tests {
 
     use super::super::super::{cache_config::CacheConfig, cache_entry::CacheEntry};
     use super::*;
-    use crate::HttpResponse;
+    use crate::prelude::*;
 
     fn create_test_response() -> HttpResponse {
         Response::builder().status(StatusCode::OK).body(()).unwrap()

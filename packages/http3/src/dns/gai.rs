@@ -1,8 +1,8 @@
 use std::thread;
 use fluent_ai_async::{AsyncStream, emit};
 
-use super::{Addrs, Name, Resolve};
-use crate::error::HttpError;
+use super::{Addrs, Name, Resolve, DnsResult};
+use crate::prelude::*;
 
 struct GaiAddrs {
     addrs: std::vec::IntoIter<std::net::SocketAddr>,
@@ -34,7 +34,7 @@ impl Default for GaiResolver {
 }
 
 impl Resolve for GaiResolver {
-    fn resolve(&self, name: Name) -> AsyncStream<Result<Addrs, HttpError>, 1024> {
+    fn resolve(&self, name: Name) -> AsyncStream<DnsResult, 1024> {
         let hostname = name.as_str().to_string();
         
         AsyncStream::with_channel(move |sender| {
@@ -45,16 +45,16 @@ impl Resolve for GaiResolver {
                     Ok(addrs_iter) => {
                         let socket_addrs: Vec<std::net::SocketAddr> = addrs_iter.collect();
                         if socket_addrs.is_empty() {
-                            emit!(sender, Err(HttpError::DnsError(format!("No addresses found for {}", hostname))));
+                            let error_msg = format!("No addresses found for {}", hostname);
+                            emit!(sender, DnsResult::bad_chunk(error_msg));
                         } else {
-                            let addrs: Addrs = Box::new(GaiAddrs {
-                                addrs: socket_addrs.into_iter(),
-                            });
-                            emit!(sender, Ok(addrs));
+                            let dns_result = DnsResult::from_vec(socket_addrs);
+                            emit!(sender, dns_result);
                         }
                     }
                     Err(e) => {
-                        emit!(sender, Err(HttpError::DnsError(format!("GAI resolution failed for {}: {}", hostname, e))));
+                        let error_msg = format!("GAI resolution failed for {}: {}", hostname, e);
+                        emit!(sender, DnsResult::bad_chunk(error_msg));
                     }
                 }
             });

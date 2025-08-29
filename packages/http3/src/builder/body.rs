@@ -88,8 +88,7 @@ impl Http3Builder<BodyNotSet> {
     /// ```
     #[inline]
     pub fn text_body(mut self, text: &str) -> Http3Builder<BodySet> {
-        let body_bytes = text.as_bytes().to_vec();
-        *self.request.body_mut() = Some(body_bytes);
+        self.request = self.request.body_text(text);
 
         if self.debug_enabled {
             log::debug!("HTTP3 Builder: Set text body ({} bytes)", text.len());
@@ -99,7 +98,9 @@ impl Http3Builder<BodyNotSet> {
             client: self.client,
             request: self.request,
             debug_enabled: self.debug_enabled,
-            _phantom: PhantomData,
+            state: PhantomData,
+            jsonpath_config: None,
+            chunk_handler: None,
         }
     }
 
@@ -118,13 +119,15 @@ impl Http3Builder<BodyNotSet> {
             log::debug!("HTTP3 Builder: Set bytes body ({} bytes)", bytes.len());
         }
 
-        *self.request.body_mut() = Some(bytes);
+        self.request = self.request.body_bytes(bytes);
 
         Http3Builder {
             client: self.client,
             request: self.request,
             debug_enabled: self.debug_enabled,
-            _phantom: PhantomData,
+            state: PhantomData,
+            jsonpath_config: None,
+            chunk_handler: None,
         }
     }
 
@@ -166,13 +169,15 @@ impl Http3Builder<BodyNotSet> {
             );
         }
 
-        *self.request.body_mut() = Some(serialized_body);
+        self.request = self.request.body_bytes(serialized_body);
 
         Http3Builder {
             client: self.client,
             request: self.request,
             debug_enabled: self.debug_enabled,
-            _phantom: PhantomData,
+            state: PhantomData,
+            jsonpath_config: None,
+            chunk_handler: None,
         }
     }
 }

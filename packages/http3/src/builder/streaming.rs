@@ -1,13 +1,10 @@
 //! Pure streams-first architecture - NO Futures, NO Result wrapping
 //! Transforms HTTP byte streams into individual JSON objects via JSONPath
 
-use fluent_ai_async::AsyncStream;
-use fluent_ai_async::emit;
-use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::prelude::MessageChunk;
 use serde::de::DeserializeOwned;
 
-use crate::{HttpChunk, HttpError, HttpStream};
+use crate::prelude::*;
 
 /// Stream configuration settings
 pub struct StreamConfig {
@@ -91,44 +88,47 @@ where
 {
     /// Create JSONPath stream from HTTP response - pure streams architecture
     #[inline]
-    pub fn new(http_stream: HttpStream, jsonpath_expr: String) -> Self {
+    pub fn new(http_response_stream: AsyncStream<crate::prelude::HttpResponse, 1>, jsonpath_expr: String) -> Self {
         Self {
             inner: AsyncStream::with_channel(move |sender| {
                 std::thread::spawn(move || {
                     let mut buffer = Vec::new();
-                    let stream = http_stream;
+                    
+                    // Process HttpResponse from stream
+                    for http_response in http_response_stream {
+                        // Process body chunks from HttpResponse
+                        for body_chunk in http_response.body_stream {
+                            if let Some(bytes) = body_chunk.data() {
+                                buffer.extend_from_slice(&bytes);
 
-                    // Process HTTP chunks from stream
-                    let chunks: Vec<HttpChunk> = stream.collect();
-
-                    let processed_chunks: Vec<T> = chunks
-                        .into_iter()
-                        .filter_map(|chunk| {
-                            if chunk.is_error() {
-                                if let Some(error_msg) = chunk.error() {
-                                    return Some(T::bad_chunk(error_msg.to_string()));
-                                }
-                                return None;
-                            }
-
-                            // Accumulate chunk data
-                            buffer.extend_from_slice(&chunk.body);
-
-                            // Try to parse accumulated JSON and apply JSONPath
-                            if let Ok(json_value) =
-                                serde_json::from_slice::<serde_json::Value>(&buffer)
-                            {
-                                // Apply JSONPath expression (simplified implementation)
-                                if let Ok(item) = serde_json::from_value::<T>(json_value) {
-                                    return Some(item);
+                                // Try to parse accumulated JSON and apply JSONPath
+                                if let Ok(json_value) =
+                                    serde_json::from_slice::<serde_json::Value>(&buffer)
+                                {
+                                    // Apply JSONPath expression (simplified implementation)
+                                    if let Ok(item) = serde_json::from_value::<T>(json_value) {
+                                        fluent_ai_async::emit!(sender, item);
+                                        buffer.clear();
+                                    }
                                 }
                             }
-                            None
-                        })
-                        .collect();
+                            
+                            if let Some(error) = body_chunk.error() {
+                                fluent_ai_async::emit!(sender, T::bad_chunk(error.to_string()));
+                                return;
+                            }
+                        }
+                    }
 
-                    // Emit all processed chunks
-                    emit!(sender, processed_chunks);
+                    // Try to parse final accumulated JSON
+                    if !buffer.is_empty() {
+                        if let Ok(json_value) = serde_json::from_slice::<serde_json::Value>(&buffer) {
+                            // Apply JSONPath expression (simplified implementation)
+                            if let Ok(item) = serde_json::from_value::<T>(json_value) {
+                                fluent_ai_async::emit!(sender, item);
+                            }
+                        }
+                    }
                 });
             }),
             chunk_handler: None,

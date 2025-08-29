@@ -55,6 +55,31 @@ pub enum H2Frame {
         headers: Vec<(String, String)>,
         end_headers: bool,
     },
+    /// Error frame for bad chunks
+    Error {
+        message: String,
+    },
+}
+
+impl MessageChunk for H2Frame {
+    fn bad_chunk(error: String) -> Self {
+        H2Frame::Error { message: error }
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            H2Frame::Error { message } => Some(message),
+            _ => None,
+        }
+    }
+}
+
+impl Default for H2Frame {
+    fn default() -> Self {
+        H2Frame::Error {
+            message: "Default H2Frame".to_string(),
+        }
+    }
 }
 
 /// HTTP/3 frame types
@@ -84,13 +109,54 @@ pub enum H3Frame {
     MaxPushId {
         push_id: u64,
     },
+    /// Error frame for bad chunks
+    Error {
+        message: String,
+    },
 }
+
+impl MessageChunk for H3Frame {
+    fn bad_chunk(error: String) -> Self {
+        H3Frame::Error { message: error }
+    }
+
+    fn error(&self) -> Option<&str> {
+        match self {
+            H3Frame::Error { message } => Some(message),
+            _ => None,
+        }
+    }
+}
+
+impl Default for H3Frame {
+    fn default() -> Self {
+        H3Frame::Error {
+            message: "Default H3Frame".to_string(),
+        }
+    }
+}
+
 /// Generic frame chunk for protocol abstraction
 #[derive(Debug, Clone, PartialEq)]
 pub enum FrameChunk {
     H2(H2Frame),
     H3(H3Frame),
+    ConnectionClosed,
     Error { message: String },
+}
+
+impl FrameChunk {
+    /// Create H2 frame chunk
+    #[inline]
+    pub fn h2_frame(frame: H2Frame) -> Self {
+        Self::H2(frame)
+    }
+
+    /// Create H3 frame chunk
+    #[inline]
+    pub fn h3_frame(frame: H3Frame) -> Self {
+        Self::H3(frame)
+    }
 }
 
 impl MessageChunk for FrameChunk {

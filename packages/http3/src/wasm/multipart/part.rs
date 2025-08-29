@@ -50,7 +50,7 @@ impl Part {
     }
 
     /// Tries to set the mime of this part.
-    pub fn mime_str(self, mime: &str) -> crate::Result<Part> {
+    pub fn mime_str(self, mime: &str) -> std::result::Result<Part, crate::HttpError> {
         Ok(self.mime(mime.parse().map_err(crate::error::builder)?))
     }
 
@@ -116,7 +116,7 @@ impl Part {
         }
     }
 
-    fn blob(&self, mime_type: Option<&Mime>) -> crate::Result<web_sys::Blob> {
+    fn blob(&self, mime_type: Option<&Mime>) -> std::result::Result<web_sys::Blob, crate::HttpError> {
         use web_sys::Blob;
         use web_sys::BlobPropertyBag;
         let mut properties = BlobPropertyBag::new();

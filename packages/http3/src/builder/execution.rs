@@ -1,11 +1,8 @@
 //! Pure streams-first execution - NO Futures, NO Result wrapping
 //! All operations return unwrapped AsyncStreams per fluent-ai architecture
 
-use fluent_ai_async::prelude::MessageChunk;
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{AsyncStream, prelude::MessageChunk};
 use serde::de::DeserializeOwned;
-
-use crate::{error::HttpError, streaming::chunks::HttpChunk};
 
 /// Execution context for HTTP requests
 pub struct ExecutionContext {
@@ -66,53 +63,20 @@ pub type HttpStream<T> = AsyncStream<T, 1024>;
 
 impl<T> HttpStreamExt<T> for HttpStream<T>
 where
-    T: DeserializeOwned + MessageChunk + Send + 'static,
+    T: DeserializeOwned + MessageChunk + Send + Default + Clone + 'static,
 {
     #[inline]
     fn stream_objects(self) -> AsyncStream<T, 1024> {
-        AsyncStream::with_channel(move |sender| {
-            // Process HTTP chunks and deserialize to T objects
-            let chunks = self.collect_all();
-            let processed_chunks: Vec<T> = chunks
-                .into_iter()
-                .filter_map(|chunk| {
-                    if chunk.is_error() {
-                        if let Some(error_msg) = chunk.error() {
-                            return Some(T::bad_chunk(error_msg.to_string()));
-                        }
-                        return None;
-                    }
-
-                    // Attempt to deserialize chunk body to T
-                    match serde_json::from_slice::<T>(&chunk.body) {
-                        Ok(item) => Some(item),
-                        Err(e) => Some(T::bad_chunk(format!("Deserialization error: {}", e))),
-                    }
-                })
-                .collect();
-
-            emit!(sender, processed_chunks);
-        })
+        self
     }
 
     #[inline]
     fn collect_all(self) -> Vec<T> {
-        let mut items = Vec::new();
-        for item in self.stream_objects() {
-            if !item.is_error() {
-                items.push(item);
-            }
-        }
-        items
+        self.collect_or_else(|error_item| error_item.clone())
     }
 
     #[inline]
     fn first_item(self) -> Option<T> {
-        for item in self.stream_objects() {
-            if !item.is_error() {
-                return Some(item);
-            }
-        }
-        None
+        self.try_next()
     }
 }

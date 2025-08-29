@@ -3,12 +3,13 @@
 //! Zero-allocation DNS resolver with hostname overrides for testing
 //! and custom routing scenarios.
 
-use fluent_ai_async::{AsyncStream, emit};
+use fluent_ai_async::{AsyncStream, emit, spawn_task};
 use std::sync::Arc;
 use std::net::SocketAddr;
 use std::thread;
 
-use super::types::{Resolve, DnsResult, HyperName};
+use super::traits::Resolve;
+use super::types::{DnsResult, HyperName};
 
 /// Zero-allocation DNS resolver with hostname overrides for testing and custom routing.
 pub(crate) struct DnsResolverWithOverridesImpl {
@@ -17,7 +18,7 @@ pub(crate) struct DnsResolverWithOverridesImpl {
 }
 
 impl Resolve for DnsResolverWithOverridesImpl {
-    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult> {
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult, 1024> {
         let hostname = name.as_str().to_string();
         let overrides = self.overrides.clone();
         let dns_resolver = self.dns_resolver.clone();
@@ -31,19 +32,12 @@ impl Resolve for DnsResolverWithOverridesImpl {
                 }
                 
                 // Fall back to actual DNS resolution
-                let resolver_stream = dns_resolver.resolve(name);
-                match resolver_stream.try_next() {
-                    Some(result) => {
-                        if result.is_error() {
-                            emit!(sender, DnsResult::bad_chunk("DNS resolution failed".to_string()));
-                        } else {
-                            emit!(sender, result);
-                        }
-                    },
-                    None => {
-                        emit!(sender, DnsResult::bad_chunk("DNS resolver stream ended without producing addresses".to_string()));
+                let resolver_stream = dns_resolver.resolve(HyperName::from(hostname.clone()));
+                spawn_task(move || {
+                    for result in resolver_stream {
+                        emit!(sender, result);
                     }
-                }
+                });
             });
         })
     }

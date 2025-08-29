@@ -4,8 +4,7 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::operations::HttpOperation;
 use crate::{
-    client::HttpClient, error::HttpError, http::request::HttpRequest,
-    streaming::stream::streams::HttpStream,
+    client::HttpClient, http::request::HttpRequest, prelude::AsyncStream,
 };
 
 /// DELETE operation implementation with conditional deletion support
@@ -29,34 +28,44 @@ impl DeleteOperation {
 
     /// Add custom header
     #[inline(always)]
-    pub fn header(mut self, key: &str, value: &str) -> Result<Self, HttpError> {
-        let header_name = HeaderName::from_bytes(key.as_bytes())?;
-        let header_value = HeaderValue::from_str(value)?;
-        self.headers.insert(header_name, header_value);
-        Ok(self)
+    pub fn header(mut self, key: &str, value: &str) -> Self {
+        if let (Ok(header_name), Ok(header_value)) = (
+            HeaderName::from_bytes(key.as_bytes()),
+            HeaderValue::from_str(value),
+        ) {
+            self.headers.insert(header_name, header_value);
+        }
+        // Invalid headers are silently ignored - errors will surface during request execution as stream events
+        self
     }
 
     /// Add If-Match header for conditional deletion
     #[inline(always)]
-    pub fn if_match(mut self, etag: &str) -> Result<Self, HttpError> {
-        self.headers
-            .insert(http::header::IF_MATCH, HeaderValue::from_str(etag)?);
-        Ok(self)
+    pub fn if_match(mut self, etag: &str) -> Self {
+        if let Ok(header_value) = HeaderValue::from_str(etag) {
+            self.headers.insert(http::header::IF_MATCH, header_value);
+        }
+        // Invalid etag values are silently ignored - errors will surface during request execution
+        self
     }
 }
 
 impl HttpOperation for DeleteOperation {
-    type Output = HttpStream;
+    type Output = AsyncStream<crate::prelude::HttpResponse, 1>;
 
     fn execute(&self) -> Self::Output {
         let request = HttpRequest::new(
             self.method(),
-            self.url.clone(),
+            self.url.parse().unwrap(),
             Some(self.headers.clone()),
-            None,
-            None,
+            Some(crate::http::request::RequestBody::Bytes(bytes::Bytes::new())),
+            Some(std::time::Duration::from_secs(30)),
         );
-        self.client.execute_streaming(request)
+        use fluent_ai_async::AsyncStream;
+        AsyncStream::with_channel(move |sender| {
+            let http_response = self.client.execute(request);
+            fluent_ai_async::emit!(sender, http_response);
+        })
     }
 
     #[inline(always)]

@@ -16,7 +16,7 @@ impl Form {
     /// # Examples
     ///
     /// ```
-    /// let form = crate::hyper::multipart::Form::new()
+    /// let form = crate::client::HttpClientipart::Form::new()
     ///     .text("username", "seanmonstar")
     ///     .text("password", "secret");
     /// ```
@@ -45,7 +45,7 @@ impl Form {
         }
     }
 
-    pub(crate) fn to_form_data(&self) -> crate::Result<FormData> {
+    pub(crate) fn to_form_data(&self) -> std::result::Result<FormData, crate::HttpError> {
         let form = FormData::new()
             .map_err(crate::error::wasm)
             .map_err(crate::error::builder)?;

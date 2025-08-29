@@ -6,5 +6,5 @@ pub(crate) mod gai;
 pub(crate) mod hickory;
 pub(crate) mod resolve;
 
-// Type alias for compatibility
-pub type DnsResult<T> = Result<T, crate::error::HttpError>;
+// REMOVED: DnsResult<T> type alias - violates fluent-ai pure streaming architecture
+// All DNS operations now return pure AsyncStream<T> where T implements MessageChunk

@@ -75,7 +75,7 @@ impl MessageChunk for H3ConnectionChunk {
         Self::ConnectionError {
             connection_id,
             error_code: 0,
-            reason: error_message,
+            message: error_message,
         }
     }
 
@@ -90,8 +90,8 @@ impl MessageChunk for H3ConnectionChunk {
     #[inline]
     fn error(&self) -> Option<&str> {
         match self {
-            Self::ConnectionError { reason, .. } => Some(reason),
-            Self::ProtocolError { reason, .. } => Some(reason),
+            Self::ConnectionError { message, .. } => Some(message),
+            Self::ProtocolError { protocol_error, .. } => Some(protocol_error),
             _ => None,
         }
     }
@@ -147,7 +147,7 @@ impl MessageChunk for H3BiStreamChunk {
         Self::StreamError {
             stream_id,
             error_code: 0,
-            reason: error_message,
+            message: error_message,
         }
     }
 
@@ -159,8 +159,8 @@ impl MessageChunk for H3BiStreamChunk {
     #[inline]
     fn error(&self) -> Option<&str> {
         match self {
-            Self::StreamError { reason, .. } => Some(reason),
-            Self::ProtocolError { reason, .. } => Some(reason),
+            Self::StreamError { message, .. } => Some(message),
+            Self::ProtocolError { protocol_error, .. } => Some(protocol_error),
             _ => None,
         }
     }
@@ -229,7 +229,7 @@ impl MessageChunk for H3DataChunk {
         Self::DataError {
             stream_id,
             error_code: 0,
-            reason: error_message,
+            message: error_message,
         }
     }
 
@@ -244,9 +244,19 @@ impl MessageChunk for H3DataChunk {
     #[inline]
     fn error(&self) -> Option<&str> {
         match self {
-            Self::DataError { reason, .. } => Some(reason),
-            Self::ProtocolError { reason, .. } => Some(reason),
+            Self::DataError { message, .. } => Some(message),
+            Self::ProtocolError { protocol_error, .. } => Some(protocol_error),
             _ => None,
+        }
+    }
+}
+
+impl Default for H3DataChunk {
+    fn default() -> Self {
+        Self::DataError {
+            stream_id: 0,
+            error_code: 0,
+            message: "Default error".to_string(),
         }
     }
 }

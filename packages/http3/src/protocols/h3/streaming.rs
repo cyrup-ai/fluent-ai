@@ -6,7 +6,7 @@ use fluent_ai_async::{AsyncStream, emit};
 use h3::client::Connection;
 use h3::quic::{BufRecvStream, RecvStream, SendStream};
 
-use crate::types::{HttpVersion, TimeoutConfig}::h3_chunks::{H3BiStreamChunk, H3ConnectionChunk, H3DataChunk, H3SendResult};
+use crate::protocols::h3::h3_chunks::{H3BiStreamChunk, H3ConnectionChunk, H3DataChunk, H3SendResult};
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(0);
 

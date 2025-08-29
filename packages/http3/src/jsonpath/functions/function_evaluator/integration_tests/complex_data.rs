@@ -2,11 +2,7 @@
 //!
 //! Tests that verify function behavior with nested objects, arrays, and complex JSON structures
 
-use serde_json::json;
-
-use super::super::FunctionEvaluator;
-use super::mock_evaluator::mock_evaluator;
-use crate::jsonpath::parser::{FilterExpression, FilterValue};
+use crate::jsonpath::parser::FilterExpression;
 
 #[cfg(test)]
 mod tests {

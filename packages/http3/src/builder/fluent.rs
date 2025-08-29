@@ -5,7 +5,9 @@
 
 // Pure streams - no futures imports needed
 
-use crate::DownloadStream;
+use fluent_ai_async::prelude::MessageChunk;
+
+use crate::prelude::AsyncStream;
 
 /// Main fluent builder for HTTP requests
 ///
@@ -33,7 +35,7 @@ impl Default for FluentBuilder {
 /// Provides a fluent interface for configuring and executing file downloads
 /// with progress tracking and error handling.
 pub struct DownloadBuilder {
-    stream: DownloadStream,
+    stream: crate::http::response::HttpDownloadStream,
 }
 
 impl DownloadBuilder {
@@ -41,7 +43,7 @@ impl DownloadBuilder {
     ///
     /// # Arguments
     /// * `stream` - Download stream from HTTP client
-    pub(crate) fn new(stream: DownloadStream) -> Self {
+    pub(crate) fn new(stream: crate::http::response::HttpDownloadStream) -> Self {
         Self { stream }
     }
 
@@ -72,33 +74,74 @@ impl DownloadBuilder {
     ///     println!("Download completed: {:.1}%", percentage);
     /// }
     /// ```
-    pub fn save(self, local_path: &str) -> Result<DownloadProgress, crate::Error> {
+    pub fn save(self, local_path: &str) -> fluent_ai_async::AsyncStream<DownloadProgress, 1024> {
+        let local_path = local_path.to_string();
         let mut stream = self.stream;
-        let mut total_written = 0;
-        let mut chunk_count = 0;
-        let mut total_size = None;
 
-        // Use blocking file I/O - pure streams, no async
-        let mut file = std::fs::File::create(local_path).map_err(|e| {
-            crate::Error::io(format!("Failed to create file {}: {}", local_path, e))
-        })?;
+        fluent_ai_async::AsyncStream::with_channel(move |sender| {
+            let mut total_written = 0;
+            let mut chunk_count = 0;
+            let mut total_size = None;
 
-        for download_chunk in stream {
-            total_size = download_chunk.total_size;
-            use std::io::Write;
-            let bytes_written = file.write(&download_chunk.data).map_err(|e| {
-                crate::Error::io(format!("Failed to write to file {}: {}", local_path, e))
-            })?;
-            total_written += bytes_written as u64;
-            chunk_count += 1;
-        }
+            // Use blocking file I/O - pure streams, no async
+            let mut file = match std::fs::File::create(&local_path) {
+                Ok(f) => f,
+                Err(e) => {
+                    let error_msg = format!("Failed to create file {}: {}", local_path, e);
+                    fluent_ai_async::emit!(sender, DownloadProgress::bad_chunk(error_msg));
+                    return;
+                }
+            };
 
-        Ok(DownloadProgress {
-            chunk_count,
-            bytes_written: total_written,
-            total_size,
-            local_path: local_path.to_string(),
-            is_complete: true,
+            for download_chunk in stream {
+                match download_chunk {
+                    crate::http::response::HttpDownloadChunk::Data { chunk, downloaded, total_size } => {
+                        use std::io::Write;
+                        let bytes_written = match file.write(&chunk) {
+                            Ok(n) => n,
+                            Err(e) => {
+                                let error_msg =
+                                    format!("Failed to write to file {}: {}", local_path, e);
+                                fluent_ai_async::emit!(
+                                    sender,
+                                    DownloadProgress::bad_chunk(error_msg)
+                                );
+                                return;
+                            }
+                        };
+                        total_written = downloaded;
+                        if let Some(size) = total_size {
+                            total_size = Some(size);
+                        }
+                        chunk_count += 1;
+                    }
+                    crate::http::response::HttpDownloadChunk::Complete => {
+                        // Download completed successfully
+                        break;
+                    }
+                    crate::http::response::HttpDownloadChunk::Error { message } => {
+                        let error_msg = format!("Download error: {}", message);
+                        fluent_ai_async::emit!(sender, DownloadProgress::bad_chunk(error_msg));
+                        return;
+                    }
+                    crate::http::response::HttpDownloadChunk::Progress { .. } => {
+                        // Progress-only updates, no data to write
+                        continue;
+                    }
+                }
+            }
+
+            fluent_ai_async::emit!(
+                sender,
+                DownloadProgress {
+                    chunk_count,
+                    bytes_written: total_written,
+                    total_size,
+                    local_path: local_path.clone(),
+                    is_complete: true,
+                    error_message: None,
+                }
+            );
         })
     }
 
@@ -118,7 +161,7 @@ impl DownloadBuilder {
     ///     .download_file("https://example.com/file.zip")
     ///     .destination("/downloads/file.zip");
     /// ```
-    pub fn destination(self, path: &str) -> Result<DownloadProgress, crate::Error> {
+    pub fn destination(self, path: &str) -> fluent_ai_async::AsyncStream<DownloadProgress, 1024> {
         self.save(path)
     }
 
@@ -137,7 +180,7 @@ impl DownloadBuilder {
     ///     .download_file("https://example.com/file.zip")
     ///     .start("/downloads/file.zip");
     /// ```
-    pub fn start(self, local_path: &str) -> Result<DownloadProgress, crate::Error> {
+    pub fn start(self, local_path: &str) -> fluent_ai_async::AsyncStream<DownloadProgress, 1024> {
         self.save(local_path)
     }
 }
@@ -146,7 +189,7 @@ impl DownloadBuilder {
 ///
 /// Contains detailed information about a completed or in-progress download
 /// including byte counts, progress percentage, and completion status.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DownloadProgress {
     /// Number of chunks received during download
     pub chunk_count: u32,
@@ -158,6 +201,29 @@ pub struct DownloadProgress {
     pub local_path: String,
     /// Whether the download completed successfully
     pub is_complete: bool,
+    /// Error message if the download failed
+    pub error_message: Option<String>,
+}
+
+impl fluent_ai_async::prelude::MessageChunk for DownloadProgress {
+    fn bad_chunk(error: String) -> Self {
+        DownloadProgress {
+            chunk_count: 0,
+            bytes_written: 0,
+            total_size: None,
+            local_path: "[ERROR]".to_string(),
+            is_complete: false,
+            error_message: Some(error),
+        }
+    }
+
+    fn error(&self) -> Option<&str> {
+        self.error_message.as_deref()
+    }
+
+    fn is_error(&self) -> bool {
+        self.error_message.is_some()
+    }
 }
 
 impl DownloadProgress {

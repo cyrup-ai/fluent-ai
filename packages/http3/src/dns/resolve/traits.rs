@@ -12,11 +12,11 @@ use super::types::{DnsResult, HyperName};
 pub trait Resolve: Send + Sync + 'static {
     /// Resolve a hostname to socket addresses using streams-first architecture.
     /// Returns AsyncStream of DnsResult with error-as-data pattern.
-    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult>;
+    fn resolve(&self, name: HyperName) -> AsyncStream<DnsResult, 1024>;
 }
 
 /// An iterator of resolved socket addresses.
 pub type Addrs = DnsResult;
 
 /// Type alias for DNS resolution result streams.
-pub type Resolving = AsyncStream<Addrs>;
+pub type Resolving = AsyncStream<Addrs, 1024>;

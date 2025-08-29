@@ -3,124 +3,84 @@
 //! Handles client creation with HTTP/3 and HTTP/2 protocol configuration,
 //! TLS settings, compression, and advanced protocol optimizations.
 
-use super::{ClientStats, HttpClient};
-use crate::{HttpConfig, HttpError};
+use super::HttpClient;
+use crate::prelude::*;
 
-impl HttpClient {
-    /// Create a new HttpClient with the specified configuration
-    ///
-    /// Enables HTTP/3 (QUIC) optimization when config.http3_enabled is true.
-    /// Provides comprehensive configuration of all HTTP protocol features
-    /// including compression, timeouts, and advanced QUIC parameters.
-    pub fn with_config(config: HttpConfig) -> Result<Self, HttpError> {
-        let mut builder = crate::hyper::Client::builder()
-            .pool_max_idle_per_host(config.pool_max_idle_per_host)
-            .pool_idle_timeout(config.pool_idle_timeout)
-            .timeout(config.timeout)
-            .connect_timeout(config.connect_timeout)
-            .tcp_nodelay(config.tcp_nodelay)
-            .use_rustls_tls()
-            .tls_built_in_root_certs(config.use_native_certs)
-            .https_only(config.https_only)
-            .user_agent(&config.user_agent);
+/// HTTP client builder for configuration
+pub struct HttpClientBuilder {
+    config: HttpConfig,
+}
 
-        // HTTP/3 (QUIC) configuration when enabled
-        if config.http3_enabled {
-            Self::configure_http3(&mut builder, &config);
-        } else {
-            Self::configure_http2(&mut builder, &config);
-        }
-
-        // Compression configuration
-        builder = builder.gzip(config.gzip).deflate(config.deflate);
-
-        {
-            builder = builder.brotli(config.brotli);
-        }
-
-        // Build the client with error handling
-        let inner = builder
-            .build()
-            .map_err(|e| HttpError::Configuration(format!("Failed to build HTTP client: {}", e)))?;
-
-        Ok(Self::new(inner, config, ClientStats::default()))
-    }
-
-    /// Configure HTTP/3 (QUIC) protocol settings
-    ///
-    /// Applies HTTP/3 specific configuration including advanced QUIC parameters
-    /// when the http3_unstable feature is enabled for maximum performance.
-    #[inline]
-    fn configure_http3(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
-        // Enable HTTP/3 protocol version preference
-        *builder = std::mem::take(builder).http3_prior_knowledge();
-
-        // Note: Advanced QUIC configuration methods require the 'http3_unstable' feature
-        // which is not enabled by default. For full HTTP/3 optimization, enable this feature.
-        {
-            Self::configure_advanced_quic(builder, config);
-        }
-        {
-            // Basic HTTP/3 is enabled but advanced QUIC optimizations are not available
-            // without the http3_unstable feature. HTTP/3 will still provide significant
-            // performance improvements over HTTP/2 for most use cases.
-            log::debug!(
-                "HTTP/3 enabled but advanced QUIC optimizations require 'http3_unstable' feature"
-            );
+impl HttpClientBuilder {
+    pub fn new() -> Self {
+        Self {
+            config: HttpConfig::default(),
         }
     }
 
-    /// Configure advanced QUIC parameters when unstable features are enabled
-    ///
-    /// Applies detailed QUIC configuration for maximum performance including
-    /// congestion control, window sizes, and protocol-specific optimizations.
-    #[inline]
-    fn configure_advanced_quic(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
-        // Configure QUIC connection parameters when unstable features are enabled
-        if let Some(idle_timeout) = config.quic_max_idle_timeout {
-            *builder = std::mem::take(builder).http3_max_idle_timeout(idle_timeout);
-        }
-
-        if let Some(stream_window) = config.quic_stream_receive_window {
-            *builder = std::mem::take(builder).http3_stream_receive_window(stream_window as u64);
-        }
-
-        if let Some(conn_window) = config.quic_receive_window {
-            *builder = std::mem::take(builder).http3_conn_receive_window(conn_window as u64);
-        }
-
-        if let Some(send_window) = config.quic_send_window {
-            *builder = std::mem::take(builder).http3_send_window(send_window);
-        }
-
-        // Enable BBR congestion control if requested
-        if config.quic_congestion_bbr {
-            *builder = std::mem::take(builder).http3_congestion_bbr();
-        }
-
-        // Configure HTTP/3 protocol parameters
-        if let Some(header_size) = config.h3_max_field_section_size {
-            *builder = std::mem::take(builder).http3_max_field_section_size(header_size);
-        }
-
-        if config.h3_enable_grease {
-            *builder = std::mem::take(builder).http3_send_grease(true);
-        }
+    pub fn pool_max_idle_per_host(mut self, max: usize) -> Self {
+        self.config.pool_max_idle_per_host = max;
+        self
     }
 
-    /// Configure HTTP/2 protocol settings when HTTP/3 is disabled
-    ///
-    /// Applies HTTP/2 specific optimizations including adaptive windowing
-    /// and frame size configuration for optimal HTTP/2 performance.
-    #[inline]
-    fn configure_http2(builder: &mut crate::hyper::ClientBuilder, config: &HttpConfig) {
-        *builder = std::mem::take(builder)
-            .http2_prior_knowledge()
-            .http2_adaptive_window(config.http2_adaptive_window);
+    pub fn pool_idle_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.config.pool_idle_timeout = timeout;
+        self
+    }
 
-        if let Some(frame_size) = config.http2_max_frame_size {
-            *builder = std::mem::take(builder).http2_max_frame_size(frame_size);
-        }
+    pub fn timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.config.timeout = timeout;
+        self
+    }
+
+    pub fn connect_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.config.connect_timeout = timeout;
+        self
+    }
+
+    pub fn tcp_nodelay(mut self, enable: bool) -> Self {
+        self.config.tcp_nodelay = enable;
+        self
+    }
+
+    pub fn use_rustls_tls(self) -> Self {
+        // TLS configuration
+        self
+    }
+
+    pub fn tls_built_in_root_certs(mut self, enable: bool) -> Self {
+        self.config.use_native_certs = enable;
+        self
+    }
+
+    pub fn https_only(mut self, enable: bool) -> Self {
+        self.config.https_only = enable;
+        self
+    }
+
+    pub fn user_agent(mut self, agent: &str) -> Self {
+        self.config.user_agent = agent.to_string();
+        self
+    }
+
+    pub fn gzip(mut self, enable: bool) -> Self {
+        self.config.gzip_enabled = enable;
+        self
+    }
+
+    pub fn brotli(mut self, enable: bool) -> Self {
+        self.config.brotli_enabled = enable;
+        self
+    }
+
+    pub fn deflate(mut self, enable: bool) -> Self {
+        // Deflate compression configuration
+        self
+    }
+
+    pub fn build(self) -> Result<HttpClient, HttpError> {
+        // Use the core HttpClient::with_config method directly
+        Ok(crate::client::core::HttpClient::with_config(self.config))
     }
 }
 
@@ -134,12 +94,6 @@ impl Default for HttpClient {
         // Use the new with_config constructor with default configuration
         // If configuration fails, fall back to a basic http3 client
         let config = HttpConfig::default();
-        Self::with_config(config).unwrap_or_else(|_| {
-            Self::new(
-                crate::hyper::Client::new(),
-                HttpConfig::default(),
-                ClientStats::default(),
-            )
-        })
+        crate::client::core::HttpClient::with_config(config)
     }
 }

@@ -10,13 +10,21 @@ pub struct Error {
     pub inner: Box<Inner>,
 }
 
-#[derive(Clone)]
 pub struct Inner {
     pub kind: Kind,
     pub source: Option<Box<dyn StdError + Send + Sync>>,
 }
 
-#[derive(Debug)]
+impl Clone for Inner {
+    fn clone(&self) -> Self {
+        Inner {
+            kind: self.kind.clone(),
+            source: None, // Cannot clone trait objects, so we lose the source
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Kind {
     Builder,
     Request,
@@ -31,13 +39,13 @@ pub enum Kind {
 }
 
 impl Error {
-    pub(super) fn new(kind: Kind) -> Error {
+    pub fn new(kind: Kind) -> Error {
         Error {
             inner: Box::new(Inner { kind, source: None }),
         }
     }
 
-    pub(super) fn with<E: Into<Box<dyn StdError + Send + Sync>>>(mut self, source: E) -> Error {
+    pub fn with<E: Into<Box<dyn StdError + Send + Sync>>>(mut self, source: E) -> Error {
         self.inner.source = Some(source.into());
         self
     }
@@ -87,7 +95,7 @@ impl fmt::Display for Error {
                 write!(f, "{prefix} ({code})")
             }
             #[cfg(not(target_arch = "wasm32"))]
-            Kind::Status(ref code, ref reason) => {
+            Kind::Status(code, reason) => {
                 let prefix = if code.is_client_error() {
                     "HTTP status client error"
                 } else {
@@ -95,7 +103,7 @@ impl fmt::Display for Error {
                     "HTTP status server error"
                 };
                 if let Some(reason) = reason {
-                    write!(f, "{prefix} ({} {})", code.as_str(), reason.as_str())
+                    write!(f, "{prefix} ({} {:?})", code.as_str(), reason)
                 } else {
                     write!(f, "{prefix} ({code})")
                 }

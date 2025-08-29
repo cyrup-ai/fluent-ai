@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::super::evaluator::CoreJsonPathEvaluator;
 use crate::jsonpath::error::JsonPathError;
-use crate::jsonpath::parser::{FilterExpression, JsonSelector};
+use crate::jsonpath::parser::JsonSelector;
 
 type JsonPathResult<T> = Result<T, JsonPathError>;
 
@@ -49,10 +49,8 @@ impl CoreJsonPathEvaluator {
                 filters::apply_filter_selector_owned(self, value, expression, &mut results)?;
             }
             JsonSelector::Slice { start, end, step } => {
-                use super::arrays;
                 if let Value::Array(arr) = value {
-                    let slice_results =
-                        arrays::apply_slice_to_array(self, arr, *start, *end, *step)?;
+                    let slice_results = self.apply_slice_to_array(arr, *start, *end, *step)?;
                     results.extend(slice_results);
                 }
             }

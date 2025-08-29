@@ -8,13 +8,20 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use crate::{HttpResponse, cache::http_date::httpdate};
+use bytes::Bytes;
+use http::{HeaderMap, StatusCode, Version};
+
+use crate::http::response::HttpResponse;
+use crate::cache::http_date::httpdate;
 
 /// Cached response entry with metadata
 #[derive(Debug)]
 pub struct CacheEntry {
-    /// HTTP response
-    pub response: HttpResponse,
+    /// Cached response data (materialized from streams)
+    pub status: StatusCode,
+    pub headers: HeaderMap,
+    pub body: Bytes,
+    pub version: Version,
     /// Cache creation timestamp
     pub created_at: Instant,
     /// Last access timestamp
@@ -33,23 +40,37 @@ pub struct CacheEntry {
 
 impl CacheEntry {
     /// Create new cache entry from HTTP response
-    pub fn new(response: HttpResponse) -> Self {
+    pub async fn new(mut response: HttpResponse) -> Self {
         let now = Instant::now();
-        let etag = response.headers().get("etag").map(|v| v.to_string());
 
-        let last_modified = response
-            .headers()
+        // Collect headers from the streaming response
+        let headers = response.collect_headers().await;
+        let etag = headers
+            .get("etag")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+
+        let last_modified = headers
             .get("last-modified")
-            .and_then(|v| httpdate::parse_http_date(v).ok());
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| httpdate::parse_http_date(s).ok());
 
         // Calculate expiration based on Cache-Control or Expires headers
-        let expires_at = Self::parse_expires(&response);
+        let expires_at = Self::parse_expires(&headers);
 
-        // Estimate response size
-        let size_bytes = response.body().len() as u64 + response.headers().len() as u64 * 64; // Estimate header overhead
+        // Collect body and estimate response size
+        let body = response.collect_body().await;
+        let size_bytes = body.len() as u64 + headers.len() as u64 * 64; // Estimate header overhead
+
+        // Extract status from atomic field
+        let status = response.status_code().unwrap_or(StatusCode::OK);
+        let version = response.version;
 
         Self {
-            response,
+            status,
+            headers: headers.clone(),
+            body,
+            version,
             created_at: now,
             last_accessed: now,
             expires_at,
@@ -61,23 +82,27 @@ impl CacheEntry {
     }
 
     /// Parse expiration time from response headers
-    fn parse_expires(response: &HttpResponse) -> Option<Instant> {
+    fn parse_expires(headers: &http::HeaderMap) -> Option<Instant> {
         // Check Cache-Control max-age first
-        if let Some(cache_control) = response.headers().get("cache-control") {
-            if let Some(max_age) = Self::parse_max_age(cache_control) {
-                return Some(Instant::now() + Duration::from_secs(max_age));
+        if let Some(cache_control) = headers.get("cache-control") {
+            if let Some(cache_control_str) = cache_control.to_str().ok() {
+                if let Some(max_age) = Self::parse_max_age(cache_control_str) {
+                    return Some(Instant::now() + Duration::from_secs(max_age));
+                }
             }
         }
 
         // Fall back to Expires header
-        if let Some(expires) = response.headers().get("expires") {
-            if let Ok(expires_time) = httpdate::parse_http_date(expires) {
-                let duration_since_unix = expires_time.duration_since(UNIX_EPOCH).ok()?;
-                let now_since_unix = SystemTime::now().duration_since(UNIX_EPOCH).ok()?;
+        if let Some(expires) = headers.get("expires") {
+            if let Some(expires_str) = expires.to_str().ok() {
+                if let Ok(expires_time) = httpdate::parse_http_date(expires_str) {
+                    let duration_since_unix = expires_time.duration_since(UNIX_EPOCH).ok()?;
+                    let now_since_unix = SystemTime::now().duration_since(UNIX_EPOCH).ok()?;
 
-                if duration_since_unix > now_since_unix {
-                    let ttl = duration_since_unix - now_since_unix;
-                    return Some(Instant::now() + ttl);
+                    if duration_since_unix > now_since_unix {
+                        let ttl = duration_since_unix - now_since_unix;
+                        return Some(Instant::now() + ttl);
+                    }
                 }
             }
         }
@@ -129,7 +154,10 @@ impl CacheEntry {
 impl Clone for CacheEntry {
     fn clone(&self) -> Self {
         Self {
-            response: self.response.clone(),
+            status: self.status,
+            headers: self.headers.clone(),
+            body: self.body.clone(),
+            version: self.version,
             created_at: self.created_at,
             last_accessed: self.last_accessed,
             expires_at: self.expires_at,

@@ -42,12 +42,4 @@ impl PropertyOperations {
             _ => default,
         }
     }
-
-    /// Get all property names from an object
-    pub fn get_property_names(json: &Value) -> Vec<String> {
-        match json {
-            Value::Object(obj) => obj.keys().cloned().collect(),
-            _ => Vec::new(),
-        }
-    }
 }

@@ -3,12 +3,12 @@
 use base64::{Engine as _, engine::general_purpose};
 use http::{HeaderMap, HeaderName, HeaderValue};
 
-use crate::{HttpResult, error::HttpError};
+use crate::prelude::*;
 
 /// Authentication provider trait for different auth types
 pub trait AuthProvider {
     /// Apply authentication to headers
-    fn apply_auth(&self, headers: &mut HeaderMap) -> HttpResult<()>;
+    fn apply_auth(&self, headers: &mut HeaderMap) -> Result<(), HttpError>;
 
     /// Get authentication method name
     fn auth_type(&self) -> &'static str;
@@ -28,21 +28,21 @@ impl BearerToken {
 }
 
 impl AuthProvider for BearerToken {
-    fn apply_auth(&self, headers: &mut HeaderMap) -> HttpResult<()> {
+    fn apply_auth(&self, headers: &mut HeaderMap) -> Result<(), HttpError> {
         if !self.token.is_empty() {
             let auth_header = format!("Bearer {}", self.token);
             match HeaderValue::from_str(&auth_header) {
                 Ok(header_value) => {
                     headers.insert(http::header::AUTHORIZATION, header_value);
-                    HttpResult::Ok(())
+                    Ok(())
                 }
-                Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                Err(e) => Err(crate::error::configuration(format!(
                     "Invalid bearer token: {}",
                     e
                 ))),
             }
         } else {
-            HttpResult::Ok(())
+            Ok(())
         }
     }
 
@@ -75,30 +75,30 @@ impl ApiKey {
 }
 
 impl AuthProvider for ApiKey {
-    fn apply_auth(&self, headers: &mut HeaderMap) -> HttpResult<()> {
+    fn apply_auth(&self, headers: &mut HeaderMap) -> Result<(), HttpError> {
         if let ApiKeyPlacement::Header(header_name) = &self.placement {
             if !self.key.is_empty() {
                 match HeaderName::from_bytes(header_name.as_bytes()) {
                     Ok(name) => match HeaderValue::from_str(&self.key) {
                         Ok(value) => {
                             headers.insert(name, value);
-                            HttpResult::Ok(())
+                            Ok(())
                         }
-                        Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                        Err(e) => Err(crate::error::configuration(format!(
                             "Invalid API key value: {}",
                             e
                         ))),
                     },
-                    Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                    Err(e) => Err(crate::error::configuration(format!(
                         "Invalid header name: {}",
                         e
                     ))),
                 }
             } else {
-                HttpResult::Ok(())
+                Ok(())
             }
         } else {
-            HttpResult::Ok(())
+            Ok(())
         }
     }
 
@@ -123,7 +123,7 @@ impl BasicAuth {
 }
 
 impl AuthProvider for BasicAuth {
-    fn apply_auth(&self, headers: &mut HeaderMap) -> HttpResult<()> {
+    fn apply_auth(&self, headers: &mut HeaderMap) -> Result<(), HttpError> {
         if !self.username.is_empty() {
             let credentials = format!(
                 "{}:{}",
@@ -135,15 +135,15 @@ impl AuthProvider for BasicAuth {
             match HeaderValue::from_str(&auth_header) {
                 Ok(header_value) => {
                     headers.insert(http::header::AUTHORIZATION, header_value);
-                    HttpResult::Ok(())
+                    Ok(())
                 }
-                Err(e) => HttpResult::Err(HttpError::Configuration(format!(
+                Err(e) => Err(crate::error::configuration(format!(
                     "Invalid basic auth header: {}",
                     e
                 ))),
             }
         } else {
-            HttpResult::Ok(())
+            Ok(())
         }
     }
 

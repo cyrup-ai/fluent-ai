@@ -3,23 +3,23 @@
 
 use std::sync::Arc;
 
-use crate::{HttpError, HttpRequest, HttpResponse, HttpResult};
+use crate::prelude::*;
 
 /// HTTP middleware trait for fluent_ai_http3
 pub trait Middleware: Send + Sync {
-    /// Process request before sending - returns HttpResult directly
-    fn process_request(&self, request: HttpRequest) -> HttpResult<HttpRequest> {
-        HttpResult::Ok(request)
+    /// Process request before sending - returns Result directly
+    fn process_request(&self, request: HttpRequest) -> crate::error::Result<HttpRequest> {
+        Ok(request)
     }
 
-    /// Process response after receiving - returns HttpResult directly  
-    fn process_response(&self, response: HttpResponse) -> HttpResult<HttpResponse> {
-        HttpResult::Ok(response)
+    /// Process response after receiving - returns Result directly  
+    fn process_response(&self, response: HttpResponse) -> crate::error::Result<HttpResponse> {
+        Ok(response)
     }
 
-    /// Handle errors - returns HttpResult directly
-    fn handle_error(&self, error: HttpError) -> HttpResult<HttpError> {
-        HttpResult::Ok(error)
+    /// Handle errors - returns Result directly
+    fn handle_error(&self, error: HttpError) -> crate::error::Result<HttpError> {
+        Ok(error)
     }
 }
 

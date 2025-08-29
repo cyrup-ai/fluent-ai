@@ -15,7 +15,7 @@ pub use matcher::Matcher;
 pub use url_handling::Custom;
 
 /// Create a proxy that intercepts all HTTP traffic
-pub fn http<U>(proxy_url: U) -> crate::Result<Proxy>
+pub fn http<U>(proxy_url: U) -> std::result::Result<Proxy, Box<dyn std::error::Error + Send + Sync>>
 where
     U: Into<crate::Url>,
 {
@@ -23,7 +23,9 @@ where
 }
 
 /// Create a proxy that intercepts all HTTPS traffic
-pub fn https<U>(proxy_url: U) -> crate::Result<Proxy>
+pub fn https<U>(
+    proxy_url: U,
+) -> std::result::Result<Proxy, Box<dyn std::error::Error + Send + Sync>>
 where
     U: Into<crate::Url>,
 {
@@ -31,7 +33,7 @@ where
 }
 
 /// Create a proxy that intercepts all traffic
-pub fn all<U>(proxy_url: U) -> crate::Result<Proxy>
+pub fn all<U>(proxy_url: U) -> std::result::Result<Proxy, Box<dyn std::error::Error + Send + Sync>>
 where
     U: Into<crate::Url>,
 {

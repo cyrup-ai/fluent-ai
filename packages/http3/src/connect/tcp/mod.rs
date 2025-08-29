@@ -18,6 +18,10 @@ pub use happy_eyeballs::happy_eyeballs_connect;
 pub use http_connect::establish_connect_tunnel;
 pub use socket_config::{configure_tcp_socket, configure_tcp_socket_inline};
 pub use socks_protocol::{socks_handshake, socks4_handshake, socks5_handshake};
-pub use tls_connections::{
-    establish_http_connection, establish_native_tls_connection, establish_rustls_connection,
-};
+pub use tls_connections::establish_http_connection;
+
+#[cfg(feature = "default-tls")]
+pub use tls_connections::establish_native_tls_connection;
+
+#[cfg(feature = "__rustls")]
+pub use tls_connections::establish_rustls_connection;

@@ -17,5 +17,5 @@ pub use implementation::{Intercept, Matcher as MatcherImpl, Via};
 pub use intercept::{Intercept as InterceptConfig, Via as ProxyVia};
 pub use public_interface::*;
 pub use system_integration::SystemProxy;
-pub use types::Matcher;
 pub(crate) use types::Intercepted;
+pub use types::Matcher;

@@ -13,7 +13,7 @@ pub use core::StreamBuffer;
 use bytes::Buf;
 pub use reader::BufferReader;
 
-use crate::telemetry::jsonpath::{BufferStats, CapacityStats, JsonBuffer};
+use crate::telemetry::jsonpath::{BufferStats, CapacityStats};
 
 impl StreamBuffer {
     /// Mark bytes as consumed after successful JSON parsing

@@ -83,18 +83,18 @@ pub fn wasm<E: std::fmt::Debug>(js_error: E) -> Error {
 
 /// Create a decode error
 pub fn decode<E: std::fmt::Debug>(decode_error: E) -> Error {
-    Error::new(
-        Kind::Decode,
-        Some(format!("Decode error: {:?}", decode_error)),
-    )
+    Error::new(Kind::Decode).with(std::io::Error::new(
+        std::io::ErrorKind::InvalidData,
+        format!("Decode error: {:?}", decode_error),
+    ))
 }
 
 /// Create a status code error
 pub fn status_code(status: u16) -> Error {
-    Error::new(
-        Kind::Request,
-        Some(format!("HTTP status code error: {}", status)),
-    )
+    Error::new(Kind::Request).with(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        format!("HTTP status code error: {}", status),
+    ))
 }
 
 /// Helper function to create a timeout duration from milliseconds.
