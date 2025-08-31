@@ -3,12 +3,14 @@
 //! This module provides core service methods and operations for the EdgeService
 //! with zero allocation patterns and blazing-fast performance.
 
-use super::service::{EdgeService, EdgeServiceError};
-use crate::mcp_bridge::BridgeMsg;
-use pingora_core::protocols::http::HttpTask;
 use std::net::SocketAddr;
+
+use pingora_core::protocols::http::HttpTask;
 use tokio::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
+
+use super::service::{EdgeService, EdgeServiceError};
+use crate::mcp_bridge::BridgeMsg;
 
 impl EdgeService {
     /// Check if request is MCP protocol with optimized detection
@@ -18,8 +20,9 @@ impl EdgeService {
             if let Ok(ct_str) = content_type.to_str() {
                 if ct_str.contains("application/json") {
                     // Check for JSON-RPC indicators in headers
-                    if headers.headers.get("x-mcp-version").is_some() ||
-                       headers.headers.get("x-jsonrpc-version").is_some() {
+                    if headers.headers.get("x-mcp-version").is_some()
+                        || headers.headers.get("x-jsonrpc-version").is_some()
+                    {
                         return true;
                     }
                 }
@@ -48,27 +51,27 @@ impl EdgeService {
         let start_time = Instant::now();
 
         // Extract Authorization header with fast path
-        let auth_header = headers.headers.get("authorization")
-            .ok_or_else(|| EdgeServiceError::AuthenticationError(
-                "Missing Authorization header".to_string()
-            ))?;
+        let auth_header = headers.headers.get("authorization").ok_or_else(|| {
+            EdgeServiceError::AuthenticationError("Missing Authorization header".to_string())
+        })?;
 
-        let auth_str = auth_header.to_str()
-            .map_err(|_| EdgeServiceError::AuthenticationError(
-                "Invalid Authorization header format".to_string()
-            ))?;
+        let auth_str = auth_header.to_str().map_err(|_| {
+            EdgeServiceError::AuthenticationError("Invalid Authorization header format".to_string())
+        })?;
 
         // Fast path: check Bearer token format
         if !auth_str.starts_with("Bearer ") {
             return Err(EdgeServiceError::AuthenticationError(
-                "Invalid token format, expected Bearer token".to_string()
+                "Invalid token format, expected Bearer token".to_string(),
             ));
         }
 
         let token = &auth_str[7..]; // Skip "Bearer "
 
         // Validate JWT token
-        let is_valid = self.auth.validate_token(token)
+        let is_valid = self
+            .auth
+            .validate_token(token)
             .map_err(|e| EdgeServiceError::AuthenticationError(e.to_string()))?;
 
         let duration = start_time.elapsed();
@@ -93,13 +96,17 @@ impl EdgeService {
         let client_id = self.extract_client_identifier(client_addr, headers);
 
         // Check rate limits using advanced manager
-        let is_allowed = self.rate_limit_manager
+        let is_allowed = self
+            .rate_limit_manager
             .check_rate_limit(&client_id, 1)
             .await
             .map_err(|e| EdgeServiceError::RateLimitError(e.to_string()))?;
 
         let duration = start_time.elapsed();
-        debug!("Rate limit check completed in {:?} for client {}", duration, client_id);
+        debug!(
+            "Rate limit check completed in {:?} for client {}",
+            duration, client_id
+        );
 
         if !is_allowed {
             info!("Rate limit exceeded for client: {}", client_id);
@@ -135,17 +142,13 @@ impl EdgeService {
     }
 
     /// Route request to appropriate backend
-    pub async fn route_request(
-        &self,
-        task: &mut HttpTask,
-    ) -> Result<(), EdgeServiceError> {
+    pub async fn route_request(&self, task: &mut HttpTask) -> Result<(), EdgeServiceError> {
         let start_time = Instant::now();
 
         // Get optimal backend using metric picker
-        let backend = self.picker.pick_backend()
-            .ok_or_else(|| EdgeServiceError::BackendError(
-                "No healthy backends available".to_string()
-            ))?;
+        let backend = self.picker.pick_backend().ok_or_else(|| {
+            EdgeServiceError::BackendError("No healthy backends available".to_string())
+        })?;
 
         debug!("Selected backend: {:?}", backend);
 
@@ -154,15 +157,12 @@ impl EdgeService {
 
         // Send bridge message for MCP requests
         if self.is_mcp_request(&task.req) {
-            let bridge_msg = BridgeMsg::new_request(
-                task.req.clone(),
-                backend.clone(),
-            );
+            let bridge_msg = BridgeMsg::new_request(task.req.clone(), backend.clone());
 
             if let Err(e) = self.bridge_tx.try_send(bridge_msg) {
                 error!("Failed to send bridge message: {}", e);
                 return Err(EdgeServiceError::InternalError(
-                    "Bridge communication failed".to_string()
+                    "Bridge communication failed".to_string(),
                 ));
             }
         }
@@ -193,7 +193,7 @@ impl EdgeService {
         // Step 2: Rate limiting
         if !self.check_rate_limits(client_addr, &task.req).await? {
             return Err(EdgeServiceError::RateLimitError(
-                "Rate limit exceeded".to_string()
+                "Rate limit exceeded".to_string(),
             ));
         }
 
@@ -210,7 +210,7 @@ impl EdgeService {
     fn generate_request_id(&self) -> String {
         use std::sync::atomic::{AtomicU64, Ordering};
         static COUNTER: AtomicU64 = AtomicU64::new(0);
-        
+
         let id = COUNTER.fetch_add(1, Ordering::Relaxed);
         format!("req_{}", id)
     }
@@ -228,10 +228,8 @@ impl EdgeService {
         let rate_limiter_healthy = self.rate_limit_manager.is_healthy().await;
         let peer_registry_healthy = self.peer_registry.is_healthy();
 
-        let overall_healthy = healthy_backends > 0 &&
-                             auth_healthy &&
-                             rate_limiter_healthy &&
-                             peer_registry_healthy;
+        let overall_healthy =
+            healthy_backends > 0 && auth_healthy && rate_limiter_healthy && peer_registry_healthy;
 
         let duration = start_time.elapsed();
 
@@ -282,14 +280,14 @@ impl EdgeService {
             let permit = semaphore.clone().acquire_owned().await;
             let service = self.clone_for_testing(); // Use clone for concurrent access
             let task_clone = task.clone(); // Would need proper cloning in real implementation
-            
+
             let handle = tokio::spawn(async move {
                 let _permit = permit;
                 // service.handle_request(&mut task_clone, client_addr).await
                 // Simplified for now due to mutable reference constraints
                 Ok(())
             });
-            
+
             join_handles.push(handle);
         }
 
@@ -297,9 +295,10 @@ impl EdgeService {
         for handle in join_handles {
             match handle.await {
                 Ok(result) => results.push(result),
-                Err(e) => results.push(Err(EdgeServiceError::InternalError(
-                    format!("Task join error: {}", e)
-                ))),
+                Err(e) => results.push(Err(EdgeServiceError::InternalError(format!(
+                    "Task join error: {}",
+                    e
+                )))),
             }
         }
 
@@ -315,9 +314,10 @@ impl EdgeService {
     ) -> Result<(), EdgeServiceError> {
         match tokio::time::timeout(timeout, self.handle_request(task, client_addr)).await {
             Ok(result) => result,
-            Err(_) => Err(EdgeServiceError::InternalError(
-                format!("Request timed out after {:?}", timeout)
-            )),
+            Err(_) => Err(EdgeServiceError::InternalError(format!(
+                "Request timed out after {:?}",
+                timeout
+            ))),
         }
     }
 }
@@ -363,7 +363,6 @@ impl ServiceStatistics {
 
     /// Check if service is performing well
     pub fn is_healthy(&self) -> bool {
-        self.success_rate() >= 95.0 && 
-        self.average_response_time < Duration::from_millis(1000)
+        self.success_rate() >= 95.0 && self.average_response_time < Duration::from_millis(1000)
     }
 }

@@ -3,24 +3,29 @@
 //! This module provides comprehensive rate limiting algorithms with zero allocation
 //! fast paths and blazing-fast performance.
 
-use super::limiter::{TokenBucketConfig, SlidingWindowConfig};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
+
 use tracing::{debug, info, warn};
+
+use super::limiter::{SlidingWindowConfig, TokenBucketConfig};
 
 /// Rate limiting algorithm trait for polymorphic algorithm support
 pub trait RateLimitAlgorithm: Send + Sync {
     /// Try to consume tokens/requests with fast path validation
     fn try_request(&mut self) -> bool;
-    
+
     /// Check if the algorithm instance is still active with zero allocation check
     fn is_active(&self) -> bool;
-    
+
     /// Get current state information for monitoring
     fn get_state(&self) -> AlgorithmState;
-    
+
     /// Reset the algorithm state with optimized reset
     fn reset(&mut self);
+
+    /// Get the last time this limiter was used
+    fn last_used(&self) -> Option<Instant>;
 }
 
 /// Token bucket rate limiting algorithm with optimized token management
@@ -33,6 +38,8 @@ pub struct TokenBucket {
     refill_rate: f64,
     /// Last refill timestamp for precise timing
     last_refill: Instant,
+    /// Last time a request was processed
+    last_request: Option<Instant>,
     /// Creation timestamp for activity tracking
     created_at: Instant,
 }
@@ -46,6 +53,7 @@ impl TokenBucket {
             capacity: config.capacity,
             refill_rate: config.refill_rate,
             last_refill: now,
+            last_request: None,
             created_at: now,
         }
     }
@@ -74,7 +82,7 @@ impl TokenBucket {
     fn refill_tokens(&mut self) {
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_refill).as_secs_f64();
-        
+
         if elapsed > 0.0 {
             let tokens_to_add = elapsed * self.refill_rate;
             self.tokens = (self.tokens + tokens_to_add).min(self.capacity as f64);
@@ -91,16 +99,16 @@ impl TokenBucket {
     /// Update configuration dynamically with optimized config update
     pub fn update_config(&mut self, config: &TokenBucketConfig) {
         self.refill_tokens(); // Ensure current state is up to date
-        
+
         // Adjust current tokens if capacity changed
         if config.capacity != self.capacity {
             let ratio = config.capacity as f64 / self.capacity as f64;
             self.tokens = (self.tokens * ratio).min(config.capacity as f64);
         }
-        
+
         self.capacity = config.capacity;
         self.refill_rate = config.refill_rate;
-        
+
         info!(
             "Updated token bucket config: capacity={}, refill_rate={}, current_tokens={:.2}",
             self.capacity, self.refill_rate, self.tokens
@@ -110,14 +118,18 @@ impl TokenBucket {
 
 impl RateLimitAlgorithm for TokenBucket {
     fn try_request(&mut self) -> bool {
-        self.try_consume(1)
+        let result = self.try_consume(1);
+        if result {
+            self.last_request = Some(Instant::now());
+        }
+        result
     }
 
     fn is_active(&self) -> bool {
         // Consider active if created within last hour or has recent activity
         let now = Instant::now();
-        now.duration_since(self.created_at) < Duration::from_secs(3600) ||
-        now.duration_since(self.last_refill) < Duration::from_secs(300)
+        now.duration_since(self.created_at) < Duration::from_secs(3600)
+            || now.duration_since(self.last_refill) < Duration::from_secs(300)
     }
 
     fn get_state(&self) -> AlgorithmState {
@@ -132,7 +144,12 @@ impl RateLimitAlgorithm for TokenBucket {
         let now = Instant::now();
         self.tokens = self.capacity as f64;
         self.last_refill = now;
+        self.last_request = None;
         self.created_at = now;
+    }
+
+    fn last_used(&self) -> Option<Instant> {
+        self.last_request
     }
 }
 
@@ -158,7 +175,7 @@ impl SlidingWindow {
         let window_size = Duration::from_secs(config.window_size);
         let sub_window_duration = window_size / config.sub_windows;
         let now = Instant::now();
-        
+
         // Initialize all sub-windows with zero allocation
         let sub_windows = vec![(now, 0); config.sub_windows as usize];
 
@@ -263,11 +280,9 @@ impl RateLimitAlgorithm for SlidingWindow {
         }
 
         // Check if any sub-window has recent activity
-        self.sub_windows
-            .iter()
-            .any(|(timestamp, count)| {
-                *count > 0 && now.duration_since(*timestamp) < Duration::from_secs(300)
-            })
+        self.sub_windows.iter().any(|(timestamp, count)| {
+            *count > 0 && now.duration_since(*timestamp) < Duration::from_secs(300)
+        })
     }
 
     fn get_state(&self) -> AlgorithmState {
@@ -287,6 +302,14 @@ impl RateLimitAlgorithm for SlidingWindow {
         self.current_sub_window = 0;
         self.created_at = now;
     }
+
+    fn last_used(&self) -> Option<Instant> {
+        self.sub_windows
+            .iter()
+            .filter(|(_, count)| *count > 0)
+            .map(|(timestamp, _)| *timestamp)
+            .max()
+    }
 }
 
 /// Rate limiter that can use different algorithms with polymorphic support
@@ -298,12 +321,12 @@ pub enum RateLimiter {
 
 impl RateLimiter {
     /// Create new rate limiter with specified algorithm
-    pub fn new(algorithm: &RateLimitAlgorithmType) -> Self {
+    pub fn new(algorithm: &RateLimitAlgorithmConfig) -> Self {
         match algorithm {
-            RateLimitAlgorithmType::TokenBucket(config) => {
+            RateLimitAlgorithmConfig::TokenBucket(config) => {
                 Self::TokenBucket(TokenBucket::new(config.clone()))
             }
-            RateLimitAlgorithmType::SlidingWindow(config) => {
+            RateLimitAlgorithmConfig::SlidingWindow(config) => {
                 Self::SlidingWindow(SlidingWindow::new(config.clone()))
             }
         }
@@ -321,9 +344,9 @@ impl RateLimiter {
     }
 
     /// Update configuration dynamically with optimized config update
-    pub fn update_config(&mut self, algorithm: &RateLimitAlgorithmType) {
+    pub fn update_config(&mut self, algorithm: &RateLimitAlgorithmConfig) {
         match algorithm {
-            RateLimitAlgorithmType::TokenBucket(config) => {
+            RateLimitAlgorithmConfig::TokenBucket(config) => {
                 match self {
                     Self::TokenBucket(bucket) => bucket.update_config(config),
                     Self::SlidingWindow(_) => {
@@ -332,7 +355,7 @@ impl RateLimiter {
                     }
                 }
             }
-            RateLimitAlgorithmType::SlidingWindow(config) => {
+            RateLimitAlgorithmConfig::SlidingWindow(config) => {
                 match self {
                     Self::SlidingWindow(window) => window.update_config(config),
                     Self::TokenBucket(_) => {
@@ -359,11 +382,27 @@ impl RateLimiter {
             Self::SlidingWindow(window) => window.is_active(),
         }
     }
+
+    /// Reset the rate limiter to initial state
+    pub fn reset(&mut self) {
+        match self {
+            Self::TokenBucket(bucket) => bucket.reset(),
+            Self::SlidingWindow(window) => window.reset(),
+        }
+    }
+
+    /// Get the last time this limiter was used
+    pub fn last_used(&self) -> Option<Instant> {
+        match self {
+            Self::TokenBucket(bucket) => bucket.last_used(),
+            Self::SlidingWindow(window) => window.last_used(),
+        }
+    }
 }
 
 /// Rate limiting algorithm type enumeration with configuration
 #[derive(Debug, Clone)]
-pub enum RateLimitAlgorithmType {
+pub enum RateLimitAlgorithmConfig {
     TokenBucket(TokenBucketConfig),
     SlidingWindow(SlidingWindowConfig),
 }
@@ -387,12 +426,16 @@ impl AlgorithmState {
     /// Get utilization percentage with fast calculation
     pub fn utilization_percent(&self) -> f64 {
         match self {
-            AlgorithmState::TokenBucket { current_tokens, capacity, .. } => {
-                (1.0 - (current_tokens / *capacity as f64)) * 100.0
-            }
-            AlgorithmState::SlidingWindow { current_requests, max_requests, .. } => {
-                (*current_requests as f64 / *max_requests as f64) * 100.0
-            }
+            AlgorithmState::TokenBucket {
+                current_tokens,
+                capacity,
+                ..
+            } => (1.0 - (current_tokens / *capacity as f64)) * 100.0,
+            AlgorithmState::SlidingWindow {
+                current_requests,
+                max_requests,
+                ..
+            } => (*current_requests as f64 / *max_requests as f64) * 100.0,
         }
     }
 
@@ -443,7 +486,7 @@ impl RateLimitAlgorithm for HybridAlgorithm {
         // Return combined state information
         let bucket_state = self.token_bucket.get_state();
         let window_state = self.sliding_window.get_state();
-        
+
         // For simplicity, return the more restrictive state
         if bucket_state.utilization_percent() > window_state.utilization_percent() {
             bucket_state
@@ -456,5 +499,18 @@ impl RateLimitAlgorithm for HybridAlgorithm {
         self.token_bucket.reset();
         self.sliding_window.reset();
         self.created_at = Instant::now();
+    }
+
+    fn last_used(&self) -> Option<Instant> {
+        // Return the most recent usage from either algorithm
+        match (
+            self.token_bucket.last_used(),
+            self.sliding_window.last_used(),
+        ) {
+            (Some(bucket_time), Some(window_time)) => Some(bucket_time.max(window_time)),
+            (Some(bucket_time), None) => Some(bucket_time),
+            (None, Some(window_time)) => Some(window_time),
+            (None, None) => None,
+        }
     }
 }

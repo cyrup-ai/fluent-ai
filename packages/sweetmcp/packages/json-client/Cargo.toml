@@ -1,0 +1,40 @@
+[package]
+name = "sweetmcp-json-client"
+version = "0.1.0"
+edition = "2024"
+authors = ["CYRUP AI"]
+description = "Direct JSON-RPC 2.0 client for SweetMCP protocol using sweet-mcp-type exclusively"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Core MCP types and high-performance JSON processing
+sweet_mcp_type = { path = "../sweet-mcp-type" }
+mcp-client-traits = { path = "../mcp-client-traits" }
+
+# Async runtime
+tokio = { version = "1.47.0", features = ["full"] }
+
+# HTTP client  
+reqwest = { version = "0.12.9", features = ["json"] }
+
+# Error handling
+thiserror = "2.0.9"
+anyhow = "1.0.94"
+
+# UUID generation for request IDs
+uuid = { version = "1.11.0", features = ["v4"] }
+
+# Logging and tracing
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+
+# High-performance JSON (matching sweet-mcp-type)
+simd-json = { version = "0.15.1", default-features = false, features = ["known-key", "runtime-detection", "swar-number-parsing", "value-no-dup-keys"] }
+
+# JSON value trait for object access
+value-trait = "0.11.0"
+
+[dev-dependencies]
+# Testing utilities
+tokio-test = "0.4.4"
+pretty_assertions = "1.4.1"

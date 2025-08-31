@@ -1,4 +1,5 @@
 mod autoconfig;
+mod pingora;
 
 pub mod sse;
 
@@ -140,6 +141,11 @@ pub fn spawn(def: ServiceDefinition, bus: Sender<Evt>) -> Sender<Cmd> {
     // Check if this is the special autoconfig service
     if def.name == "sweetmcp-autoconfig" || def.service_type == Some("autoconfig".to_string()) {
         return autoconfig::spawn_autoconfig(def, bus);
+    }
+
+    // Check if this is the special pingora service
+    if def.name == "sweetmcp-pingora" || def.service_type == Some("proxy".to_string()) {
+        return pingora::spawn_pingora(def, bus);
     }
 
     // Otherwise spawn normal service

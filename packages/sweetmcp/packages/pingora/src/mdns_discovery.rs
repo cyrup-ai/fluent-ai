@@ -3,12 +3,14 @@
 //! This module implements true auto-discovery using multicast DNS (mDNS).
 //! Nodes announce themselves on the local network and discover peers automatically.
 
-use crate::peer_discovery::{PeerRegistry, BUILD_ID};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
+
 use tokio::net::UdpSocket;
 use tokio::time::interval;
 use tracing::{debug, error, info, warn};
+
+use crate::peer_discovery::{PeerRegistry, BUILD_ID};
 
 pub const MDNS_PORT: u16 = 5353;
 pub const MDNS_MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);

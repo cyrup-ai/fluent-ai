@@ -1,0 +1,18 @@
+[package]
+name = "sweetmcp-capnp-client"
+version = "0.1.0"
+edition = "2024"
+description = "Cap'n Proto client for SweetMCP protocol extension demonstration"
+
+[dependencies]
+capnp = "0.21.2"
+serde_json = "1.0.135"
+tokio = { version = "1.47.0", features = ["full"] }
+reqwest = { version = "0.12.9", features = ["json"] }
+anyhow = "1.0.94"
+uuid = { version = "1.11.0", features = ["v4"] }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+
+[build-dependencies]
+capnpc = "0.21.2"

@@ -7,9 +7,7 @@ pub mod core;
 pub mod validation;
 
 // Re-export core types for ergonomic use
-pub use core::{
-    AuthHandler, AuthContext, UserClaims, AuthMethod, AuthConfig,
-};
+pub use core::{AuthConfig, AuthContext, AuthHandler, AuthMethod, UserClaims};
 
 // Re-export validation functionality
 pub use validation::*;

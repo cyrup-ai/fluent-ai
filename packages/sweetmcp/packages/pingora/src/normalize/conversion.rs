@@ -4,12 +4,16 @@
 //! protocols to JSON-RPC with zero allocation patterns and blazing-fast
 //! performance.
 
-use super::types::{Proto, ProtocolContext, ProtocolMetadata, ConversionResult, ConversionError, ProtocolDetection, DetectionMethod};
 use anyhow::{Context, Result};
 use serde_json::{json, Value};
 use sweetmcp_axum::JSONRPC_VERSION;
-use uuid::Uuid;
 use tracing::{debug, warn};
+use uuid::Uuid;
+
+use super::types::{
+    ConversionError, ConversionResult, DetectionMethod, Proto, ProtocolContext, ProtocolDetection,
+    ProtocolMetadata,
+};
 
 /// Normalize incoming protocol to JSON-RPC for cyrup-mcp-api
 pub fn to_json_rpc(_user: &str, body: &[u8]) -> Result<(ProtocolContext, Value)> {
@@ -24,8 +28,11 @@ pub fn to_json_rpc_with_headers(
 ) -> Result<(ProtocolContext, Value)> {
     let detection = detect_protocol(body, req_header)?;
     let request_id = generate_request_id();
-    
-    debug!("Detected protocol: {:?} with confidence: {}", detection.protocol, detection.confidence);
+
+    debug!(
+        "Detected protocol: {:?} with confidence: {}",
+        detection.protocol, detection.confidence
+    );
 
     match detection.protocol {
         Proto::JsonRpc => handle_json_rpc(body, request_id),
@@ -46,7 +53,7 @@ pub fn detect_protocol(
             return Ok(ProtocolDetection::new(
                 Proto::JsonRpc,
                 1.0,
-                DetectionMethod::Structure
+                DetectionMethod::Structure,
             ));
         }
 
@@ -55,7 +62,7 @@ pub fn detect_protocol(
             return Ok(ProtocolDetection::new(
                 Proto::McpStreamableHttp,
                 0.9,
-                DetectionMethod::Structure
+                DetectionMethod::Structure,
             ));
         }
 
@@ -64,7 +71,7 @@ pub fn detect_protocol(
             return Ok(ProtocolDetection::new(
                 Proto::GraphQL,
                 0.8,
-                DetectionMethod::Structure
+                DetectionMethod::Structure,
             ));
         }
     }
@@ -81,7 +88,7 @@ pub fn detect_protocol(
         return Ok(ProtocolDetection::new(
             Proto::Capnp,
             0.7,
-            DetectionMethod::Structure
+            DetectionMethod::Structure,
         ));
     }
 
@@ -89,7 +96,7 @@ pub fn detect_protocol(
     Ok(ProtocolDetection::new(
         Proto::JsonRpc,
         0.3,
-        DetectionMethod::Fallback
+        DetectionMethod::Fallback,
     ))
 }
 
@@ -102,14 +109,14 @@ fn detect_from_headers(header: &pingora::http::RequestHeader) -> Option<Protocol
                 return Some(ProtocolDetection::new(
                     Proto::GraphQL,
                     0.9,
-                    DetectionMethod::ContentType
+                    DetectionMethod::ContentType,
                 ));
             }
             if ct_str.contains("application/capnp") {
                 return Some(ProtocolDetection::new(
                     Proto::Capnp,
                     0.9,
-                    DetectionMethod::ContentType
+                    DetectionMethod::ContentType,
                 ));
             }
         }
@@ -122,14 +129,14 @@ fn detect_from_headers(header: &pingora::http::RequestHeader) -> Option<Protocol
                 return Some(ProtocolDetection::new(
                     Proto::GraphQL,
                     0.6,
-                    DetectionMethod::UserAgent
+                    DetectionMethod::UserAgent,
                 ));
             }
             if ua_str.contains("MCP") {
                 return Some(ProtocolDetection::new(
                     Proto::McpStreamableHttp,
                     0.7,
-                    DetectionMethod::UserAgent
+                    DetectionMethod::UserAgent,
                 ));
             }
         }
@@ -141,14 +148,14 @@ fn detect_from_headers(header: &pingora::http::RequestHeader) -> Option<Protocol
         return Some(ProtocolDetection::new(
             Proto::GraphQL,
             0.8,
-            DetectionMethod::UrlPath
+            DetectionMethod::UrlPath,
         ));
     }
     if path.contains("/mcp") || path.contains("/rpc") {
         return Some(ProtocolDetection::new(
             Proto::JsonRpc,
             0.7,
-            DetectionMethod::UrlPath
+            DetectionMethod::UrlPath,
         ));
     }
 
@@ -157,8 +164,7 @@ fn detect_from_headers(header: &pingora::http::RequestHeader) -> Option<Protocol
 
 /// Handle JSON-RPC protocol
 fn handle_json_rpc(body: &[u8], request_id: String) -> Result<(ProtocolContext, Value)> {
-    let v = serde_json::from_slice::<Value>(body)
-        .context("Failed to parse JSON-RPC body")?;
+    let v = serde_json::from_slice::<Value>(body).context("Failed to parse JSON-RPC body")?;
 
     // Validate it's proper JSON-RPC
     let _method = v
@@ -197,8 +203,7 @@ fn handle_mcp_streamable_http(body: &[u8], request_id: String) -> Result<(Protoc
 
 /// Handle GraphQL protocol
 fn handle_graphql(body: &[u8], request_id: String) -> Result<(ProtocolContext, Value)> {
-    let v = serde_json::from_slice::<Value>(body)
-        .context("Failed to parse GraphQL body")?;
+    let v = serde_json::from_slice::<Value>(body).context("Failed to parse GraphQL body")?;
 
     let query = v
         .get("query")
@@ -212,7 +217,8 @@ fn handle_graphql(body: &[u8], request_id: String) -> Result<(ProtocolContext, V
     ctx.set_original_query(query.to_string());
 
     // Convert GraphQL to JSON-RPC
-    let json_rpc = super::parsers::graphql_to_json_rpc(query, variables, operation_name, &request_id)?;
+    let json_rpc =
+        super::parsers::graphql_to_json_rpc(query, variables, operation_name, &request_id)?;
 
     Ok((ctx, json_rpc))
 }
@@ -237,16 +243,107 @@ fn is_mcp_streamable_http(v: &Value) -> bool {
 
 /// Check if JSON value represents GraphQL query
 fn is_graphql_query(v: &Value) -> bool {
-    v.get("query").is_some() || 
-    (v.get("operationName").is_some() && v.get("variables").is_some())
+    v.get("query").is_some() || (v.get("operationName").is_some() && v.get("variables").is_some())
 }
 
 /// Check if binary data is Cap'n Proto format
 fn is_capnp_binary(body: &[u8]) -> bool {
-    // Cap'n Proto has specific binary markers
-    // This is a simplified check - real implementation would be more thorough
-    body.len() >= 8 && 
-    body[0..4] == [0x00, 0x00, 0x00, 0x00] // Simplified Cap'n Proto header check
+    // Cap'n Proto segment table validation based on official specification
+    // Reference: capnproto-rust/capnp/src/serialize.rs
+
+    // Minimum message size: 8 bytes (segment count + first segment length)
+    if body.len() < 8 {
+        return false;
+    }
+
+    // Parse segment count from first 4 bytes (little-endian u32)
+    let segment_count_minus_one = u32::from_le_bytes([body[0], body[1], body[2], body[3]]);
+
+    // Convert to actual segment count (adding 1 back)
+    let segment_count = segment_count_minus_one.wrapping_add(1) as usize;
+
+    // Validate segment count bounds (from SEGMENTS_COUNT_LIMIT = 512)
+    if segment_count == 0 || segment_count >= 512 {
+        return false;
+    }
+
+    // Parse first segment length from next 4 bytes (little-endian u32)
+    let first_segment_length = u32::from_le_bytes([body[4], body[5], body[6], body[7]]) as usize;
+
+    // Validate segment length is reasonable (prevent overflow attacks)
+    if first_segment_length >= (1 << 29) {
+        return false;
+    }
+
+    // Calculate minimum required message size
+    // Segment table size: (segment_count + 1) / 2 * 8 bytes (rounded up to word boundary)
+    let segment_table_words = (segment_count + 1) / 2;
+    let segment_table_bytes = segment_table_words * 8;
+
+    // Add first segment content size (in bytes, segments are measured in words)
+    let first_segment_bytes = first_segment_length * 8;
+    let minimum_message_size = segment_table_bytes + first_segment_bytes;
+
+    // Verify message is at least as large as required by segment table
+    if body.len() < minimum_message_size {
+        return false;
+    }
+
+    // If we have more than one segment, validate additional segment lengths
+    if segment_count > 1 && segment_count <= 4 {
+        // For small segment counts, validate the remaining segment lengths
+        let mut total_segment_bytes = first_segment_bytes;
+        let mut byte_offset = 8; // Start after first segment length
+
+        for i in 1..segment_count {
+            if byte_offset + 4 > body.len() {
+                return false;
+            }
+
+            let segment_length = u32::from_le_bytes([
+                body[byte_offset],
+                body[byte_offset + 1],
+                body[byte_offset + 2],
+                body[byte_offset + 3],
+            ]) as usize;
+
+            // Validate segment length
+            if segment_length >= (1 << 29) {
+                return false;
+            }
+
+            total_segment_bytes = match total_segment_bytes.checked_add(segment_length * 8) {
+                Some(total) => total,
+                None => return false, // Overflow protection
+            };
+
+            byte_offset += 4;
+
+            // Skip padding byte if needed (segment table is word-aligned)
+            if i % 2 == 1 && i < segment_count - 1 {
+                byte_offset += 4; // Skip padding word
+            }
+        }
+
+        // Verify total message size matches expectations
+        if body.len() < segment_table_bytes + total_segment_bytes {
+            return false;
+        }
+    }
+
+    // Additional heuristic: Check for packed format characteristics
+    // Packed format typically has fewer zero bytes due to compression
+    let sample_size = body.len().min(64);
+    let zero_count = body.iter().take(sample_size).filter(|&&b| b == 0).count();
+    let zero_ratio = zero_count as f32 / sample_size as f32;
+
+    // Pure zero data is unlikely to be valid Cap'n Proto
+    if zero_ratio > 0.9 {
+        return false;
+    }
+
+    // All validations passed - likely Cap'n Proto format
+    true
 }
 
 /// Generate unique request ID
@@ -264,13 +361,11 @@ pub fn from_json_rpc(
     match ctx.protocol {
         Proto::JsonRpc => {
             // Pass through unchanged
-            serde_json::to_vec(json_rpc_response)
-                .map_err(|e| ConversionError::JsonError(e))
+            serde_json::to_vec(json_rpc_response).map_err(|e| ConversionError::JsonError(e))
         }
         Proto::McpStreamableHttp => {
             // MCP Streamable HTTP uses standard JSON-RPC format
-            serde_json::to_vec(json_rpc_response)
-                .map_err(|e| ConversionError::JsonError(e))
+            serde_json::to_vec(json_rpc_response).map_err(|e| ConversionError::JsonError(e))
         }
         Proto::GraphQL => super::parsers::graphql_from_json_rpc(ctx, json_rpc_response),
         Proto::Capnp => super::parsers::capnp_from_json_rpc(ctx, json_rpc_response),
@@ -282,28 +377,34 @@ pub fn validate_json_rpc(value: &Value) -> ConversionResult<()> {
     // Check required fields
     if !value.is_object() {
         return Err(ConversionError::ValidationError(
-            "JSON-RPC must be an object".to_string()
+            "JSON-RPC must be an object".to_string(),
         ));
     }
 
-    let obj = value.as_object().unwrap();
+    let obj = value.as_object().ok_or_else(|| {
+        ConversionError::ValidationError("Failed to access JSON-RPC object".to_string())
+    })?;
 
     // Check jsonrpc version
     match obj.get("jsonrpc") {
         Some(Value::String(version)) if version == "2.0" => {}
-        Some(_) => return Err(ConversionError::ValidationError(
-            "Invalid JSON-RPC version".to_string()
-        )),
-        None => return Err(ConversionError::ValidationError(
-            "Missing jsonrpc field".to_string()
-        )),
+        Some(_) => {
+            return Err(ConversionError::ValidationError(
+                "Invalid JSON-RPC version".to_string(),
+            ))
+        }
+        None => {
+            return Err(ConversionError::ValidationError(
+                "Missing jsonrpc field".to_string(),
+            ))
+        }
     }
 
     // Check method field
     if let Some(method) = obj.get("method") {
         if !method.is_string() {
             return Err(ConversionError::ValidationError(
-                "Method must be a string".to_string()
+                "Method must be a string".to_string(),
             ));
         }
     }
@@ -312,9 +413,11 @@ pub fn validate_json_rpc(value: &Value) -> ConversionResult<()> {
     if let Some(id) = obj.get("id") {
         match id {
             Value::String(_) | Value::Number(_) | Value::Null => {}
-            _ => return Err(ConversionError::ValidationError(
-                "ID must be string, number, or null".to_string()
-            )),
+            _ => {
+                return Err(ConversionError::ValidationError(
+                    "ID must be string, number, or null".to_string(),
+                ))
+            }
         }
     }
 
@@ -334,7 +437,9 @@ pub fn create_error_response(
     });
 
     if let Some(data_value) = data {
-        error.as_object_mut().unwrap().insert("data".to_string(), data_value);
+        if let Some(error_obj) = error.as_object_mut() {
+            error_obj.insert("data".to_string(), data_value);
+        }
     }
 
     json!({
@@ -342,50 +447,4 @@ pub fn create_error_response(
         "id": id.unwrap_or(Value::Null),
         "error": error
     })
-}
-
-/// Get protocol statistics for monitoring
-pub fn get_conversion_stats() -> ConversionStats {
-    // In a real implementation, this would track actual statistics
-    ConversionStats {
-        total_conversions: 0,
-        successful_conversions: 0,
-        failed_conversions: 0,
-        protocol_counts: std::collections::HashMap::new(),
-        average_conversion_time_ms: 0.0,
-    }
-}
-
-/// Statistics for protocol conversion monitoring
-#[derive(Debug, Clone)]
-pub struct ConversionStats {
-    pub total_conversions: u64,
-    pub successful_conversions: u64,
-    pub failed_conversions: u64,
-    pub protocol_counts: std::collections::HashMap<String, u64>,
-    pub average_conversion_time_ms: f64,
-}
-
-impl ConversionStats {
-    /// Calculate success rate
-    pub fn success_rate(&self) -> f64 {
-        if self.total_conversions == 0 {
-            0.0
-        } else {
-            (self.successful_conversions as f64 / self.total_conversions as f64) * 100.0
-        }
-    }
-
-    /// Get most common protocol
-    pub fn most_common_protocol(&self) -> Option<String> {
-        self.protocol_counts
-            .iter()
-            .max_by_key(|(_, count)| *count)
-            .map(|(proto, _)| proto.clone())
-    }
-
-    /// Check if conversion performance is healthy
-    pub fn is_healthy(&self) -> bool {
-        self.success_rate() >= 95.0 && self.average_conversion_time_ms < 10.0
-    }
 }

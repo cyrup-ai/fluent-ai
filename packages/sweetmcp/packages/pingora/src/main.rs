@@ -20,13 +20,26 @@ mod rate_limit;
 mod shutdown;
 mod tls;
 
-use anyhow::Result;
+use std::sync::Arc;
+
+use anyhow::{Context, Result};
 use config::Config;
 use opentelemetry::global;
 use opentelemetry_prometheus::PrometheusExporter;
-use pingora::server::Server;
-use std::sync::Arc;
+use pingora::prelude::*;
+use pingora_proxy::http_proxy_service;
 use tokio::sync::mpsc;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+fn get_cert_dir() -> std::path::PathBuf {
+    let xdg_config = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        format!("{}/.config", home)
+    });
+    std::path::PathBuf::from(xdg_config)
+        .join("sweetmcp")
+        .join("certs")
+}
 
 fn main() {
     env_logger::init();
@@ -115,6 +128,21 @@ fn run_server() -> Result<()> {
     server.add_service(mcp_bridge);
     server.add_service(peer_service);
 
+    // Add TLS certificate monitoring and rotation service
+    let tls_dir = cert_dir.to_string_lossy().to_string();
+    let authority = tls::CertificateAuthority::load(&cert_dir.join("ca.crt"))?;
+    let server_domain = "localhost".to_string(); // Default server domain
+
+    let tls_service = background_service(
+        "tls-certificate-manager",
+        TlsCertificateManagerService {
+            tls_dir,
+            authority,
+            server_domain,
+        },
+    );
+    server.add_service(tls_service);
+
     // Create HTTP proxy service
     let edge_service =
         edge::EdgeService::new(cfg.clone(), bridge_tx.clone(), peer_registry.clone());
@@ -139,9 +167,63 @@ fn run_server() -> Result<()> {
 
     let mut proxy_service = pingora_proxy::http_proxy_service(&server.configuration, edge_service);
 
-    // Add TCP listeners
-    proxy_service.add_tcp(&cfg.tcp_bind);
-    proxy_service.add_tcp(&cfg.mcp_bind);
+    // Load TLS certificates from XDG_CONFIG_HOME/sweetmcp/certs
+    let cert_dir = get_cert_dir();
+
+    // Verify certificate files exist (generated during installation)
+    let ca_cert_path = cert_dir.join("ca.crt");
+    let server_cert_path = cert_dir.join("server.crt");
+    let server_key_path = cert_dir.join("server.key");
+
+    for (file_type, path) in [
+        ("CA certificate", &ca_cert_path),
+        ("Server certificate", &server_cert_path),
+        ("Server key", &server_key_path),
+    ] {
+        if !path.exists() {
+            return Err(anyhow::anyhow!(
+                "{} not found: {}. Please run the installer to generate certificates.",
+                file_type,
+                path.display()
+            ));
+        }
+    }
+
+    log::info!("✅ Loading TLS certificates from {}", cert_dir.display());
+
+    // Configure TLS settings for Pingora using existing certificates
+    #[cfg(feature = "rustls")]
+    {
+        use pingora::listeners::tls::TlsSettings;
+
+        let tls_settings = TlsSettings::intermediate(
+            server_cert_path
+                .to_str()
+                .context("Server certificate path contains invalid UTF-8")?,
+            server_key_path
+                .to_str()
+                .context("Server key path contains invalid UTF-8")?,
+        )
+        .context("Failed to create TLS settings")?;
+
+        // Add HTTPS listeners
+        proxy_service.add_tls_with_settings(&cfg.tcp_bind, None, tls_settings.clone());
+
+        // Add separate TLS listener for MCP if different from main TCP
+        if cfg.mcp_bind != cfg.tcp_bind {
+            proxy_service.add_tls_with_settings(&cfg.mcp_bind, None, tls_settings);
+        }
+
+        log::info!("🔒 TLS enabled on {} and {}", cfg.tcp_bind, cfg.mcp_bind);
+    }
+
+    #[cfg(not(feature = "rustls"))]
+    {
+        log::warn!("⚠️  TLS not available - falling back to HTTP only");
+        // Add TCP listeners as fallback
+        proxy_service.add_tcp(&cfg.tcp_bind);
+        proxy_service.add_tcp(&cfg.mcp_bind);
+    }
 
     // Add Unix socket listener
     // Ensure directory exists
@@ -192,11 +274,12 @@ fn init_otel() -> Result<PrometheusExporter> {
 }
 
 // Background service implementations
-use pingora::server::ShutdownWatch;
-use pingora::services::background::{background_service, BackgroundService};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
+
+use pingora::server::ShutdownWatch;
+use pingora::services::background::{background_service, BackgroundService};
 
 struct McpBridgeService {
     rx: Option<mpsc::Receiver<mcp_bridge::BridgeMsg>>,
@@ -362,6 +445,12 @@ impl BackgroundService for RateLimitCleanupService {
 
 struct MetricsCollectorService {
     metric_picker: Arc<metric_picker::MetricPicker>,
+}
+
+struct TlsCertificateManagerService {
+    tls_dir: String,
+    authority: tls::CertificateAuthority,
+    server_domain: String,
 }
 
 impl BackgroundService for MetricsCollectorService {

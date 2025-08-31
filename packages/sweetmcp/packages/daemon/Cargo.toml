@@ -31,6 +31,9 @@ cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "mai
 # Auto-configuration support
 sweetmcp-client-autoconfig = { path = "../autoconfig" }
 
+# Pingora TLS integration
+sweetmcp-pingora = { path = "../pingora" }
+
 # async support (always enabled)
 async-process = { version = "2.4" }
 tokio         = { version = "1.47.1", features = ["process", "macros", "signal", "rt-multi-thread", "time", "fs"] }

@@ -2,17 +2,19 @@
 
 #![allow(dead_code)]
 
-use crate::tls::{ParsedCertificate, TlsError};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, SystemTime};
+
 use der::{Decode, Encode};
 use rand::Rng;
 use reqwest::Client;
 use ring::digest::{Context as DigestContext, SHA256};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime};
 use tokio::time::timeout;
 use x509_cert::serial_number::SerialNumber;
 use x509_ocsp::{CertId, OcspRequest, OcspResponse};
+
+use super::{ParsedCertificate, TlsError};
 
 /// OCSP response status
 #[derive(Debug, Clone, Copy, PartialEq)]

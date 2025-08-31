@@ -3,14 +3,16 @@
 //! This module provides comprehensive request routing and upstream peer selection
 //! with zero allocation fast paths and blazing-fast performance.
 
-use super::core::{EdgeService, EdgeServiceError};
+use std::future::Future;
+use std::pin::Pin;
+
 use pingora::upstreams::peer::HttpPeer;
 use pingora::Result;
 use pingora_proxy::Session;
 use rand::prelude::*;
-use std::future::Future;
-use std::pin::Pin;
 use tracing::{debug, error, info, warn};
+
+use super::core::{EdgeService, EdgeServiceError};
 
 /// Routing handler with optimized peer selection
 pub struct RoutingHandler;
@@ -184,10 +186,7 @@ impl RoutingHandler {
     }
 
     /// Determine routing strategy based on request characteristics
-    pub fn determine_routing_strategy(
-        service: &EdgeService,
-        session: &Session,
-    ) -> RoutingStrategy {
+    pub fn determine_routing_strategy(service: &EdgeService, session: &Session) -> RoutingStrategy {
         let req_header = session.req_header();
         let uri_path = req_header.uri.path();
         let method = &req_header.method;
@@ -261,7 +260,9 @@ impl RoutingHandler {
                 session
                     .req_header_mut()
                     .insert_header("x-polygate-hop", "1")
-                    .map_err(|e| EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e)))?;
+                    .map_err(|e| {
+                        EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e))
+                    })?;
 
                 return Ok(Box::new(HttpPeer::new(
                     (peer_addr.ip(), peer_addr.port()),
@@ -276,7 +277,9 @@ impl RoutingHandler {
             session
                 .req_header_mut()
                 .insert_header("x-polygate-hop", "1")
-                .map_err(|e| EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e)))?;
+                .map_err(|e| {
+                    EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e))
+                })?;
 
             match &backend.addr {
                 pingora::protocols::l4::socket::SocketAddr::Inet(addr) => {
@@ -315,7 +318,9 @@ impl RoutingHandler {
             session
                 .req_header_mut()
                 .insert_header("x-polygate-hop", "1")
-                .map_err(|e| EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e)))?;
+                .map_err(|e| {
+                    EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e))
+                })?;
 
             match &backend.addr {
                 pingora::protocols::l4::socket::SocketAddr::Inet(addr) => {
@@ -325,13 +330,11 @@ impl RoutingHandler {
                         addr.to_string(),
                     )))
                 }
-                pingora::protocols::l4::socket::SocketAddr::Unix(_) => {
-                    Ok(Box::new(HttpPeer::new(
-                        ("127.0.0.1", 8443),
-                        false,
-                        "localhost".to_string(),
-                    )))
-                }
+                pingora::protocols::l4::socket::SocketAddr::Unix(_) => Ok(Box::new(HttpPeer::new(
+                    ("127.0.0.1", 8443),
+                    false,
+                    "localhost".to_string(),
+                ))),
             }
         } else {
             // Primary failed, use local handling
@@ -353,7 +356,9 @@ impl RoutingHandler {
             session
                 .req_header_mut()
                 .insert_header("x-polygate-hop", "1")
-                .map_err(|e| EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e)))?;
+                .map_err(|e| {
+                    EdgeServiceError::NetworkError(format!("Failed to add hop header: {}", e))
+                })?;
 
             match &backend.addr {
                 pingora::protocols::l4::socket::SocketAddr::Inet(addr) => {
@@ -363,13 +368,11 @@ impl RoutingHandler {
                         addr.to_string(),
                     )))
                 }
-                pingora::protocols::l4::socket::SocketAddr::Unix(_) => {
-                    Ok(Box::new(HttpPeer::new(
-                        ("127.0.0.1", 8443),
-                        false,
-                        "localhost".to_string(),
-                    )))
-                }
+                pingora::protocols::l4::socket::SocketAddr::Unix(_) => Ok(Box::new(HttpPeer::new(
+                    ("127.0.0.1", 8443),
+                    false,
+                    "localhost".to_string(),
+                ))),
             }
         } else {
             // No backends available, handle locally

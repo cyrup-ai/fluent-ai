@@ -3,13 +3,15 @@
 //! This module implements secure, zero-configuration service discovery using
 //! DNS SRV records - the industry standard approach used by Consul, Kubernetes, etc.
 
-use crate::peer_discovery::PeerRegistry;
 // Temporarily disable hickory-resolver until API compatibility is resolved
 // use hickory_resolver::config::{ResolverConfig, ResolverOpts, ResolveHosts};
 // use hickory_resolver::TokioResolver;
 use std::time::Duration;
+
 use tokio::time::interval;
 use tracing::{debug, info, warn};
+
+use crate::peer_discovery::PeerRegistry;
 
 const DISCOVERY_INTERVAL: Duration = Duration::from_secs(60);
 // DoH servers for future enhancement when hickory-resolver DoH API stabilizes

@@ -101,6 +101,86 @@ where
         items
     }
 
+    /// Collect the first item from the stream (blocking)
+    pub fn collect_one(self) -> T {
+        let backoff = Backoff::new();
+        loop {
+            if let Some(item) = self.try_next() {
+                return item;
+            }
+            match self.inner.completion_rx.try_recv() {
+                Ok(()) => {
+                    // Stream completed, try one more time
+                    if let Some(item) = self.try_next() {
+                        return item;
+                    }
+                    // If no item available, return default
+                    return T::default();
+                }
+                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    // Sender dropped, try one more time
+                    if let Some(item) = self.try_next() {
+                        return item;
+                    }
+                    return T::default();
+                }
+                Err(crossbeam_channel::TryRecvError::Empty) => {
+                    if backoff.is_completed() {
+                        self.parker.park();
+                    } else {
+                        backoff.snooze();
+                    }
+                }
+            }
+        }
+    }
+
+    /// Collect the first item from the stream with error handling (blocking)
+    pub fn collect_one_or_else<F>(self, error_handler: F) -> T
+    where
+        F: FnOnce(&T) -> T,
+    {
+        let backoff = Backoff::new();
+        loop {
+            if let Some(item) = self.try_next() {
+                if item.is_error() {
+                    return error_handler(&item);
+                }
+                return item;
+            }
+            match self.inner.completion_rx.try_recv() {
+                Ok(()) => {
+                    // Stream completed, try one more time
+                    if let Some(item) = self.try_next() {
+                        if item.is_error() {
+                            return error_handler(&item);
+                        }
+                        return item;
+                    }
+                    // If no item available, return default
+                    return T::default();
+                }
+                Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    // Sender dropped, try one more time
+                    if let Some(item) = self.try_next() {
+                        if item.is_error() {
+                            return error_handler(&item);
+                        }
+                        return item;
+                    }
+                    return T::default();
+                }
+                Err(crossbeam_channel::TryRecvError::Empty) => {
+                    if backoff.is_completed() {
+                        self.parker.park();
+                    } else {
+                        backoff.snooze();
+                    }
+                }
+            }
+        }
+    }
+
     /// Collect all items from the stream with error handling (blocking)
     pub fn collect_or_else<F>(self, mut error_handler: F) -> Vec<T>
     where

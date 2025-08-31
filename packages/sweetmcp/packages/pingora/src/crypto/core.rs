@@ -4,13 +4,14 @@
 //! token handling with NaCl box encryption, zero allocation patterns, and
 //! blazing-fast performance.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::{box_, sealedbox};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 use tracing::{error, info};
 
@@ -72,10 +73,10 @@ impl TokenManager {
     /// Generate a new keypair
     fn generate_keypair() -> Result<TokenKeypair> {
         let (public_key, secret_key) = box_::gen_keypair();
-        
+
         // Generate deterministic key ID from public key
         let key_id = BASE64.encode(&public_key.0[..8]); // Use first 8 bytes as ID
-        
+
         Ok(TokenKeypair {
             public_key,
             secret_key,
@@ -129,17 +130,18 @@ impl TokenManager {
     /// Clean up expired revoked tokens
     pub async fn cleanup_expired_revocations(&self, max_age: Duration) -> Result<usize> {
         let mut revoked = self.revoked_tokens.write().await;
-        let cutoff_time = SystemTime::now().checked_sub(max_age)
+        let cutoff_time = SystemTime::now()
+            .checked_sub(max_age)
             .ok_or_else(|| anyhow::anyhow!("Invalid max_age duration"))?;
-        
+
         let initial_count = revoked.len();
         revoked.retain(|_, &mut revocation_time| revocation_time > cutoff_time);
         let cleaned_count = initial_count - revoked.len();
-        
+
         if cleaned_count > 0 {
             info!("Cleaned up {} expired token revocations", cleaned_count);
         }
-        
+
         Ok(cleaned_count)
     }
 
@@ -168,7 +170,7 @@ impl TokenManager {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_secs();
-        
+
         let token_age = now.saturating_sub(timestamp);
         token_age <= TOKEN_VALIDITY_HOURS * 3600
     }
@@ -177,35 +179,36 @@ impl TokenManager {
     pub fn generate_nonce() -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_nanos();
-        
+
         let mut hasher = DefaultHasher::new();
         now.hash(&mut hasher);
         let hash = hasher.finish();
-        
+
         BASE64.encode(&hash.to_le_bytes())
     }
 
     /// Validate encrypted token structure
     pub fn validate_encrypted_token(&self, encrypted: &EncryptedToken) -> Result<()> {
         // Validate base64 ciphertext
-        BASE64.decode(&encrypted.ciphertext)
+        BASE64
+            .decode(&encrypted.ciphertext)
             .map_err(|e| anyhow::anyhow!("Invalid ciphertext base64: {}", e))?;
-        
+
         // Validate timestamp
         if !self.is_token_timestamp_valid(encrypted.created_at) {
             return Err(anyhow::anyhow!("Token timestamp is too old"));
         }
-        
+
         // Validate key_id format
         if encrypted.key_id.is_empty() {
             return Err(anyhow::anyhow!("Empty key_id"));
         }
-        
+
         Ok(())
     }
 
@@ -216,7 +219,7 @@ impl TokenManager {
         let revoked_count = self.revoked_token_count().await;
         let needs_rotation = self.needs_rotation().await;
         let keypair_age = self.get_keypair_age().await;
-        
+
         TokenManagerStats {
             current_key_info: current_info,
             previous_key_info: previous_info,
@@ -248,7 +251,7 @@ pub struct TokenManagerStats {
 impl TokenManagerStats {
     /// Check if token manager is in healthy state
     pub fn is_healthy(&self) -> bool {
-        self.current_key_info.is_some() 
+        self.current_key_info.is_some()
             && self.keypair_age < Duration::from_secs(TOKEN_VALIDITY_HOURS * 3600)
             && self.revoked_token_count < 10000 // Reasonable limit
     }
@@ -278,7 +281,7 @@ impl EncryptedToken {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_secs();
-        
+
         Self {
             ciphertext,
             created_at,
@@ -292,7 +295,7 @@ impl EncryptedToken {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_secs();
-        
+
         let age = now.saturating_sub(self.created_at);
         age > TOKEN_VALIDITY_HOURS * 3600
     }
@@ -303,26 +306,27 @@ impl EncryptedToken {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_secs();
-        
+
         Duration::from_secs(now.saturating_sub(self.created_at))
     }
 
     /// Validate token structure
     pub fn validate(&self) -> Result<()> {
         // Validate ciphertext is valid base64
-        BASE64.decode(&self.ciphertext)
+        BASE64
+            .decode(&self.ciphertext)
             .map_err(|e| anyhow::anyhow!("Invalid ciphertext: {}", e))?;
-        
+
         // Validate key_id is not empty
         if self.key_id.is_empty() {
             return Err(anyhow::anyhow!("Empty key_id"));
         }
-        
+
         // Check if expired
         if self.is_expired() {
             return Err(anyhow::anyhow!("Token is expired"));
         }
-        
+
         Ok(())
     }
 }
@@ -334,9 +338,9 @@ impl TokenData {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_secs();
-        
+
         let nonce = TokenManager::generate_nonce();
-        
+
         Self {
             token,
             issued_at,
@@ -346,9 +350,7 @@ impl TokenData {
 
     /// Check if token data is valid
     pub fn is_valid(&self) -> bool {
-        !self.token.is_empty() 
-            && !self.nonce.is_empty()
-            && self.issued_at > 0
+        !self.token.is_empty() && !self.nonce.is_empty() && self.issued_at > 0
     }
 
     /// Get token age
@@ -357,7 +359,7 @@ impl TokenData {
             .duration_since(UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
             .as_secs();
-        
+
         Duration::from_secs(now.saturating_sub(self.issued_at))
     }
 

@@ -3,22 +3,24 @@
 //! This module provides token encryption, decryption, rotation, and revocation
 //! operations with zero allocation patterns and blazing-fast performance.
 
-use crate::crypto::core::*;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use sodiumoxide::crypto::{box_, sealedbox};
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::interval;
 use tracing::{error, info};
+
+use crate::crypto::core::*;
 
 impl TokenManager {
     /// Encrypt a token for secure transmission
     pub async fn encrypt_token(&self, token: &str) -> Result<EncryptedToken> {
         let current = self.current_keypair.read().await;
-        
+
         let token_data = TokenData::new(token.to_string());
-        let plaintext = serde_json::to_vec(&token_data)
-            .context("Failed to serialize token data")?;
+        let plaintext =
+            serde_json::to_vec(&token_data).context("Failed to serialize token data")?;
 
         let ciphertext = sealedbox::seal(&plaintext, &current.public_key);
         let ciphertext_b64 = BASE64.encode(&ciphertext);
@@ -36,29 +38,28 @@ impl TokenManager {
             return Err(anyhow::anyhow!("Token has been revoked"));
         }
 
-        let ciphertext = BASE64.decode(&encrypted.ciphertext)
+        let ciphertext = BASE64
+            .decode(&encrypted.ciphertext)
             .context("Failed to decode ciphertext")?;
 
         // Try current keypair first
         let current = self.current_keypair.read().await;
         if encrypted.key_id == current.key_id {
-            if let Ok(plaintext) = sealedbox::open(
-                &ciphertext,
-                &current.public_key,
-                &current.secret_key,
-            ) {
+            if let Ok(plaintext) =
+                sealedbox::open(&ciphertext, &current.public_key, &current.secret_key)
+            {
                 let token_data: TokenData = serde_json::from_slice(&plaintext)
                     .context("Failed to deserialize token data")?;
-                
+
                 // Validate token data
                 if !token_data.is_valid() {
                     return Err(anyhow::anyhow!("Invalid token data"));
                 }
-                
+
                 if token_data.is_expired() {
                     return Err(anyhow::anyhow!("Token data is expired"));
                 }
-                
+
                 return Ok(token_data.token);
             }
         }
@@ -74,16 +75,16 @@ impl TokenManager {
                 ) {
                     let token_data: TokenData = serde_json::from_slice(&plaintext)
                         .context("Failed to deserialize token data")?;
-                    
+
                     // Validate token data
                     if !token_data.is_valid() {
                         return Err(anyhow::anyhow!("Invalid token data"));
                     }
-                    
+
                     if token_data.is_expired() {
                         return Err(anyhow::anyhow!("Token data is expired"));
                     }
-                    
+
                     return Ok(token_data.token);
                 }
             }
@@ -97,17 +98,16 @@ impl TokenManager {
         // Validate the encrypted token first
         self.validate_encrypted_token(encrypted)?;
 
-        let ciphertext = BASE64.decode(&encrypted.ciphertext)
+        let ciphertext = BASE64
+            .decode(&encrypted.ciphertext)
             .context("Failed to decode ciphertext")?;
 
         // Try current keypair first
         let current = self.current_keypair.read().await;
         if encrypted.key_id == current.key_id {
-            if let Ok(plaintext) = sealedbox::open(
-                &ciphertext,
-                &current.public_key,
-                &current.secret_key,
-            ) {
+            if let Ok(plaintext) =
+                sealedbox::open(&ciphertext, &current.public_key, &current.secret_key)
+            {
                 let token_data: TokenData = serde_json::from_slice(&plaintext)
                     .context("Failed to deserialize token data")?;
                 return Ok(token_data);
@@ -137,8 +137,7 @@ impl TokenManager {
     pub async fn rotate_keypair(&self) -> Result<()> {
         info!("Starting keypair rotation");
 
-        let new_keypair = Self::generate_keypair()
-            .context("Failed to generate new keypair")?;
+        let new_keypair = Self::generate_keypair().context("Failed to generate new keypair")?;
 
         // Move current to previous
         {
@@ -191,9 +190,9 @@ impl TokenManager {
     pub async fn revoke_token(&self, token_id: &str) -> Result<()> {
         let mut revoked = self.revoked_tokens.write().await;
         let revocation_time = SystemTime::now();
-        
+
         revoked.insert(token_id.to_string(), revocation_time);
-        
+
         info!("Token {} revoked at {:?}", token_id, revocation_time);
         Ok(())
     }
@@ -203,12 +202,12 @@ impl TokenManager {
         let mut revoked = self.revoked_tokens.write().await;
         let revocation_time = SystemTime::now();
         let mut revoked_count = 0;
-        
+
         for token_id in token_ids {
             revoked.insert(token_id.clone(), revocation_time);
             revoked_count += 1;
         }
-        
+
         info!("Revoked {} tokens at {:?}", revoked_count, revocation_time);
         Ok(revoked_count)
     }
@@ -217,37 +216,44 @@ impl TokenManager {
     pub async fn unrevoke_token(&self, token_id: &str) -> Result<bool> {
         let mut revoked = self.revoked_tokens.write().await;
         let was_revoked = revoked.remove(token_id).is_some();
-        
+
         if was_revoked {
             info!("Token {} un-revoked", token_id);
         }
-        
+
         Ok(was_revoked)
     }
 
     /// Batch encrypt multiple tokens
     pub async fn batch_encrypt_tokens(&self, tokens: &[String]) -> Result<Vec<EncryptedToken>> {
         let mut encrypted_tokens = Vec::with_capacity(tokens.len());
-        
+
         for token in tokens {
-            let encrypted = self.encrypt_token(token).await
+            let encrypted = self
+                .encrypt_token(token)
+                .await
                 .context("Failed to encrypt token in batch")?;
             encrypted_tokens.push(encrypted);
         }
-        
+
         Ok(encrypted_tokens)
     }
 
     /// Batch decrypt multiple tokens
-    pub async fn batch_decrypt_tokens(&self, encrypted_tokens: &[EncryptedToken]) -> Result<Vec<String>> {
+    pub async fn batch_decrypt_tokens(
+        &self,
+        encrypted_tokens: &[EncryptedToken],
+    ) -> Result<Vec<String>> {
         let mut decrypted_tokens = Vec::with_capacity(encrypted_tokens.len());
-        
+
         for encrypted in encrypted_tokens {
-            let decrypted = self.decrypt_token(encrypted).await
+            let decrypted = self
+                .decrypt_token(encrypted)
+                .await
                 .context("Failed to decrypt token in batch")?;
             decrypted_tokens.push(decrypted);
         }
-        
+
         Ok(decrypted_tokens)
     }
 
@@ -285,7 +291,12 @@ impl TokenManager {
                     Err(_) => return false,
                 };
 
-                return sealedbox::open(&ciphertext, &prev_keypair.public_key, &prev_keypair.secret_key).is_ok();
+                return sealedbox::open(
+                    &ciphertext,
+                    &prev_keypair.public_key,
+                    &prev_keypair.secret_key,
+                )
+                .is_ok();
             }
         }
 
@@ -295,19 +306,24 @@ impl TokenManager {
     /// Re-encrypt token with current keypair
     pub async fn reencrypt_token(&self, encrypted: &EncryptedToken) -> Result<EncryptedToken> {
         // First decrypt the token
-        let token = self.decrypt_token(encrypted).await
+        let token = self
+            .decrypt_token(encrypted)
+            .await
             .context("Failed to decrypt token for re-encryption")?;
-        
+
         // Then encrypt with current keypair
-        self.encrypt_token(&token).await
+        self.encrypt_token(&token)
+            .await
             .context("Failed to re-encrypt token")
     }
 
     /// Get token encryption metadata
     pub async fn get_token_metadata(&self, encrypted: &EncryptedToken) -> Result<TokenMetadata> {
-        let token_data = self.extract_token_data(encrypted).await
+        let token_data = self
+            .extract_token_data(encrypted)
+            .await
             .context("Failed to extract token data for metadata")?;
-        
+
         Ok(TokenMetadata {
             key_id: encrypted.key_id.clone(),
             created_at: encrypted.created_at,
@@ -320,7 +336,10 @@ impl TokenManager {
     }
 
     /// Validate token chain (ensure tokens are properly linked)
-    pub async fn validate_token_chain(&self, tokens: &[EncryptedToken]) -> Result<TokenChainValidation> {
+    pub async fn validate_token_chain(
+        &self,
+        tokens: &[EncryptedToken],
+    ) -> Result<TokenChainValidation> {
         let mut validation = TokenChainValidation {
             total_tokens: tokens.len(),
             valid_tokens: 0,
@@ -388,7 +407,7 @@ pub struct TokenChainValidation {
 impl TokenChainValidation {
     /// Check if the token chain is healthy
     pub fn is_healthy(&self) -> bool {
-        self.total_tokens > 0 
+        self.total_tokens > 0
             && self.valid_tokens > 0
             && (self.valid_tokens as f64 / self.total_tokens as f64) > 0.8
     }
@@ -411,7 +430,8 @@ impl TokenChainValidation {
             ("integrity", self.integrity_failures),
         ];
 
-        failures.iter()
+        failures
+            .iter()
             .max_by_key(|(_, count)| *count)
             .map(|(name, _)| *name)
             .unwrap_or("none")

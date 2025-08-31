@@ -1,0 +1,2684 @@
+warning: unused import: `Duration`
+ --> packages/http3/src/client/core.rs:8:17
+  |
+8 | use std::time::{Duration, Instant};
+  |                 ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `H3Config` and `ProtocolConfigs`
+  --> packages/http3/src/client/core.rs:12:56
+   |
+12 | use crate::protocols::strategy::{HttpProtocolStrategy, H3Config, ProtocolConfigs};
+   |                                                        ^^^^^^^^  ^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::protocols::core::HttpVersion`
+  --> packages/http3/src/client/core.rs:13:5
+   |
+13 | use crate::protocols::core::HttpVersion;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::time::Duration`
+ --> packages/http3/src/connect/builder/tls.rs:5:5
+  |
+5 | use std::time::Duration;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `fluent_ai_async::prelude::MessageChunk`
+ --> packages/http3/src/connect/proxy/intercepted.rs:6:5
+  |
+6 | use fluent_ai_async::prelude::MessageChunk;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `AsyncStream`, `emit`, `handle_error`, and `spawn_task`
+ --> packages/http3/src/connect/proxy/intercepted.rs:7:23
+  |
+7 | use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
+  |                       ^^^^^^^^^^^  ^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `url::Url`
+ --> packages/http3/src/connect/proxy/intercepted.rs:9:5
+  |
+9 | use url::Url;
+  |     ^^^^^^^^
+
+warning: unused import: `http::Uri`
+ --> packages/http3/src/connect/service/core.rs:8:5
+  |
+8 | use http::Uri;
+  |     ^^^^^^^^^
+
+warning: unused import: `SocketAddr`
+ --> packages/http3/src/connect/service/direct.rs:6:27
+  |
+6 | use std::net::{TcpStream, SocketAddr};
+  |                           ^^^^^^^^^^
+
+warning: unused import: `rustls`
+  --> packages/http3/src/connect/service/tls.rs:13:5
+   |
+13 | use rustls;
+   |     ^^^^^^
+
+warning: unused imports: `Read` and `Write`
+ --> packages/http3/src/connect/types/connection.rs:6:15
+  |
+6 | use std::io::{Read, Write};
+  |               ^^^^  ^^^^^
+
+warning: unused import: `crate::prelude::*`
+ --> packages/http3/src/http/conversions.rs:7:5
+  |
+7 | use crate::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::prelude::*`
+ --> packages/http3/src/http/into_url.rs:3:5
+  |
+3 | use crate::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::jsonpath::parser::FilterExpression`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/complex_data.rs:5:5
+  |
+5 | use crate::jsonpath::parser::FilterExpression;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/edge_cases.rs:5:5
+  |
+5 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FilterExpression` and `FilterValue`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/edge_cases.rs:6:31
+  |
+6 | use crate::jsonpath::parser::{FilterExpression, FilterValue};
+  |                               ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/error_handling.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::FunctionEvaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/error_handling.rs:7:5
+  |
+7 | use super::super::FunctionEvaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/error_handling.rs:8:5
+  |
+8 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/function_dispatch.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::FunctionEvaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/function_dispatch.rs:7:5
+  |
+7 | use super::super::FunctionEvaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/function_dispatch.rs:8:5
+  |
+8 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FilterExpression` and `FilterValue`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/function_dispatch.rs:9:31
+  |
+9 | use crate::jsonpath::parser::{FilterExpression, FilterValue};
+  |                               ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/performance.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::FunctionEvaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/performance.rs:7:5
+  |
+7 | use super::super::FunctionEvaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/performance.rs:8:5
+  |
+8 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FilterExpression` and `FilterValue`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/performance.rs:9:31
+  |
+9 | use crate::jsonpath::parser::{FilterExpression, FilterValue};
+  |                               ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/unicode_special.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::FunctionEvaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/unicode_special.rs:7:5
+  |
+7 | use super::super::FunctionEvaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::mock_evaluator::mock_evaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/unicode_special.rs:8:5
+  |
+8 | use super::mock_evaluator::mock_evaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FilterExpression` and `FilterValue`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/unicode_special.rs:9:31
+  |
+9 | use crate::jsonpath::parser::{FilterExpression, FilterValue};
+  |                               ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/value_conversion.rs:5:5
+  |
+5 | use serde_json::json;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::FunctionEvaluator`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/value_conversion.rs:7:5
+  |
+7 | use super::super::FunctionEvaluator;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::jsonpath::parser::FilterValue`
+ --> packages/http3/src/jsonpath/functions/function_evaluator/integration_tests/value_conversion.rs:8:5
+  |
+8 | use crate::jsonpath::parser::FilterValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `emit` and `handle_error`
+ --> packages/http3/src/jsonpath/stream_processor/processing.rs:3:42
+  |
+3 | use fluent_ai_async::{AsyncStreamSender, emit, handle_error};
+  |                                          ^^^^  ^^^^^^^^^^^^
+
+warning: unused imports: `Duration` and `Instant`
+ --> packages/http3/src/middleware/cache.rs:7:17
+  |
+7 | use std::time::{Duration, Instant};
+  |                 ^^^^^^^^  ^^^^^^^
+
+warning: unused import: `fluent_ai_async::AsyncStream`
+ --> packages/http3/src/middleware/cache.rs:9:5
+  |
+9 | use fluent_ai_async::AsyncStream;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bytes::Bytes`
+  --> packages/http3/src/middleware/cache.rs:10:5
+   |
+10 | use bytes::Bytes;
+   |     ^^^^^^^^^^^^
+
+warning: unused imports: `HeaderMap`, `HeaderName`, and `HeaderValue`
+  --> packages/http3/src/middleware/cache.rs:11:12
+   |
+11 | use http::{HeaderMap, HeaderName, HeaderValue};
+   |            ^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `CacheEntry`
+  --> packages/http3/src/middleware/cache.rs:14:30
+   |
+14 | use crate::cache::{CacheKey, CacheEntry, GLOBAL_CACHE, httpdate};
+   |                              ^^^^^^^^^^
+
+warning: unused imports: `HttpBodyChunk` and `HttpHeader`
+  --> packages/http3/src/middleware/cache.rs:15:29
+   |
+15 | use crate::http::response::{HttpBodyChunk, HttpHeader};
+   |                             ^^^^^^^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `H2Stream`
+  --> packages/http3/src/protocols/connection.rs:10:31
+   |
+10 | use super::h2::{H2Connection, H2Stream};
+   |                               ^^^^^^^^
+
+warning: unused import: `H3Stream`
+  --> packages/http3/src/protocols/connection.rs:11:31
+   |
+11 | use super::h3::{H3Connection, H3Stream};
+   |                               ^^^^^^^^
+
+warning: unused imports: `H2Frame` and `H3Frame`
+  --> packages/http3/src/protocols/connection.rs:12:44
+   |
+12 | use crate::protocols::frames::{FrameChunk, H2Frame, H3Frame};
+   |                                            ^^^^^^^  ^^^^^^^
+
+warning: unused import: `Instant`
+ --> packages/http3/src/protocols/core.rs:6:27
+  |
+6 | use std::time::{Duration, Instant};
+  |                           ^^^^^^^
+
+warning: unused import: `bytes::Bytes`
+ --> packages/http3/src/protocols/core.rs:8:5
+  |
+8 | use bytes::Bytes;
+  |     ^^^^^^^^^^^^
+
+warning: unused imports: `AsyncStream` and `prelude::MessageChunk`
+ --> packages/http3/src/protocols/core.rs:9:23
+  |
+9 | use fluent_ai_async::{AsyncStream, prelude::MessageChunk};
+  |                       ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Ordering`
+ --> packages/http3/src/protocols/frames.rs:3:36
+  |
+3 | use std::sync::atomic::{AtomicU64, Ordering};
+  |                                    ^^^^^^^^
+
+warning: unused import: `fluent_ai_async::prelude::*`
+ --> packages/http3/src/protocols/h2/chunks.rs:4:5
+  |
+4 | use fluent_ai_async::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AtomicBool`
+ --> packages/http3/src/protocols/h2/connection.rs:6:25
+  |
+6 | use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+  |                         ^^^^^^^^^^
+
+warning: unused import: `Context`
+ --> packages/http3/src/protocols/h2/connection.rs:7:17
+  |
+7 | use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+  |                 ^^^^^^^
+
+warning: unused import: `Duration`
+ --> packages/http3/src/protocols/h2/connection.rs:8:17
+  |
+8 | use std::time::{Duration, Instant};
+  |                 ^^^^^^^^
+
+warning: unused import: `spawn_task`
+  --> packages/http3/src/protocols/h2/connection.rs:14:42
+   |
+14 | use fluent_ai_async::{AsyncStream, emit, spawn_task};
+   |                                          ^^^^^^^^^^
+
+warning: unused imports: `RecvStream` and `client`
+  --> packages/http3/src/protocols/h2/connection.rs:15:10
+   |
+15 | use h2::{RecvStream, client};
+   |          ^^^^^^^^^^  ^^^^^^
+
+warning: unused import: `Response`
+  --> packages/http3/src/protocols/h2/connection.rs:16:21
+   |
+16 | use http::{Request, Response};
+   |                     ^^^^^^^^
+
+warning: unused import: `crate::protocols::quiche::QuicheConnectionChunk`
+  --> packages/http3/src/protocols/h2/connection.rs:24:5
+   |
+24 | use crate::protocols::quiche::QuicheConnectionChunk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::net::TcpStream`
+ --> packages/http3/src/protocols/h2/h2.rs:6:5
+  |
+6 | use std::net::TcpStream;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Context`
+ --> packages/http3/src/protocols/h2/streaming.rs:7:17
+  |
+7 | use std::task::{Context, Poll};
+  |                 ^^^^^^^
+
+warning: unused import: `futures::executor::block_on`
+  --> packages/http3/src/protocols/h2/streaming.rs:13:5
+   |
+13 | use futures::executor::block_on;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `client` and `server`
+  --> packages/http3/src/protocols/h2/streaming.rs:14:10
+   |
+14 | use h2::{client, server};
+   |          ^^^^^^  ^^^^^^
+
+warning: unused import: `H2RequestChunk`
+  --> packages/http3/src/protocols/h2/streaming.rs:16:53
+   |
+16 | use super::chunks::{H2ConnectionChunk, H2DataChunk, H2RequestChunk, H2SendResult};
+   |                                                     ^^^^^^^^^^^^^^
+
+warning: unused imports: `HttpVersion` and `TimeoutConfig`
+  --> packages/http3/src/protocols/h2/streaming.rs:17:30
+   |
+17 | use crate::protocols::core::{HttpVersion, TimeoutConfig};
+   |                              ^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> packages/http3/src/protocols/h2/strategy.rs:5:5
+  |
+5 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `h2::client`
+  --> packages/http3/src/protocols/h2/strategy.rs:11:5
+   |
+11 | use h2::client;
+   |     ^^^^^^^^^^
+
+warning: unused imports: `HeaderMap`, `HeaderName`, `HeaderValue`, and `Method`
+  --> packages/http3/src/protocols/h2/strategy.rs:12:12
+   |
+12 | use http::{Method, HeaderMap, HeaderName, HeaderValue, StatusCode, Version};
+   |            ^^^^^^  ^^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `crate::protocols::quiche::QuicheConnectionChunk`
+  --> packages/http3/src/protocols/h3/connection.rs:13:5
+   |
+13 | use crate::protocols::quiche::QuicheConnectionChunk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `HeaderName` and `HeaderValue`
+  --> packages/http3/src/protocols/h3/strategy.rs:10:24
+   |
+10 | use http::{StatusCode, HeaderName, HeaderValue, Version};
+   |                        ^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `HttpHeader`
+  --> packages/http3/src/protocols/h3/strategy.rs:17:29
+   |
+17 | use crate::http::response::{HttpHeader, HttpBodyChunk};
+   |                             ^^^^^^^^^^
+
+warning: unused import: `Instant`
+  --> packages/http3/src/protocols/intelligence.rs:10:27
+   |
+10 | use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+   |                           ^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> packages/http3/src/protocols/quiche/h3_adapter.rs:1:5
+  |
+1 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `HeaderName`
+ --> packages/http3/src/protocols/quiche/h3_adapter.rs:6:23
+  |
+6 | use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+  |                       ^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> packages/http3/src/protocols/quiche/streaming.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused imports: `Context` and `Poll`
+ --> packages/http3/src/protocols/strategy.rs:7:17
+  |
+7 | use std::task::{Context, Poll};
+  |                 ^^^^^^^  ^^^^
+
+warning: unused import: `fluent_ai_async::prelude::*`
+ --> packages/http3/src/protocols/strategy.rs:9:5
+  |
+9 | use fluent_ai_async::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `HeaderMap`, `StatusCode`, and `Uri`
+  --> packages/http3/src/protocols/strategy.rs:10:12
+   |
+10 | use http::{Uri, HeaderMap, StatusCode};
+   |            ^^^  ^^^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `futures::task::noop_waker`
+  --> packages/http3/src/protocols/strategy.rs:11:5
+   |
+11 | use futures::task::noop_waker;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::protocols::connection::Connection`
+  --> packages/http3/src/protocols/strategy.rs:15:5
+   |
+15 | use crate::protocols::connection::Connection;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `TransportConfig`, `TransportManager`, and `TransportType`
+  --> packages/http3/src/protocols/strategy.rs:16:35
+   |
+16 | use crate::protocols::transport::{TransportManager, TransportType, TransportConfig};
+   |                                   ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+
+warning: unused imports: `HttpRequest` and `HttpResponse`
+  --> packages/http3/src/protocols/strategy.rs:17:19
+   |
+17 | use crate::http::{HttpRequest, HttpResponse};
+   |                   ^^^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused imports: `HttpBodyChunk` and `HttpChunk`
+  --> packages/http3/src/protocols/strategy.rs:18:29
+   |
+18 | use crate::http::response::{HttpChunk, HttpBodyChunk};
+   |                             ^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> packages/http3/src/protocols/auto_strategy.rs:5:5
+  |
+5 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused imports: `H2Config` and `H3Config`
+  --> packages/http3/src/protocols/auto_strategy.rs:10:34
+   |
+10 | use crate::protocols::strategy::{H2Config, H3Config, ProtocolConfigs};
+   |                                  ^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `Connection as QuicheConnection`
+  --> packages/http3/src/protocols/transport.rs:10:22
+   |
+10 | use quiche::{Config, Connection as QuicheConnection};
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `H2Connection` and `H2Stream`
+  --> packages/http3/src/protocols/transport.rs:13:17
+   |
+13 | use super::h2::{H2Connection, H2Stream};
+   |                 ^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused imports: `H3Connection` and `H3Stream`
+  --> packages/http3/src/protocols/transport.rs:14:17
+   |
+14 | use super::h3::{H3Connection, H3Stream};
+   |                 ^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused imports: `H2Frame` and `H3Frame`
+  --> packages/http3/src/protocols/transport.rs:15:44
+   |
+15 | use crate::protocols::frames::{FrameChunk, H2Frame, H3Frame};
+   |                                            ^^^^^^^  ^^^^^^^
+
+warning: unused imports: `HttpRequest` and `HttpResponse`
+  --> packages/http3/src/proxy/core/constructors.rs:12:13
+   |
+12 | use crate::{HttpRequest, HttpResponse};
+   |             ^^^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused import: `Intercept`
+ --> packages/http3/src/proxy/core/matcher_integration.rs:8:20
+  |
+8 | use super::types::{Intercept, Proxy};
+  |                    ^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> packages/http3/src/proxy/core/types.rs:6:5
+  |
+6 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `fluent_ai_async::prelude::*`
+ --> packages/http3/src/proxy/matcher/implementation.rs:6:5
+  |
+6 | use fluent_ai_async::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `HeaderMap` and `header::HeaderValue`
+ --> packages/http3/src/proxy/matcher/public_interface.rs:8:12
+  |
+8 | use http::{HeaderMap, Uri, header::HeaderValue};
+  |            ^^^^^^^^^       ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NoProxy`
+  --> packages/http3/src/proxy/matcher/public_interface.rs:10:33
+   |
+10 | use super::super::core::{Extra, NoProxy};
+   |                                 ^^^^^^^
+
+warning: unused import: `super::super::url_handling::Custom`
+  --> packages/http3/src/proxy/matcher/public_interface.rs:11:5
+   |
+11 | use super::super::url_handling::Custom;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Intercept` and `Via`
+  --> packages/http3/src/proxy/matcher/public_interface.rs:13:24
+   |
+13 | use super::intercept::{Intercept, Via};
+   |                        ^^^^^^^^^  ^^^
+
+warning: unused imports: `Intercept` and `Via`
+  --> packages/http3/src/proxy/matcher/system_integration.rs:11:24
+   |
+11 | use super::intercept::{Intercept, Via};
+   |                        ^^^^^^^^^  ^^^
+
+warning: unused import: `std::fmt`
+ --> packages/http3/src/proxy/matcher/types.rs:6:5
+  |
+6 | use std::fmt;
+  |     ^^^^^^^^
+
+warning: unused imports: `HeaderMap`, `Uri`, and `header::HeaderValue`
+ --> packages/http3/src/proxy/matcher/types.rs:8:12
+  |
+8 | use http::{HeaderMap, Uri, header::HeaderValue};
+  |            ^^^^^^^^^  ^^^  ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NoProxy`
+  --> packages/http3/src/proxy/matcher/types.rs:10:33
+   |
+10 | use super::super::core::{Extra, NoProxy};
+   |                                 ^^^^^^^
+
+warning: unused import: `public_interface::*`
+  --> packages/http3/src/proxy/matcher/mod.rs:18:9
+   |
+18 | pub use public_interface::*;
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `types::Intercepted`
+  --> packages/http3/src/proxy/matcher/mod.rs:20:16
+   |
+20 | pub(crate) use types::Intercepted;
+   |                ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::fmt`
+ --> packages/http3/src/proxy/url_handling.rs:5:5
+  |
+5 | use std::fmt;
+  |     ^^^^^^^^
+
+warning: unused import: `crate::prelude::*`
+  --> packages/http3/src/retry/policy.rs:10:5
+   |
+10 | use crate::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `stream::*`
+  --> packages/http3/src/telemetry/jsonpath/mod.rs:10:9
+   |
+10 | pub use stream::*;
+   |         ^^^^^^^^^
+
+warning: unused import: `Instant`
+ --> packages/http3/src/telemetry/types.rs:3:27
+  |
+3 | use std::time::{Duration, Instant};
+  |                           ^^^^^^^
+
+warning: unused import: `ParsedCertificate`
+  --> packages/http3/src/tls/certificate/generation.rs:17:43
+   |
+17 | use crate::tls::types::{CertificateUsage, ParsedCertificate};
+   |                                           ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> packages/http3/src/tls/certificate/parsing.rs:3:5
+  |
+3 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Certificate as X509CertCert` and `der::Decode`
+ --> packages/http3/src/tls/certificate/parsing.rs:6:17
+  |
+6 | use x509_cert::{der::Decode, Certificate as X509CertCert};
+  |                 ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::parser::parse_x509_certificate_from_der_internal`
+  --> packages/http3/src/tls/certificate/validation.rs:11:5
+   |
+11 | use super::parser::parse_x509_certificate_from_der_internal;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `generation::new`
+  --> packages/http3/src/tls/certificate/mod.rs:16:9
+   |
+16 | pub use generation::new;
+   |         ^^^^^^^^^^^^^^^
+
+warning: unused import: `verify_peer_certificate_comprehensive`
+  --> packages/http3/src/tls/certificate/mod.rs:23:50
+   |
+23 | pub use validation::{validate_certificate_chain, verify_peer_certificate_comprehensive};
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `wildcard::generate_wildcard_certificate`
+  --> packages/http3/src/tls/certificate/mod.rs:24:9
+   |
+24 | pub use wildcard::generate_wildcard_certificate;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `RngCore`
+  --> packages/http3/src/tls/ocsp.rs:11:17
+   |
+11 | use rand::{Rng, RngCore};
+   |                 ^^^^^^^
+
+warning: unused import: `crate::http::response::HttpChunk`
+  --> packages/http3/src/tls/ocsp.rs:17:5
+   |
+17 | use crate::http::response::HttpChunk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `rustls::pki_types::ServerName`
+  --> packages/http3/src/tls/tls_manager.rs:11:5
+   |
+11 | use rustls::pki_types::ServerName;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `OcspStatus`
+  --> packages/http3/src/tls/tls_manager.rs:15:30
+   |
+15 | use super::ocsp::{OcspCache, OcspStatus};
+   |                              ^^^^^^^^^^
+
+warning: unused import: `CrlStatus`
+  --> packages/http3/src/tls/tls_manager.rs:16:34
+   |
+16 | use super::crl_cache::{CrlCache, CrlStatus};
+   |                                  ^^^^^^^^^
+
+warning: unused import: `Tls`
+  --> packages/http3/src/tls/tls_manager.rs:18:44
+   |
+18 | use super::builder::{CertificateAuthority, Tls};
+   |                                            ^^^
+
+warning: unused import: `super::types::ParsedCertificate as TypesParsedCertificate`
+  --> packages/http3/src/tls/tls_manager.rs:20:5
+   |
+20 | use super::types::ParsedCertificate as TypesParsedCertificate;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Zeroize`
+ --> packages/http3/src/tls/types.rs:6:15
+  |
+6 | use zeroize::{Zeroize, ZeroizeOnDrop};
+  |               ^^^^^^^
+
+warning: unused import: `std::io::Read`
+ --> packages/http3/src/tls/builder/certificate.rs:3:5
+  |
+3 | use std::io::Read;
+  |     ^^^^^^^^^^^^^
+
+warning: unused import: `std::time::Duration`
+ --> packages/http3/src/tls/builder/certificate.rs:5:5
+  |
+5 | use std::time::Duration;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `verify_peer_certificate`
+   --> packages/http3/src/tls/builder/certificate.rs:141:33
+    |
+141 |             validate_key_usage, verify_peer_certificate,
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Issuer`
+   --> packages/http3/src/tls/builder/certificate.rs:659:85
+    |
+659 |         use rcgen::{CertificateParams, DistinguishedName, DnType, KeyPair, SanType, Issuer};
+    |                                                                                     ^^^^^^
+
+warning: use of deprecated method `cookie::CookieBuilder::<'c>::finish`: `CookieBuilder` can be passed in to methods expecting a `Cookie`; for other cases, use `CookieBuilder::build()`
+  --> packages/http3/src/cookie/core.rs:27:74
+   |
+27 |         let error_cookie = cookie_crate::Cookie::build(("ERROR", error)).finish();
+   |                                                                          ^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated method `cookie::CookieBuilder::<'c>::finish`: `CookieBuilder` can be passed in to methods expecting a `Cookie`; for other cases, use `CookieBuilder::build()`
+  --> packages/http3/src/cookie/core.rs:46:75
+   |
+46 |         let default_cookie = cookie_crate::Cookie::build(("default", "")).finish();
+   |                                                                           ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h2`: Use new_h2_with_addr for real network connections
+  --> packages/http3/src/protocols/connection.rs:27:21
+   |
+27 |         Connection::new_h2(true)
+   |                     ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h2`: Use new_h2_with_addr for real network connections
+   --> packages/http3/src/protocols/connection.rs:218:38
+    |
+218 |         let connection = Connection::new_h2(is_client);
+    |                                      ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h2`: Use new_h2_with_addr for real network connections
+   --> packages/http3/src/protocols/connection.rs:219:50
+    |
+219 |         let connection_for_storage = Connection::new_h2(is_client);
+    |                                                  ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h3`: Use new_h3_with_addr for real network connections
+   --> packages/http3/src/protocols/connection.rs:230:38
+    |
+230 |         let connection = Connection::new_h3(is_client);
+    |                                      ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h3`: Use new_h3_with_addr for real network connections
+   --> packages/http3/src/protocols/connection.rs:231:50
+    |
+231 |         let connection_for_storage = Connection::new_h3(is_client);
+    |                                                  ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h2`: Use new_h2_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:353:50
+    |
+353 |                 TransportType::H2 => Connection::new_h2(true),
+    |                                                  ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h3`: Use new_h3_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:354:50
+    |
+354 |                 TransportType::H3 => Connection::new_h3(true),
+    |                                                  ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h3`: Use new_h3_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:355:52
+    |
+355 |                 TransportType::Auto => Connection::new_h3(true), // Default to H3
+    |                                                    ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h2`: Use new_h2_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:376:42
+    |
+376 |             let connection = Connection::new_h2(true);
+    |                                          ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h3`: Use new_h3_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:400:42
+    |
+400 |             let connection = Connection::new_h3(true);
+    |                                          ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h3`: Use new_h3_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:480:20
+    |
+480 |     Ok(Connection::new_h3(true))
+    |                    ^^^^^^
+
+warning: use of deprecated associated function `protocols::connection::Connection::new_h2`: Use new_h2_with_addr for real network connections
+   --> packages/http3/src/protocols/transport.rs:499:20
+    |
+499 |     Ok(Connection::new_h2(true))
+    |                    ^^^^^^
+
+warning: unused import: `Engine`
+ --> packages/http3/src/auth/builder.rs:5:14
+  |
+5 | use base64::{Engine as _, engine::general_purpose::STANDARD};
+  |              ^^^^^^
+
+warning: unused import: `prelude::MessageChunk`
+ --> packages/http3/src/cache/cache_integration.rs:8:36
+  |
+8 | use fluent_ai_async::{AsyncStream, prelude::MessageChunk};
+  |                                    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/builder/builder_core.rs:64:37
+   |
+64 | ...                   let mut request = HttpRequest::new(
+   |                           ----^^^^^^^
+   |                           |
+   |                           help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `bytes_written`
+   --> packages/http3/src/builder/fluent.rs:100:29
+    |
+100 |                         let bytes_written = match file.write(&chunk) {
+    |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_bytes_written`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/builder/fluent.rs:79:13
+   |
+79 |         let mut stream = self.stream;
+   |             ----^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: unused variable: `body`
+   --> packages/http3/src/builder/methods/body_methods.rs:179:25
+    |
+179 |             if let Some(body) = self.request.body() {
+    |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `body`
+   --> packages/http3/src/builder/methods/body_methods.rs:222:25
+    |
+222 |             if let Some(body) = self.request.body() {
+    |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `body`
+   --> packages/http3/src/builder/methods/body_methods.rs:265:25
+    |
+265 |             if let Some(body) = self.request.body() {
+    |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `body`
+   --> packages/http3/src/builder/methods/jsonpath_methods.rs:132:25
+    |
+132 |             if let Some(body) = self.request.body() {
+    |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `body`
+   --> packages/http3/src/builder/methods/jsonpath_methods.rs:169:25
+    |
+169 |             if let Some(body) = self.request.body() {
+    |                         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: unused variable: `jsonpath_expr`
+  --> packages/http3/src/builder/streaming.rs:91:84
+   |
+91 |     pub fn new(http_response_stream: AsyncStream<crate::prelude::HttpResponse, 1>, jsonpath_expr: String) -> Self {
+   |                                                                                    ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_jsonpath_expr`
+
+warning: unused variable: `client`
+  --> packages/http3/src/builder/trait_impls.rs:99:13
+   |
+99 |         let client = crate::HttpClient::default();
+   |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_client`
+
+warning: unused variable: `window`
+   --> packages/http3/src/builder/trait_impls.rs:121:50
+    |
+121 |     pub fn http3_stream_receive_window(mut self, window: u32) -> Self {
+    |                                                  ^^^^^^ help: if this is intentional, prefix it with an underscore: `_window`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:121:40
+    |
+121 |     pub fn http3_stream_receive_window(mut self, window: u32) -> Self {
+    |                                        ----^^^^
+    |                                        |
+    |                                        help: remove this `mut`
+
+warning: unused variable: `window`
+   --> packages/http3/src/builder/trait_impls.rs:128:48
+    |
+128 |     pub fn http3_conn_receive_window(mut self, window: u32) -> Self {
+    |                                                ^^^^^^ help: if this is intentional, prefix it with an underscore: `_window`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:128:38
+    |
+128 |     pub fn http3_conn_receive_window(mut self, window: u32) -> Self {
+    |                                      ----^^^^
+    |                                      |
+    |                                      help: remove this `mut`
+
+warning: unused variable: `window`
+   --> packages/http3/src/builder/trait_impls.rs:135:40
+    |
+135 |     pub fn http3_send_window(mut self, window: u32) -> Self {
+    |                                        ^^^^^^ help: if this is intentional, prefix it with an underscore: `_window`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:135:30
+    |
+135 |     pub fn http3_send_window(mut self, window: u32) -> Self {
+    |                              ----^^^^
+    |                              |
+    |                              help: remove this `mut`
+
+warning: unused variable: `enable`
+   --> packages/http3/src/builder/trait_impls.rs:142:43
+    |
+142 |     pub fn http3_congestion_bbr(mut self, enable: bool) -> Self {
+    |                                           ^^^^^^ help: if this is intentional, prefix it with an underscore: `_enable`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:142:33
+    |
+142 |     pub fn http3_congestion_bbr(mut self, enable: bool) -> Self {
+    |                                 ----^^^^
+    |                                 |
+    |                                 help: remove this `mut`
+
+warning: unused variable: `size`
+   --> packages/http3/src/builder/trait_impls.rs:149:51
+    |
+149 |     pub fn http3_max_field_section_size(mut self, size: u64) -> Self {
+    |                                                   ^^^^ help: if this is intentional, prefix it with an underscore: `_size`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:149:41
+    |
+149 |     pub fn http3_max_field_section_size(mut self, size: u64) -> Self {
+    |                                         ----^^^^
+    |                                         |
+    |                                         help: remove this `mut`
+
+warning: unused variable: `enable`
+   --> packages/http3/src/builder/trait_impls.rs:156:40
+    |
+156 |     pub fn http3_send_grease(mut self, enable: bool) -> Self {
+    |                                        ^^^^^^ help: if this is intentional, prefix it with an underscore: `_enable`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:156:30
+    |
+156 |     pub fn http3_send_grease(mut self, enable: bool) -> Self {
+    |                              ----^^^^
+    |                              |
+    |                              help: remove this `mut`
+
+warning: unused variable: `enable`
+   --> packages/http3/src/builder/trait_impls.rs:170:44
+    |
+170 |     pub fn http2_adaptive_window(mut self, enable: bool) -> Self {
+    |                                            ^^^^^^ help: if this is intentional, prefix it with an underscore: `_enable`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:170:34
+    |
+170 |     pub fn http2_adaptive_window(mut self, enable: bool) -> Self {
+    |                                  ----^^^^
+    |                                  |
+    |                                  help: remove this `mut`
+
+warning: unused variable: `size`
+   --> packages/http3/src/builder/trait_impls.rs:177:43
+    |
+177 |     pub fn http2_max_frame_size(mut self, size: u32) -> Self {
+    |                                           ^^^^ help: if this is intentional, prefix it with an underscore: `_size`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/builder/trait_impls.rs:177:33
+    |
+177 |     pub fn http2_max_frame_size(mut self, size: u32) -> Self {
+    |                                 ----^^^^
+    |                                 |
+    |                                 help: remove this `mut`
+
+warning: unused variable: `version`
+  --> packages/http3/src/cache/response_cache/operations.rs:54:13
+   |
+54 |         let version = entry.version;
+   |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_version`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/cache/response_cache/operations.rs:88:13
+   |
+88 |         let mut response = crate::HttpResponse::new(
+   |             ----^^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: unused variable: `enable`
+  --> packages/http3/src/client/configuration.rs:76:30
+   |
+76 |     pub fn deflate(mut self, enable: bool) -> Self {
+   |                              ^^^^^^ help: if this is intentional, prefix it with an underscore: `_enable`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/client/configuration.rs:76:20
+   |
+76 |     pub fn deflate(mut self, enable: bool) -> Self {
+   |                    ----^^^^
+   |                    |
+   |                    help: remove this `mut`
+
+warning: unused variable: `via_proxy`
+  --> packages/http3/src/connect/service/direct.rs:44:9
+   |
+44 |         via_proxy: bool,
+   |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_via_proxy`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/connect/service/direct.rs:96:36
+   |
+96 | ...                   Ok(mut stream) => {
+   |                          ----^^^^^^
+   |                          |
+   |                          help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/connect/service/direct.rs:113:32
+    |
+113 | ...                   Ok(mut stream) => {
+    |                          ----^^^^^^
+    |                          |
+    |                          help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/connect/service/interface.rs:19:21
+   |
+19 |                 let mut connection_stream =
+   |                     ----^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     help: remove this `mut`
+
+warning: unused variable: `name`
+   --> packages/http3/src/http/response.rs:324:26
+    |
+324 |     pub fn header(&self, name: &str) -> Option<HeaderValue> {
+    |                          ^^^^ help: if this is intentional, prefix it with an underscore: `_name`
+
+warning: unused variable: `error`
+   --> packages/http3/src/http/response.rs:704:18
+    |
+704 |     fn bad_chunk(error: String) -> Self {
+    |                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_error`
+
+warning: unused variable: `e`
+ --> packages/http3/src/http/url.rs:8:46
+  |
+8 |     Url::parse(url_str).map(|_| ()).map_err(|e| {
+  |                                              ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `e`
+  --> packages/http3/src/http/url.rs:22:48
+   |
+22 |     let mut url = Url::parse(url_str).map_err(|e| {
+   |                                                ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `e`
+  --> packages/http3/src/http/url.rs:52:34
+   |
+52 |     Url::parse(url_str).map_err(|e| {
+   |                                  ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `e`
+  --> packages/http3/src/http/url.rs:92:45
+   |
+92 |     let mut url = Url::parse(base).map_err(|e| {
+   |                                             ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `index`
+  --> packages/http3/src/jsonpath/core_evaluator/filter_evaluation.rs:45:9
+   |
+45 |         index: usize,
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_index`
+
+warning: unused variable: `key`
+  --> packages/http3/src/jsonpath/core_evaluator/filter_evaluation.rs:85:9
+   |
+85 |         key: &str,
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_key`
+
+warning: unused variable: `value`
+  --> packages/http3/src/jsonpath/core_evaluator/recursive_descent.rs:88:9
+   |
+88 |         value: &Value,
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
+
+warning: unused variable: `selectors`
+  --> packages/http3/src/jsonpath/core_evaluator/recursive_descent.rs:89:9
+   |
+89 |         selectors: &[crate::jsonpath::ast::JsonSelector],
+   |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_selectors`
+
+warning: unused variable: `from_end`
+  --> packages/http3/src/jsonpath/core_evaluator/selector_application.rs:35:42
+   |
+35 |             JsonSelector::Index { index, from_end } => {
+   |                                          ^^^^^^^^ help: try ignoring the field: `from_end: _`
+
+warning: unused variable: `handle`
+  --> packages/http3/src/jsonpath/core_evaluator/timeout_protection.rs:39:13
+   |
+39 |         let handle = thread::spawn(move || {
+   |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle`
+
+warning: unused variable: `array_length`
+  --> packages/http3/src/jsonpath/deserializer/processor/array_selectors.rs:51:62
+   |
+51 | pub fn matches_slice(slice_expr: &str, current_index: usize, array_length: Option<usize>) -> bool {
+   |                                                              ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_array_length`
+
+warning: unused variable: `array_index`
+  --> packages/http3/src/jsonpath/deserializer/processor/path_evaluation.rs:27:5
+   |
+27 |     array_index: Option<usize>,
+   |     ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_array_index`
+
+warning: irrefutable `if let` pattern
+  --> packages/http3/src/jsonpath/error/conversions/std_conversions.rs:14:12
+   |
+14 |         if let line = error.line() {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+warning: unused variable: `offset`
+  --> packages/http3/src/jsonpath/error/conversions/std_conversions.rs:15:17
+   |
+15 |             let offset = line.saturating_sub(1) * 80; // Rough estimate
+   |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_offset`
+
+warning: unused variable: `selectors`
+  --> packages/http3/src/jsonpath/filter/core.rs:32:5
+   |
+32 |     selectors: &[crate::jsonpath::ast::JsonSelector],
+   |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_selectors`
+
+warning: unused variable: `filter_value`
+  --> packages/http3/src/jsonpath/filter/properties.rs:56:9
+   |
+56 |     let filter_value = super::conversions::json_value_to_filter_value(current);
+   |         ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_filter_value`
+
+warning: unused variable: `selectors`
+  --> packages/http3/src/jsonpath/functions/function_evaluator/value/core.rs:46:5
+   |
+46 |     selectors: &[crate::jsonpath::parser::JsonSelector],
+   |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_selectors`
+
+warning: unused variable: `body`
+   --> packages/http3/src/jsonpath/stream_processor/core.rs:108:17
+    |
+108 |             for body in body_stream {
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/jsonpath/tokenizer/characters.rs:16:5
+   |
+16 |     mut i: usize,
+   |     ----^
+   |     |
+   |     help: remove this `mut`
+
+warning: unused variable: `local_addr`
+  --> packages/http3/src/protocols/connection.rs:51:29
+   |
+51 |     pub fn new_h2_with_addr(local_addr: std::net::SocketAddr, remote_addr: std::net::SocketAddr) -> Self {
+   |                             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_local_addr`
+
+warning: unused variable: `remote_addr`
+  --> packages/http3/src/protocols/connection.rs:51:63
+   |
+51 |     pub fn new_h2_with_addr(local_addr: std::net::SocketAddr, remote_addr: std::net::SocketAddr) -> Self {
+   |                                                               ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_remote_addr`
+
+warning: unused variable: `is_client`
+  --> packages/http3/src/protocols/connection.rs:82:19
+   |
+82 |     pub fn new_h2(is_client: bool) -> Self {
+   |                   ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_is_client`
+
+warning: unused variable: `is_client`
+  --> packages/http3/src/protocols/connection.rs:92:19
+   |
+92 |     pub fn new_h3(is_client: bool) -> Self {
+   |                   ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_is_client`
+
+warning: unused variable: `close_stream`
+   --> packages/http3/src/protocols/connection.rs:276:21
+    |
+276 |                 let close_stream = connection.close();
+    |                     ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_close_stream`
+
+warning: unused variable: `request`
+  --> packages/http3/src/protocols/h2/adapter.rs:49:5
+   |
+49 |     request: HttpRequest,
+   |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+
+warning: unused variable: `config`
+  --> packages/http3/src/protocols/h2/adapter.rs:50:5
+   |
+50 |     config: H2Config,
+   |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+
+warning: unused variable: `connection`
+   --> packages/http3/src/protocols/h2/connection.rs:167:39
+    |
+167 |                 Ok((mut send_request, connection)) => {
+    |                                       ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_connection`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/h2/connection.rs:203:37
+    |
+203 | ...                   let mut pinned_future = Pin::new(&mut response_future);
+    |                           ----^^^^^^^^^^^^^
+    |                           |
+    |                           help: remove this `mut`
+
+warning: unused variable: `headers`
+  --> packages/http3/src/protocols/h2/h2.rs:49:5
+   |
+49 |     headers: HeaderMap,
+   |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_headers`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/protocols/h2/h2.rs:74:21
+   |
+74 |                 Ok((mut h2, connection)) => {
+   |                     ----^^
+   |                     |
+   |                     help: remove this `mut`
+
+warning: unused variable: `connection_id`
+  --> packages/http3/src/protocols/h2/streaming.rs:55:13
+   |
+55 |         let connection_id = self.connection_id.fetch_add(1, Ordering::SeqCst);
+   |             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_connection_id`
+
+warning: unused variable: `is_connected`
+  --> packages/http3/src/protocols/h2/streaming.rs:56:13
+   |
+56 |         let is_connected = self.is_connected.load(Ordering::Relaxed);
+   |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_is_connected`
+
+warning: unused variable: `send_request`
+  --> packages/http3/src/protocols/h2/streaming.rs:74:37
+   |
+74 |                     Poll::Ready(Ok((send_request, connection))) => {
+   |                                     ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_send_request`
+
+warning: variable does not need to be mutable
+  --> packages/http3/src/protocols/h2/streaming.rs:81:33
+   |
+81 | ...                   let mut pinned_conn = Pin::new(&mut conn);
+   |                           ----^^^^^^^^^^^
+   |                           |
+   |                           help: remove this `mut`
+
+warning: unused variable: `context`
+   --> packages/http3/src/protocols/h2/streaming.rs:188:21
+    |
+188 |             let mut context = Context::from_waker(waker);
+    |                     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_context`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/h2/streaming.rs:188:17
+    |
+188 |             let mut context = Context::from_waker(waker);
+    |                 ----^^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: unused variable: `config`
+  --> packages/http3/src/protocols/h2/strategy.rs:91:13
+   |
+91 |         let config = self.config.clone();
+   |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/h2/strategy.rs:352:13
+    |
+352 |         let mut response = HttpResponse::new(
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `cursor`
+   --> packages/http3/src/protocols/h3/connection.rs:139:37
+    |
+139 | ...                   let mut cursor = std::io::Cursor::new(&frame_data[..]);
+    |                               ^^^^^^ help: if this is intentional, prefix it with an underscore: `_cursor`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/h3/connection.rs:139:33
+    |
+139 | ...                   let mut cursor = std::io::Cursor::new(&frame_data[..]);
+    |                           ----^^^^^^
+    |                           |
+    |                           help: remove this `mut`
+
+warning: unused variable: `headers_tx`
+   --> packages/http3/src/protocols/h3/strategy.rs:110:14
+    |
+110 |         let (headers_tx, headers_internal) = AsyncStream::channel();
+    |              ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_headers_tx`
+
+warning: unused variable: `trailers_tx`
+   --> packages/http3/src/protocols/h3/strategy.rs:112:14
+    |
+112 |         let (trailers_tx, trailers_internal) = AsyncStream::channel();
+    |              ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trailers_tx`
+
+warning: unused variable: `headers`
+   --> packages/http3/src/protocols/h3/strategy.rs:117:13
+    |
+117 |         let headers = request.headers().clone();
+    |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_headers`
+
+warning: unused variable: `config`
+   --> packages/http3/src/protocols/h3/strategy.rs:131:13
+    |
+131 |         let config = self.config.clone();
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+
+warning: unused variable: `e`
+   --> packages/http3/src/protocols/h3/strategy.rs:155:21
+    |
+155 |                 Err(e) => {
+    |                     ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `stream_id`
+   --> packages/http3/src/protocols/h3/strategy.rs:402:25
+    |
+402 |                     Ok((stream_id, quiche::h3::Event::Headers { list, .. })) => {
+    |                         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_stream_id`
+
+warning: unused variable: `stream_id`
+   --> packages/http3/src/protocols/h3/strategy.rs:430:25
+    |
+430 |                     Ok((stream_id, quiche::h3::Event::Finished)) => {
+    |                         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_stream_id`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/h3/strategy.rs:496:13
+    |
+496 |         let mut response = HttpResponse::new(
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `local`
+  --> packages/http3/src/protocols/quiche/chunks.rs:65:24
+   |
+65 |     pub fn established(local: std::net::SocketAddr, peer: std::net::SocketAddr) -> Self {
+   |                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_local`
+
+warning: unused variable: `peer`
+  --> packages/http3/src/protocols/quiche/chunks.rs:65:53
+   |
+65 |     pub fn established(local: std::net::SocketAddr, peer: std::net::SocketAddr) -> Self {
+   |                                                     ^^^^ help: if this is intentional, prefix it with an underscore: `_peer`
+
+warning: unused variable: `recv`
+  --> packages/http3/src/protocols/quiche/chunks.rs:72:9
+   |
+72 |         recv: usize,
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_recv`
+
+warning: unused variable: `sent`
+  --> packages/http3/src/protocols/quiche/chunks.rs:73:9
+   |
+73 |         sent: usize,
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_sent`
+
+warning: unused variable: `lost`
+  --> packages/http3/src/protocols/quiche/chunks.rs:74:9
+   |
+74 |         lost: usize,
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_lost`
+
+warning: unused variable: `rtt`
+  --> packages/http3/src/protocols/quiche/chunks.rs:75:9
+   |
+75 |         rtt: std::time::Duration,
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_rtt`
+
+warning: unused variable: `cwnd`
+  --> packages/http3/src/protocols/quiche/chunks.rs:76:9
+   |
+76 |         cwnd: usize,
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_cwnd`
+
+warning: unused variable: `local`
+   --> packages/http3/src/protocols/quiche/chunks.rs:134:9
+    |
+134 |         local: std::net::SocketAddr,
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_local`
+
+warning: unused variable: `peer`
+   --> packages/http3/src/protocols/quiche/chunks.rs:135:9
+    |
+135 |         peer: std::net::SocketAddr,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_peer`
+
+warning: unused variable: `from`
+   --> packages/http3/src/protocols/quiche/chunks.rs:148:9
+    |
+148 |         from: std::net::SocketAddr,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_from`
+
+warning: unused variable: `local`
+   --> packages/http3/src/protocols/quiche/chunks.rs:149:9
+    |
+149 |         local: std::net::SocketAddr,
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_local`
+
+warning: unused variable: `bidirectional`
+   --> packages/http3/src/protocols/quiche/chunks.rs:205:42
+    |
+205 |     pub fn stream_opened(stream_id: u64, bidirectional: bool) -> Self {
+    |                                          ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_bidirectional`
+
+warning: unused variable: `data`
+   --> packages/http3/src/protocols/quiche/chunks.rs:271:40
+    |
+271 |     pub fn stream_data(stream_id: u64, data: Vec<u8>, fin: bool) -> Self {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_data`
+
+warning: unused variable: `fin`
+   --> packages/http3/src/protocols/quiche/chunks.rs:320:64
+    |
+320 |     pub fn bytes_written(stream_id: u64, bytes_written: usize, fin: bool) -> Self {
+    |                                                                ^^^ help: if this is intentional, prefix it with an underscore: `_fin`
+
+warning: unused variable: `conn_guard`
+   --> packages/http3/src/protocols/quiche/h3_adapter.rs:133:25
+    |
+133 |                 let mut conn_guard = match conn.lock() {
+    |                         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_conn_guard`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/quiche/h3_adapter.rs:133:21
+    |
+133 |                 let mut conn_guard = match conn.lock() {
+    |                     ----^^^^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: unused variable: `readable_streams`
+  --> packages/http3/src/protocols/quiche/streaming.rs:84:30
+   |
+84 |     pub fn streams_available(readable_streams: Vec<u64>, writable_streams: Vec<u64>) -> Self {
+   |                              ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_readable_streams`
+
+warning: unused variable: `writable_streams`
+  --> packages/http3/src/protocols/quiche/streaming.rs:84:58
+   |
+84 |     pub fn streams_available(readable_streams: Vec<u64>, writable_streams: Vec<u64>) -> Self {
+   |                                                          ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_writable_streams`
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/quiche/streaming.rs:295:30
+    |
+295 | pub fn read_readable_streams(mut connection: Connection) -> AsyncStream<QuicheConnectionChunk, 1024> {
+    |                              ----^^^^^^^^^^
+    |                              |
+    |                              help: remove this `mut`
+
+warning: unused variable: `trailers_sender`
+  --> packages/http3/src/protocols/response_converter.rs:38:10
+   |
+38 |     let (trailers_sender, trailers_stream) = AsyncStream::<crate::http::response::HttpHeader, 64>::channel();
+   |          ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trailers_sender`
+
+warning: unused variable: `trailers_stream`
+  --> packages/http3/src/protocols/response_converter.rs:38:27
+   |
+38 |     let (trailers_sender, trailers_stream) = AsyncStream::<crate::http::response::HttpHeader, 64>::channel();
+   |                           ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trailers_stream`
+
+warning: unused variable: `parsed_status`
+  --> packages/http3/src/protocols/response_converter.rs:57:38
+   |
+57 | ...                   let (parsed_status, parsed_headers) = parse_http_response_headers(header_section);
+   |                            ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_parsed_status`
+
+warning: unreachable pattern
+  --> packages/http3/src/protocols/auto_strategy.rs:61:17
+   |
+61 |                 _ => continue,
+   |                 ^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> packages/http3/src/protocols/auto_strategy.rs:61:17
+   |
+49 |                 HttpVersion::Http2 => {
+   |                 ------------------ matches some of the same values
+...
+58 |                 HttpVersion::Http3 => {
+   |                 ------------------ matches some of the same values
+...
+61 |                 _ => continue,
+   |                 ^ collectively making this unreachable
+   = note: `#[warn(unreachable_patterns)]` on by default
+
+warning: variable does not need to be mutable
+   --> packages/http3/src/protocols/transport.rs:458:9
+    |
+458 |     let mut conn = quiche::connect(
+    |         ----^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable `bytes_read` is assigned to, but never used
+   --> packages/http3/src/protocols/wire.rs:479:21
+    |
+479 |             let mut bytes_read = 0;
+    |                     ^^^^^^^^^^
+    |
+    = note: consider using `_bytes_read` instead
+
+warning: unused variable: `custom`
+  --> packages/http3/src/proxy/matcher/public_interface.rs:44:30
+   |
+44 |             Matcher_::Custom(custom) => {
+   |                              ^^^^^^ help: if this is intentional, prefix it with an underscore: `_custom`
+
+warning: unused variable: `ocsp_request`
+   --> packages/http3/src/tls/ocsp.rs:236:14
+    |
+236 |         let (ocsp_request, nonce) = self.create_ocsp_request(cert, issuer)?;
+    |              ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_ocsp_request`
+
+warning: unused variable: `nonce`
+   --> packages/http3/src/tls/ocsp.rs:236:28
+    |
+236 |         let (ocsp_request, nonce) = self.create_ocsp_request(cert, issuer)?;
+    |                            ^^^^^ help: if this is intentional, prefix it with an underscore: `_nonce`
+
+warning: type `matcher::types::Intercepted` is more private than the item `public_interface::<impl matcher::types::Matcher>::intercept`
+  --> packages/http3/src/proxy/matcher/public_interface.rs:38:5
+   |
+38 |     pub fn intercept(&self, uri: &Uri) -> Option<Intercepted> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method `public_interface::<impl matcher::types::Matcher>::intercept` is reachable at visibility `pub`
+   |
+note: but type `matcher::types::Intercepted` is only usable at visibility `pub(crate)`
+  --> packages/http3/src/proxy/matcher/types.rs:28:1
+   |
+28 | pub(crate) struct Intercepted {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+warning: field `jsonpath_config` is never read
+  --> packages/http3/src/builder/builder_core.rs:35:16
+   |
+25 | pub struct Http3Builder<S = BodyNotSet> {
+   |            ------------ field in this struct
+...
+35 |     pub(crate) jsonpath_config: Option<JsonPathStreaming>,
+   |                ^^^^^^^^^^^^^^^
+   |
+   = note: `Http3Builder` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: multiple fields are never read
+  --> packages/http3/src/connect/service/core.rs:21:16
+   |
+20 | pub struct ConnectorService {
+   |            ---------------- fields in this struct
+21 |     pub(super) http: HttpConnector,
+   |                ^^^^
+...
+25 |     pub(super) rustls_config: Option<std::sync::Arc<rustls::ClientConfig>>,
+   |                ^^^^^^^^^^^^^
+26 |     pub(super) intercepted: Intercepted,
+27 |     pub(super) user_agent: Option<http::HeaderValue>,
+   |                ^^^^^^^^^^
+28 |     pub(super) local_address: Option<std::net::IpAddr>,
+   |                ^^^^^^^^^^^^^
+29 |     pub(super) interface: Option<String>,
+   |                ^^^^^^^^^
+...
+32 |     pub(super) happy_eyeballs_timeout: Option<Duration>,
+   |                ^^^^^^^^^^^^^^^^^^^^^^
+33 |     pub(super) tls_info: bool,
+   |                ^^^^^^^^
+   |
+   = note: `ConnectorService` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: associated function `parse` is never used
+  --> packages/http3/src/cookie/core.rs:66:8
+   |
+65 | impl<'a> Cookie<'a> {
+   | ------------------- associated function in this implementation
+66 |     fn parse(value: &'a HeaderValue) -> Cookie<'a> {
+   |        ^^^^^
+
+warning: function `extract_response_cookie_headers` is never used
+   --> packages/http3/src/cookie/core.rs:136:15
+    |
+136 | pub(crate) fn extract_response_cookie_headers<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `extract_response_cookies` is never used
+   --> packages/http3/src/cookie/core.rs:142:15
+    |
+142 | pub(crate) fn extract_response_cookies<'a>(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `CookieParseError` is never constructed
+   --> packages/http3/src/cookie/core.rs:156:19
+    |
+156 | pub(crate) struct CookieParseError(cookie_crate::ParseError);
+    |                   ^^^^^^^^^^^^^^^^
+
+warning: function `add_cookie_header` is never used
+ --> packages/http3/src/cookie/utils.rs:8:15
+  |
+8 | pub(crate) fn add_cookie_header(
+  |               ^^^^^^^^^^^^^^^^^
+
+warning: method `kind` is never used
+  --> packages/http3/src/error/types.rs:59:19
+   |
+41 | impl Error {
+   | ---------- method in this implementation
+...
+59 |     pub(super) fn kind(&self) -> &Kind {
+   |                   ^^^^
+
+warning: struct `Escape` is never constructed
+ --> packages/http3/src/http/escape.rs:5:19
+  |
+5 | pub(crate) struct Escape<'a>(&'a [u8]);
+  |                   ^^^^^^
+
+warning: associated function `new` is never used
+ --> packages/http3/src/http/escape.rs:9:19
+  |
+8 | impl<'a> Escape<'a> {
+  | ------------------- associated function in this implementation
+9 |     pub(crate) fn new(bytes: &'a [u8]) -> Self {
+  |                   ^^^
+
+warning: function `try_uri` is never used
+  --> packages/http3/src/http/into_url.rs:90:19
+   |
+90 |     pub(crate) fn try_uri(url: &Url) -> std::result::Result<http::Uri, crate::HttpError> {
+   |                   ^^^^^^^
+
+warning: field `body` is never read
+   --> packages/http3/src/http/request.rs:163:5
+    |
+159 | pub struct HttpRequestBuilder {
+    |            ------------------ field in this struct
+...
+163 |     body: Option<Bytes>,
+    |     ^^^^
+    |
+    = note: `HttpRequestBuilder` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `http_client` is never read
+  --> packages/http3/src/http/resolver/core.rs:93:5
+   |
+74 | pub struct Resolver {
+   |            -------- field in this struct
+...
+93 |     http_client: Arc<HttpClient>,
+   |     ^^^^^^^^^^^
+   |
+   = note: `Resolver` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: methods `set_cached_etag` and `set_cached_last_modified` are never used
+   --> packages/http3/src/http/response.rs:641:19
+    |
+263 | impl HttpResponse {
+    | ----------------- methods in this implementation
+...
+641 |     pub(crate) fn set_cached_etag(&self, etag: String) {
+    |                   ^^^^^^^^^^^^^^^
+...
+648 |     pub(crate) fn set_cached_last_modified(&self, last_modified: String) {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `JsonPathIterator` is never constructed
+  --> packages/http3/src/jsonpath/deserializer/core/iterator.rs:11:12
+   |
+11 | pub struct JsonPathIterator<'a, T> {
+   |            ^^^^^^^^^^^^^^^^
+
+warning: multiple associated items are never used
+  --> packages/http3/src/jsonpath/deserializer/core/iterator.rs:20:12
+   |
+18 | impl<'a, T> JsonPathIterator<'a, T> {
+   | ----------------------------------- associated items in this implementation
+19 |     /// Create a new iterator with initial buffer
+20 |     pub fn new(initial_buffer: Vec<Value>) -> Self {
+   |            ^^^
+...
+30 |     pub fn empty() -> Self {
+   |            ^^^^^
+...
+40 |     pub fn extend(&mut self, values: Vec<Value>) {
+   |            ^^^^^^
+...
+45 |     pub fn finish(&mut self) {
+   |            ^^^^^^
+...
+50 |     pub fn has_next(&self) -> bool {
+   |            ^^^^^^^^
+...
+55 |     pub fn next_value(&mut self) -> Option<Value> {
+   |            ^^^^^^^^^^
+...
+66 |     pub fn reset(&mut self) {
+   |            ^^^^^
+...
+71 |     pub fn position(&self) -> usize {
+   |            ^^^^^^^^
+...
+76 |     pub fn len(&self) -> usize {
+   |            ^^^
+...
+81 |     pub fn is_empty(&self) -> bool {
+   |            ^^^^^^^^
+
+warning: trait `FromIo` is never used
+  --> packages/http3/src/jsonpath/error/conversions/helper_traits.rs:10:11
+   |
+10 | pub trait FromIo {
+   |           ^^^^^^
+
+warning: trait `FromSerde` is never used
+  --> packages/http3/src/jsonpath/error/conversions/helper_traits.rs:15:11
+   |
+15 | pub trait FromSerde {
+   |           ^^^^^^^^^
+
+warning: trait `IntoJsonPathError` is never used
+  --> packages/http3/src/jsonpath/error/conversions/helper_traits.rs:32:11
+   |
+32 | pub trait IntoJsonPathError<T> {
+   |           ^^^^^^^^^^^^^^^^^
+
+warning: trait `IntoJsonPathError` is never used
+ --> packages/http3/src/jsonpath/error/conversions/helpers.rs:8:11
+  |
+8 | pub trait IntoJsonPathError<T> {
+  |           ^^^^^^^^^^^^^^^^^
+
+warning: function `compare_values` is never used
+  --> packages/http3/src/jsonpath/filter/comparisons.rs:14:8
+   |
+14 | pub fn compare_values(
+   |        ^^^^^^^^^^^^^^
+
+warning: function `compare_values_with_context` is never used
+  --> packages/http3/src/jsonpath/filter/comparisons.rs:25:8
+   |
+25 | pub fn compare_values_with_context(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `json_value_to_filter_value` is never used
+  --> packages/http3/src/jsonpath/filter/conversions.rs:14:15
+   |
+14 | pub(super) fn json_value_to_filter_value(value: &serde_json::Value) -> FilterValue {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_expression` is never used
+  --> packages/http3/src/jsonpath/filter/conversions.rs:37:8
+   |
+37 | pub fn evaluate_expression(
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_expression_with_context` is never used
+  --> packages/http3/src/jsonpath/filter/conversions.rs:47:8
+   |
+47 | pub fn evaluate_expression_with_context(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `MISSING_PROPERTY_CONTEXT` is never used
+  --> packages/http3/src/jsonpath/filter/core.rs:15:11
+   |
+15 | pub const MISSING_PROPERTY_CONTEXT: &str = "__MISSING_PROPERTY__";
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `is_truthy` is never used
+  --> packages/http3/src/jsonpath/filter/core.rs:18:8
+   |
+18 | pub fn is_truthy(value: &serde_json::Value) -> bool {
+   |        ^^^^^^^^^
+
+warning: function `evaluate_jsonpath_selectors` is never used
+  --> packages/http3/src/jsonpath/filter/core.rs:30:8
+   |
+30 | pub fn evaluate_jsonpath_selectors(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `property_exists_and_truthy` is never used
+  --> packages/http3/src/jsonpath/filter/properties.rs:15:15
+   |
+15 | pub(super) fn property_exists_and_truthy(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `resolve_property_path_with_context` is never used
+  --> packages/http3/src/jsonpath/filter/properties.rs:64:15
+   |
+64 | pub(super) fn resolve_property_path_with_context(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `RegexCache` is never constructed
+  --> packages/http3/src/jsonpath/functions/types.rs:10:19
+   |
+10 | pub(super) struct RegexCache {
+   |                   ^^^^^^^^^^
+
+warning: associated items `new` and `get_or_compile` are never used
+  --> packages/http3/src/jsonpath/functions/types.rs:15:19
+   |
+14 | impl RegexCache {
+   | --------------- associated items in this implementation
+15 |     pub(super) fn new() -> Self {
+   |                   ^^^
+...
+22 |     pub(super) fn get_or_compile(&self, pattern: &str) -> Result<regex::Regex, regex::Error> {
+   |                   ^^^^^^^^^^^^^^
+
+warning: associated function `json_value_to_filter_value` is never used
+   --> packages/http3/src/jsonpath/functions/types.rs:165:19
+    |
+ 52 | impl FunctionEvaluator {
+    | ---------------------- associated function in this implementation
+...
+165 |     pub(super) fn json_value_to_filter_value(value: &serde_json::Value) -> FilterValue {
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `ArrayAccess` is never constructed
+  --> packages/http3/src/jsonpath/null_semantics/array_access.rs:11:12
+   |
+11 | pub struct ArrayAccess;
+   |            ^^^^^^^^^^^
+
+warning: associated function `access_array_index` is never used
+  --> packages/http3/src/jsonpath/null_semantics/array_access.rs:16:12
+   |
+13 | impl ArrayAccess {
+   | ---------------- associated function in this implementation
+...
+16 |     pub fn access_array_index(array: &JsonValue, index: i64) -> PropertyAccessResult {
+   |            ^^^^^^^^^^^^^^^^^^
+
+warning: struct `Comparison` is never constructed
+  --> packages/http3/src/jsonpath/null_semantics/comparison.rs:12:12
+   |
+12 | pub struct Comparison;
+   |            ^^^^^^^^^^
+
+warning: associated functions `evaluate_existence_filter` and `compare_with_null_semantics` are never used
+  --> packages/http3/src/jsonpath/null_semantics/comparison.rs:17:12
+   |
+14 | impl Comparison {
+   | --------------- associated functions in this implementation
+...
+17 |     pub fn evaluate_existence_filter(
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+26 |     pub fn compare_with_null_semantics(
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `Conversion` is never constructed
+  --> packages/http3/src/jsonpath/null_semantics/conversion.rs:11:12
+   |
+11 | pub struct Conversion;
+   |            ^^^^^^^^^^
+
+warning: associated functions `to_option`, `to_json_with_missing_marker`, and `is_missing_marker` are never used
+  --> packages/http3/src/jsonpath/null_semantics/conversion.rs:16:12
+   |
+13 | impl Conversion {
+   | --------------- associated functions in this implementation
+...
+16 |     pub fn to_option(result: &PropertyAccessResult) -> Option<JsonValue> {
+   |            ^^^^^^^^^
+...
+22 |     pub fn to_json_with_missing_marker(result: &PropertyAccessResult) -> JsonValue {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+28 |     pub fn is_missing_marker(value: &JsonValue) -> bool {
+   |            ^^^^^^^^^^^^^^^^^
+
+warning: struct `NullSemantics` is never constructed
+  --> packages/http3/src/jsonpath/null_semantics/core.rs:12:12
+   |
+12 | pub struct NullSemantics;
+   |            ^^^^^^^^^^^^^
+
+warning: multiple associated functions are never used
+   --> packages/http3/src/jsonpath/null_semantics/core.rs:22:12
+    |
+ 14 | impl NullSemantics {
+    | ------------------ associated functions in this implementation
+...
+ 22 |     pub fn access_property(object: &JsonValue, property_name: &str) -> PropertyAccessResult {
+    |            ^^^^^^^^^^^^^^^
+...
+ 31 |     pub fn access_property_path(root: &JsonValue, path: &[String]) -> PropertyAccessResult {
+    |            ^^^^^^^^^^^^^^^^^^^^
+...
+ 40 |     pub fn is_present(result: &PropertyAccessResult) -> bool {
+    |            ^^^^^^^^^^
+...
+ 49 |     pub fn to_option(result: &PropertyAccessResult) -> Option<JsonValue> {
+    |            ^^^^^^^^^
+...
+ 58 |     pub fn to_json_with_missing_marker(result: &PropertyAccessResult) -> JsonValue {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 64 |     pub fn is_missing_marker(value: &JsonValue) -> bool {
+    |            ^^^^^^^^^^^^^^^^^
+...
+ 73 |     pub fn access_array_index(array: &JsonValue, index: i64) -> PropertyAccessResult {
+    |            ^^^^^^^^^^^^^^^^^^
+...
+ 82 |     pub fn evaluate_existence_filter(context: &JsonValue, property_path: &[String]) -> bool {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 91 |     pub fn compare_with_null_semantics(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+102 |     pub fn generate_test_scenarios() -> Vec<(JsonValue, &'static str, PropertyAccessResult)> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+...
+138 |     pub fn validate_implementation() -> JsonPathResult<()> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `PropertyAccess` is never constructed
+ --> packages/http3/src/jsonpath/null_semantics/property_access.rs:9:12
+  |
+9 | pub struct PropertyAccess;
+  |            ^^^^^^^^^^^^^^
+
+warning: associated functions `access_property` and `access_property_path` are never used
+  --> packages/http3/src/jsonpath/null_semantics/property_access.rs:14:12
+   |
+11 | impl PropertyAccess {
+   | ------------------- associated functions in this implementation
+...
+14 |     pub fn access_property(object: &JsonValue, property_name: &str) -> PropertyAccessResult {
+   |            ^^^^^^^^^^^^^^^
+...
+27 |     pub fn access_property_path(object: &JsonValue, path: &[String]) -> PropertyAccessResult {
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_string_byte` is never used
+   --> packages/http3/src/jsonpath/state_machine/processors.rs:137:8
+    |
+137 | pub fn process_string_byte(
+    |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_numeric_byte` is never used
+   --> packages/http3/src/jsonpath/state_machine/processors.rs:157:8
+    |
+157 | pub fn process_numeric_byte(
+    |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `process_literal_byte` is never used
+   --> packages/http3/src/jsonpath/state_machine/processors.rs:182:8
+    |
+182 | pub fn process_literal_byte(
+    |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `transition_to_processing_object` is never used
+  --> packages/http3/src/jsonpath/state_machine/transitions.rs:35:8
+   |
+35 | pub fn transition_to_processing_object(machine: &mut StreamStateMachine) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `transition_to_finishing` is never used
+  --> packages/http3/src/jsonpath/state_machine/transitions.rs:46:8
+   |
+46 | pub fn transition_to_finishing(machine: &mut StreamStateMachine, expected_closes: usize) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `can_transition_to` is never used
+  --> packages/http3/src/jsonpath/state_machine/transitions.rs:88:8
+   |
+88 | pub fn can_transition_to(current: &JsonStreamState, target_state: StateType) -> bool {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: function `validate_transition` is never used
+   --> packages/http3/src/jsonpath/state_machine/transitions.rs:128:8
+    |
+128 | pub fn validate_transition(
+    |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `force_transition_to_state` is never used
+   --> packages/http3/src/jsonpath/state_machine/transitions.rs:149:8
+    |
+149 | pub fn force_transition_to_state(machine: &mut StreamStateMachine, new_state: JsonStreamState) {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `cache_key_buffer` is never read
+  --> packages/http3/src/middleware/cache.rs:22:5
+   |
+20 | pub struct CacheMiddleware {
+   |            --------------- field in this struct
+21 |     enabled: bool,
+22 |     cache_key_buffer: Arc<str>,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: `CacheMiddleware` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: static `FRAME_COUNTER` is never used
+ --> packages/http3/src/protocols/frames.rs:7:8
+  |
+7 | static FRAME_COUNTER: AtomicU64 = AtomicU64::new(0);
+  |        ^^^^^^^^^^^^^
+
+warning: function `create_thread_safe_noop_waker` is never used
+  --> packages/http3/src/protocols/h2/connection.rs:30:4
+   |
+30 | fn create_thread_safe_noop_waker() -> Waker {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `socket` is never read
+   --> packages/http3/src/protocols/quiche/streaming.rs:143:5
+    |
+141 | pub struct QuicheConnection {
+    |            ---------------- field in this struct
+142 |     connection: QuicheConnectionWrapper,
+143 |     socket: UdpSocket,
+    |     ^^^^^^
+    |
+    = note: `QuicheConnection` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: function `convert_h3_config_to_quiche` is never used
+   --> packages/http3/src/protocols/strategy.rs:428:4
+    |
+428 | fn convert_h3_config_to_quiche(h3_config: &H3Config) -> Result<quiche::Config, String> {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `convert_quiche_config_to_quiche` is never used
+   --> packages/http3/src/protocols/strategy.rs:468:4
+    |
+468 | fn convert_quiche_config_to_quiche(quiche_config: &QuicheConfig) -> Result<quiche::Config, String> {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `prefer` is never read
+  --> packages/http3/src/protocols/auto_strategy.rs:24:5
+   |
+18 | pub struct AutoStrategy {
+   |            ------------ field in this struct
+...
+24 |     prefer: Vec<HttpVersion>,
+   |     ^^^^^^
+
+warning: field `default_transport` is never read
+  --> packages/http3/src/protocols/transport.rs:33:5
+   |
+30 | pub struct TransportManager {
+   |            ---------------- field in this struct
+...
+33 |     default_transport: TransportType,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `TransportManager` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: associated function `read_varint_streaming` is never used
+   --> packages/http3/src/protocols/wire.rs:475:8
+    |
+313 | impl H3FrameParser {
+    | ------------------ associated function in this implementation
+...
+475 |     fn read_varint_streaming(data: Vec<u8>) -> AsyncStream<FrameChunk, 1024> {
+    |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `into_matcher` is never used
+  --> packages/http3/src/proxy/core/matcher_integration.rs:13:19
+   |
+10 | impl Proxy {
+   | ---------- method in this implementation
+...
+13 |     pub(crate) fn into_matcher(self) -> Result<(), crate::Error> {
+   |                   ^^^^^^^^^^^^
+
+warning: variant `Custom` is never constructed
+  --> packages/http3/src/proxy/matcher/types.rs:24:5
+   |
+22 | pub(crate) enum Matcher_ {
+   |                 -------- variant in this enum
+23 |     Util(super::implementation::Matcher),
+24 |     Custom(Custom),
+   |     ^^^^^^
+
+warning: fields `inner` and `extra` are never read
+  --> packages/http3/src/proxy/matcher/types.rs:29:16
+   |
+28 | pub(crate) struct Intercepted {
+   |                   ----------- fields in this struct
+29 |     pub(crate) inner: super::implementation::Intercept,
+   |                ^^^^^
+...
+32 |     pub(crate) extra: Extra,
+   |                ^^^^^
+
+warning: struct `ProxyUrl` is never constructed
+  --> packages/http3/src/proxy/url_handling.rs:16:19
+   |
+16 | pub(crate) struct ProxyUrl {
+   |                   ^^^^^^^^
+
+warning: associated items `new` and `into_url` are never used
+  --> packages/http3/src/proxy/url_handling.rs:22:12
+   |
+21 | impl ProxyUrl {
+   | ------------- associated items in this implementation
+22 |     pub fn new(url: crate::Url) -> Self {
+   |            ^^^
+...
+29 |     pub fn into_url(self) -> crate::Url {
+   |            ^^^^^^^^
+
+warning: function `url_auth` is never used
+  --> packages/http3/src/proxy/url_handling.rs:81:15
+   |
+81 | pub(crate) fn url_auth(url: &mut Url, username: &str, password: &str) {
+   |               ^^^^^^^^
+
+warning: field `func` is never read
+   --> packages/http3/src/proxy/url_handling.rs:231:16
+    |
+230 | pub struct Custom {
+    |            ------ field in this struct
+231 |     pub(crate) func: Arc<
+    |                ^^^^
+    |
+    = note: `Custom` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: function `new` is never used
+  --> packages/http3/src/tls/certificate/generation.rs:20:14
+   |
+20 | pub async fn new(
+   |              ^^^
+
+warning: function `generate_ca` is never used
+  --> packages/http3/src/tls/certificate/generation.rs:59:10
+   |
+59 | async fn generate_ca(
+   |          ^^^^^^^^^^^
+
+warning: function `load_ca` is never used
+   --> packages/http3/src/tls/certificate/generation.rs:112:10
+    |
+112 | async fn load_ca(
+    |          ^^^^^^^
+
+warning: function `generate_server_cert` is never used
+   --> packages/http3/src/tls/certificate/generation.rs:202:10
+    |
+202 | async fn generate_server_cert(
+    |          ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_peer_certificate` is never used
+  --> packages/http3/src/tls/certificate/parsing.rs:75:8
+   |
+75 | pub fn verify_peer_certificate(cert_pem: &str, expected_hostname: &str) -> Result<(), TlsError> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `verify_peer_certificate_comprehensive` is never used
+   --> packages/http3/src/tls/certificate/validation.rs:103:14
+    |
+103 | pub async fn verify_peer_certificate_comprehensive(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `generate_wildcard_certificate` is never used
+  --> packages/http3/src/tls/certificate/wildcard.rs:15:14
+   |
+15 | pub async fn generate_wildcard_certificate(xdg_config_home: &Path) -> Result<(), TlsError> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_existing_wildcard_cert` is never used
+   --> packages/http3/src/tls/certificate/wildcard.rs:125:10
+    |
+125 | async fn validate_existing_wildcard_cert(cert_path: &Path) -> Result<(), TlsError> {
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `http_client` is never read
+  --> packages/http3/src/tls/crl_cache.rs:30:5
+   |
+28 | pub struct CrlCache {
+   |            -------- field in this struct
+29 |     cache: Arc<RwLock<std::collections::HashMap<String, CrlCacheEntry>>>,
+30 |     http_client: crate::HttpClient,
+   |     ^^^^^^^^^^^
+   |
+   = note: `CrlCache` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: method `check_certificate_revocation` is never used
+   --> packages/http3/src/tls/crl_cache.rs:106:18
+    |
+ 51 | impl CrlCache {
+    | ------------- method in this implementation
+...
+106 |     pub async fn check_certificate_revocation(
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_encryption_passphrase` is never used
+  --> packages/http3/src/tls/key_encryption.rs:10:4
+   |
+10 | fn validate_encryption_passphrase() -> Result<String, TlsError> {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `has_weak_patterns` is never used
+  --> packages/http3/src/tls/key_encryption.rs:62:4
+   |
+62 | fn has_weak_patterns(passphrase: &str) -> bool {
+   |    ^^^^^^^^^^^^^^^^^
+
+warning: function `encrypt_private_key` is never used
+  --> packages/http3/src/tls/key_encryption.rs:96:14
+   |
+96 | pub async fn encrypt_private_key(key_pem: &str) -> Result<Vec<u8>, TlsError> {
+   |              ^^^^^^^^^^^^^^^^^^^
+
+warning: function `decrypt_private_key` is never used
+   --> packages/http3/src/tls/key_encryption.rs:144:14
+    |
+144 | pub async fn decrypt_private_key(encrypted_data: &[u8]) -> Result<SecureKeyMaterial, TlsError> {
+    |              ^^^^^^^^^^^^^^^^^^^
+
+warning: field `validation_timeout` is never read
+   --> packages/http3/src/tls/tls_manager.rs:469:5
+    |
+464 | struct EnterpriseServerCertVerifier {
+    |        ---------------------------- field in this struct
+...
+469 |     validation_timeout: Duration,
+    |     ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `EnterpriseServerCertVerifier` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: variant `ClientAuth` is never constructed
+  --> packages/http3/src/tls/types.rs:23:5
+   |
+17 | pub enum CertificateUsage {
+   |          ---------------- variant in this enum
+...
+23 |     ClientAuth,
+   |     ^^^^^^^^^^
+   |
+   = note: `CertificateUsage` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `SecureKeyMaterial` is never constructed
+  --> packages/http3/src/tls/types.rs:69:12
+   |
+69 | pub struct SecureKeyMaterial {
+   |            ^^^^^^^^^^^^^^^^^
+
+warning: associated items `new` and `as_bytes` are never used
+  --> packages/http3/src/tls/types.rs:74:12
+   |
+73 | impl SecureKeyMaterial {
+   | ---------------------- associated items in this implementation
+74 |     pub fn new(data: Vec<u8>) -> Self {
+   |            ^^^
+...
+78 |     pub fn as_bytes(&self) -> &[u8] {
+   |            ^^^^^^^^
+
+warning: field `domains` is never read
+   --> packages/http3/src/tls/builder/certificate.rs:105:5
+    |
+102 | pub struct CertificateValidatorWithInput {
+    |            ----------------------------- field in this struct
+...
+105 |     domains: Option<Vec<String>>,
+    |     ^^^^^^^
+    |
+    = note: `CertificateValidatorWithInput` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `is_wildcard` is never read
+   --> packages/http3/src/tls/builder/certificate.rs:613:5
+    |
+611 | pub struct CertificateGeneratorWithDomain {
+    |            ------------------------------ field in this struct
+612 |     domains: Vec<String>,
+613 |     is_wildcard: bool,
+    |     ^^^^^^^^^^^
+    |
+    = note: `CertificateGeneratorWithDomain` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: unused `RecvStream` that must be used
+   --> packages/http3/src/protocols/h2/streaming.rs:162:21
+    |
+162 |                     streams.swap_remove(index);
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: streams do nothing unless polled
+    = note: `#[warn(unused_must_use)]` on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+162 |                     let _ = streams.swap_remove(index);
+    |                     +++++++
+
+warning: `fluent_ai_http3` (lib) generated 340 warnings (run `cargo fix --lib -p fluent_ai_http3` to apply 149 suggestions)
+   Compiling fluent_ai_http3 v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/http3)
+warning: unused imports: `BadChunk`, `HttpError`, and `HttpStreamExt`
+  --> packages/http3/examples/fluent_builder.rs:16:23
+   |
+16 | use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpChunk, HttpError, HttpStreamExt};
+   |                       ^^^^^^^^                                 ^^^^^^^^^  ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+error[E0277]: the trait bound `fn(HeaderMap, Json<...>) -> ... {handle_post}: Handler<_, _>` is not satisfied
+   --> packages/http3/examples/fluent_builder.rs:313:30
+    |
+313 |         .route("/test", post(handle_post))
+    |                         ---- ^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(HeaderMap, Json<SerdeRequestType>) -> Json<Vec<...>> {handle_post}`
+    |                         |
+    |                         required by a bound introduced by this call
+    |
+    = note: Consider using `#[axum::debug_handler]` to improve the error message
+    = help: the following other types implement trait `Handler<T, S>`:
+              `Layered<L, H, T, S>` implements `Handler<T, S>`
+              `MethodRouter<S>` implements `Handler<(), S>`
+note: required by a bound in `axum::routing::post`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-0.8.4/src/routing/method_routing.rs:445:1
+    |
+445 | top_level_handler_fn!(post, POST);
+    | ^^^^^^^^^^^^^^^^^^^^^^----^^^^^^^
+    | |                     |
+    | |                     required by a bound in this function
+    | required by this bound in `post`
+    = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/examples/fluent_builder-d56301aaa7bfa7a7.long-type-17195617957839603556.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `fn(HeaderMap, Json<...>) -> ... {handle_put_json}: Handler<_, _>` is not satisfied
+   --> packages/http3/examples/fluent_builder.rs:314:33
+    |
+314 |         .route("/put/json", put(handle_put_json))
+    |                             --- ^^^^^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(HeaderMap, Json<JsonRequest>) -> Result<..., ...> {handle_put_json}`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = note: Consider using `#[axum::debug_handler]` to improve the error message
+    = help: the following other types implement trait `Handler<T, S>`:
+              `Layered<L, H, T, S>` implements `Handler<T, S>`
+              `MethodRouter<S>` implements `Handler<(), S>`
+note: required by a bound in `axum::routing::put`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-0.8.4/src/routing/method_routing.rs:446:1
+    |
+446 | top_level_handler_fn!(put, PUT);
+    | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
+    | |                     |
+    | |                     required by a bound in this function
+    | required by this bound in `put`
+    = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/examples/fluent_builder-d56301aaa7bfa7a7.long-type-4930858757870885650.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `fn(HeaderMap, Form<...>) -> ... {handle_put_form}: Handler<_, _>` is not satisfied
+   --> packages/http3/examples/fluent_builder.rs:315:33
+    |
+315 |         .route("/put/form", put(handle_put_form))
+    |                             --- ^^^^^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(HeaderMap, Form<HashMap<String, String>>) -> ... {handle_put_form}`
+    |                             |
+    |                             required by a bound introduced by this call
+    |
+    = note: Consider using `#[axum::debug_handler]` to improve the error message
+    = help: the following other types implement trait `Handler<T, S>`:
+              `Layered<L, H, T, S>` implements `Handler<T, S>`
+              `MethodRouter<S>` implements `Handler<(), S>`
+note: required by a bound in `axum::routing::put`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-0.8.4/src/routing/method_routing.rs:446:1
+    |
+446 | top_level_handler_fn!(put, PUT);
+    | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
+    | |                     |
+    | |                     required by a bound in this function
+    | required by this bound in `put`
+    = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/examples/fluent_builder-d56301aaa7bfa7a7.long-type-11754724206569168360.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `fn(HeaderMap, Json<...>) -> ... {handle_put_binary}: Handler<_, _>` is not satisfied
+   --> packages/http3/examples/fluent_builder.rs:316:35
+    |
+316 |         .route("/put/binary", put(handle_put_binary))
+    |                               --- ^^^^^^^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn(HeaderMap, Json<BinaryRequest>) -> ... {handle_put_binary}`
+    |                               |
+    |                               required by a bound introduced by this call
+    |
+    = note: Consider using `#[axum::debug_handler]` to improve the error message
+    = help: the following other types implement trait `Handler<T, S>`:
+              `Layered<L, H, T, S>` implements `Handler<T, S>`
+              `MethodRouter<S>` implements `Handler<(), S>`
+note: required by a bound in `axum::routing::put`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-0.8.4/src/routing/method_routing.rs:446:1
+    |
+446 | top_level_handler_fn!(put, PUT);
+    | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
+    | |                     |
+    | |                     required by a bound in this function
+    | required by this bound in `put`
+    = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/examples/fluent_builder-d56301aaa7bfa7a7.long-type-11245403829178727027.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `fn() -> Response<std::string::String> {handle_csv_download}: Handler<_, _>` is not satisfied
+   --> packages/http3/examples/fluent_builder.rs:317:42
+    |
+317 |         .route("/download/file.csv", get(handle_csv_download))
+    |                                      --- ^^^^^^^^^^^^^^^^^^^ the trait `Handler<_, _>` is not implemented for fn item `fn() -> Response<std::string::String> {handle_csv_download}`
+    |                                      |
+    |                                      required by a bound introduced by this call
+    |
+    = note: Consider using `#[axum::debug_handler]` to improve the error message
+    = help: the following other types implement trait `Handler<T, S>`:
+              `Layered<L, H, T, S>` implements `Handler<T, S>`
+              `MethodRouter<S>` implements `Handler<(), S>`
+note: required by a bound in `axum::routing::get`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-0.8.4/src/routing/method_routing.rs:441:1
+    |
+441 | top_level_handler_fn!(get, GET);
+    | ^^^^^^^^^^^^^^^^^^^^^^---^^^^^^
+    | |                     |
+    | |                     required by a bound in this function
+    | required by this bound in `get`
+    = note: this error originates in the macro `top_level_handler_fn` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no method named `headers` found for struct `Http3Builder<S>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:359:10
+    |
+357 | /     Http3::json()
+358 | |         .debug() // Enable debug logging
+359 | |         .headers([("x-api-key", "abc123")])
+    | |_________-^^^^^^^
+    |
+help: there is a method `header` with a similar name, but with different arguments
+   --> /Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/headers.rs:112:5
+    |
+112 |     pub fn header(mut self, name: &str, value: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `accept_content_type` found for struct `Http3Builder<S>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:365:10
+    |
+364 |       let response_data = Http3::json()
+    |  _________________________-
+365 | |         .accept_content_type(ContentType::ApplicationJson)
+    | |_________-^^^^^^^^^^^^^^^^^^^
+    |
+help: there is a method `content_type` with a similar name
+    |
+365 -         .accept_content_type(ContentType::ApplicationJson)
+365 +         .content_type(ContentType::ApplicationJson)
+    |
+
+error[E0599]: no method named `collect_one` found for struct `fluent_ai_http3::AsyncStream<T, CAP>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:377:10
+    |
+373 |       let response_data2 = Http3::json()
+    |  __________________________-
+374 | |         .api_key("abc123")
+375 | |         .body(&request)
+376 | |         .post(&server_url)
+377 | |         .collect_one::<SerdeResponseType>();
+    | |_________-^^^^^^^^^^^
+    |
+help: there is a method `collect` with a similar name
+    |
+377 -         .collect_one::<SerdeResponseType>();
+377 +         .collect::<SerdeResponseType>();
+    |
+
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
+   --> packages/http3/examples/fluent_builder.rs:382:10
+    |
+382 |         .basic_auth([("user", "password")])
+    |          ^^^^^^^^^^------------------------ argument #2 of type `std::option::Option<&str>` is missing
+    |
+note: expected `&str`, found `[(&str, &str); 1]`
+   --> packages/http3/examples/fluent_builder.rs:382:21
+    |
+382 |         .basic_auth([("user", "password")])
+    |                     ^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected reference `&str`
+                   found array `[(&str, &str); 1]`
+note: method defined here
+   --> /Volumes/samsung_t9/fluent-ai/packages/http3/src/auth/builder.rs:121:12
+    |
+121 |     pub fn basic_auth(self, username: &str, password: Option<&str>) -> Self {
+    |            ^^^^^^^^^^
+help: provide the argument
+    |
+382 -         .basic_auth([("user", "password")])
+382 +         .basic_auth(/* &str */, /* std::option::Option<&str> */)
+    |
+
+error[E0599]: no method named `collect_one` found for struct `fluent_ai_http3::AsyncStream<T, CAP>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:385:10
+    |
+381 |       let _serde_response_type = Http3::form_urlencoded()
+    |  ________________________________-
+382 | |         .basic_auth([("user", "password")])
+383 | |         .body(&request)
+384 | |         .post(&server_url)
+385 | |         .collect_one::<SerdeResponseType>();
+    | |_________-^^^^^^^^^^^
+    |
+help: there is a method `collect` with a similar name
+    |
+385 -         .collect_one::<SerdeResponseType>();
+385 +         .collect::<SerdeResponseType>();
+    |
+
+error[E0599]: no method named `headers` found for struct `Http3Builder<S>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:392:10
+    |
+391 |       let _stream_with_error_handling: fluent_ai_async::AsyncStream<HttpChunk, 1024> = Http3::json()
+    |  ______________________________________________________________________________________-
+392 | |         .headers([("foo", "bar"), ("fizz", "buzz")])
+    | |_________-^^^^^^^
+    |
+help: there is a method `header` with a similar name, but with different arguments
+   --> /Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/headers.rs:112:5
+    |
+112 |     pub fn header(mut self, name: &str, value: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no variant or associated item named `bad_chunk` found for enum `HttpChunk` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:402:28
+    |
+402 |                 HttpChunk::bad_chunk(e.to_string())
+    |                            ^^^^^^^^^ variant or associated item not found in `HttpChunk`
+    |
+note: there are multiple different versions of crate `sugars_builders` in the dependency graph
+   --> /Users/davidmaple/.cargo/git/checkouts/cyrup-sugars-291ac2b5c478a1ed/150c82d/packages/builders/src/chunk_handler.rs:8:1
+    |
+  8 | pub trait MessageChunk: Sized {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | |
+    | this is the trait that is needed
+    | this is the trait that was imported
+  9 |     /// Create a bad chunk from an error
+ 10 |     fn bad_chunk(error: String) -> Self;
+    |     ------------------------------------ the associated function is available for `HttpChunk` here
+    |
+   ::: packages/http3/examples/fluent_builder.rs:15:5
+    |
+ 15 | use cyrup_sugars::prelude::*;
+    |     --------------------- `MessageChunk` imported here doesn't correspond to the right version of crate `sugars_builders`
+
+error[E0599]: no method named `headers` found for struct `Http3Builder<S>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:410:10
+    |
+409 |       let error_response = Http3::json()
+    |  __________________________-
+410 | |         .headers([("foo", "bar"), ("fizz", "buzz")])
+    | |_________-^^^^^^^
+    |
+help: there is a method `header` with a similar name, but with different arguments
+   --> /Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/headers.rs:112:5
+    |
+112 |     pub fn header(mut self, name: &str, value: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `headers` found for struct `Http3Builder<S>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:422:10
+    |
+421 |       let download_result = Http3::json()
+    |  ___________________________-
+422 | |         .headers([("x-api-key", "abc123")])
+    | |_________-^^^^^^^
+    |
+help: there is a method `header` with a similar name, but with different arguments
+   --> /Volumes/samsung_t9/fluent-ai/packages/http3/src/builder/headers.rs:112:5
+    |
+112 |     pub fn header(mut self, name: &str, value: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `collect_one` found for struct `fluent_ai_http3::AsyncStream<T, CAP>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:450:10
+    |
+446 |       let json_response = Http3::json()
+    |  _________________________-
+447 | |         .debug()
+448 | |         .body(&json_request)
+449 | |         .put(&json_url)
+450 | |         .collect_one::<JsonResponse>();
+    | |_________-^^^^^^^^^^^
+    |
+help: there is a method `collect` with a similar name
+    |
+450 -         .collect_one::<JsonResponse>();
+450 +         .collect::<JsonResponse>();
+    |
+
+error[E0599]: no method named `collect_one` found for struct `fluent_ai_http3::AsyncStream<T, CAP>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:466:10
+    |
+462 |       let form_response = Http3::form_urlencoded()
+    |  _________________________-
+463 | |         .debug()
+464 | |         .body(&form_params)
+465 | |         .put(&form_url)
+466 | |         .collect_one::<FormResponse>();
+    | |_________-^^^^^^^^^^^
+    |
+help: there is a method `collect` with a similar name
+    |
+466 -         .collect_one::<FormResponse>();
+466 +         .collect::<FormResponse>();
+    |
+
+error[E0599]: no method named `collect_one` found for struct `fluent_ai_http3::AsyncStream<T, CAP>` in the current scope
+   --> packages/http3/examples/fluent_builder.rs:482:10
+    |
+478 |       let binary_response = Http3::json() // Send as JSON
+    |  ___________________________-
+479 | |         .debug()
+480 | |         .body(&binary_request)
+481 | |         .put(&binary_url)
+482 | |         .collect_one::<BinaryResponse>();
+    | |_________-^^^^^^^^^^^
+    |
+help: there is a method `collect` with a similar name
+    |
+482 -         .collect_one::<BinaryResponse>();
+482 +         .collect::<BinaryResponse>();
+    |
+
+Some errors have detailed explanations: E0061, E0277, E0599.
+For more information about an error, try `rustc --explain E0061`.
+warning: `fluent_ai_http3` (example "fluent_builder") generated 1 warning
+error: could not compile `fluent_ai_http3` (example "fluent_builder") due to 17 previous errors; 1 warning emitted

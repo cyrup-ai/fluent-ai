@@ -1,9 +1,10 @@
 //! Configuration management for SweetMCP Server
 
+use std::{env, sync::Arc, time::Duration};
+
 use anyhow::{Context, Result};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::{env, sync::Arc, time::Duration};
 
 /// Main configuration structure for SweetMCP Server
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -1,0 +1,27 @@
+[package]
+name = "sweet_mcp_type"
+version = "0.1.0"
+edition = "2024"
+authors = ["David Maple<david@cyrup.ai>"]
+description = "Zero-Serde, high-perf JSON/TOML (de)serialization for MCP 2025-03-26"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# ----------------------------
+# SIMD-accelerated JSON DOM:
+#  • Disable serde_impl (no Serde)
+#  • Re-enable runtime_detections + fast-number parsing
+# ----------------------------
+simd-json = { version = "0.15.1", default-features = false, features = ["known-key", "runtime-detection", "swar-number-parsing", "value-no-dup-keys"] }
+smallvec = "1.15.0"
+
+# ----------------------------
+# Zero-copy editable TOML DOM:
+#  • `easy` feature restores Clone/Eq on Item
+# ----------------------------
+toml_edit = { version = "0.22.26"}
+value-trait = "0.11.0"
+
+# (Optional, for tests; bring in `pretty_assertions` or similar if desired)
+[dev-dependencies]
+pretty_assertions = "1.4.1"

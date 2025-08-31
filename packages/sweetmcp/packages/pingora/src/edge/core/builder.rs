@@ -4,16 +4,16 @@
 //! of EdgeService instances with zero allocation patterns and blazing-fast
 //! performance.
 
-use super::service::{EdgeService, EdgeServiceError};
-use crate::{
-    config::Config,
-    peer_discovery::PeerRegistry,
-    rate_limit::AdvancedRateLimitManager,
-    shutdown::ShutdownCoordinator,
-};
 use std::sync::Arc;
+
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, info};
+
+use super::service::{EdgeService, EdgeServiceError};
+use crate::{
+    config::Config, peer_discovery::PeerRegistry, rate_limit::AdvancedRateLimitManager,
+    shutdown::ShutdownCoordinator,
+};
 
 /// Builder for EdgeService with flexible configuration
 pub struct EdgeServiceBuilder {
@@ -39,7 +39,10 @@ impl EdgeServiceBuilder {
 
     /// Set configuration with validation
     pub fn with_config(mut self, cfg: Arc<Config>) -> Self {
-        debug!("Setting configuration with {} upstreams", cfg.upstreams.len());
+        debug!(
+            "Setting configuration with {} upstreams",
+            cfg.upstreams.len()
+        );
         self.cfg = Some(cfg);
         self
     }
@@ -66,7 +69,10 @@ impl EdgeServiceBuilder {
     }
 
     /// Set custom shutdown coordinator with optimized shutdown handling
-    pub fn with_custom_shutdown_coordinator(mut self, coordinator: Arc<ShutdownCoordinator>) -> Self {
+    pub fn with_custom_shutdown_coordinator(
+        mut self,
+        coordinator: Arc<ShutdownCoordinator>,
+    ) -> Self {
         debug!("Setting custom shutdown coordinator");
         self.custom_shutdown_coordinator = Some(coordinator);
         self
@@ -76,14 +82,17 @@ impl EdgeServiceBuilder {
     pub fn build(self) -> Result<EdgeService, EdgeServiceError> {
         info!("Building EdgeService");
 
-        let cfg = self.cfg.ok_or_else(|| 
-            EdgeServiceError::ConfigurationError("Configuration is required".to_string()))?;
-        
-        let bridge_tx = self.bridge_tx.ok_or_else(|| 
-            EdgeServiceError::ConfigurationError("Bridge channel is required".to_string()))?;
-        
-        let peer_registry = self.peer_registry.ok_or_else(|| 
-            EdgeServiceError::ConfigurationError("Peer registry is required".to_string()))?;
+        let cfg = self.cfg.ok_or_else(|| {
+            EdgeServiceError::ConfigurationError("Configuration is required".to_string())
+        })?;
+
+        let bridge_tx = self.bridge_tx.ok_or_else(|| {
+            EdgeServiceError::ConfigurationError("Bridge channel is required".to_string())
+        })?;
+
+        let peer_registry = self.peer_registry.ok_or_else(|| {
+            EdgeServiceError::ConfigurationError("Peer registry is required".to_string())
+        })?;
 
         // Create base service
         let mut service = EdgeService::new(cfg, bridge_tx, peer_registry);
@@ -126,9 +135,7 @@ impl EdgeServiceBuilder {
         });
 
         // Create test peer registry if not provided
-        let peer_registry = self.peer_registry.unwrap_or_else(|| {
-            PeerRegistry::new()
-        });
+        let peer_registry = self.peer_registry.unwrap_or_else(|| PeerRegistry::new());
 
         // Build with test configuration
         Self {
@@ -137,26 +144,27 @@ impl EdgeServiceBuilder {
             peer_registry: Some(peer_registry),
             custom_rate_limiter: self.custom_rate_limiter,
             custom_shutdown_coordinator: self.custom_shutdown_coordinator,
-        }.build()
+        }
+        .build()
     }
 
     /// Validate builder state before building
     pub fn validate(&self) -> Result<(), EdgeServiceError> {
         if self.cfg.is_none() {
             return Err(EdgeServiceError::ConfigurationError(
-                "Configuration must be set before building".to_string()
+                "Configuration must be set before building".to_string(),
             ));
         }
 
         if self.bridge_tx.is_none() {
             return Err(EdgeServiceError::ConfigurationError(
-                "Bridge channel must be set before building".to_string()
+                "Bridge channel must be set before building".to_string(),
             ));
         }
 
         if self.peer_registry.is_none() {
             return Err(EdgeServiceError::ConfigurationError(
-                "Peer registry must be set before building".to_string()
+                "Peer registry must be set before building".to_string(),
             ));
         }
 
@@ -164,13 +172,13 @@ impl EdgeServiceBuilder {
         if let Some(ref cfg) = self.cfg {
             if cfg.upstreams.is_empty() {
                 return Err(EdgeServiceError::ConfigurationError(
-                    "At least one upstream must be configured".to_string()
+                    "At least one upstream must be configured".to_string(),
                 ));
             }
 
             if cfg.jwt_secret.is_empty() {
                 return Err(EdgeServiceError::ConfigurationError(
-                    "JWT secret must be configured".to_string()
+                    "JWT secret must be configured".to_string(),
                 ));
             }
         }
@@ -290,9 +298,15 @@ impl BuilderStatus {
         let required_components = 3.0; // config, bridge_channel, peer_registry
         let mut completed = 0.0;
 
-        if self.has_config { completed += 1.0; }
-        if self.has_bridge_channel { completed += 1.0; }
-        if self.has_peer_registry { completed += 1.0; }
+        if self.has_config {
+            completed += 1.0;
+        }
+        if self.has_bridge_channel {
+            completed += 1.0;
+        }
+        if self.has_peer_registry {
+            completed += 1.0;
+        }
 
         (completed / required_components) * 100.0
     }

@@ -3,7 +3,7 @@ mod certificate_parsing_tests {
     use std::time::SystemTime;
 
     use rcgen::{CertificateParams, DistinguishedName, DnType, SanType};
-    use sweetmcp::tls::{CertificateUsage, TlsManager};
+    use sweetmcp::tls::Tls;
 
     // Generate a valid test certificate that mimics Let's Encrypt structure
     fn generate_test_certificate() -> String {

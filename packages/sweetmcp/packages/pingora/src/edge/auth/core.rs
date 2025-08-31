@@ -4,12 +4,14 @@
 //! authentication and authorization with zero allocation patterns and
 //! blazing-fast performance.
 
-use super::super::core::{EdgeService, EdgeServiceError};
+use std::sync::Arc;
+
 use bytes::Bytes;
 use pingora::http::Method;
 use pingora_proxy::Session;
-use std::sync::Arc;
 use tracing::{debug, error, info, warn};
+
+use super::super::core::{EdgeService, EdgeServiceError};
 
 /// Authentication handler with optimized token validation
 pub struct AuthHandler;
@@ -133,12 +135,16 @@ impl AuthContext {
 
     /// Get user ID if authenticated
     pub fn user_id(&self) -> Option<&str> {
-        self.user_claims.as_ref().map(|claims| claims.user_id.as_str())
+        self.user_claims
+            .as_ref()
+            .map(|claims| claims.user_id.as_str())
     }
 
     /// Get username if authenticated
     pub fn username(&self) -> Option<&str> {
-        self.user_claims.as_ref().map(|claims| claims.username.as_str())
+        self.user_claims
+            .as_ref()
+            .map(|claims| claims.username.as_str())
     }
 
     /// Get all user roles
@@ -162,7 +168,9 @@ impl AuthContext {
         self.user_claims
             .as_ref()
             .map(|claims| {
-                roles.iter().any(|role| claims.roles.contains(&role.to_string()))
+                roles
+                    .iter()
+                    .any(|role| claims.roles.contains(&role.to_string()))
             })
             .unwrap_or(false)
     }
@@ -172,7 +180,9 @@ impl AuthContext {
         self.user_claims
             .as_ref()
             .map(|claims| {
-                roles.iter().all(|role| claims.roles.contains(&role.to_string()))
+                roles
+                    .iter()
+                    .all(|role| claims.roles.contains(&role.to_string()))
             })
             .unwrap_or(false)
     }
@@ -182,7 +192,9 @@ impl AuthContext {
         self.user_claims
             .as_ref()
             .map(|claims| {
-                permissions.iter().any(|perm| claims.permissions.contains(&perm.to_string()))
+                permissions
+                    .iter()
+                    .any(|perm| claims.permissions.contains(&perm.to_string()))
             })
             .unwrap_or(false)
     }
@@ -192,7 +204,9 @@ impl AuthContext {
         self.user_claims
             .as_ref()
             .map(|claims| {
-                permissions.iter().all(|perm| claims.permissions.contains(&perm.to_string()))
+                permissions
+                    .iter()
+                    .all(|perm| claims.permissions.contains(&perm.to_string()))
             })
             .unwrap_or(false)
     }
@@ -204,7 +218,7 @@ impl AuthContext {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            
+
             if claims.expires_at > now {
                 Some(std::time::Duration::from_secs(claims.expires_at - now))
             } else {
@@ -220,7 +234,7 @@ impl AuthContext {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            
+
             std::time::Duration::from_secs(now.saturating_sub(claims.issued_at))
         })
     }
@@ -254,14 +268,11 @@ impl AuthContext {
     pub fn is_valid(&self) -> bool {
         match self.is_authenticated {
             true => {
-                self.auth_method != AuthMethod::None 
+                self.auth_method != AuthMethod::None
                     && self.user_claims.is_some()
                     && !self.is_expired()
             }
-            false => {
-                self.auth_method == AuthMethod::None 
-                    && self.user_claims.is_none()
-            }
+            false => self.auth_method == AuthMethod::None && self.user_claims.is_none(),
         }
     }
 }
@@ -307,7 +318,7 @@ impl UserClaims {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let expires_at = now + 3600; // 1 hour
 
         Self::new(user_id, username, roles, permissions, expires_at)
@@ -319,7 +330,7 @@ impl UserClaims {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         now > self.expires_at
     }
 
@@ -329,7 +340,7 @@ impl UserClaims {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         if self.expires_at > now {
             Some(std::time::Duration::from_secs(self.expires_at - now))
         } else {
@@ -343,7 +354,7 @@ impl UserClaims {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         std::time::Duration::from_secs(now.saturating_sub(self.issued_at))
     }
 

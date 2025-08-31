@@ -1,10 +1,11 @@
-use pingora::Result;
-use pingora_load_balancing::{discovery::ServiceDiscovery, Backend};
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
+
+use pingora::Result;
+use pingora_load_balancing::{discovery::ServiceDiscovery, Backend};
+use serde::{Deserialize, Serialize};
 use tokio::time::interval;
 use tracing::{debug, info, warn};
 

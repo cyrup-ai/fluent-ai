@@ -4,26 +4,30 @@
 //! for converting GraphQL, JSON-RPC, Cap'n Proto, and MCP Streamable HTTP
 //! protocols with zero allocation patterns and blazing-fast performance.
 
-pub mod types;
 pub mod conversion;
 pub mod parsers;
+pub mod schema_introspection;
+pub mod types;
+
+#[cfg(test)]
+mod schema_introspection_test;
+
+#[cfg(test)]
+mod integration_test;
 
 // Re-export key types and functions for ergonomic usage
-pub use types::{
-    Proto, ProtocolContext, ProtocolMetadata, ConversionOptions, ConversionResult,
-    ConversionError, ErrorSeverity, ProtocolDetection, DetectionMethod,
-};
-
 pub use conversion::{
-    to_json_rpc, to_json_rpc_with_headers, from_json_rpc, detect_protocol,
-    validate_json_rpc, create_error_response, get_conversion_stats, ConversionStats,
+    create_error_response, detect_protocol, from_json_rpc, to_json_rpc, to_json_rpc_with_headers,
+    validate_json_rpc,
 };
-
 pub use parsers::{
-    graphql_to_json_rpc, capnp_to_json_rpc, graphql_from_json_rpc, capnp_from_json_rpc,
-    parse_graphql_variables, validate_graphql_query, extract_operation_type,
-    extract_operation_name, create_graphql_error, parse_capnp_message,
-    validate_capnp_format, get_parser_stats, ParserStats,
+    capnp_from_json_rpc, capnp_to_json_rpc, create_graphql_error, extract_operation_name,
+    extract_operation_type, graphql_from_json_rpc, graphql_to_json_rpc, parse_capnp_message,
+    parse_graphql_variables, validate_capnp_format, validate_graphql_query,
+};
+pub use types::{
+    ConversionError, ConversionOptions, ConversionResult, DetectionMethod, ErrorSeverity, Proto,
+    ProtocolContext, ProtocolDetection, ProtocolMetadata,
 };
 
 /// Convenience function to normalize any protocol to JSON-RPC

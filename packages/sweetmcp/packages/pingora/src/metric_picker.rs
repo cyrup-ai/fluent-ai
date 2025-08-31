@@ -1,7 +1,5 @@
 //! Sugora peer picker that selects the lowest `node_load1`.
 
-use pingora::protocols::l4::socket::SocketAddr;
-use pingora_load_balancing::Backend;
 use std::{
     collections::BTreeSet,
     sync::{
@@ -9,6 +7,9 @@ use std::{
         Arc,
     },
 };
+
+use pingora::protocols::l4::socket::SocketAddr;
+use pingora_load_balancing::Backend;
 
 /// Metrics-based backend picker that selects the backend with lowest load
 pub struct MetricPicker {

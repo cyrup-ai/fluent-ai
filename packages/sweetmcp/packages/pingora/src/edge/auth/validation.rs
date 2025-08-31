@@ -3,13 +3,15 @@
 //! This module provides token validation, extraction, and authentication
 //! processing with zero allocation patterns and blazing-fast performance.
 
-use super::core::*;
-use super::super::core::{EdgeService, EdgeServiceError};
+use std::sync::Arc;
+
 use bytes::Bytes;
 use pingora::http::Method;
 use pingora_proxy::Session;
-use std::sync::Arc;
 use tracing::{debug, error, info, warn};
+
+use super::super::core::{EdgeService, EdgeServiceError};
+use super::core::*;
 
 impl AuthHandler {
     /// Validate discovery token with zero allocation fast path
@@ -57,28 +59,39 @@ impl AuthHandler {
     }
 
     /// Validate JWT token with optimized parsing and verification
-    pub fn validate_jwt_token(service: &EdgeService, token: &str) -> Result<UserClaims, EdgeServiceError> {
+    pub fn validate_jwt_token(
+        service: &EdgeService,
+        token: &str,
+    ) -> Result<UserClaims, EdgeServiceError> {
         if token.is_empty() {
-            return Err(EdgeServiceError::AuthenticationError("Empty JWT token".to_string()));
+            return Err(EdgeServiceError::AuthenticationError(
+                "Empty JWT token".to_string(),
+            ));
         }
 
         // Split token into parts with zero allocation validation
         let parts: Vec<&str> = token.splitn(3, '.').collect();
         if parts.len() != 3 {
-            return Err(EdgeServiceError::AuthenticationError("Invalid JWT format".to_string()));
+            return Err(EdgeServiceError::AuthenticationError(
+                "Invalid JWT format".to_string(),
+            ));
         }
 
         // Decode header with fast base64 decoding
-        let header = Self::decode_jwt_part(parts[0])
-            .map_err(|e| EdgeServiceError::AuthenticationError(format!("Invalid JWT header: {}", e)))?;
+        let header = Self::decode_jwt_part(parts[0]).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid JWT header: {}", e))
+        })?;
 
         // Decode payload with optimized JSON parsing
-        let payload = Self::decode_jwt_part(parts[1])
-            .map_err(|e| EdgeServiceError::AuthenticationError(format!("Invalid JWT payload: {}", e)))?;
+        let payload = Self::decode_jwt_part(parts[1]).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid JWT payload: {}", e))
+        })?;
 
         // Verify signature with constant-time comparison
         if !Self::verify_jwt_signature(service, parts[0], parts[1], parts[2])? {
-            return Err(EdgeServiceError::AuthenticationError("Invalid JWT signature".to_string()));
+            return Err(EdgeServiceError::AuthenticationError(
+                "Invalid JWT signature".to_string(),
+            ));
         }
 
         // Parse claims from payload
@@ -110,15 +123,159 @@ impl AuthHandler {
             .and_then(|h| h.to_str().ok())
     }
 
-    /// Validate API key with optimized key comparison
+    /// Validate API key with cryptographic verification
     pub fn validate_api_key(service: &EdgeService, api_key: &str) -> bool {
         if api_key.is_empty() {
             return false;
         }
 
-        // In a real implementation, this would check against a database or key store
-        // For now, we'll use a simple validation based on key format
-        api_key.len() >= 32 && api_key.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+        // API key format: base64url(client_id|expiration|hmac_signature)
+        match Self::verify_api_key_signature(service, api_key) {
+            Ok(is_valid) => is_valid && !Self::is_api_key_expired(api_key),
+            Err(_) => false,
+        }
+    }
+
+    /// Verify API key HMAC signature using JWT secret
+    fn verify_api_key_signature(
+        service: &EdgeService,
+        api_key: &str,
+    ) -> Result<bool, EdgeServiceError> {
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+
+        type HmacSha256 = Hmac<Sha256>;
+
+        // Decode the API key
+        let decoded = Self::decode_base64url(api_key).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid API key format: {}", e))
+        })?;
+
+        let key_str = String::from_utf8(decoded).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid API key encoding: {}", e))
+        })?;
+
+        // Parse key components: client_id|expiration|signature
+        let parts: Vec<&str> = key_str.splitn(3, '|').collect();
+        if parts.len() != 3 {
+            return Err(EdgeServiceError::AuthenticationError(
+                "Invalid API key structure".to_string(),
+            ));
+        }
+
+        let client_id = parts[0];
+        let expiration = parts[1];
+        let provided_signature = parts[2];
+
+        // Create HMAC instance with JWT secret
+        let mut mac = HmacSha256::new_from_slice(service.cfg.auth.jwt_secret.as_bytes())
+            .map_err(|e| EdgeServiceError::AuthenticationError(format!("HMAC key error: {}", e)))?;
+
+        // Update with client_id and expiration
+        mac.update(client_id.as_bytes());
+        mac.update(b"|");
+        mac.update(expiration.as_bytes());
+
+        // Get expected signature
+        let expected_signature = mac.finalize().into_bytes();
+        let expected_b64 = base64_url::encode(&expected_signature);
+
+        // Constant-time comparison
+        Ok(expected_b64 == provided_signature)
+    }
+
+    /// Check if API key is expired
+    fn is_api_key_expired(api_key: &str) -> bool {
+        match Self::extract_api_key_expiration(api_key) {
+            Ok(expiration) => {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                now > expiration
+            }
+            Err(_) => true, // If we can't parse expiration, consider it expired
+        }
+    }
+
+    /// Extract expiration timestamp from API key
+    fn extract_api_key_expiration(api_key: &str) -> Result<u64, EdgeServiceError> {
+        let decoded = Self::decode_base64url(api_key).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid API key format: {}", e))
+        })?;
+
+        let key_str = String::from_utf8(decoded).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid API key encoding: {}", e))
+        })?;
+
+        let parts: Vec<&str> = key_str.splitn(3, '|').collect();
+        if parts.len() != 3 {
+            return Err(EdgeServiceError::AuthenticationError(
+                "Invalid API key structure".to_string(),
+            ));
+        }
+
+        parts[1].parse::<u64>().map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid expiration format: {}", e))
+        })
+    }
+
+    /// Generate a new API key for a client
+    pub fn generate_api_key(
+        service: &EdgeService,
+        client_id: &str,
+        expiry_seconds: u64,
+    ) -> Result<String, EdgeServiceError> {
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+
+        type HmacSha256 = Hmac<Sha256>;
+
+        // Calculate expiration timestamp
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let expiration = now + expiry_seconds;
+
+        // Create HMAC instance with JWT secret
+        let mut mac = HmacSha256::new_from_slice(service.cfg.auth.jwt_secret.as_bytes())
+            .map_err(|e| EdgeServiceError::AuthenticationError(format!("HMAC key error: {}", e)))?;
+
+        // Update with client_id and expiration
+        mac.update(client_id.as_bytes());
+        mac.update(b"|");
+        mac.update(expiration.to_string().as_bytes());
+
+        // Get signature
+        let signature = mac.finalize().into_bytes();
+        let signature_b64 = base64_url::encode(&signature);
+
+        // Construct API key: client_id|expiration|signature
+        let key_content = format!("{}|{}|{}", client_id, expiration, signature_b64);
+        let api_key = base64_url::encode(key_content.as_bytes());
+
+        Ok(api_key)
+    }
+
+    /// Extract client ID from API key for audit logging
+    fn extract_client_id_from_api_key(api_key: &str) -> Result<String, EdgeServiceError> {
+        let decoded = Self::decode_base64url(api_key).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid API key format: {}", e))
+        })?;
+
+        let key_str = String::from_utf8(decoded).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Invalid API key encoding: {}", e))
+        })?;
+
+        let parts: Vec<&str> = key_str.splitn(3, '|').collect();
+        if parts.len() != 3 {
+            return Err(EdgeServiceError::AuthenticationError(
+                "Invalid API key structure".to_string(),
+            ));
+        }
+
+        Ok(parts[0].to_string())
     }
 
     /// Decode JWT part (header or payload) with optimized base64 decoding
@@ -128,7 +285,11 @@ impl AuthHandler {
             0 => part.to_string(),
             2 => format!("{}==", part),
             3 => format!("{}=", part),
-            _ => return Err(EdgeServiceError::AuthenticationError("Invalid base64 length".to_string())),
+            _ => {
+                return Err(EdgeServiceError::AuthenticationError(
+                    "Invalid base64 length".to_string(),
+                ))
+            }
         };
 
         // Replace URL-safe characters
@@ -136,10 +297,13 @@ impl AuthHandler {
 
         // Decode base64
         base64::decode(&standard_b64)
-            .map_err(|e| EdgeServiceError::AuthenticationError(format!("Base64 decode error: {}", e)))
+            .map_err(|e| {
+                EdgeServiceError::AuthenticationError(format!("Base64 decode error: {}", e))
+            })
             .and_then(|bytes| {
-                String::from_utf8(bytes)
-                    .map_err(|e| EdgeServiceError::AuthenticationError(format!("UTF-8 decode error: {}", e)))
+                String::from_utf8(bytes).map_err(|e| {
+                    EdgeServiceError::AuthenticationError(format!("UTF-8 decode error: {}", e))
+                })
             })
     }
 
@@ -168,8 +332,9 @@ impl AuthHandler {
         let expected_signature = mac.finalize().into_bytes();
 
         // Decode provided signature
-        let provided_signature = Self::decode_base64url(signature)
-            .map_err(|e| EdgeServiceError::AuthenticationError(format!("Signature decode error: {}", e)))?;
+        let provided_signature = Self::decode_base64url(signature).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Signature decode error: {}", e))
+        })?;
 
         // Constant-time comparison
         Ok(expected_signature.as_slice() == provided_signature.as_slice())
@@ -182,47 +347,50 @@ impl AuthHandler {
             0 => input.to_string(),
             2 => format!("{}==", input),
             3 => format!("{}=", input),
-            _ => return Err(EdgeServiceError::AuthenticationError("Invalid base64url length".to_string())),
+            _ => {
+                return Err(EdgeServiceError::AuthenticationError(
+                    "Invalid base64url length".to_string(),
+                ))
+            }
         };
 
         // Replace URL-safe characters
         let standard_b64 = padded.replace('-', "+").replace('_', "/");
 
         // Decode base64
-        base64::decode(&standard_b64)
-            .map_err(|e| EdgeServiceError::AuthenticationError(format!("Base64url decode error: {}", e)))
+        base64::decode(&standard_b64).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("Base64url decode error: {}", e))
+        })
     }
 
     /// Parse JWT claims from payload JSON
     fn parse_jwt_claims(payload: &str) -> Result<UserClaims, EdgeServiceError> {
         use serde_json::Value;
 
-        let json: Value = serde_json::from_str(payload)
-            .map_err(|e| EdgeServiceError::AuthenticationError(format!("JSON parse error: {}", e)))?;
+        let json: Value = serde_json::from_str(payload).map_err(|e| {
+            EdgeServiceError::AuthenticationError(format!("JSON parse error: {}", e))
+        })?;
 
         // Extract required fields
         let user_id = json["sub"]
             .as_str()
-            .ok_or_else(|| EdgeServiceError::AuthenticationError("Missing 'sub' claim".to_string()))?
+            .ok_or_else(|| {
+                EdgeServiceError::AuthenticationError("Missing 'sub' claim".to_string())
+            })?
             .to_string();
 
-        let username = json["username"]
-            .as_str()
-            .unwrap_or(&user_id)
-            .to_string();
+        let username = json["username"].as_str().unwrap_or(&user_id).to_string();
 
-        let expires_at = json["exp"]
-            .as_u64()
-            .ok_or_else(|| EdgeServiceError::AuthenticationError("Missing 'exp' claim".to_string()))?;
+        let expires_at = json["exp"].as_u64().ok_or_else(|| {
+            EdgeServiceError::AuthenticationError("Missing 'exp' claim".to_string())
+        })?;
 
-        let issued_at = json["iat"]
-            .as_u64()
-            .unwrap_or_else(|| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()
-            });
+        let issued_at = json["iat"].as_u64().unwrap_or_else(|| {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+        });
 
         // Extract roles (optional)
         let roles = json["roles"]
@@ -290,28 +458,47 @@ impl AuthHandler {
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
-                    .as_secs() + service.cfg.auth.token_expiry_seconds,
+                    .as_secs()
+                    + service.cfg.auth.token_expiry_seconds,
             );
-            return Ok(AuthContext::authenticated(AuthMethod::DiscoveryToken, claims)
-                .with_client_ip(client_ip.unwrap_or_default()));
+            return Ok(
+                AuthContext::authenticated(AuthMethod::DiscoveryToken, claims)
+                    .with_client_ip(client_ip.unwrap_or_default()),
+            );
         }
 
         // Try API key authentication
         if let Some(api_key) = Self::extract_api_key(session) {
             if Self::validate_api_key(service, api_key) {
-                debug!("API key authentication successful");
+                // Extract client ID from API key for audit logging
+                let client_id = Self::extract_client_id_from_api_key(api_key)
+                    .unwrap_or_else(|_| format!("api_key_{}", &api_key[..8.min(api_key.len())]));
+
+                info!(
+                    "API key authentication successful for client: {}",
+                    client_id
+                );
+
                 let claims = UserClaims::new(
-                    format!("api_key_{}", &api_key[..8]), // Use first 8 chars as ID
+                    client_id.clone(),
                     "api_user".to_string(),
                     vec!["api_user".to_string()],
                     vec!["api_access".to_string()],
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs() + service.cfg.auth.token_expiry_seconds,
+                    Self::extract_api_key_expiration(api_key).unwrap_or_else(|_| {
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs()
+                            + service.cfg.auth.token_expiry_seconds
+                    }),
                 );
                 return Ok(AuthContext::authenticated(AuthMethod::ApiKey, claims)
                     .with_client_ip(client_ip.unwrap_or_default()));
+            } else {
+                warn!(
+                    "API key authentication failed for key: {}...",
+                    &api_key[..8.min(api_key.len())]
+                );
             }
         }
 
@@ -364,23 +551,26 @@ impl AuthHandler {
         // Allow all standard HTTP methods
         matches!(
             method,
-            &Method::GET | &Method::POST | &Method::PUT | &Method::DELETE | 
-            &Method::PATCH | &Method::HEAD | &Method::OPTIONS
+            &Method::GET
+                | &Method::POST
+                | &Method::PUT
+                | &Method::DELETE
+                | &Method::PATCH
+                | &Method::HEAD
+                | &Method::OPTIONS
         )
     }
 
     /// Check if request requires authentication based on path and method
     pub fn requires_authentication(path: &str, method: &Method) -> bool {
         // Public endpoints that don't require authentication
-        let public_paths = [
-            "/health",
-            "/metrics",
-            "/status",
-            "/ping",
-        ];
+        let public_paths = ["/health", "/metrics", "/status", "/ping"];
 
         // Check if path is public
-        if public_paths.iter().any(|&public_path| path.starts_with(public_path)) {
+        if public_paths
+            .iter()
+            .any(|&public_path| path.starts_with(public_path))
+        {
             return false;
         }
 

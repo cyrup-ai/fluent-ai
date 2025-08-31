@@ -8,11 +8,12 @@
 
 #![allow(dead_code)]
 
-use once_cell::sync::Lazy;
-use prometheus::{register_int_counter, register_int_gauge, IntCounter, IntGauge};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use once_cell::sync::Lazy;
+use prometheus::{register_int_counter, register_int_gauge, IntCounter, IntGauge};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 

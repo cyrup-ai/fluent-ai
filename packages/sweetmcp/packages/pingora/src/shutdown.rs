@@ -6,13 +6,14 @@
 //! - Discovery deregistration before shutdown
 //! - State preservation for fast recovery
 
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tokio::net::UdpSocket;
 use tokio::signal;

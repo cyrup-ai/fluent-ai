@@ -1,0 +1,38 @@
+[package]
+name = "mcp-client-traits"
+version = "0.1.0"
+edition = "2024"
+authors = ["CYRUP AI"]
+description = "Common traits for MCP client implementations using sweet-mcp-type"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Core MCP types and high-performance JSON serialization
+sweet_mcp_type = { path = "../sweet-mcp-type" }
+
+# Async runtime for trait method implementations
+tokio = { version = "1.47.0", features = ["full"] }
+
+# Error handling 
+thiserror = "2.0.9"
+anyhow = "1.0.94"
+
+# HTTP client abstractions
+reqwest = { version = "0.12.9", features = ["json"] }
+
+# UUID generation for request IDs
+uuid = { version = "1.11.0", features = ["v4"] }
+
+# Logging and tracing
+tracing = "0.1.41"
+
+# JSON value trait for object access
+value-trait = "0.11.0"
+
+# High-performance JSON parsing (to match sweet-mcp-type)
+simd-json = { version = "0.15.1", default-features = false, features = ["known-key", "runtime-detection", "swar-number-parsing", "value-no-dup-keys"] }
+
+[dev-dependencies]
+# Testing utilities
+tokio-test = "0.4.4"
+pretty_assertions = "1.4.1"

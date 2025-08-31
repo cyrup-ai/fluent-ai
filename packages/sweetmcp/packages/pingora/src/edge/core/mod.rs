@@ -4,22 +4,14 @@
 //! service initialization, operations, and builder pattern with zero allocation
 //! patterns and blazing-fast performance.
 
-pub mod service;
-pub mod operations;
 pub mod builder;
+pub mod operations;
+pub mod service;
 
 // Re-export key types and functions for ergonomic usage
-pub use service::{
-    EdgeService, ServiceStatus, ServiceMetrics, EdgeServiceError, ErrorSeverity,
-};
-
-pub use operations::{
-    HealthStatus, ServiceStatistics,
-};
-
-pub use builder::{
-    EdgeServiceBuilder, BuilderStatus, BuilderPreset,
-};
+pub use builder::{BuilderPreset, BuilderStatus, EdgeServiceBuilder};
+pub use operations::{HealthStatus, ServiceStatistics};
+pub use service::{EdgeService, EdgeServiceError, ErrorSeverity, ServiceMetrics, ServiceStatus};
 
 /// Create a new EdgeService with default configuration
 pub fn edge_service(

@@ -4,11 +4,13 @@
 //! encryption/decryption automatically with zero allocation patterns
 //! and blazing-fast performance.
 
+use std::sync::Arc;
+
+use anyhow::Result;
+use tracing::{debug, warn};
+
 use crate::crypto::core::*;
 use crate::crypto::operations::*;
-use anyhow::Result;
-use std::sync::Arc;
-use tracing::{debug, warn};
 
 /// Secure token wrapper that handles encryption/decryption automatically
 pub struct SecureDiscoveryToken {
@@ -55,7 +57,7 @@ impl SecureDiscoveryToken {
 
         let encrypted = self.manager.encrypt_token(token).await?;
         let encrypted_str = serde_json::to_string(&encrypted)?;
-        
+
         debug!("Token encrypted for transmission");
         Ok(encrypted_str)
     }
@@ -75,11 +77,11 @@ impl SecureDiscoveryToken {
     pub async fn from_encrypted(&mut self, encrypted_str: &str) -> Result<()> {
         let encrypted: EncryptedToken = serde_json::from_str(encrypted_str)?;
         let token = self.manager.decrypt_token(&encrypted).await?;
-        
+
         self.raw_token = Some(token);
         self.cached_encrypted = Some(encrypted_str.to_string());
         self.metadata = None; // Will be populated on demand
-        
+
         debug!("Token decrypted from transmission");
         Ok(())
     }
@@ -118,7 +120,9 @@ impl SecureDiscoveryToken {
 
     /// Validate token format
     pub fn validate_format(&self) -> Result<()> {
-        let token = self.raw_token.as_ref()
+        let token = self
+            .raw_token
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("No token set"))?;
 
         if token.is_empty() {
@@ -134,7 +138,10 @@ impl SecureDiscoveryToken {
         }
 
         // Check for valid characters (alphanumeric + some symbols)
-        if !token.chars().all(|c| c.is_alphanumeric() || "-_.:".contains(c)) {
+        if !token
+            .chars()
+            .all(|c| c.is_alphanumeric() || "-_.:".contains(c))
+        {
             return Err(anyhow::anyhow!("Token contains invalid characters"));
         }
 
@@ -194,7 +201,7 @@ impl SecureDiscoveryToken {
             manager: Arc::clone(&self.manager),
             raw_token: self.raw_token.clone(),
             cached_encrypted: None, // Don't copy cache
-            metadata: None, // Don't copy metadata
+            metadata: None,         // Don't copy metadata
         }
     }
 
@@ -206,7 +213,7 @@ impl SecureDiscoveryToken {
 
         let encrypted_str = self.to_encrypted().await?;
         let encrypted: EncryptedToken = serde_json::from_str(&encrypted_str)?;
-        
+
         Ok(self.manager.verify_token_integrity(&encrypted).await)
     }
 
@@ -217,11 +224,23 @@ impl SecureDiscoveryToken {
         let token_length = self.token_length();
         let has_cached_encrypted = self.cached_encrypted.is_some();
         let has_metadata = self.metadata.is_some();
-        
+
         let is_valid_format = self.validate_format().is_ok();
-        let is_expired = if is_set { self.is_expired().await.unwrap_or(true) } else { false };
-        let age = if is_set { Some(self.get_age().await.unwrap_or_default()) } else { None };
-        let integrity_valid = if is_set { self.verify_integrity().await.unwrap_or(false) } else { false };
+        let is_expired = if is_set {
+            self.is_expired().await.unwrap_or(true)
+        } else {
+            false
+        };
+        let age = if is_set {
+            Some(self.get_age().await.unwrap_or_default())
+        } else {
+            None
+        };
+        let integrity_valid = if is_set {
+            self.verify_integrity().await.unwrap_or(false)
+        } else {
+            false
+        };
 
         Ok(SecureTokenStats {
             is_set,
@@ -253,7 +272,7 @@ impl SecureDiscoveryToken {
                 if a.len() != b.len() {
                     return false;
                 }
-                
+
                 // Constant-time comparison
                 let mut result = 0u8;
                 for (byte_a, byte_b) in a.bytes().zip(b.bytes()) {
@@ -271,10 +290,10 @@ impl SecureDiscoveryToken {
         let base_size = std::mem::size_of::<Self>();
         let raw_token_size = self.raw_token.as_ref().map_or(0, |t| t.len());
         let cached_encrypted_size = self.cached_encrypted.as_ref().map_or(0, |c| c.len());
-        let metadata_size = if self.metadata.is_some() { 
-            std::mem::size_of::<TokenMetadata>() 
-        } else { 
-            0 
+        let metadata_size = if self.metadata.is_some() {
+            std::mem::size_of::<TokenMetadata>()
+        } else {
+            0
         };
 
         base_size + raw_token_size + cached_encrypted_size + metadata_size
@@ -298,23 +317,33 @@ pub struct SecureTokenStats {
 impl SecureTokenStats {
     /// Check if token is in healthy state
     pub fn is_healthy(&self) -> bool {
-        self.is_set 
-            && !self.is_empty 
-            && self.is_valid_format 
-            && !self.is_expired 
+        self.is_set
+            && !self.is_empty
+            && self.is_valid_format
+            && !self.is_expired
             && self.integrity_valid
     }
 
     /// Get health score (0-100)
     pub fn health_score(&self) -> u8 {
         let mut score = 0u8;
-        
-        if self.is_set { score += 20; }
-        if !self.is_empty { score += 15; }
-        if self.is_valid_format { score += 15; }
-        if !self.is_expired { score += 25; }
-        if self.integrity_valid { score += 25; }
-        
+
+        if self.is_set {
+            score += 20;
+        }
+        if !self.is_empty {
+            score += 15;
+        }
+        if self.is_valid_format {
+            score += 15;
+        }
+        if !self.is_expired {
+            score += 25;
+        }
+        if self.integrity_valid {
+            score += 25;
+        }
+
         score
     }
 
@@ -332,19 +361,6 @@ impl SecureTokenStats {
             Some("integrity_failure")
         } else {
             None
-        }
-    }
-}
-
-impl Default for SecureDiscoveryToken {
-    fn default() -> Self {
-        // This creates an invalid token that will panic if used
-        // In practice, always use SecureDiscoveryToken::new()
-        Self {
-            manager: Arc::new(TokenManager::new().expect("Failed to create token manager")),
-            raw_token: None,
-            cached_encrypted: None,
-            metadata: None,
         }
     }
 }

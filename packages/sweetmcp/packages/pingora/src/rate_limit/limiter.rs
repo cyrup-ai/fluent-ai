@@ -3,13 +3,15 @@
 //! This module provides the core rate limiting functionality with advanced algorithms
 //! and zero allocation fast paths for blazing-fast performance.
 
-use super::algorithms::{TokenBucket, SlidingWindow, RateLimitAlgorithm};
-use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use dashmap::DashMap;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
+
+use super::algorithms::{HybridAlgorithm, RateLimitAlgorithm, SlidingWindow, TokenBucket};
 
 /// Token bucket rate limiting algorithm configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,11 +73,7 @@ pub struct AdvancedRateLimitManager {
 
 impl AdvancedRateLimitManager {
     /// Create new advanced rate limiting manager with optimized initialization
-    pub fn new(
-        requests_per_second: f64,
-        burst_size: u32,
-        window_size_seconds: u64,
-    ) -> Self {
+    pub fn new(requests_per_second: f64, burst_size: u32, window_size_seconds: u64) -> Self {
         let global_config = RateLimitConfig {
             token_bucket: TokenBucketConfig {
                 capacity: burst_size,
@@ -102,12 +100,7 @@ impl AdvancedRateLimitManager {
     }
 
     /// Check if request is allowed with fast path validation
-    pub fn check_request(
-        &self,
-        endpoint: &str,
-        peer_id: Option<&str>,
-        request_count: u32,
-    ) -> bool {
+    pub fn check_request(&self, endpoint: &str, peer_id: Option<&str>, request_count: u32) -> bool {
         // Fast path: Check if rate limiting is disabled
         if !self.global_config.enabled {
             return true;
@@ -144,54 +137,63 @@ impl AdvancedRateLimitManager {
         }
 
         // Check peer-specific rate limit if peer_id is provided
-        if allowed && let Some(peer) = peer_id {
-            if let Some(mut limiter) = self.peer_limiters.get_mut(peer) {
-                for _ in 0..request_count {
-                    if !limiter.try_request() {
-                        allowed = false;
-                        break;
+        if allowed {
+            if let Some(peer) = peer_id {
+                if let Some(mut limiter) = self.peer_limiters.get_mut(peer) {
+                    for _ in 0..request_count {
+                        if !limiter.try_request() {
+                            allowed = false;
+                            break;
+                        }
                     }
-                }
-            } else {
-                // Create new peer limiter with optimized peer limiter creation
-                let limiter = self.create_limiter_for_peer(peer);
-                let mut requests_allowed = 0;
-                for _ in 0..request_count {
-                    if limiter.try_request() {
-                        requests_allowed += 1;
-                    } else {
-                        break;
+                } else {
+                    // Create new peer limiter with optimized peer limiter creation
+                    let limiter = self.create_limiter_for_peer(peer);
+                    let mut requests_allowed = 0;
+                    for _ in 0..request_count {
+                        if limiter.try_request() {
+                            requests_allowed += 1;
+                        } else {
+                            break;
+                        }
                     }
+                    allowed = requests_allowed == request_count;
+                    self.peer_limiters.insert(peer.to_string(), limiter);
                 }
-                allowed = requests_allowed == request_count;
-                self.peer_limiters.insert(peer.to_string(), limiter);
             }
         }
 
         // Update statistics with atomic operations
         if allowed {
-            self.stats.requests_allowed.fetch_add(request_count as u64, Ordering::Relaxed);
+            self.stats
+                .requests_allowed
+                .fetch_add(request_count as u64, Ordering::Relaxed);
         } else {
-            self.stats.requests_denied.fetch_add(request_count as u64, Ordering::Relaxed);
+            self.stats
+                .requests_denied
+                .fetch_add(request_count as u64, Ordering::Relaxed);
         }
 
         allowed
     }
 
     /// Create rate limiter for specific endpoint with optimized creation
-    fn create_limiter_for_endpoint(&self, endpoint: &str) -> Box<dyn RateLimitAlgorithm + Send + Sync> {
+    fn create_limiter_for_endpoint(
+        &self,
+        endpoint: &str,
+    ) -> Box<dyn RateLimitAlgorithm + Send + Sync> {
         // Use endpoint-specific configuration if available, otherwise use global config
         match self.global_config.algorithm {
             RateLimitAlgorithmType::TokenBucket => {
                 Box::new(TokenBucket::new(self.global_config.token_bucket.clone()))
             }
-            RateLimitAlgorithmType::SlidingWindow => {
-                Box::new(SlidingWindow::new(self.global_config.sliding_window.clone()))
-            }
-            RateLimitAlgorithmType::Hybrid => {
-                // For hybrid, use token bucket for burst control
-                Box::new(TokenBucket::new(self.global_config.token_bucket.clone()))
-            }
+            RateLimitAlgorithmType::SlidingWindow => Box::new(SlidingWindow::new(
+                self.global_config.sliding_window.clone(),
+            )),
+            RateLimitAlgorithmType::Hybrid => Box::new(HybridAlgorithm::new(
+                self.global_config.token_bucket.clone(),
+                self.global_config.sliding_window.clone(),
+            )),
         }
     }
 
@@ -202,13 +204,13 @@ impl AdvancedRateLimitManager {
             RateLimitAlgorithmType::TokenBucket => {
                 Box::new(TokenBucket::new(self.global_config.token_bucket.clone()))
             }
-            RateLimitAlgorithmType::SlidingWindow => {
-                Box::new(SlidingWindow::new(self.global_config.sliding_window.clone()))
-            }
-            RateLimitAlgorithmType::Hybrid => {
-                // For hybrid, use sliding window for precise peer control
-                Box::new(SlidingWindow::new(self.global_config.sliding_window.clone()))
-            }
+            RateLimitAlgorithmType::SlidingWindow => Box::new(SlidingWindow::new(
+                self.global_config.sliding_window.clone(),
+            )),
+            RateLimitAlgorithmType::Hybrid => Box::new(HybridAlgorithm::new(
+                self.global_config.token_bucket.clone(),
+                self.global_config.sliding_window.clone(),
+            )),
         }
     }
 
@@ -231,7 +233,7 @@ impl AdvancedRateLimitManager {
 
                 // Clean up inactive endpoint limiters with optimized cleanup
                 endpoint_limiters.retain(|_, limiter| limiter.is_active());
-                
+
                 // Clean up inactive peer limiters with fast peer cleanup
                 peer_limiters.retain(|_, limiter| limiter.is_active());
 
@@ -282,14 +284,63 @@ impl AdvancedRateLimitManager {
         self.stats.requests_denied.store(0, Ordering::Relaxed);
     }
 
+    /// Reset all rate limiters to initial state
+    pub fn reset_all_limiters(&self) {
+        // Clear all endpoint limiters
+        self.endpoint_limiters.clear();
+
+        // Clear all peer limiters
+        self.peer_limiters.clear();
+
+        // Reset statistics
+        self.reset_stats();
+
+        info!("All rate limiters have been reset");
+    }
+
+    /// Remove unused limiters to free memory
+    pub fn cleanup_unused_limiters(&self) {
+        let now = std::time::Instant::now();
+        let cleanup_threshold = std::time::Duration::from_secs(300); // 5 minutes
+
+        // Count before cleanup
+        let endpoint_count_before = self.endpoint_limiters.len();
+        let peer_count_before = self.peer_limiters.len();
+
+        // Remove inactive endpoint limiters
+        self.endpoint_limiters.retain(|_, limiter| {
+            limiter.last_used().map_or(true, |last_used| {
+                now.duration_since(last_used) < cleanup_threshold
+            })
+        });
+
+        // Remove inactive peer limiters
+        self.peer_limiters.retain(|_, limiter| {
+            limiter.last_used().map_or(true, |last_used| {
+                now.duration_since(last_used) < cleanup_threshold
+            })
+        });
+
+        let endpoint_count_after = self.endpoint_limiters.len();
+        let peer_count_after = self.peer_limiters.len();
+
+        if endpoint_count_before != endpoint_count_after || peer_count_before != peer_count_after {
+            info!(
+                "Rate limiter cleanup: removed {} endpoint limiters, {} peer limiters",
+                endpoint_count_before - endpoint_count_after,
+                peer_count_before - peer_count_after
+            );
+        }
+    }
+
     /// Update global configuration with optimized config update
     pub fn update_config(&mut self, config: RateLimitConfig) {
         self.global_config = config;
-        
+
         // Clear existing limiters to force recreation with new config
         self.endpoint_limiters.clear();
         self.peer_limiters.clear();
-        
+
         info!("Rate limiter configuration updated");
     }
 

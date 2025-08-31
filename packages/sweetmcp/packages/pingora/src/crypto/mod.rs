@@ -10,12 +10,11 @@ pub mod wrapper;
 
 // Re-export core types for ergonomic use
 pub use core::{
-    EncryptedToken, TokenManager, TokenKeypair, TokenData, KeyInfo, TokenManagerStats,
+    EncryptedToken, KeyInfo, TokenData, TokenKeypair, TokenManager, TokenManagerStats,
     TOKEN_ROTATION_HOURS, TOKEN_VALIDITY_HOURS,
 };
 
 // Re-export operations types
-pub use operations::{TokenMetadata, TokenChainValidation};
-
+pub use operations::{TokenChainValidation, TokenMetadata};
 // Re-export wrapper types
-pub use wrapper::{SecureDiscoveryToken, SecureTokenStats, SecureTokenBuilder};
+pub use wrapper::{SecureDiscoveryToken, SecureTokenBuilder, SecureTokenStats};

@@ -1,8 +1,9 @@
 //! 1-minute load-average + inflight counter overload check.
 //! Lock-free implementation using atomic operations for blazing-fast performance.
 
-use atomic_counter::{AtomicCounter, RelaxedCounter};
 use std::sync::atomic::{AtomicU64, Ordering};
+
+use atomic_counter::{AtomicCounter, RelaxedCounter};
 use sysinfo::System;
 
 /// Lock-free load tracking with atomic counters for high-performance edge routing.

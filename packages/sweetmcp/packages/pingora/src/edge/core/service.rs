@@ -3,20 +3,18 @@
 //! This module provides the core EdgeService struct and initialization logic
 //! with zero allocation fast paths and blazing-fast performance.
 
-use crate::{
-    auth::JwtAuth,
-    config::Config,
-    load::Load,
-    metric_picker::MetricPicker,
-    peer_discovery::PeerRegistry,
-    rate_limit::AdvancedRateLimitManager,
-    shutdown::ShutdownCoordinator,
-};
-use pingora_load_balancing::Backend;
 use std::collections::BTreeSet;
 use std::sync::Arc;
+
+use pingora_load_balancing::Backend;
 use tokio::sync::mpsc::Sender;
 use tracing::{debug, error, info, warn};
+
+use crate::{
+    auth::JwtAuth, config::Config, load::Load, metric_picker::MetricPicker,
+    peer_discovery::PeerRegistry, rate_limit::AdvancedRateLimitManager,
+    shutdown::ShutdownCoordinator,
+};
 
 /// EdgeService provides auth, overload protection, and routing functionality
 /// with zero allocation fast paths and blazing-fast performance
@@ -120,8 +118,7 @@ impl EdgeService {
 
     /// Check if service is properly initialized
     pub fn is_initialized(&self) -> bool {
-        !self.cfg.upstreams.is_empty() && 
-        !self.cfg.jwt_secret.is_empty()
+        !self.cfg.upstreams.is_empty() && !self.cfg.jwt_secret.is_empty()
     }
 
     /// Get service status summary
@@ -138,22 +135,23 @@ impl EdgeService {
     pub fn validate_config(&self) -> Result<(), EdgeServiceError> {
         if self.cfg.upstreams.is_empty() {
             return Err(EdgeServiceError::ConfigurationError(
-                "No upstream servers configured".to_string()
+                "No upstream servers configured".to_string(),
             ));
         }
 
         if self.cfg.jwt_secret.is_empty() {
             return Err(EdgeServiceError::ConfigurationError(
-                "JWT secret not configured".to_string()
+                "JWT secret not configured".to_string(),
             ));
         }
 
         // Validate upstream URLs
         for upstream in &self.cfg.upstreams {
             if upstream.parse::<url::Url>().is_err() {
-                return Err(EdgeServiceError::ConfigurationError(
-                    format!("Invalid upstream URL: {}", upstream)
-                ));
+                return Err(EdgeServiceError::ConfigurationError(format!(
+                    "Invalid upstream URL: {}",
+                    upstream
+                )));
             }
         }
 
@@ -175,20 +173,22 @@ impl EdgeService {
     pub fn get_metrics(&self) -> ServiceMetrics {
         ServiceMetrics {
             backend_count: self.backend_count(),
-            active_connections: 0, // Would be tracked in real implementation
+            active_connections: 0,    // Would be tracked in real implementation
             requests_per_second: 0.0, // Would be tracked in real implementation
-            error_rate: 0.0, // Would be tracked in real implementation
+            error_rate: 0.0,          // Would be tracked in real implementation
         }
     }
 
     /// Shutdown service gracefully
     pub async fn shutdown(&self) -> Result<(), EdgeServiceError> {
         info!("Initiating EdgeService shutdown");
-        
+
         // Use shutdown coordinator for graceful shutdown
-        self.shutdown_coordinator.initiate_shutdown().await
+        self.shutdown_coordinator
+            .initiate_shutdown()
+            .await
             .map_err(|e| EdgeServiceError::ShutdownError(e.to_string()))?;
-        
+
         info!("EdgeService shutdown completed");
         Ok(())
     }
@@ -206,13 +206,13 @@ impl EdgeService {
             rate_limit_manager: self.rate_limit_manager.clone(),
             shutdown_coordinator: self.shutdown_coordinator.clone(),
         };
-        
+
         temp_service.validate_config()?;
-        
+
         // Update configuration
         self.cfg = new_config;
         info!("EdgeService configuration updated");
-        
+
         Ok(())
     }
 
@@ -254,19 +254,19 @@ pub struct ServiceMetrics {
 pub enum EdgeServiceError {
     #[error("Configuration error: {0}")]
     ConfigurationError(String),
-    
+
     #[error("Authentication error: {0}")]
     AuthenticationError(String),
-    
+
     #[error("Rate limiting error: {0}")]
     RateLimitError(String),
-    
+
     #[error("Backend error: {0}")]
     BackendError(String),
-    
+
     #[error("Shutdown error: {0}")]
     ShutdownError(String),
-    
+
     #[error("Internal error: {0}")]
     InternalError(String),
 }

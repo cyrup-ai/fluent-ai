@@ -126,8 +126,8 @@ impl From<fluent_ai_http3::BadChunk> for BinaryResponse {
     }
 }
 
-// Handler for test server that logs received payload and headers - NO async
-fn handle_post(
+// Handler for test server that logs received payload and headers
+async fn handle_post(
     headers: HeaderMap,
     Json(payload): Json<SerdeRequestType>,
 ) -> ResponseJson<Vec<SerdeResponseType>> {
@@ -151,8 +151,8 @@ fn handle_post(
     ResponseJson(vec![response])
 }
 
-// Handler for CSV download - NO async
-fn handle_csv_download() -> Response<String> {
+// Handler for CSV download
+async fn handle_csv_download() -> Response<String> {
     let csv_data = "name,age,city\nJohn,30,NYC\nJane,25,LA\nBob,35,Chicago";
 
     Response::builder()
@@ -168,7 +168,7 @@ fn handle_csv_download() -> Response<String> {
 }
 
 // PUT handler for JSON content - JsonRequest -> JsonResponse
-fn handle_put_json(
+async fn handle_put_json(
     headers: HeaderMap,
     Json(payload): Json<JsonRequest>,
 ) -> Result<ResponseJson<Vec<JsonResponse>>, StatusCode> {
@@ -198,7 +198,7 @@ fn handle_put_json(
 }
 
 // PUT handler for form-urlencoded content - FormRequest -> FormResponse
-fn handle_put_form(
+async fn handle_put_form(
     headers: HeaderMap,
     Form(params): Form<HashMap<String, String>>,
 ) -> Result<ResponseJson<Vec<FormResponse>>, StatusCode> {
@@ -232,7 +232,7 @@ fn handle_put_form(
 }
 
 // PUT handler for binary/text content - BinaryRequest -> BinaryResponse
-fn handle_put_binary(
+async fn handle_put_binary(
     headers: HeaderMap,
     Json(payload): Json<BinaryRequest>,
 ) -> Result<ResponseJson<Vec<BinaryResponse>>, StatusCode> {
