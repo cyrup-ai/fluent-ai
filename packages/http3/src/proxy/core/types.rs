@@ -56,7 +56,7 @@ pub struct NoProxy {
 }
 
 /// Extra configuration for proxy authentication and custom headers
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Extra {
     pub(crate) auth: Option<HeaderValue>,
     pub(crate) misc: Option<HeaderMap>,

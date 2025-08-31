@@ -28,9 +28,7 @@ impl ConnectorBuilder {
             self.tls_info,
         )?;
 
-        let kind = if self.enforce_http {
-            ConnectorKind::BuiltHttp(service)
-        } else {
+        let kind = {
             #[cfg(feature = "__tls")]
             {
                 ConnectorKind::BuiltDefault(service)

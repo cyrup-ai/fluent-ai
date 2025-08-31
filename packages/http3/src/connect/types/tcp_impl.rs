@@ -116,32 +116,53 @@ impl Write for TcpStreamWrapper {
     }
 }
 
-/// TCP connection implementation
+/// TCP connection implementation for async I/O (ConnectionTrait)
+#[derive(Debug)]
 pub struct TcpConnection {
-    pub stream: TcpStream,
+    pub stream: tokio::net::TcpStream,
 }
 
 impl TcpConnection {
-    pub fn new(stream: TcpStream) -> Self {
+    pub fn new(stream: tokio::net::TcpStream) -> Self {
         Self { stream }
     }
 }
 
-impl Read for TcpConnection {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.stream.read(buf)
+impl tokio::io::AsyncRead for TcpConnection {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.stream).poll_read(cx, buf)
     }
 }
 
-impl Write for TcpConnection {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.stream.write(buf)
+impl tokio::io::AsyncWrite for TcpConnection {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        std::pin::Pin::new(&mut self.stream).poll_write(cx, buf)
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.stream.flush()
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::pin::Pin::new(&mut self.stream).poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::pin::Pin::new(&mut self.stream).poll_shutdown(cx)
     }
 }
+
+impl Unpin for TcpConnection {}
 
 impl ConnectionTrait for TcpConnection {
     fn peer_addr(&self) -> std::io::Result<SocketAddr> {
@@ -161,9 +182,13 @@ impl ConnectionTrait for TcpConnection {
     }
 }
 
-impl From<TcpStream> for TcpConnection {
-    fn from(stream: TcpStream) -> Self {
-        Self::new(stream)
+impl TryFrom<TcpStream> for TcpConnection {
+    type Error = std::io::Error;
+    
+    fn try_from(stream: TcpStream) -> Result<Self, Self::Error> {
+        // Convert std::net::TcpStream to tokio::net::TcpStream
+        let tokio_stream = tokio::net::TcpStream::from_std(stream)?;
+        Ok(Self::new(tokio_stream))
     }
 }
 

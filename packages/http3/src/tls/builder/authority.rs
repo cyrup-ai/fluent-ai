@@ -475,7 +475,13 @@ impl AuthorityKeychainBuilder {
         };
         
         // Retrieve certificate from keychain
-        let cert_pem = match tokio::task::spawn_blocking(move || cert_entry.get_password()).await {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = cert_entry.get_password();
+            let _ = tx.send(result);
+        });
+        
+        let cert_pem = match rx.recv() {
             Ok(Ok(pem)) => pem,
             Ok(Err(keyring::Error::NoEntry)) => {
                 return super::responses::CertificateAuthorityResponse {
@@ -507,7 +513,13 @@ impl AuthorityKeychainBuilder {
         };
         
         // Retrieve private key from keychain
-        let key_pem = match tokio::task::spawn_blocking(move || key_entry.get_password()).await {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = key_entry.get_password();
+            let _ = tx.send(result);
+        });
+        
+        let key_pem = match rx.recv() {
             Ok(Ok(pem)) => pem,
             Ok(Err(keyring::Error::NoEntry)) => {
                 return super::responses::CertificateAuthorityResponse {
@@ -629,7 +641,13 @@ impl AuthorityKeychainBuilder {
         };
         
         let cert_pem = authority.certificate_pem.clone();
-        if let Err(e) = tokio::task::spawn_blocking(move || cert_entry.set_password(&cert_pem)).await {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = cert_entry.set_password(&cert_pem);
+            let _ = tx.send(result);
+        });
+        
+        if let Err(e) = rx.recv().unwrap_or_else(|_e| Err(keyring::Error::NoEntry)) {
             return super::responses::CertificateAuthorityResponse {
                 success: false,
                 authority: None,
@@ -654,7 +672,13 @@ impl AuthorityKeychainBuilder {
         };
         
         let key_pem = authority.private_key_pem.clone();
-        if let Err(e) = tokio::task::spawn_blocking(move || key_entry.set_password(&key_pem)).await {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = key_entry.set_password(&key_pem);
+            let _ = tx.send(result);
+        });
+        
+        if let Err(e) = rx.recv().unwrap_or_else(|_e| Err(keyring::Error::NoEntry)) {
             return super::responses::CertificateAuthorityResponse {
                 success: false,
                 authority: None,

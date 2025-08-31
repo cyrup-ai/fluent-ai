@@ -97,7 +97,8 @@ where
                     // Process HttpResponse from stream
                     for http_response in http_response_stream {
                         // Process body chunks from HttpResponse
-                        for body_chunk in http_response.body_stream {
+                        let body_stream = http_response.into_body_stream();
+                        for body_chunk in body_stream {
                             if let Some(bytes) = body_chunk.data() {
                                 buffer.extend_from_slice(&bytes);
 

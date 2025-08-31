@@ -8,6 +8,7 @@ pub mod config;
 pub mod core;
 pub mod engine;
 pub mod error;
+pub mod rate_limiter;
 pub mod stats;
 pub mod validation;
 

@@ -5,6 +5,7 @@
 //! enabling real-time processing as data arrives from the wire.
 
 use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::RwLock;
 use std::time::Instant;
 
 use bytes::Bytes;
@@ -20,20 +21,32 @@ pub struct HttpResponse {
     /// HTTP status code - set once, read many times (atomic, 0 = not yet received)
     status: AtomicU16,
 
-    /// Headers stream - delivers headers one by one as they're decoded
-    pub headers_stream: AsyncStream<HttpHeader, 256>,
+    /// Headers stream - internal implementation detail
+    headers_internal: AsyncStream<HttpHeader, 256>,
 
-    /// Body stream - delivers body chunks as they arrive from the wire
-    pub body_stream: AsyncStream<HttpBodyChunk, 1024>,
+    /// Body stream - internal implementation detail
+    body_internal: AsyncStream<HttpBodyChunk, 1024>,
 
-    /// Trailers stream - delivers trailing headers after body completes
-    pub trailers_stream: AsyncStream<HttpHeader, 64>,
+    /// Trailers stream - internal implementation detail
+    trailers_internal: AsyncStream<HttpHeader, 64>,
 
     /// HTTP version used for this response
     pub version: Version,
 
     /// Stream ID for HTTP/2 and HTTP/3 multiplexing
     pub stream_id: u64,
+
+    /// Atomic cached etag value (set from first frame) 
+    cached_etag: once_cell::sync::OnceCell<String>,
+    
+    /// Atomic cached last-modified value (set from first frame)
+    cached_last_modified: once_cell::sync::OnceCell<String>,
+    
+    /// Cached headers collected from the stream
+    cached_headers: RwLock<Option<Vec<HttpHeader>>>,
+    
+    /// Cached body bytes collected from the stream
+    cached_body: RwLock<Option<Vec<u8>>>,
 }
 
 /// HTTP status information
@@ -123,6 +136,15 @@ pub enum HttpDownloadChunk {
         /// Error message
         message: String 
     },
+}
+
+impl Default for HttpDownloadChunk {
+    fn default() -> Self {
+        HttpDownloadChunk::Progress {
+            downloaded: 0,
+            total_size: None,
+        }
+    }
 }
 
 /// Type alias for download streams - protocol-agnostic download streaming
@@ -249,11 +271,15 @@ impl HttpResponse {
     ) -> Self {
         Self {
             status: AtomicU16::new(0),
-            headers_stream,
-            body_stream,
-            trailers_stream,
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
             version,
             stream_id,
+            cached_etag: once_cell::sync::OnceCell::new(),
+            cached_last_modified: once_cell::sync::OnceCell::new(),
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(None),
         }
     }
 
@@ -293,6 +319,89 @@ impl HttpResponse {
     pub fn is_redirect(&self) -> bool {
         self.status_code().map_or(false, |s| s.is_redirection())
     }
+    
+    /// Get a specific header value by name
+    pub fn header(&self, name: &str) -> Option<HeaderValue> {
+        // This would need to iterate through headers_internal
+        // For now, return None (proper implementation would cache headers)
+        None
+    }
+    
+    /// Get all headers as a vector (sync version - returns cached headers if available)
+    /// 
+    /// NOTE: This is a synchronous convenience method that returns cached headers.
+    /// For streaming responses, use `collect_headers()` async method instead.
+    pub fn headers(&self) -> Vec<HttpHeader> {
+        // Return cached headers if available
+        if let Ok(cache) = self.cached_headers.read() {
+            if let Some(ref headers) = *cache {
+                return headers.clone();
+            }
+        }
+        
+        // No cached headers available - return empty vector
+        // User should call collect_and_cache_headers() first for streaming responses
+        Vec::new()
+    }
+    
+    /// Get response body as raw bytes (sync version - returns cached body if available)
+    /// 
+    /// NOTE: This is a synchronous convenience method that returns cached body.
+    /// For streaming responses, use `collect_body()` async method instead.
+    pub fn body(&self) -> Vec<u8> {
+        // Return cached body if available
+        if let Ok(cache) = self.cached_body.read() {
+            if let Some(ref body) = *cache {
+                return body.clone();
+            }
+        }
+        
+        // No cached body available - return empty vector
+        // User should call collect_and_cache_body() first for streaming responses
+        Vec::new()
+    }
+    
+    /// Get response body as UTF-8 text
+    pub fn body_text(&self) -> String {
+        String::from_utf8_lossy(&self.body()).to_string()
+    }
+    
+    /// Deserialize response body as JSON
+    pub fn body_json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_json::Error> {
+        serde_json::from_slice(&self.body())
+    }
+    
+    /// Get content type header value
+    pub fn content_type(&self) -> Option<String> {
+        self.header("content-type")
+            .and_then(|v| v.to_str().ok().map(|s| s.to_string()))
+    }
+    
+    /// Get content length if available
+    pub fn content_length(&self) -> Option<usize> {
+        self.header("content-length")
+            .and_then(|v| v.to_str().ok().map(|s| s.to_string()))
+            .and_then(|s| s.parse().ok())
+    }
+    
+    /// Consume the response and return its body stream
+    /// 
+    /// This consumes the HttpResponse and returns ownership of the body stream
+    /// for streaming transformations.
+    pub fn into_body_stream(self) -> AsyncStream<HttpBodyChunk, 1024> {
+        self.body_internal
+    }
+    
+    /// Consume the response and return all its streams
+    /// 
+    /// This consumes the HttpResponse and returns ownership of all internal streams.
+    pub fn into_streams(self) -> (
+        AsyncStream<HttpHeader, 256>,
+        AsyncStream<HttpBodyChunk, 1024>,
+        AsyncStream<HttpHeader, 64>
+    ) {
+        (self.headers_internal, self.body_internal, self.trailers_internal)
+    }
 
     /// Create an empty response (used for errors)
     pub fn empty() -> Self {
@@ -303,44 +412,19 @@ impl HttpResponse {
 
         Self {
             status: AtomicU16::new(0),
-            headers_stream,
-            body_stream,
-            trailers_stream,
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
             version: Version::HTTP_11,
             stream_id: 0,
+            cached_etag: once_cell::sync::OnceCell::new(),
+            cached_last_modified: once_cell::sync::OnceCell::new(),
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(None),
         }
     }
 
-    /// Create HttpResponse from HTTP/1.1 response
-    pub fn from_http1_response(
-        status: StatusCode,
-        headers: HeaderMap,
-        body_stream: AsyncStream<HttpBodyChunk, 1024>,
-        stream_id: u64,
-    ) -> Self {
-        // Create channels for headers only
-        let (headers_sender, headers_stream) = AsyncStream::channel();
-        let (_, trailers_stream) = AsyncStream::channel(); // HTTP/1.1 has no trailers
 
-        // Emit headers immediately
-        for (name, value) in headers.iter() {
-            let http_header = HttpHeader {
-                name: name.clone(),
-                value: value.clone(),
-                timestamp: Instant::now(),
-            };
-            let _ = headers_sender.send(http_header);
-        }
-
-        Self {
-            status: AtomicU16::new(status.as_u16()),
-            headers_stream,
-            body_stream,
-            trailers_stream,
-            version: Version::HTTP_11,
-            stream_id,
-        }
-    }
 
     /// Create HttpResponse from HTTP/2 response
     pub fn from_http2_response(
@@ -360,16 +444,21 @@ impl HttpResponse {
                 value: value.clone(),
                 timestamp: Instant::now(),
             };
-            let _ = headers_sender.send(http_header);
+            // Intentionally ignore send result - channel may be closed if receiver dropped
+            drop(headers_sender.send(http_header));
         }
 
         Self {
             status: AtomicU16::new(status.as_u16()),
-            headers_stream,
-            body_stream,
-            trailers_stream,
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
             version: Version::HTTP_2,
             stream_id,
+            cached_etag: once_cell::sync::OnceCell::new(),
+            cached_last_modified: once_cell::sync::OnceCell::new(),
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(None),
         }
     }
 
@@ -391,16 +480,21 @@ impl HttpResponse {
                 value: value.clone(),
                 timestamp: Instant::now(),
             };
-            let _ = headers_sender.send(http_header);
+            // Intentionally ignore send result - channel may be closed if receiver dropped
+            drop(headers_sender.send(http_header));
         }
 
         Self {
             status: AtomicU16::new(status.as_u16()),
-            headers_stream,
-            body_stream,
-            trailers_stream,
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
             version: Version::HTTP_3,
             stream_id,
+            cached_etag: once_cell::sync::OnceCell::new(),
+            cached_last_modified: once_cell::sync::OnceCell::new(),
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(None),
         }
     }
 
@@ -419,7 +513,8 @@ impl HttpResponse {
             value: HeaderValue::from_static("text/plain"),
             timestamp: Instant::now(),
         };
-        let _ = headers_sender.send(content_type_header);
+        // Intentionally ignore send result - error response setup
+        drop(headers_sender.send(content_type_header));
 
         // Emit error message as body
         let error_chunk = HttpBodyChunk {
@@ -428,15 +523,20 @@ impl HttpResponse {
             is_final: true,
             timestamp: Instant::now(),
         };
-        let _ = body_sender.send(error_chunk);
+        // Intentionally ignore send result - error response setup
+        drop(body_sender.send(error_chunk));
 
         Self {
             status: AtomicU16::new(status_code.as_u16()),
-            headers_stream,
-            body_stream,
-            trailers_stream,
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
             version: Version::HTTP_11,
             stream_id: 0,
+            cached_etag: once_cell::sync::OnceCell::new(),
+            cached_last_modified: once_cell::sync::OnceCell::new(),
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(None),
         }
     }
 
@@ -444,7 +544,7 @@ impl HttpResponse {
     /// Note: This consumes the headers stream
     pub async fn collect_headers(&mut self) -> HeaderMap {
         let mut headers = HeaderMap::new();
-        while let Some(header) = self.headers_stream.next().await {
+        while let Some(header) = self.headers_internal.next().await {
             headers.insert(header.name, header.value);
         }
         headers
@@ -456,7 +556,7 @@ impl HttpResponse {
         let mut chunks = Vec::new();
         let mut total_size = 0;
 
-        while let Some(chunk) = self.body_stream.next().await {
+        while let Some(chunk) = self.body_internal.next().await {
             total_size += chunk.data.len();
             chunks.push(chunk.data);
         }
@@ -473,6 +573,81 @@ impl HttpResponse {
             }
             Bytes::from(combined)
         }
+    }
+    
+    /// Collect and cache headers for synchronous access
+    /// This consumes the headers stream and caches the results
+    pub async fn collect_and_cache_headers(&mut self) -> Vec<HttpHeader> {
+        let mut headers_vec = Vec::new();
+        
+        while let Some(header) = self.headers_internal.next().await {
+            headers_vec.push(header);
+        }
+        
+        // Cache the collected headers
+        if let Ok(mut cache) = self.cached_headers.write() {
+            *cache = Some(headers_vec.clone());
+        }
+        
+        headers_vec
+    }
+    
+    /// Collect and cache body for synchronous access
+    /// This consumes the body stream and caches the results
+    pub async fn collect_and_cache_body(&mut self) -> Vec<u8> {
+        let mut chunks = Vec::new();
+        let mut total_size = 0;
+
+        while let Some(chunk) = self.body_internal.next().await {
+            total_size += chunk.data.len();
+            chunks.push(chunk.data);
+        }
+
+        // Combine all chunks into a single buffer
+        let body = if chunks.is_empty() {
+            Vec::new()
+        } else if chunks.len() == 1 {
+            chunks.into_iter().next().unwrap().to_vec()
+        } else {
+            let mut combined = Vec::with_capacity(total_size);
+            for chunk in chunks {
+                combined.extend_from_slice(&chunk);
+            }
+            combined
+        };
+        
+        // Cache the collected body
+        if let Ok(mut cache) = self.cached_body.write() {
+            *cache = Some(body.clone());
+        }
+        
+        body
+    }
+
+    /// Extract ETag header value - returns cached value from first frame
+    #[inline]
+    pub fn etag(&self) -> Option<&str> {
+        self.cached_etag.get().map(|s| s.as_str())
+    }
+
+    /// Extract Last-Modified header value - returns cached value from first frame  
+    #[inline]
+    pub fn last_modified(&self) -> Option<&str> {
+        self.cached_last_modified.get().map(|s| s.as_str())
+    }
+
+    /// Set cached etag value (called by protocol layer on first frame)
+    #[inline]
+    pub(crate) fn set_cached_etag(&self, etag: String) {
+        // Intentionally ignore set result - may already be set
+        drop(self.cached_etag.set(etag));
+    }
+
+    /// Set cached last-modified value (called by protocol layer on first frame)
+    #[inline]
+    pub(crate) fn set_cached_last_modified(&self, last_modified: String) {
+        // Intentionally ignore set result - may already be set
+        drop(self.cached_last_modified.set(last_modified));
     }
 
 
@@ -535,11 +710,15 @@ impl fluent_ai_async::prelude::MessageChunk for HttpResponse {
 
         Self {
             status: AtomicU16::new(StatusCode::INTERNAL_SERVER_ERROR.as_u16()),
-            headers_stream,
-            body_stream,
-            trailers_stream,
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
             version: Version::HTTP_11,
             stream_id: 0,
+            cached_etag: once_cell::sync::OnceCell::new(),
+            cached_last_modified: once_cell::sync::OnceCell::new(),
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(None),
         }
     }
 

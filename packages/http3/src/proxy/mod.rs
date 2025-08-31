@@ -19,7 +19,7 @@ pub fn http<U>(proxy_url: U) -> std::result::Result<Proxy, Box<dyn std::error::E
 where
     U: Into<crate::Url>,
 {
-    Proxy::http(proxy_url.into())
+    Proxy::http(proxy_url.into()).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
 }
 
 /// Create a proxy that intercepts all HTTPS traffic
@@ -29,7 +29,7 @@ pub fn https<U>(
 where
     U: Into<crate::Url>,
 {
-    Proxy::https(proxy_url.into())
+    Proxy::https(proxy_url.into()).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
 }
 
 /// Create a proxy that intercepts all traffic
@@ -37,5 +37,5 @@ pub fn all<U>(proxy_url: U) -> std::result::Result<Proxy, Box<dyn std::error::Er
 where
     U: Into<crate::Url>,
 {
-    Proxy::all(proxy_url.into())
+    Proxy::all(proxy_url.into()).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
 }

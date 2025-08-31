@@ -5,7 +5,6 @@
 
 pub mod configuration;
 pub mod core;
-pub mod execution;
 pub mod stats;
 
 // Re-export main types for convenient access

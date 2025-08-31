@@ -7,11 +7,12 @@ pub mod core;
 pub mod frames;
 pub mod h2;
 pub mod h3;
-pub mod http1;
 pub mod intelligence;
 pub mod quiche;
 pub mod response_converter;
 pub mod strategy;
+pub mod strategy_trait;
+pub mod auto_strategy;
 pub mod transport;
 pub mod wire;
 

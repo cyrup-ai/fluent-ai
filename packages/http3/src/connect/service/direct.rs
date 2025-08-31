@@ -23,11 +23,16 @@ pub(super) fn emit_stream_connection(
     let remote_addr = stream.peer_addr()
         .map_err(|e| format!("Failed to get remote address: {}", e))?;
     
-    // Wrap TcpStream in ConnectionTrait implementation
+    // Convert std::net::TcpStream to tokio::net::TcpStream and wrap in ConnectionTrait
+    let tokio_stream = tokio::net::TcpStream::from_std(stream)
+        .map_err(|e| format!("Failed to convert TcpStream: {}", e))?;
     let conn_trait: Box<dyn crate::connect::types::ConnectionTrait + Send> = 
-        Box::new(crate::connect::types::TcpConnection::from(stream));
+        Box::new(crate::connect::types::TcpConnection::new(tokio_stream));
     
-    emit!(sender, TcpConnectionChunk::connected(local_addr, remote_addr, Some(conn_trait)));
+    let connection_chunk = TcpConnectionChunk::connected(local_addr, remote_addr, Some(conn_trait));
+    if let Err(_) = sender.send(connection_chunk) {
+        return Err("Failed to send connection chunk".to_string());
+    }
     Ok(())
 }
 
@@ -46,7 +51,7 @@ impl ConnectorService {
                 let host = match destination.host() {
                     Some(h) => h,
                     None => {
-                        emit!(
+                        let _ = emit!(
                             sender,
                             TcpConnectionChunk::bad_chunk("URI missing host".to_string())
                         );
@@ -67,7 +72,7 @@ impl ConnectorService {
                 let addresses = match super::super::tcp::resolve_host_sync(host, port) {
                     Ok(addrs) => addrs,
                     Err(e) => {
-                        emit!(
+                        let _ = emit!(
                             sender,
                             TcpConnectionChunk::bad_chunk(format!("DNS resolution failed: {}", e))
                         );
@@ -80,7 +85,7 @@ impl ConnectorService {
                         sender,
                         TcpConnectionChunk::bad_chunk("No addresses resolved".to_string())
                     );
-                    return;
+                    return ();
                 }
 
                 // Try connecting to each address with elite polling
@@ -96,7 +101,7 @@ impl ConnectorService {
 
                                     // Extract addresses and emit connection event
                                     if let Err(error) = emit_stream_connection(stream, &sender) {
-                                        emit!(sender, TcpConnectionChunk::bad_chunk(error));
+                                        let _ = emit!(sender, TcpConnectionChunk::bad_chunk(error));
                                         return;
                                     }
                                     return;
@@ -112,7 +117,7 @@ impl ConnectorService {
 
                                 // Extract addresses and emit connection event
                                 if let Err(error) = emit_stream_connection(stream, &sender) {
-                                    emit!(sender, TcpConnectionChunk::bad_chunk(error));
+                                    let _ = emit!(sender, TcpConnectionChunk::bad_chunk(error));
                                     return;
                                 }
                                 return;
@@ -122,7 +127,7 @@ impl ConnectorService {
                     }
                 }
 
-                emit!(
+                let _ = emit!(
                     sender,
                     TcpConnectionChunk::bad_chunk("Failed to connect to any address".to_string())
                 );

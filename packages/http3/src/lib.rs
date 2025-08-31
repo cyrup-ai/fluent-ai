@@ -137,7 +137,7 @@ pub fn global_client() -> Arc<HttpClient> {
 /// Get connection pool statistics
 #[must_use]
 pub fn connection_stats() -> ClientStatsSnapshot {
-    global_client().as_ref().stats_snapshot()
+    global_client().as_ref().stats().snapshot()
 }
 
 /// Initialize the global HTTP client with custom configuration
@@ -208,7 +208,7 @@ fn initialize_global_client_internal(
     // ELIMINATED: hyper ClientBuilder - using direct fluent_ai_async streaming
 
     // Build client with pure AsyncStream architecture - NO middleware
-    let stats = crate::telemetry::client_stats::ClientStats::default();
+    let stats = crate::client::core::ClientStats::default();
     let new_client = crate::client::HttpClient::new_direct(config, stats);
 
     // Set the global client - OnceLock allows one-time initialization

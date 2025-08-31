@@ -5,9 +5,12 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::task::{Context, Poll};
+use std::pin::Pin;
+use std::future::Future;
 
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
+use futures::executor::block_on;
 use h2::{client, server};
 
 use super::chunks::{H2ConnectionChunk, H2DataChunk, H2RequestChunk, H2SendResult};
@@ -45,53 +48,70 @@ impl H2ConnectionManager {
     pub fn establish_connection_stream<T>(
         &self,
         io: T,
-        polling_context: Context<'_>,
     ) -> AsyncStream<H2ConnectionChunk, 1024>
     where
-        T: std::io::Read + std::io::Write + Unpin + Send + 'static,
+        T: std::io::Read + std::io::Write + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
     {
         let connection_id = self.connection_id.fetch_add(1, Ordering::SeqCst);
-        let is_connected = &self.is_connected;
+        let is_connected = self.is_connected.load(Ordering::Relaxed);
 
         AsyncStream::<H2ConnectionChunk, 1024>::with_channel(move |sender| {
-            let mut context = polling_context;
-
-            // Use h2's handshake with futures executor - simpler approach
-            use futures::executor::block_on;
+            // Thread-safe context creation INSIDE closure
+            use futures::task::noop_waker_ref;
+            use std::task::Context;
+            use std::time::Duration;
             
-            match block_on(h2::client::Builder::new().handshake(io)) {
-                Ok((send_request, connection)) => {
-                    is_connected.store(true, Ordering::SeqCst);
-                    emit!(sender, H2ConnectionChunk::ready());
+            let waker = noop_waker_ref();
+            let mut cx = Context::from_waker(waker);
 
-                    // Monitor connection using direct poll_ready primitive
-                    let mut conn = connection;
-                    loop {
-                        match conn.poll_ready(&mut context) {
-                            Poll::Ready(Ok(())) => {
-                                // Connection healthy, continue monitoring
-                                continue;
-                            }
-                            Poll::Ready(Err(e)) => {
-                                is_connected.store(false, Ordering::SeqCst);
-                                emit!(
-                                    sender,
-                                    H2ConnectionChunk::bad_chunk(format!("Connection lost: {}", e))
-                                );
-                                break;
-                            }
-                            Poll::Pending => {
-                                // Connection not ready, AsyncStream handles this
-                                break;
+            // Create handshake future for manual polling
+            let mut handshake = Box::pin(h2::client::Builder::new().handshake(io));
+            
+            // Manual polling loop with exponential backoff
+            let mut backoff_ms = 1;
+            loop {
+                match handshake.as_mut().poll(&mut cx) {
+                    Poll::Ready(Ok((send_request, connection))) => {
+                        // Connection established successfully
+                        emit!(sender, H2ConnectionChunk::ready());
+
+                        // Monitor connection using Future trait with proper pinning
+                        let mut conn: h2::client::Connection<T> = connection;
+                        loop {
+                            let mut pinned_conn = Pin::new(&mut conn);
+                            match Future::poll(pinned_conn, &mut cx) {
+                                Poll::Ready(Ok(())) => {
+                                    // Connection healthy, continue monitoring
+                                    continue;
+                                }
+                                Poll::Ready(Err(e)) => {
+                                    // Connection lost
+                                    emit!(
+                                        sender,
+                                        H2ConnectionChunk::bad_chunk(format!("Connection lost: {}", e))
+                                    );
+                                    break;
+                                }
+                                Poll::Pending => {
+                                    // Connection not ready, AsyncStream handles this
+                                    break;
+                                }
                             }
                         }
+                        break;
                     }
-                }
-                Err(e) => {
-                    emit!(
-                        sender,
-                        H2ConnectionChunk::bad_chunk(format!("Handshake failed: {}", e))
-                    );
+                    Poll::Ready(Err(e)) => {
+                        emit!(
+                            sender,
+                            H2ConnectionChunk::bad_chunk(format!("Handshake failed: {}", e))
+                        );
+                        break;
+                    }
+                    Poll::Pending => {
+                        // Exponential backoff up to 100ms
+                        std::thread::sleep(Duration::from_millis(backoff_ms));
+                        backoff_ms = (backoff_ms * 2).min(100);
+                    }
                 }
             }
         })
@@ -104,10 +124,14 @@ impl H2ConnectionManager {
     #[inline]
     pub fn multiplexed_receive_stream(
         recv_streams: Vec<h2::RecvStream>,
-        polling_context: Context<'_>,
     ) -> AsyncStream<H2DataChunk, 1024> {
         AsyncStream::<H2DataChunk, 1024>::with_channel(move |sender| {
-            let mut context = polling_context;
+            // Thread-safe context creation INSIDE closure
+            use futures::task::noop_waker_ref;
+            use std::task::Context;
+            
+            let waker = noop_waker_ref();
+            let mut context = Context::from_waker(waker);
             let mut streams = recv_streams;
 
             // Poll all receive streams using direct poll_data primitives
@@ -153,47 +177,35 @@ impl H2ConnectionManager {
     pub fn flow_controlled_send_stream(
         send_stream: h2::SendStream<bytes::Bytes>,
         data_chunks: Vec<bytes::Bytes>,
-        polling_context: Context<'_>,
     ) -> AsyncStream<H2SendResult, 1024> {
         AsyncStream::<H2SendResult, 1024>::with_channel(move |sender| {
             let mut stream = send_stream;
-            let mut context = polling_context;
+            // Thread-safe context creation INSIDE closure
+            use futures::task::noop_waker_ref;
+            use std::task::Context;
+            
+            let waker = noop_waker_ref();
+            let mut context = Context::from_waker(waker);
             let mut remaining_chunks = data_chunks;
 
             while let Some(chunk) = remaining_chunks.pop() {
-                // Use h2's direct poll_ready primitive for flow control
-                match stream.poll_ready(&mut context) {
-                    Poll::Ready(Ok(())) => {
-                        let is_last = remaining_chunks.is_empty();
+                // SendStream doesn't have poll_ready, use direct send_data with flow control
+                let is_last = remaining_chunks.is_empty();
 
-                        match stream.send_data(chunk, is_last) {
-                            Ok(()) => {
-                                emit!(sender, H2SendResult::data_sent());
+                match stream.send_data(chunk, is_last) {
+                    Ok(()) => {
+                        emit!(sender, H2SendResult::data_sent());
 
-                                if is_last {
-                                    emit!(sender, H2SendResult::send_complete());
-                                    break;
-                                }
-                            }
-                            Err(e) => {
-                                emit!(
-                                    sender,
-                                    H2SendResult::bad_chunk(format!("Send error: {}", e))
-                                );
-                                break;
-                            }
+                        if is_last {
+                            emit!(sender, H2SendResult::send_complete());
+                            break;
                         }
                     }
-                    Poll::Ready(Err(e)) => {
+                    Err(e) => {
                         emit!(
                             sender,
-                            H2SendResult::bad_chunk(format!("Flow control error: {}", e))
+                            H2SendResult::bad_chunk(format!("Send error: {}", e))
                         );
-                        break;
-                    }
-                    Poll::Pending => {
-                        // Flow control window not available, AsyncStream handles this
-                        remaining_chunks.push(chunk); // Put chunk back
                         break;
                     }
                 }

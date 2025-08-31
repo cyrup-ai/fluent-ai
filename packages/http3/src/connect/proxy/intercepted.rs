@@ -6,6 +6,7 @@
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit, handle_error, spawn_task};
 use http::Uri;
+use url::Url;
 
 use crate::error::BoxError;
 
@@ -37,11 +38,22 @@ impl Intercepted {
         let mut proxy_configs = Vec::new();
 
         for proxy in proxies {
-            // Extract proxy information using available methods
-            let uri = proxy
-                .intercept(&Uri::from_static("http://example.com"))
-                .map(|intercepted| intercepted.uri().clone())
-                .unwrap_or_else(|| Uri::from_static("http://127.0.0.1:8080"));
+            // Extract proxy information from intercept field
+            let uri = match &proxy.intercept {
+                crate::proxy::core::types::Intercept::All(url) => {
+                    Uri::try_from(url.as_str()).unwrap_or_else(|_| Uri::from_static("http://127.0.0.1:8080"))
+                }
+                crate::proxy::core::types::Intercept::Http(url) => {
+                    Uri::try_from(url.as_str()).unwrap_or_else(|_| Uri::from_static("http://127.0.0.1:8080"))
+                }
+                crate::proxy::core::types::Intercept::Https(url) => {
+                    Uri::try_from(url.as_str()).unwrap_or_else(|_| Uri::from_static("https://127.0.0.1:8080"))
+                }
+                crate::proxy::core::types::Intercept::Custom(_custom) => {
+                    // For custom logic, use a default URL
+                    Uri::from_static("http://127.0.0.1:8080")
+                }
+            };
 
             let config = ProxyConfig {
                 uri,

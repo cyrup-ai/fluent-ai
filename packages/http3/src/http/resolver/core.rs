@@ -15,6 +15,7 @@ use super::{
     cache::{DnsCache, DnsCacheEntry},
     config::{CacheConfig, RetryConfig},
     engine::ResolutionEngine,
+    rate_limiter::RateLimiter,
     stats::ResolverStats,
     validation::validate_hostname,
 };
@@ -79,6 +80,9 @@ pub struct Resolver {
 
     // Resolution engine
     engine: Arc<ResolutionEngine>,
+    
+    // Rate limiter for DNS queries
+    rate_limiter: Arc<RateLimiter>,
 
     // Lock-free performance counters
     request_count: Arc<AtomicU32>,
@@ -97,6 +101,7 @@ impl Resolver {
             ipv6_preference: false,
             dns_cache: Arc::new(DnsCache::new(CacheConfig::default())),
             engine: Arc::new(ResolutionEngine::new(RetryConfig::default())),
+            rate_limiter: Arc::new(RateLimiter::new(100)), // 100 requests per second default
             request_count: Arc::new(AtomicU32::new(0)),
             success_count: Arc::new(AtomicU64::new(0)),
             failure_count: Arc::new(AtomicU64::new(0)),
@@ -236,9 +241,8 @@ impl Resolver {
     }
     /// Check rate limiting using integrated protection system
     fn check_rate_limit(&self, hostname: &str, query_type: &str) -> Result<(), String> {
-        // Protection logic integrated into HttpClient - always allow for now
-        // TODO: Implement rate limiting in HttpClient middleware
-        Ok(())
+        // Use the rate limiter
+        self.rate_limiter.check_rate_limit(hostname, query_type)
     }
 
     /// Get resolver statistics

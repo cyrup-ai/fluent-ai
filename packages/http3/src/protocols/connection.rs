@@ -15,6 +15,7 @@ use crate::protocols::frames::{FrameChunk, H2Frame, H3Frame};
 ///
 /// This is the CANONICAL Connection implementation that consolidates
 /// all protocol-specific connection handling into a single type.
+#[derive(Debug)]
 pub enum Connection {
     H2(H2Connection),
     H3(H3Connection),
@@ -180,6 +181,7 @@ impl Connection {
 /// Connection manager using ONLY AsyncStream patterns
 ///
 /// This is the CANONICAL ConnectionManager that handles all protocol connections.
+#[derive(Debug)]
 pub struct ConnectionManager {
     connections: HashMap<String, Connection>,
     next_connection_id: u64,

@@ -7,6 +7,7 @@ use std::net::TcpStream;
 
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, emit};
+use futures::executor::block_on;
 use http::{HeaderMap, Method, Uri};
 
 /// H2 response chunk for streaming
@@ -53,8 +54,11 @@ pub fn execute_h2_request(
             let host = uri.host().unwrap_or("localhost");
             let port = uri.port_u16().unwrap_or(80);
 
-            // Establish TCP connection
-            let tcp = match TcpStream::connect(format!("{}:{}", host, port)) {
+            // Create tokio runtime for async operations
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            
+            // Establish TCP connection using tokio
+            let tcp = match rt.block_on(tokio::net::TcpStream::connect(format!("{}:{}", host, port))) {
                 Ok(tcp) => tcp,
                 Err(e) => {
                     emit!(
@@ -65,10 +69,8 @@ pub fn execute_h2_request(
                 }
             };
 
-            // Perform H2 handshake - use simple blocking approach with futures executor
-            use futures::executor::block_on;
-            
-            match block_on(h2::client::handshake(tcp)) {
+            // Perform H2 handshake with tokio TcpStream
+            match rt.block_on(h2::client::handshake(tcp)) {
                 Ok((mut h2, connection)) => {
                     // Spawn connection task
                     std::thread::spawn(move || {
@@ -77,8 +79,8 @@ pub fn execute_h2_request(
 
                     // LOOP pattern for H2 streaming
                     loop {
-                        match block_on(h2.ready()) {
-                            Ok(ready_h2) => {
+                        match rt.block_on(h2.ready()) {
+                            Ok(mut ready_h2) => {
                                 // Use the ready h2 client
                                 let req = http::Request::builder()
                                     .method(method.clone())

@@ -37,11 +37,123 @@ fn clear_timeout(id: i32) {
 #[cfg(target_arch = "wasm32")]
 pub use web_sys::{AbortController, AbortSignal};
 
-// For non-WASM targets, provide stub types
+// For non-WASM targets, provide full implementation
 #[cfg(not(target_arch = "wasm32"))]
-pub struct AbortController;
+use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
-pub struct AbortSignal;
+use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Mutex;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Duration;
+
+/// AbortController for non-WASM environments
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone)]
+pub struct AbortController {
+    inner: Arc<AbortControllerInner>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug)]
+struct AbortControllerInner {
+    aborted: AtomicBool,
+    signal: AbortSignal,
+    callbacks: Mutex<Vec<Box<dyn Fn() + Send + Sync>>>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl AbortController {
+    pub fn new() -> Self {
+        let aborted = Arc::new(AtomicBool::new(false));
+        let callbacks = Arc::new(Mutex::new(Vec::new()));
+        
+        let signal = AbortSignal {
+            aborted: aborted.clone(),
+            callbacks: callbacks.clone(),
+        };
+        
+        let inner = Arc::new(AbortControllerInner {
+            aborted: AtomicBool::new(false),
+            signal: signal.clone(),
+            callbacks: Mutex::new(Vec::new()),
+        });
+        
+        Self { inner }
+    }
+    
+    pub fn abort(&self) {
+        self.inner.aborted.store(true, Ordering::SeqCst);
+        self.inner.signal.trigger_abort();
+        
+        // Call all registered callbacks
+        if let Ok(callbacks) = self.inner.callbacks.lock() {
+            for callback in callbacks.iter() {
+                callback();
+            }
+        }
+    }
+    
+    pub fn signal(&self) -> AbortSignal {
+        self.inner.signal.clone()
+    }
+    
+    pub fn is_aborted(&self) -> bool {
+        self.inner.aborted.load(Ordering::Acquire)
+    }
+}
+
+/// AbortSignal for non-WASM environments
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone)]
+pub struct AbortSignal {
+    aborted: Arc<AtomicBool>,
+    callbacks: Arc<Mutex<Vec<Box<dyn Fn() + Send + Sync>>>>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl AbortSignal {
+    pub fn aborted(&self) -> bool {
+        self.aborted.load(Ordering::Acquire)
+    }
+    
+    pub fn on_abort<F>(&self, callback: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        if let Ok(mut callbacks) = self.callbacks.lock() {
+            callbacks.push(Box::new(callback));
+        }
+        
+        // If already aborted, call immediately
+        if self.aborted() {
+            callback();
+        }
+    }
+    
+    fn trigger_abort(&self) {
+        self.aborted.store(true, Ordering::SeqCst);
+        
+        if let Ok(callbacks) = self.callbacks.lock() {
+            for callback in callbacks.iter() {
+                callback();
+            }
+        }
+    }
+    
+    pub async fn wait_for_abort(&self) {
+        while !self.aborted() {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for AbortController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[cfg(target_arch = "wasm32")]
 use std::fmt;

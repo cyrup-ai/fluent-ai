@@ -4,14 +4,11 @@
 
 use std::time::Duration;
 
-use http::Uri;
 use hyper_util::client::legacy::connect::HttpConnector;
 #[cfg(feature = "default-tls")]
 use native_tls_crate as native_tls;
 #[cfg(feature = "__rustls")]
 use rustls;
-
-use crate::error::BoxError;
 
 /// Builder for HTTP/3 connectors with configuration options
 #[derive(Clone, Debug)]

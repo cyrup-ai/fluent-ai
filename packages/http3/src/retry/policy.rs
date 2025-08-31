@@ -8,6 +8,7 @@ use std::time::Duration;
 use fastrand::Rng;
 
 use crate::prelude::*;
+use crate::error::types::Error as HttpError;
 
 /// Retry policy configuration - all durations in milliseconds for zero allocation
 #[derive(Debug, Clone)]
@@ -126,24 +127,17 @@ impl RetryPolicy {
     /// errors (5xx) are generally retryable, while client errors (4xx) are not.
     #[inline]
     pub fn is_retryable_error(&self, error: &HttpError) -> bool {
-        match error {
-            HttpError::NetworkError { .. } => true,
-            HttpError::Timeout { .. } => true,
-            HttpError::HttpStatus { status, .. } => {
+        match &error.inner.kind {
+            crate::error::types::Kind::Builder => false,     // Client configuration errors not retryable
+            crate::error::types::Kind::Request => true,      // Request errors may be transient
+            crate::error::types::Kind::Redirect => false,    // Redirect errors usually not transient
+            crate::error::types::Kind::Status(status, _) => {
                 // Retry on server errors (5xx) and some client errors (429)
-                *status >= 500 || *status == 429
+                status.as_u16() >= 500 || status.as_u16() == 429
             }
-            HttpError::TlsError { .. } => false, // TLS errors usually not transient
-            HttpError::InvalidUrl { .. } => false, // Client errors not retryable
-            HttpError::SerializationError { .. } => false,
-            HttpError::InvalidResponse { .. } => false,
-            HttpError::ClientError { .. } => false,
-            HttpError::DeserializationError { .. } => false,
-            HttpError::UrlParseError { .. } => false,
-            HttpError::DownloadInterrupted { .. } => true,
-            HttpError::InvalidContentLength { .. } => false,
-            HttpError::ChunkProcessingError { .. } => false,
-            _ => false,
+            crate::error::types::Kind::Body => false,        // Body errors usually not retryable
+            crate::error::types::Kind::Decode => false,      // Decode errors usually not retryable
+            crate::error::types::Kind::Upgrade => false,     // Upgrade errors usually not retryable
         }
     }
 

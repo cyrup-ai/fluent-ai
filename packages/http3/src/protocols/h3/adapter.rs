@@ -11,6 +11,7 @@ use crate::prelude::*;
 use crate::protocols::h3::connection::H3Connection;
 use crate::protocols::response_converter::convert_http_chunks_to_response;
 use crate::protocols::strategy::H3Config;
+use crate::protocols::core::TimeoutConfig;
 use crate::http::response::HttpResponse;
 
 static STREAM_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -87,13 +88,21 @@ fn create_h3_connection(config: &H3Config, request: &HttpRequest) -> Result<H3Co
     let quiche_connection = quiche::connect(None, &scid, local_addr, peer_addr, &mut quiche_config)
         .map_err(|e| HttpError::new(crate::error::Kind::Request).with(e))?;
     
-    let timeout_config = config.timeout_config();
+    let timeout_config = TimeoutConfig {
+        request_timeout: std::time::Duration::from_secs(60),
+        connect_timeout: std::time::Duration::from_secs(5),
+        idle_timeout: config.max_idle_timeout,
+        keepalive_timeout: Some(config.max_idle_timeout / 2),
+    };
     Ok(H3Connection::new(quiche_connection, timeout_config))
 }
 
 /// Extract peer address from HTTP request URL
 fn extract_peer_addr_from_request(request: &HttpRequest) -> Result<std::net::SocketAddr, HttpError> {
-    let uri = request.uri();
+    let uri_string = request.uri();
+    
+    // Parse string into URI
+    let uri: http::Uri = uri_string.parse().map_err(|e| HttpError::new(crate::error::Kind::Request).with(e))?;
     
     // Extract host from URI
     let host = uri.host().ok_or_else(|| HttpError::new(crate::error::Kind::Request))?;
@@ -143,7 +152,18 @@ fn serialize_http_request(request: &HttpRequest) -> Result<Vec<u8>, HttpError> {
     // Add separator and body
     request_data.extend_from_slice(b"\r\n");
     if let Some(body) = request.body() {
-        request_data.extend_from_slice(body.as_bytes());
+        let body_bytes = match body {
+            crate::http::request::RequestBody::Bytes(bytes) => bytes.to_vec(),
+            crate::http::request::RequestBody::Text(text) => text.as_bytes().to_vec(),
+            crate::http::request::RequestBody::Json(json) => {
+                serde_json::to_string(json).unwrap_or_default().into_bytes()
+            }
+            crate::http::request::RequestBody::Form(form) => {
+                serde_urlencoded::to_string(form).unwrap_or_default().into_bytes()
+            }
+            _ => Vec::new(), // Skip complex body types for now
+        };
+        request_data.extend_from_slice(&body_bytes);
     }
     
     Ok(request_data)

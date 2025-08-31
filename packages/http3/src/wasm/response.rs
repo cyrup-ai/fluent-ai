@@ -126,7 +126,7 @@ impl WasmResponse {
         // Create response chunks from web response body
         let response_chunks = Self::create_chunks_from_web_response(&web_response)?;
         
-        let http_response = HttpResponse::from_http1_response(
+        let http_response = HttpResponse::from_http2_response(
             status,
             headers,
             response_chunks,
@@ -163,8 +163,18 @@ impl WasmResponse {
             let reader = readable_stream.get_reader();
             
             AsyncStream::with_channel(move |sender| {
+                use std::sync::Arc;
+                use std::sync::atomic::{AtomicU64, Ordering};
+                
+                // Create shared offset tracker
+                let offset_tracker = Arc::new(AtomicU64::new(0));
+                
                 // Use callback-based stream reading instead of Future-based approach
-                fn read_next_chunk(reader: web_sys::ReadableStreamDefaultReader, sender: fluent_ai_async::AsyncStreamSender<HttpBodyChunk>) {
+                fn read_next_chunk(
+                    reader: web_sys::ReadableStreamDefaultReader, 
+                    sender: fluent_ai_async::AsyncStreamSender<HttpBodyChunk>,
+                    offset_tracker: Arc<AtomicU64>
+                ) {
                     use wasm_bindgen::prelude::*;
                     
                     let read_promise = reader.read();
@@ -172,6 +182,7 @@ impl WasmResponse {
                     let success_callback = Closure::once_into_js({
                         let reader = reader.clone();
                         let sender = sender.clone();
+                        let offset_tracker = offset_tracker.clone();
                         move |chunk: JsValue| {
                             let chunk_obj = chunk.dyn_into::<js_sys::Object>().unwrap();
                             
@@ -182,7 +193,13 @@ impl WasmResponse {
                                 .unwrap_or(false);
                             
                             if done {
-                                // For HttpBodyChunk, we emit a final chunk with is_final = true
+                                // Emit final chunk with current offset
+                                let final_offset = offset_tracker.load(Ordering::Acquire);
+                                emit!(sender, HttpBodyChunk::new(
+                                    Bytes::new(),
+                                    final_offset,
+                                    true // is_final
+                                ));
                                 return;
                             }
                             
@@ -192,16 +209,22 @@ impl WasmResponse {
                                     let mut bytes = vec![0; uint8_array.length() as usize];
                                     uint8_array.copy_to(&mut bytes);
                                     
+                                    // Get current offset and update atomically
+                                    let current_offset = offset_tracker.fetch_add(
+                                        bytes.len() as u64,
+                                        Ordering::SeqCst
+                                    );
+                                    
                                     emit!(sender, HttpBodyChunk::new(
                                         Bytes::from(bytes),
-                                        0, // offset - would need to track this properly in a real implementation
+                                        current_offset,
                                         false // is_final
                                     ));
                                 }
                             }
                             
                             // Read next chunk recursively
-                            read_next_chunk(reader, sender);
+                            read_next_chunk(reader, sender, offset_tracker);
                         }
                     });
                     
@@ -214,7 +237,7 @@ impl WasmResponse {
                 }
                 
                 // Start reading the first chunk
-                read_next_chunk(reader, sender);
+                read_next_chunk(reader, sender, offset_tracker);
             })
         } else {
             // No body - return empty stream
@@ -484,7 +507,7 @@ impl WasmResponseBuilder {
 
     /// Build WasmResponse with chunk stream
     pub fn build_with_chunks(self, chunks: AsyncStream<HttpBodyChunk, 1024>) -> WasmResponse {
-        let http_response = HttpResponse::from_http1_response(
+        let http_response = HttpResponse::from_http2_response(
             self.status,
             self.headers,
             chunks,

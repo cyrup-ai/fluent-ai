@@ -5,12 +5,12 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::config::HttpConfig;
-use crate::error::HttpError;
-use crate::http::{HttpRequest, HttpResponse};
-use crate::protocols::strategy::HttpProtocolStrategy;
+use crate::http::HttpRequest;
+use crate::protocols::strategy::{HttpProtocolStrategy, H3Config, ProtocolConfigs};
+use crate::protocols::core::HttpVersion;
 // Telemetry module not yet implemented
 
 /// Client statistics for telemetry and monitoring
@@ -33,6 +33,21 @@ impl ClientStats {
     #[inline]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create a snapshot of current statistics
+    pub fn snapshot(&self) -> crate::telemetry::ClientStatsSnapshot {
+        crate::telemetry::ClientStatsSnapshot {
+            request_count: self.total_requests.load(Ordering::Relaxed) as usize,
+            connection_count: self.connection_pool_size.load(Ordering::Relaxed) as usize,
+            total_bytes_sent: self.bytes_sent.load(Ordering::Relaxed),
+            total_bytes_received: self.bytes_received.load(Ordering::Relaxed),
+            total_response_time_nanos: 0, // Not tracked in this implementation
+            successful_requests: self.successful_requests.load(Ordering::Relaxed) as usize,
+            failed_requests: self.failed_requests.load(Ordering::Relaxed) as usize,
+            cache_hits: self.cache_hits.load(Ordering::Relaxed) as usize,
+            cache_misses: self.cache_misses.load(Ordering::Relaxed) as usize,
+        }
     }
 }
 
@@ -73,47 +88,19 @@ impl HttpClient {
         }
     }
 
-    /// Create HttpClient optimized for AI providers (OpenAI, Anthropic, etc.)
-    ///
-    /// Uses AI-optimized configuration with enhanced timeouts, connection pooling,
-    /// and retry policies specifically tuned for LLM/AI provider interactions.
+    /// Create HttpClient with custom configuration and pre-allocated stats
+    /// Used for advanced initialization scenarios with shared statistics
     #[inline]
-    pub fn ai_optimized() -> Self {
+    pub fn new_direct(config: HttpConfig, stats: ClientStats) -> Self {
         Self {
-            config: HttpConfig::ai_optimized(),
-            stats: Arc::new(ClientStats::default()),
-            strategy: HttpProtocolStrategy::AiOptimized,
+            config,
+            stats: Arc::new(stats),
+            strategy: HttpProtocolStrategy::default(),
             created_at: Instant::now(),
         }
     }
 
-    /// Create HttpClient optimized for streaming responses
-    ///
-    /// Uses streaming-optimized configuration with minimal latency settings,
-    /// enhanced connection reuse, and optimized buffer sizes for real-time streaming.
-    #[inline]
-    pub fn streaming_optimized() -> Self {
-        Self {
-            config: HttpConfig::streaming_optimized(),
-            stats: Arc::new(ClientStats::default()),
-            strategy: HttpProtocolStrategy::StreamingOptimized,
-            created_at: Instant::now(),
-        }
-    }
 
-    /// Create HttpClient optimized for low-latency applications
-    ///
-    /// Uses low-latency configuration with aggressive connection reuse,
-    /// minimal timeouts, and optimized for high-frequency request patterns.
-    #[inline]
-    pub fn low_latency() -> Self {
-        Self {
-            config: HttpConfig::low_latency(),
-            stats: Arc::new(ClientStats::default()),
-            strategy: HttpProtocolStrategy::LowLatency,
-            created_at: Instant::now(),
-        }
-    }
 
     /// Create HttpClient with custom configuration and strategy
     #[inline]
@@ -227,42 +214,23 @@ impl HttpClient {
     #[inline]
     pub fn execute(&self, request: HttpRequest) -> crate::http::response::HttpResponse {
         let stats = self.stats.clone();
-        let strategy = self.strategy;
-
-        // Apply protocol strategy for execution
-        let result = Self::execute_with_strategy(request.clone(), strategy, &stats);
-
-        match result {
-            Ok(response) => {
-                // Track successful response
-                stats
-                    .successful_requests
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                response
-            }
-            Err(error_msg) => {
-                // Track failed response
-                stats
-                    .failed_requests
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                crate::http::response::HttpResponse::error(
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                    error_msg,
-                )
-            }
-        }
-    }
-
-    /// Execute request with specific protocol strategy
-    fn execute_with_strategy(
-        request: HttpRequest,
-        strategy: HttpProtocolStrategy,
-        stats: &ClientStats,
-    ) -> Result<crate::http::response::HttpResponse, String> {
-        // Update stats for tracking
+        
+        // Track request
         stats.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         
-        // Use the strategy pattern to execute the request through the complete pipeline
-        strategy.execute(request)
+        // Build and execute strategy
+        let strategy = self.strategy.build();
+        let response = strategy.execute(request);
+        
+        // Track result
+        if response.is_success() {
+            stats.successful_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        } else if response.is_error() {
+            stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        
+        response
     }
+
+
 }

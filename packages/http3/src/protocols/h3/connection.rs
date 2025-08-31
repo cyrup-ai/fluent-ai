@@ -14,10 +14,18 @@ use crate::protocols::quiche::QuicheConnectionChunk;
 use crate::protocols::core::{HttpVersion, TimeoutConfig};
 
 /// HTTP/3 connection wrapper that integrates quiche with fluent_ai_async
-#[derive(Debug)]
 pub struct H3Connection {
     inner: Arc<std::sync::Mutex<quiche::Connection>>,
     config: TimeoutConfig,
+}
+
+impl std::fmt::Debug for H3Connection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("H3Connection")
+            .field("config", &self.config)
+            .field("inner", &"<quiche::Connection>")
+            .finish()
+    }
 }
 
 impl H3Connection {
@@ -87,6 +95,7 @@ impl H3Connection {
     /// Send an HTTP/3 request and return a stream of response chunks
     pub fn send_request(&self, request: &[u8], stream_id: u64) -> AsyncStream<HttpChunk, 1024> {
         let connection = Arc::clone(&self.inner);
+        let request_data = request.to_vec();
 
         // Create AsyncStream using elite polling pattern - NO Result wrapping
         AsyncStream::<HttpChunk, 1024>::with_channel(move |sender| {
@@ -96,11 +105,11 @@ impl H3Connection {
             // First send the request data using direct quiche API
             {
                 let mut conn = connection.lock().unwrap();
-                match conn.stream_send(stream_id, request, true) {
+                match conn.stream_send(stream_id, &request_data, true) {
                     Ok(bytes_sent) => {
-                        if bytes_sent != request.len() {
+                        if bytes_sent != request_data.len() {
                             emit!(sender, HttpChunk::bad_chunk(format!(
-                                "Partial request send: {} of {} bytes", bytes_sent, request.len()
+                                "Partial request send: {} of {} bytes", bytes_sent, request_data.len()
                             )));
                             return;
                         }
@@ -126,7 +135,8 @@ impl H3Connection {
                             backoff.reset();
                             
                             // Parse HTTP/3 frames from accumulated buffer
-                            let mut cursor = std::io::Cursor::new(&frame_buffer[..]);
+                            let frame_data = frame_buffer.clone();
+                            let mut cursor = std::io::Cursor::new(&frame_data[..]);
                             
                             // Try to parse HTTP/3 frames from accumulated buffer
                             while frame_buffer.len() >= 2 {
@@ -152,13 +162,13 @@ impl H3Connection {
                                     break; // Need more data for complete frame
                                 }
                                 
-                                let frame_payload = &frame_buffer[total_header_len..total_frame_len];
+                                let frame_payload = frame_buffer[total_header_len..total_frame_len].to_vec();
                                 
                                 match frame_type {
                                     0x1 => { // HEADERS frame
                                         if !headers_parsed {
                                             // Simple QPACK decoding for common cases
-                                            let (status, headers) = parse_qpack_headers_simple(frame_payload);
+                                            let (status, headers) = parse_qpack_headers_simple(&frame_payload);
                                             emit!(sender, HttpChunk::Headers(status, headers));
                                             headers_parsed = true;
                                         }
@@ -169,7 +179,7 @@ impl H3Connection {
                                             return;
                                         }
                                         if frame_len > 0 {
-                                            let http_chunk = HttpChunk::Data(frame_payload.to_vec().into());
+                                            let http_chunk = HttpChunk::Data(Bytes::from(frame_payload));
                                             emit!(sender, http_chunk);
                                         }
                                     },
@@ -220,10 +230,18 @@ impl H3Connection {
 }
 
 /// HTTP/3 stream wrapper that bridges quiche streams to AsyncStream
-#[derive(Debug)]
 pub struct H3Stream {
     stream_id: u64,
     connection: Arc<std::sync::Mutex<quiche::Connection>>,
+}
+
+impl std::fmt::Debug for H3Stream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("H3Stream")
+            .field("stream_id", &self.stream_id)
+            .field("connection", &"<Arc<Mutex<quiche::Connection>>>")
+            .finish()
+    }
 }
 
 impl H3Stream {
@@ -250,7 +268,8 @@ impl H3Stream {
                 match conn.stream_recv(stream_id, &mut buffer) {
                     Ok((len, fin)) => {
                         if len > 0 {
-                            let http_chunk = HttpChunk::new(buffer[..len].to_vec());
+                            let data = bytes::Bytes::copy_from_slice(&buffer[..len]);
+                            let http_chunk = HttpChunk::Data(data);
                             emit!(sender, http_chunk);
                             backoff.reset();
                         }
@@ -454,8 +473,8 @@ fn convert_header_fields_to_http_reference(fields: Vec<(String, String)>) -> (ht
         } else {
             // Regular headers
             if let (Ok(header_name), Ok(header_value)) = (
-                http::HeaderName::from_str(&name_str),
-                http::HeaderValue::from_str(&value_str)
+                http::HeaderName::try_from(name_str),
+                http::HeaderValue::try_from(value_str)
             ) {
                 headers.insert(header_name, header_value);
             }

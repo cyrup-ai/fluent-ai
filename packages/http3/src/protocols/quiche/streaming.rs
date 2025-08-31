@@ -14,7 +14,7 @@ use quiche::{Config, Connection, ConnectionId};
 use crate::protocols::quiche::chunks::*;
 
 /// Quiche connection state chunk for connection lifecycle events
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct QuicheConnectionChunk {
     pub local_addr: Option<SocketAddr>,
     pub peer_addr: Option<SocketAddr>,
@@ -122,6 +122,20 @@ impl Default for QuicheConnectionChunk {
     }
 }
 
+impl Clone for QuicheConnectionChunk {
+    fn clone(&self) -> Self {
+        Self {
+            local_addr: self.local_addr,
+            peer_addr: self.peer_addr,
+            is_established: self.is_established,
+            is_closed: self.is_closed,
+            timeout_ms: self.timeout_ms,
+            error: self.error.clone(),
+            connection: None, // Don't clone connections - they represent unique network state
+        }
+    }
+}
+
 /// Quiche QUIC connection wrapper providing streaming primitives
 #[derive(Debug)]
 pub struct QuicheConnection {
@@ -176,7 +190,7 @@ impl QuicheConnection {
     }
 
     /// Stream readable data from connection
-    pub fn readable_streams(self) -> AsyncStream<QuicheReadableChunk, 1024> {
+    pub fn readable_streams(self) -> AsyncStream<QuicheConnectionChunk, 1024> {
         read_readable_streams(self.connection.into_inner())
     }
 
@@ -213,8 +227,11 @@ pub fn connect_to_server(
     let server_name = server_name.to_string();
     let scid_owned = scid.to_vec();
     AsyncStream::with_channel(move |sender| {
-        // Use Quiche's synchronous connect method
-        match quiche::connect(Some(&server_name), &scid_owned, local, peer, &mut config) {
+        // Create proper ConnectionId from bytes using real quiche API
+        let scid = quiche::ConnectionId::from_ref(&scid_owned);
+        
+        // Use real quiche::connect method with proper signature
+        match quiche::connect(Some(&server_name), &scid, local, peer, &mut config) {
             Ok(connection) => {
                 // Connection established successfully - emit it for use
                 let quiche_conn = QuicheConnection::new(connection, socket, local, peer, false); // client
@@ -246,10 +263,14 @@ pub fn accept_connection(
     let local_addr = local;
     let peer_addr = peer;
     AsyncStream::with_channel(move |sender| {
-        // Use Quiche's synchronous accept method
+        // Create proper ConnectionIds from bytes using real quiche API
+        let scid = quiche::ConnectionId::from_vec(scid_owned);
+        let odcid = odcid_owned.map(|v| quiche::ConnectionId::from_vec(v));
+        
+        // Use real quiche::accept method with proper signature  
         match quiche::accept(
-            &scid_owned,
-            odcid_owned.as_deref(),
+            &scid,
+            odcid.as_ref(),
             local_addr,
             peer_addr,
             &mut config,
@@ -270,8 +291,8 @@ pub fn accept_connection(
     })
 }
 
-/// Stream readable streams from Quiche connection
-pub fn read_readable_streams(mut connection: Connection) -> AsyncStream<QuicheReadableChunk, 1024> {
+/// Stream readable streams from Quiche connection  
+pub fn read_readable_streams(mut connection: Connection) -> AsyncStream<QuicheConnectionChunk, 1024> {
     AsyncStream::with_channel(move |sender| {
         let mut readable_streams = Vec::new();
         let mut writable_streams = Vec::new();
@@ -439,8 +460,10 @@ pub fn process_incoming_packets(
 ) -> AsyncStream<QuichePacketChunk, 1024> {
     AsyncStream::with_channel(move |sender| {
         for packet in packets {
+            // Convert Bytes to mutable buffer for quiche recv
+            let mut packet_buf = packet.to_vec();
             match connection.recv(
-                &packet,
+                &mut packet_buf,
                 quiche::RecvInfo {
                     to: local_addr,  // Correct: Use actual local socket address
                     from: peer_addr, // Correct: Use actual peer socket address
@@ -551,9 +574,16 @@ pub fn write_stream_data(
 }
 
 /// Debug wrapper for quiche::Connection
-#[derive(Debug)]
 pub struct QuicheConnectionWrapper {
     inner: Connection,
+}
+
+impl std::fmt::Debug for QuicheConnectionWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QuicheConnectionWrapper")
+            .field("inner", &"<quiche::Connection>")
+            .finish()
+    }
 }
 
 impl QuicheConnectionWrapper {
@@ -666,14 +696,4 @@ impl Default for QuicheStreamWrapper {
 }
 
 
-impl Clone for QuicheConnection {
-    fn clone(&self) -> Self {
-        Self {
-            connection: self.connection.clone(),
-            socket: self.socket.try_clone().expect("Failed to clone UDP socket"),
-            local_addr: self.local_addr,
-            peer_addr: self.peer_addr,
-            is_server: self.is_server,
-        }
-    }
-}
+

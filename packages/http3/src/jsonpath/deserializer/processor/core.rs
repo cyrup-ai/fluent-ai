@@ -6,6 +6,7 @@
 use serde::de::DeserializeOwned;
 
 use super::super::iterator::JsonPathIterator;
+use super::super::byte_processor::{JsonByteProcessor, SharedByteProcessor};
 use crate::jsonpath::error::JsonPathResult;
 
 /// Result of processing a single JSON byte
@@ -25,34 +26,20 @@ impl<'iter, 'data, T> JsonPathIterator<'iter, 'data, T>
 where
     T: DeserializeOwned,
 {
-    /// Read next byte from streaming buffer using persistent position tracking
-    /// TODO: This appears to duplicate functionality in core.rs - investigate architectural intent
-    #[allow(dead_code)]
+    /// Read next byte from streaming buffer using shared byte processor
     #[inline]
     pub(super) fn read_next_byte(&mut self) -> JsonPathResult<Option<u8>> {
-        // Check if we've reached the end of available data
-        if self.deserializer.buffer_position >= self.deserializer.buffer.len() {
-            return Ok(None); // No more data available
-        }
-
-        // Read byte at current position using buffer accessor
-        match self
-            .deserializer
-            .buffer
-            .get_byte_at(self.deserializer.buffer_position)
-        {
-            Some(byte) => {
-                self.deserializer.buffer_position += 1;
-                self.bytes_consumed += 1;
-                Ok(Some(byte))
-            }
-            None => Ok(None), // Position beyond buffer bounds
-        }
+        let mut processor = SharedByteProcessor::new(
+            &mut self.deserializer.buffer,
+            self.deserializer.buffer_position
+        );
+        let result = processor.read_next_byte();
+        self.deserializer.buffer_position = processor.position();
+        self.bytes_consumed += processor.bytes_consumed();
+        result
     }
 
-    /// Process single JSON byte and update parsing state  
-    /// TODO: This appears to duplicate functionality in core.rs - investigate architectural intent
-    #[allow(dead_code)]
+    /// Process single JSON byte using shared processor
     #[inline]
     pub(super) fn process_json_byte(&mut self, byte: u8) -> JsonPathResult<JsonProcessResult> {
         match &self.deserializer.state {

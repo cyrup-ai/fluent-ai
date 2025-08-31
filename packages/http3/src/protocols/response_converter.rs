@@ -34,8 +34,8 @@ pub fn convert_http_chunks_to_response(
     stream_id: u64,
 ) -> HttpResponse {
     // Create header and trailer streams for the response
-    let (headers_sender, headers_stream) = AsyncStream::channel();
-    let (trailers_sender, trailers_stream) = AsyncStream::channel();
+    let (headers_sender, headers_stream) = AsyncStream::<crate::http::response::HttpHeader, 256>::channel();
+    let (trailers_sender, trailers_stream) = AsyncStream::<crate::http::response::HttpHeader, 64>::channel();
     
     // Create body stream by filtering and converting HttpChunks
     let body_stream = AsyncStream::with_channel(move |sender| {
@@ -45,7 +45,7 @@ pub fn convert_http_chunks_to_response(
             
             for chunk in chunk_stream {
                 match chunk {
-                    HttpChunk::Data(data) => {
+                    HttpChunk::Data(data) | HttpChunk::Body(data) | HttpChunk::Chunk(data) => {
                         if parsing_headers_local {
                             // Accumulate data for header parsing
                             header_buffer_local.extend_from_slice(&data);
@@ -63,7 +63,8 @@ pub fn convert_http_chunks_to_response(
                                         value: value.clone(),
                                         timestamp: Instant::now(),
                                     };
-                                    let _ = headers_sender.send(header);
+                                    // Intentionally ignore send result - channel may be closed
+                                    drop(headers_sender.send(header));
                                 }
                                 
                                 // Switch to body parsing mode

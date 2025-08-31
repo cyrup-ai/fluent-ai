@@ -47,7 +47,7 @@ impl ResponseCache {
     fn entry_to_response(entry: CacheEntry) -> crate::HttpResponse {
         use fluent_ai_async::AsyncStream;
 
-        use crate::http::response::{HttpBodyChunk, HttpHeader, HttpStatus};
+        use crate::http::response::{HttpBodyChunk, HttpHeader};
 
         // Clone the data to avoid lifetime issues
         let status = entry.status;
@@ -83,16 +83,20 @@ impl ResponseCache {
         let trailers_stream = AsyncStream::with_channel(|_sender| {
             // Empty trailers stream
         });
-        // Streams are already populated via with_channel above
 
-        crate::HttpResponse {
-            status: std::sync::atomic::AtomicU16::new(status.as_u16()),
+        // Use proper constructor instead of struct literal
+        let mut response = crate::HttpResponse::new(
             headers_stream,
             body_stream,
             trailers_stream,
-            version: entry.version,
-            stream_id: 0,
-        }
+            entry.version,
+            0,
+        );
+        
+        // Set the status after construction
+        response.set_status(status);
+        
+        response
     }
 
     /// Store response in cache

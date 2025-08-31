@@ -68,4 +68,32 @@ impl JsonPathError {
     pub fn invalid_index(msg: impl Into<String>) -> Self {
         Self::new(ErrorKind::InvalidPath, msg.into())
     }
+
+    pub fn invalid_expression_simple(kind: &str, msg: &str, position: Option<usize>) -> Self {
+        let message = match position {
+            Some(pos) => format!("{} at position {}: {}", kind, pos, msg),
+            None => format!("{}: {}", kind, msg),
+        };
+        Self::new(ErrorKind::InvalidPath, message)
+    }
+
+    pub fn buffer_underflow() -> Self {
+        Self::new(ErrorKind::ProcessingError, "Buffer underflow during JSON parsing".into())
+    }
+
+    pub fn unexpected_byte(byte: char) -> Self {
+        Self::new(ErrorKind::InvalidJson, format!("Unexpected byte: '{}'", byte))
+    }
+
+    pub fn invalid_utf8() -> Self {
+        Self::new(ErrorKind::InvalidJson, "Invalid UTF-8 sequence".into())
+    }
+
+    pub fn unexpected_end_of_input() -> Self {
+        Self::new(ErrorKind::InvalidJson, "Unexpected end of input".into())
+    }
+
+    pub fn invalid_number() -> Self {
+        Self::new(ErrorKind::InvalidJson, "Invalid number format".into())
+    }
 }

@@ -38,10 +38,10 @@ impl H2FrameParser {
                 if offset + length > data_len {
                     emit!(
                         sender,
-                        H2Frame::bad_chunk(format!(
+                        FrameChunk::H2(H2Frame::bad_chunk(format!(
                             "Failed to parse frame at offset {}: {}",
                             offset, "Incomplete frame data"
-                        ))
+                        )))
                     );
                     break;
                 }
@@ -54,16 +54,17 @@ impl H2FrameParser {
                     0x0 => {
                         // DATA frame
                         H2Frame::Data {
-                            stream_id,
+                            stream_id: stream_id as u64,
                             data: payload.to_vec(),
                             end_stream: (flags & 0x1) != 0,
                         }
                     }
                     0x1 => {
                         // HEADERS frame
-                        let headers = Self::parse_hpack_headers(payload);
+                        let headers_map = Self::parse_hpack_headers(payload);
+                        let headers: Vec<(String, String)> = headers_map.into_iter().collect();
                         H2Frame::Headers {
-                            stream_id,
+                            stream_id: stream_id as u64,
                             headers,
                             end_stream: (flags & 0x1) != 0,
                             end_headers: (flags & 0x4) != 0,
@@ -81,8 +82,8 @@ impl H2FrameParser {
                             let exclusive = (payload[0] & 0x80) != 0;
                             let weight = payload[4];
                             H2Frame::Priority {
-                                stream_id,
-                                dependency,
+                                stream_id: stream_id as u64,
+                                dependency: dependency as u64,
                                 weight,
                                 exclusive,
                             }
@@ -97,7 +98,7 @@ impl H2FrameParser {
                                 payload[0], payload[1], payload[2], payload[3],
                             ]);
                             H2Frame::RstStream {
-                                stream_id,
+                                stream_id: stream_id as u64,
                                 error_code,
                             }
                         } else {
@@ -106,7 +107,8 @@ impl H2FrameParser {
                     }
                     0x4 => {
                         // SETTINGS frame
-                        let settings = Self::parse_settings(payload);
+                        let settings_map = Self::parse_settings(payload);
+                        let settings: Vec<(u16, u32)> = settings_map.into_iter().collect();
                         H2Frame::Settings { settings }
                     }
                     0x6 => {
@@ -133,7 +135,7 @@ impl H2FrameParser {
                             ]);
                             let debug_data = payload[8..].to_vec();
                             H2Frame::GoAway {
-                                last_stream_id,
+                                last_stream_id: last_stream_id as u64,
                                 error_code,
                                 debug_data,
                             }
@@ -151,7 +153,7 @@ impl H2FrameParser {
                                 payload[3],
                             ]);
                             H2Frame::WindowUpdate {
-                                stream_id,
+                                stream_id: stream_id as u64,
                                 increment,
                             }
                         } else {
@@ -263,7 +265,7 @@ impl H2FrameParser {
     }
 
     /// Serialize HPACK headers (simplified)
-    fn serialize_hpack_headers(headers: &HashMap<String, String>) -> Vec<u8> {
+    fn serialize_hpack_headers(headers: &Vec<(String, String)>) -> Vec<u8> {
         let mut block = Vec::new();
         for (key, value) in headers {
             block.extend_from_slice(key.as_bytes());
@@ -295,9 +297,9 @@ impl H2FrameParser {
     }
 
     /// Serialize settings payload
-    fn serialize_settings(settings: &HashMap<u16, u32>) -> Vec<u8> {
+    fn serialize_settings(settings: &Vec<(u16, u32)>) -> Vec<u8> {
         let mut payload = Vec::new();
-        for (&id, &value) in settings {
+        for (id, value) in settings {
             payload.extend_from_slice(&id.to_be_bytes());
             payload.extend_from_slice(&value.to_be_bytes());
         }
@@ -322,10 +324,10 @@ impl H3FrameParser {
                     Err(e) => {
                         emit!(
                             sender,
-                            H3Frame::bad_chunk(format!(
+                            FrameChunk::H3(H3Frame::bad_chunk(format!(
                                 "Failed to parse H3 frame at offset {}: {}",
                                 offset, e
-                            ))
+                            )))
                         );
                         break;
                     }
@@ -338,17 +340,19 @@ impl H3FrameParser {
                     Err(_) => {
                         emit!(
                             sender,
-                            H3Frame::bad_chunk("Invalid frame length varint".to_string())
+                            FrameChunk::H3(H3Frame::bad_chunk("Invalid frame length varint".to_string()))
                         );
                         break;
                     }
                 };
                 offset += len_len;
 
+                let frame_len = frame_len as usize; // Convert u64 to usize for array indexing
+
                 if offset + frame_len > data_len {
                     emit!(
                         sender,
-                        H3Frame::bad_chunk("Incomplete frame data".to_string())
+                        FrameChunk::H3(H3Frame::bad_chunk("Incomplete frame data".to_string()))
                     );
                     break;
                 }
@@ -383,16 +387,18 @@ impl H3FrameParser {
                     }
                     0x4 => {
                         // SETTINGS frame
-                        let settings = Self::parse_h3_settings(payload);
+                        let settings_map = Self::parse_h3_settings(payload);
+                        let settings: Vec<(u64, u64)> = settings_map.into_iter().collect();
                         H3Frame::Settings { settings }
                     }
                     0x5 => {
                         // PUSH_PROMISE frame
                         if let Ok((push_id, id_len)) = Self::read_varint(payload) {
-                            let header_block = payload[id_len..].to_vec();
+                            let header_block = &payload[id_len..];
+                            let headers = Self::parse_qpack_headers(header_block);
                             H3Frame::PushPromise {
                                 push_id,
-                                header_block,
+                                headers,
                             }
                         } else {
                             H3Frame::bad_chunk("Invalid PUSH_PROMISE frame".to_string())
@@ -432,7 +438,7 @@ impl H3FrameParser {
             let frame_clone = frame.clone();
 
             match frame {
-                H3Frame::Data { data } => {
+                H3Frame::Data { data, stream_id: _ } => {
                     Self::write_varint(&mut buffer, 0x0); // DATA frame type
                     Self::write_varint(&mut buffer, data.len() as u64);
                     buffer.extend_from_slice(&data);
@@ -558,13 +564,25 @@ impl H3FrameParser {
     }
 
     /// Serialize H3 settings
-    fn serialize_h3_settings(settings: &HashMap<u64, u64>) -> Vec<u8> {
+    fn serialize_h3_settings(settings: &Vec<(u64, u64)>) -> Vec<u8> {
         let mut payload = Vec::new();
-        for (&id, &value) in settings {
-            Self::write_varint(&mut payload, id);
-            Self::write_varint(&mut payload, value);
+        for (id, value) in settings {
+            Self::write_varint(&mut payload, *id);
+            Self::write_varint(&mut payload, *value);
         }
         payload
+    }
+
+    /// Serialize headers to QPACK format (simplified implementation)
+    fn serialize_headers(headers: &Vec<(String, String)>) -> Vec<u8> {
+        let mut block = Vec::new();
+        for (key, value) in headers {
+            block.extend_from_slice(key.as_bytes());
+            block.push(0);
+            block.extend_from_slice(value.as_bytes());
+            block.push(0);
+        }
+        block
     }
 
     /// Parse QPACK compressed headers (simplified implementation)

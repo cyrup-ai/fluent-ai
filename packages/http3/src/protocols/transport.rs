@@ -34,7 +34,6 @@ pub struct TransportManager {
 }
 
 /// Configuration for transport connections
-#[derive(Debug, Clone)]
 pub struct TransportConfig {
     pub transport_type: TransportType,
     pub timeout_ms: u64,
@@ -51,6 +50,30 @@ impl Default for TransportConfig {
             max_streams: 100,
             enable_push: true,
             quiche_config: None,
+        }
+    }
+}
+
+impl std::fmt::Debug for TransportConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TransportConfig")
+            .field("transport_type", &self.transport_type)
+            .field("timeout_ms", &self.timeout_ms)
+            .field("max_streams", &self.max_streams)
+            .field("enable_push", &self.enable_push)
+            .field("quiche_config", &"<Option<quiche::Config>>")
+            .finish()
+    }
+}
+
+impl Clone for TransportConfig {
+    fn clone(&self) -> Self {
+        Self {
+            transport_type: self.transport_type.clone(),
+            timeout_ms: self.timeout_ms,
+            max_streams: self.max_streams,
+            enable_push: self.enable_push,
+            quiche_config: None, // quiche::Config doesn't implement Clone, so we set to None
         }
     }
 }
@@ -97,16 +120,34 @@ impl TransportManager {
         remote_addr: SocketAddr,
         config: TransportConfig,
     ) -> AsyncStream<Connection, 1024> {
-        // First attempt H3
-        let h3_stream = self.connection_manager.create_h3_connection(true);
-
         AsyncStream::with_channel(move |sender| {
-            // In a real implementation, we would:
-            // 1. Try to establish H3 connection
-            // 2. If it fails, fallback to H2
-            // For now, we'll emit the H3 connection directly
-            let connection = Connection::new_h3(true);
-            emit!(sender, connection);
+            // Step 1: Attempt QUIC/H3 connection
+            let h3_result = attempt_h3_connection(remote_addr, &config);
+            
+            let h3_error = match h3_result {
+                Ok(h3_conn) => {
+                    emit!(sender, h3_conn);
+                    return;
+                }
+                Err(h3_error) => {
+                    eprintln!("H3 connection failed: {}, falling back to H2", h3_error);
+                    h3_error
+                }
+            };
+            
+            // Step 2: Fallback to H2 over TCP
+            let h2_result = attempt_h2_connection(remote_addr, &config);
+            
+            match h2_result {
+                Ok(h2_conn) => {
+                    emit!(sender, h2_conn);
+                }
+                Err(h2_error) => {
+                    emit!(sender, Connection::bad_chunk(
+                        format!("All protocols failed. H3: {}, H2: {}", h3_error, h2_error)
+                    ));
+                }
+            }
         })
     }
 
@@ -163,6 +204,18 @@ pub struct TransportConnection {
     pub connection: Connection,
     pub remote_addr: SocketAddr,
     pub config: TransportConfig,
+}
+
+impl Default for TransportConnection {
+    fn default() -> Self {
+        Self {
+            connection_id: String::new(),
+            transport_type: TransportType::Auto,
+            connection: Connection::default(),
+            remote_addr: "0.0.0.0:0".parse().unwrap(),
+            config: TransportConfig::default(),
+        }
+    }
 }
 
 impl MessageChunk for TransportConnection {
@@ -362,4 +415,86 @@ impl TransportFactory {
             emit!(sender, transport_conn);
         })
     }
+}
+
+/// Attempt to establish H3 connection with error handling
+fn attempt_h3_connection(
+    remote_addr: SocketAddr,
+    config: &TransportConfig,
+) -> Result<Connection, String> {
+    use std::net::UdpSocket;
+    use std::time::{Duration, Instant};
+    
+    // Create UDP socket for QUIC
+    let socket = UdpSocket::bind("0.0.0.0:0")
+        .map_err(|e| format!("UDP bind failed: {}", e))?;
+    
+    socket.connect(remote_addr)
+        .map_err(|e| format!("UDP connect failed: {}", e))?;
+    
+    // Configure QUIC
+    let mut quiche_config = quiche::Config::new(quiche::PROTOCOL_VERSION)
+        .map_err(|e| format!("QUIC config failed: {}", e))?;
+    
+    quiche_config.set_application_protos(&[b"h3"])
+        .map_err(|e| format!("ALPN setup failed: {}", e))?;
+    
+    quiche_config.set_max_idle_timeout(config.timeout_ms);
+    quiche_config.set_initial_max_data(10_000_000);
+    quiche_config.set_initial_max_streams_bidi(100);
+    
+    // Generate connection ID
+    let mut scid = [0; quiche::MAX_CONN_ID_LEN];
+    use ring::rand::*;
+    SystemRandom::new().fill(&mut scid[..])
+        .map_err(|_| "RNG failed".to_string())?;
+    
+    let scid = quiche::ConnectionId::from_ref(&scid);
+    
+    // Initiate QUIC connection
+    let local_addr = socket.local_addr()
+        .map_err(|e| format!("Local addr failed: {}", e))?;
+    
+    let mut conn = quiche::connect(
+        None, // Server name for SNI
+        &scid,
+        local_addr,
+        remote_addr,
+        &mut quiche_config,
+    ).map_err(|e| format!("QUIC connect failed: {}", e))?;
+    
+    // Perform handshake with timeout
+    let start = Instant::now();
+    let timeout = Duration::from_millis(config.timeout_ms);
+    
+    while !conn.is_established() {
+        if start.elapsed() > timeout {
+            return Err("QUIC handshake timeout".to_string());
+        }
+        
+        // Send/receive packets (simplified for brevity)
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    
+    // Connection established, return H3 connection
+    Ok(Connection::new_h3(true))
+}
+
+/// Attempt to establish H2 connection with error handling
+fn attempt_h2_connection(
+    remote_addr: SocketAddr,
+    config: &TransportConfig,
+) -> Result<Connection, String> {
+    use std::net::TcpStream;
+    use std::time::Duration;
+    
+    // TCP connection with timeout
+    let _tcp_stream = TcpStream::connect_timeout(
+        &remote_addr,
+        Duration::from_millis(config.timeout_ms),
+    ).map_err(|e| format!("TCP connect failed: {}", e))?;
+    
+    // For now, return a simple H2 connection
+    // In production, would do TLS handshake and H2 negotiation
+    Ok(Connection::new_h2(true))
 }

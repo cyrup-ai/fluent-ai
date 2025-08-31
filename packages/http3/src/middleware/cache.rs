@@ -4,9 +4,15 @@
 //! Provides conditional request validation and response caching with lock-free operations.
 
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use fluent_ai_async::AsyncStream;
+use bytes::Bytes;
+use http::{HeaderMap, HeaderName, HeaderValue};
 
 use super::Middleware;
-use crate::cache::{CacheKey, GLOBAL_CACHE, httpdate};
+use crate::cache::{CacheKey, CacheEntry, GLOBAL_CACHE, httpdate};
+use crate::http::response::{HttpBodyChunk, HttpHeader};
 use crate::{HttpRequest, HttpResponse};
 
 /// Cache middleware for HTTP requests/responses with zero-allocation design
@@ -101,8 +107,17 @@ impl Middleware for CacheMiddleware {
             return Ok(response);
         }
 
-        // Skip caching for streaming response since we can't easily access headers
-        // TODO: Implement proper header extraction from headers_stream when needed
+        // TODO: Cache streaming response - requires URL from request context
+        // Note: HttpResponse doesn't contain URL information, so caching
+        // needs to be redesigned to work with request-response pairs
+        // or URL needs to be passed separately to the middleware
+        
+        // For now, skip caching to fix compilation error
+        // let cache_key = self.generate_cache_key("GET", "unknown", &[]);
+        
+        // HttpResponse is a streaming type and doesn't implement Clone
+        // Caching would need to intercept chunks from the body stream
+
         Ok(response)
     }
 }

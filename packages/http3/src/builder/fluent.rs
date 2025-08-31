@@ -7,7 +7,7 @@
 
 use fluent_ai_async::prelude::MessageChunk;
 
-use crate::prelude::AsyncStream;
+
 
 /// Main fluent builder for HTTP requests
 ///
@@ -95,7 +95,7 @@ impl DownloadBuilder {
 
             for download_chunk in stream {
                 match download_chunk {
-                    crate::http::response::HttpDownloadChunk::Data { chunk, downloaded, total_size } => {
+                    crate::http::response::HttpDownloadChunk::Data { chunk, downloaded, total_size: chunk_total_size } => {
                         use std::io::Write;
                         let bytes_written = match file.write(&chunk) {
                             Ok(n) => n,
@@ -110,7 +110,7 @@ impl DownloadBuilder {
                             }
                         };
                         total_written = downloaded;
-                        if let Some(size) = total_size {
+                        if let Some(size) = chunk_total_size {
                             total_size = Some(size);
                         }
                         chunk_count += 1;

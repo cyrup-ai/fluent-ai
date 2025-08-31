@@ -226,7 +226,7 @@ pub fn encode_basic_auth(username: &str, password: &str) -> HeaderValue {
 // }
 
 /// Custom proxy function type for dynamic proxy selection
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Custom {
     pub(crate) func: Arc<
         dyn Fn(&Url) -> Option<std::result::Result<Url, Box<dyn std::error::Error + Send + Sync>>>
@@ -235,6 +235,15 @@ pub struct Custom {
             + 'static,
     >,
     pub(crate) no_proxy: Option<NoProxy>,
+}
+
+impl std::fmt::Debug for Custom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Custom")
+            .field("func", &"<proxy function>")
+            .field("no_proxy", &self.no_proxy)
+            .finish()
+    }
 }
 
 impl Custom {

@@ -109,6 +109,10 @@ pub enum H3Frame {
     MaxPushId {
         push_id: u64,
     },
+    ConnectionClose {
+        error_code: u64,
+        reason: String,
+    },
     /// Error frame for bad chunks
     Error {
         message: String,

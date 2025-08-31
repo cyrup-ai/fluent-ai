@@ -8,6 +8,7 @@ pub mod chunks;
 pub mod connection;
 pub mod h2;
 pub mod streaming;
+pub mod strategy;
 
 pub use adapter::execute_h2_request;
 pub use chunks::*;

@@ -7,6 +7,9 @@
 pub use crate::http::request::HttpRequest;
 pub use crate::http::response::{HttpResponse, HttpStatus, HttpHeader, HttpBodyChunk, HttpChunk, HttpDownloadChunk, HttpDownloadStream};
 
+// Type alias for backward compatibility with example
+pub type BadChunk = HttpChunk;
+
 // Error types
 pub use crate::error::{Error, HttpError};
 
@@ -17,7 +20,8 @@ pub use crate::config::HttpConfig;
 // Builder for fluent API
 pub use crate::builder::Http3Builder;
 pub use crate::builder::state_types::{BodySet, BodyNotSet, JsonPathStreaming};
-pub use crate::builder::execution::HttpStream;
+pub use crate::builder::execution::{HttpStream, HttpStreamExt};
+pub use crate::builder::content_type::ContentType;
 
 // Essential async streaming types
 pub use fluent_ai_async::{AsyncStream, prelude::MessageChunk};

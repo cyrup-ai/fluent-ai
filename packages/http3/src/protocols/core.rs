@@ -13,7 +13,6 @@ use crate::config::HttpConfig;
 /// HTTP protocol versions supported
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HttpVersion {
-    Http11,
     Http2,
     Http3,
 }
@@ -103,15 +102,6 @@ pub struct ProtocolCapabilities {
 }
 
 impl ProtocolCapabilities {
-    pub const fn http11() -> Self {
-        Self {
-            supports_multiplexing: false,
-            supports_server_push: false,
-            supports_early_data: false,
-            supports_0rtt: false,
-            max_concurrent_streams: None,
-        }
-    }
 
     pub const fn http2() -> Self {
         Self {

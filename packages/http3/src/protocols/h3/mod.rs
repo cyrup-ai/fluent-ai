@@ -6,6 +6,7 @@
 pub mod adapter;
 pub mod chunks;
 pub mod connection;
+pub mod strategy;
 
 pub use adapter::execute_h3_request;
 pub use chunks::*;

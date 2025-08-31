@@ -183,7 +183,6 @@ impl DomainCapabilities {
         match version {
             HttpVersion::Http3 => &self.h3_support,
             HttpVersion::Http2 => &self.h2_support,
-            HttpVersion::Http11 => &self.h1_support,
         }
     }
 
@@ -217,7 +216,6 @@ impl DomainCapabilities {
         let mut protocols = vec![
             (HttpVersion::Http3, self.h3_support.success_rate()),
             (HttpVersion::Http2, self.h2_support.success_rate()),
-            (HttpVersion::Http11, self.h1_support.success_rate()),
         ];
 
         // Sort by success rate (descending)

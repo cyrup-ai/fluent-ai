@@ -5,6 +5,7 @@
 
 use std::io::{Read, Write};
 use std::net::SocketAddr;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use fluent_ai_async::prelude::MessageChunk;
 
@@ -52,21 +53,42 @@ impl MessageChunk for Conn {
 
 impl Default for Conn {
     fn default() -> Self {
+        #[derive(Debug)]
         struct NullConnection;
 
-        impl Read for NullConnection {
-            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-                Ok(0) // EOF
+        impl Unpin for NullConnection {}
+
+        impl AsyncRead for NullConnection {
+            fn poll_read(
+                self: std::pin::Pin<&mut Self>,
+                _cx: &mut std::task::Context<'_>,
+                _buf: &mut tokio::io::ReadBuf<'_>,
+            ) -> std::task::Poll<std::io::Result<()>> {
+                std::task::Poll::Ready(Ok(())) // EOF
             }
         }
 
-        impl Write for NullConnection {
-            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                Ok(buf.len()) // Pretend to write everything
+        impl AsyncWrite for NullConnection {
+            fn poll_write(
+                self: std::pin::Pin<&mut Self>,
+                _cx: &mut std::task::Context<'_>,
+                buf: &[u8],
+            ) -> std::task::Poll<Result<usize, std::io::Error>> {
+                std::task::Poll::Ready(Ok(buf.len())) // Pretend to write everything
             }
 
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
+            fn poll_flush(
+                self: std::pin::Pin<&mut Self>,
+                _cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Result<(), std::io::Error>> {
+                std::task::Poll::Ready(Ok(()))
+            }
+
+            fn poll_shutdown(
+                self: std::pin::Pin<&mut Self>,
+                _cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Result<(), std::io::Error>> {
+                std::task::Poll::Ready(Ok(()))
             }
         }
 
@@ -114,24 +136,44 @@ impl Conn {
     }
 }
 
-impl Read for Conn {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.inner.read(buf)
+impl AsyncRead for Conn {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut *self.inner).poll_read(cx, buf)
     }
 }
 
-impl Write for Conn {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.inner.write(buf)
+impl AsyncWrite for Conn {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        std::pin::Pin::new(&mut *self.inner).poll_write(cx, buf)
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.inner.flush()
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::pin::Pin::new(&mut *self.inner).poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::pin::Pin::new(&mut *self.inner).poll_shutdown(cx)
     }
 }
+
+impl Unpin for Conn {}
 
 /// Connection trait for different connection types
-pub trait ConnectionTrait: Read + Write {
+pub trait ConnectionTrait: AsyncRead + AsyncWrite + std::fmt::Debug + Send + Sync + Unpin {
     fn peer_addr(&self) -> std::io::Result<SocketAddr>;
     fn local_addr(&self) -> std::io::Result<SocketAddr>;
     fn is_closed(&self) -> bool;
@@ -150,30 +192,53 @@ impl BrokenConnectionImpl {
     }
 }
 
-impl Read for BrokenConnectionImpl {
-    fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-        Err(std::io::Error::new(
+impl AsyncRead for BrokenConnectionImpl {
+    fn poll_read(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+        _buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::task::Poll::Ready(Err(std::io::Error::new(
             std::io::ErrorKind::NotConnected,
             self.error_message.clone(),
-        ))
+        )))
     }
 }
 
-impl Write for BrokenConnectionImpl {
-    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
-        Err(std::io::Error::new(
+impl AsyncWrite for BrokenConnectionImpl {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+        _buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        std::task::Poll::Ready(Err(std::io::Error::new(
             std::io::ErrorKind::NotConnected,
             self.error_message.clone(),
-        ))
+        )))
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
-        Err(std::io::Error::new(
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::task::Poll::Ready(Err(std::io::Error::new(
             std::io::ErrorKind::NotConnected,
             self.error_message.clone(),
-        ))
+        )))
+    }
+
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::task::Poll::Ready(Err(std::io::Error::new(
+            std::io::ErrorKind::NotConnected,
+            self.error_message.clone(),
+        )))
     }
 }
+
+impl Unpin for BrokenConnectionImpl {}
 
 impl ConnectionTrait for BrokenConnectionImpl {
     fn peer_addr(&self) -> std::io::Result<SocketAddr> {

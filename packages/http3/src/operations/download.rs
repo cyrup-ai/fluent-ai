@@ -1,11 +1,18 @@
 //! Download Operations Module - File downloads with progress, resume, and throttling
 
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
+use fluent_ai_async::AsyncStream;
+use bytes::Bytes;
+use std::time::Instant;
+use url::Url;
 
 use crate::{
     client::HttpClient, http::request::HttpRequest, operations::HttpOperation,
-    client::execution::DownloadStream,
+    http::response::HttpBodyChunk,
 };
+
+/// Type alias for download stream
+pub type DownloadStream = AsyncStream<HttpBodyChunk, 1024>;
 
 /// Download operation with progress tracking and resume capability
 pub struct DownloadOperation {
@@ -64,14 +71,36 @@ impl DownloadOperation {
             // Silently skip invalid range header rather than panicking
         }
 
+        // Parse URL with proper error handling
+        let url = match Url::parse(&self.url) {
+            Ok(url) => url,
+            Err(e) => {
+                // Return error stream using bad_chunk pattern
+                return AsyncStream::with_channel(move |sender| {
+                    use fluent_ai_async::emit;
+                    emit!(sender, HttpBodyChunk {
+                        data: Bytes::from(format!("Invalid URL: {}", e)),
+                        offset: 0,
+                        is_final: true,
+                        timestamp: Instant::now(),
+                    });
+                });
+            }
+        };
+
         let request = HttpRequest::new(
             self.method(),
-            self.url.parse().unwrap(),
+            url,
             Some(self.headers.clone()),
             None,
             Some(std::time::Duration::from_secs(30)),
         );
-        self.client.download_file(request)
+        
+        // Execute the request and get the response
+        let response = self.client.execute(request);
+        
+        // Return the body stream from the response
+        response.into_body_stream()
     }
 }
 

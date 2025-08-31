@@ -7,9 +7,7 @@ use serde::de::DeserializeOwned;
 use http::Method;
 use url::Url;
 
-use crate::prelude::*;
 use crate::builder::core::{BodySet, Http3Builder};
-use crate::builder::execution::HttpStream;
 
 /// Trait for HTTP methods that require a body
 pub trait BodyMethods {
@@ -56,7 +54,8 @@ impl BodyMethods for Http3Builder<BodySet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -85,7 +84,8 @@ impl BodyMethods for Http3Builder<BodySet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -114,7 +114,8 @@ impl BodyMethods for Http3Builder<BodySet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -185,7 +186,8 @@ impl Http3Builder<BodySet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -227,7 +229,8 @@ impl Http3Builder<BodySet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -269,7 +272,8 @@ impl Http3Builder<BodySet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,

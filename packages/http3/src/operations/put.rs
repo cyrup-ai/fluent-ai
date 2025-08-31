@@ -149,8 +149,9 @@ impl HttpOperation for PutOperation {
         );
 
         use fluent_ai_async::AsyncStream;
+        let client = self.client.clone();
         AsyncStream::with_channel(move |sender| {
-            let http_response = self.client.execute(request);
+            let http_response = client.execute(request);
             fluent_ai_async::emit!(sender, http_response);
         })
     }

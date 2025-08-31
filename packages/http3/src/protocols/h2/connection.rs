@@ -4,8 +4,10 @@
 //! direct polling primitives integrated with fluent_ai_async streaming patterns.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 use std::time::{Duration, Instant};
+use std::pin::Pin;
+use std::future::Future;
 
 use bytes::Bytes;
 use crossbeam_utils::Backoff;
@@ -23,6 +25,20 @@ use crate::protocols::quiche::QuicheConnectionChunk;
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// Create a thread-safe noop waker for use in AsyncStream contexts
+/// Unlike futures::task::noop_waker(), this waker is Send + Sync
+fn create_thread_safe_noop_waker() -> Waker {
+    unsafe fn noop_clone(_: *const ()) -> RawWaker {
+        RawWaker::new(std::ptr::null(), &NOOP_WAKER_VTABLE)
+    }
+    unsafe fn noop(_: *const ()) {}
+    
+    const NOOP_WAKER_VTABLE: RawWakerVTable = 
+        RawWakerVTable::new(noop_clone, noop, noop, noop);
+    
+    unsafe { Waker::from_raw(RawWaker::new(std::ptr::null(), &NOOP_WAKER_VTABLE)) }
+}
+
 /// HTTP/2 connection wrapper using direct polling primitives
 pub struct H2Connection {
     manager: super::streaming::H2ConnectionManager,
@@ -30,6 +46,18 @@ pub struct H2Connection {
     h2_config: super::super::strategy::H2Config,
     established_at: Option<Instant>,
     connection_id: u64,
+}
+
+impl std::fmt::Debug for H2Connection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("H2Connection")
+            .field("manager", &self.manager)
+            .field("config", &self.config)
+            .field("h2_config", &self.h2_config)
+            .field("established_at", &self.established_at)
+            .field("connection_id", &self.connection_id)
+            .finish()
+    }
 }
 
 impl H2Connection {
@@ -120,149 +148,129 @@ impl H2Connection {
         io: T,
         request: Request<()>,
         body: Option<Bytes>,
-        mut context: Context<'_>,
     ) -> AsyncStream<HttpChunk, 1024>
     where
-        T: std::io::Read + std::io::Write + Unpin + Send + 'static,
+        T: std::io::Read + std::io::Write + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
     {
         AsyncStream::<HttpChunk, 1024>::with_channel(move |sender| {
-            // Use h2 handshake with simple blocking executor
+            // Elite polling pattern within AsyncStream closure - thread-safe
             use futures::executor::block_on;
+            use futures::task::noop_waker_ref;
+            use std::task::Context;
+            
+            // Thread-safe context creation INSIDE closure
+            let waker = noop_waker_ref();
+            let mut cx = Context::from_waker(waker);
+            let backoff = Backoff::new();
             
             match block_on(h2::client::Builder::new().handshake(io)) {
-                Ok((mut send_request, mut connection)) => {
-                    // Poll connection readiness using direct primitives
-                    let backoff = Backoff::new();
+                Ok((mut send_request, connection)) => {
+                    // Elite polling loop for send readiness
                     loop {
-                        match connection.poll_ready(&mut context) {
-                            Poll::Ready(Ok(())) => break,
+                        match send_request.poll_ready(&mut cx) {
+                            Poll::Ready(Ok(())) => break, // Ready to send request
                             Poll::Ready(Err(e)) => {
-                                emit!(sender, HttpChunk::Error(format!("Connection error: {}", e)));
+                                emit!(sender, HttpChunk::Error(format!("Send readiness error: {}", e)));
                                 return;
                             }
                             Poll::Pending => {
-                                backoff.spin();
+                                backoff.snooze(); // Elite backoff pattern
                                 continue;
                             }
                         }
                     }
 
-                    // Send request using direct polling
-                    match send_request.poll_ready(&mut context) {
-                        Poll::Ready(Ok(())) => {
-                            match send_request.send_request(request, body.is_none()) {
-                                Ok((response_future, mut request_stream)) => {
-                                    // Send body if provided using direct polling
-                                    if let Some(body_data) = body {
-                                        match request_stream.poll_ready(&mut context) {
-                                            Poll::Ready(Ok(())) => {
-                                                if let Err(e) =
-                                                    request_stream.send_data(body_data, true)
-                                                {
-                                                    emit!(
-                                                        sender,
-                                                        HttpChunk::Error(format!(
-                                                            "Send body error: {}",
-                                                            e
-                                                        ))
-                                                    );
-                                                    return;
-                                                }
-                                            }
-                                            Poll::Ready(Err(e)) => {
-                                                emit!(
-                                                    sender,
-                                                    HttpChunk::Error(format!(
-                                                        "Stream ready error: {}",
-                                                        e
-                                                    ))
-                                                );
-                                                return;
-                                            }
-                                            Poll::Pending => {}
-                                        }
-                                    }
-
-                                    // Poll response future using direct polling pattern
-                                    let mut response_future = response_future;
-                                    loop {
-                                        match response_future.poll(&mut context) {
-                                            Poll::Ready(Ok(response)) => {
-                                                // Extract response headers
-                                                let status = response.status();
-                                                let headers = response.headers().clone();
-                                                
-                                                // Emit status/headers as chunks BEFORE body processing
-                                                emit!(sender, HttpChunk::Headers(status, headers));
-                                                
-                                                // Get body stream and poll for data
-                                                let mut body_stream = response.into_body();
-                                                loop {
-                                                    match body_stream.poll_data(&mut context) {
-                                                        Poll::Ready(Some(Ok(data))) => {
-                                                            emit!(sender, HttpChunk::Data(data.to_vec()));
-                                                            let _ = body_stream.flow_control().release_capacity(data.len());
-                                                        }
-                                                        Poll::Ready(Some(Err(e))) => {
-                                                            emit!(sender, HttpChunk::Error(format!("Body stream error: {}", e)));
-                                                            break;
-                                                        }
-                                                        Poll::Ready(None) => {
-                                                            // Body stream ended - now poll for trailers
-                                                            loop {
-                                                                match body_stream.poll_trailers(&mut context) {
-                                                                    Poll::Ready(Ok(Some(trailers))) => {
-                                                                        emit!(sender, HttpChunk::Trailers(trailers));
-                                                                        break;
-                                                                    }
-                                                                    Poll::Ready(Ok(None)) => {
-                                                                        // No trailers available
-                                                                        break;
-                                                                    }
-                                                                    Poll::Ready(Err(e)) => {
-                                                                        emit!(sender, HttpChunk::Error(format!("Trailers error: {}", e)));
-                                                                        break;
-                                                                    }
-                                                                    Poll::Pending => {
-                                                                        backoff.snooze();
-                                                                        continue;
-                                                                    }
-                                                                }
-                                                            }
-                                                            break;
-                                                        }
-                                                        Poll::Pending => {
-                                                            backoff.snooze();
-                                                            continue;
-                                                        }
-                                                    }
-                                                }
-                                                break;
-                                            }
-                                            Poll::Ready(Err(e)) => {
-                                                emit!(sender, HttpChunk::Error(format!("Response error: {}", e)));
-                                                break;
-                                            }
-                                            Poll::Pending => {
-                                                backoff.snooze();
-                                                continue;
-                                            }
-                                        }
-                                    }
-                                }
-                                Err(e) => {
+                    // Send request after confirming readiness
+                    match send_request.send_request(request, body.is_none()) {
+                        Ok((response_future, mut request_stream)) => {
+                            // Send body if provided (SendStream doesn't have poll_ready, use direct send)
+                            if let Some(body_data) = body {
+                                if let Err(e) = request_stream.send_data(body_data, true) {
                                     emit!(
                                         sender,
-                                        HttpChunk::Error(format!("Send request error: {}", e))
+                                        HttpChunk::Error(format!(
+                                            "Send body error: {}",
+                                            e
+                                        ))
                                     );
+                                    return;
+                                }
+                            }
+
+                            // Poll response future using Future trait with proper pinning
+                            let mut response_future = response_future;
+                            loop {
+                                let mut pinned_future = Pin::new(&mut response_future);
+                                match Future::poll(pinned_future, &mut cx) {
+                                    Poll::Ready(Ok(response)) => {
+                                        // Extract response headers
+                                        let status = response.status();
+                                        let headers = response.headers().clone();
+                                        
+                                        // Emit status/headers as chunks BEFORE body processing
+                                        emit!(sender, HttpChunk::Headers(status, headers));
+                                        
+                                        // Get body stream and poll for data
+                                        let mut body_stream = response.into_body();
+                                        loop {
+                                            match body_stream.poll_data(&mut cx) {
+                                                Poll::Ready(Some(Ok(data))) => {
+                                                    let data_len = data.len();
+                                                    emit!(sender, HttpChunk::Data(data));
+                                                    let _ = body_stream.flow_control().release_capacity(data_len);
+                                                }
+                                                Poll::Ready(Some(Err(e))) => {
+                                                    emit!(sender, HttpChunk::Error(format!("Body stream error: {}", e)));
+                                                    break;
+                                                }
+                                                Poll::Ready(None) => {
+                                                    // Body stream ended - now poll for trailers
+                                                    loop {
+                                                        match body_stream.poll_trailers(&mut cx) {
+                                                            Poll::Ready(Ok(Some(trailers))) => {
+                                                                emit!(sender, HttpChunk::Trailers(trailers));
+                                                                break;
+                                                            }
+                                                            Poll::Ready(Ok(None)) => {
+                                                                // No trailers available
+                                                                break;
+                                                            }
+                                                            Poll::Ready(Err(e)) => {
+                                                                emit!(sender, HttpChunk::Error(format!("Trailers error: {}", e)));
+                                                                break;
+                                                            }
+                                                            Poll::Pending => {
+                                                                backoff.snooze();
+                                                                continue;
+                                                            }
+                                                        }
+                                                    }
+                                                    break;
+                                                }
+                                                Poll::Pending => {
+                                                    backoff.snooze();
+                                                    continue;
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    Poll::Ready(Err(e)) => {
+                                        emit!(sender, HttpChunk::Error(format!("Response error: {}", e)));
+                                        break;
+                                    }
+                                    Poll::Pending => {
+                                        backoff.snooze();
+                                        continue;
+                                    }
                                 }
                             }
                         }
-                        Poll::Ready(Err(e)) => {
-                            emit!(sender, HttpChunk::Error(format!("Send ready error: {}", e)));
-                        }
-                        Poll::Pending => {
-                            emit!(sender, HttpChunk::Error("Send request pending".to_string()));
+                        Err(e) => {
+                            emit!(
+                                sender,
+                                HttpChunk::Error(format!("Send request error: {}", e))
+                            );
                         }
                     }
                 }

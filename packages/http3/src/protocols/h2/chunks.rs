@@ -10,6 +10,12 @@ pub enum H2ConnectionChunk {
     ConnectionError { message: Arc<str> },
 }
 
+impl Default for H2ConnectionChunk {
+    fn default() -> Self {
+        Self::Ready
+    }
+}
+
 impl MessageChunk for H2ConnectionChunk {
     #[inline]
     fn bad_chunk(error: String) -> Self {
@@ -91,6 +97,12 @@ pub enum H2DataChunk {
     DataError { message: Arc<str> },
 }
 
+impl Default for H2DataChunk {
+    fn default() -> Self {
+        Self::StreamComplete
+    }
+}
+
 impl MessageChunk for H2DataChunk {
     #[inline]
     fn bad_chunk(error: String) -> Self {
@@ -131,6 +143,12 @@ pub enum H2SendResult {
     DataSent,
     SendComplete,
     SendError { message: String },
+}
+
+impl Default for H2SendResult {
+    fn default() -> Self {
+        Self::SendComplete
+    }
 }
 
 impl MessageChunk for H2SendResult {

@@ -52,7 +52,8 @@ impl NoBodyMethods for Http3Builder<BodyNotSet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -81,7 +82,8 @@ impl NoBodyMethods for Http3Builder<BodyNotSet> {
         
         // Transform HttpBodyChunk stream to typed stream with real-time deserialization
         AsyncStream::with_channel(move |sender| {
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 // Real-time JSON deserialization of each chunk
                 let deserialized_obj = match serde_json::from_slice::<T>(&body_chunk.data) {
                     Ok(obj) => obj,
@@ -95,9 +97,30 @@ impl NoBodyMethods for Http3Builder<BodyNotSet> {
 
     #[inline]
     fn download_file(self, url: &str) -> DownloadBuilder {
-        // For downloads, we need to use the client's download_file method
-        let request = self.request.with_url(Url::parse(url).unwrap());
-        let download_stream = self.client.download_file(request);
+        // Execute request and convert to download stream
+        let request = self.request
+            .with_method(Method::GET)
+            .with_url(Url::parse(url).unwrap());
+        let response = self.client.execute(request);
+        
+        // Convert response to download stream
+        let download_stream = AsyncStream::with_channel(move |sender| {
+            let body_stream = response.into_body_stream();
+            let mut downloaded = 0u64;
+            
+            for chunk in body_stream {
+                downloaded += chunk.data.len() as u64;
+                let download_chunk = crate::http::response::HttpDownloadChunk::Data {
+                    chunk: chunk.data.to_vec(),
+                    downloaded,
+                    total_size: None,
+                };
+                emit!(sender, download_chunk);
+            }
+            
+            emit!(sender, crate::http::response::HttpDownloadChunk::Complete);
+        });
+        
         DownloadBuilder::new(download_stream)
     }
 }
@@ -151,9 +174,30 @@ impl Http3Builder<BodyNotSet> {
             log::debug!("HTTP3 Builder: Download {}", url);
         }
 
-        // For downloads, we need to use the client's download_file method
-        let request = self.request.with_url(Url::parse(url).unwrap());
-        let download_stream = self.client.download_file(request);
+        // Execute request and convert to download stream
+        let request = self.request
+            .with_method(Method::GET)
+            .with_url(Url::parse(url).unwrap());
+        let response = self.client.execute(request);
+        
+        // Convert response to download stream
+        let download_stream = AsyncStream::with_channel(move |sender| {
+            let body_stream = response.into_body_stream();
+            let mut downloaded = 0u64;
+            
+            for chunk in body_stream {
+                downloaded += chunk.data.len() as u64;
+                let download_chunk = crate::http::response::HttpDownloadChunk::Data {
+                    chunk: chunk.data.to_vec(),
+                    downloaded,
+                    total_size: None,
+                };
+                emit!(sender, download_chunk);
+            }
+            
+            emit!(sender, crate::http::response::HttpDownloadChunk::Complete);
+        });
+        
         DownloadBuilder::new(download_stream)
     }
 
@@ -188,7 +232,8 @@ impl Http3Builder<BodyNotSet> {
             let http_response = self.client.execute(request);
 
             // Forward all chunks from HttpResponse body stream
-            for body_chunk in http_response.body_stream {
+            let body_stream = http_response.into_body_stream();
+            for body_chunk in body_stream {
                 let http_chunk = HttpChunk::from(body_chunk);
                 emit!(sender, http_chunk);
             }

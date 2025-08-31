@@ -5,10 +5,10 @@
 
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::time::Duration;
+
 
 // Removed unused imports
-use http::{HeaderMap, Method, Version};
+use http::Method;
 use url::Url;
 
 pub use super::content_type::ContentType;
