@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/cyrup-ai/fluent-ai"
 
 [dependencies]
-cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars.git", features = ["all"] }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", branch = "main", features = ["all"] }
 thiserror = "2.0.0"
 crossbeam-channel = "0.5.15"
 crossbeam-deque = "0.8.6"

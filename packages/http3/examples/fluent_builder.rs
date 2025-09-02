@@ -13,7 +13,8 @@ use axum::{
     routing::{get, post, put},
 };
 use cyrup_sugars::prelude::*;
-use fluent_ai_http3::{BadChunk, ContentType, Http3, HttpChunk, HttpError, HttpStreamExt};
+use fluent_ai_async::prelude::MessageChunk;
+use fluent_ai_http3::{Http3, Http3Builder, ContentType, HttpChunk, HttpError, BadChunk};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 
@@ -29,11 +30,28 @@ struct SerdeResponseType {
     count: u32,
 }
 
-impl From<fluent_ai_http3::BadChunk> for SerdeResponseType {
-    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+impl From<BadChunk> for SerdeResponseType {
+    fn from(_bad_chunk: BadChunk) -> Self {
         SerdeResponseType {
             result: "error".to_string(),
             count: 0,
+        }
+    }
+}
+
+impl fluent_ai_async::prelude::MessageChunk for SerdeResponseType {
+    fn bad_chunk(_error: String) -> Self {
+        Self {
+            result: "error".to_string(),
+            count: 0,
+        }
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if self.result == "error" {
+            Some(&self.result)
+        } else {
+            None
         }
     }
 }
@@ -56,14 +74,34 @@ struct JsonResponse {
     settings: std::collections::HashMap<String, i32>,
 }
 
-impl From<fluent_ai_http3::BadChunk> for JsonResponse {
-    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+impl From<BadChunk> for JsonResponse {
+    fn from(_bad_chunk: BadChunk) -> Self {
         JsonResponse {
             success: false,
             user_id: 0,
             created_at: String::new(),
             roles: Vec::new(),
             settings: std::collections::HashMap::new(),
+        }
+    }
+}
+
+impl fluent_ai_async::prelude::MessageChunk for JsonResponse {
+    fn bad_chunk(_error: String) -> Self {
+        Self {
+            success: false,
+            user_id: 0,
+            created_at: String::new(),
+            roles: Vec::new(),
+            settings: std::collections::HashMap::new(),
+        }
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if !self.success {
+            Some("Request failed")
+        } else {
+            None
         }
     }
 }
@@ -86,14 +124,34 @@ struct FormResponse {
     discount_applied: bool,
 }
 
-impl From<fluent_ai_http3::BadChunk> for FormResponse {
-    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+impl From<BadChunk> for FormResponse {
+    fn from(_bad_chunk: BadChunk) -> Self {
         FormResponse {
             order_id: String::new(),
             total_cost: 0.0,
             estimated_delivery: String::new(),
             items: Vec::new(),
             discount_applied: false,
+        }
+    }
+}
+
+impl fluent_ai_async::prelude::MessageChunk for FormResponse {
+    fn bad_chunk(_error: String) -> Self {
+        Self {
+            order_id: String::new(),
+            total_cost: 0.0,
+            estimated_delivery: String::new(),
+            items: Vec::new(),
+            discount_applied: false,
+        }
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if self.order_id.is_empty() {
+            Some("Order processing failed")
+        } else {
+            None
         }
     }
 }
@@ -115,13 +173,32 @@ struct BinaryResponse {
     validation_result: bool,
 }
 
-impl From<fluent_ai_http3::BadChunk> for BinaryResponse {
-    fn from(_bad_chunk: fluent_ai_http3::BadChunk) -> Self {
+impl From<BadChunk> for BinaryResponse {
+    fn from(_bad_chunk: BadChunk) -> Self {
         BinaryResponse {
             upload_id: String::new(),
             status: "error".to_string(),
             bytes_processed: 0,
             validation_result: false,
+        }
+    }
+}
+
+impl fluent_ai_async::prelude::MessageChunk for BinaryResponse {
+    fn bad_chunk(_error: String) -> Self {
+        Self {
+            upload_id: String::new(),
+            status: "error".to_string(),
+            bytes_processed: 0,
+            validation_result: false,
+        }
+    }
+    
+    fn error(&self) -> Option<&str> {
+        if self.status == "error" {
+            Some(&self.status)
+        } else {
+            None
         }
     }
 }
@@ -304,7 +381,9 @@ async fn requestbin_logger(
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize env_logger for http3's native debug logging
-    std::env::set_var("RUST_LOG", "http3=debug,hyper=debug,fluent_ai_http3=debug");
+    unsafe {
+        std::env::set_var("RUST_LOG", "http3=debug,hyper=debug,fluent_ai_http3=debug");
+    }
     env_logger::init();
     println!("✨ Enabled http3's native HTTP debug logging");
 
@@ -354,59 +433,59 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧪 Testing Http3 builder with EXACT syntax patterns...\n");
 
     // Stream of HttpChunk or mixed BadHttpChunk
-    Http3::json()
+    let _response: SerdeResponseType = Http3::development() // Use development config for local testing
         .debug() // Enable debug logging
         .headers([("x-api-key", "abc123")])
         .body(&request)
-        .post(&server_url);
+        .post(&server_url).collect_one();
 
     // collect to Serde mapped type
-    let response_data = Http3::json()
+    let response_data: SerdeResponseType = Http3::development() // Use development config for local testing
         .accept_content_type(ContentType::ApplicationJson)
         .headers([("x-api-key", "abc123")])
         .body(&request)
         .post(&server_url)
-        .collect_one::<SerdeResponseType>();
+        .collect_one();
     println!("📥 Received response: {:?}", response_data);
 
     // shorthand
-    let response_data2 = Http3::json()
+    let response_data2: SerdeResponseType = Http3::development() // Use development config for local testing
         .api_key("abc123")
         .body(&request)
         .post(&server_url)
-        .collect_one::<SerdeResponseType>();
+        .collect_one();
     println!("📥 Received response 2: {:?}", response_data2);
 
-    // shorthand
-    let _serde_response_type = Http3::form_urlencoded()
+    // shorthand - form urlencoded with development config
+    let _serde_response_type: SerdeResponseType = Http3::development() // Use development config for local testing
         .basic_auth([("user", "password")])
         .body(&request)
         .post(&server_url)
-        .collect_one::<SerdeResponseType>();
+        .collect_one();
 
     // Demonstrate cyrup_sugars on_chunk beautiful syntax
     println!("🧪 Testing cyrup_sugars on_chunk beautiful syntax...");
 
-    // Note: This demonstrates the beautiful syntax but uses collect_one_or_else for practical results
-    let _stream_with_error_handling: fluent_ai_async::AsyncStream<HttpChunk, 1024> = Http3::json()
+    // Note: This demonstrates the beautiful on_chunk syntax with raw HTTP chunks
+    let _stream_with_error_handling: fluent_ai_async::AsyncStream<SerdeResponseType, 1024> = Http3::development() // Use development config for local testing
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
-        .post(&server_url)
         .on_chunk(|result| match result {
             Ok(chunk) => {
-                println!("Received chunk: {:?}", chunk);
+                println!("Received HTTP chunk: {:?}", chunk);
                 chunk
             }
             Err(e) => {
-                println!("Error occurred: {:?}", e);
+                println!("HTTP error occurred: {:?}", e);
                 HttpChunk::bad_chunk(e.to_string())
             }
-        });
+        })
+        .post::<SerdeResponseType>(&server_url);
 
     println!("✅ cyrup_sugars on_chunk syntax demonstrated successfully!");
 
     // Stream of HttpChunk may have mixed BadHttpChunk
-    let error_response = Http3::json()
+    let error_response = Http3::development() // Use development config for local testing
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
@@ -418,7 +497,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Download file example with proper URL
     let csv_url = format!("http://{}/download/file.csv", local_addr);
-    let download_result = Http3::json()
+    let download_result = Http3::development() // Use development config for local testing
         .headers([("x-api-key", "abc123")])
         .download_file(&csv_url)
         .save("/tmp/some.csv")
@@ -443,11 +522,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let json_url = format!("http://{}/put/json", local_addr);
-    let json_response = Http3::json()
+    let json_response: JsonResponse = Http3::development() // Use development config for local testing
         .debug()
         .body(&json_request)
         .put(&json_url)
-        .collect_one::<JsonResponse>();
+        .collect_one();
     println!("📤 PUT JSON Response: {:#?}", json_response);
 
     // PUT Form test - Send actual form-urlencoded data, not JSON
@@ -459,11 +538,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     let form_url = format!("http://{}/put/form", local_addr);
-    let form_response = Http3::form_urlencoded()
+    let form_response: FormResponse = Http3::development() // Use development config for local testing - form support
         .debug()
         .body(&form_params)
         .put(&form_url)
-        .collect_one::<FormResponse>();
+        .collect_one();
     println!("📤 PUT Form Response: {:#?}", form_response);
 
     // PUT Binary test - BinaryRequest -> BinaryResponse
@@ -475,11 +554,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let binary_url = format!("http://{}/put/binary", local_addr);
-    let binary_response = Http3::json() // Send as JSON
+    let binary_response: BinaryResponse = Http3::development() // Use development config for local testing
         .debug()
         .body(&binary_request)
         .put(&binary_url)
-        .collect_one::<BinaryResponse>();
+        .collect_one();
     println!("📤 PUT Binary Response: {:#?}", binary_response);
 
     // Give the server a moment to process all requests
